@@ -90,26 +90,46 @@ test('recarregar retoma Abrir o Anki sozinho até Agora não, mesmo com a saúde
   await estadoFinal(extensao, { pm_anki_abridor_pendente: false, pm_abridor: { agoraNao: true } });
 });
 
-test('a primeira conexão confirmada mantém o título do abridor pendente após queda e recarga', async ({ page, extensao, fakes }) => {
+test('a Conexão cai no passo 4: as abas voltam, a pergunta fica guardada e volta com a Conexão, na página e depois de recarregar', async ({ page, extensao, fakes }) => {
   await conectarPelaPrimeiraVez(page, extensao, fakes);
   await expect(permitir(page)).toBeVisible();
   fakes.anki.desligar();
-  await page.getByRole('button', { name: 'Atualizar', exact: true }).click();
-  // Quem já viu a Conexão ligar não volta ao primeiro passo: abre Reiniciar o Anki, o primeiro que falta de novo,
-  // com a linha da Conexão dizendo a queda e o Tentar de novo. O título do card segue o abridor pendente.
-  await expect(tituloDoPasso(page)).toHaveText('Reiniciar o Anki');
-  await expect(statusDaConexao(page)).toHaveText('Conexão com o Anki: desligada');
-  await expect(card(page).getByRole('button', { name: 'Tentar de novo' })).toBeVisible();
-  await expect(page.locator('#anki-primeira-vez')).toBeVisible();
-  await expect(page.locator('#anki-primeira-vez-titulo')).toHaveText('Abrir o Anki sozinho');
+  await tentarDaF1(page).evaluate(botao => botao.click());
+  // Sem a Conexão o passo 4 não tem o que perguntar: o card sai, e Custos e Ajustes de envio (que não dependem do Anki) ficam ao alcance.
+  await expect(abas(page)).toBeVisible();
+  await expect(page.locator('#anki-primeira-vez')).toBeHidden();
   await fotografar(page, 'abridor-pendente-apos-queda.png');
   await page.reload();
-  await expect(tituloDoPasso(page)).toHaveText('Reiniciar o Anki');
-  await expect(statusDaConexao(page)).toHaveText('Conexão com o Anki: desligada');
-  await expect(page.locator('#anki-primeira-vez')).toBeVisible();
+  await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'desligada');
+  await expect(abas(page)).toBeVisible();
+  await expect(page.locator('#anki-primeira-vez')).toBeHidden();
+  await estadoFinal(extensao, { pm_anki_ja_conectou: true, pm_anki_abridor_pendente: true });
+
+  // A Conexão volta: a pergunta também, com as duas saídas.
+  fakes.anki.ligar();
+  await tentarDaF1(page).click();
   await expect(page.locator('#anki-primeira-vez-titulo')).toHaveText('Abrir o Anki sozinho');
+  await expect(tituloDoPasso(page)).toHaveText('Abrir o Anki sozinho');
+  await expect(permitir(page)).toBeVisible();
   await expect(abas(page)).toBeHidden();
-  await fotografar(page, 'abridor-pendente-queda-apos-reload.png');
+  await agoraNao(page).click();
+  await expect(abas(page)).toBeVisible();
+  await estadoFinal(extensao, { pm_anki_abridor_pendente: false, pm_abridor: { agoraNao: true } });
+});
+
+// O beco de antes (T3): o card “Abrir o Anki sozinho” no passo “Reiniciar o Anki”, sem as abas, sem Permitir e sem Agora não, até o Anki abrir.
+test('quem já conectou, não respondeu ao passo 4 e está com o Anki fechado tem as abas: Ajustes de envio abre, e nada do card fica na frente', async ({ page, extensao, fakes }) => {
+  await extensao.gravarStorage({ pm_anki_ja_conectou: true, pm_anki_abridor_pendente: true });
+  fakes.anki.desligar();
+  await page.goto(extensao.url('painel.html#anki/ajustes'));
+  await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'desligada');
+
+  await expect(abas(page)).toBeVisible();
+  await expect(abas(page).getByRole('radio', { name: 'Ajustes de envio' })).toBeChecked();
+  await expect(page.locator('#anki-primeira-vez')).toBeHidden();
+  await abas(page).getByText('Custos', { exact: true }).click();
+  await expect(page.locator('#anki-custos')).toBeVisible();
+  // A pergunta não se perde: segue guardada para quando a Conexão responder.
   await estadoFinal(extensao, { pm_anki_ja_conectou: true, pm_anki_abridor_pendente: true });
 });
 

@@ -166,6 +166,27 @@ test('um Envio sem Cartão nenhum solta o pedido congelado: Tentar de novo monta
   expect(fakes.anki.envios[1].jobId).not.toBe(envio.jobId);
 });
 
+test('o Envio que não foi e teve as Frases apagadas na Conexão não se retoma: o pedido congelado sai, Tentar de novo monta outro Envio e o Cartão chega', async ({ page, extensao, fakes }) => {
+  await abrirOEnvio(page, extensao, { frases: [MAIS_RECENTE] });
+  const [envio] = await enviosCriados(fakes, 1);
+  fakes.anki.moverEnvio(envio.jobId, { stage: 'generate_cards', cartoes: { [idDoCartao(envio)]: { status: 'failed', error: 'openai_key_rejected' } } });
+  fakes.anki.concluirEnvio(envio.jobId, { erro: 'openai_key_rejected' });
+  await expect(passo(page)).toContainText('A OpenAI não aceitou a chave.');
+  fakes.anki.apagarAsFrases();   // o Apagar tudo de outro navegador, na mesma Conexão
+
+  await botao(page, 'Tentar de novo').click();
+  // A Conexão recusa a retomada (do apagado não se sai): não é a Conexão que não respondeu.
+  await expect(passo(page)).toContainText('Algo impediu o envio.');
+  await expect(passo(page)).not.toContainText('A Conexão com o Anki não respondeu');
+
+  await botao(page, 'Tentar de novo').click();
+  const [, novo] = await enviosCriados(fakes, 2);
+  expect(novo.jobId).not.toBe(envio.jobId);
+  chegarAoAnki(fakes, novo);
+  await expect(passo(page)).toContainText('Cartão enviado ao Anki');
+  await estadoFinal(extensao, { pm_boas_vindas: { primeiroEnvio: { chegou: true, corpo: { jobId: novo.jobId } } } });
+});
+
 test('a Frase minerada em russo manda o Envio em russo', async ({ page, extensao, fakes }) => {
   await abrirOEnvio(page, extensao, { frases: [INGLESAS[2], RUSSA_MAIS_NOVA] });
 

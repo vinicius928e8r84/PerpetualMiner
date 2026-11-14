@@ -26,7 +26,7 @@ não lê (`400 invalid_image_format`) descarta as candidatas, como na chave.
 
 **Quando o plano para a imagem.** O limite de uso, a conta que o plano não atende, o login recusado ou acabado (`chatgpt_usage_limit`, `chatgpt_not_eligible`,
 `chatgpt_rejected`, `chatgpt_signed_out`) no juiz levantam `ParaOEnvio`: o Cartão fica `failed` com o código, **o texto pago fica** e o Envio para. O Tentar de novo
-(`/jobs/retry`) refaz só o que falta: a imagem e a nota. Sem isso o Cartão seguiria sem foto sem ninguém saber, e o Tentar de novo não teria o que melhorar.
+(`/jobs/retry`) refaz só o que falta: a imagem e a nota (com o login acabado ele para de novo, até a pessoa escolher: [login-do-chatgpt.md](login-do-chatgpt.md) § 2). Sem isso o Cartão seguiria sem foto sem ninguém saber, e o Tentar de novo não teria o que melhorar.
 O erro passageiro do plano (rede, 5xx, 429 sem código do plano) é pedido de novo como o da chave (`REPETICOES_DA_IMAGEM`); se continua, **com chave** o juiz da chave decide
 (o aviso fica no log, com o código) e **sem chave** o Cartão segue sem imagem (“só a imagem falha”).
 

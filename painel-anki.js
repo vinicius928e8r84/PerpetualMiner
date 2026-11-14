@@ -48,6 +48,7 @@
     ids: false,
     leitura: 0,             // só a leitura mais recente desenha
     falhasAoRetomar: new Map(),  // jobId → a causa técnica, para o Detalhes
+    apagados: new Set(),    // jobId que a Conexão recusou retomar (Frases apagadas)
     diagnosticoFalhou: false,
   };
   const ouvintesDoAtualizar = [];   // quem mais responde ao ↻ Atualizar (aoAtualizar)
@@ -124,11 +125,7 @@
     return situacao;
   }
 
-  /**
-   * ↻ Atualizar (BRG-24): uma ação só. Confere a Conexão e, só com ela ligada,
-   * lê os custos e pede às outras abas os dados delas (os baralhos, que abrem o
-   * Anki se precisar). Desligada, não há quem abra o Anki: a F1 já diz o porquê.
-   */
+  /** ↻ Atualizar (BRG-24): confere a Conexão e, só com ela ligada, lê os custos e pede às outras abas os dados delas. */
   async function atualizarTudo() {
     if (await atualizar() === CONEXAO.LIGADA) for (const ouvinte of ouvintesDoAtualizar) ouvinte();
   }
@@ -196,10 +193,7 @@
     return situacaoDaConexao() === CONEXAO.DESLIGADA;
   }
 
-  /**
-   * Com a Conexão desligada, o botão fica `aria-disabled` (não `disabled`: ele
-   * continua no Tab) e a dica irmã diz por quê, no hover e no foco.
-   */
+  /** Com a Conexão desligada, o botão fica `aria-disabled` (continua no Tab) e a dica irmã diz por quê. */
   function marcarIndisponivel(botao, idDaDica) {
     if (desligada()) {
       botao.setAttribute('aria-disabled', 'true');
@@ -260,10 +254,7 @@
     if (foco) corpo.querySelector(`[data-foco="${CSS.escape(foco)}"]`)?.focus();
   }
 
-  /**
-   * Custos: o selo BRG-12 (o último dado, de quando) e a causa em Detalhes:
-   * por padrão, a Conexão que não respondeu. As outras abas usam só `seloDoDadoAntigo`.
-   */
+  /** Custos: o selo BRG-12 (o último dado, de quando) e a causa em Detalhes: por padrão, a Conexão que não respondeu. */
   function partesDoSeloAntigo(quando, causa = `GET ${ENDERECO_DA_CONEXAO}/health · sem resposta`) {
     return [seloDoDadoAntigo(quando), Veio.montarDetalhes(causa)];
   }
@@ -296,11 +287,7 @@
     return linha;
   }
 
-  /**
-   * O erro de leitura: o total indisponível e o aviso BRG-04, que fica até a
-   * leitura dar certo. Com a Conexão desligada (e nada gravado para mostrar), o
-   * porquê e o Tentar de novo já estão na F1 do shell: aqui fica só o total.
-   */
+  /** O erro de leitura: o total indisponível e o aviso BRG-04. Desligada, a F1 do shell já diz o porquê: aqui só o total. */
   function erroDosCustos() {
     const total = elemento('dl', 'anki-numero anki-numero--indisponivel',
       elemento('dt', null, textoDaVoz('BRG-29.total')),
@@ -330,10 +317,7 @@
     return valor.toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas });
   }
 
-  /**
-   * US$ com 2 casas (V7); com a chave, tudo com 4 casas. Um valor positivo
-   * menor que a menor casa nunca sai zerado: “< US$ 0,01” (ou “< US$ 0,0001”).
-   */
+  /** US$ com 2 casas (V7); com a chave, 4. Um valor positivo menor que a menor casa nunca sai zerado: “< US$ 0,01”. */
   function dinheiro(valor, { quatroCasas = estado.quatroCasas } = {}) {
     if (!Number.isFinite(valor)) return textoDaVoz('BRG-03.indisponivel');
     const casas = quatroCasas ? 4 : 2;
@@ -511,7 +495,10 @@
     detalhe.querySelector('h3').id = idDoTitulo;
     detalhe.setAttribute('aria-labelledby', idDoTitulo);
 
-    const { retomavel } = statusDoEnvio(envio);
+    // Com as Frases apagadas na Conexão nada se retoma.
+    const apagado = envio.lastError === 'frases_apagadas' || estado.apagados.has(envio.jobId);
+    const retomavel = statusDoEnvio(envio).retomavel && !apagado;
+    if (apagado) detalhe.append(elemento('p', 'anki-motivo', textoDaVoz('ENV-24.apagado')));
     if (retomavel) {
       const naoEntraram = numero(envio.failedCards) || Math.max(0, numero(envio.requestedCards) - numero(envio.successfulCards));
       const falhaAoRetomar = estado.falhasAoRetomar.get(envio.jobId);
@@ -568,7 +555,7 @@
       })));
   }
 
-  /** Continuar envio (botão pequeno, como no protótipo); com a Conexão desligada, aria-disabled com a dica. */
+  /** Continuar envio (botão pequeno); com a Conexão desligada, aria-disabled com a dica. */
   function continuarEnvio(envio) {
     const acao = botao(textoDaVoz('ENV-13.continuar'), 'veio-botao veio-botao--contorno veio-botao--compacto',
       () => retomar(envio.jobId, acao));
@@ -584,8 +571,9 @@
     if (acao.getAttribute('aria-disabled') === 'true') return;
     try {
       const resposta = await PedidoAoAnki.pedir(ENDERECO_DA_CONEXAO, PedidoAoAnki.tentarEnvioDeNovo(jobId));
-      if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
       estado.falhasAoRetomar.delete(jobId);
+      if (resposta.status === 409) return void (estado.apagados.add(jobId), desenhar());
+      if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
       Veio.mostrarToastDeSucesso(textoDaVoz('ENV-14.sucesso'));
       ler();
     } catch (falha) {

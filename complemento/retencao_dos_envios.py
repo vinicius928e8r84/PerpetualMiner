@@ -21,11 +21,11 @@ import os
 from datetime import datetime, timedelta
 
 from .custos import ficha_do_envio
+from .estado_do_envio import terminou
 from .gravacao_de_json import apagar, gravar_json
 from .pedido_do_envio import id_que_serve_de_caminho, id_valido
 
 PRAZO_EM_DIAS = 30
-FIM = ("completed", "partial", "failed")
 
 
 def _instante(valor):
@@ -70,8 +70,7 @@ def _texto_pago(fila, job_id):
 def venceu(fila, job_id, agora):
     """Se o Envio terminou há `PRAZO_EM_DIAS` dias ou mais e nada nele ainda vale; na dúvida, False."""
     estado = fila.estado(job_id)
-    status = estado.get("status")
-    if status not in FIM or estado.get("stage") != status or estado.get("waiting"):
+    if not terminou(estado):
         return False
     ultima = _instante(estado.get("updatedAt"))
     if ultima is None or agora - ultima < timedelta(days=PRAZO_EM_DIAS):

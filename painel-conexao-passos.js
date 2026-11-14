@@ -44,7 +44,7 @@
   const INTERVALO_DO_TIQUE = 1000;
   const ITENS_DO_CHECKLIST = ['ONB-16.confira1', 'ONB-16.confira2', 'ONB-16.confira3'];
 
-  const { textoDaVoz, Veio, ConexaoAnki, ConexaoNaTela, Configuracao, Abridor } = raiz;
+  const { textoDaVoz, Veio, ConexaoAnki, ConexaoNaTela, Configuracao, Abridor, ConversaComOAbridor } = raiz;
   const { SITUACAO: CONEXAO } = ConexaoAnki;
   const { SITUACAO } = Configuracao;
 
@@ -59,85 +59,55 @@
     return DEPOIS_DO_DOWNLOAD.outro;
   }
 
-  // Em que fase está a conversa com o abridor. `PEDIR` é “sem permissão”: os botões
-  // Permitir e Agora não; `PEDINDO` é o aviso do Chrome aberto.
-  const FASE = Object.freeze({
-    ANTES: 'antes',             // a Conexão ainda não respondeu: ninguém perguntou nada
-    PEDIR: 'pedir',
-    PEDINDO: 'pedindo',
-    PROCURANDO: 'procurando',
-    ACHOU: 'achou',
-    NAO_ACHOU: 'nao_achou',
-    SEM_ABRIDOR: 'sem_abridor',
-  });
-  const abridor = {
-    fase: FASE.ANTES,
-    detalhe: '',          // o que o Chrome disse, quando o abridor não respondeu
-    agoraNao: false,      // `pm_abridor.agoraNao`, como está guardado
-    recusada: false,      // o Chrome não deu a permissão no último pedido
-    iniciado: false,
-    lendoAPermissao: false, // a Conexão ligou e a extensão ainda pergunta ao Chrome se tem a permissão
-    ouvintes: new Set(),
-  };
+  // A conversa com o abridor é a máquina `ConversaComOAbridor` (painel-anki-primeira-conexao-estado.js): aqui se mandam os eventos
+  // (o que o Chrome e o abridor disseram, os cliques) e se faz o que a fase nova pede. Uma só para os dois lugares da página.
+  const { FASE, EVENTO } = ConversaComOAbridor;
+  let abridor = ConversaComOAbridor.inicial();   // { fase, detalhe, agoraNao, recusada }
+  const ouvintesDoAbridor = new Set();
+  let abridorIniciado = false;
 
-  function mudarOAbridor(mudanca) {
-    Object.assign(abridor, mudanca);
-    abridor.ouvintes.forEach(ouvinte => ouvinte());
+  function despacharAoAbridor(tipo, dados = {}) {
+    const antes = abridor;
+    abridor = ConversaComOAbridor.proxima(abridor, { tipo, ...dados });
+    if (abridor === antes) return;
+    ouvintesDoAbridor.forEach(ouvinte => ouvinte());
+    if (abridor.fase === antes.fase) return;
+    if (abridor.fase === FASE.LENDO) {
+      // C8: “Procurando o Anki…” só quando a conversa sai de verdade; até o Chrome dizer da permissão, o bloco espera.
+      Abridor.temPermissao().catch(() => false).then(tem => despacharAoAbridor(EVENTO.PERMISSAO, { tem }));
+    } else if (abridor.fase === FASE.PROCURANDO) {
+      Abridor.conferirOAnki().then(async ({ resultado, detalhe }) => {
+        // Com a permissão dada, um “Agora não” antigo deixa de valer.
+        if (resultado !== Abridor.RESULTADO.SEM_PERMISSAO && abridor.agoraNao) await Abridor.guardarAgoraNao(false);
+        despacharAoAbridor(EVENTO.CONFERIU, { resultado, detalhe });
+      });
+    }
   }
 
   /** O passo 4 está resolvido: o abridor achou o Anki, ou a pessoa disse “Agora não”. */
-  const abridorResolvido = () => abridor.fase === FASE.ACHOU || abridor.agoraNao;
+  const abridorResolvido = () => ConversaComOAbridor.resolvido(abridor);
 
   /** Lê o “Agora não” guardado e o acompanha (outra aba, ou o outro lugar desta página, pode mudá-lo). */
   function iniciarOAbridor() {
-    if (abridor.iniciado) return;
-    abridor.iniciado = true;
+    if (abridorIniciado) return;
+    abridorIniciado = true;
     // Sem a leitura, o passo fica como se nada tivesse sido dito: a pessoa ainda pode responder.
-    Abridor.lerAgoraNao().then(agoraNao => mudarOAbridor({ agoraNao }), () => {});
+    Abridor.lerAgoraNao().then(valor => despacharAoAbridor(EVENTO.AGORA_NAO, { valor }), () => {});
     chrome.storage.onChanged.addListener((mudancas, area) => {
-      if (area === 'local' && 'pm_abridor' in mudancas) mudarOAbridor({ agoraNao: mudancas.pm_abridor.newValue?.agoraNao === true });
+      if (area === 'local' && 'pm_abridor' in mudancas) despacharAoAbridor(EVENTO.AGORA_NAO, { valor: mudancas.pm_abridor.newValue?.agoraNao === true });
     });
-  }
-
-  /** A Conexão respondeu: com a permissão já dada, confere sem clique; sem ela, o passo pede. Uma vez por página. */
-  async function aoLigarAConexao() {
-    if (abridor.fase !== FASE.ANTES || abridor.lendoAPermissao) return;
-    // C8: “Procurando o Anki…” só quando a conversa sai de verdade; até o Chrome dizer da permissão, o bloco espera.
-    abridor.lendoAPermissao = true;
-    const temPermissao = await Abridor.temPermissao().catch(() => false);
-    abridor.lendoAPermissao = false;
-    if (temPermissao) conferirOAbridor();
-    else mudarOAbridor({ fase: FASE.PEDIR });
-  }
-
-  async function conferirOAbridor() {
-    mudarOAbridor({ fase: FASE.PROCURANDO, detalhe: '' });
-    const { resultado, detalhe } = await Abridor.conferirOAnki();
-    const { RESULTADO } = Abridor;
-    if (resultado === RESULTADO.SEM_PERMISSAO) {
-      mudarOAbridor({ fase: FASE.PEDIR });
-      return;
-    }
-    // Com a permissão dada, um “Agora não” antigo deixa de valer.
-    if (abridor.agoraNao) await Abridor.guardarAgoraNao(false);
-    const fase = resultado === RESULTADO.ACHOU ? FASE.ACHOU
-      : resultado === RESULTADO.NAO_ACHOU ? FASE.NAO_ACHOU : FASE.SEM_ABRIDOR;
-    mudarOAbridor({ fase, detalhe, agoraNao: false, recusada: false });
   }
 
   /** Permitir abrir o Anki: o aviso do Chrome sai já no clique (o pedido precisa do gesto da pessoa). */
   function pedirAPermissao() {
-    if (abridor.fase === FASE.PEDINDO) return;
+    if (abridor.fase !== FASE.PEDIR) return;
     const pedido = Abridor.pedirPermissao();
-    mudarOAbridor({ fase: FASE.PEDINDO });
-    pedido.then(dada => {
-      if (dada) conferirOAbridor();
-      else mudarOAbridor({ fase: FASE.PEDIR, recusada: true });
-    });
+    despacharAoAbridor(EVENTO.PERMITIR);
+    pedido.then(dada => despacharAoAbridor(EVENTO.RESPONDEU, { dada }));
   }
 
   function dizerAgoraNao() {
-    mudarOAbridor({ agoraNao: true });
+    despacharAoAbridor(EVENTO.AGORA_NAO, { valor: true });
     Abridor.guardarAgoraNao(true);
   }
 
@@ -505,7 +475,7 @@
     /** O bloco do abridor: só no passo 4, com a Conexão ligada (ela deixa o abridor no computador). */
     function desenharOAbridor(passoDoCard, pronto, situacao) {
       const { fase } = abridor;
-      blocoDoAbridor.hidden = passoDoCard.id !== PASSO_DO_ABRIDOR || fase === FASE.ANTES
+      blocoDoAbridor.hidden = passoDoCard.id !== PASSO_DO_ABRIDOR || fase === FASE.ANTES || fase === FASE.LENDO
         || (!pronto && situacao !== CONEXAO.LIGADA);
 
       // C8: sem a permissão (“Agora não” ou recusa do Chrome), a linha diz o que acontece sem ela.
@@ -515,12 +485,12 @@
       falar(statusDoAbridor, textoAgora && !problema && textoDaVoz(textoAgora), textoDoAbridor);
       pontoDoAbridor.dataset.estado = PONTO_DA_FASE[fase] ?? '';
 
-      const pedir = fase === FASE.PEDIR || fase === FASE.PEDINDO;
+      const botoes = ConversaComOAbridor.acoes(abridor);
       const comFoco = [permitir, tentarOAbridor, agoraNao].find(botao => botao === document.activeElement);
-      permitir.hidden = pronto || !pedir;
-      permitir.setAttribute('aria-disabled', String(fase === FASE.PEDINDO));
-      if (tentarOAbridor) tentarOAbridor.hidden = pronto || !problema;
-      agoraNao.hidden = pronto || abridor.agoraNao || !(pedir || problema);
+      permitir.hidden = pronto || !botoes.permitir;
+      permitir.setAttribute('aria-disabled', String(botoes.ocupado));
+      if (tentarOAbridor) tentarOAbridor.hidden = pronto || !botoes.tentar;
+      agoraNao.hidden = pronto || !botoes.agoraNao;
       acoesDoAbridor.hidden = permitir.hidden && agoraNao.hidden;
       // O botão apertado saiu (Agora não, Permitir): o foco não cai no fim da página.
       if (comFoco?.hidden && !blocoDoAbridor.hidden) (aoSairOBotao?.() ?? titulo).focus();
@@ -535,7 +505,7 @@
         if (causa) {
           avisoDoAbridor = Veio.montarAviso({
             texto: textoDaVoz(textoAgora), detalhes: causa, fechavel: false,
-            acao: { rotulo: textoDaVoz('ENV-01.tentarDeNovo'), aoUsar: conferirOAbridor },
+            acao: { rotulo: textoDaVoz('ENV-01.tentarDeNovo'), aoUsar: () => despacharAoAbridor(EVENTO.TENTAR) },
           });
           avisoDoAbridor.dataset.causa = causa;
           tentarOAbridor = avisoDoAbridor.querySelector('button');
@@ -552,12 +522,12 @@
         estado.ligou = true;
         if (!abridorResolvido()) estado.escolha = null;
         definirResposta(null);
-        aoLigarAConexao();
+        despacharAoAbridor(EVENTO.LIGOU);
       }
       estado.ultimaSituacao = situacao;
       desenhar();
     });
-    abridor.ouvintes.add(() => {
+    ouvintesDoAbridor.add(() => {
       desenhar();
       const resolvido = abridorResolvido();
       if (resolvido && !estado.resolvido) aoResolverOAbridor?.();

@@ -1,10 +1,12 @@
 'use strict';
 
 // O cartão de um Envio no modal de progresso (ENV-06…14): a etapa com nome de gente, os 7 segmentos, o motivo e a ação quando ele
-// precisa da pessoa, e o técnico em Detalhes. `painel-envio.js` guarda o que se sabe dos Envios e entra aqui com `criar`.
+// precisa da pessoa, e o técnico em Detalhes. `painel-envio.js` guarda o que se sabe dos Envios e entra aqui com `criar`. O que o
+// Envio é agora sai de `SituacaoDoEnvio` (`painel-envio-estado.js`): este arquivo desenha cada estado e não decide nenhum.
 
 (function (raiz) {
-  const { textoDaVoz, Veio, Contexto, IDIOMAS } = raiz;
+  const { textoDaVoz, Veio, Contexto, IDIOMAS, SituacaoDoEnvio } = raiz;
+  const { ESTADO, ESPERA, AJUDA } = SituacaoDoEnvio;
 
   // As etapas do Envio, na ordem, com o nome de gente de cada uma (ENV-07).
   const ETAPAS = [
@@ -16,18 +18,18 @@
     ['wait_anki', 'esperandoOAnki'],
     ['send_to_anki', 'enviandoAoAnki'],
   ];
-  const FIM = { completed: 'concluido', partial: 'concluidoEmParte', failed: 'falhou' };
-  // Passado este tempo em `wait_anki` sem motivo de perfil, o cartão diz o que fazer (ENV-22, #246); o Envio segue esperando.
-  const ESPERA_ATE_ORIENTAR_MS = 5 * 60 * 1000;
+  // A etapa que o cartão diz no fim e antes do começo (a chave no catálogo da Voz) e o tom dela.
+  const FORA_DAS_ETAPAS = {
+    [ESTADO.CRIANDO]: ['ENV-24.pedindo', ''], [ESTADO.NAO_COMECOU]: ['ENV-07.naoComecou', 'erro'], [ESTADO.DESCONHECIDO]: ['ENV-23.etapa', 'erro'],
+    [ESTADO.CONCLUIDO]: ['ENV-07.concluido', 'ok'], [ESTADO.EM_PARTE]: ['ENV-07.concluidoEmParte', 'erro'], [ESTADO.NAO_CONCLUIDO]: ['ENV-07.falhou', 'erro'],
+    [ESTADO.APAGADO]: ['ENV-07.falhou', 'erro'],
+  };
+  const NAO_ANDOU = [ESTADO.CRIANDO, ESTADO.NAO_COMECOU, ESTADO.DESCONHECIDO];
+  const MOTIVO_DE_NAO_COMECAR = { semResposta: 'ENV-03.motivoSemResposta', erro: 'ENV-03.motivo', ajustes: 'ENV-03.motivoAjustes' };
   const IDIOMA_DO_LANG = { en: 'INGLES', ru: 'RUSSO' };
 
   function nomeDoIdioma(lang) {
     return IDIOMAS[IDIOMA_DO_LANG[lang]].toLowerCase();
-  }
-
-  /** Terminou sem tudo virar cartão: Continuar envio retoma de onde parou. */
-  function retomavel(estado) {
-    return Boolean(estado) && (estado.status === 'partial' || estado.status === 'failed');
   }
 
   // O Envio espera por causa do perfil do Anki (#149): `estado.waiting` diz qual, e a ação é a do cartão.
@@ -58,18 +60,16 @@
   // Gerenciar uso: a página de uso do ChatGPT, a mesma do card da IA (painel-ia-chatgpt.js).
   const GERENCIAR_USO = 'https://chatgpt.com/settings/usage';
 
-  /**
-   * O que o plano do ChatGPT pede da pessoa quando parou o Envio (#156, docs/design/imagem-pelo-plano.md), pelo `lastError` dele; null para
-   * outro. O limite de uso (o primeiro 429 logo depois de entrar também chega assim) leva a Gerenciar uso e a tentar de novo, sem dizer que a
-   * cota acabou; a conta que o plano não atende leva à chave.
-   */
-  function doPlano(codigo) {
-    if (codigo === 'chatgpt_usage_limit') return { motivo: textoDaVoz('ENV-20.limite'), ligacao: textoDaVoz('CFG-35.chatgptGerenciar') };
-    if (codigo === 'chatgpt_not_eligible') return { motivo: textoDaVoz('CFG-35.erroChatgptNaoServe'), usarAChave: textoDaVoz('CFG-35.erroChatgptUsarChave') };
-    return null;
+  /** O que o painel diz do motivo (o `lastError`) de um Envio que não concluiu, pela tabela dos motivos: a frase e a ajuda; null quando ele não tem o que dizer. */
+  function doMotivo(codigo) {
+    const { noPainel, ajuda } = SituacaoDoEnvio.doCodigo(codigo);
+    return noPainel ? { motivo: textoDaVoz(noPainel), ajuda } : null;
   }
+  // A ajuda que leva ao card da IA: a chave recusada, sem crédito ou que falta (Trocar a chave), a conta que o plano não atende (Usar a chave, #156) e o login que acabou.
+  const ROTULO_DA_CHAVE = { [AJUDA.TROCAR_A_CHAVE]: 'ONB-23.trocarAChave', [AJUDA.USAR_A_CHAVE]: 'CFG-35.erroChatgptUsarChave', [AJUDA.ESCOLHER_QUEM_PAGA]: 'CFG-46.abrir' };
+  const gerenciarUso = ajuda => (ajuda === AJUDA.GERENCIAR_USO ? textoDaVoz('CFG-35.chatgptGerenciar') : null);
 
-  /** “Usar a chave” (CFG-35): fecha o modal do Envio que está aberto e leva ao card da IA, que põe o foco no campo da chave. */
+  /** “Usar a chave” e “Trocar a chave”: fecha o modal do Envio que está aberto e leva ao card da IA, que põe o foco no campo da chave. */
   function usarAChave() {
     document.querySelectorAll('.veio-scrim:not([hidden]) .veio-modal__fechar').forEach(fechar => fechar.click());
     location.hash = '#configuracoes/ia';
@@ -81,13 +81,14 @@
     return link;
   }
 
-  /** As linhas que o resumo ganha no bloco de um idioma cujo Envio o plano parou: o motivo (com Gerenciar uso) e, se for o caso, Usar a chave. */
-  function linhasDoPlano(codigo) {
-    const plano = doPlano(codigo);
-    if (!plano) return [];
-    const linha = elemento('p', 'envio-resumo__linha', plano.motivo);
-    if (plano.ligacao) linha.append(' ', ligacaoDeUso(plano.ligacao, 'veio-botao veio-botao--link'));
-    return plano.usarAChave ? [linha, botao(plano.usarAChave, 'usar-chave', usarAChave)] : [linha];
+  /** As linhas que o resumo ganha no bloco de um idioma cujo Envio não concluiu: o motivo (com Gerenciar uso, se for o limite do plano) e, se a saída é a chave, o botão dela. */
+  function linhasDoMotivo(codigo) {
+    const dito = doMotivo(codigo);
+    if (!dito) return [];
+    const linha = elemento('p', 'envio-resumo__linha', dito.motivo);
+    if (gerenciarUso(dito.ajuda)) linha.append(' ', ligacaoDeUso(gerenciarUso(dito.ajuda), 'veio-botao veio-botao--link'));
+    const daChave = ROTULO_DA_CHAVE[dito.ajuda];
+    return daChave ? [linha, botao(textoDaVoz(daChave), 'usar-chave', usarAChave)] : [linha];
   }
 
   function etapaDeSete({ indice }) {
@@ -106,7 +107,7 @@
     etapas.setAttribute('aria-valuemin', '0');
     etapas.setAttribute('aria-valuemax', '100');
     etapas.setAttribute('aria-valuenow', String(pct));
-    if (!fim) etapas.setAttribute('aria-valuetext', etapaDeSete(situacao));
+    if (indice != null) etapas.setAttribute('aria-valuetext', etapaDeSete(situacao));
     ETAPAS.forEach((_, k) => {
       const segmento = document.createElement('i');
       // Não começou: nenhuma etapa andou.
@@ -159,38 +160,27 @@
   }
 
   /**
-   * `estadoDoJob(envio)` é o que a Conexão disse do Envio (ou null); `desconhecido(envio)`, se ela respondeu sem conhecê-lo (Esquecer: `esquecerOEnvio`); `falhaAoRetomar(envio)`, a causa de um Continuar envio que não
+   * `situacaoDe(envio)` é o estado do Envio (`SituacaoDoEnvio`); `estadoDoJob(envio)`, o que a Conexão disse dele (ou null); `esquecerOEnvio`, o Esquecer; `falhaAoRetomar(envio)`, a causa de um Continuar envio que não
    * deu; `tentarCriarDeNovo` e `continuarEnvio` são as ações do cartão; `redesenhar()` refaz os cartões. Devolve `montarCartao(envio)`.
    */
-  function criar({ estadoDoJob, desconhecido, esquecerOEnvio, falhaAoRetomar, tentarCriarDeNovo, continuarEnvio, redesenhar }) {
-    /** O que o cartão diz: etapa, quanto da barra, se deu certo, e o técnico. */
-    function situacaoDoEnvio(envio) {
-      if (!envio.jobId) {
-        if (!envio.falhaAoCriar) return { etapa: 'naFila', indice: 0, fracao: 0, pct: 0, tom: '', atualizadoEm: envio.criadoEm };
-        return { etapa: 'naoComecou', fim: true, semEtapas: true, pct: 0, tom: 'erro', atualizadoEm: envio.criadoEm };
+  function criar({ situacaoDe, estadoDoJob, esquecerOEnvio, falhaAoRetomar, tentarCriarDeNovo, continuarEnvio, redesenhar }) {
+    /** Como o cartão desenha a situação: a etapa (a chave no catálogo), quanto da barra e o tom. */
+    function retratoDe(situacao) {
+      const fora = FORA_DAS_ETAPAS[situacao.estado];
+      if (fora) {
+        const andou = !NAO_ANDOU.includes(situacao.estado);
+        return { etapa: fora[0], tom: fora[1], fim: situacao.estado !== ESTADO.CRIANDO, semEtapas: !andou, pct: andou ? 100 : 0 };
       }
-      if (desconhecido(envio)) return { etapa: 'naoEncontrado', fim: true, semEtapas: true, pct: 0, tom: 'erro', atualizadoEm: envio.criadoEm };
-      const estado = estadoDoJob(envio) || { status: 'queued', stage: 'queued' };
-      const atualizadoEm = estado.updatedAt ? Date.parse(estado.updatedAt) : envio.criadoEm;
-      const fim = FIM[estado.status];
-      if (fim) return { etapa: fim, fim: true, pct: 100, tom: estado.status === 'completed' ? 'ok' : 'erro', atualizadoEm, estado };
-      const indice = Math.max(0, ETAPAS.findIndex(([stage]) => stage === estado.stage));
-      const { done, total } = estado.progress || {};
-      const fracao = total > 0 ? Math.min(1, Number(done || 0) / Number(total)) : 0;
-      return {
-        etapa: ETAPAS[indice][1],
-        indice,
-        fracao,
-        pct: Math.round(((indice + fracao) / ETAPAS.length) * 100),
-        tom: '',
-        atualizadoEm,
-        estado,
-      };
+      const indice = Math.max(0, ETAPAS.findIndex(([stage]) => stage === situacao.etapa));
+      const fracao = situacao.total > 0 ? Math.min(1, situacao.feitos / situacao.total) : 0;
+      return { etapa: `ENV-07.${ETAPAS[indice][1]}`, indice, fracao, pct: Math.round(((indice + fracao) / ETAPAS.length) * 100), tom: '' };
     }
 
     function montarCartao(envio) {
-      const situacao = situacaoDoEnvio(envio);
-      const { etapa, pct, atualizadoEm, estado } = situacao;
+      const situacao = situacaoDe(envio);
+      const estado = envio.jobId && situacao.estado !== ESTADO.DESCONHECIDO ? estadoDoJob(envio) || { status: 'queued', stage: 'queued' } : undefined;
+      const atualizadoEm = estado?.updatedAt ? Date.parse(estado.updatedAt) : envio.criadoEm;
+      const retrato = retratoDe(situacao);
       const idioma = nomeDoIdioma(envio.lang);
       const cartao = elemento('section', 'envio-cartao');
       cartao.setAttribute('role', 'group');
@@ -198,17 +188,16 @@
       const titulo = elemento('h3', 'envio-cartao__titulo', textoDaVoz('ENV-08.titulo', { idioma, n: envio.ids.length }));
       titulo.id = `envio-titulo-${envio.id}`;
       cartao.setAttribute('aria-labelledby', titulo.id);
-      // Enquanto o cartão espera a pessoa, a etapa e os segmentos ficam em tom calmo: quem fala é o motivo.
-      if (pedidoDoCartao(envio, estado)) situacao.tom = 'calmo';
-      const rotuloDaEtapa = elemento('span', `envio-cartao__etapa${situacao.tom ? ` envio-cartao__etapa--${situacao.tom}` : ''}`,
-        textoDaVoz(etapa === 'naoEncontrado' ? 'ENV-23.etapa' : `ENV-07.${etapa}`));
-      const topo = elemento('div', 'envio-cartao__topo', titulo, rotuloDaEtapa);
-
-      cartao.append(topo, montarEtapas(situacao, titulo.id));
-
       // Quando o cartão precisa da pessoa: uma frase curta com o motivo e a ação como link
       // logo embaixo (a variante A da rodada 3 do PR #64). Nada de caixa de erro.
-      const pedido = pedidoDoCartao(envio, estado);
+      const pedido = pedidoDoCartao(envio, situacao, estado);
+      // Enquanto o cartão espera a pessoa, a etapa e os segmentos ficam em tom calmo: quem fala é o motivo.
+      if (pedido) retrato.tom = 'calmo';
+      const rotuloDaEtapa = elemento('span', `envio-cartao__etapa${retrato.tom ? ` envio-cartao__etapa--${retrato.tom}` : ''}`, textoDaVoz(retrato.etapa));
+      const topo = elemento('div', 'envio-cartao__topo', titulo, rotuloDaEtapa);
+
+      cartao.append(topo, montarEtapas(retrato, titulo.id));
+
       if (pedido?.motivo) {
         const motivo = elemento('p', 'envio-cartao__motivo');
         raiz.EnvioParado.escrever(motivo, pedido.motivo);
@@ -224,12 +213,12 @@
         meta.append(acao);
         if (pedido.ligacao) meta.append(ligacaoDeUso(pedido.ligacao, 'veio-botao veio-botao--link envio-cartao__acao'));
       }
-      meta.append(elemento('span', '', situacao.fim ? atualizado : `${etapaDeSete(situacao)} · ${atualizado}`));
+      meta.append(elemento('span', '', retrato.indice == null ? atualizado : `${etapaDeSete(retrato)} · ${atualizado}`));
       cartao.append(meta);
 
       const falhaAoContinuar = falhaAoRetomar(envio);
       const causa = envio.falhaAoCriar ? envio.falhaAoCriar.causa : [
-          `${envio.jobId} · lang=${envio.lang} · stage=${estado?.stage || 'queued'}`,
+          `${envio.jobId || envio.id} · lang=${envio.lang} · stage=${estado?.stage || 'queued'}`,
           // A mesma hora do “atualizado há …”: a da Conexão, ou a de quando o Envio foi criado.
           `updatedAt ${estado?.updatedAt || new Date(atualizadoEm).toISOString()}`,
           estado?.lastError || '',
@@ -238,52 +227,63 @@
         ].filter(Boolean).join('\n');
       if (causa) cartao.append(Veio.montarDetalhes(causa));
 
-      cartao.dataset.assinatura = [etapa, pct, situacao.tom, pedido?.motivo || '', pedido?.acoes?.map(a => a.rotulo + a.emAndamento) || '', meta.textContent, causa].join('|');
+      cartao.dataset.assinatura = [retrato.etapa, retrato.pct, retrato.tom, pedido?.motivo || '', pedido?.acoes?.map(a => a.rotulo + a.emAndamento) || '', meta.textContent, causa].join('|');
       return cartao;
     }
 
+    /** O que o cartão pede de quem espera (`situacao.espera`): o plano (#158), o teto do mês (#160), o perfil do Anki (#149) ou o Anki que não responde (#246). */
+    function pedidoDaEspera(envio, { espera }, estado, noLimite) {
+      if (espera === ESPERA.PLANO) return noLimite;
+      if (espera === ESPERA.TETO) return raiz.EnvioNoTeto.pedido(envio, estado);   // pausa sem valor, com Ver Custos
+      const { profile: aberto, marked: perfil } = estado.waiting || {};
+      if (espera === ESPERA.OUTRO_PERFIL) {
+        return {
+          motivo: textoDaVoz(falhasAoAbrirOPerfil.has(envio.jobId) ? 'ENV-17.falha' : 'ENV-17.espera', { aberto }),
+          rotulo: textoDaVoz('ENV-17.abrir', { perfil }), foco: 'abrir-perfil', aoUsar: () => abrirOPerfil(envio),
+        };
+      }
+      if (espera === ESPERA.PERFIL_SUMIU) return { motivo: textoDaVoz('ENV-17.sumiu', { perfil }), rotulo: textoDaVoz('ENV-17.escolher'), foco: 'escolher-perfil', aoUsar: escolherOutroPerfil };
+      return { motivo: textoDaVoz('ENV-22.demora') };
+    }
+
     /**
-     * O que o cartão pede, quando pede: o motivo numa frase curta e a ação. Não começou →
-     * Tentar de novo (ENV-03); Anki travado ou Continuar que não deu → o motivo e Continuar
-     * envio; terminou em parte → só Continuar envio (a etapa já diz).
+     * O que o cartão pede, quando pede: o motivo numa frase curta e a ação, um por estado. Não começou → Tentar de novo (ENV-03); a
+     * Conexão não o conhece, ou as Frases dele foram apagadas → Esquecer; parado ou esperando → o que destrava; não concluído → o motivo
+     * da tabela e a ajuda dela (Tentar de novo quando não há outra). Um Continuar que não deu fala por cima do resto (ENV-14).
      */
-    function pedidoDoCartao(envio, estado) {
-      if (envio.falhaAoCriar) {
-        return {
-          motivo: textoDaVoz(envio.falhaAoCriar.motivo || (envio.falhaAoCriar.semResposta ? 'ENV-03.motivoSemResposta' : 'ENV-03.motivo')),
-          rotulo: textoDaVoz('ENV-03.tentarDeNovo'), foco: 'tentar', aoUsar: () => tentarCriarDeNovo(envio),
-        };
-      }
-      // A Conexão responde e não conhece o Envio (#245): quem decide é a pessoa, e o Envio não é dado por falho.
-      if (desconhecido(envio)) return { motivo: textoDaVoz('ENV-23.motivo'), rotulo: textoDaVoz('ENV-23.esquecer'), foco: 'esquecer', aoUsar: () => esquecerOEnvio(envio) };
-      // O Anki fechou no meio: o que ficou em `waiting` é de antes, e quem fala é o Envio parado (#151).
-      const parado = raiz.EnvioParado.pedido(envio, estado);
-      if (parado) return parado;
-      const noLimite = raiz.EnvioNoLimite.pedido(envio, estado, { tentarDeNovo: () => continuarEnvio(envio), falhou: Boolean(falhaAoRetomar(envio)), redesenhar });
-      if (noLimite) return noLimite;
-      const noTeto = raiz.EnvioNoTeto.pedido(envio, estado); // o teto do mês (#160): pausa sem valor, com Ver Custos
-      if (noTeto) return noTeto;
-      const espera = estado?.waiting;
-      if (espera?.reason === 'other_profile') {
-        return {
-          motivo: textoDaVoz(falhasAoAbrirOPerfil.has(envio.jobId) ? 'ENV-17.falha' : 'ENV-17.espera', { aberto: espera.profile }),
-          rotulo: textoDaVoz('ENV-17.abrir', { perfil: espera.marked }), foco: 'abrir-perfil', aoUsar: () => abrirOPerfil(envio),
-        };
-      }
-      if (espera?.reason === 'profile_missing') {
-        return { motivo: textoDaVoz('ENV-17.sumiu', { perfil: espera.marked }), rotulo: textoDaVoz('ENV-17.escolher'), foco: 'escolher-perfil', aoUsar: escolherOutroPerfil };
-      }
-      if (estado?.stage === 'wait_anki' && estado.status === 'running' && !espera && Date.now() - Date.parse(estado.updatedAt) >= ESPERA_ATE_ORIENTAR_MS) {
-        return { motivo: textoDaVoz('ENV-22.demora') };
-      }
-      const falhaAoContinuar = falhaAoRetomar(envio);
+    function pedidoDoCartao(envio, situacao, estado) {
+      const esquecer = motivo => ({ motivo, rotulo: textoDaVoz('ENV-23.esquecer'), foco: 'esquecer', aoUsar: () => esquecerOEnvio(envio) });
       // Tentar de novo no próprio cartão do Envio que ficou em parte ou não concluiu; Continuar envio só onde falta a pessoa agir antes.
       const continuar = { rotulo: textoDaVoz('ENV-03.tentarDeNovo'), foco: 'continuar', aoUsar: () => continuarEnvio(envio) };
-      if (falhaAoContinuar) return { motivo: textoDaVoz('ENV-14.falha'), ...continuar };
-      const plano = retomavel(estado) ? doPlano(estado.lastError) : null;
-      if (plano?.usarAChave) return { motivo: plano.motivo, rotulo: plano.usarAChave, foco: 'usar-chave', aoUsar: usarAChave };
-      if (plano) return { motivo: plano.motivo, ligacao: plano.ligacao, ...continuar };
-      return retomavel(estado) ? continuar : null;
+      const falhou = Boolean(falhaAoRetomar(envio));
+      // Perguntado a cada desenho: fora do limite, ele esquece que a pessoa já tinha escolhido a chave.
+      const noLimite = estado ? raiz.EnvioNoLimite.pedido(envio, estado, { tentarDeNovo: () => continuarEnvio(envio), falhou, redesenhar }) : null;
+      switch (situacao.estado) {
+        case ESTADO.NAO_COMECOU:
+          return { motivo: textoDaVoz(MOTIVO_DE_NAO_COMECAR[situacao.causa]), rotulo: textoDaVoz('ENV-03.tentarDeNovo'), foco: 'tentar', aoUsar: () => tentarCriarDeNovo(envio) };
+        case ESTADO.DESCONHECIDO:
+          return esquecer(textoDaVoz('ENV-23.motivo'));   // quem decide é a pessoa, e o Envio não é dado por falho (#245)
+        case ESTADO.APAGADO:
+          return esquecer(textoDaVoz('ENV-24.apagado'));   // nada a retomar: a Conexão não tem mais as Frases
+        case ESTADO.PARADO:
+          return raiz.EnvioParado.pedido(envio, estado);   // o que ficou em `waiting` é de antes: quem fala é o Envio parado (#151)
+        case ESTADO.ESPERANDO: {
+          const pedido = pedidoDaEspera(envio, situacao, estado, noLimite);
+          if (pedido) return pedido;
+          break;
+        }
+        case ESTADO.EM_PARTE:
+        case ESTADO.NAO_CONCLUIDO: {
+          if (falhou) break;
+          if (!SituacaoDoEnvio.retomavel(situacao)) return null;   // sem as Frases na Conexão nada se retoma: o resumo monta um Envio novo
+          const dito = doMotivo(situacao.motivo);
+          if (!dito) return continuar;
+          if (ROTULO_DA_CHAVE[dito.ajuda]) return { motivo: dito.motivo, rotulo: textoDaVoz(ROTULO_DA_CHAVE[dito.ajuda]), foco: 'usar-chave', aoUsar: usarAChave };
+          return { motivo: dito.motivo, ligacao: gerenciarUso(dito.ajuda), ...continuar };
+        }
+        default:
+      }
+      return falhou ? { motivo: textoDaVoz('ENV-14.falha'), ...continuar } : null;
     }
 
     return { montarCartao };
@@ -311,7 +311,7 @@
       bloco.append(elemento('p', 'envio-resumo__linha', textoDaVoz('ENV-10.jaEstavam', { n: idioma.duplicadas.length })));
     }
     if (idioma.falhas) {
-      bloco.append(elemento('p', 'envio-resumo__linha envio-resumo__linha--erro', textoDaVoz('ENV-10.naoEntraram', { n: idioma.falhas })), ...linhasDoPlano(idioma.codigo));
+      bloco.append(elemento('p', 'envio-resumo__linha envio-resumo__linha--erro', textoDaVoz('ENV-10.naoEntraram', { n: idioma.falhas })), ...linhasDoMotivo(idioma.codigo));
       const tentar = botao(textoDaVoz('ENV-10.tentarDeNovo'), 'tentar', () => aoTentar(idioma.lang));
       tentar.prepend(Veio.iconeVeio('atualizar'));
       bloco.append(tentar);
@@ -343,5 +343,5 @@
     await criar(novo);
   }
 
-  raiz.CartaoDoEnvio = Object.freeze({ ETAPAS, FIM, IDIOMA_DO_LANG, nomeDoIdioma, retomavel, botao, elemento, linhasDoPlano, montarBlocoDoResumo, criar, conjuntos, recriar });
+  raiz.CartaoDoEnvio = Object.freeze({ ETAPAS, IDIOMA_DO_LANG, nomeDoIdioma, botao, elemento, montarBlocoDoResumo, criar, conjuntos, recriar });
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});

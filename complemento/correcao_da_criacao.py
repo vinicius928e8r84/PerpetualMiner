@@ -9,7 +9,7 @@ deixam as frases que faltam para o próximo Envio, sem erro. O custo vai ao `cos
 import re
 
 from . import baralhos, tipo_de_nota
-from .modelo_dos_cartoes import credencial
+from .modelo_dos_cartoes import PARADO, credencial
 from .motor.openai_http import ErroDaOpenAI
 
 LIMITE_POR_ENVIO = 20  # frases corrigidas por Envio: o custo de uma sessão de Criação não pode surpreender
@@ -35,8 +35,9 @@ class CorrecaoDaCriacao:
             if self.fila.estado(job_id).get("wiped") or (self.teto is not None and self.teto.chegou()):
                 return
             chave = credencial(self.chatgpt, self.cofre, self.plano, self.modelos, self.fila.estado(job_id).get("usingKey", False))
-            if not isinstance(chave, dict):
-                return  # sem chave, ou um plano que não serve agora
+            if chave.quem == PARADO:
+                return  # sem chave, o login que acabou, ou um plano que não serve agora
+            chave = chave.config
             palavra = re.split(r"\s+-\s+/", nota["palavra"])[0]  # o campo traz a pronúncia depois da Palavra
             try:
                 correcao = self.motor.corrigir_frase.corrigir(dict(config, **chave), self.openai_base, palavra, nota["frase"], nota["escrita"])

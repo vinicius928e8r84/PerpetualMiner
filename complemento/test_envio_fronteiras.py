@@ -223,7 +223,7 @@ class AMorteEmCadaGravacaoDoApagarTudo(unittest.TestCase):
                 depois = arquivos_sem_o_log(conexao)
             with EnvioNoTeste(pasta, colecao=colecao) as conexao:
                 resposta = conexao.criar(pedido(ID, LINHA))
-                retomada = json.loads(conexao.pedir("POST", "/jobs/retry", corpo={"jobId": ID})[2])
+                retomada = json.loads(conexao.pedir("POST", "/jobs/retry", corpo={"jobId": ID})[2])  # do apagado não se sai: 409
                 time.sleep(0.3)
                 estado = conexao.estado(ID)
                 pedidos = chats(conexao.openai)
@@ -232,7 +232,7 @@ class AMorteEmCadaGravacaoDoApagarTudo(unittest.TestCase):
         self.assertEqual((primeira, segunda), ((200, {"ok": True}), (200, {"ok": True})), rotulo)
         self.assertEqual(antes, depois, "%s: repetido não grava nada" % rotulo)
         self.assertEqual(resposta[0], 201, "%s: o mesmo corpo depois do Apagar tudo não pode dar 409" % rotulo)
-        self.assertEqual((estado["status"], estado["wiped"], retomada["status"], pedidos, colecao.gravadas), ("failed", True, "failed", [], []), rotulo)
+        self.assertEqual((estado["status"], estado["wiped"], retomada, pedidos, colecao.gravadas), ("failed", True, {"error": "job_wiped"}, [], []), rotulo)
         for sentinela in SENTINELAS:
             for nome, conteudo in final.items():
                 self.assertNotIn(sentinela.encode(), conteudo, "%s: %s em %s" % (rotulo, sentinela, nome))

@@ -124,3 +124,59 @@ test('com a Conexão desligada, Continuar com o ChatGPT diz que é ela que guard
 
   await estadoFinalEm('o login do ChatGPT na Conexão', () => fakes.anki.chatgpt.situacao(), 'desconectada');
 });
+
+// O login que acabou (a Conexão recusou a renovação do token, `acabou` no estado): o Envio para e não gasta a chave sozinho, e a
+// coluna dá as duas saídas, que são escolhas da pessoa. A regra, sem navegador: complemento/test_quem_paga.py.
+const ACABOU = 'Conta do ChatGPT: O login do ChatGPT acabou. Entre de novo para seguir pelo plano, ou use a chave da OpenAI.';
+
+test('o login que acabou: a faixa diz que acabou, com o código no Detalhes, e Continuar com o ChatGPT entra de novo', async ({ page, context, extensao, fakes }) => {
+  fakes.anki.chatgpt.definir('acabou');
+  await extensao.gravarStorage({ pm_plano_do_chatgpt_avisado: true });
+  await abrirIA(page, extensao);
+
+  await expect(faixa(page)).toContainText(ACABOU);
+  await expect(faixa(page).getByRole('button', { name: 'Usar a chave' })).toBeVisible();
+  await faixa(page).getByText('Detalhes').click();
+  await expect(faixa(page)).toContainText('chatgpt_signed_out');
+  await expect(coluna(page)).not.toContainText('Usando o plano do ChatGPT');
+
+  await Promise.all([context.waitForEvent('page'), continuar(page).click()]);
+  await expect(coluna(page)).toContainText('Usando o plano do ChatGPT');
+  await expect(faixa(page)).toHaveCount(0);
+
+  await estadoFinalEm('o login do ChatGPT na Conexão', () => fakes.anki.chatgpt.situacao(), 'conectada');
+});
+
+test('o login que acabou: recusar no ChatGPT ao entrar de novo deixa o login acabado, e a faixa segue com as duas saídas', async ({ page, context, extensao, fakes }) => {
+  fakes.anki.chatgpt.definir('acabou');
+  fakes.chatgpt.responderNaAutorizacao('recusa');
+  await abrirIA(page, extensao);
+  await expect(faixa(page)).toContainText(ACABOU);
+
+  const [aba] = await Promise.all([context.waitForEvent('page'), continuar(page).click()]);
+  await expect(aba.locator('body')).toHaveText('Pode fechar esta aba e voltar ao PerpetualMiner.');
+  await expect(faixa(page)).toContainText(ACABOU);
+  await expect(faixa(page).getByRole('button', { name: 'Usar a chave' })).toBeVisible();
+  await expect(continuar(page)).toBeEnabled();
+
+  await estadoFinalEm('o login do ChatGPT na Conexão', () => fakes.anki.chatgpt.situacao(), 'acabou');
+});
+
+test('o login que acabou: Usar a chave tira o login acabado da Conexão sem dizer que a pessoa saiu, e o modelo passa a dizer Pago pela sua chave', async ({ page, extensao, fakes }) => {
+  fakes.anki.chatgpt.definir('acabou');
+  fakes.anki.guardarChaveNaConexao('9f3a');
+  await extensao.gravarStorage({ pm_chave_openai: { ultimos4: '9f3a' } });
+  await abrirIA(page, extensao);
+  await expect(faixa(page)).toContainText(ACABOU);
+  // Ninguém paga enquanto a pessoa não escolhe: o card não oferece o modelo, nem diz que a chave paga.
+  await expect(card(page)).not.toContainText('Pago pela sua chave');
+
+  await faixa(page).getByRole('button', { name: 'Usar a chave' }).click();
+  await expect(faixa(page)).toHaveCount(0);
+  await expect(continuar(page)).toBeEnabled();
+  await expect(page.getByText('Você saiu do ChatGPT neste computador')).toHaveCount(0);
+  await card(page).locator('details.ia-avancado summary').click();
+  await expect(card(page)).toContainText('Pago pela sua chave');
+
+  await estadoFinalEm('o login do ChatGPT na Conexão', () => fakes.anki.chatgpt.situacao(), 'desconectada');
+});

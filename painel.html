@@ -139,8 +139,7 @@
           </label>
         </div>
 
-        <!-- A linha de seleção: sem seleção, o checkbox “Selecionar página”; com seleção, a barra contextual (PAI-32), que gruda
-             no topo ao rolar, com o checkbox no começo (marcado ou misto) e o rótulo só para o leitor de tela. -->
+        <!-- A linha de seleção, ou a barra contextual (PAI-32). -->
         <div class="frases-selecao" id="frases-selecao" hidden>
           <label class="frases-selecao__pagina">
             <input type="checkbox" class="veio-checkbox" id="sel-pagina" data-voz-aria="PAI-31">
@@ -325,8 +324,7 @@
         <!--
           Resumo primeiro (variante C): cada card é uma linha fechada com o resumo do estado e abre no lugar; vários podem
           ficar abertos. A linha inteira abre e fecha (painel-shell.js); o botão do título é o controle para o teclado e o
-          leitor de tela. Desenham os cards: Conta & sync, painel-conta.js; Atalhos, painel-atalhos.js; Chave do Gemini,
-          painel-chave.js; Conexão com o Anki, painel-abrir-anki.js; Zona de perigo, painel-perigo.js.
+          leitor de tela. Quem desenha cada card: CLAUDE.md › Files.
         -->
         <div class="shell-cards">
           <section class="shell-card cfg-card" id="cfg-conta" aria-labelledby="cfg-conta-titulo">
@@ -609,6 +607,7 @@
   <script src="painel-conta.js"></script>
   <script src="painel-atalhos.js"></script>
   <script src="painel-conexao-arraste.js"></script>
+  <script src="painel-anki-primeira-conexao-estado.js"></script>
   <script src="painel-conexao-passos.js"></script>
   <script src="lib/ranking.js"></script>
   <script src="painel-boas-vindas-ranking.js"></script>
@@ -616,6 +615,8 @@
   <script src="painel-boas-vindas-festa.js"></script>
   <script src="painel-boas-vindas-quiz.js"></script>
   <script src="painel-boas-vindas-nivel.js"></script>
+  <script src="lib/envio-gravado.js"></script>
+  <script src="painel-envio-estado.js"></script>
   <script src="painel-boas-vindas-envio.js"></script>
   <script src="painel-boas-vindas.js"></script>
   <script src="painel-lembrete.js"></script>
@@ -626,6 +627,7 @@
   <script src="painel-abrir-anki.js"></script>
   <script src="painel-perigo.js"></script>
   <script src="painel-teto.js"></script>
+  <script src="painel-conexao-versao-estado.js"></script>
   <script src="painel-conexao-versao.js"></script>
   <script src="painel-envio-cartao.js"></script>
   <script src="painel-envio-anki-fechado.js"></script>

@@ -56,9 +56,9 @@ The area follows the Conexão state `ConexaoAnki` reports (`acompanhar`):
   inside the Boas-vindas the card has only outlines and the host's Continuar is the primary. The status is a `role="status"` region that
   stays in the DOM (the 1 s clock only redraws the checklist).
   The Conferência line (“Confere sozinho a cada 15 s · última vez há N s”, “Conferindo agora…” while a check is out) follows the
-  shared checks; see the doc comments in `painel-anki-primeira-conexao.js` for its subscription and timer lifecycle. See the
-  [Anki area states](../../../docs/design/painel/anki/README.md#estados) for the **Pronto** moment, its status during a new check and focus when the controls or card leave.
-  Tests: `e2e/tests/painel-anki-primeira-conexao.spec.js` (behaviour, download, checklist), `ter-o-anki.spec.js` (the first step, the animation), `abrir-o-anki-sozinho.spec.js` (the opener step, fake opener), `boas-vindas.spec.js` (step 4),
+  shared checks. The card's phase and step 4 are the machines of `painel-anki-primeira-conexao-estado.js` (`node test_primeira_conexao.js`). See the
+  [Anki area states](../../../docs/design/painel/anki/README.md#estados) for the **Pronto** moment and the Conexão dropping in step 4.
+  Tests: `painel-anki-primeira-conexao.spec.js` (behaviour, download, checklist), `ter-o-anki.spec.js` (first step), `abrir-o-anki-sozinho.spec.js` (the opener step), `boas-vindas.spec.js` (step 4),
   `complemento/test_pacote.py` and `test_empacotar.js` (the file inside the package).
 - **Desligada** after it answered once: the F1, and Custos shows the last reading (`pm_anki_custos`) with the BRG-12
   selo (“Anki fechado. Mostrando dados de há 2 h.”, with the code in Detalhes) and the period controls set to that reading's
@@ -84,7 +84,7 @@ Russo (`aria-pressed`, each with its total and number of Envios), whose choice f
 strip (BRG-08/29); Origem das imagens of the period (the 4 BRG-09 bars, %, count); **Envios recentes × detalhe**: a
 `listbox` (↑ ↓ Home End choose) and the chosen Envio's detail (ENV-08 title, the selo — Concluído, Concluído em parte ·
 N de M frases, Não concluído, or Enviando… · the ENV-07 stage —, “N não entrou” and Detalhes with `lastError`, the cost
-per part and the total, the Envio's image bar, and Continuar envio only for `partial`/`failed`, which `POST`s
+per part and the total, the image bar, and Continuar envio only for `partial`/`failed` unwiped, which `POST`s
 `/jobs/retry` (`{ jobId }`) and shows the ENV-14 toast). States: loading is BRG-25 with the skeleton; an error is **not** the
 loading look (#9): “Custo indisponível” (BRG-03) and the persistent BRG-04 aviso with Tentar de novo and Detalhes; empty
 is BRG-22 with “Ver tudo” (switches to Tudo).
@@ -176,7 +176,7 @@ tombstones, no toast) and `marcarComoEnviadas(ids)` (`status: 'exported'`, no to
 (the done ones full, the current one filling by its `done/total`; all in the outcome's color at the end), “etapa 4 de 7 ·
 atualizado há 1 min” (ENV-08) and a collapsed Detalhes with jobId, raw stage, ISO
 time (`updatedAt`, or creation) and `lastError`. A card that needs the person has no error box: its stage and segments turn muted; the reason is one short
-sentence and the action a gold link (`pedidoDoCartao`). One that ended partial or failed gets **Tentar de novo →** (`POST /jobs/retry`, toast ENV-14). Stopped by the ChatGPT plan (#156, `doPlano`): ENV-20 + Gerenciar uso, or the free/Go sentence + Usar a chave, also in the summary block. Anki closed mid-Envio or the plan waiting (#158): `envio-parado.md`. On the fixed profile (`state.waiting`, #149) it is ENV-17: “Abrir <perfil>” or “Escolher perfil”. Phrases go to the Envio of their language by `ehRussa` (`lib/idioma.js`): the stored `idioma`, or the text. A `POST /jobs` that fails does not hide the Envio: its card says “Não começou”
+sentence and the action a gold link (`pedidoDoCartao`). One that ended partial or failed gets **Tentar de novo →** (`POST /jobs/retry`, toast ENV-14). The card's states, the reasons (`lastError`), the remessa's phases and `pm_envio`: `envio-estados.md`. Anki closed mid-Envio or the plan waiting (#158): `envio-parado.md`. On the fixed profile (`state.waiting`, #149) it is ENV-17: “Abrir <perfil>” or “Escolher perfil”. Phrases go to the Envio of their language by `ehRussa` (`lib/idioma.js`): the stored `idioma`, or the text. A `POST /jobs` that fails does not hide the Envio: its card says “Não começou”
 with the ENV-03 reason (`motivoSemResposta` when the request never got an answer), its cause in Detalhes and
 **Tentar de novo →** (re-creates only that language). While such an error is on a card (or a Continuar envio that failed, ENV-14), the summary waits: the progress modal comes back and the summary opens once it is closed, counting those phrases as failed. Every request goes through `PedidoAoAnki` (POST). The Envio's request body is built once, with
 `jobId` = the Envio's `id` (`crypto.randomUUID()`), and saved in `pm_envio` (`corpo`) **before** the first `POST /jobs`; the ENV-03

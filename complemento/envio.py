@@ -1,7 +1,7 @@
 """O Envio dentro da Conexão (#142): a fila, o estado de cada Cartão e o trabalho que os faz (a thread: `trabalhador.py`).
 
-Desenho: `docs/design/envio-no-complemento.md`. Estados: `queued` →
-`running` (`generate_cards`, `wait_anki` ou `send_to_anki`) → `completed` | `partial` | `failed`; uma Frase está no Anki quando
+Desenho: `docs/design/envio-no-complemento.md`. Estados (a máquina e a tabela: `estado_do_envio.py`; o portão: `Fila.mudar`): `queued` →
+`running` (`generate_cards`, `wait_anki` ou `send_to_anki`) ⇄ esperando → `completed` | `partial` | `failed`, e apagado; uma Frase está no Anki quando
 todos os Cartões dela estão (`settle`). O estado também é **por Cartão** (`cards`: `pending` → `text` → `added` | `duplicate`,
 ou `failed` com o `error`; `added` leva o `guid` da nota): a retomada não refaz nada pronto. Um Cartão é (`phraseId`, posição da Palavra), `<phraseId>-<n>`.
 
@@ -38,22 +38,16 @@ from .configuracao import OPENVERSE_BASE, VOZ_BASE
 from .imagem_do_cartao import ImagemDoCartao, ParaOEnvio
 from .limite_do_plano import LIMITE_DO_PLANO, LimiteDoPlano, espera_pelo_plano
 from .login_do_chatgpt import RECUSOU, SAIU
-from .modelo_dos_cartoes import credencial
+from .modelo_dos_cartoes import PARADO, credencial
 from .palavras_do_cartao import com_as_palavras_fixas, esquecer, fixar_na_entrada, quantos_cartoes
 from .motor_do_envio import configuracao_do_motor, motor_do_complemento  # noqa: F401
 from .paradas_do_envio import Apagado, Interrompido  # noqa: F401  (`envio.Interrompido`)
 from .tipo_do_envio import TipoDoEnvio
 from .pedido_do_envio import ETIQUETA_DE_TESTE, id_que_serve_de_caminho, id_valido, ids_unicos, impressao, validar_pedido, visao_do_pedido  # noqa: F401
 
-QUEUED, RUNNING, COMPLETED, PARTIAL, FAILED = "queued", "running", "completed", "partial", "failed"
-FIM = (COMPLETED, PARTIAL, FAILED)
-TRANSICOES = {
-    QUEUED: {RUNNING, FAILED},
-    RUNNING: {QUEUED, COMPLETED, PARTIAL, FAILED},
-    COMPLETED: {QUEUED},
-    PARTIAL: {QUEUED},
-    FAILED: {QUEUED},
-}
+# O estado gravado de cada Envio é uma máquina de estados (`estado_do_envio.py`); `Fila.mudar` é o portão dela.
+from . import estado_do_envio
+from .estado_do_envio import APAGADO, COMPLETED, FAILED, FIM, PARTIAL, QUEUED, RUNNING, STATUS, TRANSICOES, situacao  # noqa: F401
 
 PENDENTE, TEXTO, ADICIONADO, DUPLICADO, FALHOU = "pending", "text", "added", "duplicate", "failed"
 NO_ANKI = (ADICIONADO, DUPLICADO)
@@ -174,7 +168,7 @@ class Fila(EnviosDosCustos):
         estado = {
             "jobId": pedido["jobId"], "status": FAILED if apagado else QUEUED, "stage": FAILED if apagado else QUEUED,
             "completedStages": [], "progress": {}, "successfulPhraseIds": [], "failedPhraseIds": [], "duplicatePhraseIds": [],
-            "lastError": "frases_apagadas" if apagado else None, "updatedAt": pedido["createdAt"], "cards": cartoes,
+            "lastError": estado_do_envio.FRASES_APAGADAS if apagado else None, "updatedAt": pedido["createdAt"], "cards": cartoes,
         }
         if apagado:
             estado["wiped"] = True
@@ -184,7 +178,7 @@ class Fila(EnviosDosCustos):
         """O estado do Envio; se o arquivo falta (ou não se lê), refeito do pedido guardado e gravado. None se nem o pedido existe."""
         with self.tranca:
             estado = self.estado(job_id)
-            if estado.get("status") in TRANSICOES and isinstance(estado.get("cards"), dict):
+            if estado.get("status") in STATUS and isinstance(estado.get("cards"), dict):
                 return estado
             pedido = self.pedido(job_id)
             if pedido is None:
@@ -223,22 +217,28 @@ class Fila(EnviosDosCustos):
         return 201, {"jobId": job_id, "status": QUEUED}
 
     def tentar_de_novo(self, job_id):
-        """`POST /jobs/retry`: (status, resposta). Já na fila ou rodando, ou com as Frases apagadas, só diz o estado; nada é gravado."""
+        """`POST /jobs/retry`: (status, resposta). Já na fila ou rodando, só diz o estado; com as Frases apagadas, 409 `job_wiped`
+        (do apagado não se sai). Nos dois casos nada é gravado."""
         with self.tranca:
             pedido = self.pedido(job_id)
             if pedido is None:
                 return 404, {"error": "job_not_found"}
             estado = self.estado_ou_refazer(job_id)
-            if estado.get("status") in (QUEUED, RUNNING) or estado.get("wiped") or pedido.get("wiped"):
+            if situacao(estado) == APAGADO or pedido.get("wiped"):
+                return 409, {"error": "job_wiped"}
+            if estado["status"] not in FIM:
                 if espera_pelo_plano(estado):
                     self.despertador.set()  # Tentar de novo no limite: pede já
                 return 200, {"jobId": job_id, "status": estado["status"]}
-            for cartao_id, cartao in estado.get("cards", {}).items():
-                if cartao["status"] == FALHOU:
-                    pronto = os.path.exists(self.arquivo_do_texto(job_id, cartao_id))
-                    cartao.update(status=TEXTO if pronto else PENDENTE, error=None)
-            estado.update(status=QUEUED, stage=QUEUED, lastError=None, progress={})
-            self._gravar_estado(job_id, estado)
+
+            def mudanca(estado):
+                for cartao_id, cartao in estado.get("cards", {}).items():
+                    if cartao["status"] == FALHOU:
+                        pronto = os.path.exists(self.arquivo_do_texto(job_id, cartao_id))
+                        cartao.update(status=TEXTO if pronto else PENDENTE, error=None)
+                estado_do_envio.repetir(estado)
+
+            self.mudar(job_id, mudanca)
         self.mudou.set()
         return 200, {"jobId": job_id, "status": QUEUED}
 
@@ -247,9 +247,8 @@ class Fila(EnviosDosCustos):
         with self.tranca:
             for item in self.ordem():
                 estado = self.estado_ou_refazer(item["jobId"])
-                if estado is not None and estado["status"] == QUEUED:
-                    estado.update(status=RUNNING)
-                    self._gravar_estado(item["jobId"], estado)
+                if estado is not None and situacao(estado) == QUEUED:
+                    self.mudar(item["jobId"], estado_do_envio.reservar)
                     return item["jobId"]
         return None
 
@@ -266,22 +265,19 @@ class Fila(EnviosDosCustos):
                         self.logger.warning("Envio %s: estava na fila sem estado e sem pedido; saiu da fila", item["jobId"])
                     continue
                 ficam.append(item)
-                if estado["status"] == RUNNING:
-                    estado.pop("waiting", None)
-                    estado.update(status=QUEUED, stage=QUEUED)
-                    self._gravar_estado(item["jobId"], estado)
+                if estado["status"] == RUNNING and situacao(estado) != APAGADO:
+                    self.mudar(item["jobId"], estado_do_envio.devolver_a_fila)
             if len(ficam) != len(ordem):
                 _gravar_json(self._arquivo_da_fila(), {"jobs": ficam})
 
     def mudar(self, job_id, mudanca):
-        """Aplica `mudanca(estado)` ao estado guardado e grava, sob a tranca; devolve o estado novo."""
+        """O portão do estado gravado: aplica `mudanca(estado)`, confere-a com a máquina (`estado_do_envio.conferir`: a tabela das
+        transições; do apagado nada sai) e grava, sob a tranca; devolve o estado novo. Todo escritor do estado passa por aqui."""
         with self.tranca:
             estado = self.estado_ou_refazer(job_id)
-            anterior = estado.get("status")
+            antes = estado_do_envio.retrato(estado)
             mudanca(estado)
-            novo = estado.get("status")
-            if anterior in TRANSICOES and novo != anterior and novo not in TRANSICOES[anterior]:
-                raise ValueError("Envio não pode ir de %s para %s" % (anterior, novo))
+            estado_do_envio.conferir(antes, estado)
             self._gravar_estado(job_id, estado)
             return estado
 
@@ -330,15 +326,14 @@ class Fila(EnviosDosCustos):
                     if arquivo.endswith((".txt", ".novo")):
                         _apagar(os.path.join(pasta, arquivo))
                 estado = self.estado(job_id)
-                if estado.get("status") in TRANSICOES and (not estado.get("wiped") or any(c["status"] == TEXTO for c in estado["cards"].values())):
-                    for cartao in estado["cards"].values():
-                        if cartao["status"] == TEXTO:
-                            cartao["status"] = PENDENTE
-                    if estado["status"] in (QUEUED, RUNNING):
-                        estado.pop("waiting", None)
-                        estado.update(status=FAILED, stage=FAILED, lastError="frases_apagadas", progress={})
-                    estado["wiped"] = True
-                    self._gravar_estado(job_id, estado)
+                if estado.get("status") in STATUS and (not estado.get("wiped") or any(c["status"] == TEXTO for c in estado["cards"].values())):
+                    def mudanca(estado):
+                        for cartao in estado["cards"].values():
+                            if cartao["status"] == TEXTO:
+                                cartao["status"] = PENDENTE
+                        estado_do_envio.apagar(estado)
+
+                    self.mudar(job_id, mudanca)
 
 
 def resolver(pedido, estado):
@@ -432,10 +427,9 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, CorrecaoDaCriacao, LimiteDoPlano, 
             if erro:
                 status = PARTIAL if no_anki else FAILED
             primeiro = next((c["error"] for c in estado["cards"].values() if c["status"] == FALHOU and c["error"]), None)
-            estado.pop("waiting", None)
-            estado.update(
-                status=status, stage=status, successfulPhraseIds=no_anki, failedPhraseIds=falharam, duplicatePhraseIds=duplicadas,
-                progress={}, lastError=None if status == COMPLETED else (erro or primeiro or CARTOES_FALHARAM),
+            estado_do_envio.terminar(
+                estado, status, successfulPhraseIds=no_anki, failedPhraseIds=falharam, duplicatePhraseIds=duplicadas,
+                lastError=None if status == COMPLETED else (erro or primeiro or CARTOES_FALHARAM),
             )
 
         estado = self.fila.mudar(job_id, mudanca)
@@ -497,11 +491,11 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, CorrecaoDaCriacao, LimiteDoPlano, 
                 return None
             while True:
                 pela_chave = self.fila.estado(job_id).get("usingKey", False)
-                chave = credencial(self.chatgpt, self.cofre, self.plano, self.modelos, pela_chave)  # o plano, a chave, None ou um código
-                if not isinstance(chave, dict):
-                    return SEM_CHAVE if chave is None else chave if chave in PARA_O_ENVIO else self._cartao(job_id, cartao_id, status=FALHOU, error=chave)
-                falha = self._gerar_o_texto(job_id, pedido, dict(config, **chave), cartao_id, cartao["phraseId"], linha)
-                chave = None
+                paga = credencial(self.chatgpt, self.cofre, self.plano, self.modelos, pela_chave)  # o plano, a chave, ou parado
+                if paga.quem == PARADO:
+                    return paga.motivo if paga.motivo in PARA_O_ENVIO + (SEM_CHAVE,) else self._cartao(job_id, cartao_id, status=FALHOU, error=paga.motivo)
+                falha = self._gerar_o_texto(job_id, pedido, dict(config, **paga.config), cartao_id, cartao["phraseId"], linha)
+                paga = None
                 if self.fila.estado(job_id).get("wiped"):
                     with self.fila.tranca:
                         _apagar(arquivo)  # o Apagar tudo veio no meio do pedido: o texto que chegou depois sai
