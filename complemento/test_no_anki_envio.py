@@ -14,10 +14,14 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import no_anki  # noqa: E402
-from complemento.test_pareamento_de_mentira import ao_carregar_pareado, pedir_como_a_extensao  # noqa: E402
+from complemento.test_pareamento_de_mentira import ao_carregar_pareado, pedir_como_a_extensao, travar_o_item_de_login_do_computador  # noqa: E402
 from complemento.test_colecao_em_memoria import DESCRICAO  # noqa: E402
 from complemento.test_imagens_de_mentira import OpenverseDeMentira, png_de  # noqa: E402
 from complemento.test_no_anki import AnkiComColecaoDeMentira, SemRegistroReal, ler_pelo_http  # noqa: E402
+
+
+def setUpModule():
+    travar_o_item_de_login_do_computador()
 
 
 class EnvioGravadoNoAnki(SemRegistroReal, unittest.TestCase):

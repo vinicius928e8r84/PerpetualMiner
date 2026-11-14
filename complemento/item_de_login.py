@@ -1,7 +1,8 @@
 """O item de login de “Abrir o Anki com o computador”: o que faz o Anki abrir quando a pessoa entra.
 
 No Mac é um LaunchAgent (um `.plist` em `~/Library/LaunchAgents`); no Windows, um atalho na
-pasta Inicializar. Ligar escreve o item, desligar o apaga; nada mais é tocado, e nenhum dos dois
+pasta Inicializar. Ligar escreve o item, desligar o apaga; ao abrir o perfil, o item que já existe e difere do que a
+Conexão escreveria é reescrito (#401), nunca criado. Nada mais é tocado, e nenhum dos dois
 roda nada na hora (o Mac só lê os LaunchAgents ao entrar, e o Windows só roda a Inicializar ao entrar).
 
 Só a biblioteca padrão: o `.lnk` do Windows é escrito byte a byte (MS-SHLLINK), porque o Python do

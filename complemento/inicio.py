@@ -116,8 +116,8 @@ def _atualizar_o_item_de_login(item, logger):
 
 
 def _cuidar_do_perfil(conexao, abridor, ao_abrir_o_perfil, logger):
-    """Marca o perfil aberto na primeira conexão (#149) e escreve o abridor com o perfil marcado, agora e a cada perfil que abre
-    (`ao_abrir_o_perfil`); a Conexão o reescreve também quando a pessoa escolhe outro perfil. Nada aqui derruba a Conexão."""
+    """Confere o item de login (#401), marca o perfil aberto na primeira conexão (#149) e escreve o abridor com o perfil marcado, agora e a
+    cada perfil que abre (`ao_abrir_o_perfil`); a Conexão o reescreve também quando a pessoa escolhe outro perfil. Nada aqui derruba a Conexão."""
     def reagir():
         _atualizar_o_item_de_login(conexao.item_de_login, logger)
         try:

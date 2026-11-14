@@ -5,6 +5,7 @@ Visto de fora: o `inicio.iniciar` real com o atalho do Windows já na pasta Inic
 """
 
 import os
+import plistlib
 import sys
 import tempfile
 import unittest
@@ -13,9 +14,14 @@ from unittest.mock import patch
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import item_de_login  # noqa: E402
+from complemento import inicio  # noqa: E402
 from complemento.test_inicio import parar, saude  # noqa: E402
 from complemento.test_item_de_login import ANKI_DO_WINDOWS, atalho_das_conexoes_0_4_21_a_0_4_24  # noqa: E402
-from complemento.test_pareamento_de_mentira import iniciar_pareado  # noqa: E402
+from complemento.test_pareamento_de_mentira import iniciar_pareado, travar_o_item_de_login_do_computador  # noqa: E402
+
+
+def setUpModule():
+    travar_o_item_de_login_do_computador()
 
 
 class AoAbrirAConexao(unittest.TestCase):
@@ -65,6 +71,28 @@ class AoAbrirAConexao(unittest.TestCase):
                 status, guardado, registrado, restou = self.iniciar_com_o_atalho(pasta, antigo)
         self.assertEqual((status, guardado, restou), (200, antigo, ["Anki (PerpetualMiner).lnk"]))
         self.assertIn("O item de login não foi conferido: disco cheio", registrado)
+
+
+class ASuiteNaoTocaOItemDeLoginDoComputador(unittest.TestCase):
+    """O `inicio.iniciar` que não recebe item de login monta o deste computador, e o início o confere (#401): sem a trava, a suíte
+    reescreveria o LaunchAgent ou o atalho de verdade de quem a roda com o interruptor ligado."""
+
+    def test_o_inicio_sem_item_injetado_nao_reescreve_o_item_do_home_de_quem_roda_a_suite(self):
+        antigo = plistlib.dumps({"Label": item_de_login.ROTULO_DO_MAC, "ProgramArguments": ["/usr/bin/open", "/Applications/Anki.app"], "RunAtLoad": True})
+        with tempfile.TemporaryDirectory() as casa, tempfile.TemporaryDirectory() as pasta:
+            agentes = os.path.join(casa, "Library", "LaunchAgents")
+            os.makedirs(agentes)
+            plist = item_de_login.ItemDeLogin(sistema="mac", pasta=agentes, comando=["x"]).caminho
+            with open(plist, "wb") as arquivo:
+                arquivo.write(antigo)
+            with patch.dict(os.environ, {"HOME": casa}), patch.object(inicio.sys, "platform", "darwin"):
+                conexao = inicio.iniciar(pasta, lambda: None, porta=0, abridor=None)
+            try:
+                self.assertIsNotNone(conexao)
+            finally:
+                parar(conexao)
+            with open(plist, "rb") as arquivo:
+                self.assertEqual(arquivo.read(), antigo)
 
 
 if __name__ == "__main__":
