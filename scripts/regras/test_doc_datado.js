@@ -37,7 +37,7 @@ acusa('doc-datado', 'docs/arquitetura.md', [
   '| 12 Every test runs in CI | `testes-no-portao` |',
 ].join('\n'), 0, 'versão decimal e "Every test" não são contagem');
 acusa('doc-datado', 'docs/arquitetura.md', 'o grupo roda 1.200 tests e 3 e2e specs\n', 2, 'milhar com ponto e um e2e ainda são contagem');
-// Onde a regra vale: docs/, complemento/, AGENTS.md (a raiz única; o CLAUDE.md só importa o AGENTS.md) e as skills, só em Markdown.
+// Onde a regra vale: docs/ (inclusive docs/arquitetura.md, que era o CLAUDE.md), complemento/ e as skills, só em Markdown.
 const aplica = arquivo => regras['doc-datado'].seAplica(arquivo);
 for (const sim of ['docs/arquitetura.md', 'docs/superpowers/specs/2026-06-nota.md', 'docs/instalar-extensao.md', 'docs/design/voz/README.md', 'complemento/LEIA-ME.md', 'complemento/contrato/LEIA-ME.md',
   '.agents/skills/verify-perpetualminer/SKILL.md', '.agents/skills/verify-perpetualminer/features/ia.md']) {
