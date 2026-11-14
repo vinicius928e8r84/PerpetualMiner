@@ -55,7 +55,25 @@ class ItemDeLogin:
         """Escreve o item (troca o que já havia). Levanta `AnkiNaoEncontrado` ou o `OSError` da escrita."""
         if not self.comando:
             raise AnkiNaoEncontrado("não se sabe como abrir o Anki neste computador")
+        self._gravar(self._serializar(self.comando))
+
+    def reescrever_se_difere(self):
+        """Troca o item que já existe por o que a Conexão escreveria agora, se for outro (#401): um item de uma Conexão antiga
+        (o atalho do Windows das 0.4.21 em diante não abria o Anki) ou de um Anki que mudou de lugar. Devolve se trocou.
+
+        Sem item não cria nenhum (o interruptor desligado segue desligado), e sem saber como abrir o Anki deixa o que está.
+        Levanta o `OSError` da leitura ou da escrita.
+        """
+        if not self.comando or not self.ligado():
+            return False
         conteudo = self._serializar(self.comando)
+        with open(self.caminho, "rb") as arquivo:
+            if arquivo.read() == conteudo:
+                return False
+        self._gravar(conteudo)
+        return True
+
+    def _gravar(self, conteudo):
         os.makedirs(self.pasta, exist_ok=True)
         # Escreve ao lado e troca de uma vez: um item pela metade, no login, abriria nada ou algo errado.
         descritor, provisorio = tempfile.mkstemp(dir=self.pasta, suffix=".tmp")
