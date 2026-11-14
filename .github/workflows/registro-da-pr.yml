@@ -1,0 +1,39 @@
+name: Registro da PR
+
+# O que toda PR registra para poder entrar, conferido no head exato (scripts/ci/registro-da-pr.js; o formato está em
+# .github/PULL_REQUEST_TEMPLATE.md): o corpo no modelo do /pr com o campo de atenção (BAIXA, MÉDIA ou ALTA), o registro
+# do /code-review deste head num comentário ou revisão da PR (veredito CLEAN, revisor diferente do autor) e, com
+# atenção ALTA (ou o rótulo `risco:alto`), a seção "Prova real" com a frase PROVADO 100% REAL e o SHA inteiro do head.
+# Roda de novo quando muda o head (synchronize: o registro e a prova do commit anterior deixam de valer), o corpo
+# (edited) ou os rótulos (labeled, unlabeled). Um comentário não dispara o workflow: quem publica o registro do
+# /code-review roda o check de novo (`gh run rerun <id> --failed`), e o script lê a PR do GitHub nessa hora.
+# Por padrão usa ubuntu-24.04; CI_RUNS_ON pode selecionar outros labels em JSON.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+# Vale a última leitura da PR: uma execução nova cancela a anterior.
+concurrency:
+  group: registro-da-pr-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  registro-da-pr:
+    name: Registro da PR
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      # O head é o commit em que este check fica; o corpo, os rótulos, os comentários e as revisões o script lê do GitHub.
+      - run: node scripts/ci/registro-da-pr.js
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
