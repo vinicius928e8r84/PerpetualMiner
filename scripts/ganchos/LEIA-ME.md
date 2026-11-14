@@ -41,7 +41,7 @@ git add scripts/ganchos/linha-de-base-de-tamanho.json
 
 O comando lê o índice, baixa cada entrada para o tamanho atual e tira a que voltou ao limite, foi apagada ou passou a ser ignorada; nunca sobe um tamanho nem acrescenta arquivo. Renomear um arquivo da lista não é aceito: o gancho o vê como arquivo novo e ele precisa caber no limite. Divida-o no mesmo commit da mudança de nome.
 
-Arquivos grandes que as regras do projeto mantêm inteiros (`CLAUDE.md`, `complemento/contrato/exemplos.json`, o README e o catálogo da Voz) estão na lista e não podem crescer: divida-os antes de acrescentar.
+Arquivos grandes que as regras do projeto mantêm inteiros (`complemento/contrato/exemplos.json`, o README e o catálogo da Voz) estão na lista e não podem crescer: divida-os antes de acrescentar.
 
 **Modo estrito:** apague `linha-de-base-de-tamanho.json`. Sem ele, tudo acima do limite barra o commit.
 

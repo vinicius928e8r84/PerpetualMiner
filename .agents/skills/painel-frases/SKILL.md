@@ -5,7 +5,7 @@ description: "Use when changing or reviewing the Frases list of the panel or the
 
 # Frases list and Minerar frases
 
-Notes moved unchanged from `CLAUDE.md` § Architecture. `CLAUDE.md` has the cross-surface rules; files: `docs/arquivos/`.
+Notes from the old `CLAUDE.md` § Architecture. Cross-surface rules: `docs/arquitetura.md`; files: `docs/arquivos/`.
 
 ### Frases list (`painel.js`, docs/design/painel/frases/, variant A)
 
