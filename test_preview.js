@@ -13,7 +13,8 @@ const os = require('os');
 const path = require('path');
 
 require('./lib/arquivos-da-extensao.js');
-const { arquivosDaExtensao } = globalThis.PerpetualMiner;
+require('./lib/voz/catalogo.js');
+const { arquivosDaExtensao, CATALOGO_DA_VOZ: VOZ } = globalThis.PerpetualMiner;
 
 const saida = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-preview-'));
 execFileSync('node', ['preview/montar.mjs', '--saida', saida], { stdio: 'pipe' });
@@ -48,6 +49,19 @@ const extensao = path.join(saida, 'extensao');
   const privacidade = fs.readFileSync(path.join(saida, 'privacidade', 'index.html'), 'utf8');
   assert.strictEqual(fs.readFileSync(path.join(saida, 'privacy', 'index.html'), 'utf8'), privacidade);
   assert(privacidade.includes('Política de privacidade') && privacidade.includes('Uso limitado'));
+  // Como apagar (§7): o Apagar tudo é recusado enquanto a Conexão com o Anki não responde (painel-perigo.js), então a política
+  // diz isso e dá o caminho de quem não a usa, pela lista de Frases, com os nomes que o painel mostra (o catálogo da Voz).
+  const texto = privacidade.replace(/<[^>]+>/g, '');
+  const sete = texto.slice(texto.indexOf('7. Por quanto tempo guardamos'), texto.indexOf('8. Crianças'));
+  assert(sete.includes('só funciona com a Conexão com o Anki respondendo'), 'a política devia dizer que o Apagar tudo pede a Conexão');
+  for (const nome of [VOZ['PAI-31'], VOZ['PAI-32'].selecionarTodas.replace('{n} {n|frase|frases}', 'N frases'), VOZ['PAI-32'].apagar]) {
+    assert(sete.includes(`“${nome}”`), `a política devia dar o caminho sem a Conexão com o nome do painel: “${nome}”`);
+  }
+  assert(!sete.includes('use-o antes de desinstalar'), 'desinstalar: o Apagar tudo não é o único caminho');
+  // A conta Google (§2) serve à sincronização e, para quem entra nele, ao ranking: nenhum trecho diz que é só a sincronização.
+  const dois = texto.slice(texto.indexOf('2. Conta Google'), texto.indexOf('Uso limitado dos dados'));
+  assert((dois.match(/ranking/g) || []).length >= 4, 'a seção da conta Google devia citar o ranking onde diz para que os dados servem');
+  assert(!/qualquer outro fim|nada além de fazer a sincronização funcionar/.test(dois), 'a seção da conta Google não pode dizer que os dados só servem à sincronização');
   const sobre = fs.readFileSync(path.join(saida, 'sobre', 'index.html'), 'utf8');
   assert(sobre.includes('href="/privacidade/"'), 'a página inicial devia levar à política');
   for (const [nome, html] of [['privacidade', privacidade], ['sobre', sobre]]) {

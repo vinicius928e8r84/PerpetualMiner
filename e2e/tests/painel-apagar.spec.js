@@ -105,6 +105,28 @@ test('com a conta conectada, apagar 400 frases selecionadas deixa o tombstone de
   await expect.poll(() => fakes.google.apagadasDe('uid-selecao').sort()).toEqual(idsDas(frases));
 });
 
+// A política de privacidade (preview/site/privacidade.html, §7) dá este caminho a quem tem conta e não usa a Conexão com o Anki:
+// o Apagar tudo da Zona de perigo é recusado enquanto a Conexão não responde (painel-envio-apagar.spec.js), e a seleção da lista
+// de Frases não depende dela.
+test('com a conta conectada e a Conexão sem responder, apagar a seleção inteira tira todas as frases do navegador e da nuvem', async ({ page, extensao, fakes }) => {
+  const frases = muitasFrases().slice(0, 12);
+  await extensao.semearSessao({ uid: 'uid-sem-conexao' });
+  await extensao.gravarStorage({ frases });
+  fakes.google.gravarFrases('uid-sem-conexao', frases);
+  fakes.anki.desligar();
+
+  await abrirPainelSincronizado(page, extensao);
+  await page.getByRole('checkbox', { name: 'Selecionar página' }).check();
+  await page.getByRole('button', { name: 'Selecionar todas as 12 frases' }).click();
+  await page.locator('#btn-delete-selected').click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Apagar 12 frases' }).click();
+  await expect(page.locator('#shell-total')).toHaveText('0');
+
+  await expect.poll(() => fakes.google.frasesDe('uid-sem-conexao')).toEqual([]);
+  await expect.poll(() => fakes.google.apagadasDe('uid-sem-conexao').sort()).toEqual(idsDas(frases));
+  expect(await extensao.frases()).toEqual([]);
+});
+
 // O `chrome.storage.sync` aceita 512 itens, e cada frase apagada é um (`pm_del_{id}`): uma gravação que passava disso
 // era recusada inteira, em silêncio, e nenhum tombstone ficava. Agora ficam os das frases mais novas que cabem.
 test('apagar 520 frases de uma vez deixa no sync do Chrome o tombstone das 500 mais novas', async ({ page, extensao }) => {
