@@ -1,0 +1,127 @@
+/* A Boas-vindas: sem a lateral nem o cabeçalho, com a lista de passos ao lado do cartão do passo. */
+
+/* ---------- Boas-vindas: sem a lateral nem o cabeçalho ---------- */
+[data-area='boas-vindas'] .lateral,
+[data-area='boas-vindas'] .topo {
+  display: none;
+}
+
+[data-area='boas-vindas'] .miolo {
+  margin: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--sidebar);
+}
+
+.bv {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 2rem 1rem 6rem;
+}
+
+.bv-marca {
+  font-size: 1.25rem;
+}
+
+.bv-marca svg {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.5rem;
+}
+
+.bv-grade {
+  display: grid;
+  grid-template-columns: 15rem minmax(0, 40rem);
+  align-items: start;
+  gap: 1rem;
+  width: 100%;
+  max-width: 56rem;
+}
+
+.bv-passos {
+  gap: 0.125rem;
+  padding: 0.5rem;
+}
+
+.bv-cartao {
+  gap: 0.5rem;
+  min-height: 30rem;
+  padding: 1.5rem;
+}
+
+.bv-sobre {
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.bv-titulo {
+  font-size: 1.375rem;
+  font-weight: 600;
+  line-height: 1.75rem;
+  letter-spacing: -0.015em;
+  outline: none;
+}
+
+.bv-corpo {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.875rem;
+  margin-top: 0.5rem;
+}
+
+.bv-corpo > p {
+  color: var(--muted-foreground);
+  max-width: 34rem;
+}
+
+.bv-resumo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.bv-resumo .item {
+  padding: 0.4375rem 0.625rem;
+}
+
+.bv-bloco {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.75rem;
+}
+
+.bv-exemplo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1.25rem;
+  border-radius: var(--radius-lg);
+  background: color-mix(in oklab, var(--muted) 50%, transparent);
+}
+
+.bv-limite {
+  width: 3.5rem;
+  height: 1.75rem;
+  margin: 0 0.25rem;
+  text-align: center;
+}
+
+.bv-pe {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.dark[data-area='boas-vindas'] .miolo {
+  background: var(--background);
+}

@@ -8,6 +8,7 @@ pull request sai uma URL própria, comentada pelo bot do Vercel no PR.
 | `montar.mjs` | Monta `preview/dist` a partir do repo: as telas da extensão, a vitrine da Base Veio e os protótipos de `docs/design`. Node puro, sem dependência. |
 | `chrome-simulado.js` | O `chrome.*` de mentira que as cópias das telas carregam no preview, com dados de exemplo. |
 | `site/` | As páginas públicas do app: `sobre.html` (a página inicial, em `/sobre/`), `privacidade.html` (a política de privacidade, em `/privacidade/` e `/privacy/`) e `site.css`. HTML estático da Veio, sem script nem fonte de fora. É o que a tela de consentimento OAuth do Google pede como "página inicial" e "link da política de privacidade". Mudou o que a extensão ou a Conexão fazem com os dados? Mude `privacidade.html` e a data de "Última atualização" na mesma PR. |
+| `prototipos/` | Protótipos soltos, uma pasta por protótipo (`painel-shadcn/`: o painel no estilo do shadcn/ui). Páginas à parte, sem build, que nada da extensão carrega e que não carregam nada de fora da pasta delas; o `LEIA-ME.md` de cada uma diz como ler. A capa do preview lista as que existirem. |
 | `dist/` | A saída. Não vai para o Git. |
 
 ## Rodar local

@@ -1,0 +1,219 @@
+/* O desenho que as telas dividem: a página, o cabeçalho de cada tela, as pilhas de cartões e os pares de nome e valor.
+   Cada tela tem a folha dela (tela-frases.css, tela-anki.css, tela-configuracoes.css, tela-boas-vindas.css) e
+   telas-estreitas.css fecha a lista. A direção B (html[data-direcao='b']) aperta os espaços e usa a largura toda. */
+
+/* ---------- A página ---------- */
+.pular {
+  position: fixed;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 100;
+  transform: translateY(-200%);
+}
+
+.pular:focus-visible {
+  transform: none;
+}
+
+#conteudo {
+  flex: 1;
+  min-width: 0;
+  outline: none;
+}
+
+.tela {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 1.5rem 1.5rem 6rem;
+}
+
+[data-direcao='b'] .tela {
+  gap: 0.75rem;
+  max-width: none;
+  padding: 1rem 1rem 6rem;
+}
+
+.tela__cabeca {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.tela__titulo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.75rem;
+  letter-spacing: -0.015em;
+  outline: none;
+}
+
+.tela__descricao {
+  color: var(--muted-foreground);
+}
+
+[data-direcao='b'] .tela__descricao {
+  display: none;
+}
+
+.tela__painel {
+  min-width: 0;
+}
+
+.topo__seta {
+  width: 0.875rem;
+  height: 0.875rem;
+  color: var(--muted-foreground);
+}
+
+.pilha-de-cartoes {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+[data-direcao='b'] .pilha-de-cartoes {
+  gap: 0.75rem;
+}
+
+.pilha-interna {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.coluna-estreita {
+  width: 100%;
+  max-width: 52rem;
+}
+
+.duas-colunas {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.com-acao {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.com-acao > .campo,
+.com-acao > .selecao {
+  flex: 1;
+  min-width: 8rem;
+}
+
+.selecao--larga,
+.selecao--larga select {
+  width: 100%;
+}
+
+.cartao-tracejado {
+  padding: 0.25rem 0.75rem;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-xl);
+}
+
+.avancado {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0.25rem 0.25rem 0.75rem;
+}
+
+.avancado__chaves {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+}
+
+.cartao--plano {
+  box-shadow: none;
+  border: 1px solid var(--border);
+  background: transparent;
+}
+
+/* Pares de nome e valor (Description List), com a última linha de total. */
+.pares {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.pares > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.pares dt {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--muted-foreground);
+}
+
+.pares dd {
+  font-weight: 500;
+  text-align: right;
+}
+
+.pares__total {
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.pares__total dt {
+  color: var(--foreground);
+  font-weight: 500;
+}
+
+.legenda__cor,
+.legenda li i {
+  display: inline-block;
+  width: 0.625rem;
+  height: 0.625rem;
+  flex: none;
+  border-radius: 3px;
+}
+
+.legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  color: var(--muted-foreground);
+  font-size: 0.8125rem;
+}
+
+.legenda li {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+/* A barra empilhada (as imagens de um envio, a maturidade de um item). */
+.pilha {
+  display: flex;
+  gap: 2px;
+  height: 0.625rem;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.pilha--fina {
+  width: 6rem;
+  height: 0.375rem;
+}

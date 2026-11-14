@@ -1,0 +1,100 @@
+/* As telas estreitas (até 900 px): as colunas viram uma, a lista e o detalhe empilham. Vem por último, para valer
+   por cima das folhas de cada tela. */
+
+/* ---------- Telas estreitas ---------- */
+@media (max-width: 900px) {
+  .duas-colunas,
+  .lista-detalhe,
+  .primeira__grade,
+  .bv-grade,
+  .cfg-duas,
+  .ajustes-lado-a-lado,
+  .origem {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lista-detalhe__detalhe {
+    padding: 1rem 0 0;
+    border-top: 1px solid var(--border);
+    border-left: 0;
+  }
+
+  .custos__topo {
+    flex-direction: column;
+  }
+
+  .azulejo {
+    flex: 1;
+    min-width: 0;
+    border-top: 1px solid var(--border);
+    border-left: 0;
+    padding: 0.75rem;
+  }
+
+  .azulejo + .azulejo {
+    border-left: 1px solid var(--border);
+  }
+
+  .azulejo:last-child {
+    border-radius: 0;
+  }
+
+  .azulejo--cartao,
+  .azulejo--cartao + .azulejo--cartao {
+    border: 0;
+  }
+
+  .cfg-indice {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .cfg-indice .lateral__botao {
+    width: auto;
+  }
+
+  .cfg__corpo {
+    padding-left: 1rem;
+  }
+
+  .cfg__resumo {
+    display: none;
+  }
+
+  .filtros__ocultar {
+    margin-left: 0;
+  }
+
+  .tela,
+  [data-direcao='b'] .tela {
+    padding: 1rem 0.75rem 7rem;
+  }
+
+  .tela__cabeca {
+    flex-wrap: wrap;
+  }
+
+  .selecao-linha__acoes .botao span {
+    display: none;
+  }
+
+  .linha-ajuste {
+    flex-wrap: wrap;
+  }
+}
+
+.lateral--gaveta {
+  position: static;
+  width: 100%;
+  height: 100%;
+  display: flex;
+}
+
+/* A tabela de frases da direção B: abaixo de 1180 px a coluna do contexto sai (ele continua na gaveta da frase). */
+@media (max-width: 1180px) {
+  .tabela th.tabela__contexto,
+  .tabela td.tabela__contexto {
+    display: none;
+  }
+}

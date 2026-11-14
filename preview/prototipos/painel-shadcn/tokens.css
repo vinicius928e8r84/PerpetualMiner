@@ -1,0 +1,270 @@
+/* Os tokens do protótipo: os nomes e os valores do tema Neutral do shadcn/ui (ui.shadcn.com/docs/theming, "Default
+   Theme CSS"), lidos da página e escritos aqui à mão. O shadcn/ui é MIT (Copyright (c) 2023 shadcn); deste arquivo só os
+   nomes e os valores dos tokens vêm de lá. Os tokens depois de "Tokens novos" são do PerpetualMiner, no jeito que a
+   página de temas ensina ("Adding New Tokens"). A letra é a Manrope e a JetBrains Mono que a Veio já usa (SIL OFL 1.1,
+   cópias em fontes/): a Geist do shadcn viria de fora. */
+
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url('fontes/manrope-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url('fontes/manrope-cyrillic.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('fontes/jetbrains-mono-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('fontes/jetbrains-mono-cyrillic.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+:root {
+  color-scheme: light;
+
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  /* O único valor mexido: no shadcn é 0.556, que dá 4,3:1 sobre --muted (abas, teclas, rodapé de cartão). Com 0.51 passa de 4,5:1. */
+  --muted-foreground: oklch(0.51 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  /* O vermelho do texto: o --destructive do shadcn dá menos de 4,5:1 sobre o fundo tingido dos avisos; este passa. */
+  --perigo-texto: oklch(0.5 0.21 27);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+
+  /* A escala de raio que o shadcn tira de --radius. */
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* Tokens novos (PerpetualMiner). O ouro da marca, o realce da Palavra na frase e os estados. */
+  --marca: oklch(0.8 0.145 78);
+  --marca-escura: oklch(0.68 0.15 68);
+  --marca-clara: oklch(0.91 0.09 88);
+  --realce: oklch(0.8 0.145 78 / 38%);
+  --sucesso: oklch(0.5 0.13 152);
+  --sucesso-suave: oklch(0.5 0.13 152 / 12%);
+  --aviso: oklch(0.47 0.11 60);
+  --aviso-suave: oklch(0.7 0.15 75 / 16%);
+  --info: oklch(0.52 0.15 250);
+  --info-suave: oklch(0.52 0.15 250 / 12%);
+
+  /* A paleta dos gráficos guarda o sentido que as cores já têm no painel: ouro é foto real e maduro, azul é gerada
+     por IA e recente, cinza é sem imagem e novo, vermelho é falha. */
+  --chart-1: oklch(0.76 0.15 75);
+  --chart-2: oklch(0.62 0.14 250);
+  --chart-3: oklch(0.72 0.012 80);
+  --chart-4: oklch(0.62 0.21 27);
+  --chart-5: oklch(0.6 0.13 152);
+
+  --font-sans: 'Manrope', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+
+  --sombra-xs: 0 1px 2px 0 oklch(0 0 0 / 5%);
+  --sombra-sm: 0 1px 3px 0 oklch(0 0 0 / 10%), 0 1px 2px -1px oklch(0 0 0 / 10%);
+  --sombra-md: 0 4px 6px -1px oklch(0 0 0 / 10%), 0 2px 4px -2px oklch(0 0 0 / 10%);
+  --sombra-lg: 0 10px 15px -3px oklch(0 0 0 / 10%), 0 4px 6px -4px oklch(0 0 0 / 10%);
+  --contorno: 0 0 0 1px color-mix(in oklab, var(--foreground) 10%, transparent);
+  --veu: oklch(0 0 0 / 14%);
+
+  --lateral-largura: 16rem;
+  --lateral-trilho: 3rem;
+  --topo-altura: 3rem;
+  --tempo: 150ms;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --perigo-texto: oklch(0.74 0.17 22);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+
+  --realce: oklch(0.8 0.145 78 / 34%);
+  --sucesso: oklch(0.8 0.15 152);
+  --sucesso-suave: oklch(0.8 0.15 152 / 14%);
+  --aviso: oklch(0.84 0.14 82);
+  --aviso-suave: oklch(0.84 0.14 82 / 14%);
+  --info: oklch(0.78 0.1 245);
+  --info-suave: oklch(0.78 0.1 245 / 14%);
+
+  --chart-1: oklch(0.8 0.145 78);
+  --chart-2: oklch(0.74 0.11 245);
+  --chart-3: oklch(0.62 0.012 80);
+  --chart-4: oklch(0.7 0.19 22);
+  --chart-5: oklch(0.76 0.14 152);
+
+  --sombra-xs: 0 1px 2px 0 oklch(0 0 0 / 30%);
+  --sombra-sm: 0 1px 3px 0 oklch(0 0 0 / 40%), 0 1px 2px -1px oklch(0 0 0 / 40%);
+  --sombra-md: 0 4px 6px -1px oklch(0 0 0 / 45%), 0 2px 4px -2px oklch(0 0 0 / 45%);
+  --sombra-lg: 0 10px 15px -3px oklch(0 0 0 / 50%), 0 4px 6px -4px oklch(0 0 0 / 50%);
+  --veu: oklch(0 0 0 / 42%);
+}
+
+/* A cor "Ouro" é o tema da marca por cima do Neutral: só o --primary e o anel de foco mudam, como nos temas do shadcn. */
+[data-cor='ouro'] {
+  --primary: oklch(0.8 0.145 78);
+  --primary-foreground: oklch(0.22 0.04 70);
+  --ring: oklch(0.72 0.14 75);
+  --sidebar-primary: oklch(0.8 0.145 78);
+  --sidebar-primary-foreground: oklch(0.22 0.04 70);
+  --sidebar-ring: oklch(0.72 0.14 75);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  border-color: var(--border);
+}
+
+html {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+dl,
+dd,
+ul,
+ol,
+figure {
+  margin: 0;
+}
+
+ul,
+ol {
+  padding: 0;
+  list-style: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--marca) 40%, transparent);
+}
+
+.so-leitor {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

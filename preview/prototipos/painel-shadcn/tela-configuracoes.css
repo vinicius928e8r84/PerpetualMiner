@@ -1,0 +1,137 @@
+/* Configurações: os cartões que abrem no lugar (usados também pelos Ajustes de envio), a conta, o gravador de atalho
+   e o índice da direção B. */
+
+/* Ajustes de envio e os cartões que abrem (Configurações). */
+.cfg {
+  gap: 0;
+  padding: 0;
+}
+
+.cfg__cabeca {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3.75rem;
+  padding: 0.75rem 1rem;
+}
+
+.cfg__icone {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  flex: none;
+  border-radius: var(--radius-md);
+  background: var(--muted);
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+.cfg__icone--perigo {
+  background: color-mix(in oklab, var(--destructive) 12%, transparent);
+  color: var(--perigo-texto);
+}
+
+.cfg__titulos {
+  flex: 1;
+  min-width: 0;
+}
+
+.cfg__titulos .cartao__titulo {
+  font-size: 0.9375rem;
+}
+
+.cfg__alternar {
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* A linha inteira abre e fecha: o botão do título cobre o cabeçalho. */
+.cfg__alternar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-xl);
+}
+
+.cfg__alternar:focus-visible {
+  box-shadow: none;
+}
+
+.cfg__alternar:focus-visible::after {
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent);
+}
+
+.cfg[data-aberto='false'] .cfg__cabeca:hover {
+  border-radius: var(--radius-xl);
+  background: color-mix(in oklab, var(--muted) 45%, transparent);
+}
+
+.cfg__resumo {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: var(--muted-foreground);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+.cfg__seta {
+  color: var(--muted-foreground);
+}
+
+.cfg__corpo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  padding: 0.25rem 1rem 1rem 3.75rem;
+}
+
+/* ---------- Configurações ---------- */
+.conta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.gravando {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 1.75rem;
+  padding: 0 0.625rem;
+  border: 1px dashed var(--ring);
+  border-radius: var(--radius-md);
+  color: var(--muted-foreground);
+  font-size: 0.8125rem;
+}
+
+.cfg-duas {
+  display: grid;
+  grid-template-columns: 13rem minmax(0, 1fr);
+  align-items: start;
+  gap: 1rem;
+}
+
+.cfg-indice {
+  position: sticky;
+  top: calc(var(--topo-altura) + 1rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.cfg-duas .cfg {
+  scroll-margin-top: calc(var(--topo-altura) + 1rem);
+}
+
+.cfg-duas .cfg__cabeca {
+  min-height: 0;
+  padding-bottom: 0.5rem;
+}
