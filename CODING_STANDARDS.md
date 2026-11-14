@@ -41,7 +41,7 @@ A surface not in this table (the panel shell, sync, storage, the service worker)
 
 ## New files
 
-11. **A new file gets its row in `CLAUDE.md` § Architecture › Files and is loaded where it is used**: `content_scripts` in `manifest.json`, `importScripts` in `background.js`, and a `<script>` in each page. `scripts/arquivos-do-pacote.js` and `lib/arquivos-da-extensao.js` decide what ships in the Chrome Web Store package. Source: `CLAUDE.md` § Files and § Shared base.
+11. **A new file gets its row in a table of `docs/arquivos/` and is loaded where it is used**: `content_scripts` in `manifest.json`, `importScripts` in `background.js`, and a `<script>` in each page. `scripts/arquivos-do-pacote.js` and `lib/arquivos-da-extensao.js` decide what ships in the Chrome Web Store package. Source: `CLAUDE.md` § Files and § Shared base.
 
 ## The gate
 
