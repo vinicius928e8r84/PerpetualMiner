@@ -26,3 +26,13 @@ def apagar(caminho):
     except FileNotFoundError:
         return False
     return True
+
+
+def apagar_os_provisorios(dados):
+    """Todo `<nome>.novo` das pastas do Envio (a gravação que morreu entre escrever e renomear) guarda a Palavra e a Frase, e como o
+    nome é único por gravação ninguém o reescreve. Quem chama (a subida da Conexão e o Apagar tudo) segura a tranca da fila."""
+    for pasta in (dados.fila, dados.estado, dados.custos):
+        for raiz, _, nomes in os.walk(pasta):
+            for nome in sorted(nomes):
+                if nome.endswith(".novo"):
+                    apagar(os.path.join(raiz, nome))
