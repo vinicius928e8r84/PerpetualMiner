@@ -480,6 +480,55 @@
           "error": "internal_error"
         }
       }
+    },
+    {
+      "nome": "O abridor pergunta se o Anki responde, sem assinatura: só diz que sim, sem perfil nenhum",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Ana",
+        "colecao": "inglês com subbaralho",
+        "perfis": [
+          "Ana",
+          "Beto"
+        ]
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/responde",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {}
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "ok": true
+        }
+      }
+    },
+    {
+      "nome": "A pergunta do abridor pedida com um corpo que não é um objeto JSON",
+      "daExtensao": false,
+      "contexto": {
+        "perfil": "Ana",
+        "colecao": "inglês com subbaralho",
+        "perfis": [
+          "Ana",
+          "Beto"
+        ],
+        "perfilMarcado": "Ana"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/anki/responde",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpoBruto": "{isto nao e json"
+      },
+      "resposta": {
+        "status": 400,
+        "json": {
+          "error": "invalid_json"
+        }
+      }
     }
   ],
   "filas": {

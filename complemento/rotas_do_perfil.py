@@ -47,3 +47,14 @@ def abrir_o_perfil_marcado(conexao, corpo):
         return 200, {"ok": True, "profile": marcado}
 
     return _lendo_os_perfis(conexao, abrir)
+
+
+def anki_responde(conexao, corpo):
+    """`POST /anki/responde`: a thread principal do Anki está viva? Só o abridor que conserta sozinho pergunta (`conserto_do_anki.py`): ele
+    não é um navegador pareado e não assina. Por isso a resposta não leva dado nenhum (`{ ok: true }`: nem os nomes dos perfis, nem o marcado)
+    e nada muda (não marca perfil). Com o Anki sem responder, 503."""
+    try:
+        conexao.colecao.perfis()
+    except baralhos.ColecaoIndisponivel as motivo:
+        return 503, {"error": "anki_not_responding", "detail": str(motivo)}
+    return 200, {"ok": True}
