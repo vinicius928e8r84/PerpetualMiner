@@ -77,7 +77,7 @@ they are. Addresses: `#frases` (default, and anything unknown), `#anki/custos|ba
 so the browser's back button walks through areas and tabs.
 
 The shell owns the sidebar and `painel.js` reports to it through `PerpetualMiner.Shell`:
-`mostrarTotalDeFrases(n)`, `aoEntrarNaArea(area, fn)` (the Anki area refreshes on entry), `areaAtual()`, `AREAS_DO_PAINEL` (the areas with the sidebar). The shell starts the 15 s `/health` checks and uses `ConexaoNaTela` for the sidebar indicator and the F1 retry at the top of the Anki area. Edge cases: [shell](docs/design/painel/shell/README.md#casos-de-borda); the common retry: [Boas-vindas § F1](docs/design/painel/boas-vindas/README.md#conexão-com-o-anki-como-ligar-f1). Others listen to `ConexaoAnki` directly.
+`mostrarTotalDeFrases(n)`, `aoEntrarNaArea(area, fn)` (the Anki area refreshes on entry), `areaAtual()`, `AREAS_DO_PAINEL` (the areas with the sidebar). The shell starts the 15 s `/health` checks and uses `ConexaoNaTela` for the sidebar indicator and the F1 retry at the top of the Anki area. Edge cases: [shell](design/painel/shell/README.md#casos-de-borda); the common retry: [Boas-vindas § F1](design/painel/boas-vindas/README.md#conexão-com-o-anki-como-ligar-f1). Others listen to `ConexaoAnki` directly.
 
 The shell's fixed copy comes from the catalog through `data-voz`, `data-voz-aria` and `data-voz-title` attributes in
 `painel.html`, which `painel-shell.js` fills on load. The sidebar and the content island are both the height of the window
@@ -108,7 +108,7 @@ The architecture of each surface lives in a project skill, not here. **Open the 
 - Minerar de uma foto: `.claude/skills/minerar-foto/SKILL.md`
 - Veio base components: `.claude/skills/veio-componentes/SKILL.md`
 - Overlay: `.claude/skills/overlay/SKILL.md`
-- e2e fixtures, fakes, test pages and visual references: `.claude/skills/e2e-suite/SKILL.md` (see Testing below)
+- e2e fixtures, fakes, test pages and visual references: `.claude/skills/e2e-suite/SKILL.md` (see `docs/testes.md`)
 
 ### Firebase / Firestore Sync
 
@@ -152,7 +152,7 @@ Storage is what drives it, not the caller: the service worker watches `pm_auto_m
 
 The two colors are the only ones written outside `veio/tokens.css` — `chrome.action` takes a color, not CSS — and that exception is registered in `veio/README.md`. They travel as a pair: `setBadgeTextColor` needs Chrome 110+, so `manifest.json` declares `minimum_chrome_version: 110` rather than letting the text color fall back and lose the 10.4:1 contrast.
 
-For the day rollover's scheduling and persistence contract, see `agendarViradaDoDia` in `background.js`; state publication is owned by `publicarEstadoDaAutomatica` there. The user-visible rollover behavior is in [the popup spec](docs/design/popup/README.md). The service worker also refreshes the badge whenever it wakes, and listens to `runtime.onStartup`, since the badge may be yesterday's.
+For the day rollover's scheduling and persistence contract, see `agendarViradaDoDia` in `background.js`; state publication is owned by `publicarEstadoDaAutomatica` there. The user-visible rollover behavior is in [the popup spec](design/popup/README.md). The service worker also refreshes the badge whenever it wakes, and listens to `runtime.onStartup`, since the badge may be yesterday's.
 
 ## Key Constants
 
@@ -165,7 +165,7 @@ For the day rollover's scheduling and persistence contract, see `agendarViradaDo
 ## Permissions
 
 - `optional_permissions`: only `nativeMessaging` (#147), asked when the person presses Permitir abrir o Anki and never at install, so an update never disables the extension of who already has it (`node test_empacotar.js` checks it; justified in the store guide)
-- `alarms`, `storage`, `unlimitedStorage`, `activeTab`, `tabs`, `contextMenus`, `identity` (for the `alarms` rationale, see [the store guide](docs/publicar-chrome-web-store.md#justificativa-de-cada-permissão); the unpacked-folder auto-reload also uses it)
+- `alarms`, `storage`, `unlimitedStorage`, `activeTab`, `tabs`, `contextMenus`, `identity` (for the `alarms` rationale, see [the store guide](publicar-chrome-web-store.md#justificativa-de-cada-permissão); the unpacked-folder auto-reload also uses it)
 - `host_permissions`: the Conexão com o Anki (127.0.0.1/localhost:8766), Gemini API, Firestore, Google OAuth, Firebase token endpoints. No `*.firebaseio.com`/`*.firebaseapp.com` (nothing calls them); `test_empacotar.js` checks that the "Host permission use" block of `docs/publicar-chrome-web-store.md` lists exactly these
 - Content scripts inject into all URLs with `all_frames: true`
 - `painel.html`, `bookreader.html`, `veio/tokens.css`, `veio/componentes.css`, `overlay.css`, `veio/icones/icone.svg` and `veio/fontes/*.woff2` declared as `web_accessible_resources`: the stylesheets, the tile and the fonts are what the in-page overlay loads inside its Shadow DOM
