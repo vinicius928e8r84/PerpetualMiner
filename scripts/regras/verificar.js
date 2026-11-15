@@ -26,6 +26,7 @@ const REGRAS = [
   require('./versoes-publicadas'),
   require('./link-de-doc'),
   require('./limite-de-linhas'),
+  require('./sem-comentario-novo'),
 ];
 
 const ARQUIVO_DA_LINHA_DE_BASE = 'scripts/regras/linha-de-base.json';
@@ -135,7 +136,7 @@ function coletar(raiz, hoje, base = null) {
   }
   // Toda exceção escrita num comentário é conferida: mal escrita, vencida, ou numa
   // linha que a regra não acusa (ficou para trás depois de um conserto).
-  for (const arquivo of arquivos.filter(a => /\.(js|mjs|css|html|py)$/.test(a))) {
+  for (const arquivo of arquivos.filter(a => /\.(js|mjs|css|html|py|sh|ya?ml)$|^scripts\/ganchos\/[^./]+$/.test(a))) {
     for (const [linha, texto] of comentariosDe(arquivo)) {
       const excecao = excecaoNaLinha(texto, hoje);
       if (!excecao || !REGRAS.find(regra => regra.id === excecao.regra).seAplica(arquivo)) continue;
@@ -348,6 +349,6 @@ function rodar(argv) {
   }
 }
 
-if (require.main === module) process.exitCode = rodar(process.argv.slice(2));
-
 module.exports = { REGRAS, coletar, excecaoNaLinha };
+
+if (require.main === module) process.exitCode = rodar(process.argv.slice(2));

@@ -21,7 +21,7 @@ const alvos = {
   'docs/publicar-chrome-web-store.md': '# Loja\n\n## Justificativa de cada permissão\n',
   'docs/com-codigo.md': '# Tipos\n\n### IA dos cartões (`painel-ia.js`, `lib/chave-da-openai.js`)\n\n## `pm_envio` e a fila\n\n## O `Fila.mudar` portão\n\n```md\n## `no cerco`\n```\n',
   'docs/design/identidade-veio/README.md': '# Identidade\n\n## Movimento (da C)\n\n## Forma (da D)\n\n## Forma (da D)\n\n<a id="Explicita"></a>\n',
-  'popup.js': '// popup\n',
+  'popup.js': 'popup();\n',
   'docs/pasta/vazia.txt': 'x\n',
 };
 const raiz = repositorioDeTestes(alvos);
