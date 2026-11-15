@@ -6,7 +6,7 @@ A Chrome extension (Manifest V3, plain JavaScript, no build) plus the Conexão c
 
 - **Files:** the role of every root file and every `lib/` module is in the tables of `docs/arquivos/` (read on demand); a new file gets its row there, not here.
 - **Architecture:** data flow, panel shell, sync and permissions: `docs/arquitetura.md`; the storage keys: `docs/armazenamento.md`; testing the extension: `docs/testes.md`.
-- **Design specs and prototypes:** `docs/design/README.md` (index); domain glossary: `CONTEXT.md`.
+- **Design specs and prototypes:** `docs/design/README.md` (index); domain glossary: `glossary.md`.
 - **Veio identity:** `veio/README.md`. **Envio state machine:** `complemento/envio.py`'s docstring. **Engine:** `engine/CLAUDE.md`. **Device and store tooling:** `scripts/`, `docs/instalar-extensao.md`, `docs/publicar-chrome-web-store.md`.
 - **Tests:** `e2e/` (see `docs/testes.md`), root `test_*.js`, `complemento/test_*.py`, `engine/test_*.py`.
 - `preview/` only copies files into `preview/dist`; never edit an extension file to make the preview work.
@@ -72,7 +72,7 @@ The five default labels: `needs-triage`, `needs-info`, `ready-for-agent`, `ready
 
 ### Domain docs
 
-Single-context: `CONTEXT.md` at the repo root; `docs/adr/` does not exist yet (created with the first recorded decision). See `docs/agents/domain.md`.
+Single-context: `glossary.md` at the root; `docs/adr/` does not exist yet (created with the first recorded decision). See `docs/agents/domain.md`.
 
 ## Maintaining this file
 

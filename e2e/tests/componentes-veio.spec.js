@@ -537,7 +537,7 @@ test('toda a cópia da vitrine vem do catálogo da Voz', async ({ page, paginas 
   const doGlossario = new Set(['Netflix', 'YouTube', 'Web', 'PDF', 'Livro', 'Manual']);
   const teclasGravadas = new Set(['Alt', 'S']);
   // Os três nomes de padrão que a própria base escreve, com a fonte de cada
-  // um: o rótulo do chip da Palavra (CONTEXT.md e regra V6 da Voz) e o nome do
+  // um: o rótulo do chip da Palavra (glossary.md, regra V6 da Voz) e o nome do
   // recolhido da causa técnica (regra V3 da Voz).
   const doPadrao = new Set(['palavra:', 'auto:', 'Detalhes']);
 
