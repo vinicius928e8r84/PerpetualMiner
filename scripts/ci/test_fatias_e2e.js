@@ -1,9 +1,5 @@
 'use strict';
 
-// As fatias da suíte e2e (scripts/ci/fatias-e2e.js): o arquivo scripts/ci/fatias-e2e.json guarda só as durações medidas; as fatias
-// saem delas na hora. Todo spec de e2e/tests roda em exatamente uma fatia (um sem duração entra com a estimativa) e o workflow
-// Testes usa a lista. Um spec que ficasse fora (ou em duas) deixaria o CI verde sem rodá-lo (ou rodaria duas vezes) sem que ninguém visse.
-
 const assert = require('assert');
 const fs = require('fs');
 const os = require('os');
@@ -15,7 +11,6 @@ const RAIZ = path.resolve(__dirname, '..', '..');
 const specs = specsDoDisco();
 const arquivo = ler();
 
-// O que está commitado: só as durações, e só de spec que existe; as fatias são calculadas (um spec novo entra com a estimativa).
 assert(specs.length > 100, 'achou os specs do disco');
 assert.deepStrictEqual(Object.keys(arquivo).sort(), ['descricao', 'duracoes'], 'o arquivo guarda só a descrição e as durações, não as fatias');
 assert.deepStrictEqual(Object.keys(arquivo.duracoes).filter(spec => !specs.includes(spec)), [], 'duração de spec que não existe mais em e2e/tests: tire a linha do arquivo');
@@ -31,9 +26,6 @@ assert.strictEqual(duracoesParaOsSpecs(arquivo.duracoes, [...specs, outroSpec])[
 
 assert.strictEqual(ESTIMATIVA_DO_SPEC_NOVO, 10, 'a estimativa de um spec novo');
 
-// O que o workflow roda de verdade: `node scripts/ci/fatias-e2e.js <N>` para N = 1..8. Numa cópia vazia da pasta de specs (a
-// variável FATIAS_E2E_PASTA troca só onde ele procura) com um spec novo, a união dos filtros das 8 fatias é todo spec exatamente
-// uma vez, o novo inclusive, e é igual ao que `fatiasDe` calcula; uma fatia que rodasse a suíte inteira ou perdesse o novo falha aqui.
 const pastaDeTeste = fs.mkdtempSync(path.join(os.tmpdir(), 'fatias-e2e-'));
 try {
   const todosOsSpecs = [...specs, 'zz-spec-novo.spec.js'].sort();

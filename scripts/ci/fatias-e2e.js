@@ -5,19 +5,12 @@
 // com 3, porque um teste leva de 0,9 a 9 s; o CI espera a mais lenta (relatório ci-posts-1111, seção 3.4).
 //
 //   node scripts/ci/fatias-e2e.js <N>             os filtros do Playwright da fatia N (o workflow os passa a `testar.mjs e2e`)
-//   node scripts/ci/fatias-e2e.js --medir <log>...  atualiza as durações a partir dos logs das 8 fatias (reporter `list` do Playwright)
-//
-// O arquivo fatias-e2e.json guarda só as durações medidas; as fatias são calculadas delas a cada uso, não ficam commitadas
-// (antes cada spec novo mexia em duas listas do arquivo e as PRs em paralelo conflitavam). Um spec sem duração no arquivo vale
-// ESTIMATIVA_DO_SPEC_NOVO até alguém rodar `--medir` num log do CI; test_fatias_e2e.js falha quando o arquivo tem duração de
-// spec que não existe mais ou quando alguma fatia sai vazia ou repetida.
 
 const fs = require('fs');
 const path = require('path');
 
 const RAIZ = path.resolve(__dirname, '..', '..');
 const ARQUIVO = path.join(__dirname, 'fatias-e2e.json');
-// FATIAS_E2E_PASTA só existe para o teste mostrar o CLI <N> numa pasta de specs que ele monta.
 const PASTA_DOS_SPECS = process.env.FATIAS_E2E_PASTA || path.join(RAIZ, 'e2e', 'tests');
 const NUMERO_DE_FATIAS = 8;
 const ESTIMATIVA_DO_SPEC_NOVO = 10;
@@ -86,7 +79,6 @@ function duracoesDosLogs(textos) {
 
 const ler = () => JSON.parse(fs.readFileSync(ARQUIVO, 'utf8'));
 
-/** As fatias de hoje: as durações do arquivo para os specs do disco (a estimativa para os que não têm) montadas em fatias. */
 const fatiasDe = (duracoes, specs, quantas = NUMERO_DE_FATIAS) => montarFatias(duracoesParaOsSpecs(duracoes, specs), quantas);
 
 function gravar(duracoes) {

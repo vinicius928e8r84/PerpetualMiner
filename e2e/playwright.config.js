@@ -7,7 +7,6 @@ const { defineConfig } = require('@playwright/test');
 module.exports = defineConfig({
   testDir: './tests',
   // Só `*.spec.js`: é o que scripts/ci/fatias-e2e.js põe nas fatias do CI (o padrão do Playwright aceitaria também `*.test.js`).
-  // Spec novo ou renomeado: entra sozinho numa fatia; um apagado ou renomeado perde a linha em scripts/ci/fatias-e2e.json.
   testMatch: '**/*.spec.js',
   timeout: 30_000,
   fullyParallel: true,
