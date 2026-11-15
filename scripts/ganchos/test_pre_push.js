@@ -56,6 +56,16 @@ assert.notStrictEqual(r.status, 0, 'a autoria errada barra');
 assert(/sem a autoria do dono/.test(saida(r)) && /muda docs\/pre-push-autoria\.md/.test(saida(r)) && /Push barrado/.test(saida(r)), saida(r));
 assert(!noRemoto('autoria-errada'), 'nada chegou ao remoto');
 
+// Autor e committer do dono, e um co-autor de outro e-mail na mensagem (#425): barrado igual, e a mensagem nomeia o co-autor.
+git(trabalho, 'checkout', '-q', '-b', 'com-coautor', 'main');
+escrever('docs/pre-push-coautor.md', 'texto\n');
+git(trabalho, 'add', '-A');
+git(trabalho, 'commit', '-q', '-m', 'muda docs/pre-push-coautor.md', '-m', 'Co-Authored-By: Agente <agente@exemplo.com>');
+r = empurrar('origin', 'com-coautor');
+assert.notStrictEqual(r.status, 0, `o co-autor de outro e-mail barra: ${saida(r)}`);
+assert(/sem a autoria do dono/.test(saida(r)) && /co-autor Agente <agente@exemplo\.com>/.test(saida(r)) && /Push barrado/.test(saida(r)), saida(r));
+assert(!noRemoto('com-coautor'), 'nada chegou ao remoto');
+
 // Uma regra de revisão: um teste que nenhum grupo roda (testes-no-portao) barra o push, e --no-verify pula.
 git(trabalho, 'checkout', '-q', '-b', 'regra-quebrada', 'main');
 commitar('test_sem_grupo.js', "'use strict';\n");
