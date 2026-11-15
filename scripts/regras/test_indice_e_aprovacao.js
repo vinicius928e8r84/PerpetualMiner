@@ -51,6 +51,7 @@ const nulo = (achados, quantas, porque) => { assert.strictEqual(achados.length, 
   assert.strictEqual(repetidas[0].linha, 8);
   assert.match(repetidas[0].detalhe, /repete a primeira coluna da linha 7/);
   total++;
+  nulo(regras['indice-de-arquivos'].verificar('docs/arquivos/extensao.md', duplicada.replace('| `veio/` | Same', '|  `veio/`  | Same'), pasta), 1, 'espaço em volta da primeira coluna não esconde a duplicata');
   nulo(regras['indice-de-arquivos'].verificar('docs/arquivos/extensao.md', EXTENSAO.replace('|---|---|', '|---|---|\n|---|---|'), pasta), 0, 'a linha separadora não é linha de arquivo');
   fs.rmSync(pasta, { recursive: true, force: true });
 }
