@@ -1,7 +1,7 @@
 'use strict';
 
 // A conferência do catálogo da Voz que `test_voz.js` roda: o que `lib/voz/catalogo.js`
-// (o que a extensão mostra) tem de bater com a spec (`docs/design/voz/README.md` e os `catalogo-*.md` dele).
+// (o que a extensão mostra) tem de bater com a spec (`docs/design/voz/README.md`).
 
 const CAMINHO_DO_RETRATO = require('path').join(__dirname, '..', 'docs', 'design', 'voz', 'catalogo-textos.json');
 

@@ -8,7 +8,6 @@ const { NOMES_DA_SPEC } = require('../../scripts/voz-da-spec.js');
 
 const FRASE_RUSSA = 'Я улыбаюсь каждое утро без причины.';
 
-/** Os IDs do catálogo como a spec da Voz os lista, lidos da própria spec (o índice e os arquivos do catálogo, na lista de `scripts/voz-da-spec.js`). */
 function idsDaSpecDaVoz() {
   const spec = NOMES_DA_SPEC.map(nome => fs.readFileSync(
     path.join(__dirname, '..', '..', 'docs', 'design', 'voz', nome), 'utf8')).join('\n');

@@ -1,16 +1,10 @@
 'use strict';
 
-// A spec da Voz lida como dado: uma linha por ID do catálogo. A spec é o índice (`docs/design/voz/README.md`) e
-// os arquivos do catálogo (§ 3), um por área (`catalogo-*.md`) mais a continuação `catalogo-nivel.md`, lidos como um só,
-// na ordem de `NOMES_DA_SPEC`. É o que o gerador de `catalogo.html` e o teste de paridade do `lib/voz/catalogo.js` leem,
-// para a spec ser a fonte e as duas cópias, derivadas.
-
 const fs = require('fs');
 const path = require('path');
 
 const PASTA_DA_SPEC = path.join(__dirname, '..', 'docs', 'design', 'voz');
 const CAMINHO_DA_SPEC = path.join(PASTA_DA_SPEC, 'README.md');
-// A ordem é a das seções do catálogo (e a das linhas do `catalogo.html`). `test_voz.js` falha se um `catalogo-*.md` ficar de fora.
 const NOMES_DA_SPEC = ['README.md', 'catalogo-popup-e-pagina.md', 'catalogo-foto.md', 'catalogo-painel-frases.md', 'catalogo-envio.md',
   'catalogo-painel-anki.md', 'catalogo-configuracoes.md', 'catalogo-boas-vindas.md', 'catalogo-global.md', 'catalogo-nivel.md'];
 const CAMINHOS_DA_SPEC = NOMES_DA_SPEC.map(nome => path.join(PASTA_DA_SPEC, nome));
