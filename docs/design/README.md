@@ -18,7 +18,7 @@ O escopo é redesign: auditar, podar, reagrupar e revestir. Nenhuma função nov
 |---|---|---|---|
 | **Identidade Veio**: marca, tokens, tipo, componentes, ícones PNG | [identidade-veio/](identidade-veio/README.md) | [`prototipo-identidade.html?variant=F`](identidade-veio/prototipo-identidade.html) · o único que pede `python3 -m http.server` | [Identidade visual própria & design system base](https://github.com/vinicius928e8r84/PerpetualMiner/issues/3) |
 | **Voz & catálogo**: regras V1–V10 e C1–C9, e todos os estados com a cópia aprovada | [voz/](voz/README.md) | [`catalogo.html`](voz/catalogo.html) | [Voz, tom & catálogo de mensagens/estados](https://github.com/vinicius928e8r84/PerpetualMiner/issues/4) |
-| **Auditoria**: cerca de 260 itens com veredito fica/corta/reagrupa, e o levantamento com `arquivo:linha` | [auditoria/](auditoria/README.md) · [levantamento/](auditoria/levantamento/) | [`auditoria-front.html`](auditoria/auditoria-front.html) | [Auditoria & inventário do front](https://github.com/vinicius928e8r84/PerpetualMiner/issues/2) |
+| **Auditoria**: cerca de 260 itens com veredito fica/corta/reagrupa | [auditoria/](auditoria/README.md) | [`auditoria-front.html`](auditoria/auditoria-front.html) | [Auditoria & inventário do front](https://github.com/vinicius928e8r84/PerpetualMiner/issues/2) |
 
 ## Superfícies
 
