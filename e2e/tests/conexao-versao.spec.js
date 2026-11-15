@@ -84,6 +84,34 @@ test.describe('com a permissão do abridor', () => {
     await ligada(page);
     await expect(aviso(page)).toHaveCount(0);
   });
+
+  test('o Anki fecha no Reiniciar e não volta: o aviso segue dizendo que está reiniciando e termina em “Não deu para reiniciar”, sem a Conexão; aberto à mão, a Conexão volta atualizada', async ({ page, extensao, fakes }) => {
+    test.setTimeout(90_000);
+    fakes.anki.atualizacao.definir({ versao: '0.3.9', versaoNova: '0.4.5' });
+    fakes.anki.definirAtualizacao({ atualizacao: 'instalada', ankiweb: 'com_versao_nova' });
+    fakes.abridor.definir('achei_sem_abrir');   // o abridor acha o Anki e não consegue abri-lo
+    await abrirPainel(page, extensao);
+    await aviso(page).getByRole('button', { name: 'Reiniciar o Anki' }).click();
+    await expect(aviso(page)).toContainText('Reiniciando o Anki…');
+    // O Anki fechou e não volta: a porta fica muda (o fake, sozinho, religaria em 4 s como se o abridor o tivesse aberto).
+    await expect.poll(() => fakes.anki.atualizacao.reinicios()).toBe(1);
+    fakes.anki.silenciar();
+
+    // A Conexão calou, e é o reinício que a calou: o aviso é dele do clique até o desfecho.
+    await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'desligada', { timeout: 15_000 });
+    await expect(aviso(page)).toContainText('Reiniciando o Anki…');
+    await expect(aviso(page)).toContainText('Não deu para reiniciar o Anki. Feche e abra de novo.', { timeout: 30_000 });
+    await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'desligada');
+    await expect(aviso(page).getByRole('button')).toHaveCount(0);   // sem a Conexão não há a quem pedir o reinício
+    expect(aberturas(fakes)).toHaveLength(1);
+
+    // A pessoa abre o Anki à mão: a Conexão volta na versão nova e o erro sai.
+    fakes.anki.voltarAFalar();
+    await expect(aviso(page)).toContainText('Conexão atualizada · 0.4.5', { timeout: 30_000 });
+    await expect(aviso(page)).not.toContainText('Não deu');
+    await estadoFinalEm('quantas vezes a Conexão fechou o Anki', () => fakes.anki.atualizacao.reinicios(), 1);
+    await estadoFinal(extensao, { pm_conexao_atualizada_vista: '0.4.5' });
+  });
 });
 
 test('sem a permissão do abridor o Anki não é fechado: ninguém o abriria de volta, e a tela diz o que fazer', async ({ page, extensao, fakes }) => {
