@@ -28,11 +28,28 @@ def apagar(caminho):
     return True
 
 
-def apagar_os_provisorios(dados):
+def apagar_os_provisorios(dados, ao_falhar=None):
     """Todo `<nome>.novo` das pastas do Envio (a gravação que morreu entre escrever e renomear) guarda a Palavra e a Frase, e como o
-    nome é único por gravação ninguém o reescreve. Quem chama (a subida da Conexão e o Apagar tudo) segura a tranca da fila."""
+    nome é único por gravação ninguém o reescreve. Quem chama (a subida da Conexão e o Apagar tudo) segura a tranca da fila.
+    Sem `ao_falhar`, um arquivo que não dá para apagar levanta (o Apagar tudo não pode dizer "apagado" com a Frase ainda no disco);
+    com ele, `ao_falhar(caminho, erro)` é chamado e os outros provisórios saem mesmo assim (a subida não pode perder o Envio por um)."""
     for pasta in (dados.fila, dados.estado, dados.custos):
         for raiz, _, nomes in os.walk(pasta):
             for nome in sorted(nomes):
-                if nome.endswith(".novo"):
-                    apagar(os.path.join(raiz, nome))
+                if not nome.endswith(".novo"):
+                    continue
+                caminho = os.path.join(raiz, nome)
+                try:
+                    apagar(caminho)
+                except OSError as erro:
+                    if ao_falhar is None:
+                        raise
+                    ao_falhar(caminho, erro)
+
+
+def avisar_do_que_ficou(logger):
+    """O `ao_falhar` da subida: o log diz qual provisório ficou (só o nome do arquivo e o erro, nunca o conteúdo) e a próxima subida tenta de novo."""
+    def avisar(caminho, erro):
+        if logger:
+            logger.warning("Envio: não deu para apagar o provisório %s (%s); fica para a próxima subida", os.path.basename(caminho), erro)
+    return avisar

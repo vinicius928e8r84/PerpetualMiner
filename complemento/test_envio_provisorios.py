@@ -7,10 +7,11 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento.test_envio import ID, LINHA, EnvioNoTeste, pedido  # noqa: E402
+from complemento.test_envio import ID, LINHA, PALAVRA, EnvioNoTeste, pedido  # noqa: E402
 
 
 def os_novos(pasta):
@@ -36,10 +37,41 @@ class OProvisorioDaMorteSaiNaSubida(unittest.TestCase):
             antes = len(os_novos(pasta))
             with EnvioNoTeste(pasta) as conexao:
                 estado = conexao.esperar(ID)
+                com_a_palavra = [nome for nome, c in conexao.arquivos().items() if PALAVRA.encode() in c]
             restos = os_novos(pasta)
         self.assertEqual(antes, len(sobras), "a prova só vale se os provisórios estavam lá")
         self.assertEqual(estado["status"], "completed")
         self.assertEqual(restos, [])
+        self.assertEqual(com_a_palavra, [], "a Palavra não sobra em nenhum arquivo da Conexão depois do Envio concluído")
+
+    def test_um_provisorio_que_nao_da_para_apagar_nao_impede_a_thread_de_trabalho_nem_os_outros_de_sair(self):
+        # Um arquivo aberto por outro programa (o Windows recusa apagar) levanta `PermissionError`: o provisório que ninguém lê não
+        # pode custar o Envio da sessão inteira, e os outros provisórios saem mesmo assim.
+        with tempfile.TemporaryDirectory() as pasta:
+            with EnvioNoTeste(pasta, trabalhando=False) as conexao:
+                conexao.criar(pedido(ID, LINHA))
+            preso = os.path.join(pasta, "fila", "fila.json.preso1.novo")
+            solto = os.path.join(pasta, "estado", ID, "1.txt.solto1.novo")
+            os.makedirs(os.path.dirname(solto), exist_ok=True)
+            for caminho in (preso, solto):
+                with open(caminho, "wb") as arquivo:
+                    arquivo.write(LINHA.encode())
+            remover = os.remove
+
+            def remover_menos_o_preso(caminho, *argumentos, **nomeados):
+                if os.fspath(caminho) == preso:
+                    raise PermissionError(13, "Permission denied", preso)
+                return remover(caminho, *argumentos, **nomeados)
+
+            with mock.patch("os.remove", remover_menos_o_preso):
+                with EnvioNoTeste(pasta) as conexao:
+                    estado = conexao.esperar(ID)
+                    log = conexao.log()
+            restos = os_novos(pasta)
+        self.assertEqual(estado["status"], "completed")
+        self.assertEqual(restos, [os.path.relpath(preso, pasta)])
+        self.assertIn("não deu para apagar o provisório fila.json.preso1.novo", log)
+        self.assertNotIn(PALAVRA, log)
 
 
 if __name__ == "__main__":
