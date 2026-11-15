@@ -11,7 +11,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento.test_servidor import ConexaoNoTeste  # noqa: E402
+from complemento.test_harness import ConexaoNoTeste  # noqa: E402
 
 
 class AbrirOAnkiComOComputador(unittest.TestCase):

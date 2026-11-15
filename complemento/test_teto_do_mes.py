@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento.test_envio import ID, OUTRO_ID, EnvioNoTeste, chats, pedido  # noqa: E402
 from complemento.test_envio_retomada import TRES_FRASES  # noqa: E402
-from complemento.test_servidor import ConexaoNoTeste, ler_o_contrato, semear_a_fila  # noqa: E402
+from complemento.test_harness import ConexaoNoTeste, ler_o_contrato, semear_a_fila  # noqa: E402
 
 DUAS_FRASES = ("give up : She gave up smoking", "keep running : They keep running")
 NO_TETO = {"reason": "monthly_cap"}

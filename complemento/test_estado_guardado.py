@@ -1,4 +1,4 @@
-"""O que o contrato confere na repetição de um POST: o estado guardado e a resposta (apoio de `test_servidor.py`)."""
+"""O que o contrato confere na repetição de um POST: o estado guardado e a resposta (apoio de `test_servidor.py` e `test_servidor_repeticao.py`)."""
 
 import json
 import os

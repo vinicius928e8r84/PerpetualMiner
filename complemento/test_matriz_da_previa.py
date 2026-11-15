@@ -1,8 +1,8 @@
-"""A entrada de `POST /anki/card-preview` (#164) e a de `POST /anki/note-types` (#165) na matriz de rotas de `test_servidor.MATRIZ`: o que a rota faz em cada estado do Anki.
+"""A entrada de `POST /anki/card-preview` (#164) e a de `POST /anki/note-types` (#165) na matriz de rotas de `test_matriz_de_rotas.MATRIZ`: o que a rota faz em cada estado do Anki.
 
 A prévia lê a coleção (o Anki desenha o Cartão) e não grava nota; cria só o tipo de nota do idioma, se falta, e essa primeira gravação marca o
 perfil aberto (o perfil fixo, como o Envio): por isso `muda`. Também guarda a de `POST /anki/browse` (o Abrir no Anki, #173: lê a coleção, acha a nota pelo `guid`, não grava nada) e a de `POST /voz/falar` (#170), que não lê a coleção nem o perfil e
-não guarda nada: o `test_servidor.py` não pode crescer. Não é teste: fica fora do `.ankiaddon` pelo nome.
+não guarda nada: o `test_matriz_de_rotas.py` não pode crescer. Não é teste: fica fora do `.ankiaddon` pelo nome.
 """
 
 MATRIZ_DA_PREVIA = {

@@ -15,7 +15,7 @@ import warnings
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento.test_servidor import ConexaoNoTeste  # noqa: E402
+from complemento.test_harness import ConexaoNoTeste  # noqa: E402
 
 VARIAVEIS_DE_PROXY = ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY", "http_proxy", "https_proxy", "all_proxy", "no_proxy")
 

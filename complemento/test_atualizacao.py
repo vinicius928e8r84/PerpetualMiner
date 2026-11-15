@@ -69,7 +69,6 @@ def montar(pasta, anki_web=None, versao="0.4.5", ligada=True):
     ), anki_web
 
 
-# A atualização na MATRIZ do `test_servidor.py`: não lê a coleção nem o perfil; sem o Anki dentro, "Atualizar agora" não tem de onde atualizar e "Reiniciar" não é entregue.
 MATRIZ_DA_ATUALIZACAO = {
     ("POST", "/atualizacao/agora"): {"corpo": {}, "muda": True, "le_a_colecao": False, "le_o_perfil": False, "recusas": []},
     ("POST", "/atualizacao/reiniciar"): {"corpo": {}, "le_a_colecao": False, "le_o_perfil": False, "recusas": [], "status": 503},

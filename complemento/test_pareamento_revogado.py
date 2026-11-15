@@ -18,7 +18,7 @@ from complemento import pareamento  # noqa: E402
 from complemento.test_pareamento_de_mentira import (  # noqa: E402
     _CONTRATO, CLIENTE, DESAFIO, OUTRO_CLIENTE, OUTRO_SEGREDO, SEGREDO, UM_CLIENTE_NOVO, arquivo_do_pareamento, cabecalhos_assinados, comecar, concluir, json_de, segredo_em_base64, semear,
 )
-from complemento.test_servidor import ConexaoNoTeste  # noqa: E402
+from complemento.test_harness import ConexaoNoTeste  # noqa: E402
 
 VETOR_DA_REVOGACAO = _CONTRATO["vetorDaRevogacao"]
 

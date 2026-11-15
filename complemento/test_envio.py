@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento.test_leitura_dos_arquivos import arquivos_da_pasta  # noqa: E402
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
-from complemento.test_servidor import ConexaoNoTeste, ler_o_contrato, semear_a_fila  # noqa: E402
+from complemento.test_harness import ConexaoNoTeste, ler_o_contrato, semear_a_fila  # noqa: E402
 
 CHAVE = "sk-proj-chave-do-envio-0000"
 FIM = ("completed", "partial", "failed")
