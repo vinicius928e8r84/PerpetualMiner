@@ -16,7 +16,8 @@ const ORIGEM = `${contrato.origemDaExtensao}/`;
 /** Roda o host do fake como o Chrome: devolve a resposta (ou null se ele não respondeu em `espera` ms). */
 function conversar(fake, mensagem, espera = 5000) {
   return new Promise((resolve, reject) => {
-    const host = spawn(fake.programa, [ORIGEM]);
+    // No Windows o programa é um `.cmd`, que o Node só roda por um shell.
+    const host = process.platform === 'win32' ? spawn(`"${fake.programa}"`, [ORIGEM], { shell: true }) : spawn(fake.programa, [ORIGEM]);
     let saida = Buffer.alloc(0);
     const tempo = setTimeout(() => { host.kill(); resolve(null); }, espera);
     host.stdout.on('data', dados => {

@@ -1,7 +1,7 @@
 'use strict';
 
 // A base compartilhada (lib/).
-importScripts('lib/voz/catalogo.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/mineracao.js', 'lib/ajustes-de-envio.js', 'lib/mineracao-do-dia.js', 'lib/vocabulario-da-mineracao.js', 'lib/pedido-ao-anki.js', 'lib/pareamento.js', 'lib/apagar-frases-pendente.js', 'lib/sincronizacao.js');
+importScripts('lib/voz/catalogo.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/mineracao.js', 'lib/ajustes-de-envio.js', 'lib/mineracao-do-dia.js', 'lib/vocabulario-da-mineracao.js', 'lib/pedido-ao-anki.js', 'lib/pareamento.js', 'lib/envio-gravado.js', 'lib/apagar-frases-pendente.js', 'lib/sincronizacao.js');
 const { textoDaVoz, detectarIdioma, IDIOMAS, MineracaoDoDia, Mineracao, VocabularioDaMineracao, Sincronizacao } = PerpetualMiner;
 
 // During an upgrade, close the old readable area before migrating bearer tokens.
@@ -958,7 +958,7 @@ ouvirChrome(chrome.storage.onChanged, (changes, area) => {
 // O service worker acorda e dorme o tempo todo (também na partida do Chrome): ao acordar, o badge pode ser o de ontem.
 agendarViradaDoDia();
 atualizarBadgeDaToolbar();
-// O Apagar tudo que a Conexão não confirmou (a marca em `pm_envio`) é pedido de novo a cada 30 s, com todo painel fechado.
+// O Apagar tudo que a Conexão não confirmou (a marca em `pm_envio`) é pedido de novo a cada 30 s.
 PerpetualMiner.ApagarFrasesPendente.ligar({ chrome, ouvirChrome, endereco: ENDERECO });
 
 /**

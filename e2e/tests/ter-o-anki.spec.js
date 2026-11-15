@@ -15,6 +15,7 @@
 // clicar. Com “menos movimento”, os quadros ficam parados, lado a lado.
 
 const { test, expect, comOSistema, SISTEMAS } = require('../fixtures');
+const { SEM_ABRIDOR_IMPOSSIVEL } = require('../fakes/abridor');
 const { estadoFinal, estadoFinalEm } = require('../estado-final');
 const { fotografar } = require('../evidencias-mineracao');
 const contrato = require('../../complemento/contrato/exemplos.json');
@@ -62,7 +63,7 @@ test('o primeiro passo é Ter o Anki: a pergunta e as duas respostas, e nada do 
   // O silêncio: a tela não diz nada do Anki — nem “não encontrado”, nem instalado, nem aberto.
   await expect(card(page)).not.toContainText(/não encontrado|instalar o Anki antes/i);
   await expect(baixarOAnki(page)).toHaveCount(0);
-  // A região do resultado já está no DOM, viva e sem texto: o clique só troca o texto dela, que o leitor de tela fala.
+  // A região do resultado já está no DOM, viva e sem texto: o clique só troca o texto, que o leitor de tela fala.
   await expect(resultadoDoAnki(page)).toHaveAttribute('aria-live', 'polite');
   await expect(resultadoDoAnki(page)).toBeEmpty();
   await expect(resultadoDoAnki(page)).not.toHaveAttribute('hidden', /.*/);
@@ -108,7 +109,8 @@ test('“Não tenho” no Windows: o link leva à página de download do Anki, e
 });
 
 test('“Não tenho” fora do Mac e do Windows: Baixar o Anki abre a página numa aba nova, e o painel fica no passo', async ({ page, context, extensao }) => {
-  // O Chromium do teste é o do Linux: nem Mac nem Windows.
+  // O Chromium do teste é o do Linux.
+  await comOSistema(page, SISTEMAS.LINUX);
   await page.goto(extensao.url('painel.html#anki/custos'));
   await expect(card(page)).toBeVisible();
   await naoTenho(page).click();
@@ -117,7 +119,7 @@ test('“Não tenho” fora do Mac e do Windows: Baixar o Anki abre a página nu
 
   const abaNova = context.waitForEvent('page');
   await baixarOAnki(page).click();
-  // A página do Anki vem numa aba própria (o fixture não deixa o pedido sair; basta a aba ter nascido para ela).
+  // A página do Anki vem numa aba própria (o fixture não deixa o pedido sair; basta a aba nascer).
   expect((await abaNova).url()).toMatch(/^(https:\/\/apps\.ankiweb\.net\/|about:blank|chrome-error:)/);
   await expect(page).toHaveURL(extensao.url('painel.html#anki/custos'));
   await expect(tituloDoPasso(page)).toHaveText('Ter o Anki');
@@ -176,7 +178,7 @@ test.describe('com a permissão que o Chrome guardou depois de Permitir', () => 
   test.use({ permissaoDoAbridor: true });
 
   test('“Já tenho” com o Anki instalado e fechado: o abridor abre o Anki, e a Conexão liga sozinha', async ({ page, extensao, fakes, relogioParado }) => {
-    // Sem ninguém apertar nada, é a conferência de 15 s que encontra a Conexão que o Anki abriu trouxe.
+    // Sem ninguém apertar nada, a conferência de 15 s encontra a Conexão que o Anki abriu trouxe.
     const relogio = await relogioParado({ em: new Date('2026-09-18T12:00:00') });
     await page.goto(extensao.url('painel.html#anki/custos'));
     await expect(card(page)).toBeVisible();
@@ -186,7 +188,7 @@ test.describe('com a permissão que o Chrome guardou depois de Permitir', () => 
     await expect(resultadoDoAnki(page)).toHaveText('O Anki está abrindo…');
     await expect.poll(() => fakes.abridor.pedidos()).toEqual([ABRIR]);
 
-    // O Anki abriu e a Conexão com ele responde: o passo vira ✓ e o card anda sozinho ao passo do abridor.
+    // O Anki abriu e a Conexão responde: o passo vira ✓ e o card anda ao passo do abridor.
     fakes.anki.ligar();
     await relogio.avancar(15_000);
     await expect(itemDaLista(page, /^Ter o Anki/)).toHaveAccessibleName(/feito$/);
@@ -199,7 +201,7 @@ test.describe('com a permissão que o Chrome guardou depois de Permitir', () => 
   });
 
   test('“Já tenho” clicado duas vezes seguidas pede ao abridor uma vez só', async ({ page, extensao, fakes }) => {
-    // Cada `abrir` é um Anki aberto pelo sistema: dois pedidos juntos arriscam um segundo Anki ou o perfil já aberto.
+    // Cada `abrir` é um Anki aberto pelo sistema: dois pedidos juntos arriscam um segundo Anki ou o perfil aberto.
     await page.goto(extensao.url('painel.html#anki/custos'));
     await expect(card(page)).toBeVisible();
 
@@ -207,14 +209,15 @@ test.describe('com a permissão que o Chrome guardou depois de Permitir', () => 
 
     await expect(resultadoDoAnki(page)).toHaveText('O Anki está abrindo…');
     await expect.poll(() => fakes.abridor.pedidos()).toEqual([ABRIR]);
-    // Um segundo pedido sairia logo depois do primeiro: meio segundo depois da resposta, ainda é um só.
+    // Um segundo pedido sairia logo depois do primeiro: meio segundo depois da resposta, é um só.
     await page.waitForTimeout(500);
     expect(fakes.abridor.pedidos()).toEqual([ABRIR]);
     await estadoFinalEm('a permissão nativeMessaging no Chrome', () => extensao.permissaoDoAbridor(), true);
   });
 
   test('sem o abridor no computador: “Já tenho” cai no caminho manual de sempre', async ({ page, extensao, fakes }) => {
-    // Uma Conexão antiga (ou nenhuma) não deixou o abridor: o Chrome não acha o host e o passo não trava.
+    // Sem o abridor (Conexão antiga): o Chrome não acha o host e o passo não trava.
+    test.skip(SEM_ABRIDOR_IMPOSSIVEL, 'no Windows o Chromium usa o abridor real');
     fakes.abridor.desregistrar();
     await page.goto(extensao.url('painel.html#anki/custos'));
     await expect(card(page)).toBeVisible();

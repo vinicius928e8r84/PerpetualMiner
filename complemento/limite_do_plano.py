@@ -7,6 +7,7 @@ novo a cada `espera_do_plano` s (um pedido só). Quem acorda a espera antes: **T
 parar a Conexão, que a encerram. Um Cartão já no Anki, ou com o texto pago, nunca é pedido de novo. Desenho: `docs/design/login-do-chatgpt.md`.
 """
 
+from .estado_do_envio import APAGADO, FIM, situacao
 from .paradas_do_envio import Apagado, Interrompido
 from .teto_do_mes import PausaPeloTeto
 
@@ -14,7 +15,6 @@ LIMITE_DO_PLANO = "chatgpt_usage_limit"  # o mesmo de `engine/openai_http.LIMITE
 PLANO_NO_LIMITE = {"reason": "plan_limit"}
 SEM_CHAVE = "openai_key_missing"
 ENVIO_TERMINOU = "job_finished"
-FIM = ("completed", "partial", "failed")
 
 
 def espera_pelo_plano(estado):
@@ -55,7 +55,7 @@ def usar_a_chave(fila, cofre, job_id):
     Sem chave guardada, 409 `openai_key_missing`; Envio que terminou (ou apagado), 409 `job_finished`."""
     with fila.tranca:
         estado = fila.estado_ou_refazer(job_id)
-        if estado["status"] in FIM or estado.get("wiped"):
+        if situacao(estado) in FIM + (APAGADO,):
             return 409, {"error": ENVIO_TERMINOU}
         if not cofre.ler("openai"):
             return 409, {"error": SEM_CHAVE}
