@@ -8,7 +8,7 @@ Continuação de [envio-no-complemento.md](envio-no-complemento.md) (#142). Fati
 - **Só a imagem falha, o Cartão vai sem ela e conta como enviado.** Qualquer erro da busca, do juiz, da triagem, da geração ou da conversão termina a escolha sem imagem; o Cartão fica `added` e o Envio `completed`. É a escolha da issue; custa dizer “Enviado” a um Cartão sem figura, e a pessoa só vê a diferença no Anki (a tela não tem estado para “sem imagem”, e nenhum foi inventado). Sem chave, o Cartão vai sem imagem e o seguinte para o Envio com `openai_key_missing`.
 - **Nada de biblioteca de fora**: Openverse e OpenAI por `urllib`. A foto que não é PNG passa pelo adaptador de imagem (`engine/image_utils.py`): o Qt do Anki no complemento (`imagem_qt.py`, com a orientação do EXIF), o Pillow na Conexão de hoje.
 - **A imagem vai da rede à coleção na mesma volta, junto com a nota nova** (`<img src="<guid>.png">` no verso); nunca fica em `user_files`. Duplicata e `guid` repetido não gravam mídia.
-- **O que fica guardado**: os custos do Envio ganham as linhas `image` e `image_pipeline` e os tokens do juiz e da triagem. Como os custos **ficam depois do Apagar tudo**, eles citam o Cartão (`<phraseId>-<n>`), nunca a Palavra nem as buscas; o log diz o Cartão e o código, nunca o que a OpenAI respondeu.
+- **O que fica guardado**: os custos do Envio ganham as linhas `image` e `image_pipeline` e os tokens do juiz e da triagem. Como os custos **ficam depois do Apagar tudo**, eles citam o Cartão (`<phraseId>-<n>`), nunca a Palavra nem as buscas (as consultas saem sim da máquina, para o Openverse, como já saíam); o log diz o Cartão e o código, nunca o que a OpenAI respondeu.
 
 ## Limites aceitos
 

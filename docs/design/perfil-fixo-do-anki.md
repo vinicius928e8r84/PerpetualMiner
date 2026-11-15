@@ -50,6 +50,6 @@ o `perfil.json` da Conexão; a extensão não guarda perfil. 6. **Quem vem da `m
 
 ## 6. O que não está provado
 
-as funções de perfil do Anki (`pm.load`, `onOpenProfile`, `unloadProfile`, o Excluir/Renomear aberto) só rodaram num `mw` de
+As funções de perfil do Anki (`pm.load`, `onOpenProfile`, `unloadProfile`, o Excluir/Renomear aberto) só rodaram num `mw` de
 mentira, lidas no aqt 26.9.3. A prova no caminho real é o ensaio do dono (#269, passo 8b de `complemento/LEIA-ME.md`, que inclui o duplo clique
 e o modal com um perfil de teste), em Mac e Windows, e o `-p` no Anki mais antigo suportado.
