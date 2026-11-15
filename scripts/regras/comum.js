@@ -202,17 +202,146 @@ function comentariosPy(fonte) {
   return comentarios;
 }
 
+function comentariosSh(fonte) {
+  const comentarios = [];
+  const delimitadores = [];
+  const pilha = [{ tipo: 'normal' }];
+  const comecaPalavra = j => j === 0 || /[\s;&|()]/.test(fonte[j - 1]);
+  let i = 0;
+  while (i < fonte.length) {
+    const c = fonte[i];
+    const topo = pilha[pilha.length - 1];
+    if (topo.tipo === 'simples') {
+      if (c === "'") pilha.pop();
+      i++;
+    } else if (topo.tipo === 'ansi') {
+      if (c === '\\') i++;
+      else if (c === "'") pilha.pop();
+      i++;
+    } else if (topo.tipo === 'dupla') {
+      if (c === '\\') i += 2;
+      else if (c === '"') { pilha.pop(); i++; }
+      else if (c === '$' && fonte[i + 1] === '(') { pilha.push({ tipo: 'comando', fundo: 0 }); i += 2; }
+      else if (c === '`') { pilha.push({ tipo: 'crase' }); i++; }
+      else i++;
+    } else if (c === '\\') {
+      i += 2;
+    } else if (c === "'" || c === '"') {
+      pilha.push({ tipo: c === "'" ? 'simples' : 'dupla' });
+      i++;
+    } else if (c === '$' && fonte[i + 1] === "'") {
+      pilha.push({ tipo: 'ansi' });
+      i += 2;
+    } else if (c === '$' && fonte[i + 1] === '(') {
+      pilha.push({ tipo: 'comando', fundo: 0 });
+      i += 2;
+    } else if (c === '`') {
+      if (topo.tipo === 'crase') pilha.pop();
+      else pilha.push({ tipo: 'crase' });
+      i++;
+    } else if (topo.tipo === 'comando' && c === '(') {
+      topo.fundo++;
+      i++;
+    } else if (topo.tipo === 'comando' && c === ')') {
+      if (topo.fundo === 0) pilha.pop();
+      else topo.fundo--;
+      i++;
+    } else if (c === '#' && comecaPalavra(i)) {
+      const fim = fonte.indexOf('\n', i);
+      const ate = fim < 0 ? fonte.length : fim;
+      comentarios.push([i, ate]);
+      i = ate;
+    } else if (c === '<' && fonte[i + 1] === '<' && fonte[i + 2] === '<') {
+      i += 3;
+    } else if (c === '<' && fonte[i + 1] === '<') {
+      const m = /^<<-?\s*(?:'([^']+)'|"([^"]+)"|\\?([A-Za-z_]\w*))/.exec(fonte.slice(i, i + 120));
+      const linhaAteAqui = fonte.slice(fonte.lastIndexOf('\n', i) + 1, i);
+      const naAritmetica = linhaAteAqui.lastIndexOf('((') > linhaAteAqui.lastIndexOf('))');
+      if (m && !naAritmetica) delimitadores.push(m[1] || m[2] || m[3]);
+      i += m ? m[0].length : 2;
+    } else if (c === '\n' && delimitadores.length) {
+      i = depoisDosHeredocs(fonte, i + 1, delimitadores.splice(0));
+    } else {
+      i++;
+    }
+  }
+  return comentarios;
+}
+
+function depoisDosHeredocs(fonte, inicio, delimitadores) {
+  let i = inicio;
+  for (const delimitador of delimitadores) {
+    while (i < fonte.length) {
+      const fim = fonte.indexOf('\n', i);
+      const linha = fonte.slice(i, fim < 0 ? fonte.length : fim);
+      i = fim < 0 ? fonte.length : fim + 1;
+      if (linha.replace(/^\t+/, '') === delimitador) break;
+    }
+  }
+  return i;
+}
+
+function comentarioDaLinhaYaml(linha) {
+  let aspa = null;
+  for (let i = 0; i < linha.length; i++) {
+    const c = linha[i];
+    if (aspa) {
+      if (c === '\\' && aspa === '"') i++;
+      else if (c === aspa) aspa = null;
+    } else if ((c === '"' || c === "'") && (i === 0 || /[\s:,\[{?-]/.test(linha[i - 1]))) {
+      aspa = c;
+    } else if (c === '#' && (i === 0 || /\s/.test(linha[i - 1]))) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+const BLOCO_DE_TEXTO_YAML = /^(\s*(?:-\s+)*)([^\s:#'"][^:#]*|"[^"]*"|'[^']*'):\s*[|>][+-]?\d*\s*$/;
+
+function comentariosYaml(fonte) {
+  const comentarios = [];
+  let bloco = null;
+  let deslocamento = 0;
+  const fecharBloco = ate => {
+    if (bloco && bloco.shell) {
+      for (const [de, fim] of comentariosSh(fonte.slice(bloco.de, ate))) comentarios.push([bloco.de + de, bloco.de + fim]);
+    }
+    bloco = null;
+  };
+  for (const linhaComCr of fonte.split('\n')) {
+    const linha = linhaComCr.replace(/\r$/, '');
+    const inicio = deslocamento;
+    deslocamento += linhaComCr.length + 1;
+    if (bloco && (linha.trim() === '' || linha.search(/\S/) > bloco.coluna)) continue;
+    fecharBloco(inicio);
+    const marca = comentarioDaLinhaYaml(linha);
+    if (marca >= 0) comentarios.push([inicio + marca, inicio + linha.length]);
+    const codigo = marca >= 0 ? linha.slice(0, marca) : linha;
+    const abre = BLOCO_DE_TEXTO_YAML.exec(codigo);
+    if (abre) bloco = { coluna: abre[1].length, shell: abre[2].trim() === 'run', de: inicio + linhaComCr.length + 1 };
+  }
+  fecharBloco(fonte.length);
+  return comentarios;
+}
+
+function trechosDeComentario(arquivo, fonte) {
+  if (/\.(js|mjs|cjs|jsx|ts|tsx)$/.test(arquivo)) return separarJs(fonte).comentarios;
+  if (arquivo.endsWith('.css')) return comentariosCss(fonte);
+  if (arquivo.endsWith('.py')) return comentariosPy(fonte);
+  if (arquivo.endsWith('.html')) return comentariosHtml(fonte);
+  if (/\.sh$|^scripts\/ganchos\/[^./]+$/.test(arquivo)) return comentariosSh(fonte);
+  if (/\.ya?ml$/.test(arquivo)) return comentariosYaml(fonte);
+  return [];
+}
+
 /**
  * O texto dos comentários de verdade de cada linha (Map linha → texto). Só ali
  * vale uma exceção ou a marca de uma exceção de teste: uma string que contém
  * as mesmas palavras não conta.
  */
 function comentariosPorLinha(arquivo, fonte) {
-  let comentarios = [];
-  if (/\.(js|mjs|cjs)$/.test(arquivo)) comentarios = separarJs(fonte).comentarios;
-  else if (arquivo.endsWith('.css')) comentarios = comentariosCss(fonte);
-  else if (arquivo.endsWith('.py')) comentarios = comentariosPy(fonte);
-  else if (arquivo.endsWith('.html')) comentarios = comentariosHtml(fonte);
+  const comentarios = trechosDeComentario(arquivo, fonte);
   const porLinha = new Map();
   let linha = 1;
   let ondeEstou = 0;
@@ -248,5 +377,5 @@ function fechamento(texto, abre) {
 
 module.exports = {
   arquivosDoRepositorio, ehJsDaExtensao, linhaDe, semComentariosJs, semComentariosCss, semComentariosHtml,
-  comentariosPorLinha, fechamento,
+  comentariosPorLinha, fechamento, trechosDeComentario,
 };
