@@ -11,34 +11,39 @@ const { repositorioDeTestes } = require('./apoio-de-testes');
 let total = 0;
 const nulo = (achados, quantas, porque) => { assert.strictEqual(achados.length, quantas, `${porque}\n${JSON.stringify(achados, null, 2)}`); total++; return achados; };
 
-// indice-de-arquivos: o arquivo novo sem linha na tabela "Files" e a linha que sobrou de um arquivo que saiu
-// (as omissões que a revisão do #183 e do #187 apontava à mão).
+// indice-de-arquivos: o arquivo novo sem linha nas tabelas de docs/arquivos/ e a linha que sobrou de um arquivo que saiu
+// (as omissões que a revisão do #183 e do #187 apontava à mão). O índice são todos os .md de docs/arquivos/.
 {
-  const INDICE = [
-    '### Files', '', '| File | Role |', '|---|---|',
+  const EXTENSAO = [
+    '# Arquivos da extensão', '', '| File | Role |', '|---|---|',
     '| `manifest.json` | Permissions |',
     '| `popup.html/js/css` | The popup |',
-    '| `lib/mineracao.js` | Mining |',
     '| `veio/` | Shared identity |',
     '',
-    '### Outra seção', '', '| `lib/fora-da-tabela.js` | não conta |', '',
   ].join('\n');
-  const repo = fonteDoIndice => repositorioDeTestes({ 'CLAUDE.md': fonteDoIndice, 'manifest.json': '{}', 'popup.html': '', 'popup.js': '', 'popup.css': '',
-    'lib/mineracao.js': '', 'lib/abridor.js': '', 'lib/fora-da-tabela.js': '', 'veio/tokens.css': '', 'test_novo.js': '', 'README.md': '', '.gitignore': '' });
-  const pasta = repo(INDICE);
+  const FERRAMENTAS = ['# Testes e ferramentas', '', '| File | Role |', '|---|---|', '| `lib/mineracao.js` | Mining |', ''].join('\n');
+  const FORA = '| `lib/fora-do-indice.js` | não conta: não é de docs/arquivos/ |\n';
+  const repo = (extensao, ferramentas = FERRAMENTAS) => repositorioDeTestes({
+    'docs/arquivos/extensao.md': extensao, 'docs/arquivos/ferramentas.md': ferramentas, 'docs/outro.md': FORA,
+    'manifest.json': '{}', 'popup.html': '', 'popup.js': '', 'popup.css': '',
+    'lib/mineracao.js': '', 'lib/abridor.js': '', 'lib/fora-do-indice.js': '', 'veio/tokens.css': '', 'test_novo.js': '', 'README.md': '', '.gitignore': '' });
+  const pasta = repo(EXTENSAO);
   const doIndice = arquivo => regras['indice-de-arquivos'].verificar(arquivo, '', pasta);
-  nulo(doIndice('lib/abridor.js'), 1, 'arquivo de lib/ que a tabela não cita');
-  nulo(doIndice('lib/fora-da-tabela.js'), 1, 'citado só fora da seção Files não conta');
-  nulo(doIndice('lib/mineracao.js'), 0, 'arquivo citado');
+  nulo(doIndice('lib/abridor.js'), 1, 'arquivo de lib/ que nenhuma tabela cita');
+  nulo(doIndice('lib/fora-do-indice.js'), 1, 'citado só fora de docs/arquivos/ não conta');
+  nulo(doIndice('lib/mineracao.js'), 0, 'arquivo citado na segunda tabela');
+  nulo(doIndice('manifest.json'), 0, 'arquivo citado na primeira tabela');
   for (const extensao of ['html', 'js', 'css']) nulo(doIndice(`popup.${extensao}`), 0, `popup.html/js/css cobre popup.${extensao}`);
-  assert.deepStrictEqual(['lib/abridor.js', 'complemento/servidor.py', 'test_novo.js', '.gitignore', 'README.md', 'scripts/regras/verificar.js', 'CLAUDE.md']
-    .map(arquivo => regras['indice-de-arquivos'].seAplica(arquivo)), [true, false, false, false, false, false, true]);
+  assert.match(doIndice('lib/abridor.js')[0].detalhe, /docs\/arquivos\//, 'o achado diz onde a linha entra');
+  assert.deepStrictEqual(['lib/abridor.js', 'complemento/servidor.py', 'test_novo.js', '.gitignore', 'README.md', 'scripts/regras/verificar.js', 'CLAUDE.md',
+    'docs/arquivos/extensao.md', 'docs/arquivos/ferramentas.md', 'docs/outro.md']
+    .map(arquivo => regras['indice-de-arquivos'].seAplica(arquivo)), [true, false, false, false, false, false, false, true, true, false]);
   total++;
-  const linhaVelha = INDICE.replace('| `lib/mineracao.js` | Mining |', '| `lib/mineracao.js` | Mining |\n| `lib/removido.js` | Foi removido |');
-  const velhas = regras['indice-de-arquivos'].verificar('CLAUDE.md', linhaVelha, pasta);
+  const linhaVelha = EXTENSAO.replace('| `manifest.json` | Permissions |', '| `manifest.json` | Permissions |\n| `lib/removido.js` | Foi removido |');
+  const velhas = regras['indice-de-arquivos'].verificar('docs/arquivos/extensao.md', linhaVelha, pasta);
   nulo(velhas, 1, 'linha que cita um arquivo que não existe');
-  assert.strictEqual(velhas[0].linha, 8);
-  nulo(regras['indice-de-arquivos'].verificar('CLAUDE.md', INDICE, pasta), 0, 'a tabela certa não acusa');
+  assert.strictEqual(velhas[0].linha, 6);
+  nulo(regras['indice-de-arquivos'].verificar('docs/arquivos/extensao.md', EXTENSAO, pasta), 0, 'a tabela certa não acusa');
   total++;
   fs.rmSync(pasta, { recursive: true, force: true });
 }

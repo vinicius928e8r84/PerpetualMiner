@@ -4,7 +4,7 @@ What the reviewer enforces on a change. Each rule points to where it is explaine
 
 ## Open the surface's skill first
 
-`CLAUDE.md` keeps the file table and the rules that cross surfaces; the architecture of each surface lives in a project skill (`.claude/skills/<name>/SKILL.md`). When the diff touches a surface, open its skill before you review or change it, even if you are not "changing" the surface itself (a rename in a shared file, a copy edit, a test): the skill says what the surface shows, the IDs it implements, what it stores and which test holds its visual reference.
+`CLAUDE.md` has the cross-surface rules; files: `docs/arquivos/`; the architecture of each surface lives in a project skill (`.claude/skills/<name>/SKILL.md`). When the diff touches a surface, open its skill before you review or change it, even if you are not "changing" the surface itself (a rename in a shared file, a copy edit, a test): the skill says what the surface shows, the IDs it implements, what it stores and which test holds its visual reference.
 
 | The diff touches | Open |
 |------|------|
@@ -41,7 +41,7 @@ A surface not in this table (the panel shell, sync, storage, the service worker)
 
 ## New files
 
-11. **A new file gets its row in `CLAUDE.md` § Architecture › Files and is loaded where it is used**: `content_scripts` in `manifest.json`, `importScripts` in `background.js`, and a `<script>` in each page. `scripts/arquivos-do-pacote.js` and `lib/arquivos-da-extensao.js` decide what ships in the Chrome Web Store package. Source: `CLAUDE.md` § Files and § Shared base.
+11. **A new file gets its row in a table of `docs/arquivos/` and is loaded where it is used**: `content_scripts` in `manifest.json`, `importScripts` in `background.js`, and a `<script>` in each page. `scripts/arquivos-do-pacote.js` and `lib/arquivos-da-extensao.js` decide what ships in the Chrome Web Store package. Source: `CLAUDE.md` § Files and § Shared base.
 
 ## The gate
 
