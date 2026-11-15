@@ -13,6 +13,7 @@ A regra `indice-de-arquivos` (`scripts/regras/indice-de-arquivos.js`) exige uma 
 | `test_abrir_o_anki.js` | Node test of `lib/abrir-o-anki.js`: the permission is asked inside the click, `consertar` before `abrir`, and the wait is limited |
 | `test_fake_abridor.js` | Node test of the e2e fake opener (`e2e/fakes/abridor*.js`, the host the fixture registers in each profile): run as Chrome runs it, it answers each `daExtensao` example of the contract's `abridor` and `conserto` sections and refuses a situation the contract lacks |
 | `test_contrato_fechado.js` | Node test that the contract has an example of every request the extension makes: it asks `VariantesDoPedidoAoAnki.variantes` (two Baralhos) and requires a `daExtensao` example of each, which the e2e fake then answers (`test_fake_anki.js`). The add-on side is the end of `complemento/test_servidor.py`: each status the server answered needs one too |
+| `test_listas_uma_por_linha.js` | Node test that the exports of `lib/pedido-ao-anki.js` are one name per line in alphabetical order and each `<script>` of `painel.html` is alone on its line (the load order is not checked), so a new item is a new line and does not conflict with another PR |
 | `test_empacotar.js` | Node test of the Web Store package contents and of the store guide's host-permission block |
 | `test_quiz_de_nivel.js` | Node tests of the level quiz and, in `test_festa_do_quiz.js`, of its celebration |
 | `test_ranking.js` | Node test of `lib/ranking.js` |
