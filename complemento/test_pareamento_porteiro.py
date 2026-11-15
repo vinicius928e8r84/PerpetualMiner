@@ -95,11 +95,25 @@ class OPorteiro(unittest.TestCase):
         from complemento import servidor
 
         self.assertEqual(sorted(servidor.ROTAS_ABERTAS), [("GET", "/auth/callback"), ("GET", "/health")])
-        self.assertEqual(sorted(servidor.ROTAS_SEM_ASSINATURA), [("POST", "/pareamento/comecar"), ("POST", "/pareamento/concluir"), ("POST", "/pareamento/conferir")])
+        self.assertEqual(
+            sorted(servidor.ROTAS_SEM_ASSINATURA),
+            [("POST", "/anki/responde"), ("POST", "/pareamento/comecar"), ("POST", "/pareamento/concluir"), ("POST", "/pareamento/conferir")])
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta, pareado=False) as conexao:
             saude = conexao.pedir("GET", "/health", assinar=False)[0]
             saude_sem_origem = conexao.pedir("GET", "/health", origem=None, assinar=False)[0]
         self.assertEqual((saude, saude_sem_origem), (200, 200))
+
+    def test_a_pergunta_do_abridor_se_o_anki_responde_dispensa_a_assinatura_mas_nao_a_origem_e_nao_diz_nada_do_anki(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta, pareado=False, colecao=ColecaoEmMemoria(None, perfis=("Ana", "Beto"), perfil_aberto="Ana")) as conexao:
+            do_abridor = conexao.pedir("POST", "/anki/responde", corpo={}, assinar=False)
+            de_outro_site = conexao.pedir("POST", "/anki/responde", origem="https://exemplo.com", corpo={}, assinar=False)
+            sem_origem = conexao.pedir("POST", "/anki/responde", origem=None, corpo={}, assinar=False)
+            por_get = conexao.pedir("GET", "/anki/responde", assinar=False)
+            marcou = os.path.exists(os.path.join(pasta, "perfil.json"))
+        self.assertEqual((do_abridor[0], json_de(do_abridor[2])), (200, {"ok": True}))
+        self.assertEqual((de_outro_site[0], sem_origem[0]), (403, 403))
+        self.assertEqual(por_get[0], 401)
+        self.assertFalse(marcou)
 
     def test_o_preflight_da_extensao_passa_sem_assinatura_e_libera_os_cabecalhos_do_pareamento(self):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta, pareado=False) as conexao:
