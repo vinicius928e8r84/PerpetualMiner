@@ -45,7 +45,6 @@ const nulo = (achados, quantas, porque) => { assert.strictEqual(achados.length, 
   assert.strictEqual(velhas[0].linha, 6);
   nulo(regras['indice-de-arquivos'].verificar('docs/arquivos/extensao.md', EXTENSAO, pasta), 0, 'a tabela certa não acusa');
   total++;
-  // O merge=union do .gitattributes junta as duas inserções no mesmo ponto sem conflito; se as duas linhas eram a mesma, a duplicata passa calada.
   const duplicada = EXTENSAO.replace('| `veio/` | Shared identity |', '| `veio/` | Shared identity |\n| `veio/` | Same, written by the other branch |');
   const repetidas = nulo(regras['indice-de-arquivos'].verificar('docs/arquivos/extensao.md', duplicada, pasta), 1, 'dois papéis para o mesmo arquivo (a duplicata silenciosa do merge=union)');
   assert.strictEqual(repetidas[0].linha, 8);

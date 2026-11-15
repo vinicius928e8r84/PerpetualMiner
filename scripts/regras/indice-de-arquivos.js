@@ -6,9 +6,7 @@
 //   - um arquivo da raiz, de lib/, veio/ ou do topo de scripts/ que as tabelas não citam
 //     (o caminho inteiro, ou só o nome quando o arquivo é da raiz da
 //     pasta citada na linha: `popup.html/js/css` vale para os três);
-//   - uma linha de tabela cuja primeira coluna cita um caminho que não existe;
-//   - duas linhas da tabela com a mesma primeira coluna no mesmo arquivo: o `merge=union` do .gitattributes junta duas
-//     inserções no mesmo ponto sem conflito, e se as duas descreviam o mesmo arquivo a duplicata passaria calada.
+//   - uma linha de tabela cuja primeira coluna cita um caminho que não existe.
 // Teste de arquivo (test_*), Markdown e arquivo oculto não precisam de linha.
 
 const fs = require('fs');
