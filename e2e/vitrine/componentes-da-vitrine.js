@@ -12,7 +12,7 @@
 // é andaime da página de referência e não cópia de uma tela do produto.
 //
 // Os nomes de Fonte (Netflix, YouTube, Web, PDF, Livro, Manual) são valores do
-// glossário (CONTEXT.md), não estados do catálogo.
+// glossary.md, não estados do catálogo.
 
 (function (raiz) {
   const { textoDaVoz, Veio } = raiz;

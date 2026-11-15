@@ -4,7 +4,7 @@ Ticket #4 do mapa Redesign do front-end (#1).
 
 O que está aqui: o **guia de voz e tom** (as regras de qualquer mensagem nova), as **regras por categoria** (onde cada tipo de mensagem aparece) e o **catálogo** de estados-chave com a cópia aprovada, que os protótipos e a construção usam. Só o *conteúdo*: a aparência é da identidade visual, onde cada área mora é do shell do painel e a lógica é da auditoria do front.
 
-Os termos seguem o [`CONTEXT.md`](../../../CONTEXT.md). A versão interativa do catálogo está em [`catalogo.html`](catalogo.html).
+Os termos seguem [`glossary.md`](../../../glossary.md). A versão interativa do catálogo está em [`catalogo.html`](catalogo.html).
 
 ---
 
