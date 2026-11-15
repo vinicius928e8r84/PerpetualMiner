@@ -31,7 +31,7 @@ A frente do Cartão (#166): reescreve o modelo do tipo de nota na coleção. A p
 que o marca (`perfil.json`, como o Envio); repetida, nada mais muda.
 O Ouvir dos Ajustes de envio (#174): fala uma frase de amostra, não lê a coleção nem o perfil e não guarda nada.
 MATRIZ.update: o pareamento (#192)
-MATRIZ.update: a prévia do Cartão (#164): em arquivo à parte, que o limite de tamanho não deixa este crescer
+MATRIZ.update: a prévia do Cartão (#164): em arquivo à parte, para este seguir abaixo do limite de tamanho
 MATRIZ.update: a atualização pelo AnkiWeb (#177), também
 A atualização (`/atualizacao/agora`, em `test_atualizacao.py`): não lê a coleção nem o perfil; sem o Anki dentro, "Atualizar agora" não tem de onde atualizar e "Reiniciar" não é entregue.
 """

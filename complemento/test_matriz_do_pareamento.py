@@ -1,7 +1,7 @@
 """As rotas do pareamento (#192) e a pergunta do abridor (`/anki/responde`, a outra rota sem assinatura) na matriz de rotas de `test_matriz_de_rotas.MATRIZ`: o que cada uma faz em cada estado do Anki.
 
 Nenhuma lê a coleção nem o perfil. `concluir` grava o navegador pareado (`user_files/pareamento.json`: `muda`); `comecar` e `conferir` não guardam
-nada. Não é teste: fica fora do `.ankiaddon` pelo nome, e o `test_matriz_de_rotas.py` não pode crescer.
+nada. Não é teste: fica fora do `.ankiaddon` pelo nome, e fica à parte para o `test_matriz_de_rotas.py` seguir abaixo do limite de tamanho.
 """
 
 from complemento.test_pareamento_de_mentira import CLIENTE

@@ -13,12 +13,12 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import servidor  # noqa: E402
-from complemento.test_harness import ORIGEM, RESPONDIDOS, conexao_do_exemplo, exemplos_do_contrato, sucesso  # noqa: E402
+from test_harness import ORIGEM, RESPONDIDOS, conexao_do_exemplo, exemplos_do_contrato, sucesso  # noqa: E402
 from complemento.test_comparar_com_o_contrato import igual_ao_do_contrato  # noqa: E402
 from complemento.test_estado_guardado import estado_guardado  # noqa: E402
 from complemento.test_matriz_de_rotas import MATRIZ  # noqa: E402
 from complemento.test_pareamento_de_mentira import pedir_como_o_exemplo  # noqa: E402
-from complemento.test_harness import setUpModule, tearDownModule  # noqa: E402,F401
+from test_harness import tearDownModule  # noqa: E402,F401
 
 
 class RepeticaoDeCadaRotaQueMuda(unittest.TestCase):

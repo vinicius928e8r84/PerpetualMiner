@@ -1,7 +1,7 @@
 """O harness da Conexão com o Anki vista de fora: a Conexão real numa porta livre (`ConexaoNoTeste`), o contrato que os exemplos leem e o que
 o servidor respondeu (apoio de `test_servidor.py`, `test_servidor_estados.py`, `test_servidor_repeticao.py` e dos testes que sobem a Conexão).
 
-Não é teste: fica fora do `.ankiaddon` pelo nome. `setUpModule` e `tearDownModule` ficam aqui e cada arquivo de teste de rotas os importa: ao fim do arquivo,
+Não é teste: fica fora do `.ankiaddon` pelo nome. `tearDownModule` fica aqui e cada arquivo de teste de rotas o importa: ao fim do arquivo,
 exige um exemplo do contrato para cada resposta registrada.
 """
 
@@ -46,11 +46,6 @@ def registrar_a_resposta(metodo, caminho, status, corpo):
     if recusa_do_porteiro(status, erro, caminho):
         return
     RESPONDIDOS.add((metodo, caminho.split("?", 1)[0], status, erro))
-
-
-def setUpModule():
-    """Cada arquivo de teste de rotas confere só o que os testes dele responderam (os outros arquivos pedem a mesma Conexão de teste)."""
-    RESPONDIDOS.clear()
 
 
 def tearDownModule():
