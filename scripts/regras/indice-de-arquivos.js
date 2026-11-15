@@ -50,7 +50,13 @@ function linhasDaTabela(fonte) {
 function verificar(arquivo, fonte, raiz) {
   if (ehDoIndice(arquivo)) {
     const achados = [];
+    const vistas = new Map();
     for (const { linha, primeiraColuna } of linhasDaTabela(fonte)) {
+      const chave = primeiraColuna.trim();
+      if (!/^[\s:-]*$/.test(chave)) {
+        if (vistas.has(chave)) achados.push({ linha, detalhe: `a linha repete a primeira coluna da linha ${vistas.get(chave)} (duplicata, talvez de um merge=union): deixe uma só` });
+        else vistas.set(chave, linha);
+      }
       for (const item of itensDe(primeiraColuna).filter(i => /\/|\.[a-z0-9]+$/i.test(i))) {
         if (!fs.existsSync(path.join(raiz, item))) {
           achados.push({ linha, detalhe: `a linha cita \`${item}\`, que não existe` });

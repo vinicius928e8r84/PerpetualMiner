@@ -2,7 +2,7 @@
 
 O papel de cada arquivo da raiz, de `lib/` e de `veio/`, com os testes de Node e os arquivos que andam com eles. Lido sob demanda, não em toda sessão.
 
-A regra `indice-de-arquivos` (`scripts/regras/indice-de-arquivos.js`) exige uma linha, aqui ou em [testes-e-ferramentas.md](testes-e-ferramentas.md), para cada arquivo novo da raiz, de `lib/`, de `veio/` e do topo de `scripts/`, e acusa a linha que cita um arquivo que não existe mais.
+A regra `indice-de-arquivos` (`scripts/regras/indice-de-arquivos.js`) exige uma linha, aqui ou em [testes-e-ferramentas.md](testes-e-ferramentas.md), para cada arquivo novo da raiz, de `lib/`, de `veio/` e do topo de `scripts/`, e acusa a linha que cita um arquivo que não existe mais. Estas duas tabelas usam `merge=union` no `.gitattributes` (duas inserções no mesmo ponto não conflitam); por isso a mesma regra acusa duas linhas com a mesma primeira coluna no mesmo arquivo, a duplicata que o `union` deixaria passar.
 
 | File | Role |
 |------|------|
@@ -46,7 +46,7 @@ A regra `indice-de-arquivos` (`scripts/regras/indice-de-arquivos.js`) exige uma 
 | `painel-conexao-versao.js`, `painel-conexao-versao-estado.js` | Painel-top notices: the Conexão version (#177; `AvisoDaVersao`; map `conexao-versao`) and the pairing (#192, BRG-52; map `pareamento`) |
 | `bookreader.html/js/css` | Minerar de uma foto (ex-BookReader): book photos → Gemini Vision reads the marked passages → the person picks which phrases to mine. See “Minerar de uma foto” in the `minerar-foto` skill |
 | `veio/` | Shared Veio identity: `tokens.css` (color/type/radius/motion tokens, the mark's cursor), `tema.js` (the chosen theme, applied before the first paint on every page), `componentes.css` + `componentes.js` (the base components, defined once), `fontes/` (Manrope and JetBrains Mono `.woff2`), `icones/` (toolbar PNGs, SVG marks). See `veio/README.md` |
-| `lib/voz/catalogo.js`, `lib/voz/catalogo-nivel.js` | The runtime Voice catalog as data (the second: BRG-43 to 52, ONB-20 to 25); copy and voice rules: `docs/design/voz/README.md`, its source. `docs/design/voz/catalogo.html` is generated from that README (`node scripts/gerar-catalogo-da-voz.js`; it also rewrites `catalogo-textos.json`) and `node test_voz.js` fails when a copy drifts |
+| `lib/voz/catalogo.js`, `lib/voz/catalogo-nivel.js` | The runtime Voice catalog as data (the second: BRG-43 to 52, ONB-20 to 25); copy and voice rules: `docs/design/voz/README.md` (the index) and the area files it lists (`catalogo-*.md`), its source. `docs/design/voz/catalogo.html` is generated from them (`node scripts/gerar-catalogo-da-voz.js`; it also rewrites `catalogo-textos.json`) and `node test_voz.js` fails when a copy drifts |
 | `lib/voz/texto.js` | `textoDaVoz(id, valores)` — a state by ID, templates filled |
 | `lib/idioma.js` | `detectarIdioma(texto)` — the one language detector (Cyrillic → Russo, else Inglês) |
 | `lib/contexto.js` | `PerpetualMiner.Contexto` — the Contexto as the screen says it: the Fonte's name (PAI-29, `fonteDaFrase`, `nomeDaFonte`), the phrase's day (PAI-11, `rotuloDoDia`) and how long ago something happened (`haQuanto`: agora · há 5 min · há 2 h · ontem). Loaded by the panel and the popup, so a phrase never has two names |
