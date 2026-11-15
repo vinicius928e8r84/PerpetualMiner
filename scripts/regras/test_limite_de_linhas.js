@@ -158,11 +158,11 @@ assert.match(r.saida, /limite-de-linhas b\.js tem 60 na linha de base do ramo, m
 r = contraAMain(naMain, { 'grande.js': GRANDE(1090), 'scripts/regras/linha-de-base.json': LISTA({ 'grande.js': 90 }) });
 assert.strictEqual(r.status, 0, r.saida);
 // A marca de gerado não tira da lista o arquivo que a main já tem nela: o excesso real continua contando.
-r = contraAMain(naMain, { 'grande.js': GRANDE(1100, '// DO NOT EDIT\n'), 'scripts/regras/linha-de-base.json': LISTA({}) });
+r = contraAMain(naMain, { 'grande.js': GRANDE(1100, "const aviso = 'DO NOT EDIT';\n"), 'scripts/regras/linha-de-base.json': LISTA({}) });
 assert.strictEqual(r.status, 1, `a marca de gerado num arquivo da lista não o isenta: ${r.saida}`);
 assert.match(r.saida, /grande\.js: 1100 linhas; o teto é 1000 \(100 acima\)/);
 // Num arquivo que a main não tem na lista, a marca continua isentando.
-r = contraAMain(naMain, { 'gerado.js': GRANDE(1100, '// DO NOT EDIT\n') });
+r = contraAMain(naMain, { 'gerado.js': GRANDE(1100, "const aviso = 'DO NOT EDIT';\n") });
 assert.strictEqual(r.status, 0, r.saida);
 total += 7;
 
