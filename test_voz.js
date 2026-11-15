@@ -1,6 +1,6 @@
 'use strict';
 
-// O catálogo da Voz tem uma fonte do texto: a spec, `docs/design/voz/README.md`. As
+// O catálogo da Voz tem uma fonte do texto: a spec, `docs/design/voz/README.md` (o índice) e os `catalogo-*.md` que ele lista. As
 // outras cópias seguem dela, e este teste falha quando uma se afasta:
 //   - `docs/design/voz/catalogo.html` é gerado (`scripts/gerar-catalogo-da-voz.js`);
 //   - `lib/voz/catalogo.js` (o que roda) tem os mesmos IDs da spec, cada texto está
@@ -12,7 +12,8 @@
 const assert = require('assert');
 const fs = require('fs');
 
-const { CAMINHO_DO_HTML, linhasDaSpec, htmlDoCatalogo } = require('./scripts/voz-da-spec.js');
+const path = require('path');
+const { CAMINHO_DA_SPEC, CAMINHOS_DA_SPEC, CAMINHO_DO_HTML, linhasDaSpec, htmlDoCatalogo } = require('./scripts/voz-da-spec.js');
 const { CAMINHO_DO_RETRATO, problemasDaVoz, retratoDoCatalogo } = require('./scripts/conferir-voz.js');
 
 globalThis.PerpetualMiner = {};
@@ -34,6 +35,20 @@ const SPEC_NAO_ESCREVE = new Set([
   'ONB-11.corpo',
   'ONB-11.detalhes',
 ]);
+
+// A spec é o README (o índice) e os arquivos do catálogo, um por área (cada PR mexe no da sua área e não colide com os outros).
+// Um arquivo `catalogo-*.md` com linhas de ID que a lista de `voz-da-spec.js` não lê seria um catálogo que ninguém confere;
+// e o README não guarda linha de ID: é o índice, e aponta cada arquivo.
+const pastaDaVoz = path.dirname(CAMINHO_DA_SPEC);
+const linhasDeId = texto => texto.split('\n').filter(linha => /^\| [A-Z]{3}-\d{2} \|/.test(linha));
+const readme = fs.readFileSync(CAMINHO_DA_SPEC, 'utf8');
+assert.deepStrictEqual(linhasDeId(readme), [], 'o README da Voz é só o índice: a linha de ID mora no arquivo da área (`catalogo-*.md`)');
+for (const arquivo of fs.readdirSync(pastaDaVoz).filter(nome => /^catalogo-.*\.md$/.test(nome))) {
+  assert(CAMINHOS_DA_SPEC.includes(path.join(pastaDaVoz, arquivo)), `${arquivo} não está em CAMINHOS_DA_SPEC (scripts/voz-da-spec.js): a spec não o lê`);
+}
+for (const caminho of CAMINHOS_DA_SPEC.filter(caminho => caminho !== CAMINHO_DA_SPEC)) {
+  assert(readme.includes(`(${path.basename(caminho)})`), `o README da Voz não aponta ${path.basename(caminho)}`);
+}
 
 const conferir = (catalogo, spec = linhas) => problemasDaVoz({ catalogo, linhas: spec, retrato, naoEscritos: SPEC_NAO_ESCREVE });
 

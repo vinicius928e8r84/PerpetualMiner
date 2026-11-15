@@ -4,12 +4,13 @@ const fs = require('fs');
 const path = require('path');
 
 const { test, expect } = require('../fixtures');
+const { NOMES_DA_SPEC } = require('../../scripts/voz-da-spec.js');
 
 const FRASE_RUSSA = 'Я улыбаюсь каждое утро без причины.';
 
-/** Os IDs do catálogo como a spec da Voz os lista, lidos da própria spec (o README e a continuação dele, `catalogo-nivel.md`). */
+/** Os IDs do catálogo como a spec da Voz os lista, lidos da própria spec (o índice e os arquivos do catálogo, na lista de `scripts/voz-da-spec.js`). */
 function idsDaSpecDaVoz() {
-  const spec = ['README.md', 'catalogo-nivel.md'].map(nome => fs.readFileSync(
+  const spec = NOMES_DA_SPEC.map(nome => fs.readFileSync(
     path.join(__dirname, '..', '..', 'docs', 'design', 'voz', nome), 'utf8')).join('\n');
   const catalogo = spec.slice(spec.indexOf('## 3. Catálogo de estados-chave'));
   return [...catalogo.matchAll(/^\| ([A-Z]{3}-\d{2}) \|/gm)].map(m => m[1]);
