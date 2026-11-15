@@ -101,7 +101,7 @@ Por isso (decisão do dono, opção B):
    (`origin_not_allowed`). Por isso rota que gasta a chave ou lê dado da pessoa (a chave, os custos, o
    vocabulário, os Envios) é **POST**, nunca GET.
 3. **O `Origin` não é autenticação, e o pareamento (#192) é.** Uma extensão com `webRequest` e `extraHeaders` pode pôr esse cabeçalho, e um programa local também. Por isso o `Origin` continua exigido
-   (barra as páginas), mas **toda rota que não é a saúde nem o pareamento exige a assinatura de um navegador pareado** (`servidor._pedido_aceito`, o porteiro, antes de escolher a rota; sem ela, `401`), e toda
+   (barra as páginas), mas **toda rota que não é a saúde, o pareamento nem `POST /anki/responde` (a exceção do fim desta seção) exige a assinatura de um navegador pareado** (`servidor._pedido_aceito`, o porteiro, antes de escolher a rota; sem ela, `401`), e toda
    resposta volta com a prova de quem tem o segredo: uma Conexão impostora na porta não a dá e não recebe nenhum pedido privado. O segredo nasce na Conexão e chega à extensão uma vez, depois que a pessoa
    digita no Painel o código que só o Anki dela mostrou. O desenho, as rotas e os cabeçalhos: [`o-pareamento.md`](o-pareamento.md). Nenhuma resposta HTTP devolve a chave inteira da OpenAI; a migração exige prova
    exata do valor já guardado; uma chave sem conta (inclusive `conta: ''`) não é vinculada/exportada só por pedir sync. A sincronização recebe UID e bearer transitórios e fala com o Firestore, cujas regras devem
@@ -110,6 +110,8 @@ Por isso (decisão do dono, opção B):
 4. A primeira rota de leitura sensível (os Baralhos, os números e o vocabulário) seguiu a regra do 2: são POST com a origem da extensão, e agora com a assinatura do 3.
 
 Rota nova que deva responder sem origem entra em `ROTAS_ABERTAS` (`servidor.py`) só com essa decisão.
+
+A única rota privada que dispensa a assinatura além do pareamento é `POST /anki/responde` (`ROTAS_SEM_ASSINATURA`). **Decisão do dono (2026-11-15, opção A):** ela fica sem assinatura como está, porque exige a `Origin` da extensão (`403` sem ela), só devolve `{ ok: true }` e não grava nada; o limite acima já admite que um programa local forja a `Origin`, então assiná-la não protegeria contra ele. Rota nova sem assinatura continua pedindo decisão do dono. O abridor que conserta sozinho (`conserto_do_anki.py`) pergunta por ela se a thread principal do Anki vive, e um script não é um navegador pareado; ela exige a origem da extensão, não devolve nem muda dado nenhum e responde só `{ ok: true }` (`503` com o Anki sem responder). `complemento/test_conserto_conexao_real.py` roda o script do Mac com o `curl` de verdade contra o servidor real.
 
 ## As rotas de leitura da coleção
 

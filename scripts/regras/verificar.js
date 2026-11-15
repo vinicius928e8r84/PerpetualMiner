@@ -24,6 +24,7 @@ const REGRAS = [
   require('./aprovacao-visual'),
   require('./relogio-fora-da-fixture'),
   require('./versoes-publicadas'),
+  require('./link-de-doc'),
   require('./limite-de-linhas'),
 ];
 

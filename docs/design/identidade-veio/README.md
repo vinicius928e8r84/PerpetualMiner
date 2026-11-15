@@ -20,7 +20,7 @@ Quatro direções foram avaliadas: A Veio (grafite + ouro), B Caderno (papel + t
 - **Símbolo:** um cristal de quartzo, cortado por um *veio* horizontal: a linha de legenda de onde a frase é minerada. Três faces em tons de ouro sobre um azulejo grafite `#1B1A17`, com raio de 28 no grid de 128.
 - **Na toolbar, o azulejo é sempre escuro,** nas duas toolbars do Chrome. É isso que faz o ícone ler em 16 px.
 - **Dentro das páginas, a marca acompanha o tema.** No claro, o mesmo cristal fica num azulejo claro (`surface-2` do claro, `#F0EBE1`), com as faces num ouro mais fundo (`#F0AE2E`, `#A86A0C`, `#F7C85C`) para ler sobre o creme; o veio é cortado na cor do azulejo. O azulejo grafite sobre a página clara pesava demais.
-- **Nome:** `Perpetual` em peso 500 + `Miner` em 800 (Manrope), seguido de um cursor ouro que pisca (ver [Movimento](#movimento)).
+- **Nome:** `Perpetual` em peso 500 + `Miner` em 800 (Manrope), seguido de um cursor ouro que pisca (ver [Movimento](#movimento-da-c)).
 - **Some o legado:** raio ciano, bolha gradiente, balão verde, livro roxo e “P” genérico. O `icon.svg` da raiz é substituído por `assets/icone.svg`.
 - **Badge da toolbar** (contador da mineração automática): fundo `#F5B83D`, texto `#1A1204` (10,4:1). Vai em `setBadgeBackgroundColor` / `setBadgeTextColor`.
 
