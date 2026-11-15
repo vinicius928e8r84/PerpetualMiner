@@ -140,7 +140,7 @@ _Nome no código_: `remessa`, `pm_envio`
 _Avoid_: Lote, envio (para o conjunto)
 
 **Etapa**:
-O ponto em que um Envio está, nesta ordem: Na fila, Criando cartões, Preparando imagens, Gerando áudio, Escolhendo imagens, Esperando o Anki, Enviando ao Anki. Termina Concluído, Concluído em parte ou Não concluído.
+O ponto em que um Envio está, nesta ordem: Na fila, Criando cartões, Preparando imagens, Gerando áudio, Escolhendo imagens, Esperando o Anki, Enviando ao Anki. Termina Concluído, Concluído em parte ou Não concluído; Não começou é o Envio em que nenhuma Etapa andou.
 _Nome no código_: `queued`, `generate_cards`, `extract_prompts`, `generate_audio`, `generate_images`, `wait_anki`, `send_to_anki`; o fim: `completed`, `partial`, `failed`
 _Avoid_: Stage, passo (é da Boas-vindas), fase
 
@@ -175,9 +175,9 @@ _Avoid_: Detalhe (é a parte do Contexto), diagnóstico (é o arquivo que se bai
 ## Cartão e Anki
 
 **Baralho**:
-O baralho do Anki que recebe os cartões de um idioma. Cada parte do nome dele (`Inglês::Mineradas`) é um sub-baralho.
+O baralho do Anki que recebe os cartões de um idioma. Cada parte do nome depois de `::` é um sub-baralho: em `Inglês::Mineradas`, `Inglês` é o Baralho e `Mineradas` é o sub-baralho.
 _Nome no código_: `deck`, `deckName`
-_Avoid_: Deck
+_Avoid_: Deck, nível (é o do Cartão)
 
 **Cartão**:
 O item de estudo do Anki gerado a partir de uma frase. Cada Palavra da Frase gera um Cartão.
@@ -199,7 +199,7 @@ _Nome no código_: `nivel` (`iniciante`, `intermediario`, `avancado`)
 _Avoid_: Estilo (é o que o Nível define)
 
 **Estilo do cartão**:
-O que o Cartão de um idioma traz em cada Nível: a língua da explicação e as partes do verso. Na tela, “Estilo do cartão” é hoje o rótulo do campo em que se escolhe o Nível, e “estilo pronto” é o Tipo de nota que a Conexão com o Anki cria.
+O que o Cartão de um idioma traz em cada Nível: a língua da explicação e as partes do verso. O campo dos Ajustes de envio em que se escolhe o Nível passa a se chamar “Nível”; a tela de hoje ainda o rotula “Estilo do cartão”, e “estilo pronto” é o Tipo de nota que a Conexão com o Anki cria.
 _Nome no código_: `engine/estilos.json` (idioma × nível)
 _Avoid_: Nível (é a escolha)
 
@@ -218,7 +218,7 @@ _Nome no código_: `vocabulary`, `/anki/vocabulary`, `lib/vocabulario-da-minerac
 _Avoid_: Vocab, dicionário
 
 **Termo**:
-No Vocabulário, a expressão de duas ou mais palavras que é a Palavra de algum Cartão (“take it for granted”); “palavra”, ali, é cada palavra solta da frente dos Cartões. “Termos-alvo”, em Baralhos e termos, conta todas as Palavras diferentes que os Cartões do Baralho ensinam, de uma palavra só ou não.
+No Vocabulário, a expressão de duas ou mais palavras que é a Palavra de algum Cartão (“take it for granted”); “palavra”, ali, é cada palavra solta da frente dos Cartões. “Termos-alvo”, em Baralhos e termos, conta todas as Palavras diferentes que os Cartões do Baralho ensinam, de uma palavra só ou não; por isso “Termos-alvo” e o nome da aba Baralhos e termos passam a falar de Palavras, e a tela de hoje ainda diz “termos”.
 _Nome no código_: `term`, `targetTerms`, `uniqueTerms`
 _Avoid_: Expressão, termo-alvo
 
@@ -277,13 +277,14 @@ Fonte → Minerar → Frase (no Histórico) → Enviar ao Anki → Remessa → E
 - **remessa**: era a palavra da definição de Envio e, no código, o conjunto dos Envios de um clique. Fica só para o conjunto.
 - **extensão**: o PerpetualMiner no Chrome. O menu Extensões do Anki lista o Complemento.
 - **Conexão com o Anki**: o conceito é o complemento mais o Abridor; a Área e a seção de mesmo nome são só onde se cuida dele.
-- **cartão**: o item do Anki. “card” fica só no código e nos docs (`card`, `CardJob`); o bloco de tela é “cartão”, embora uma mensagem ainda diga “card da IA dos cartões”.
+- **cartão**: só o item do Anki. O bloco de tela (como o da IA dos cartões) é “card” só no código e nos docs, e a tela não o nomeia; hoje uma mensagem ainda diz “card da IA dos cartões” (`BRG-07`).
 - **palavra**: a Palavra é o que o Cartão ensina e pode ter várias palavras (o botão que acrescenta outra se chama “Adicionar outra palavra”; a tela de hoje ainda diz “Adicionar outro grupo”); no Vocabulário, “palavra” é cada palavra solta.
-- **termo**: no Vocabulário, só a expressão; em “Termos-alvo” e no nome da aba Baralhos e termos, toda Palavra.
-- **nível e estilo**: o Nível é a escolha (Iniciante, Intermediário, Avançado) e o Estilo do cartão é o que ela define; a tela usa os dois nomes para a mesma escolha. Cada parte do nome de um Baralho (`Inglês::Mineradas`) é um **sub-baralho**, nunca “nível”.
+- **termo**: só a expressão de duas ou mais palavras. “Termos-alvo” e o nome da aba Baralhos e termos ainda o usam para toda Palavra e passam a falar de Palavras.
+- **nível e estilo**: o Nível é a escolha (Iniciante, Intermediário, Avançado) e o Estilo do cartão é o que ela define; o campo em que se escolhe passa a se chamar “Nível”, e a tela de hoje ainda usa os dois nomes para a mesma escolha. Só a parte do nome de um Baralho depois de `::` (`Mineradas`, em `Inglês::Mineradas`) é um **sub-baralho**, nunca “nível”; a mensagem “Tem um nível vazio” (`BRG-07`) ainda usa a palavra.
 - **modelo**: Modelo dos cartões é o modelo de IA que escreve o texto; o molde do Anki é o Tipo de nota.
 - **voz**: a Voz é o guia e o catálogo; a do áudio é a voz do cartão.
 - **perfil**: sempre o do Anki. Quem entra com Google tem Conta.
+- **grupo**: “Ranking do grupo” (Boas-vindas) é o das pessoas do quiz, nada a ver com a Palavra, que não se chama “grupo”.
 - **passo e etapa**: passo é da Boas-vindas; etapa é do Envio.
 - **Detalhe e Detalhes**: Detalhe é a terceira parte do Contexto; Detalhes é o recolhido da causa técnica de um erro.
 - **histórico e Frases**: o conjunto e a Área do Painel que o mostra.
