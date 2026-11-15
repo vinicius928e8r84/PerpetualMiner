@@ -140,7 +140,7 @@ recusa({ corpo: altaCom('```', FRASE, `Head: ${HEAD}`, '```') }, /não tem a lin
     pedidos.push(`${pedido.headers.authorization} ${url.pathname}${url.search}`);
     const pagina = lista => lista.slice((url.searchParams.get('page') - 1) * 100, url.searchParams.get('page') * 100);
     const rotas = {
-      '/repos/dono/repo/pulls/7': () => github.pr,
+      '/repos/dono/repo/pulls/7': () => ({ head: { sha: HEAD }, ...github.pr }),
       '/repos/dono/repo/issues/7/comments': () => pagina(github.comentarios),
       '/repos/dono/repo/pulls/7/reviews': () => pagina(github.revisoes),
     };
