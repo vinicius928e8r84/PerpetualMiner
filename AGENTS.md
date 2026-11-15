@@ -4,7 +4,7 @@
 
 A Chrome extension (Manifest V3, plain JavaScript, no build) plus the Conexão com o Anki, an Anki add-on (`complemento/`) that runs the card pipeline of `engine/` inside the Anki.
 
-- **Files:** the role of every root file and every `lib/` module is in the table of `CLAUDE.md` § Architecture › Files; a new file gets its row there, not here.
+- **Files:** the role of every root file and every `lib/` module is in the tables of `docs/arquivos/` (read on demand); a new file gets its row there, not here.
 - **Design specs and prototypes:** `docs/design/README.md` (index); domain glossary: `glossary.md`.
 - **Veio identity:** `veio/README.md`. **Envio state machine:** `complemento/envio.py`'s docstring. **Engine:** `engine/CLAUDE.md`. **Device and store tooling:** `scripts/`, `docs/instalar-extensao.md`, `docs/publicar-chrome-web-store.md`.
 - **Tests:** `e2e/` (see `CLAUDE.md` § Testing), root `test_*.js`, `complemento/test_*.py`, `engine/test_*.py`.
@@ -49,7 +49,7 @@ The Conexão keeps its data in the add-on's `user_files` (`complemento/pasta_de_
 | 12 Every test runs in CI | `testes-no-portao` |
 | 13 The contract has every request and answer | `contrato-fechado` (a `fetch` straight to the Conexão); `test_contrato_fechado.js` and the end of `complemento/test_servidor.py` (an example for each request the extension builds and each status the server answers) |
 | 10 Visual references | review; `aprovacao-visual` (a reference PNG outside a `test.fixme` needs its entry in `e2e/aprovados-visuais.json`) |
-| 11 New files | review; `indice-de-arquivos` (a root, `lib/`, `veio/` or `scripts/` file needs its row in `CLAUDE.md` › Files); `test_empacotar.js` |
+| 11 New files | review; `indice-de-arquivos` (a root, `lib/`, `veio/` or `scripts/` file needs its row in `docs/arquivos/`); `test_empacotar.js` |
 
 A PR that changes a user-facing file (`popup.*`, `painel*`, `manifest.json`, `complemento/servidor.py`, …) also needs `.agents/skills/verify-perpetualminer/features/` updated or "feature map unchanged" in its body: the `Mapa de features` step of `.github/workflows/regras.yml` (PRs only).
 

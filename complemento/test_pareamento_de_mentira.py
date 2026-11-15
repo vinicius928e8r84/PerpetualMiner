@@ -7,6 +7,7 @@ Os testes pedem à Conexão como a extensão pede: com a assinatura de um navega
 import base64
 import json
 import os
+import unittest
 
 from complemento import pareamento
 
@@ -96,6 +97,19 @@ def semear_em(pasta, clientes=((CLIENTE, SEGREDO),)):
     pasta = getattr(pasta, "name", pasta)
     os.makedirs(os.path.join(pasta, "user_files"), exist_ok=True)
     semear(os.path.join(pasta, "user_files", "pareamento.json"), clientes)
+
+
+def travar_o_item_de_login_do_computador():
+    """Para o `setUpModule` de todo teste que sobe a Conexão por `inicio.iniciar` ou `no_anki.ao_carregar` sem um `item_de_login` seu.
+
+    Sem item injetado o início monta o deste computador e o confere (#401): na máquina de quem roda a suíte (Mac ou Windows) isso
+    reescreveria o LaunchAgent ou o atalho de verdade. Com a trava, o computador não tem item (como o Linux do CI). Quem prova o
+    item injeta o seu. Assim como o abridor (`abridor=None`), nada aqui toca o registro real da máquina."""
+    from unittest.mock import patch
+
+    remendo = patch("complemento.inicio.itens_de_login.deste_computador", return_value=None)
+    remendo.start()
+    unittest.addModuleCleanup(remendo.stop)
 
 
 def iniciar_pareado(pasta, *argumentos, **palavras):

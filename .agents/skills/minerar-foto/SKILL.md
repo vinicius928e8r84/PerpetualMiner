@@ -5,7 +5,7 @@ description: "Use when changing or reviewing Minerar de uma foto (`bookreader.ht
 
 # Minerar de uma foto
 
-Notes moved unchanged from `CLAUDE.md` § Architecture. `CLAUDE.md` keeps the file table and the rules that cross surfaces.
+Notes moved unchanged from `CLAUDE.md` § Architecture. `CLAUDE.md` has the cross-surface rules; files: `docs/arquivos/`.
 
 ### Minerar de uma foto (`bookreader.*`, docs/design/foto/, variant C)
 

@@ -17,12 +17,16 @@ from unittest.mock import patch
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import baralhos, configuracao, no_anki  # noqa: E402
-from complemento.test_pareamento_de_mentira import ao_carregar_pareado, pedir_como_a_extensao  # noqa: E402
+from complemento.test_pareamento_de_mentira import ao_carregar_pareado, pedir_como_a_extensao, travar_o_item_de_login_do_computador  # noqa: E402
 from complemento.test_anki_de_mentira import AnkiComColecaoDeMentira, AnkiDeMentira  # noqa: E402
 from complemento.test_colecao_em_memoria import DESCRICAO, ContratoDoAdaptadorDaColecao  # noqa: E402
 from complemento.test_contrato_da_criacao import ContratoDaCriacao  # noqa: E402
 from complemento.test_contrato_da_previa import ContratoDaPrevia  # noqa: E402
 from complemento.test_contrato_do_perfil_fixo import ContratoDoPerfilFixo  # noqa: E402
+
+
+def setUpModule():
+    travar_o_item_de_login_do_computador()
 
 
 class AdaptadorDoAnki(ContratoDoAdaptadorDaColecao, ContratoDoPerfilFixo, ContratoDaCriacao, ContratoDaPrevia, unittest.TestCase):
