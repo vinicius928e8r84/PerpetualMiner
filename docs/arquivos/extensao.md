@@ -2,7 +2,7 @@
 
 O papel de cada arquivo da raiz, de `lib/` e de `veio/`, com os testes de Node e os arquivos que andam com eles. Lido sob demanda, não em toda sessão.
 
-A regra `indice-de-arquivos` (`scripts/regras/indice-de-arquivos.js`) exige uma linha, aqui ou em [testes-e-ferramentas.md](testes-e-ferramentas.md), para cada arquivo novo da raiz, de `lib/`, de `veio/` e do topo de `scripts/`, e acusa a linha que cita um arquivo que não existe mais.
+A regra `indice-de-arquivos` (`scripts/regras/indice-de-arquivos.js`) exige uma linha, aqui ou em [testes-e-ferramentas.md](testes-e-ferramentas.md), para cada arquivo novo da raiz, de `lib/`, de `veio/` e do topo de `scripts/`, e acusa a linha que cita um arquivo que não existe mais. Estas duas tabelas usam `merge=union` no `.gitattributes` (duas inserções no mesmo ponto não conflitam); por isso a mesma regra acusa duas linhas com a mesma primeira coluna no mesmo arquivo, a duplicata que o `union` deixaria passar.
 
 | File | Role |
 |------|------|
