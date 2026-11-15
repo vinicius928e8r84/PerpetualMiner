@@ -5,6 +5,7 @@
 // Chrome a guarda depois de Permitir), e o teste do pedido confere o que a tela mostra enquanto o aviso espera.
 
 const { test, expect } = require('../fixtures');
+const { SEM_ABRIDOR_IMPOSSIVEL } = require('../fakes/abridor');
 const { estadoFinal, estadoFinalEm } = require('../estado-final');
 const { fotografar } = require('../evidencias-mineracao');
 const contrato = require('../../complemento/contrato/exemplos.json');
@@ -247,6 +248,7 @@ test.describe('com a permissão que o Chrome guardou depois de Permitir', () => 
   });
 
   test('sem o abridor registrado (uma Conexão que ainda não o escrevia): o passo diz que ele não respondeu, com o que o Chrome disse no Detalhes', async ({ page, extensao, fakes }) => {
+    test.skip(SEM_ABRIDOR_IMPOSSIVEL, 'no Windows o Chromium usa o abridor real');
     fakes.abridor.desregistrar();
     await conectarPelaPrimeiraVez(page, extensao, fakes);
 

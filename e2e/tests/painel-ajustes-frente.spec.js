@@ -209,7 +209,11 @@ test.describe('quando a Conexão não troca a frente', () => {
   test('com o Anki sem perfil aberto a tela diz que o Anki não está pronto e nada muda na Conexão', async ({ page, extensao, fakes }) => {
     await abrirAjustes(page, extensao, { gravado: { [CHAVE]: AJUSTES } });
     // A lista dos Baralhos é lida duas vezes ao abrir (ao entrar na área e quando a Conexão fica ligada); o Anki só fica sem coleção depois das duas.
+    // A segunda leitura puxa as dos custos e do vocabulário (`/anki/stats/decks`, `/anki/vocabulary` dos dois idiomas): sem coleção o fake não
+    // tem exemplo para elas e lança, e o teste cai (2 em 25 repetições, no merge da PR 441; o pedido chega depois do segundo `/anki/decks`).
     await expect.poll(() => fakes.anki.requisicoes.filter(r => r.caminho === '/anki/decks').length).toBe(2);
+    await expect.poll(() => fakes.anki.requisicoes.filter(r => r.caminho === '/anki/stats/decks').length).toBe(1);
+    await expect.poll(() => fakes.anki.requisicoes.filter(r => r.caminho === '/anki/vocabulary').length).toBe(2);
     fakes.anki.abrirColecao(null);
 
     await escolher(page, 'Lacuna');

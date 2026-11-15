@@ -120,7 +120,8 @@ test('“Não tenho” no Windows: o passo não tem o desenho de arrastar', asyn
 });
 
 test('“Não tenho” fora do Mac e do Windows: o passo não tem o desenho de arrastar', async ({ page, extensao }) => {
-  // O Chromium do teste é o do Linux: nem Mac nem Windows.
+  // O Chromium do teste é o do Linux: nem Mac nem Windows (num Mac ou Windows de quem roda, o `comOSistema` o devolve a Linux).
+  await comOSistema(page, SISTEMAS.LINUX);
   await page.goto(extensao.url('painel.html#anki/custos'));
   await expect(card(page)).toBeVisible();
 

@@ -22,6 +22,7 @@
 // A permissão `nativeMessaging` é do Chrome, não do fake: o fixture a dá (`permissaoDoAbridor`) como o Chrome
 // a guarda quando a pessoa aperta Permitir no aviso dele, que o Playwright não alcança.
 
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -33,6 +34,12 @@ const PROGRAMA_DO_HOST = path.join(__dirname, 'abridor-host.js');
 // A situação do fake e o contexto dos exemplos do contrato que ela escolhe.
 const CONTEXTO_DA_SITUACAO = { achei: 'no_lugar', nao_achei: 'sumiu', achei_sem_abrir: 'nao_abre' };
 const SEM_RESPOSTA = 'sem_resposta';
+const NO_WINDOWS = process.platform === 'win32';
+// O Chromium do Windows não procura o host numa pasta do perfil: lê o caminho do manifesto no registro do usuário
+// (o Chromium do Playwright, sem a marca do Google, em HKCU\Software\Chromium; o Chrome do dono usa a chave
+// `Google\Chrome`, que o fake nunca toca). A chave é uma só por computador: no Windows um teste com o abridor
+// por vez (`--workers=1`), porque dois testes o registrariam no mesmo lugar.
+const CHAVE_DO_REGISTRO = `HKCU\\Software\\Chromium\\NativeMessagingHosts\\${HOST}`;
 
 /** Os exemplos do contrato que o abridor responde numa situação. */
 function exemplosDa(situacao) {
@@ -43,10 +50,15 @@ const exemplosDoConserto = situacao => contrato.conserto.exemplos.filter(e => e.
 
 function criarFakeAbridor() {
   const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-abridor-'));
-  const programa = path.join(pasta, 'abridor-de-mentira');
+  const programa = path.join(pasta, NO_WINDOWS ? 'abridor-de-mentira.cmd' : 'abridor-de-mentira');
   const aspas = texto => `'${texto.replace(/'/g, `'\\''`)}'`;
   // O Chrome roda o `path` do manifesto direto: um script que chama o Node deste processo com o programa do fake.
-  fs.writeFileSync(programa, `#!/bin/sh\nexec ${aspas(process.execPath)} ${aspas(PROGRAMA_DO_HOST)} ${aspas(pasta)} "$@"\n`, { mode: 0o755 });
+  // No Windows um `.cmd` (o `#!/bin/sh` não roda lá); o Chrome o chama com a origem como argumento, que o `%*` repassa.
+  if (NO_WINDOWS) {
+    fs.writeFileSync(programa, `@echo off\r\n"${process.execPath}" "${PROGRAMA_DO_HOST}" "${pasta}" %*\r\n`);
+  } else {
+    fs.writeFileSync(programa, `#!/bin/sh\nexec ${aspas(process.execPath)} ${aspas(PROGRAMA_DO_HOST)} ${aspas(pasta)} "$@"\n`, { mode: 0o755 });
+  }
   const manifestos = [];   // um por perfil que o registrou (o segundo perfil do teste também)
 
   let atual = { situacao: 'achei', conserto: 'anki_fechado', atrasoMs: 0 };
@@ -93,8 +105,13 @@ function criarFakeAbridor() {
         type: 'stdio',
         allowed_origins: [`${contrato.origemDaExtensao}/`],
       }));
+      if (NO_WINDOWS) execFileSync('reg', ['add', CHAVE_DO_REGISTRO, '/ve', '/t', 'REG_SZ', '/d', manifesto, '/f'], { stdio: 'ignore' });
     },
     desregistrar() {
+      // No Windows não há "sem abridor" que o fake alcance: tirando a chave dele, o Chromium cai no abridor de VERDADE
+      // que a Conexão do dono registrou em `HKCU\\Software\\Google\\Chrome\\NativeMessagingHosts` e o teste abriria o Anki
+      // dele (aconteceu: prova7-441). Quem simula "sem abridor" pula no Windows (`test.skip(SEM_ABRIDOR_IMPOSSIVEL, …)`).
+      if (NO_WINDOWS) throw new Error('desregistrar() não existe no Windows: o Chromium cairia no abridor real do usuário (veja e2e/fakes/abridor.js)');
       for (const manifesto of manifestos) fs.rmSync(manifesto, { force: true });
     },
     pedidos() {
@@ -103,9 +120,15 @@ function criarFakeAbridor() {
       return fs.readFileSync(arquivo, 'utf8').split('\n').filter(Boolean).map(linha => JSON.parse(linha));
     },
     limpar() {
+      if (NO_WINDOWS && manifestos.length) {
+        try { execFileSync('reg', ['delete', CHAVE_DO_REGISTRO, '/f'], { stdio: 'ignore' }); } catch { /* já não estava */ }
+      }
       fs.rmSync(pasta, { recursive: true, force: true });
     },
   };
 }
 
-module.exports = { criarFakeAbridor };
+/** Onde `desregistrar()` não existe (Windows): o teste que simula "sem abridor" pula ali. */
+const SEM_ABRIDOR_IMPOSSIVEL = NO_WINDOWS;
+
+module.exports = { criarFakeAbridor, SEM_ABRIDOR_IMPOSSIVEL };
