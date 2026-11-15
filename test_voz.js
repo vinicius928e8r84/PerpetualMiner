@@ -12,7 +12,8 @@
 const assert = require('assert');
 const fs = require('fs');
 
-const { CAMINHO_DO_HTML, linhasDaSpec, htmlDoCatalogo } = require('./scripts/voz-da-spec.js');
+const path = require('path');
+const { CAMINHO_DA_SPEC, CAMINHOS_DA_SPEC, CAMINHO_DO_HTML, linhasDaSpec, htmlDoCatalogo } = require('./scripts/voz-da-spec.js');
 const { CAMINHO_DO_RETRATO, problemasDaVoz, retratoDoCatalogo } = require('./scripts/conferir-voz.js');
 
 globalThis.PerpetualMiner = {};
@@ -34,6 +35,17 @@ const SPEC_NAO_ESCREVE = new Set([
   'ONB-11.corpo',
   'ONB-11.detalhes',
 ]);
+
+const pastaDaVoz = path.dirname(CAMINHO_DA_SPEC);
+const linhasDeId = texto => texto.split('\n').filter(linha => /^\| [A-Z]{3}-\d{2} \|/.test(linha));
+const readme = fs.readFileSync(CAMINHO_DA_SPEC, 'utf8');
+assert.deepStrictEqual(linhasDeId(readme), [], 'o README da Voz é só o índice: a linha de ID mora no arquivo da área (`catalogo-*.md`)');
+for (const arquivo of fs.readdirSync(pastaDaVoz).filter(nome => /^catalogo-.*\.md$/.test(nome))) {
+  assert(CAMINHOS_DA_SPEC.includes(path.join(pastaDaVoz, arquivo)), `${arquivo} não está em CAMINHOS_DA_SPEC (scripts/voz-da-spec.js): a spec não o lê`);
+}
+for (const caminho of CAMINHOS_DA_SPEC.filter(caminho => caminho !== CAMINHO_DA_SPEC)) {
+  assert(readme.includes(`(${path.basename(caminho)})`), `o README da Voz não aponta ${path.basename(caminho)}`);
+}
 
 const conferir = (catalogo, spec = linhas) => problemasDaVoz({ catalogo, linhas: spec, retrato, naoEscritos: SPEC_NAO_ESCREVE });
 
