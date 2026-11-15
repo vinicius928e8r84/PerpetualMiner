@@ -1,30 +1,54 @@
 'use strict';
 
-// As fatias da suíte e2e (scripts/ci/fatias-e2e.json): todo spec de e2e/tests roda em exatamente uma fatia, as fatias são as que
-// as durações dão e o workflow Testes usa a lista. Um spec que ficasse fora (ou em duas) deixaria o CI verde sem rodá-lo
-// (ou rodaria duas vezes) sem que ninguém visse.
-
 const assert = require('assert');
 const fs = require('fs');
+const os = require('os');
+const { spawnSync } = require('child_process');
 const path = require('path');
-const { NUMERO_DE_FATIAS, duracoesDosLogs, filtros, ler, montarFatias, problemas, specsDoDisco } = require('./fatias-e2e.js');
+const { ESTIMATIVA_DO_SPEC_NOVO, NUMERO_DE_FATIAS, duracoesDosLogs, duracoesParaOsSpecs, fatiasDe, filtros, ler, montarFatias, problemas, specsDoDisco } = require('./fatias-e2e.js');
 
 const RAIZ = path.resolve(__dirname, '..', '..');
 const specs = specsDoDisco();
 const arquivo = ler();
 
-// O que está commitado.
 assert(specs.length > 100, 'achou os specs do disco');
-assert.deepStrictEqual(problemas(arquivo, specs), [], 'todo spec está em exatamente uma fatia e tem duração (node scripts/ci/fatias-e2e.js --gerar)');
-assert.strictEqual(arquivo.fatias.length, NUMERO_DE_FATIAS, 'o número de fatias');
-assert.deepStrictEqual(arquivo.fatias, montarFatias(arquivo.duracoes), 'as fatias são o que --gerar faz das durações (node scripts/ci/fatias-e2e.js --gerar)');
-assert(arquivo.fatias.every(lista => lista.length > 0), 'nenhuma fatia vazia');
+assert.deepStrictEqual(Object.keys(arquivo).sort(), ['descricao', 'duracoes'], 'o arquivo guarda só a descrição e as durações, não as fatias');
+assert.deepStrictEqual(Object.keys(arquivo.duracoes).filter(spec => !specs.includes(spec)), [], 'duração de spec que não existe mais em e2e/tests: tire a linha do arquivo');
+const durações = duracoesParaOsSpecs(arquivo.duracoes, specs);
+const fatias = fatiasDe(arquivo.duracoes, specs);
+assert.deepStrictEqual(problemas({ duracoes: durações, fatias }, specs), [], 'todo spec está em exatamente uma fatia e tem duração');
+assert.strictEqual(fatias.length, NUMERO_DE_FATIAS, 'o número de fatias');
+assert(fatias.every(lista => lista.length > 0), 'nenhuma fatia vazia');
+const outroSpec = 'zz-spec-novo.spec.js';
+const comNovo = fatiasDe(arquivo.duracoes, [...specs, outroSpec]);
+assert.deepStrictEqual(comNovo.flat().sort(), [...specs, outroSpec].sort(), 'um spec novo, sem duração no arquivo, entra em uma fatia');
+assert.strictEqual(duracoesParaOsSpecs(arquivo.duracoes, [...specs, outroSpec])[outroSpec], ESTIMATIVA_DO_SPEC_NOVO, 'o spec novo vale a estimativa');
+
+assert.strictEqual(ESTIMATIVA_DO_SPEC_NOVO, 10, 'a estimativa de um spec novo');
+
+const pastaDeTeste = fs.mkdtempSync(path.join(os.tmpdir(), 'fatias-e2e-'));
+try {
+  const todosOsSpecs = [...specs, 'zz-spec-novo.spec.js'].sort();
+  for (const spec of todosOsSpecs) {
+    fs.mkdirSync(path.dirname(path.join(pastaDeTeste, spec)), { recursive: true });
+    fs.writeFileSync(path.join(pastaDeTeste, spec), '');
+  }
+  const doCli = Array.from({ length: NUMERO_DE_FATIAS }, (_, i) => {
+    const saida = spawnSync(process.execPath, [path.join(__dirname, 'fatias-e2e.js'), String(i + 1)], { encoding: 'utf8', env: { ...process.env, FATIAS_E2E_PASTA: pastaDeTeste } });
+    assert.strictEqual(saida.status, 0, saida.stderr);
+    return saida.stdout.trim().split(' ');
+  });
+  assert.deepStrictEqual(doCli.flat().sort(), filtros(todosOsSpecs).sort(), 'as 8 fatias do CLI juntas são todo spec (o novo também), cada um uma vez');
+  assert.deepStrictEqual(doCli, fatiasDe(arquivo.duracoes, todosOsSpecs).map(filtros), 'o CLI <N> imprime as fatias que fatiasDe calcula');
+} finally {
+  fs.rmSync(pastaDeTeste, { recursive: true, force: true });
+}
 
 // Equilíbrio: a fatia mais lenta não passa de 10% acima da média, nem do maior spec quando ele já é maior que isso.
-const segundos = lista => lista.reduce((soma, spec) => soma + arquivo.duracoes[spec], 0);
+const segundos = lista => lista.reduce((soma, spec) => soma + durações[spec], 0);
 const total = segundos(specs);
-const maiorSpec = Math.max(...specs.map(spec => arquivo.duracoes[spec]));
-const maiorFatia = Math.max(...arquivo.fatias.map(segundos));
+const maiorSpec = Math.max(...specs.map(spec => durações[spec]));
+const maiorFatia = Math.max(...fatias.map(segundos));
 assert(maiorFatia <= Math.max(maiorSpec, (total / NUMERO_DE_FATIAS) * 1.1), `fatia mais lenta ${maiorFatia}s, média ${(total / NUMERO_DE_FATIAS).toFixed(0)}s, maior spec ${maiorSpec}s`);
 
 // O Playwright e este script enxergam os mesmos arquivos: o `testMatch` do Playwright é só `*.spec.js` (senão um
@@ -42,8 +66,8 @@ assert.deepStrictEqual(quePareceTeste, [], 'um arquivo de e2e/tests que parece t
 const workflow = fs.readFileSync(path.join(RAIZ, '.github', 'workflows', 'testes.yml'), 'utf8');
 const matriz = /^\s*fatia: \[([\d, ]+)\]\s*$/m.exec(workflow);
 assert(matriz, 'a matriz de fatias do workflow');
-assert.deepStrictEqual(matriz[1].split(',').map(n => Number(n.trim())), arquivo.fatias.map((_, i) => i + 1), 'a matriz do workflow tem uma entrada por fatia');
-assert(workflow.includes(`name: e2e (\${{ matrix.fatia }}/${arquivo.fatias.length})`), 'o nome do check diz quantas fatias são');
+assert.deepStrictEqual(matriz[1].split(',').map(n => Number(n.trim())), fatias.map((_, i) => i + 1), 'a matriz do workflow tem uma entrada por fatia');
+assert(workflow.includes(`name: e2e (\${{ matrix.fatia }}/${fatias.length})`), 'o nome do check diz quantas fatias são');
 assert(/fatias-e2e\.js \$\{\{ matrix\.fatia \}\}/.test(workflow), 'a fatia roda os specs da lista, não um --shard');
 assert(!/--shard/.test(workflow.split('\n').filter(l => !/^\s*#/.test(l)).join('\n')), 'nenhum --shard nos comandos do workflow');
 
@@ -59,7 +83,7 @@ assert.deepStrictEqual(problemas(exemplo, ['a.spec.js', 'b.spec.js']), ['c.spec.
 // A montagem: cada spec uma vez, a fatia mais cheia recebe o próximo, repetível.
 assert.deepStrictEqual(montarFatias(exemplo.duracoes, 2), [['a.spec.js'], ['b.spec.js', 'c.spec.js']]);
 assert.deepStrictEqual(montarFatias({ 'x.spec.js': 4, 'y.spec.js': 4, 'z.spec.js': 4 }, 2), [['x.spec.js', 'z.spec.js'], ['y.spec.js']], 'empate: a fatia de menor número');
-assert.deepStrictEqual(montarFatias(arquivo.duracoes), montarFatias({ ...arquivo.duracoes }), 'repetível');
+assert.deepStrictEqual(fatias, fatiasDe({ ...arquivo.duracoes }, specs), 'repetível');
 
 // Os filtros do Playwright: o caminho do spec, ancorado, sem pegar outro spec de nome parecido.
 assert.deepStrictEqual(filtros(['painel.spec.js', 'x/y-z.spec.js']), ['tests/painel\\.spec\\.js$', 'tests/x/y-z\\.spec\\.js$']);
