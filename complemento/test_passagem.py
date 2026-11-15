@@ -20,6 +20,11 @@ from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
 from complemento.test_conexao_antiga_de_mentira import ConexaoAntigaDeMentira  # noqa: E402
 from complemento.test_envio import ID, OUTRO_ID, EnvioNoTeste  # noqa: E402
 from complemento.test_passagem_de_mentira import CHAVE_DO_DONO, NaPassagem, SistemaDeMentira, uma_conexao_de_hoje  # noqa: E402
+from complemento.test_pareamento_de_mentira import travar_o_item_de_login_do_computador  # noqa: E402
+
+
+def setUpModule():
+    travar_o_item_de_login_do_computador()
 
 
 class APassagemEsperaOEnvioDeAgora(unittest.TestCase):

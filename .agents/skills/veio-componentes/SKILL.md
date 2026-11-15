@@ -5,7 +5,7 @@ description: "Use when changing or reviewing the Veio base components (`veio/com
 
 # Veio base components
 
-Notes moved unchanged from `CLAUDE.md` § Architecture. `CLAUDE.md` keeps the file table and the rules that cross surfaces.
+Notes moved unchanged from `CLAUDE.md` § Architecture. `CLAUDE.md` has the cross-surface rules; files: `docs/arquivos/`.
 
 ### Base components (`veio/componentes.css` + `veio/componentes.js`)
 

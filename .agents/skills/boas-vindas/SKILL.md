@@ -5,7 +5,7 @@ description: "Use when changing or reviewing the Boas-vindas (`painel-boas-vinda
 
 # Boas-vindas and Configuração pela metade
 
-Notes moved unchanged from `CLAUDE.md` § Architecture. `CLAUDE.md` keeps the file table and the rules that cross surfaces.
+Notes moved unchanged from `CLAUDE.md` § Architecture. `CLAUDE.md` has the cross-surface rules; files: `docs/arquivos/`.
 
 ### Boas-vindas (`painel-boas-vindas.js`, docs/design/painel/boas-vindas/, variant C)
 

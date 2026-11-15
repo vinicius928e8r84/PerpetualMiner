@@ -24,10 +24,15 @@ from complemento import configuracao, janela, no_anki, registro, texto_da_janela
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
 from complemento.test_envio import CHAVE, ID, INGLES, EnvioNoTeste, pedido  # noqa: E402
 from complemento.test_no_anki import AnkiDeMentira  # noqa: E402
+from complemento.test_pareamento_de_mentira import travar_o_item_de_login_do_computador  # noqa: E402
 
 PALAVRAS = ["give up", "run", "carry", "bring", "hold", "keep", "look", "make", "pick", "put", "set", "take"]
 DOZE = ["%s : They %s it again" % (palavra, palavra) for palavra in PALAVRAS]
 OUTRO_ID = "66666666-7777-4888-9999-aaaaaaaaaaaa"
+
+
+def setUpModule():
+    travar_o_item_de_login_do_computador()
 
 
 class ColecaoQueSegura(ColecaoEmMemoria):
