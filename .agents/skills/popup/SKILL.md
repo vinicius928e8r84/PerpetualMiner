@@ -5,7 +5,7 @@ description: "Use when changing or reviewing the toolbar popup (`popup.html/js/c
 
 # Popup (Cockpit)
 
-Notes moved unchanged from `CLAUDE.md` § Architecture. `CLAUDE.md` keeps the file table and the rules that cross surfaces.
+Notes moved unchanged from `CLAUDE.md` § Architecture. `CLAUDE.md` has the cross-surface rules; files: `docs/arquivos/`.
 
 ### Popup (Cockpit) (`popup.html/js/css`)
 

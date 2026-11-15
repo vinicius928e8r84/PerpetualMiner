@@ -17,13 +17,17 @@ from unittest.mock import patch
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import abridor, atualizacao, configuracao, inicio, item_de_login  # noqa: E402
-from complemento.test_pareamento_de_mentira import iniciar_pareado, pedir_como_a_extensao  # noqa: E402
+from complemento.test_pareamento_de_mentira import iniciar_pareado, pedir_como_a_extensao, travar_o_item_de_login_do_computador  # noqa: E402
 from complemento.test_atualizacao import AnkiWebDeMentira  # noqa: E402
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
 from complemento.test_abridor import Pastas, RegistroDeMentira, abridor_do_mac, conversar  # noqa: E402
 from complemento.test_openai_de_mentira import OpenAIDeMentira  # noqa: E402
 
 ORIGEM = configuracao.ORIGENS_ACEITAS[0]
+
+
+def setUpModule():
+    travar_o_item_de_login_do_computador()
 
 
 def saude(porta):
