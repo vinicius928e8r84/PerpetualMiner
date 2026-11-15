@@ -2,7 +2,7 @@
 
 Extensão que minera frases de legendas, páginas web e livros físicos num histórico de estudo e as envia ao Anki como cartões.
 
-Como ler: o nome em negrito é o único nome do conceito, e é o que a tela diz. `_Nome no código_` é o nome técnico que o código já usa e pode manter; fora dele (tela, docs, issues, testes, nomes novos) vale o termo. `_Avoid_` são os nomes que saem. **(a confirmar)** marca o nome recomendado que ainda espera a decisão do dono.
+Como ler: o nome em negrito é o único nome do conceito, e é o que a tela diz. `_Nome no código_` é o nome técnico que o código já usa e pode manter; fora dele (tela, docs, issues, testes, nomes novos) vale o termo. `_Avoid_` são os nomes que saem.
 
 ## Frases e origem
 
@@ -26,7 +26,7 @@ A página que lê, com o Gemini, as Marcações de fotos de páginas de livro e 
 _Nome no código_: `bookreader.html/js/css`
 _Avoid_: BookReader, leitor de livros
 
-**Marcação** (a confirmar):
+**Marcação**:
 O sinal feito à mão na página do livro (barras, underscores, sublinhado, colchetes, círculo ou traço na margem) que diz qual texto a foto deve ler. O texto marcado só vira Frase quando é minerado.
 _Avoid_: Trecho marcado
 
@@ -134,8 +134,8 @@ As frases de um único idioma entregues de uma vez ao Anki pela Conexão com o A
 _Nome no código_: `job`, `jobId`, as rotas `/jobs`. `CardJob`, no motor, é um Cartão, não um Envio
 _Avoid_: Job, lote
 
-**Remessa** (a confirmar):
-Os Envios que nascem de um mesmo Enviar ao Anki (um por idioma), acompanhados juntos e fechados por um só resumo. Não tem nome na tela, que diz “2 envios · Inglês, Russo”.
+**Remessa**:
+Os Envios que nascem de um mesmo Enviar ao Anki (um por idioma), acompanhados juntos e fechados por um só resumo. Só existe no código e nos docs; a tela não a nomeia e diz “2 envios · Inglês, Russo”.
 _Nome no código_: `remessa`, `pm_envio`
 _Avoid_: Lote, envio (para o conjunto)
 
@@ -175,7 +175,7 @@ _Avoid_: Detalhe (é a parte do Contexto), diagnóstico (é o arquivo que se bai
 ## Cartão e Anki
 
 **Baralho**:
-O baralho do Anki que recebe os cartões de um idioma.
+O baralho do Anki que recebe os cartões de um idioma. Cada parte do nome dele (`Inglês::Mineradas`) é um sub-baralho.
 _Nome no código_: `deck`, `deckName`
 _Avoid_: Deck
 
@@ -198,7 +198,7 @@ O quanto o Cartão explica, por idioma: Iniciante, Intermediário ou Avançado. 
 _Nome no código_: `nivel` (`iniciante`, `intermediario`, `avancado`)
 _Avoid_: Estilo (é o que o Nível define)
 
-**Estilo do cartão** (a confirmar):
+**Estilo do cartão**:
 O que o Cartão de um idioma traz em cada Nível: a língua da explicação e as partes do verso. Na tela, “Estilo do cartão” é hoje o rótulo do campo em que se escolhe o Nível, e “estilo pronto” é o Tipo de nota que a Conexão com o Anki cria.
 _Nome no código_: `engine/estilos.json` (idioma × nível)
 _Avoid_: Nível (é a escolha)
@@ -217,7 +217,7 @@ As palavras e os Termos que aparecem nos Cartões de um Baralho, cada um Novo, R
 _Nome no código_: `vocabulary`, `/anki/vocabulary`, `lib/vocabulario-da-mineracao.js`
 _Avoid_: Vocab, dicionário
 
-**Termo** (a confirmar):
+**Termo**:
 No Vocabulário, a expressão de duas ou mais palavras que é a Palavra de algum Cartão (“take it for granted”); “palavra”, ali, é cada palavra solta da frente dos Cartões. “Termos-alvo”, em Baralhos e termos, conta todas as Palavras diferentes que os Cartões do Baralho ensinam, de uma palavra só ou não.
 _Nome no código_: `term`, `targetTerms`, `uniqueTerms`
 _Avoid_: Expressão, termo-alvo
@@ -237,7 +237,7 @@ _Avoid_: Login, usuário, perfil (é o do Anki)
 **Nuvem**:
 Onde as Frases da Conta ficam fora do computador. Sincronizar é deixar o Histórico e a nuvem iguais.
 _Nome no código_: Firestore, `lib/sincronizacao.js`
-_Avoid_: Firestore, servidor, backup; “sync” (hoje no título “Conta & sync”, a confirmar)
+_Avoid_: Firestore, servidor, backup; “sync” (o nome é “Conta e sincronização”; o título da tela ainda diz “Conta & sync”)
 
 **Apagar**:
 Tirar a Frase do Histórico de vez; com Conta, ela some também dos outros computadores. “Tirar do histórico”, no fim de um Envio, é o mesmo apagar, oferecido para as enviadas. Apagar tudo (Zona de perigo) apaga todas as Frases, as cópias delas na Conexão com o Anki e a chave da OpenAI deste computador (menos a que é de outra Conta).
@@ -277,10 +277,10 @@ Fonte → Minerar → Frase (no Histórico) → Enviar ao Anki → Remessa → E
 - **remessa**: era a palavra da definição de Envio e, no código, o conjunto dos Envios de um clique. Fica só para o conjunto.
 - **extensão**: o PerpetualMiner no Chrome. O menu Extensões do Anki lista o Complemento.
 - **Conexão com o Anki**: o conceito é o complemento mais o Abridor; a Área e a seção de mesmo nome são só onde se cuida dele.
-- **cartão**: o item do Anki. O bloco de tela é “card” (a confirmar): hoje o código o chama de “cartão do Envio” e uma mensagem diz “card da IA dos cartões”.
-- **palavra**: a Palavra é o que o Cartão ensina e pode ter várias palavras (um botão ainda a chama de “grupo”); no Vocabulário, “palavra” é cada palavra solta.
+- **cartão**: o item do Anki. “card” fica só no código e nos docs (`card`, `CardJob`); o bloco de tela é “cartão”, embora uma mensagem ainda diga “card da IA dos cartões”.
+- **palavra**: a Palavra é o que o Cartão ensina e pode ter várias palavras (o botão que acrescenta outra se chama “Adicionar outra palavra”; a tela de hoje ainda diz “Adicionar outro grupo”); no Vocabulário, “palavra” é cada palavra solta.
 - **termo**: no Vocabulário, só a expressão; em “Termos-alvo” e no nome da aba Baralhos e termos, toda Palavra.
-- **nível e estilo**: o Nível é a escolha (Iniciante, Intermediário, Avançado) e o Estilo do cartão é o que ela define; a tela usa os dois nomes para a mesma escolha. Uma mensagem também chama de “nível” cada parte do nome de um Baralho (`Inglês::Mineradas`).
+- **nível e estilo**: o Nível é a escolha (Iniciante, Intermediário, Avançado) e o Estilo do cartão é o que ela define; a tela usa os dois nomes para a mesma escolha. Cada parte do nome de um Baralho (`Inglês::Mineradas`) é um **sub-baralho**, nunca “nível”.
 - **modelo**: Modelo dos cartões é o modelo de IA que escreve o texto; o molde do Anki é o Tipo de nota.
 - **voz**: a Voz é o guia e o catálogo; a do áudio é a voz do cartão.
 - **perfil**: sempre o do Anki. Quem entra com Google tem Conta.
