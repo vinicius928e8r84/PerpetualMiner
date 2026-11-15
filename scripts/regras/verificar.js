@@ -243,8 +243,9 @@ function main(argv) {
       const tem = agora[regra.id][arquivo] || 0;
       const pode = permitido[arquivo] || 0;
       if (tem < pode) {
-        // Uma regra de teto (`baixarObrigatorio`) não deixa folga: a linha de base desce junto com o arquivo.
-        if (regra.baixarObrigatorio) erros.push(regra.mensagemDeFolga({ arquivo, tem, pode }));
+        // Uma regra de teto (`baixarObrigatorio`) não deixa folga: a linha de base desce junto com o arquivo
+        // (e o --atualizar é justamente o que a baixa, então ele não a acusa).
+        if (regra.baixarObrigatorio && !opcoes.atualizar) erros.push(regra.mensagemDeFolga({ arquivo, tem, pode }));
         else podeBaixar.push(`${regra.id} ${arquivo}: ${pode} → ${tem}`);
       }
       if (tem <= pode) continue;
@@ -280,6 +281,20 @@ function main(argv) {
         if (!(regra.id in antes)) {
           avisos.push(`${base.ref} ainda não tem a regra ${regra.id}: esta é a primeira linha de base dela (${total(linhaDeBase[regra.id])})`);
           continue;
+        }
+        // Uma regra de teto confere também cada arquivo: o total só desce, mas sem isto a folga de um arquivo
+        // da lista passaria para outro (ou para um arquivo novo) editando a linha de base à mão.
+        if (regra.baixarObrigatorio) {
+          for (const [arquivo, n] of Object.entries(linhaDeBase[regra.id] || {}).sort()) {
+            const anteriorDoArquivo = (antes[regra.id] || {})[arquivo];
+            if (anteriorDoArquivo === undefined) {
+              erros.push(`✗ ${ARQUIVO_DA_LINHA_DE_BASE}: ${regra.id} ${arquivo} não está na linha de base de ${base.ref}. A linha de base só desce: `
+                + 'um arquivo que passa do teto agora tem de ser dividido, não entrar na lista.');
+            } else if (n > anteriorDoArquivo) {
+              erros.push(`✗ ${ARQUIVO_DA_LINHA_DE_BASE}: ${regra.id} ${arquivo} tem ${n} na linha de base do ramo, mais que os ${anteriorDoArquivo} de ${base.ref}. `
+                + 'A linha de base só desce, arquivo a arquivo: a folga de um não passa para outro.');
+            }
+          }
         }
         if (total(linhaDeBase[regra.id]) > total(antes[regra.id])) {
           erros.push(`✗ ${ARQUIVO_DA_LINHA_DE_BASE}: ${regra.id} tem ${total(linhaDeBase[regra.id])}, mais que os `

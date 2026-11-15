@@ -6,7 +6,7 @@
 // pelo `verificar.js` num repositório temporário.
 
 const assert = require('assert');
-const { spawnSync } = require('child_process');
+const { execFileSync, spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
@@ -99,5 +99,71 @@ r = verificar(comLinhas(bookreader, BASE_COM_O_ARQUIVO(37)));
 assert.strictEqual(r.status, 1, 'o arquivo que voltou ao limite sai da lista');
 assert.match(r.saida, /bookreader\.js ficou em 1000 linhas ou menos: tire-o da linha de base/);
 total += 2;
+
+// --atualizar depois de um arquivo da lista encolher: o conserto que a regra manda rodar tem de rodar.
+function atualizar(arquivos) {
+  const pasta = repositorioDeTestes(arquivos);
+  try {
+    const env = { ...process.env };
+    delete env.REGRAS_BASE;
+    const r = spawnSync('node', [path.join(__dirname, 'verificar.js'), '--raiz', pasta, '--base', '0000000000000000000000000000000000000000', '--atualizar'], { cwd: pasta, encoding: 'utf8', env });
+    const gravada = JSON.parse(fs.readFileSync(path.join(pasta, 'scripts/regras/linha-de-base.json'), 'utf8'));
+    return { status: r.status, saida: r.stdout, gravada: gravada['limite-de-linhas'] };
+  } finally {
+    fs.rmSync(pasta, { recursive: true, force: true });
+  }
+}
+let a = atualizar(comLinhas(menos, BASE_COM_O_ARQUIVO(37)));
+assert.strictEqual(a.status, 0, `--atualizar com um arquivo da lista encolhido: ${a.saida}`);
+assert.deepStrictEqual(a.gravada, { 'bookreader.js': 10 }, 'a linha de base desce junto com o arquivo');
+a = atualizar(comLinhas(bookreader, BASE_COM_O_ARQUIVO(37)));
+assert.strictEqual(a.status, 0, `--atualizar com o arquivo de volta ao teto: ${a.saida}`);
+assert.deepStrictEqual(a.gravada, {}, 'o arquivo que voltou ao teto sai da lista');
+total += 4;
+
+// Contra a main: a linha de base do ramo não esconde arquivo novo acima do teto nem a marca de gerado num arquivo da lista.
+// O repositório tem um commit (a "main") com a linha de base dele; o que o ramo muda fica na árvore de trabalho.
+function contraAMain(naMain, noRamo) {
+  const pasta = repositorioDeTestes(naMain);
+  try {
+    const git = (...args) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args], { cwd: pasta, stdio: 'ignore' });
+    git('add', '-A');
+    git('commit', '-q', '-m', 'main');
+    for (const [arquivo, texto] of Object.entries(noRamo)) fs.writeFileSync(path.join(pasta, arquivo), texto);
+    const env = { ...process.env };
+    delete env.REGRAS_BASE;
+    const r = spawnSync('node', [path.join(__dirname, 'verificar.js'), '--raiz', pasta, '--base', 'HEAD'], { cwd: pasta, encoding: 'utf8', env });
+    return { status: r.status, saida: r.stdout };
+  } finally {
+    fs.rmSync(pasta, { recursive: true, force: true });
+  }
+}
+const GRANDE = (n, marca = '') => `${marca}${'x\n'.repeat(n - (marca ? 1 : 0))}`;
+const LISTA = objeto => JSON.stringify({ 'limite-de-linhas': objeto });
+const naMain = { 'grande.js': GRANDE(1100), 'bookreader.js': bookreader, 'scripts/regras/linha-de-base.json': LISTA({ 'grande.js': 100 }) };
+// Troca de folga: grande.js encolhe 10 linhas e o bookreader.js (fora da lista) ganha 7 acima do teto; o total da regra não sobe.
+const emFolga = `${[...base, ...base.slice(0, regra.LIMITE + 7 - base.length)].join('\n')}\n`;
+r = contraAMain(naMain, { 'grande.js': GRANDE(1090), 'bookreader.js': emFolga, 'scripts/regras/linha-de-base.json': LISTA({ 'grande.js': 90, 'bookreader.js': 7 }) });
+assert.strictEqual(r.status, 1, `a folga de um arquivo não passa para outro: ${r.saida}`);
+assert.match(r.saida, /scripts\/regras\/linha-de-base\.json: limite-de-linhas bookreader\.js não está na linha de base de HEAD/);
+// O arquivo novo acima do teto com a linha de base intocada também falha (o que a regra já fazia).
+r = contraAMain(naMain, { 'bookreader.js': emFolga });
+assert.strictEqual(r.status, 1, r.saida);
+// Um valor maior que o da main para o mesmo arquivo falha, mesmo com o total igual (outro arquivo desceu na mesma medida).
+const duas = { 'a.js': GRANDE(1050), 'b.js': GRANDE(1050), 'scripts/regras/linha-de-base.json': LISTA({ 'a.js': 50, 'b.js': 50 }) };
+r = contraAMain(duas, { 'a.js': GRANDE(1040), 'b.js': GRANDE(1060), 'scripts/regras/linha-de-base.json': LISTA({ 'a.js': 40, 'b.js': 60 }) });
+assert.strictEqual(r.status, 1, r.saida);
+assert.match(r.saida, /limite-de-linhas b\.js tem 60 na linha de base do ramo, mais que os 50 de HEAD/);
+// Encolher o arquivo e baixar a linha de base dele continua passando.
+r = contraAMain(naMain, { 'grande.js': GRANDE(1090), 'scripts/regras/linha-de-base.json': LISTA({ 'grande.js': 90 }) });
+assert.strictEqual(r.status, 0, r.saida);
+// A marca de gerado não tira da lista o arquivo que a main já tem nela: o excesso real continua contando.
+r = contraAMain(naMain, { 'grande.js': GRANDE(1100, '// DO NOT EDIT\n'), 'scripts/regras/linha-de-base.json': LISTA({}) });
+assert.strictEqual(r.status, 1, `a marca de gerado num arquivo da lista não o isenta: ${r.saida}`);
+assert.match(r.saida, /grande\.js: 1100 linhas; o teto é 1000 \(100 acima\)/);
+// Num arquivo que a main não tem na lista, a marca continua isentando.
+r = contraAMain(naMain, { 'gerado.js': GRANDE(1100, '// DO NOT EDIT\n') });
+assert.strictEqual(r.status, 0, r.saida);
+total += 7;
 
 console.log(`limite-de-linhas: ${total} provas passaram`);

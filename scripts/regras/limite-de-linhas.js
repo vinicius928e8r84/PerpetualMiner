@@ -6,7 +6,8 @@
 //
 // Fora da conta: documentação (docs/), pastas de fixtures, saída de build e cópia de terceiros (dist/, build/,
 // coverage/, node_modules/, vendor/, third_party/), arquivo minificado (*.min.*) e o que traz a marca de gerado
-// nas primeiras linhas (`@generated`, `DO NOT EDIT`, `Code generated`, as mesmas de scripts/ganchos/limite-de-tokens.json).
+// nas primeiras linhas (`@generated`, `DO NOT EDIT`, `Code generated`, as mesmas de scripts/ganchos/limite-de-tokens.json),
+// menos o arquivo que a linha de base da main já tem na lista (a marca não o tira dela).
 // Trava de pacotes e dado (JSON, Markdown) nem têm a extensão.
 //
 // A catraca é a de scripts/regras/linha-de-base.json, contada em linhas ACIMA do teto: o arquivo que já passava de 1.000
@@ -14,6 +15,7 @@
 // de base tem de descer junto com ele (`--atualizar`) para o teto de cada um ser sempre o tamanho de hoje. Ao cair
 // para 1.000 ou menos, o arquivo sai da lista. Um arquivo novo, ou fora da lista, falha acima de 1.000.
 
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
@@ -45,10 +47,27 @@ const ehGerado = fonte => {
   return MARCAS_DE_GERADO.some(marca => cabecalho.includes(marca));
 };
 
+// Os arquivos que a linha de base da --base (a main) já tem na lista: a marca de gerado não os isenta, senão
+// bastaria escrever `DO NOT EDIT` no topo para um deles crescer e sair da lista. null sem base, sem git ou sem lista.
+const listasDasBases = new Map();
+function naListaDaBase(raiz, base, arquivo) {
+  if (!raiz || !base) return false;
+  const chave = `${raiz}\0${base}`;
+  if (!listasDasBases.has(chave)) {
+    let lista = {};
+    try {
+      const texto = execFileSync('git', ['show', `${base}:scripts/regras/linha-de-base.json`], { cwd: raiz, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+      lista = JSON.parse(texto)[id] || {};
+    } catch { /* a base não tem a linha de base (ou a regra): nada na lista */ }
+    listasDasBases.set(chave, lista);
+  }
+  return arquivo in listasDasBases.get(chave);
+}
+
 // Uma ocorrência por linha acima do teto (a de número LIMITE + 1 em diante): o que a linha de base conta.
-function verificar(arquivo, fonte) {
+function verificar(arquivo, fonte, raiz, base) {
   const linhas = contarLinhas(fonte);
-  if (linhas <= LIMITE || ehGerado(fonte)) return [];
+  if (linhas <= LIMITE || (ehGerado(fonte) && !naListaDaBase(raiz, base, arquivo))) return [];
   return Array.from({ length: linhas - LIMITE }, (_, i) => ({
     linha: LIMITE + 1 + i,
     detalhe: `a linha ${LIMITE + 1 + i} de ${linhas} passa do teto de ${LIMITE} linhas`,
