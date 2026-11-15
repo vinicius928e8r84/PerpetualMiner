@@ -17,7 +17,7 @@ const COMPONENTES = [
 
 const TEMAS = ['escuro', 'claro'];
 
-// Exceção de teste: catálogo (CLAUDE.md § Testing).
+// Exceção de teste: catálogo (docs/testes.md).
 /** O texto aprovado de cada estado que a vitrine mostra, lido do catálogo. */
 const copiaDaVitrine = page => page.evaluate(() =>
   PerpetualMiner.Vitrine.CATALOGO_DA_VITRINE.map(([id, valores]) =>
@@ -338,7 +338,7 @@ test('o toast aparece no tema da coluna que o mostrou', async ({ page, paginas }
 test('o toast fica mais tempo quanto maior o texto', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
 
-  // Exceção de teste: componente-base (CLAUDE.md § Testing, garantias da base sem gatilho na tela): a
+  // Exceção de teste: componente-base (docs/testes.md, garantias da base sem gatilho na tela): a
   // vitrine só mostra um texto de toast, então o teste chama
   // `mostrarToastDeSucesso` com dois tamanhos e mede quanto cada toast fica
   // de fato na tela.
@@ -448,7 +448,7 @@ test('a frase mostra o texto como texto, mesmo com marcação dentro', async ({ 
   await abrirVitrine(page, paginas);
 
   const texto = '<img src=x onerror="window.__injetado=1">Hold the line.';
-  // Exceção de teste: componente-base (CLAUDE.md § Testing, garantias da base sem gatilho na tela):
+  // Exceção de teste: componente-base (docs/testes.md, garantias da base sem gatilho na tela):
   // nenhuma frase da vitrine traz marcação, então o teste chama `escreverFrase`
   // numa linha de frase da própria vitrine e confere o que aparece nela.
   await page.evaluate(texto => {
@@ -537,7 +537,7 @@ test('toda a cópia da vitrine vem do catálogo da Voz', async ({ page, paginas 
   const doGlossario = new Set(['Netflix', 'YouTube', 'Web', 'PDF', 'Livro', 'Manual']);
   const teclasGravadas = new Set(['Alt', 'S']);
   // Os três nomes de padrão que a própria base escreve, com a fonte de cada
-  // um: o rótulo do chip da Palavra (CONTEXT.md e regra V6 da Voz) e o nome do
+  // um: o rótulo do chip da Palavra (glossary.md, regra V6 da Voz) e o nome do
   // recolhido da causa técnica (regra V3 da Voz).
   const doPadrao = new Set(['palavra:', 'auto:', 'Detalhes']);
 

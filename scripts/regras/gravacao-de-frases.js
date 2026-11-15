@@ -2,7 +2,7 @@
 
 // Quem regrava `frases` fora da fila de gravação do service
 // worker pode escrever por cima de uma frase salva no meio do caminho
-// (CODING_STANDARDS.md regra 7; CLAUDE.md § Write Serialization). Foi o assunto
+// (CODING_STANDARDS.md regra 7; docs/arquitetura.md § Write Serialization). Foi o assunto
 // de quatro rodadas de revisão na B1 (#116), do lote que descartava chaves em
 // 58ef837, e a B2 (#126) levou quatro escritas novas para fora da fila em
 // lib/sincronizacao.js. Cada lugar novo que grava essa chave fora da fila
