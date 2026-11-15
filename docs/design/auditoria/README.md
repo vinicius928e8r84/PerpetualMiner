@@ -1,6 +1,6 @@
 # Auditoria & inventário do front: veredito por item
 
-Resolução do ticket [Auditoria & inventário do front](https://github.com/vinicius928e8r84/PerpetualMiner/issues/2) do mapa [Redesign do front-end do PerpetualMiner](https://github.com/vinicius928e8r84/PerpetualMiner/issues/1). Auditoria somente-leitura em `42994e0` (2026-09-14). Grilling feito numa página Lavish (cópia visual: [`auditoria-front.html`](auditoria-front.html)); os levantamentos brutos por superfície, com `file:line` para cada item, estão em [`levantamento/`](levantamento/).
+Resolução do ticket [Auditoria & inventário do front](https://github.com/vinicius928e8r84/PerpetualMiner/issues/2) do mapa [Redesign do front-end do PerpetualMiner](https://github.com/vinicius928e8r84/PerpetualMiner/issues/1). Auditoria somente-leitura em `42994e0` (2026-09-14). Grilling feito numa página Lavish (cópia visual: [`auditoria-front.html`](auditoria-front.html)); os levantamentos por superfície foram apagados (o `git` guarda `auditoria/levantamento/`).
 
 Os vereditos valem; nomes e lugares marcados como **Superada em** foram refinados pelas specs das superfícies. Índice: [docs/design](../README.md).
 
