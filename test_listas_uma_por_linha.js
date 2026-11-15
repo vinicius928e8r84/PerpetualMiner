@@ -1,9 +1,5 @@
 'use strict';
 
-// Duas listas que muitos PRs tocam ficam com um item por linha, para um PR novo ser uma linha nova e não conflitar com outro:
-// as exportações de lib/pedido-ao-anki.js (em ordem alfabética) e as tags <script> de painel.html (na ordem de carga, que importa:
-// este teste não a confere, só que cada tag está sozinha na sua linha).
-
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
