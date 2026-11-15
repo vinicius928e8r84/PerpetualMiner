@@ -1,0 +1,211 @@
+#!/usr/bin/env node
+'use strict';
+
+// Publica na PR o que o check "Registro da PR" (registro-da-pr.js) confere, com o head lido do GitHub na hora em vez de
+// copiado à mão: o registro do /code-review (um comentário) e a seção "Prova real" (no corpo). Antes de publicar, passa
+// o texto pela mesma função do check, e recusa o que o check recusaria. Os erros reais que isto barra: o registro de um
+// commit que já não é o head (a PR ganhou um commit depois da revisão), o registro publicado sem o check rodar de novo
+// (um comentário não dispara o workflow) e a PR de atenção ALTA que recebe a revisão e continua sem a prova.
+// Uso: AJUDA, logo abaixo (`node scripts/ci/registrar-na-pr.js --help`).
+
+const { execFileSync } = require('child_process');
+const fs = require('fs');
+const { FRASE, SECAO_DA_PROVA, conferir, faltaDaProva, faltaDaRevisao, lerDoGitHub, linhasQueValem } = require('./registro-da-pr.js');
+
+const WORKFLOW = 'registro-da-pr.yml';
+
+const AJUDA = `uso: node scripts/ci/registrar-na-pr.js <comando> --pr <número> [opções]
+
+  conferir   diz o que o check "Registro da PR" diria agora, e se ele já rodou no head
+  revisao    publica o registro do /code-review num comentário e roda o check de novo
+               --head <SHA revisado> --autor <quem escreveu> --revisor <quem revisou> [--veredito CLEAN] [--nota <arquivo>]
+  prova      escreve (ou troca) a seção "${SECAO_DA_PROVA}" do corpo, com ${FRASE} e o head
+               --head <SHA provado> --nota <arquivo com o que foi provado no produto de verdade e como>
+
+  --head       o SHA inteiro do commit que foi revisado ou provado; se não for o head da PR agora, nada é publicado
+  --nota       um arquivo de Markdown que entra depois das linhas do registro (na revisão, os achados)
+  --publicar   escreve no GitHub; sem ela é um ensaio: mostra o texto e o que o check diria depois
+  --repo       <dono/repo> (padrão: $GITHUB_REPOSITORY, senão o remoto origin)
+
+O token vem de $GITHUB_TOKEN, de $GH_TOKEN ou de \`gh auth token\`. Sai com 0 quando o check passaria, 1 quando não
+(ou quando recusou publicar) e 2 no erro de uso ou do GitHub.`;
+
+class ErroDeUso extends Error {}
+
+const SHA_INTEIRO = /^[0-9a-f]{40}$/;
+const TITULO = /^ {0,3}(#{1,6})\s+(.*?)\s*#*\s*$/;
+const CERCA = /^ {0,3}(`{3,}|~{3,})/;
+const nomeDoTitulo = texto => texto.replace(/[*_`]/g, '').trim().toLowerCase();
+
+function lerArgumentos(argv) {
+  const [comando, ...resto] = argv;
+  if (!comando || comando === '--help' || comando === '-h' || resto.includes('--help')) return { ajuda: true };
+  if (!['conferir', 'revisao', 'prova'].includes(comando)) throw new ErroDeUso(`comando desconhecido: ${comando}`);
+  const opcoes = { comando, veredito: 'CLEAN', publicar: false };
+  const comValor = ['pr', 'head', 'veredito', 'autor', 'revisor', 'nota', 'repo'];
+  for (let i = 0; i < resto.length; i++) {
+    const nome = resto[i].replace(/^--/, '');
+    if (resto[i] === '--publicar') opcoes.publicar = true;
+    else if (resto[i].startsWith('--') && comValor.includes(nome)) {
+      if (resto[i + 1] === undefined || resto[i + 1].startsWith('--')) throw new ErroDeUso(`${resto[i]} precisa de um valor`);
+      opcoes[nome] = resto[++i];
+    } else throw new ErroDeUso(`opção desconhecida: ${resto[i]}`);
+  }
+  if (!/^\d+$/.test(opcoes.pr || '')) throw new ErroDeUso('--pr <número> é obrigatório');
+  const pedidas = { conferir: [], revisao: ['head', 'autor', 'revisor'], prova: ['head', 'nota'] }[comando];
+  const faltam = pedidas.filter(nome => !String(opcoes[nome] || '').trim());
+  if (faltam.length) throw new ErroDeUso(`${comando} pede ${faltam.map(nome => `--${nome}`).join(', ')}`);
+  if (opcoes.head) opcoes.head = opcoes.head.trim().toLowerCase();
+  return opcoes;
+}
+
+/** O comentário que é o registro do /code-review: as quatro linhas que o check lê e, depois, a nota. */
+const registroDaRevisao = ({ veredito, head, autor, revisor }, nota) => [
+  'Registro do /code-review', '', `Veredito: ${veredito}`, `Head: ${head}`, `Autor: ${autor}`, `Revisor: ${revisor}`,
+  ...(nota ? ['', nota.trim()] : []),
+].join('\n');
+
+/** A seção da prova deste head, como o check a lê. */
+const secaoDaProva = (head, nota) => [`## ${SECAO_DA_PROVA}`, '', FRASE, `Head: ${head}`, ...(nota ? ['', nota.trim()] : [])].join('\n');
+
+/** O corpo com a `secao` no lugar da seção da prova que já existe (até o próximo título do mesmo nível ou acima), senão no fim. */
+function corpoComAProva(corpo, secao) {
+  const linhas = String(corpo || '').split(/\r?\n/);
+  // O modelo da PR traz o formato dentro de um comentário de HTML, e um bloco de código pode citar o título: não são a seção.
+  const visiveis = linhas.join('\n').replace(/<!--[^]*?(?:-->|$)/g, trecho => trecho.replace(/[^\n]/g, ' ')).split('\n');
+  let cerca = null;
+  let inicio = -1;
+  let fim = linhas.length;
+  for (let i = 0; i < visiveis.length; i++) {
+    const abre = CERCA.exec(visiveis[i]);
+    if (abre && !cerca) cerca = abre[1];
+    else if (abre && abre[1][0] === cerca[0] && abre[1].length >= cerca.length && visiveis[i].trim() === abre[1]) cerca = null;
+    const titulo = !cerca && !abre && TITULO.exec(visiveis[i]);
+    if (!titulo) continue;
+    if (inicio < 0 && nomeDoTitulo(titulo[2]) === SECAO_DA_PROVA.toLowerCase()) inicio = i;
+    else if (inicio >= 0 && titulo[1].length <= TITULO.exec(visiveis[inicio])[1].length) { fim = i; break; }
+  }
+  if (inicio < 0) return `${linhas.join('\n').replace(/\s+$/, '')}\n\n${secao}\n`;
+  return [...linhas.slice(0, inicio), secao, '', ...linhas.slice(fim)].join('\n');
+}
+
+/** Por que o commit informado não é o head da PR, ou null. */
+function faltaDoHeadInformado(informado, head, oQue) {
+  if (informado === head) return null;
+  if (!SHA_INTEIRO.test(informado)) return `--head pede o SHA inteiro, de 40 caracteres (\`git rev-parse HEAD\`); veio "${informado}"`;
+  return `${oQue} é do commit ${informado}, e o head da PR agora é ${head}: um commit novo muda o head, e o que valia para o anterior não vale. `
+    + `${oQue === 'a revisão' ? 'Revise' : 'Prove'} o head novo (\`git diff ${informado.slice(0, 8)}..${head.slice(0, 8)}\` mostra o que mudou).`;
+}
+
+/**
+ * O que fazer com o pedido, sem falar com o GitHub: { recusa } quando nada pode ser publicado, senão
+ * { comentario } ou { corpo, secao } a publicar e { depois }, o que o check diria com isso publicado.
+ */
+function planejar(opcoes, pr, nota) {
+  const { head } = pr;
+  if (opcoes.comando === 'conferir') return { depois: conferir({ ...pr, head }) };
+  const foraDoHead = faltaDoHeadInformado(opcoes.head, head, opcoes.comando === 'revisao' ? 'a revisão' : 'a prova');
+  if (foraDoHead) return { recusa: foraDoHead };
+  if (opcoes.comando === 'revisao') {
+    const comentario = registroDaRevisao({ ...opcoes, head }, nota);
+    const registros = [...pr.registros, comentario];
+    const limpo = opcoes.veredito === 'CLEAN';
+    const falta = limpo && faltaDaRevisao(registros, head);
+    if (falta) return { recusa: `o check não aceitaria este registro: ${falta}` };
+    return { comentario, depois: conferir({ ...pr, registros, head }) };
+  }
+  const secao = secaoDaProva(head, nota);
+  const corpo = corpoComAProva(pr.corpo, secao);
+  const falta = faltaDaProva(linhasQueValem(corpo), head);
+  if (falta) return { recusa: `o check não aceitaria esta prova: ${falta.replace(/^atenção ALTA: /, '')}` };
+  return { corpo, secao, depois: conferir({ ...pr, corpo, head }) };
+}
+
+function cliente(env) {
+  return async (metodo, caminho, corpo) => {
+    const resposta = await fetch(`${env.GITHUB_API_URL || 'https://api.github.com'}/repos/${env.GITHUB_REPOSITORY}/${caminho}`, {
+      method: metodo,
+      headers: { accept: 'application/vnd.github+json', 'content-type': 'application/json', ...(env.GITHUB_TOKEN ? { authorization: `Bearer ${env.GITHUB_TOKEN}` } : {}) },
+      body: corpo === undefined ? undefined : JSON.stringify(corpo),
+    });
+    if (!resposta.ok) throw new Error(`o GitHub respondeu ${resposta.status} a ${metodo} ${caminho}`);
+    const texto = await resposta.text();
+    return texto ? JSON.parse(texto) : null;
+  };
+}
+
+/** A execução mais recente do check no head, ou null: sem ela o check obrigatório fica esperando para sempre. */
+async function execucaoDoCheck(pedir, head) {
+  const { workflow_runs: execucoes } = await pedir('GET', `actions/workflows/${WORKFLOW}/runs?head_sha=${head}&per_page=20`);
+  return execucoes.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))[0] || null;
+}
+
+/**
+ * O que dizer quando o check não tem execução no head: o check obrigatório fica esperando, e nem o comentário nem
+ * o `gh run rerun` criam uma. Foi o caso das PRs abertas antes de o workflow chegar à main (#438 e #441).
+ */
+const semExecucao = ({ numero, repo }) => '  O check "Registro da PR" não tem execução neste head, e um comentário não cria uma. Se a PR acabou de receber '
+  + 'um commit ou uma edição, espere um minuto e confira de novo. Senão (a PR é de antes de o check existir na main), feche e reabra a PR: o head não muda, '
+  + `e a revisão e a prova continuam valendo: gh pr close ${numero} -R ${repo} && gh pr reopen ${numero} -R ${repo}`;
+
+/** Roda o check de novo no head (um comentário não dispara o workflow) e diz o que fez. */
+async function rodarDeNovo(pedir, pr, qual) {
+  const execucao = await execucaoDoCheck(pedir, pr.head);
+  if (!execucao) return semExecucao(qual);
+  if (execucao.status !== 'completed') return `  O check já está rodando neste head (execução ${execucao.id}).`;
+  await pedir('POST', `actions/runs/${execucao.id}/rerun`);
+  return `  Check rodando de novo (execução ${execucao.id}): ${execucao.html_url || ''}`.trimEnd();
+}
+
+function ambiente(env, opcoes) {
+  const tentar = (comando, args) => {
+    try { return execFileSync(comando, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { return ''; }
+  };
+  const doRemoto = () => (/github\.com[:/]([^/]+\/[^/]+?)(?:\.git)?$/.exec(tentar('git', ['remote', 'get-url', 'origin'])) || [])[1];
+  const repo = opcoes.repo || env.GITHUB_REPOSITORY || doRemoto();
+  if (!repo) throw new ErroDeUso('não sei qual é o repositório: passe --repo <dono/repo>');
+  return { ...env, GITHUB_REPOSITORY: repo, PR: opcoes.pr, GITHUB_TOKEN: env.GITHUB_TOKEN || env.GH_TOKEN || tentar('gh', ['auth', 'token']) };
+}
+
+async function main(argv, env) {
+  let opcoes;
+  try {
+    opcoes = lerArgumentos(argv);
+    if (opcoes.ajuda) { console.log(AJUDA); return 0; }
+    env = ambiente(env, opcoes);
+  } catch (erro) {
+    if (!(erro instanceof ErroDeUso)) throw erro;
+    console.log(`${erro.message}\n\n${AJUDA}`);
+    return 2;
+  }
+  try {
+    const nota = opcoes.nota ? fs.readFileSync(opcoes.nota, 'utf8') : '';
+    const pedir = cliente(env);
+    const pr = await lerDoGitHub(env);
+    const plano = planejar(opcoes, pr, nota);
+    if (plano.recusa) { console.log(`✗ Nada foi publicado na PR ${opcoes.pr}: ${plano.recusa}`); return 1; }
+    const qual = { numero: opcoes.pr, repo: env.GITHUB_REPOSITORY };
+    const texto = plano.comentario || plano.secao;
+    if (texto) {
+      const onde = plano.comentario ? 'O comentário' : 'A seção que entra no corpo';
+      console.log(`${onde} da PR ${opcoes.pr}${opcoes.publicar ? '' : ' (ensaio: nada foi publicado; repita com --publicar)'}:\n\n${texto.replace(/^/gm, '    ')}\n`);
+    }
+    if (texto && opcoes.publicar) {
+      if (plano.comentario) await pedir('POST', `issues/${opcoes.pr}/comments`, { body: plano.comentario });
+      else await pedir('PATCH', `pulls/${opcoes.pr}`, { body: plano.corpo });
+      console.log(plano.comentario ? 'Registro publicado.' : 'Corpo gravado (a edição do corpo dispara o check).');
+    }
+    console.log(`${texto ? 'Com isso publicado, o check diz:\n' : ''}${plano.depois.mensagem}`);
+    // A edição do corpo dispara o check sozinha; o comentário não, e sem execução no head ele nunca fica verde.
+    if (plano.comentario && opcoes.publicar) console.log(await rodarDeNovo(pedir, pr, qual));
+    else if (!plano.corpo && !await execucaoDoCheck(pedir, pr.head)) console.log(semExecucao(qual));
+    return plano.depois.ok ? 0 : 1;
+  } catch (erro) {
+    console.log(`✗ ${erro.message}`);
+    return 2;
+  }
+}
+
+if (require.main === module) main(process.argv.slice(2), process.env).then(codigo => { process.exitCode = codigo; });
+
+module.exports = { corpoComAProva, planejar, registroDaRevisao, secaoDaProva };

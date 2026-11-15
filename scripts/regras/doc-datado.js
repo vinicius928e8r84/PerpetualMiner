@@ -4,7 +4,7 @@
 // rodada": quem lê meses depois não sabe qual era. O mesmo vale para a contagem fixa de testes
 // ("41 specs", "cerca de 700 tests"), que o primeiro teste novo desmente (a SKILL.md da skill de
 // verificação carregou um 41 muito depois de a suíte passar dele). Esta regra acusa as duas coisas
-// nos textos de docs/ (menos docs/superpowers/, as notas datadas de junho), complemento/, CLAUDE.md e
+// nos textos de docs/, complemento/ e
 // .agents/skills/. Não há exceção na linha: o verificar.js só lê exceções em comentários de
 // js, mjs, css, html e py, não em Markdown; um texto que precisa ficar entra na linha de base.
 
@@ -15,8 +15,7 @@ const conserto = 'Escreva o que vale sempre, sem dizer de qual PR ou rodada fala
   + '(`node scripts/testar.mjs --listar`, `playwright test --list`).';
 
 const seAplica = arquivo => arquivo.endsWith('.md') && (
-  arquivo === 'CLAUDE.md'
-  || /^docs\/(?!superpowers\/)/.test(arquivo)
+  /^docs\//.test(arquivo)
   || /^complemento\/.+/.test(arquivo)
   || /^\.agents\/skills\/.+/.test(arquivo)
 );

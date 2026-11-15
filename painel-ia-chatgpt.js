@@ -2,7 +2,9 @@
 
 // A coluna Conta do ChatGPT do card IA dos cartões (#155, docs/design/login-do-chatgpt.md), a do mesmo tamanho que a da chave.
 // O login e os tokens são da Conexão com o Anki: esta coluna só pede (`PedidoAoAnki`), abre a URL de autorização numa aba e lê o
-// estado `{ conectada, entrando, falha }`, que ela nunca guarda no navegador. Enquanto a pessoa entra no ChatGPT, relê a cada 2 s.
+// estado `{ conectada, entrando, falha, acabou }`, que ela nunca guarda no navegador. Enquanto a pessoa entra no ChatGPT, relê a cada 2 s.
+// O login é uma coisa de cada vez: sem login, entrando, conectada ou acabou (a Conexão recusou a renovação; o Envio para e não gasta a
+// chave sozinho). Do acabou a pessoa sai por escolha: Continuar com o ChatGPT entra de novo; Usar a chave tira o login acabado da Conexão.
 // `painel-ia.js` desenha o card e pede aqui a coluna (`coluna(lugar)`) e a faixa do erro dela (`faixa(lugar)`), em cada lugar do card.
 
 (function (raiz) {
@@ -38,15 +40,17 @@
     clearTimeout(releitura);
     const resposta = await pedir(raiz.PedidoAoAnki.estadoDoChatGPT());
     const login = resposta?.status === 200 && typeof resposta.json?.conectada === 'boolean' ? resposta.json : null;
-    const conectava = Boolean(estado.login?.conectada);
+    const pagava = quemPaga(estado.login);
     estado.login = login;
-    if (conectava !== Boolean(login?.conectada)) raiz.ModeloDosCartoes.reler(); // quem paga e a lista de modelos mudam com o login
+    if (pagava !== quemPaga(login)) raiz.ModeloDosCartoes.reler(); // quem paga e a lista de modelos mudam com o login
     if (login?.conectada) avisarDoPlano();
     if (entrando()) releitura = setTimeout(ler, RELER_A_CADA_MS);
     desenharTudo();
   }
 
   const entrando = () => Boolean(estado.login?.entrando) && !estado.cancelado;
+  /** Quem paga o Envio, pelo que a Conexão disse do login: o plano; ninguém (o login acabou); ou a chave. */
+  const quemPaga = login => (login?.conectada ? 'plano' : login?.acabou ? 'parado' : 'chave');
 
   /** O modal “Você está usando o seu plano do ChatGPT”, na primeira vez que o plano aparece em uso: Entendi, Esc e o clique fora o dão por visto. */
   function avisarDoPlano() {
@@ -88,7 +92,7 @@
     desenharTudo();
   }
 
-  async function sair() {
+  async function sair({ calado = false } = {}) {
     if (estado.pedindo) return;
     estado.pedindo = true;
     estado.erro = null;
@@ -96,7 +100,7 @@
     const resposta = await pedir(raiz.PedidoAoAnki.sairDoChatGPT());
     estado.pedindo = false;
     if (resposta?.status === 200 && resposta.json?.ok === true) {
-      if (resposta.json.revogada === true) mostrarToastDeSucesso(textoDaVoz('CFG-35.chatgptSaiu'));
+      if (resposta.json.revogada === true) { if (!calado) mostrarToastDeSucesso(textoDaVoz('CFG-35.chatgptSaiu')); }
       else estado.erro = { motivo: 'sem_revogar', detalhes: 'revogada: false' };
       return ler();
     }
@@ -104,10 +108,18 @@
     desenharTudo();
   }
 
-  /** O erro de agora: o de um pedido desta página, ou a falha da última tentativa que a Conexão conta. */
+  /** O erro de agora: o de um pedido desta página; o login que acabou (fala antes da tentativa falha: é ele que traz as duas saídas); ou a falha da última tentativa que a Conexão conta. */
   function erroDeAgora() {
     const { login } = estado;
-    return estado.erro || (login?.falha && !login.entrando && !login.conectada ? { motivo: login.falha, detalhes: login.falha } : null);
+    if (estado.erro || !login || login.entrando || login.conectada) return estado.erro;
+    const motivo = login.acabou || login.falha;
+    return motivo ? { motivo, detalhes: [login.acabou, login.falha].filter(Boolean).join(' · ') } : null;
+  }
+
+  /** Usar a chave: com o login acabado, a pessoa o deixa (a Conexão o apaga, sem toast de saída: ela não saiu, escolheu a chave); o foco vai ao campo da chave. */
+  async function usarAChave(lugar) {
+    if (estado.login?.acabou) await sair({ calado: true });
+    document.getElementById(`${lugar.prefixo}-ia-campo`)?.focus();
   }
 
   /** “Usando o plano do ChatGPT · Gerenciar uso”: a coluna do login e a linha do modelo dos cartões (`painel-ia-modelo.js`) dizem quem paga com esta. */
@@ -169,11 +181,12 @@
   /** A faixa do erro, abaixo das colunas como a da chave, aberta por “Conta do ChatGPT:”, com o que fazer e o Detalhes. */
   function faixaDoErro(lugar, { motivo, detalhes }) {
     const tentar = { rotulo: textoDaVoz('CFG-35.erroTentarDeNovo'), aoUsar: entrar };
-    const usarAChave = { rotulo: textoDaVoz('CFG-35.erroChatgptUsarChave'), aoUsar: () => document.getElementById(`${lugar.prefixo}-ia-campo`)?.focus() };
+    const aChave = { rotulo: textoDaVoz('CFG-35.erroChatgptUsarChave'), aoUsar: () => usarAChave(lugar) };
     const cada = {
+      chatgpt_signed_out: ['CFG-46.acabou', aChave],
       chatgpt_access_denied: ['CFG-35.erroChatgptSemPlano', tentar],
       chatgpt_plan_not_granted: ['CFG-35.erroChatgptSemPlano', tentar],
-      chatgpt_not_eligible: ['CFG-35.erroChatgptNaoServe', usarAChave],
+      chatgpt_not_eligible: ['CFG-35.erroChatgptNaoServe', aChave],
       sem_conexao: ['CFG-35.erroChatgptSemConexao', tentar],
       antiga: ['CFG-35.erroChatgptAntiga', { rotulo: textoDaVoz('CFG-35.erroAtualizar'), aoUsar: () => raiz.CartaoDaIA.baixarConexao() }],
       sem_revogar: ['CFG-35.erroChatgptSemRevogar', { rotulo: textoDaVoz('CFG-35.chatgptGerenciar'),
@@ -211,6 +224,10 @@
     });
     // A pessoa volta da aba do ChatGPT: relê na hora, sem esperar a próxima volta.
     window.addEventListener('focus', () => { if (entrando()) ler(); });
+    // A pessoa chega ao card vinda de outra área (o Envio que parou a traz aqui): o login pode ter acabado desde a última leitura.
+    window.addEventListener('hashchange', () => {
+      if (/^#(configuracoes|boas-vindas)\/ia\b/.test(location.hash) && raiz.ConexaoAnki.situacao() === raiz.ConexaoAnki.SITUACAO.LIGADA) ler();
+    });
   });
 
   raiz.ColunaDoChatGPT = { coluna, faixa, linhaDoPlano, GERENCIAR_USO };

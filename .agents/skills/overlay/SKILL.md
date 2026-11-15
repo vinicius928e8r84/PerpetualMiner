@@ -5,7 +5,7 @@ description: "Use when changing or reviewing the in-page overlay and what drives
 
 # Overlay
 
-Notes moved unchanged from `CLAUDE.md` § Architecture. `CLAUDE.md` keeps the file table and the rules that cross surfaces.
+Notes from the old `CLAUDE.md` § Architecture. Cross-surface rules: `docs/arquitetura.md`; files: `docs/arquivos/`.
 
 ### Overlay (`overlay.js`, `overlay.css`, docs/design/overlay/, M1)
 
@@ -76,7 +76,7 @@ take trusted events.
   with a video and no caption on screen it says MIN-04. The keyboard selection shortcut with nothing selected says
   MIN-10 on a page without a video, and nothing on a page with one; a mouse selection shortcut with nothing
   selected leaves the button to do what it always did (back, forward), so it says nothing. “Without a video” means no frame of the tab has one:
-  a frame without a video asks the others first (`HA_VIDEO_EM_OUTRO_FRAME`, see Cross-Frame Communication in `CLAUDE.md`), so
+  a frame without a video asks the others first (`HA_VIDEO_EM_OUTRO_FRAME`, see Cross-Frame Communication in `docs/arquitetura.md`), so
   a player in a cross-origin iframe never gets a false MIN-10 from the top frame.
 - **Typing is the person's:** neither shortcut fires while typing in an `input`, `textarea`, `select` or
   `contenteditable` (`Atalhos.digitandoNumCampo`, through the event's composed path; inside a *closed* shadow

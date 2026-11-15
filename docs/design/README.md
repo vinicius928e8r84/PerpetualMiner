@@ -10,7 +10,7 @@ O escopo é redesign: auditar, podar, reagrupar e revestir. Nenhuma função nov
 - **A spec vale sobre o protótipo.** Os protótipos ficaram intactos como foram aprovados, com as variantes rejeitadas dentro do arquivo como referência. As specs foram corrigidas na consolidação, então onde um protótipo mostra um texto ou detalhe antigo, a spec corrigida manda.
 - Cada link de protótipo abaixo já aponta para a **variante travada** (`?variant=`). As outras variantes do mesmo arquivo servem só de referência.
 - A cópia de toda tela sai do [catálogo da Voz](voz/README.md). Estado novo que não estiver no catálogo segue as regras V1–V10 e C1–C9.
-- Glossário: [`CONTEXT.md`](../../CONTEXT.md) na raiz (Frase, Palavra, Minerar, Fonte, Contexto, Mineração automática, Conexão com o Anki…).
+- Glossário: [`glossary.md`](../../glossary.md) na raiz (Frase, Palavra, Minerar, Fonte, Contexto, Mineração automática, Conexão com o Anki…).
 
 ## Fundamentos
 
@@ -18,7 +18,7 @@ O escopo é redesign: auditar, podar, reagrupar e revestir. Nenhuma função nov
 |---|---|---|---|
 | **Identidade Veio**: marca, tokens, tipo, componentes, ícones PNG | [identidade-veio/](identidade-veio/README.md) | [`prototipo-identidade.html?variant=F`](identidade-veio/prototipo-identidade.html) · o único que pede `python3 -m http.server` | [Identidade visual própria & design system base](https://github.com/vinicius928e8r84/PerpetualMiner/issues/3) |
 | **Voz & catálogo**: regras V1–V10 e C1–C9, e todos os estados com a cópia aprovada | [voz/](voz/README.md) | [`catalogo.html`](voz/catalogo.html) | [Voz, tom & catálogo de mensagens/estados](https://github.com/vinicius928e8r84/PerpetualMiner/issues/4) |
-| **Auditoria**: cerca de 260 itens com veredito fica/corta/reagrupa, e o levantamento com `arquivo:linha` | [auditoria/](auditoria/README.md) · [levantamento/](auditoria/levantamento/) | [`auditoria-front.html`](auditoria/auditoria-front.html) | [Auditoria & inventário do front](https://github.com/vinicius928e8r84/PerpetualMiner/issues/2) |
+| **Auditoria**: cerca de 260 itens com veredito fica/corta/reagrupa | [auditoria/](auditoria/README.md) | [`auditoria-front.html`](auditoria/auditoria-front.html) | [Auditoria & inventário do front](https://github.com/vinicius928e8r84/PerpetualMiner/issues/2) |
 
 ## Superfícies
 
@@ -122,7 +122,7 @@ Decisões tomadas na consolidação:
 
 ## Histórico: a ordem em que a construção foi feita (concluída)
 
-Fundação primeiro, depois de dentro pra fora: cada passo só usava o que já existia. Os 8 passos estão no código; o que cada superfície reconstruída faz hoje está nas skills de superfície em `.claude/skills/` (índice em `CLAUDE.md` § Architecture › Surfaces).
+Fundação primeiro, depois de dentro pra fora: cada passo só usava o que já existia. Os 8 passos estão no código; o que cada superfície reconstruída faz hoje está nas skills de superfície em `.claude/skills/` (índice em `docs/arquitetura.md` § Surfaces).
 
 **Antes de tudo: os 4 bugs altos** de [Bugs encontrados na auditoria do front](https://github.com/vinicius928e8r84/PerpetualMiner/issues/9), corrigidos no código atual. Dois perdem dados (o salvamento em paralelo do BookReader, `bookreader.js:436 · background.js:167`, e o Deletar do popup que ressuscita no sync, `popup.js:184`). Dois são de segurança (o `postMessage` sem checar a origem, `content.js:148`, e o `innerHTML` sem escape, `content.js:134, 733, 765`).
 
@@ -139,4 +139,4 @@ Fundação primeiro, depois de dentro pra fora: cada passo só usava o que já e
 
 ## Próximo passo
 
-Não há: a construção terminou. O estado atual de cada superfície está nas skills de superfície em `.claude/skills/` (índice em `CLAUDE.md` § Architecture › Surfaces); a spec que guiou a construção é [Construção do redesign do front-end (Veio)](https://github.com/vinicius928e8r84/PerpetualMiner/issues/17).
+Não há: a construção terminou. O estado atual de cada superfície está nas skills de superfície em `.claude/skills/` (índice em `docs/arquitetura.md` § Surfaces); a spec que guiou a construção é [Construção do redesign do front-end (Veio)](https://github.com/vinicius928e8r84/PerpetualMiner/issues/17).

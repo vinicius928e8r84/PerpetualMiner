@@ -8,6 +8,7 @@ The Conexão com o Anki updates itself in silence through AnkiWeb (`complemento/
 - `conexao-versao-falhou` the update failed: `A Conexão com o Anki segue na versão X. Não deu para atualizar agora.` with **Tentar de novo**. A background failure with a Conexão that still works shows nothing.
 - `conexao-versao-atualizada` discreet `Conexão atualizada · X`, closable, once per version (`pm_conexao_atualizada_vista`).
 - `conexao-versao-reiniciar` only when the old Conexão already has the new version on disk: `Conexão atualizada · X. Reinicie o Anki para ela valer agora.` with **Reiniciar o Anki** (closes the Anki through the Conexão, waits for it to go quiet, the abridor opens it again). Without the abridor permission the Anki is not closed and the notice says to do it by hand.
+- `conexao-versao-nao-reiniciou` the restart owns the notice from the click to its outcome, with or without the Conexão: `Reiniciando o Anki…` stays while the Anki is closed, and an Anki that does not come back ends in `Não deu para reiniciar o Anki. Feche e abra de novo.` (no button without the Conexão; **Reiniciar o Anki** again when the Anki never closed). Opened by hand, the Conexão comes back updated and the error leaves.
 
 ## How to get to it (user POV)
 
@@ -18,6 +19,7 @@ The Conexão com o Anki updates itself in silence through AnkiWeb (`complemento/
 Preconditions: `doctor.sh` green. `fakes.anki.atualizacao.definir({ versao, versaoNova })` sets the running and AnkiWeb versions; `fakes.anki.definirAtualizacao({ atualizacao: 'instalada' | 'falhou' | 'atualizada', ankiweb: 'com_versao_nova' | 'sem_versao_nova' | 'recusa' })` the stored state and how AnkiWeb answers; `fakes.anki.atualizacao.reinicios()`.
 
 - **The states.** `drive.sh conexao-versao conexao-versao.spec`. Observable: `#painel-conexao-versao`, `pm_conexao_atualizada_vista`, `fakes.abridor.pedidos()`.
+- **The state machine, no browser.** `node test_aviso_da_versao.js`: every state of `AvisoDaVersao` (`painel-conexao-versao-estado.js`), each event it accepts and where it leads.
 - **The add-on side.** `python3.9 complemento/test_atualizacao.py`: the AnkiWeb fake (query by id, install, the mark, the Anki that changed inside).
 
 ## Gotchas

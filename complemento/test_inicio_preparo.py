@@ -16,8 +16,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from complemento import inicio  # noqa: E402
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
 from complemento.test_contrato_da_criacao import SO_O_DEFAULT  # noqa: E402
+from complemento.test_pareamento_de_mentira import travar_o_item_de_login_do_computador  # noqa: E402
 
 TIPOS = ("PerpetualMiner Inglês", "PerpetualMiner Russo")
+
+
+def setUpModule():
+    travar_o_item_de_login_do_computador()
 
 
 def iniciar(raiz, colecao, perfil="Usuário 1"):

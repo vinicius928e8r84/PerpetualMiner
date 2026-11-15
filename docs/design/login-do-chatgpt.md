@@ -25,7 +25,11 @@ fronteira HTTP. O que só o ensaio do dono prova está na §6.
 
 ## 2. Estados
 
-Da Conexão (`POST /ia/chatgpt/estado`): `{ conectada, entrando, falha }`. O que a coluna diz (CFG-35, regra C8):
+O login guardado é uma coisa de cada vez, e o arquivo diz qual (`LoginDoChatGPT.situacao`): **sem login** (não há arquivo),
+**conectada** (os tokens) ou **acabou** (`{ acabou: "chatgpt_signed_out" }`, sem token nenhum). Entrar leva a conectada; a renovação
+recusada, de conectada a acabou; Sair, a sem login. A tentativa de entrar (`entrando`, `falha`) fica na memória, por cima.
+
+Da Conexão (`POST /ia/chatgpt/estado`): `{ conectada, entrando, falha, acabou }`. O que a coluna diz (CFG-35, regra C8):
 
 - **sem login** (`conectada: false`): “Use o seu plano em vez de pagar por cartão.”, o botão “Continuar com o ChatGPT” e a nota de
   que o login fica só neste computador, na Conexão com o Anki (história 35);
@@ -34,11 +38,18 @@ Da Conexão (`POST /ia/chatgpt/estado`): `{ conectada, entrando, falha }`. O que
   uso que a doc manda linkar), e “Sair do ChatGPT”;
 - **falha** (`chatgpt_access_denied`, `chatgpt_plan_not_granted`, `chatgpt_login_failed`): a faixa de erro do card, aberta por
   “Conta do ChatGPT:”, com Tentar de novo e o código no Detalhes; a Conexão sem responder ou antiga (404) também, cada uma com a sua cópia;
-- **saiu sem a revogação confirmada**: a faixa diz que saiu neste computador e manda desconectar o app nas configurações do ChatGPT.
+- **saiu sem a revogação confirmada**: a faixa diz que saiu neste computador e manda desconectar o app nas configurações do ChatGPT;
+- **acabou** (`acabou: chatgpt_signed_out`): a faixa diz que o login acabou (CFG-46) e fala antes da `falha` de uma tentativa, porque
+  é ela que traz as duas saídas: Continuar com o ChatGPT entra de novo, e **Usar a chave** pede o Sair (sem o toast de saída), que
+  apaga o login acabado. A coluna relê o login quando a pessoa chega ao card vinda de outra área.
 
-Com o login, cada Cartão de texto vai pelo plano; sem ele, pela chave, como antes. O Envio **nunca** passa de um para o outro
-sozinho: um login que acabou para o Envio com `chatgpt_signed_out` (a doc: “OpenAI does not silently switch the request to another
-billing path”, e gastar a chave sem a pessoa saber seria pior).
+**Quem paga o texto de cada Cartão** (`modelo_dos_cartoes.quem_paga`, lido antes de cada pedido) é uma de três coisas: **o plano**
+(login conectada), **a chave** (sem login, ou a pessoa escolheu Usar a minha chave no Envio, `usingKey`) ou **parado**, com o motivo
+(o login acabou; falta a chave). O Envio **nunca** passa do plano para a chave sozinho: o login que acabou para o Envio com
+`chatgpt_signed_out` (a doc: “OpenAI does not silently switch the request to another billing path”, e gastar a chave sem a pessoa
+saber seria pior), e o Tentar de novo para de novo, com a chave guardada ou não. Do parado só se sai por escolha da pessoa: entrar
+de novo, sair do login, ou Usar a minha chave. Com o login acabado o modelo dos cartões diz que ninguém paga (`paga: null`).
+A regra, linha por linha: `complemento/test_quem_paga.py`.
 
 ## 3. Transições
 
@@ -46,7 +57,7 @@ billing path”, e gastar a chave sem a pessoa saber seria pior).
 |---|---|---|---|---|---|
 | entrar | o painel: `POST /ia/chatgpt/entrar` (o botão; nada abre sozinho, #121) | o id deste computador | a Conexão | cria o id se falta; troca a tentativa pendente por uma nova (`state`, verificador e `nonce` novos, do `secrets`); devolve a URL de autorização, que o painel abre numa aba | os tokens: entrar de novo não apaga um login que já existe até a troca nova dar certo |
 | retorno | o navegador: `GET /auth/callback?code&state&client_id` (ou `error`) | a tentativa pendente | a Conexão, se o `Host` é `127.0.0.1:<porta>`, a tentativa não expirou e o `state` é **o** da tentativa (comparação de tempo constante) | consome a tentativa **antes** da troca (o `state` vale uma vez); troca o código no token endpoint (`authorization_code`, o `client_id` emitido, o verificador, o mesmo `redirect_uri` e o mesmo `resource`); confere que veio o escopo `chatgpt.tokens.use.direct` e que o `nonce` do `id_token` é o da tentativa; grava o arquivo | outro `state`, outro `Host`, uma tentativa expirada ou nenhuma: nada muda (a tentativa certa continua esperando). A resposta é **sempre a mesma página fixa**, com `Cache-Control: no-store`, `Referrer-Policy: no-referrer` e `Content-Security-Policy: default-src 'none'`: ela não diz se deu certo (quem diz é a coluna) |
-| renovar | a thread do Envio, antes de cada Cartão | o arquivo, sob a tranca do login | a Conexão | a 3 min da validade, `refresh_token` no token endpoint e troca, de uma vez, o `access_token`, a validade, os escopos e o `refresh_token` novo (ele roda) | duas renovações ao mesmo tempo (a tranca as serializa). Um refresh inutilizável (`invalid_grant`, `refresh_token_reused`, `invalid_client`…) apaga o arquivo; falha de rede ou 5xx mantém tudo |
+| renovar | a thread do Envio, antes de cada Cartão | o arquivo, sob a tranca do login | a Conexão | a 3 min da validade, `refresh_token` no token endpoint e troca, de uma vez, o `access_token`, a validade, os escopos e o `refresh_token` novo (ele roda) | duas renovações ao mesmo tempo (a tranca as serializa). Um refresh inutilizável (`invalid_grant`, `refresh_token_reused`, `invalid_client`…) troca o arquivo por `{ acabou }`, sem token: o login acabou, e fica dito até a pessoa escolher; falha de rede ou 5xx mantém tudo |
 | o texto de um Cartão | a thread do Envio | o arquivo (renovado) e o primeiro modelo da lista da conta (`GET /v1/models`, `visibility: list`, uma vez por Envio) | a Responses API | `POST /v1/responses` com `model`, `instructions` (o prompt de sistema de hoje), `input` com a mensagem, `store: false`, `stream: true`, sem `temperature`; só `response.completed` é sucesso | o texto da OpenAI num erro: só o código fica |
 | sair | o painel: `POST /ia/chatgpt/sair` | o arquivo | a Conexão | tenta revogar o `refresh_token` no `revocation_endpoint` que o `openid-configuration` diz (só se ele é do mesmo servidor de login), apaga o arquivo e a tentativa, e responde `{ ok, revogada }` | o id deste computador. Repetido: sem arquivo, nada a revogar, a mesma resposta |
 | ler | o painel: `POST /ia/chatgpt/estado` | o arquivo e a tentativa | a Conexão | nada | — |

@@ -155,7 +155,7 @@ class ConexaoNoTeste:
     ):
         self.perfil = perfil
         self._com_tela, self._estado_do_pareamento = tela, estado_do_pareamento or {}
-        self.situacao_do_chatgpt = chatgpt  # `conectada` (o arquivo do login já existe), `entrando`, `recusou` ou `nao_serve` (a tentativa)
+        self.situacao_do_chatgpt = chatgpt  # `conectada` (o arquivo do login já existe) ou o que `situar_o_login` arma
         self.falha_no_perfil = falha_no_perfil
         self.pasta = pasta
         self.item = item_de_login_do_contexto(pasta, item)
@@ -229,7 +229,7 @@ class ConexaoNoTeste:
             os.chmod(self.chaves, 0o500)  # gravar a cópia da chave falha: a Conexão responde o erro interno
         self.tela = preparar_o_pareamento(self.conexao.pareamento, self._com_tela, self._estado_do_pareamento)
         assert self.conexao.iniciar(), "a porta de teste devia estar livre"
-        if self.situacao_do_chatgpt in ("entrando", "recusou", "nao_serve"):
+        if self.situacao_do_chatgpt in ("entrando", "recusou", "nao_serve", "acabou"):
             situar_o_login(self.conexao, self.servidor_de_login, self.situacao_do_chatgpt)
         return self
 

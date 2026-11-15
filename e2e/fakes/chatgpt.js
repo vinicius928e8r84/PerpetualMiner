@@ -4,7 +4,8 @@
 // `/ia/chatgpt/*` e o retorno `/auth/callback`, que o fake da Conexão entrega a `naConexao`) e a página de autorização do
 // `auth.openai.com`, que a extensão abre numa aba (`padrao`/`tratar`, registrados pela fixture como os outros fakes).
 // As rotas da extensão respondem pelos exemplos do contrato (`complemento/contrato/exemplos-do-chatgpt.json`), no contexto
-// `chatgpt` de agora: `desconectada`, `entrando`, `conectada` ou `recusou`. Nenhum token existe aqui: como na Conexão de verdade,
+// `chatgpt` de agora: `desconectada`, `entrando`, `conectada`, `recusou` ou `acabou` (a renovação recusada: o Envio para até a pessoa
+// escolher; a tentativa de entrar que não dá certo volta a `acabou`). Nenhum token existe aqui: como na Conexão de verdade,
 // nenhuma resposta leva um, e o teste confere o que a Conexão guardou por `situacao()`.
 
 // A página do retorno, a mesma da Conexão (`complemento/rotas_do_chatgpt.py`).
@@ -13,7 +14,7 @@ const PAGINA_DO_RETORNO = '<!doctype html><html lang="pt-BR"><meta charset="utf-
 const AUTORIZAR = 'https://auth.openai.com/api/accounts/authorize';
 
 function criarFakeChatGPT() {
-  const estado = { situacao: 'desconectada', state: null, tentativas: 0, autorizacao: 'aceita', abertas: [], urlDaConexao: null };
+  const estado = { situacao: 'desconectada', acabado: false, state: null, tentativas: 0, autorizacao: 'aceita', abertas: [], urlDaConexao: null };
 
   /** A URL que a Conexão daria (os parâmetros da doc oficial), com o `state` desta tentativa. */
   function urlDeAutorizacao() {
@@ -34,17 +35,19 @@ function criarFakeChatGPT() {
       const state = url.searchParams.get('state');
       if (state && state === estado.state && estado.situacao === 'entrando') {
         estado.state = null;
-        estado.situacao = url.searchParams.get('error') ? 'recusou' : 'conectada';
+        estado.situacao = !url.searchParams.get('error') ? 'conectada' : estado.acabado ? 'acabou' : 'recusou';
+        estado.acabado = false;
       }
       return route.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body: PAGINA_DO_RETORNO });
     }
     const { status, json } = respostaDoContrato('POST', url.pathname, {});
     if (url.pathname === '/ia/chatgpt/entrar' && status === 200) {
       json.url = estado.urlDaConexao || urlDeAutorizacao();
-      if (!estado.urlDaConexao) estado.situacao = 'entrando';
+      if (!estado.urlDaConexao) [estado.acabado, estado.situacao] = [estado.acabado || estado.situacao === 'acabou', 'entrando'];
     }
     if (url.pathname === '/ia/chatgpt/sair' && status === 200) {
       estado.situacao = 'desconectada';
+      estado.acabado = false;
       estado.state = null;
     }
     return route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(json) });
@@ -85,8 +88,8 @@ function criarFakeChatGPT() {
     tratar,
     responderAutorizacao,
     naConexao,
-    /** O contexto `chatgpt` dos exemplos do contrato: `desconectada`, `entrando`, `conectada` ou `recusou`. */
-    definir(situacao) { estado.situacao = situacao; },
+    /** O contexto `chatgpt` dos exemplos do contrato: `desconectada`, `entrando`, `conectada`, `recusou` ou `acabou`. */
+    definir(situacao) { [estado.situacao, estado.acabado] = [situacao, false]; },
     /** @estado-guardado O login que a Conexão guarda agora (`conectada` é o arquivo dos tokens na Conexão de verdade). */
     situacao() { return estado.situacao; },
     /** Na página do ChatGPT, a pessoa recusa (`recusa`), ou ainda não respondeu (`espera`); o padrão é autorizar. */

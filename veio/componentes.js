@@ -18,7 +18,7 @@
    * nomes de padrão, fixados fora dele.
    *
    * - `palavra:` e `auto:` são o chip da Palavra, e o vocabulário está travado
-   *   no glossário (CONTEXT.md): "o chip diz `palavra: …` quando foi escolhida
+   *   em glossary.md: "o chip diz `palavra: …` quando foi escolhida
    *   e `auto: …` quando foi detectada". "keyword" nunca aparece na tela.
    * - `Detalhes` é o nome do recolhido onde a causa técnica vai morar, dado
    *   pela regra V3 da Voz.

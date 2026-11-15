@@ -1,7 +1,8 @@
 """O item de login de “Abrir o Anki com o computador”: o que faz o Anki abrir quando a pessoa entra.
 
 No Mac é um LaunchAgent (um `.plist` em `~/Library/LaunchAgents`); no Windows, um atalho na
-pasta Inicializar. Ligar escreve o item, desligar o apaga; nada mais é tocado, e nenhum dos dois
+pasta Inicializar. Ligar escreve o item, desligar o apaga; ao abrir o perfil, o item que já existe e difere do que a
+Conexão escreveria é reescrito (#401), nunca criado. Nada mais é tocado, e nenhum dos dois
 roda nada na hora (o Mac só lê os LaunchAgents ao entrar, e o Windows só roda a Inicializar ao entrar).
 
 Só a biblioteca padrão: o `.lnk` do Windows é escrito byte a byte (MS-SHLLINK), porque o Python do
@@ -55,7 +56,25 @@ class ItemDeLogin:
         """Escreve o item (troca o que já havia). Levanta `AnkiNaoEncontrado` ou o `OSError` da escrita."""
         if not self.comando:
             raise AnkiNaoEncontrado("não se sabe como abrir o Anki neste computador")
+        self._gravar(self._serializar(self.comando))
+
+    def reescrever_se_difere(self):
+        """Troca o item que já existe por o que a Conexão escreveria agora, se for outro (#401): um item de uma Conexão antiga
+        (o atalho do Windows das 0.4.21 em diante não abria o Anki) ou de um Anki que mudou de lugar. Devolve se trocou.
+
+        Sem item não cria nenhum (o interruptor desligado segue desligado), e sem saber como abrir o Anki deixa o que está.
+        Levanta o `OSError` da leitura ou da escrita.
+        """
+        if not self.comando or not self.ligado():
+            return False
         conteudo = self._serializar(self.comando)
+        with open(self.caminho, "rb") as arquivo:
+            if arquivo.read() == conteudo:
+                return False
+        self._gravar(conteudo)
+        return True
+
+    def _gravar(self, conteudo):
         os.makedirs(self.pasta, exist_ok=True)
         # Escreve ao lado e troca de uma vez: um item pela metade, no login, abriria nada ou algo errado.
         descritor, provisorio = tempfile.mkstemp(dir=self.pasta, suffix=".tmp")

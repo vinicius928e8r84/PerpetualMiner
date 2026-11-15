@@ -5,7 +5,7 @@ description: "Use when changing or reviewing the Configurações area of the pan
 
 # Configurações
 
-Notes moved unchanged from `CLAUDE.md` § Architecture. `CLAUDE.md` keeps the file table and the rules that cross surfaces.
+Notes from the old `CLAUDE.md` § Architecture. Cross-surface rules: `docs/arquitetura.md`; files: `docs/arquivos/`.
 
 ### IA dos cartões (`painel-ia.js`, `lib/chave-da-openai.js`)
 
@@ -41,7 +41,8 @@ Tests: `e2e/tests/chave-autoridade.spec.js`, `configuracoes-ia.spec.js` (includi
 Conexão's `user_files/chaves/chatgpt.json`. The button gets the authorize URL (opened with `chrome.tabs.create`, only if it starts
 with `https://auth.openai.com/api/accounts/authorize?`), then “Esperando o ChatGPT…” (Cancelar stops waiting) re-reads the state every
 2 s and on window focus; logged in, “Usando o plano do ChatGPT · Gerenciar uso” (`chatgpt.com/settings/usage`) and Sair do ChatGPT.
-Failures are their own strip under the columns, opened by “Conta do ChatGPT:”, with the code in Detalhes. The column is redrawn in
+Failures are their own strip under the columns, opened by “Conta do ChatGPT:”, with the code in Detalhes; an ended login (`acabou`,
+CFG-46) is one, and its Usar a chave asks Sair (design § 2). The column is redrawn in
 place (`ColunaDoChatGPT.coluna/faixa(lugar)`), so a key being typed is not lost. Tests: `e2e/tests/configuracoes-chatgpt.spec.js`
 (auth.openai.com is mapped to the local fake server: the extension's tab escapes `context.route` on its first navigation), the
 fixme reference in `configuracoes-chatgpt-visual.spec.js`, and `complemento/test_login_do_chatgpt.py`, `test_plano_do_chatgpt.py`.
@@ -151,5 +152,5 @@ The panel retains phrase and key outcomes separately: phrase failure/partial/loa
 A sync problem shows **only** in the card and the chip — never a toast or a strip in another area. The one exception is
 the spec's own PAI-15: when a delete reaches this computer but not the cloud, Frases also shows the persistent aviso
 saying those phrases may come back, with “Tentar de novo”; the card and the chip still say the computer is out of sync. `painel.js` maps the cloud module's failure `motivo` to the account's situation through
-`situacaoDoErro` (see “Firebase / Firestore Sync” in `CLAUDE.md`), and the raw message goes to the card's collapsed “Detalhes”. Closing Google's login window is not an
+`situacaoDoErro` (see “Firebase / Firestore Sync” in `docs/arquitetura.md`), and the raw message goes to the card's collapsed “Detalhes”. Closing Google's login window is not an
 error and shows nothing; a login that fails shows CFG-07 in the card with “Tentar de novo”.

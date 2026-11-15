@@ -471,7 +471,7 @@ test('com a coleção do contrato aberta, Baralhos e termos e Vocabulário mostr
 // A Conexão (o /health) pode responder antes de os Ajustes de envio chegarem do storage: o primeiro
 // `usarBaralhos` faz então a primeira leitura. Ela é a leitura comum, sem `refresh` nem `launch`, e não vira BRG-11.
 test('a Conexão que responde antes dos Ajustes de envio não impede a primeira leitura dos Baralhos', async ({ page, extensao, fakes }) => {
-  // Exceção de teste: chrome-nativo (CLAUDE.md § Testing). A ordem das respostas do storage não tem como ser pedida pela tela.
+  // Exceção de teste: chrome-nativo (docs/testes.md). A ordem das respostas do storage não tem como ser pedida pela tela.
   await page.addInitScript(() => {
     const ler = chrome.storage.local.get.bind(chrome.storage.local);
     chrome.storage.local.get = (chaves, chamar) => {
