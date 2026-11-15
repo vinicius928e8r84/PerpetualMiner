@@ -3,7 +3,7 @@ name: Testes
 # O portão de cada PR: os testes de Node, os das ferramentas, os do motor,
 # os do complemento do Anki (Python 3.9, o do Anki do Mac, e 3.13) e a suíte e2e inteira
 # (a extensão desempacotada no Chromium). Quem trabalha roda só os specs da
-# área que mudou; a suíte inteira roda aqui. Ver "Testing" no CLAUDE.md.
+# área que mudou; a suíte inteira roda aqui. Ver docs/testes.md.
 #
 # Por padrão, os runners usam ubuntu-24.04 (não ubuntu-latest); CI_RUNS_ON pode selecionar
 # outros labels em JSON (o runner próprio também precisa de Ubuntu 24.04): o Python 3.9 do complemento

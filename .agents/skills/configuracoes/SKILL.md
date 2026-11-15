@@ -5,7 +5,7 @@ description: "Use when changing or reviewing the Configurações area of the pan
 
 # Configurações
 
-Notes moved unchanged from `CLAUDE.md` § Architecture. `CLAUDE.md` has the cross-surface rules; files: `docs/arquivos/`.
+Notes from the old `CLAUDE.md` § Architecture. Cross-surface rules: `docs/arquitetura.md`; files: `docs/arquivos/`.
 
 ### IA dos cartões (`painel-ia.js`, `lib/chave-da-openai.js`)
 
@@ -152,5 +152,5 @@ The panel retains phrase and key outcomes separately: phrase failure/partial/loa
 A sync problem shows **only** in the card and the chip — never a toast or a strip in another area. The one exception is
 the spec's own PAI-15: when a delete reaches this computer but not the cloud, Frases also shows the persistent aviso
 saying those phrases may come back, with “Tentar de novo”; the card and the chip still say the computer is out of sync. `painel.js` maps the cloud module's failure `motivo` to the account's situation through
-`situacaoDoErro` (see “Firebase / Firestore Sync” in `CLAUDE.md`), and the raw message goes to the card's collapsed “Detalhes”. Closing Google's login window is not an
+`situacaoDoErro` (see “Firebase / Firestore Sync” in `docs/arquitetura.md`), and the raw message goes to the card's collapsed “Detalhes”. Closing Google's login window is not an
 error and shows nothing; a login that fails shows CFG-07 in the card with “Tentar de novo”.

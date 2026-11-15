@@ -21,6 +21,7 @@ const VEREDITO_LIMPO = 'CLEAN';
 // Num repositório público qualquer pessoa comenta: só vale o registro de quem pode escrever no repositório.
 const QUEM_REGISTRA = ['OWNER', 'MEMBER', 'COLLABORATOR'];
 const MODELO = '.github/PULL_REQUEST_TEMPLATE.md';
+const PUBLICADOR = 'scripts/ci/registrar-na-pr.js';
 
 const SHA_INTEIRO = /^[0-9a-f]{40}$/;
 const TITULO = /^ {0,3}(#{1,6})\s+(.*?)\s*#*\s*$/;
@@ -138,11 +139,12 @@ function conferir({ corpo, rotulos, registros, head }) {
       `✗ O registro da PR não vale para o head ${head}:`,
       ...faltas.map(falta => `    - ${falta}`),
       `  Conserto: o formato de cada parte está em ${MODELO}. O que está em comentário de HTML, em bloco de código ou em citação não conta.`,
+      `  O registro do /code-review e a prova com o head lido do GitHub (e o check rodando de novo): node ${PUBLICADOR} --help`,
     ].join('\n'),
   };
 }
 
-/** O corpo, os rótulos e os registros (comentários e revisões de quem pode escrever, por data) da PR, lidos do GitHub. */
+/** O corpo, os rótulos, os registros (comentários e revisões de quem pode escrever, por data) e o head da PR, lidos do GitHub. */
 async function lerDoGitHub(env) {
   const ler = async caminho => {
     const resposta = await fetch(`${env.GITHUB_API_URL || 'https://api.github.com'}/repos/${env.GITHUB_REPOSITORY}/${caminho}`, {
@@ -164,7 +166,7 @@ async function lerDoGitHub(env) {
     .filter(registro => QUEM_REGISTRA.includes(registro.author_association))
     .map(registro => ({ corpo: registro.body || '', quando: registro.submitted_at || registro.created_at || '' }))
     .sort((a, b) => a.quando.localeCompare(b.quando)).map(registro => registro.corpo);
-  return { corpo: pr.body, rotulos: pr.labels.map(rotulo => rotulo.name), registros };
+  return { corpo: pr.body, rotulos: pr.labels.map(rotulo => rotulo.name), registros, head: pr.head.sha };
 }
 
 async function main(env) {
@@ -189,4 +191,4 @@ async function main(env) {
 
 if (require.main === module) main(process.env).then(codigo => { process.exitCode = codigo; });
 
-module.exports = { FRASE, ROTULO_DE_RISCO_ALTO, conferir };
+module.exports = { FRASE, ROTULO_DE_RISCO_ALTO, SECAO_DA_PROVA, conferir, faltaDaProva, faltaDaRevisao, lerDoGitHub, linhasQueValem };

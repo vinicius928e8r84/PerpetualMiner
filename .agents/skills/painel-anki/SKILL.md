@@ -5,7 +5,7 @@ description: "Use when changing or reviewing the Conexão com o Anki area of the
 
 # Conexão com o Anki area
 
-Notes moved unchanged from `CLAUDE.md` § Architecture. `CLAUDE.md` has the cross-surface rules; files: `docs/arquivos/`.
+Notes from the old `CLAUDE.md` § Architecture. Cross-surface rules: `docs/arquitetura.md`; files: `docs/arquivos/`.
 
 ### Conexão com o Anki (`painel-anki.js`, docs/design/painel/anki/, variant C)
 

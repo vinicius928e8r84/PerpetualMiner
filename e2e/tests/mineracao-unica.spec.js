@@ -9,9 +9,9 @@ const { fotografar, registrarEstado } = require('../evidencias-mineracao');
 
 const TRECHO = 'Every lantern along the pier flickered in the salt wind.';
 
-// Exceção de teste: chrome-nativo (CLAUDE.md § Testing).
+// Exceção de teste: chrome-nativo (docs/testes.md).
 // O Playwright não abre o menu de contexto nativo do Chrome. É a exceção
-// documentada em CLAUDE.md (Testing): o teste chama o callback que o Chrome
+// documentada em docs/testes.md: o teste chama o callback que o Chrome
 // chamaria, com o mesmo `info` e a mesma `tab`; o que ele grava é conferido
 // depois na tela do painel, como a pessoa vê.
 const minerarPeloMenu = (extensao, { selecao, pageUrl, titulo }) => extensao.serviceWorker.evaluate(

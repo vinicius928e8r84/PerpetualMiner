@@ -137,7 +137,7 @@ acusa('e2e-funcao-interna', 'e2e/tests/mineracao-unica.spec.js', MENU, 1, 'o cal
 acusa('e2e-funcao-interna', 'e2e/tests/componentes-veio.spec.js',
   'const rotulos = await page.evaluate(() => PerpetualMiner.Veio.ROTULOS_DO_PADRAO);\n', 1, 'constante interna (d2ab0da)');
 acusa('e2e-funcao-interna', 'e2e/tests/mineracao-unica.spec.js',
-  `// Exceção de teste: chrome-nativo (CLAUDE.md § Testing).\n// O Playwright não abre o menu de contexto nativo do Chrome.\n${MENU}`, 0, 'a exceção nomeada');
+  `// Exceção de teste: chrome-nativo (docs/testes.md).\n// O Playwright não abre o menu de contexto nativo do Chrome.\n${MENU}`, 0, 'a exceção nomeada');
 // Achado da revisão do #186: a marca dentro de uma string não nomeia exceção.
 acusa('e2e-funcao-interna', 'e2e/tests/review-probe.spec.js',
   'const texto = await page.evaluate(() => { const nota = "Exceção de teste: catálogo"; return PerpetualMiner.textoDaVoz("PAI-05", { n: 2 }); });\n',
@@ -147,7 +147,7 @@ acusa('e2e-funcao-interna', 'e2e/tests/review-probe.spec.js',
   1, 'a marca numa string da linha de cima');
 // Achado SP-2 da revisão final do #186: a instrução anterior, já fechada, não empresta o comentário.
 const [segunda] = acusa('e2e-funcao-interna', 'e2e/tests/review-probe.spec.js', [
-  '// Exceção de teste: catálogo (CLAUDE.md § Testing).',
+  '// Exceção de teste: catálogo (docs/testes.md).',
   'const texto = await page.evaluate(() => PerpetualMiner.textoDaVoz("PAI-05"));',
   'const ligado = await page.evaluate(() => PerpetualMiner.ConexaoAnki.conferir());',
 ].join('\n'), 1, 'a chamada seguinte, sem exceção própria');
@@ -155,12 +155,12 @@ assert.strictEqual(segunda.linha, 3);
 total++;
 // O formato que componentes-veio.spec.js:441 tinha: a marca acima de um `const` preparatório.
 acusa('e2e-funcao-interna', 'e2e/tests/componentes-veio.spec.js', [
-  '// Exceção de teste: componente-base (CLAUDE.md § Testing).',
+  '// Exceção de teste: componente-base (docs/testes.md).',
   "const texto = '<b>Hold</b> the line.';",
   'await page.evaluate(texto => PerpetualMiner.Veio.escreverFrase(corpo, texto), texto);',
 ].join('\n'), 1, 'a marca acima de outra instrução');
 acusa('e2e-funcao-interna', 'e2e/tests/componentes-veio.spec.js', [
-  '// Exceção de teste: componente-base (CLAUDE.md § Testing).',
+  '// Exceção de teste: componente-base (docs/testes.md).',
   'const texto = await page',
   '  .evaluate(() => PerpetualMiner.Veio.escreverFrase(corpo, "x"));',
 ].join('\n'), 0, 'a marca acima da mesma instrução, quebrada em linhas');
