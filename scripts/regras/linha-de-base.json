@@ -66,5 +66,11 @@
     "e2e/tests/popup-visual.spec.js": 9
   },
   "relogio-fora-da-fixture": {},
-  "versoes-publicadas": {}
+  "versoes-publicadas": {},
+  "limite-de-linhas": {
+    "background.js": 7,
+    "painel.css": 2163,
+    "painel.js": 894,
+    "veio/componentes.css": 32
+  }
 }

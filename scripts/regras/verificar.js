@@ -24,6 +24,7 @@ const REGRAS = [
   require('./aprovacao-visual'),
   require('./relogio-fora-da-fixture'),
   require('./versoes-publicadas'),
+  require('./limite-de-linhas'),
 ];
 
 const ARQUIVO_DA_LINHA_DE_BASE = 'scripts/regras/linha-de-base.json';
@@ -240,9 +241,17 @@ function main(argv) {
     for (const arquivo of [...arquivos].sort()) {
       const tem = agora[regra.id][arquivo] || 0;
       const pode = permitido[arquivo] || 0;
-      if (tem < pode) podeBaixar.push(`${regra.id} ${arquivo}: ${pode} → ${tem}`);
+      if (tem < pode) {
+        // Uma regra de teto (`baixarObrigatorio`) não deixa folga: a linha de base desce junto com o arquivo.
+        if (regra.baixarObrigatorio) erros.push(regra.mensagemDeFolga({ arquivo, tem, pode }));
+        else podeBaixar.push(`${regra.id} ${arquivo}: ${pode} → ${tem}`);
+      }
       if (tem <= pode) continue;
       const achados = porRegra[regra.id][arquivo];
+      if (regra.mensagem) {
+        erros.push(regra.mensagem({ arquivo, tem, pode, achados }));
+        continue;
+      }
       const novas = base && base.desde ? linhasNovas(raiz, base.desde, arquivo) : null;
       const nasNovas = novas ? achados.filter(a => novas.has(a.linha)) : [];
       const mostrar = (nasNovas.length ? nasNovas : achados).slice(0, 12);
