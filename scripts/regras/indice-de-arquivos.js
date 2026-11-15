@@ -6,7 +6,9 @@
 //   - um arquivo da raiz, de lib/, veio/ ou do topo de scripts/ que as tabelas não citam
 //     (o caminho inteiro, ou só o nome quando o arquivo é da raiz da
 //     pasta citada na linha: `popup.html/js/css` vale para os três);
-//   - uma linha de tabela cuja primeira coluna cita um caminho que não existe.
+//   - uma linha de tabela cuja primeira coluna cita um caminho que não existe;
+//   - duas linhas da tabela com a mesma primeira coluna no mesmo arquivo: o `merge=union` do .gitattributes junta duas
+//     inserções no mesmo ponto sem conflito, e se as duas descreviam o mesmo arquivo a duplicata passaria calada.
 // Teste de arquivo (test_*), Markdown e arquivo oculto não precisam de linha.
 
 const fs = require('fs');
@@ -50,7 +52,13 @@ function linhasDaTabela(fonte) {
 function verificar(arquivo, fonte, raiz) {
   if (ehDoIndice(arquivo)) {
     const achados = [];
-    for (const { linha, primeiraColuna } of linhasDaTabela(fonte)) {
+    const vistas = new Map();
+    for (const { linha, primeiraColuna, texto } of linhasDaTabela(fonte)) {
+      const chave = primeiraColuna.trim();
+      if (!/^[\s:-]*$/.test(chave)) {
+        if (vistas.has(chave)) achados.push({ linha, detalhe: `a linha repete a primeira coluna da linha ${vistas.get(chave)} (duplicata, talvez de um merge=union): deixe uma só` });
+        else vistas.set(chave, linha);
+      }
       for (const item of itensDe(primeiraColuna).filter(i => /\/|\.[a-z0-9]+$/i.test(i))) {
         if (!fs.existsSync(path.join(raiz, item))) {
           achados.push({ linha, detalhe: `a linha cita \`${item}\`, que não existe` });
