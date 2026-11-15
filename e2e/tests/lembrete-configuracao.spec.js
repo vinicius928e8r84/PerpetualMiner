@@ -150,7 +150,7 @@ test.describe('quem atualizou a extensão', () => {
   test.use({ lembreteDaConfiguracao: false });
 
   test('a atualização não deixa a configuração começada', async ({ extensao }) => {
-    // Exceção de teste: chrome-nativo (CLAUDE.md § Testing).
+    // Exceção de teste: chrome-nativo (docs/testes.md).
     // O Chromium do Playwright não sabe atualizar uma extensão desempacotada: o
     // teste chama o ouvinte do onInstalled como o Chrome chamaria, com `update`.
     await extensao.serviceWorker.evaluate(() => aoInstalar({ reason: 'update', previousVersion: '4.9' }));
@@ -159,7 +159,7 @@ test.describe('quem atualizou a extensão', () => {
 
   test('a atualização tira a lista pm_pending_sync que versões antigas gravavam', async ({ extensao }) => {
     await extensao.gravarStorage({ pm_pending_sync: ['1', '2'], frases: [{ id: 1, texto: 'Fica.', idioma: 'Inglês' }] });
-    // Exceção de teste: chrome-nativo (CLAUDE.md § Testing). Mesmo motivo do teste acima.
+    // Exceção de teste: chrome-nativo (docs/testes.md). Mesmo motivo do teste acima.
     await extensao.serviceWorker.evaluate(() => aoInstalar({ reason: 'update', previousVersion: '0.4.27' }));
     expect(await extensao.lerStorage(['pm_pending_sync'])).toEqual({});
     expect((await extensao.frases()).map(f => f.texto)).toEqual(['Fica.']);
