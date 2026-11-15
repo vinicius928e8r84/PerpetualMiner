@@ -27,7 +27,8 @@ const branco = texto => texto.replace(/[^\n]/g, ' ');
 /** O Markdown sem o código cercado (``` ou ~~~) e sem os trechos entre crases, com as mesmas linhas. */
 function semCodigo(fonte) {
   let cerca = null;
-  return fonte.split('\n').map(linha => {
+  // Um clone com core.autocrlf=true (Git for Windows) entrega o Markdown com CRLF: o `\r` não pode ficar no fim da linha.
+  return fonte.replace(/\r\n/g, '\n').split('\n').map(linha => {
     const abre = /^ {0,3}(`{3,}|~{3,})/.exec(linha);
     if (cerca) {
       if (abre && abre[1][0] === cerca[0] && abre[1].length >= cerca.length && /^ {0,3}[`~]+\s*$/.test(linha)) cerca = null;
