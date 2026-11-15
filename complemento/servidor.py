@@ -151,7 +151,7 @@ class _Atendente(BaseHTTPRequestHandler):
 
         Só a extensão pede, pela origem dela; a exceção é `GET /health` (e o retorno do login), que o Chrome manda sem `Origin`. Mas o `Origin`
         não é autenticação (uma extensão com `extraHeaders`, ou um programa local, o põe): tudo o mais, a rota que não existe inclusive, exige a
-        assinatura de um navegador pareado (`pareamento.py`, `contrato/LEIA-ME.md`). Só o pareamento e o preflight a dispensam. `corpo` são os
+        assinatura de um navegador pareado (`pareamento.py`, `contrato/LEIA-ME.md`). Só o pareamento, o preflight e `POST /anki/responde` (`ROTAS_SEM_ASSINATURA`) a dispensam. `corpo` são os
         bytes que a assinatura cobre (`None`: passou do limite)."""
         origem = self.headers.get("Origin")
         aberta = (self.command, caminho) in ROTAS_ABERTAS
