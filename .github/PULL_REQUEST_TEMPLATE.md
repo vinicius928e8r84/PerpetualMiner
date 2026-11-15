@@ -23,8 +23,8 @@ O check "Registro da PR" (.github/workflows/registro-da-pr.yml, scripts/ci/regis
    Autor: <quem escreveu a mudança>
    Revisor: <quem revisou, que não é o autor>
 
-   Vale o registro mais recente com a linha "Head:" deste head. Um comentário não dispara o check: depois de publicar, rode-o de
-   novo (`gh run rerun <id> --failed`).
+   Vale o registro mais recente com a linha "Head:" deste head. Um comentário não dispara o check: publique com
+   `node scripts/ci/registrar-na-pr.js revisao`, que lê o head no GitHub e roda o check de novo.
 
 3. Com Atenção ALTA (ou o rótulo `risco:alto`), o corpo tem também a seção abaixo, com o que foi provado no produto
    de verdade e como:
@@ -33,6 +33,8 @@ O check "Registro da PR" (.github/workflows/registro-da-pr.yml, scripts/ci/regis
 
    PROVADO 100% REAL
    Head: <SHA inteiro do head>
+
+   `node scripts/ci/registrar-na-pr.js prova` escreve a seção com o head lido no GitHub.
 
 O SHA é o inteiro, de 40 caracteres (`git rev-parse HEAD`). Um commit novo muda o head: revise e prove de novo.
 O que está em comentário de HTML, em bloco de código ou em citação (`>`) não conta.
