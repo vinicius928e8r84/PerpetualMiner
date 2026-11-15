@@ -6,6 +6,8 @@
 
 const assert = require('assert');
 const fs = require('fs');
+const os = require('os');
+const { spawnSync } = require('child_process');
 const path = require('path');
 const { ESTIMATIVA_DO_SPEC_NOVO, NUMERO_DE_FATIAS, duracoesDosLogs, duracoesParaOsSpecs, fatiasDe, filtros, ler, montarFatias, problemas, specsDoDisco } = require('./fatias-e2e.js');
 
@@ -26,6 +28,29 @@ const outroSpec = 'zz-spec-novo.spec.js';
 const comNovo = fatiasDe(arquivo.duracoes, [...specs, outroSpec]);
 assert.deepStrictEqual(comNovo.flat().sort(), [...specs, outroSpec].sort(), 'um spec novo, sem duração no arquivo, entra em uma fatia');
 assert.strictEqual(duracoesParaOsSpecs(arquivo.duracoes, [...specs, outroSpec])[outroSpec], ESTIMATIVA_DO_SPEC_NOVO, 'o spec novo vale a estimativa');
+
+assert.strictEqual(ESTIMATIVA_DO_SPEC_NOVO, 10, 'a estimativa de um spec novo');
+
+// O que o workflow roda de verdade: `node scripts/ci/fatias-e2e.js <N>` para N = 1..8. Numa cópia vazia da pasta de specs (a
+// variável FATIAS_E2E_PASTA troca só onde ele procura) com um spec novo, a união dos filtros das 8 fatias é todo spec exatamente
+// uma vez, o novo inclusive, e é igual ao que `fatiasDe` calcula; uma fatia que rodasse a suíte inteira ou perdesse o novo falha aqui.
+const pastaDeTeste = fs.mkdtempSync(path.join(os.tmpdir(), 'fatias-e2e-'));
+try {
+  const todosOsSpecs = [...specs, 'zz-spec-novo.spec.js'].sort();
+  for (const spec of todosOsSpecs) {
+    fs.mkdirSync(path.dirname(path.join(pastaDeTeste, spec)), { recursive: true });
+    fs.writeFileSync(path.join(pastaDeTeste, spec), '');
+  }
+  const doCli = Array.from({ length: NUMERO_DE_FATIAS }, (_, i) => {
+    const saida = spawnSync(process.execPath, [path.join(__dirname, 'fatias-e2e.js'), String(i + 1)], { encoding: 'utf8', env: { ...process.env, FATIAS_E2E_PASTA: pastaDeTeste } });
+    assert.strictEqual(saida.status, 0, saida.stderr);
+    return saida.stdout.trim().split(' ');
+  });
+  assert.deepStrictEqual(doCli.flat().sort(), filtros(todosOsSpecs).sort(), 'as 8 fatias do CLI juntas são todo spec (o novo também), cada um uma vez');
+  assert.deepStrictEqual(doCli, fatiasDe(arquivo.duracoes, todosOsSpecs).map(filtros), 'o CLI <N> imprime as fatias que fatiasDe calcula');
+} finally {
+  fs.rmSync(pastaDeTeste, { recursive: true, force: true });
+}
 
 // Equilíbrio: a fatia mais lenta não passa de 10% acima da média, nem do maior spec quando ele já é maior que isso.
 const segundos = lista => lista.reduce((soma, spec) => soma + durações[spec], 0);

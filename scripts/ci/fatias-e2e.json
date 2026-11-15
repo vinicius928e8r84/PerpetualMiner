@@ -1,5 +1,5 @@
 {
-  "descricao": "As durações (segundos) de cada spec da suíte e2e no CI, medidas nos logs; as fatias saem delas em scripts/ci/fatias-e2e.js. Não edite à mão: node scripts/ci/fatias-e2e.js --medir <log>... Ver o cabeçalho desse script.",
+  "descricao": "As durações (segundos) de cada spec da suíte e2e no CI, medidas nos logs; as fatias saem delas em scripts/ci/fatias-e2e.js, e um spec sem duração aqui vale 10 s até alguém rodar --medir. Não edite à mão: node scripts/ci/fatias-e2e.js --medir <log>... Ver o cabeçalho desse script.",
   "duracoes": {
     "abrir-o-anki-botao.spec.js": 19,
     "abrir-o-anki-sozinho.spec.js": 20,

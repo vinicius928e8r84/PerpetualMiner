@@ -17,7 +17,8 @@ const path = require('path');
 
 const RAIZ = path.resolve(__dirname, '..', '..');
 const ARQUIVO = path.join(__dirname, 'fatias-e2e.json');
-const PASTA_DOS_SPECS = path.join(RAIZ, 'e2e', 'tests');
+// FATIAS_E2E_PASTA só existe para o teste mostrar o CLI <N> numa pasta de specs que ele monta.
+const PASTA_DOS_SPECS = process.env.FATIAS_E2E_PASTA || path.join(RAIZ, 'e2e', 'tests');
 const NUMERO_DE_FATIAS = 8;
 const ESTIMATIVA_DO_SPEC_NOVO = 10;
 
