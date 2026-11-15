@@ -533,3 +533,5 @@ function criar(tag, classe, texto) {
   if (texto != null) no.textContent = texto;
   return no;
 }
+
+// TESTE DESCARTAVEL prova 452: este comentario novo deve barrar o workflow
