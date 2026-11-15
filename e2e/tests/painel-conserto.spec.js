@@ -9,6 +9,7 @@
 
 const fs = require('fs');
 const { test, expect } = require('../fixtures');
+const { SEM_ABRIDOR_IMPOSSIVEL } = require('../fakes/abridor');
 const { estadoFinal } = require('../estado-final');
 const { AGORA, INGLESAS, SACK, abrirPainel, marcar, enviarAoAnki, progresso, enviosCriados } = require('../apoio-do-envio');
 
@@ -120,6 +121,7 @@ test.describe('com a permissão do abridor', () => {
     ['o Chrome não acha mais o abridor, que saiu junto com a Conexão', fakes => fakes.abridor.desregistrar()],
   ]) {
     test(`a Conexão que sumiu do Anki (${quando}): o único botão é Instalar de novo, que leva ao passo da primeira conexão`, async ({ page, extensao, fakes }) => {
+      test.skip(SEM_ABRIDOR_IMPOSSIVEL && /não acha mais o abridor/.test(quando), 'no Windows o Chromium cai no abridor real do usuário quando a chave do fake some');
       await prepararComAConexaoMuda(page, extensao, fakes, 'anki_fechado');
       preparar(fakes, 'complemento_sumiu');
 

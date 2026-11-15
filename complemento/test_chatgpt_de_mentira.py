@@ -8,6 +8,7 @@ código, a renovação e a revogação); o navegador da pessoa é o teste, que l
 import base64
 import hashlib
 import json
+import os
 import secrets
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -141,9 +142,14 @@ class ChatGPTDeMentira:
 
 
 def situar_o_login(conexao, servidor, situacao):
-    """O login da Conexão no estado de um exemplo do contrato: `entrando` (a tentativa aberta), `recusou` (a pessoa recusou no ChatGPT) ou
-    `nao_serve` (a conta grátis ou Go: duas trocas seguidas recusadas com `invalid_grant`)."""
+    """O login da Conexão no estado de um exemplo do contrato: `entrando` (a tentativa aberta), `recusou` (a pessoa recusou no ChatGPT),
+    `nao_serve` (a conta grátis ou Go: duas trocas seguidas recusadas com `invalid_grant`) ou `acabou` (o arquivo diz que a renovação
+    foi recusada, e não guarda token nenhum)."""
     porta, login = conexao.porta, conexao.chatgpt
+    if situacao == "acabou":
+        with open(os.path.join(login.pasta, "chatgpt.json"), "w", encoding="utf-8") as arquivo:
+            json.dump({"acabou": "chatgpt_signed_out", "em": 1}, arquivo)
+        return
     servidor.troca = "invalid_grant" if situacao == "nao_serve" else servidor.troca
     for _ in range(2 if situacao == "nao_serve" else 1):
         consulta = servidor.autorizar(login.iniciar(porta), erro="access_denied" if situacao == "recusou" else None)

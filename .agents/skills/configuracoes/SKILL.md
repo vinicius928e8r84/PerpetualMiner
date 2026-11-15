@@ -41,7 +41,8 @@ Tests: `e2e/tests/chave-autoridade.spec.js`, `configuracoes-ia.spec.js` (includi
 Conexão's `user_files/chaves/chatgpt.json`. The button gets the authorize URL (opened with `chrome.tabs.create`, only if it starts
 with `https://auth.openai.com/api/accounts/authorize?`), then “Esperando o ChatGPT…” (Cancelar stops waiting) re-reads the state every
 2 s and on window focus; logged in, “Usando o plano do ChatGPT · Gerenciar uso” (`chatgpt.com/settings/usage`) and Sair do ChatGPT.
-Failures are their own strip under the columns, opened by “Conta do ChatGPT:”, with the code in Detalhes. The column is redrawn in
+Failures are their own strip under the columns, opened by “Conta do ChatGPT:”, with the code in Detalhes; an ended login (`acabou`,
+CFG-46) is one, and its Usar a chave asks Sair (design § 2). The column is redrawn in
 place (`ColunaDoChatGPT.coluna/faixa(lugar)`), so a key being typed is not lost. Tests: `e2e/tests/configuracoes-chatgpt.spec.js`
 (auth.openai.com is mapped to the local fake server: the extension's tab escapes `context.route` on its first navigation), the
 fixme reference in `configuracoes-chatgpt-visual.spec.js`, and `complemento/test_login_do_chatgpt.py`, `test_plano_do_chatgpt.py`.

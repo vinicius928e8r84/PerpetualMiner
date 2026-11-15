@@ -94,10 +94,16 @@ async function abrirPerfil({ fakes, paginas, servidorDoLogin, pastaDaExtensao, p
   servidorDoLogin.atenderChatGPT(fakes.chatgpt.responderAutorizacao);
   const perfil = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-e2e-'));
   let context = null;
+  let copiaComAPermissao = null;
   try {
     // O abridor que a Conexão com o Anki registraria no computador (o de mentira).
     fakes.abridor.registrarNoPerfil(perfil);
-    if (permissaoDoAbridor) {
+    if (permissaoDoAbridor && process.platform !== 'linux') {
+      // Mac/Windows: o `Secure Preferences` do Chromium reseta o que não tem a assinatura (MAC); a cópia traz
+      // `nativeMessaging` no manifest, o estado de depois do Permitir.
+      copiaComAPermissao = copiarComAPermissaoDoAbridor(pastaDaExtensao);
+      pastaDaExtensao = copiaComAPermissao;
+    } else if (permissaoDoAbridor) {
       const dada = { api: ['nativeMessaging'], explicit_host: [], manifest_permissions: [], scriptable_host: [] };
       fs.mkdirSync(path.join(perfil, 'Default'));
       fs.writeFileSync(path.join(perfil, 'Default', 'Preferences'), JSON.stringify({
@@ -130,6 +136,7 @@ async function abrirPerfil({ fakes, paginas, servidorDoLogin, pastaDaExtensao, p
   } catch (erro) {
     await context?.close().catch(() => {});
     fs.rmSync(perfil, { recursive: true, force: true });
+    if (copiaComAPermissao) fs.rmSync(copiaComAPermissao, { recursive: true, force: true });
     throw erro;
   }
   return {
@@ -137,8 +144,25 @@ async function abrirPerfil({ fakes, paginas, servidorDoLogin, pastaDaExtensao, p
     fechar: async () => {
       await context.close();
       fs.rmSync(perfil, { recursive: true, force: true });
+      if (copiaComAPermissao) fs.rmSync(copiaComAPermissao, { recursive: true, force: true });
     },
   };
+}
+
+/** Cópia da extensão com `nativeMessaging` já no manifest: ver `abrirPerfil`. */
+function copiarComAPermissaoDoAbridor(pastaDaExtensao) {
+  const { arquivosDoPacote } = require('../scripts/arquivos-do-pacote');
+  const copia = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-ext-'));
+  for (const arquivo of arquivosDoPacote(pastaDaExtensao)) {
+    fs.mkdirSync(path.dirname(path.join(copia, arquivo)), { recursive: true });
+    fs.copyFileSync(path.join(pastaDaExtensao, arquivo), path.join(copia, arquivo));
+  }
+  const arquivoDoManifest = path.join(copia, 'manifest.json');
+  const manifest = JSON.parse(fs.readFileSync(arquivoDoManifest, 'utf8'));
+  manifest.optional_permissions = (manifest.optional_permissions || []).filter(p => p !== 'nativeMessaging');
+  manifest.permissions = [...new Set([...(manifest.permissions || []), 'nativeMessaging'])];
+  fs.writeFileSync(arquivoDoManifest, JSON.stringify(manifest, null, 2));
+  return copia;
 }
 
 async function apagarPmBoasVindas(sw) {
@@ -328,6 +352,7 @@ const test = base.extend({
 const SISTEMAS = Object.freeze({
   MAC: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
   WINDOWS: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+  LINUX: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
 });
 
 /**
@@ -338,7 +363,7 @@ async function comOSistema(page, sistema) {
   await page.addInitScript(sistema => {
     Object.defineProperty(navigator, 'userAgent', { value: sistema });
     Object.defineProperty(navigator, 'userAgentData', {
-      value: { platform: /Mac/.test(sistema) ? 'macOS' : 'Windows' },
+      value: { platform: /Mac/.test(sistema) ? 'macOS' : /Linux/.test(sistema) ? 'Linux' : 'Windows' },
     });
   }, sistema);
 }

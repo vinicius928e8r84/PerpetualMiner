@@ -974,6 +974,9 @@
   "ONB-25.anki": "Anki",
   "ONB-25.aplicativos": "Aplicativos",
   "CFG-45.trocou": "A forma de pagar mudou e a nova não tem o {modelo}. O Envio passou para o Automático.",
+  "CFG-46.acabou": "O login do ChatGPT acabou. Entre de novo para seguir pelo plano, ou use a chave da OpenAI.",
+  "CFG-46.noEnvio": "O login do ChatGPT acabou. Entre de novo ou use a chave: o Envio não troca sozinho.",
+  "CFG-46.abrir": "Abrir IA dos cartões",
   "BRG-52.conectar": "Conecte este navegador ao Anki",
   "BRG-52.botao": "Conectar",
   "BRG-52.digite": "Digite o código que apareceu no Anki",
@@ -981,5 +984,7 @@
   "BRG-52.errado": "Código errado. {n|Resta|Restam} {n} {n|tentativa|tentativas}",
   "BRG-52.venceu": "O código venceu. Peça outro",
   "BRG-52.naoConfirmou": "Algo na porta do Anki não se confirmou. Nada foi enviado",
+  "ENV-24.pedindo": "Enviando o pedido",
+  "ENV-24.apagado": "As frases deste Envio foram apagadas da Conexão com o Anki.",
   "ENV-22.demora": "O Anki segue sem responder. Se ele estiver na tela de perfis, abra o perfil; se estiver sincronizando, espere a sincronização terminar. O Envio continua sozinho."
 }
