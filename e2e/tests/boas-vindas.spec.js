@@ -39,7 +39,7 @@ test.describe('na instalação', () => {
 test('atualizar a extensão não abre aba nenhuma', async ({ context, extensao }) => {
   const abasAntes = context.pages().length;
 
-  // Exceção de teste: chrome-nativo (CLAUDE.md § Testing).
+  // Exceção de teste: chrome-nativo (docs/testes.md).
   // O Chrome chama o ouvinte do onInstalled com `update` depois de atualizar.
   await extensao.serviceWorker.evaluate(() => aoInstalar({ reason: 'update', previousVersion: '4.9' }));
 

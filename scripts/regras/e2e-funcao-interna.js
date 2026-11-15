@@ -1,7 +1,7 @@
 'use strict';
 
 // Um teste e2e confere o que a pessoa vê e o que fica gravado, nunca uma função
-// interna (CODING_STANDARDS.md regra 8; CLAUDE.md § Testing). As três exceções
+// interna (CODING_STANDARDS.md regra 8; docs/testes.md). As três exceções
 // levam um comentário que as nomeia, e a revisão cobrou esse comentário ou a
 // conferência pela tela na C1 (#129, S1 e S2), em d2ab0da ("nenhum lê mais
 // constante interna") e no #185 (um teste que só chama uma função do fake).
@@ -17,8 +17,8 @@ const id = 'e2e-funcao-interna';
 const EXCECOES = ['chrome-nativo', 'catálogo', 'componente-base'];
 
 const conserto = 'Confira pela tela (locators) e pelo que ficou gravado (`extensao.lerStorage`, `extensao.frases()`), '
-  + 'não chamando o código da extensão num `evaluate`. Se for uma das três exceções de CLAUDE.md § Testing, '
-  + 'diga qual no comentário logo acima, seguido do porquê: `// Exceção de teste: chrome-nativo|catálogo|componente-base (CLAUDE.md § Testing).` '
+  + 'não chamando o código da extensão num `evaluate`. Se for uma das três exceções de docs/testes.md, '
+  + 'diga qual no comentário logo acima, seguido do porquê: `// Exceção de teste: chrome-nativo|catálogo|componente-base (docs/testes.md).` '
   + '(CODING_STANDARDS.md regra 8).';
 
 const seAplica = arquivo => /^e2e\/tests\/.+\.spec\.js$/.test(arquivo);

@@ -46,4 +46,4 @@ Preconditions:
 - Changing a filter or the search clears the selection (a fixed bug of #9); assert the bar disappears, do not re-select silently.
 - Delete with an account (`extensao.semearSessao()`) also says the phrase leaves the other computers; cloud failure shows PAI-15 with Tentar de novo.
 - Frases text is inserted as text, never HTML (`uma frase com marcação aparece literal`).
-- Write to `frases` only through the harness helpers; the real service worker serializes writes (`CLAUDE.md` § Write Serialization).
+- Write to `frases` only through the harness helpers; the real service worker serializes writes (`docs/arquitetura.md` § Write Serialization).

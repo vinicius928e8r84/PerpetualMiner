@@ -60,7 +60,7 @@ const COPIA_FORA_DO_CATALOGO = seletor => {
 };
 
 async function copiaDoCatalogo(page, seletor) {
-  // Exceção de teste: catálogo (CLAUDE.md § Testing): os modelos de texto vêm do próprio catálogo da Voz.
+  // Exceção de teste: catálogo (docs/testes.md): os modelos de texto vêm do próprio catálogo da Voz.
   await expect.poll(() => page.evaluate(COPIA_FORA_DO_CATALOGO, seletor)).toEqual({ fora: [], complemento: [] });
 }
 
