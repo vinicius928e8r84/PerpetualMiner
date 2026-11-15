@@ -19,6 +19,7 @@ const alvos = {
   'docs/design/painel/boas-vindas/README.md': '# Boas-vindas\n\n## Conexão com o Anki: como ligar (F1)\n',
   'docs/design/popup/README.md': '# Popup\n',
   'docs/publicar-chrome-web-store.md': '# Loja\n\n## Justificativa de cada permissão\n',
+  'docs/com-codigo.md': '# Tipos\n\n### IA dos cartões (`painel-ia.js`, `lib/chave-da-openai.js`)\n\n## `pm_envio` e a fila\n\n## O `Fila.mudar` portão\n\n```md\n## `no cerco`\n```\n',
   'docs/design/identidade-veio/README.md': '# Identidade\n\n## Movimento (da C)\n\n## Forma (da D)\n\n## Forma (da D)\n\n<a id="Explicita"></a>\n',
   'popup.js': '// popup\n',
   'docs/pasta/vazia.txt': 'x\n',
@@ -81,6 +82,14 @@ assert.strictEqual(achados('docs/x.md', '[a](nao-existe.md)\r\n[b](#aqui)\r\n## 
 fs.writeFileSync(path.join(raiz, 'docs/crlf.md'), '# Topo\r\n\r\n## Título com CRLF\r\n');
 acusa('docs/x.md', '[a](crlf.md#título-com-crlf) [b](crlf.md#nao-tem)\n', 1, 'destino com CRLF');
 total++;
+
+// Um título com código em linha: o GitHub tira só as crases e mantém o texto (achado M1 da revisão do #451).
+acusa('docs/x.md', [
+  '[IA](com-codigo.md#ia-dos-cartões-painel-iajs-libchave-da-openaijs) [fila](com-codigo.md#pm_envio-e-a-fila)',
+  '[mudar](com-codigo.md#o-filamudar-portão) [no mesmo arquivo](#o-x-aqui)',
+  '## O `x` aqui',
+].join('\n'), 0, 'âncora de título com código em linha');
+acusa('docs/x.md', '[a](com-codigo.md#o----portão) [b](com-codigo.md#no-cerco)\n', 2, 'o título com o código apagado e o título dentro de um bloco cercado não são âncoras');
 
 // Os erros de cada forma.
 acusa('docs/x.md', '[a](nao-existe.md)\n', 1, 'arquivo que não existe');

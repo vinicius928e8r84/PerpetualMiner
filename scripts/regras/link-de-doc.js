@@ -24,8 +24,8 @@ const seAplica = arquivo => arquivo.endsWith('.md');
 // Uma linha em branco no lugar do código: as linhas e as colunas ficam as do arquivo.
 const branco = texto => texto.replace(/[^\n]/g, ' ');
 
-/** O Markdown sem o código cercado (``` ou ~~~) e sem os trechos entre crases, com as mesmas linhas. */
-function semCodigo(fonte) {
+/** O Markdown sem o código cercado (``` ou ~~~) e sem os trechos entre crases (a menos que `manterCrases`), com as mesmas linhas. */
+function semCodigo(fonte, { manterCrases = false } = {}) {
   let cerca = null;
   // Um clone com core.autocrlf=true (Git for Windows) entrega o Markdown com CRLF: o `\r` não pode ficar no fim da linha.
   return fonte.replace(/\r\n/g, '\n').split('\n').map(linha => {
@@ -38,7 +38,7 @@ function semCodigo(fonte) {
       cerca = abre[1];
       return branco(linha);
     }
-    return linha.replace(/(`+)(?!`)[\s\S]*?[^`]\1(?!`)/g, trecho => branco(trecho));
+    return manterCrases ? linha : linha.replace(/(`+)(?!`)[\s\S]*?[^`]\1(?!`)/g, trecho => branco(trecho));
   }).join('\n');
 }
 
@@ -77,8 +77,9 @@ function ancoraDoTitulo(titulo) {
 
 /** As âncoras de um .md: os títulos (com -1, -2 nos repetidos) e os `id=`/`name=` do texto. */
 function ancorasDe(fonte) {
+  // Os títulos leem o código em linha (o GitHub tira só as crases e mantém o texto); os `id=` não.
   const limpo = semCodigo(fonte);
-  const linhas = limpo.split('\n');
+  const linhas = semCodigo(fonte, { manterCrases: true }).split('\n');
   const titulos = [];
   linhas.forEach((linha, i) => {
     const atx = /^ {0,3}#{1,6}[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$/.exec(linha);
