@@ -152,6 +152,8 @@ com('.github/workflows/testes.yml', juntar('jobs:', '  a:', '    steps:', '     
   'o comentário do script de um `run: |` é de shell');
 com('complemento/a.py', juntar('x = 1  # ok', 'y = 2'), [1], 'Python, no fim da linha');
 com('painel.js', juntar('// coding: we cache this because the API is slow', 'x();'), [1], 'coding: só vale como a linha de codificação do Python');
+com('painel.js', juntar('// coding: utf-8', 'x();'), [1], 'a linha de codificação só passa em Python, mesmo sem prosa');
+com('scripts/a.sh', juntar('#!/usr/bin/env bash', '# -*- coding: utf-8 -*-', 'x=1'), [2], 'a linha de codificação no shell não passa');
 com('complemento/a.py', juntar('# coding: we cache this because the API is slow', 'x = 1'), [1], 'coding: com prosa não é a linha de codificação');
 com('painel.js', juntar('x(); // noqa porque a API é lenta', 'y(); // @ts-ignore porque o tipo é assim'), [1, 2], 'a diretiva não leva prosa atrás');
 com('painel.js', juntar('x(); // retry 3x porque a API falha @estado-guardado'), [1], '@estado-guardado só vale nos fakes de e2e/fakes/');

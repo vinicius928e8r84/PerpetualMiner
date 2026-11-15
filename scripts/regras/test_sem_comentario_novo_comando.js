@@ -74,7 +74,21 @@ r = rodar('main');
 assert.strictEqual(r.status, 0, `uma PR que não tem a ver com a exceção passa:\n${r.stdout}`);
 r = rodar('');
 assert.strictEqual(r.status, 0, `sem base a exceção também não é acusada de sobrar:\n${r.stdout}`);
-total += 18;
+for (const [arquivo, texto, mexido] of [
+  ['limpar.sh', juntar('#!/usr/bin/env bash', 'ls # exceção sem-comentario-novo porque sim', 'echo oi'), 'echo tchau'],
+  ['.github/workflows/a.yml', juntar('on:', '  pull_request:', 'jobs:', '  a:', '    name: a # exceção sem-comentario-novo porque sim', '    runs-on: x'), '    runs-on: y'],
+]) {
+  git('checkout', '-q', 'main');
+  gravar({ [arquivo]: texto, 'scripts/testes.json': '{"grupos":{},"fora":[]}\n' });
+  commit(`${arquivo} chega à main`);
+  git('checkout', '-q', '-b', `mexe-${path.basename(arquivo)}`);
+  gravar({ [arquivo]: texto.replace(/\n[^\n]*\n$/, `\n${mexido}\n`) });
+  commit(`${arquivo} mexe em outra linha`);
+  r = rodar('main');
+  assert.strictEqual(r.status, 1, `${arquivo}: a exceção mal escrita numa linha antiga continua sendo conferida:\n${r.stdout}`);
+  assert.match(r.stdout, new RegExp(`${arquivo.replace(/[./]/g, '\\$&')}:\\d+: exceção sem o formato`), r.stdout);
+}
+total += 18 + 4;
 
 fs.rmSync(raiz, { recursive: true, force: true });
 console.log(`sem-comentario-novo (comando): ${total} provas passaram`);

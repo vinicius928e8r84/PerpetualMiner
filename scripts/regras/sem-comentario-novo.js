@@ -12,7 +12,7 @@ const conserto = 'Apague o comentário. O que ele explicava sobre o código vai 
   + '(CODING_STANDARDS.md regra 14). Passam só a linha 1 `#!`, as diretivas de ferramenta (`eslint-disable`/`eslint-enable`/`eslint-env`, '
   + '`@ts-*`, `noqa`, `type: ignore`, `istanbul ignore`, `c8 ignore`, `prettier-ignore`, `coding:`), o cabeçalho de licença '
   + '(`SPDX-License-Identifier`, `Copyright`) e as marcas que outra regra lê (`exceção <regra> até …`, `Exceção de teste: …`, '
-  + '`@estado-guardado`). Um caso que precisa ficar leva, na própria linha: '
+  + '`@estado-guardado`). Um comentário que já existia numa linha que a mudança tocou, reindentou ou moveu também conta: apague-o. Um caso que precisa ficar leva, na própria linha: '
   + '`exceção sem-comentario-novo até AAAA-MM-DD, aprovada por <pessoa>: <motivo>`.';
 
 const FORA = /^(docs|\.claude)\//;
