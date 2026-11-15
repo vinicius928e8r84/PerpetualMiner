@@ -5,18 +5,13 @@
 // com 3, porque um teste leva de 0,9 a 9 s; o CI espera a mais lenta (relatório ci-posts-1111, seção 3.4).
 //
 //   node scripts/ci/fatias-e2e.js <N>             os filtros do Playwright da fatia N (o workflow os passa a `testar.mjs e2e`)
-//   node scripts/ci/fatias-e2e.js --gerar         refaz as fatias a partir das durações de fatias-e2e.json
-//   node scripts/ci/fatias-e2e.js --medir <log>...  atualiza as durações a partir dos logs das 8 fatias (reporter `list` do Playwright) e refaz as fatias
-//
-// Um spec novo entra com a estimativa ESTIMATIVA_DO_SPEC_NOVO até alguém rodar `--medir` num log do CI; test_fatias_e2e.js
-// falha quando um spec ficou fora das fatias, em duas, ou quando as fatias não são o que `--gerar` faz das durações.
 
 const fs = require('fs');
 const path = require('path');
 
 const RAIZ = path.resolve(__dirname, '..', '..');
 const ARQUIVO = path.join(__dirname, 'fatias-e2e.json');
-const PASTA_DOS_SPECS = path.join(RAIZ, 'e2e', 'tests');
+const PASTA_DOS_SPECS = process.env.FATIAS_E2E_PASTA || path.join(RAIZ, 'e2e', 'tests');
 const NUMERO_DE_FATIAS = 8;
 const ESTIMATIVA_DO_SPEC_NOVO = 10;
 
@@ -84,18 +79,16 @@ function duracoesDosLogs(textos) {
 
 const ler = () => JSON.parse(fs.readFileSync(ARQUIVO, 'utf8'));
 
+const fatiasDe = (duracoes, specs, quantas = NUMERO_DE_FATIAS) => montarFatias(duracoesParaOsSpecs(duracoes, specs), quantas);
+
 function gravar(duracoes) {
   const ordenado = Object.fromEntries(Object.keys(duracoes).sort().map(spec => [spec, duracoes[spec]]));
-  const fatias = montarFatias(ordenado);
   const linhas = [
     '{',
-    '  "descricao": "As fatias da suíte e2e no CI, montadas pela duração (segundos) de cada spec; não edite à mão: node scripts/ci/fatias-e2e.js --gerar (ou --medir <log>...). Ver o cabeçalho de scripts/ci/fatias-e2e.js.",',
+    '  "descricao": "As durações (segundos) de cada spec da suíte e2e no CI, medidas nos logs; as fatias saem delas em scripts/ci/fatias-e2e.js. Não edite à mão: node scripts/ci/fatias-e2e.js --medir <log>... Ver o cabeçalho desse script.",',
     '  "duracoes": {',
     ...Object.keys(ordenado).map((spec, i, todos) => `    ${JSON.stringify(spec)}: ${ordenado[spec]}${i < todos.length - 1 ? ',' : ''}`),
-    '  },',
-    '  "fatias": [',
-    ...fatias.map((lista, i) => `    ${JSON.stringify(lista)}${i < fatias.length - 1 ? ',' : ''}`),
-    '  ]',
+    '  }',
     '}',
     '',
   ];
@@ -107,19 +100,17 @@ function duracoesParaOsSpecs(duracoes, specs) {
   return Object.fromEntries(specs.map(spec => [spec, spec in duracoes ? duracoes[spec] : ESTIMATIVA_DO_SPEC_NOVO]));
 }
 
-module.exports = { ARQUIVO, NUMERO_DE_FATIAS, duracoesDosLogs, duracoesParaOsSpecs, filtros, ler, montarFatias, problemas, specsDoDisco };
+module.exports = { ARQUIVO, ESTIMATIVA_DO_SPEC_NOVO, NUMERO_DE_FATIAS, duracoesDosLogs, duracoesParaOsSpecs, fatiasDe, filtros, ler, montarFatias, problemas, specsDoDisco };
 
 if (require.main === module) {
   const [pedido, ...resto] = process.argv.slice(2);
   const specs = specsDoDisco();
-  if (pedido === '--gerar') {
-    gravar(duracoesParaOsSpecs(ler().duracoes, specs));
-  } else if (pedido === '--medir' && resto.length) {
+  if (pedido === '--medir' && resto.length) {
     const medidas = duracoesDosLogs(resto.map(arquivo => fs.readFileSync(arquivo, 'utf8')));
     // Um spec sem teste que passou nos logs (só pulados) custa quase nada: 1 s.
     gravar(Object.fromEntries(specs.map(spec => [spec, Math.max(1, Math.round(medidas[spec] || 0))])));
   } else if (/^\d+$/.test(pedido || '')) {
-    const { fatias } = ler();
+    const fatias = fatiasDe(ler().duracoes, specs);
     const numero = Number(pedido);
     if (numero < 1 || numero > fatias.length) {
       console.error(`fatia ${numero} não existe: são ${fatias.length}`);
@@ -127,7 +118,7 @@ if (require.main === module) {
     }
     console.log(filtros(fatias[numero - 1]).join(' '));
   } else {
-    console.error('uso: node scripts/ci/fatias-e2e.js <N> | --gerar | --medir <log>...');
+    console.error('uso: node scripts/ci/fatias-e2e.js <N> | --medir <log>...');
     process.exit(2);
   }
 }
