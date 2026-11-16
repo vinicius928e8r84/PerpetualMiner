@@ -278,7 +278,7 @@ const [retomar] = acusa('contrato-fechado', 'painel-envio.js',
   "const resposta = await fetch(`${ENDERECO_DA_CONEXAO}/jobs/${encodeURIComponent(jobId)}/retry`, { method: 'POST' });\n", 1, 'rota fora do contrato');
 assert.match(retomar.detalhe, /POST \/jobs\/:id\/retry: a rota não tem exemplo no contrato/);
 total++;
-acusa('contrato-fechado', 'background.js', "await fetch('http://127.0.0.1:8766/anki/status');\n", 1, 'o endereço por extenso');
+acusa('contrato-fechado', 'background.js', "await fetch('http://127.0.0.1:8766/health');\n", 1, 'o endereço por extenso');
 acusa('contrato-fechado', 'painel-ajustes.js',
   'const resposta = await raiz.PedidoAoAnki.pedir(ConexaoAnki.ENDERECO, raiz.PedidoAoAnki.baralhos());\n', 0, 'o construtor');
 acusa('contrato-fechado', 'lib/sincronizacao.js', "const r = await fetch(`${URL_DO_FIRESTORE}/documents/frases`, { method: 'POST' });\n", 0, 'outro servidor');

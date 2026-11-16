@@ -1700,20 +1700,6 @@ body {
   display: none;
 }
 
-.anki-nota--com-ponto {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-}
-
-.anki-nota--com-ponto .anki-ponto {
-  margin-top: 6px;
-}
-
-.anki-ponto--parado {
-  animation: none;
-}
-
 .ajustes {
   display: grid;
   gap: 12px;
@@ -2248,7 +2234,6 @@ body {
   display: none;
 }
 
-.anki-topo .anki-nota,
 .anki-topo .anki-espera,
 .anki-corpo .anki-espera {
   margin: 0;

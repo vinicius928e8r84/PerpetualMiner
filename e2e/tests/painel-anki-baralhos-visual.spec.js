@@ -50,14 +50,6 @@ test.fixme('baralhos: azulejos, anel de maturidade e os números', async ({ page
   await expect(ilha(page)).toHaveScreenshot('baralhos-sem-reparo.png');
 });
 
-test.fixme('baralhos lidos do arquivo local (BRG-13) e o baralho que não existe (BRG-14)', async ({ page, extensao, fakes }) => {
-  fakes.anki.lerBaralhosDoArquivo();
-  await abrirAnki(page, extensao, '#anki/baralhos', { gravado: { ankiBridgePresets: { en: { deckName: 'CIMV' }, ru: { deckName: 'RUSSIAN' } } } });
-  await expect(baralhos(page).getByRole('button', { name: 'Abrir Ajustes de envio' })).toBeVisible();
-
-  await expect(ilha(page)).toHaveScreenshot('baralhos-local-e-sem-baralho-sem-reparo.png');
-});
-
 test.fixme('baralhos que falham: BRG-11 com Tentar de novo', async ({ page, extensao, fakes }) => {
   fakes.anki.falharBaralhos({ status: 503 });
   await abrirAnki(page, extensao, '#anki/baralhos');
