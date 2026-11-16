@@ -51,6 +51,8 @@ C1 a C9 e F1 estão em [`regras-por-categoria.md`](regras-por-categoria.md).
 
 As contagens são exemplos e sempre seguem o plural certo. Um erro sem cópia própria usa GLB-01 como último recurso, sempre com Detalhes.
 
+A coluna **Nota** de cada linha (a decisão por trás do estado) também mora como dado em `notas-<área>.json`, ao lado de cada `catalogo-<área>.md`; `test_voz.js` falha se um ID do catálogo ficar sem entrada lá.
+
 O catálogo mora em um arquivo por área, lidos nesta ordem (um PR mexe no da sua área). Um ID novo entra no arquivo da área da tela:
 
 - [`catalogo-popup-e-pagina.md`](catalogo-popup-e-pagina.md): Popup; Minerar na página (componente de feedback)
