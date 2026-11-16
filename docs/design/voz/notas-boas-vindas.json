@@ -1,21 +1,135 @@
 {
-  "ONB-01": "Abre sozinha na instalação (lista fechada).",
-  "ONB-02": "",
-  "ONB-03": "Num passo opcional, o sobretítulo é um texto só. A lista usa: Boas-vindas · Minerar a primeira frase · Escolher o atalho de Minerar seleção · Entrar com Google · Ligar a Conexão com o Anki · Configurar a IA dos cartões · Ligar a mineração automática · Escolher o nível do cartão · Adicionar a chave do Gemini · Enviar o primeiro cartão · Tudo pronto (para o leitor de tela: “Passos da configuração”).",
-  "ONB-04": "“Agora não” só nos passos opcionais.",
-  "ONB-05": "Mostra o atalho “Minerar legenda” gravado; sem atalho gravado: GLB-02. A ilustração estática da legenda marcada usa a frase de exemplo “I never take it for granted.” com a Palavra “take it for granted”.",
-  "ONB-06": "Mostra o atalho de legenda que estiver gravado (não Alt+S fixo), com os mesmos controles de Configurações › Atalhos.",
-  "ONB-07": "",
-  "ONB-08": "Texto de abertura do passo 4 (`ONB-08.corpo` em [`lib/voz/catalogo.js`](../../../lib/voz/catalogo.js)); o passo traz depois o mesmo componente do card ONB-16 ([Boas-vindas § F1][F1]).",
-  "ONB-09": "A mineração automática estar no popup e aqui é deliberado.",
-  "ONB-10": "C8.",
-  "ONB-11": "O “Onde conseguir a chave” recolhido só aparece sem chave ([Boas-vindas § passos](../painel/boas-vindas/README.md#os-passos)).",
-  "ONB-12": "“Abrir painel” abre o Painel em Frases. O sobretítulo do card é “Pronto”.",
-  "ONB-13": "Os valores: a contagem de frases (PAI-05), o atalho, o nome da conta (ou CFG-10), “ligada”, os idiomas ligados, “salva”, “enviado”.",
-  "ONB-14": "O lembrete ocultável é item da lista fechada.",
-  "ONB-15": "“Ocultar” esconde o lembrete de vez, nos dois lugares.",
-  "ONB-16": "No lugar das abas na primeira vez, com os passos da [F1]. “Extensões” é o menu do Anki; o código do AnkiWeb só existe depois do primeiro upload (#176): antes, o Detalhes diz que vem em breve. Desenho B (#74, #145, #146): passos pelo estado real; sem resposta em 2 minutos, o checklist e “Baixar de novo”.",
-  "ONB-17": "O último passo da [F1], depois de a Conexão responder (#147): igual no passo 4 da Boas-vindas e no ONB-16. A permissão é a opcional `nativeMessaging`. Os botões: “Permitir abrir o Anki”, “Agora não” (ONB-04) e, se o abridor falha, “Tentar de novo” (ENV-01), com a causa no Detalhes. Sem a permissão, o Envio pede “Abra o Anki” (ENV-16).",
-  "ONB-18": "O primeiro passo da [F1] (#146), no mesmo componente do passo 4 da Boas-vindas. A escolha fica só na tela; o que marca o passo é a Conexão respondendo (antes dela, tudo é o mesmo silêncio: nunca “não encontrado”). “Não tenho” leva ao download do Anki, em aba nova. “Já tenho” usa o abridor (#147) quando a permissão já está dada; senão, o manual.",
-  "ONB-19": "Antes de baixar o arquivo da [F1] (#146): dois quadros alternados — o aviso do Anki ao abrir o arquivo e o mesmo diálogo com o Sim marcado. Título, aviso e botões são as palavras do próprio Anki em pt-BR (Anki 25.9). Com movimento reduzido, ficam parados, lado a lado."
+  "ONB-01": {
+    "estado": "Abertura (título + corpo)",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "Abre sozinha na instalação (lista fechada)."
+  },
+  "ONB-02": {
+    "estado": "Botões da abertura",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": ""
+  },
+  "ONB-03": {
+    "estado": "Sobretítulo do passo",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "Num passo opcional, o sobretítulo é um texto só. A lista usa: Boas-vindas · Minerar a primeira frase · Escolher o atalho de Minerar seleção · Entrar com Google · Ligar a Conexão com o Anki · Configurar a IA dos cartões · Ligar a mineração automática · Escolher o nível do cartão · Adicionar a chave do Gemini · Enviar o primeiro cartão · Tudo pronto (para o leitor de tela: “Passos da configuração”)."
+  },
+  "ONB-04": {
+    "estado": "Botões do passo",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "“Agora não” só nos passos opcionais."
+  },
+  "ONB-05": {
+    "estado": "Passo 1",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "Mostra o atalho “Minerar legenda” gravado; sem atalho gravado: GLB-02. A ilustração estática da legenda marcada usa a frase de exemplo “I never take it for granted.” com a Palavra “take it for granted”."
+  },
+  "ONB-06": {
+    "estado": "Passo 2",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "Mostra o atalho de legenda que estiver gravado (não Alt+S fixo), com os mesmos controles de Configurações › Atalhos."
+  },
+  "ONB-07": {
+    "estado": "Passo 3",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": ""
+  },
+  "ONB-08": {
+    "estado": "Passo 4",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "Texto de abertura do passo 4 (`ONB-08.corpo` em [`lib/voz/catalogo.js`](../../../lib/voz/catalogo.js)); o passo traz depois o mesmo componente do card ONB-16 ([Boas-vindas § F1][F1])."
+  },
+  "ONB-09": {
+    "estado": "Passo 5",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "A mineração automática estar no popup e aqui é deliberado."
+  },
+  "ONB-10": {
+    "estado": "Dependência da mineração automática (passo e popup)",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "C8."
+  },
+  "ONB-11": {
+    "estado": "Passo 6",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "O “Onde conseguir a chave” recolhido só aparece sem chave ([Boas-vindas § passos](../painel/boas-vindas/README.md#os-passos))."
+  },
+  "ONB-12": {
+    "estado": "Tudo pronto",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "“Abrir painel” abre o Painel em Frases. O sobretítulo do card é “Pronto”."
+  },
+  "ONB-13": {
+    "estado": "Resumo (por passo)",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "Os valores: a contagem de frases (PAI-05), o atalho, o nome da conta (ou CFG-10), “ligada”, os idiomas ligados, “salva”, “enviado”."
+  },
+  "ONB-14": {
+    "estado": "Lembrete no popup",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "O lembrete ocultável é item da lista fechada."
+  },
+  "ONB-15": {
+    "estado": "Lembrete em Frases",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "“Ocultar” esconde o lembrete de vez, nos dois lugares."
+  },
+  "ONB-16": {
+    "estado": "Área Conexão com o Anki, nunca conectada",
+    "categoria": "vazio",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "No lugar das abas na primeira vez, com os passos da [F1]. “Extensões” é o menu do Anki; o código do AnkiWeb só existe depois do primeiro upload (#176): antes, o Detalhes diz que vem em breve. Desenho B (#74, #145, #146): passos pelo estado real; sem resposta em 2 minutos, o checklist e “Baixar de novo”."
+  },
+  "ONB-17": {
+    "estado": "Passo Abrir o Anki sozinho, nos passos da F1",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "O último passo da [F1], depois de a Conexão responder (#147): igual no passo 4 da Boas-vindas e no ONB-16. A permissão é a opcional `nativeMessaging`. Os botões: “Permitir abrir o Anki”, “Agora não” (ONB-04) e, se o abridor falha, “Tentar de novo” (ENV-01), com a causa no Detalhes. Sem a permissão, o Envio pede “Abra o Anki” (ENV-16)."
+  },
+  "ONB-18": {
+    "estado": "Passo Ter o Anki, o primeiro dos passos da F1",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "O primeiro passo da [F1] (#146), no mesmo componente do passo 4 da Boas-vindas. A escolha fica só na tela; o que marca o passo é a Conexão respondendo (antes dela, tudo é o mesmo silêncio: nunca “não encontrado”). “Não tenho” leva ao download do Anki, em aba nova. “Já tenho” usa o abridor (#147) quando a permissão já está dada; senão, o manual."
+  },
+  "ONB-19": {
+    "estado": "A animação do aviso do Anki, no passo de baixar o arquivo",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "Antes de baixar o arquivo da [F1] (#146): dois quadros alternados — o aviso do Anki ao abrir o arquivo e o mesmo diálogo com o Sim marcado. Título, aviso e botões são as palavras do próprio Anki em pt-BR (Anki 25.9). Com movimento reduzido, ficam parados, lado a lado."
+  }
 }

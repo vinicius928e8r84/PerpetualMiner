@@ -1,30 +1,186 @@
 {
-  "POP-01": "Espera curta: sem texto, só esqueleto (C3).",
-  "POP-02": "A picareta, o título em negrito e o texto embaixo. Mostra o atalho configurado de fato, uma tecla por `kbd`. Sem atalho gravado, o texto vira “Defina um atalho para minerar legendas de vídeo.” (`POP-02.semAtalho`, da spec do popup), com a ação “Definir atalho” de GLB-02.",
-  "POP-03": "Placeholder não é andamento: sem “…” (V7).",
-  "POP-04": "",
-  "POP-05": "O campo limpa e a frase aparece no topo das últimas. É visível, então fica sem toast (C4).",
-  "POP-06": "Inline sob o campo, com o ícone de alerta e sem “Detalhes”: a frase já diz o que fazer (dono, #38).",
-  "POP-10": "",
-  "POP-07": "Na tela, o número grande e “/20” menor, como no protótipo (dono, #38). O leitor de tela ouve o número com o que ele conta (C8): “12 de 20 hoje”.",
-  "POP-08": "A contagem já está no contador acima (POP-07), então não se repete.",
-  "POP-09": "V10.",
-  "POP-11": "Mostra o atalho “Minerar legenda” gravado, não um texto fixo. “Mudar atalho” abre o painel em Configurações › Atalhos. Sem atalho gravado: GLB-02.",
-  "POP-12": "O popup não tem subtítulo: só a marca Veio + “PerpetualMiner”. A frase descritiva fica para a Boas-vindas (ONB-01) e a loja.",
-  "POP-13": "“Ver todas” fica à direita do título, só com frase na lista, e abre o Painel em Frases.",
-  "POP-14": "“por dia” à direita do título (POP-10). O leitor de tela ouve o toggle como “Mineração automática em inglês” e o campo como “Limite por dia em inglês”, com o idioma em minúscula.",
-  "POP-15": "Em mono, no topo do azulejo; o nome do idioma fica no rótulo do toggle (POP-14).",
-  "POP-16": "Uma linha com o ícone de alerta, sob os azulejos, sem botão e sem “Detalhes”: diz o que fazer. Numa gravação que falhou, o toggle ou o limite voltam ao que está gravado.",
-  "POP-17": "Uma linha sob os azulejos do popup, só com o Anki fechado (a Conexão desligada, ou ligada com o Anki confirmado fechado) e com leitura guardada: a mais antiga entre os idiomas ligados. O dia vem de PAI-11 e a hora é a da leitura. Com o botão BRG-38. Sem leitura, o azulejo diz BRG-37.",
-  "MIN-01": "2ª linha: a frase; a meta diz o idioma (`EN`, `RU`). Só aparece depois de salvar e copiar de verdade (V4). Revisão do dono no PR #66: sem “· Inglês” no título (a meta já diz) e sem a linha “{Título} · {Detalhe}”.",
-  "MIN-02": "Revisão do dono no PR #66: o que importa é ter minerado, então a pílula é a de sucesso, só sem “e copiada”.",
-  "MIN-03": "Título e dica, como a falha do protótipo. Dono, PR #66: sem × e sem “Tentar de novo”; some sozinha em ~3,5 s, como no protótipo.",
-  "MIN-04": "C9. Título e dica, como no protótipo.",
-  "MIN-05": "2ª linha: a frase; a meta é a Fonte, “Web” (PAI-29).",
-  "MIN-06": "2ª linha: a frase; a meta é o idioma e o contador do dia (`EN 12/20`), como no protótipo.",
-  "MIN-07": "Mostra o atalho configurado. Sem atalho gravado, fica só “Minerar legenda”.",
-  "MIN-08": "V10: único lugar onde o nome aparece. O retorno visual continua fora (Auditoria T6).",
-  "MIN-09": "Contador na toolbar: lista fechada. Soma só os idiomas ligados. Com todos no limite: “Mineração automática: limite de hoje atingido”. O contador no canto do botão flutuante (n/limite) é o do idioma daquela captura, não o do badge.",
-  "MIN-10": "Alt+S ou o atalho de seleção numa página sem vídeo e sem texto selecionado. A pílula surge no canto inferior direito. C9.",
-  "MIN-11": "O contador `n/limite` do botão é o do idioma da captura, não a soma do badge (MIN-09). No limite: “Mineração automática · Inglês: limite de hoje atingido”. Na etiqueta do mouse, sem o idioma (a meta já o diz): “Mineração automática: 9 de 15 hoje” / “Mineração automática: limite de hoje atingido”."
+  "POP-01": {
+    "estado": "Lista das últimas carregando",
+    "categoria": "loading",
+    "hoje": "Carregando...",
+    "marca": "some",
+    "nota": "Espera curta: sem texto, só esqueleto (C3)."
+  },
+  "POP-02": {
+    "estado": "Nenhuma frase (1º uso)",
+    "categoria": "vazio",
+    "hoje": "Nenhuma frase salva ainda.",
+    "nota": "A picareta, o título em negrito e o texto embaixo. Mostra o atalho configurado de fato, uma tecla por `kbd`. Sem atalho gravado, o texto vira “Defina um atalho para minerar legendas de vídeo.” (`POP-02.semAtalho`, da spec do popup), com a ação “Definir atalho” de GLB-02."
+  },
+  "POP-03": {
+    "estado": "Campo da mineração rápida",
+    "categoria": "status",
+    "hoje": "Cole ou escreva uma frase…",
+    "nota": "Placeholder não é andamento: sem “…” (V7)."
+  },
+  "POP-04": {
+    "estado": "Botão da mineração rápida",
+    "categoria": "status",
+    "hoje": "Adicionar",
+    "nota": ""
+  },
+  "POP-05": {
+    "estado": "Mineração rápida deu certo",
+    "categoria": "sucesso",
+    "hoje": "(nada)",
+    "marca": "novo",
+    "nota": "O campo limpa e a frase aparece no topo das últimas. É visível, então fica sem toast (C4)."
+  },
+  "POP-06": {
+    "estado": "Mineração rápida falhou",
+    "categoria": "erro",
+    "hoje": "(falha calada)",
+    "marca": "novo",
+    "nota": "Inline sob o campo, com o ícone de alerta e sem “Detalhes”: a frase já diz o que fazer (dono, #38)."
+  },
+  "POP-10": {
+    "estado": "Título da seção",
+    "categoria": "status",
+    "hoje": "Auto Miner",
+    "nota": ""
+  },
+  "POP-07": {
+    "estado": "Contador da mineração automática",
+    "categoria": "status",
+    "hoje": "0/20",
+    "nota": "Na tela, o número grande e “/20” menor, como no protótipo (dono, #38). O leitor de tela ouve o número com o que ele conta (C8): “12 de 20 hoje”."
+  },
+  "POP-08": {
+    "estado": "Mineração automática no limite",
+    "categoria": "status",
+    "hoje": "20/20 (amarelo)",
+    "nota": "A contagem já está no contador acima (POP-07), então não se repete."
+  },
+  "POP-09": {
+    "estado": "Botão que abre o Painel",
+    "categoria": "status",
+    "hoje": "Abrir Painel de Estudos",
+    "nota": "V10."
+  },
+  "POP-11": {
+    "estado": "Rodapé do atalho",
+    "categoria": "status",
+    "hoje": "Configurar Atalho de Captura · Atalho atual: … (o Alt+S não aparece)",
+    "nota": "Mostra o atalho “Minerar legenda” gravado, não um texto fixo. “Mudar atalho” abre o painel em Configurações › Atalhos. Sem atalho gravado: GLB-02."
+  },
+  "POP-12": {
+    "estado": "Subtítulo do cabeçalho",
+    "categoria": "status",
+    "hoje": "Minerador de legendas",
+    "marca": "some",
+    "nota": "O popup não tem subtítulo: só a marca Veio + “PerpetualMiner”. A frase descritiva fica para a Boas-vindas (ONB-01) e a loja."
+  },
+  "POP-13": {
+    "estado": "Últimas mineradas: título e atalho para o Painel",
+    "categoria": "status",
+    "hoje": "Últimas mineradas",
+    "marca": "novo",
+    "nota": "“Ver todas” fica à direita do título, só com frase na lista, e abre o Painel em Frases."
+  },
+  "POP-14": {
+    "estado": "Mineração automática: azulejo",
+    "categoria": "status",
+    "hoje": "(limite solto, sem rótulo)",
+    "marca": "novo",
+    "nota": "“por dia” à direita do título (POP-10). O leitor de tela ouve o toggle como “Mineração automática em inglês” e o campo como “Limite por dia em inglês”, com o idioma em minúscula."
+  },
+  "POP-15": {
+    "estado": "Código do idioma no azulejo",
+    "categoria": "status",
+    "hoje": "EN · RU",
+    "marca": "novo",
+    "nota": "Em mono, no topo do azulejo; o nome do idioma fica no rótulo do toggle (POP-14)."
+  },
+  "POP-16": {
+    "estado": "Mineração automática não carregou ou não salvou",
+    "categoria": "erro",
+    "hoje": "(falha calada)",
+    "marca": "novo",
+    "nota": "Uma linha com o ícone de alerta, sob os azulejos, sem botão e sem “Detalhes”: diz o que fazer. Numa gravação que falhou, o toggle ou o limite voltam ao que está gravado."
+  },
+  "POP-17": {
+    "estado": "Idade do vocabulário com o Anki fechado",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "Uma linha sob os azulejos do popup, só com o Anki fechado (a Conexão desligada, ou ligada com o Anki confirmado fechado) e com leitura guardada: a mais antiga entre os idiomas ligados. O dia vem de PAI-11 e a hora é a da leitura. Com o botão BRG-38. Sem leitura, o azulejo diz BRG-37."
+  },
+  "MIN-01": {
+    "estado": "Alt+S / botão: minerou e copiou",
+    "categoria": "sucesso",
+    "hoje": "Minerado & Copiado · Inglês",
+    "nota": "2ª linha: a frase; a meta diz o idioma (`EN`, `RU`). Só aparece depois de salvar e copiar de verdade (V4). Revisão do dono no PR #66: sem “· Inglês” no título (a meta já diz) e sem a linha “{Título} · {Detalhe}”."
+  },
+  "MIN-02": {
+    "estado": "Minerou, mas não copiou",
+    "categoria": "sucesso",
+    "hoje": "(dizia sucesso igual)",
+    "marca": "novo",
+    "nota": "Revisão do dono no PR #66: o que importa é ter minerado, então a pílula é a de sucesso, só sem “e copiada”."
+  },
+  "MIN-03": {
+    "estado": "Falhou ao salvar",
+    "categoria": "erro",
+    "hoje": "(dizia sucesso igual)",
+    "marca": "novo",
+    "nota": "Título e dica, como a falha do protótipo. Dono, PR #66: sem × e sem “Tentar de novo”; some sozinha em ~3,5 s, como no protótipo."
+  },
+  "MIN-04": {
+    "estado": "Nenhuma legenda na tela",
+    "categoria": "erro",
+    "hoje": "(borda vermelha por 800 ms)",
+    "marca": "novo",
+    "nota": "C9. Título e dica, como no protótipo."
+  },
+  "MIN-05": {
+    "estado": "Atalho de seleção: minerou",
+    "categoria": "sucesso",
+    "hoje": "⚡ Frase Capturada!",
+    "nota": "2ª linha: a frase; a meta é a Fonte, “Web” (PAI-29)."
+  },
+  "MIN-06": {
+    "estado": "Auto Miner minerou uma linha",
+    "categoria": "sucesso",
+    "hoje": "Auto Miner - Inglês - 12/20",
+    "nota": "2ª linha: a frase; a meta é o idioma e o contador do dia (`EN 12/20`), como no protótipo."
+  },
+  "MIN-07": {
+    "estado": "Botão flutuante (title/aria)",
+    "categoria": "status",
+    "hoje": "(nenhum)",
+    "marca": "novo",
+    "nota": "Mostra o atalho configurado. Sem atalho gravado, fica só “Minerar legenda”."
+  },
+  "MIN-08": {
+    "estado": "Menu de contexto do Chrome",
+    "categoria": "status",
+    "hoje": "Enviar para o PerpetualMiner",
+    "nota": "V10: único lugar onde o nome aparece. O retorno visual continua fora (Auditoria T6)."
+  },
+  "MIN-09": {
+    "estado": "Badge da toolbar (tooltip)",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "Contador na toolbar: lista fechada. Soma só os idiomas ligados. Com todos no limite: “Mineração automática: limite de hoje atingido”. O contador no canto do botão flutuante (n/limite) é o do idioma daquela captura, não o do badge."
+  },
+  "MIN-10": {
+    "estado": "Página sem vídeo e sem seleção",
+    "categoria": "erro",
+    "hoje": "(nada aparece)",
+    "marca": "novo",
+    "nota": "Alt+S ou o atalho de seleção numa página sem vídeo e sem texto selecionado. A pílula surge no canto inferior direito. C9."
+  },
+  "MIN-11": {
+    "estado": "Contador do botão flutuante (tooltip)",
+    "categoria": "status",
+    "hoje": "Auto Miner: {n} de {limite} hoje",
+    "marca": "novo",
+    "nota": "O contador `n/limite` do botão é o do idioma da captura, não a soma do badge (MIN-09). No limite: “Mineração automática · Inglês: limite de hoje atingido”. Na etiqueta do mouse, sem o idioma (a meta já o diz): “Mineração automática: 9 de 15 hoje” / “Mineração automática: limite de hoje atingido”."
+  }
 }
