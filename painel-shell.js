@@ -1,18 +1,16 @@
 'use strict';
 
 (function (raiz) {
-  /** As áreas do painel com a sidebar; a Boas-vindas é a página à parte. */
   const AREAS_DO_PAINEL = Object.freeze(['frases', 'anki', 'configuracoes']);
   const ABAS_DA_CONEXAO = ['custos', 'baralhos', 'vocabulario', 'ajustes'];
   const SECOES_DE_CONFIGURACOES = ['conta', 'atalhos', 'ia', 'chave', 'anki', 'aparencia', 'perigo'];
 
-  /** A chave do Gemini no resumo: os 4 primeiros e os 4 últimos caracteres. */
   const MASCARA_DA_CHAVE = '••••••••';
 
   const estado = { area: null };
   const ouvintesDeArea = new Map();
-  const ouvintesDeSecao = new Map();   // seção de Configurações → ouvintes
-  const fimDosDestaques = new Map();   // card → o timer que tira a borda do destaque
+  const ouvintesDeSecao = new Map();
+  const fimDosDestaques = new Map();
 
   const { textoDaVoz, Atalhos, Veio, ConexaoAnki, ConexaoNaTela } = raiz;
   const { SITUACAO } = ConexaoAnki;
@@ -28,13 +26,9 @@
       radio.addEventListener('change', () => { location.hash = `#anki/${radio.value}`; });
     }
     ConexaoNaTela.ligarTentarDeNovo(porId('shell-tentar-de-novo'));
-    // O tema vale na hora: gravar é o que troca a tela, aqui e em qualquer
-    // outra página aberta (veio/tema.js escuta o mesmo storage).
     for (const radio of $$('#cfg-tema input[name="tema"]')) {
       radio.addEventListener('change', () => { if (radio.checked) raiz.Tema.gravarTema(radio.value); });
     }
-    // A linha inteira do card abre e fecha; o botão do título é quem o teclado
-    // e o leitor de tela usam, e o clique nele sobe até aqui.
     for (const cabeca of $$('.shell-area[data-area="configuracoes"] .cfg-cabeca')) {
       cabeca.addEventListener('click', () => alternarCard(cabeca.closest('.cfg-card')));
     }
@@ -49,16 +43,14 @@
     aplicarEndereco();
     lerResumosGravados();
     ConexaoAnki.acompanhar(mostrarConexao);
-    raiz.PareamentoComOAnki?.aoMudar(() => mostrarConexao(ConexaoAnki.situacao()));   // um pedido que descobre a porta sem prova muda o ponto na hora
+    raiz.PareamentoComOAnki?.aoMudar(() => mostrarConexao(ConexaoAnki.situacao()));
     ConexaoAnki.iniciar({ aCada: ConexaoAnki.INTERVALO });
   }
 
-  /** Os textos fixos do shell, pelos atributos data-voz do painel.html. */
   function escreverTextosDoCatalogo() {
     for (const no of $$('[data-voz]')) no.textContent = textoDaVoz(no.dataset.voz);
     for (const no of $$('[data-voz-aria]')) no.setAttribute('aria-label', textoDaVoz(no.dataset.vozAria));
     for (const no of $$('[data-voz-title]')) no.title = textoDaVoz(no.dataset.vozTitle);
-    // No trilho só o ícone fica à vista: o rótulo vira o tooltip.
     for (const item of $$('.shell-item')) {
       if (item.dataset.area !== 'anki') item.title = item.querySelector('.shell-rotulo').textContent;
     }
@@ -69,7 +61,6 @@
     for (const lugar of $$('[data-icone]')) lugar.replaceWith(iconeVeio(lugar.dataset.icone));
   }
 
-  /** A área (e a aba ou a seção) que um endereço abre. O desconhecido abre Frases. */
   function lerEndereco(hash) {
     const [area, parte] = hash.replace(/^#/, '').split('/');
     if (area === 'anki') {
@@ -78,7 +69,6 @@
     if (area === 'configuracoes') {
       return { area, secao: SECOES_DE_CONFIGURACOES.includes(parte) ? parte : null };
     }
-    // O passo da Boas-vindas é de painel-boas-vindas.js.
     if (area === 'boas-vindas') return { area };
     return { area: 'frases' };
   }
@@ -88,7 +78,6 @@
     const entrou = area !== estado.area;
     estado.area = area;
 
-    // A Boas-vindas é uma página sem a sidebar: o shell inteiro sai da tela.
     $('.shell').hidden = area === 'boas-vindas';
     porId('boas-vindas').hidden = area !== 'boas-vindas';
     for (const vista of $$('.shell-area')) vista.hidden = vista.dataset.area !== area;
@@ -98,7 +87,6 @@
     }
     if (aba) mostrarAba(aba);
 
-    // #configuracoes sozinho mostra todos os cards fechados.
     if (area === 'configuracoes' && !secao) fecharOsCards();
     if (secao) rolarAteASecao(secao);
     else if (entrou) $('.shell-conteudo').scrollTo(0, 0);
@@ -119,7 +107,6 @@
   function mostrarAba(aba) {
     for (const radio of $$('input[name="aba-anki"]')) radio.checked = radio.value === aba;
     for (const vista of $$('.shell-aba')) vista.hidden = vista.dataset.aba !== aba;
-    // Voltar à área pela sidebar reabre a última aba vista.
     $('.shell-item[data-area="anki"]').setAttribute('href', `#anki/${aba}`);
   }
 
@@ -137,11 +124,6 @@
     for (const card of $$('.shell-area[data-area="configuracoes"] .cfg-card')) abrirCard(card, false);
   }
 
-  /**
-   * Abre o card da seção, rola até ele e pisca a borda. O destaque dura o
-   * `--veio-destaque`: com movimento reduzido não há animação para acabar, e a
-   * borda parada sai quando ele termina.
-   */
   function rolarAteASecao(secao) {
     const card = porId(`cfg-${secao}`);
     abrirCard(card, true);
@@ -154,30 +136,20 @@
     for (const ouvinte of ouvintesDeSecao.get(secao) || []) ouvinte();
   }
 
-  /** O `--veio-destaque` (em segundos, nos tokens) em milissegundos. */
   function duracaoDoDestaque() {
     return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--veio-destaque')) * 1000;
   }
 
-  /**
-   * Guarda o `ouvinte` sob a `chave` e, se ela já vale agora, roda na hora: quem
-   * se registra depois de o endereço ter sido aplicado não perde a vez.
-   */
   function registrar(ouvintes, chave, ouvinte, jaVale) {
     if (!ouvintes.has(chave)) ouvintes.set(chave, []);
     ouvintes.get(chave).push(ouvinte);
     if (jaVale) ouvinte();
   }
 
-  /** `ouvinte` roda cada vez que a pessoa entra na `area` (inclusive ao abrir nela). */
   function aoEntrarNaArea(area, ouvinte) {
     registrar(ouvintesDeArea, area, ouvinte, estado.area === area);
   }
 
-  /**
-   * `ouvinte` roda cada vez que um endereço abre a `secao` de Configurações
-   * (inclusive ao abrir o painel nele), com o card já aberto.
-   */
   function aoAbrirASecao(secao, ouvinte) {
     registrar(ouvintesDeSecao, secao, ouvinte,
       estado.area === 'configuracoes' && lerEndereco(location.hash).secao === secao);
@@ -190,26 +162,19 @@
   function mostrarTotalDeFrases(n) {
     porId('shell-total').textContent = n.toLocaleString('pt-BR');
     porId('shell-total-descricao').textContent = textoDaVoz('PAI-05', { n });
-    // A linha fechada da Zona de perigo: “1.284 frases”, “1 frase”, “Nenhuma frase”.
     porId('cfg-perigo-resumo').replaceChildren(
       elemento('span', null, n ? textoDaVoz('PAI-05', { n }) : textoDaVoz('CFG-28.nenhumaFrase')));
   }
 
-  /** Os atalhos, a chave e o tema, como estão gravados, e cada mudança deles. */
   function lerResumosGravados() {
     Atalhos.acompanharAtalhos(mostrarResumoDosAtalhos);
     chrome.storage.local.get({ geminiApiKey: '' }, dados => mostrarResumoDaChave(dados.geminiApiKey));
-    // O tema sai do que está gravado, como os outros resumos: o que está pintado
-    // ainda pode ser o espelho da primeira pintura, que veio/tema.js corrige quando
-    // o storage responde. `raiz.Tema` só é lido aqui, na hora de usar: o shell também
-    // é carregado fora da extensão, pelos testes legados, sem a base do <head>.
     raiz.Tema.acompanharTemaGravado(mostrarTema);
     chrome.storage.onChanged.addListener((mudancas, area) => {
       if (area === 'local' && 'geminiApiKey' in mudancas) mostrarResumoDaChave(mudancas.geminiApiKey.newValue || '');
     });
   }
 
-  /** “Legenda [Alt+S]  Seleção [Alt+Botão voltar]”, com as teclas em `kbd`. */
   function mostrarResumoDosAtalhos({ legenda, selecao }) {
     const atalho = (rotulo, gravado) => elemento('span', null, `${textoDaVoz(rotulo)} `,
       Veio.montarTecla(Atalhos.rotuloDoAtalho(gravado), { seVazia: textoDaVoz('CFG-12.semAtalho') }));
@@ -218,18 +183,12 @@
       atalho('CFG-28.selecao', selecao));
   }
 
-  /**
-   * O tema em uso: a opção marcada no controle e o resumo da linha fechada
-   * (CFG-31). Sem escolha gravada, os dois dizem “Escuro”. Chega sempre
-   * normalizado por veio/tema.js, então é “escuro” ou “claro”.
-   */
   function mostrarTema(escolhido) {
     for (const radio of $$('#cfg-tema input[name="tema"]')) radio.checked = radio.value === escolhido;
     porId('cfg-aparencia-resumo').replaceChildren(
       elemento('span', null, textoDaVoz(`CFG-31.${escolhido}`)));
   }
 
-  /** `AIza••••••••3kQ9` em mono; vazia, o ponto `danger` e “Sem chave”. */
   function mostrarResumoDaChave(chave) {
     const resumo = porId('cfg-chave-resumo');
     if (!chave) {
@@ -242,7 +201,6 @@
     resumo.replaceChildren(elemento('span', 'cfg-chave-mascarada', mascararChave(chave)));
   }
 
-  /** `AIza••••••••3kQ9`: a chave nunca aparece inteira na tela. */
   function mascararChave(chave) {
     return chave.length > 8 ? chave.slice(0, 4) + MASCARA_DA_CHAVE + chave.slice(-4) : MASCARA_DA_CHAVE;
   }
@@ -254,16 +212,13 @@
     return no;
   }
 
-  /** O ponto, o texto e a faixa F1 da sidebar mostram a situação que o ConexaoAnki diz. */
   function mostrarConexao(situacao) {
-    const apresentada = ConexaoAnki.apresentada();   // “ligada” só com a Conexão provada (#192)
+    const apresentada = ConexaoAnki.apresentada();
     const status = ConexaoNaTela.texto(apresentada);
     ConexaoNaTela.pintarPonto($('.shell-ponto'), apresentada);
     $('.shell-item[data-area="anki"]').title = status;
     porId('shell-conexao-descricao').textContent = status;
 
-    // A faixa F1 fica enquanto a Conexão está desligada, inclusive durante o
-    // “Tentar de novo”: ela só sai quando a Conexão responde.
     ConexaoNaTela.pintarTentarDeNovo(porId('shell-tentar-de-novo'), situacao, {
       sai: situacao === SITUACAO.LIGADA,
       focoPara: () => document.querySelector('input[name="aba-anki"]:checked'),

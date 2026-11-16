@@ -1,7 +1,5 @@
 'use strict';
 
-// O pacote da loja leva só o que a extensão usa em execução.
-
 const assert = require('assert');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
@@ -58,9 +56,6 @@ assert(!('key' in manifestoDoZip), 'o manifest dentro do zip não pode ter "key"
 const { key, ...restoDoRepo } = manifestoDoRepo;
 assert.deepStrictEqual(manifestoDoZip, restoDoRepo, 'o manifest do zip só pode diferir pela "key"');
 
-// A Conexão com o Anki chega ao Anki por um arquivo que a extensão entrega num link de download:
-// o `.ankiaddon` vai dentro do pacote da loja, igual ao do repositório, e é um complemento que o Anki instala
-// (`manifest.json` na raiz, com o `package` e o nome, e o código ao lado).
 const ARQUIVO_DA_CONEXAO = 'conexao/perpetualminer.ankiaddon';
 assert(arquivos.includes(ARQUIVO_DA_CONEXAO), `falta ${ARQUIVO_DA_CONEXAO} no pacote da loja`);
 const arquivoDaConexao = lerBytesDoZip(zip, ARQUIVO_DA_CONEXAO);
@@ -70,8 +65,6 @@ assert.strictEqual(manifestoDoComplemento.name, 'PerpetualMiner');
 assert(manifestoDoComplemento.package, 'o manifesto do .ankiaddon precisa do `package`');
 assert(lerBytesDoZip(arquivoDaConexao, '__init__.py').length > 0, 'o .ankiaddon não leva o código do complemento');
 
-// O guia da loja é a fonte única dos hosts: o bloco "Host permission use" cita,
-// entre crases, exatamente os hosts do manifest (nem a mais, nem a menos).
 const guiaDaLoja = fs.readFileSync('docs/publicar-chrome-web-store.md', 'utf8');
 const bloco = guiaDaLoja.match(/\*\*Campo "Host permission use"\*\*[^\n]*\n\n(> [^\n]*)/);
 assert(bloco, 'falta o bloco "Host permission use" em docs/publicar-chrome-web-store.md');

@@ -15,7 +15,6 @@
 </head>
 <body>
 
-  <!-- Boas-vindas (docs/design/painel/boas-vindas/). -->
   <div class="bv" id="boas-vindas" hidden>
     <div class="bv-topo">
       <img class="veio-marca" src="veio/icones/icone.svg" width="40" height="40" alt="PerpetualMiner">
@@ -78,7 +77,6 @@
       <section class="shell-area" data-area="frases" aria-labelledby="titulo-frases">
         <header class="shell-cabecalho">
           <h1 id="titulo-frases" data-voz="SHL-02.frases"></h1>
-          <!-- Minerar frases (ADD-01 · ADD-11) -->
           <div class="minerar-menu">
             <button class="veio-botao veio-botao--primario" id="btn-minerar-frases" type="button"
                     aria-haspopup="menu" aria-expanded="false" aria-controls="menu-minerar">
@@ -101,7 +99,6 @@
           </div>
         </header>
 
-        <!-- Lembrete “Configuração pela metade” (ONB-15). -->
         <aside class="frases-lembrete" id="frases-lembrete" aria-labelledby="frases-lembrete-texto" hidden>
           <span class="frases-lembrete__anel" id="frases-lembrete-anel"></span>
           <p class="frases-lembrete__texto" id="frases-lembrete-texto"></p>
@@ -113,7 +110,6 @@
           </div>
         </aside>
 
-        <!-- Avisos da área (C1). -->
         <div class="frases-avisos" id="frases-avisos"></div>
 
         <div class="frases-filtros">
@@ -139,7 +135,6 @@
           </label>
         </div>
 
-        <!-- A linha de seleção, ou a barra contextual (PAI-32). -->
         <div class="frases-selecao" id="frases-selecao" hidden>
           <label class="frases-selecao__pagina">
             <input type="checkbox" class="veio-checkbox" id="sel-pagina" data-voz-aria="PAI-31">
@@ -160,7 +155,6 @@
               <button class="veio-botao veio-botao--perigo-fantasma veio-botao--compacto" id="btn-delete-selected" type="button">
                 <span data-icone="apagar"></span><span data-voz="PAI-32.apagar"></span>
               </button>
-              <!-- Sem Conexão, nunca ligada: aria-disabled e tooltip. -->
               <span class="veio-com-dica">
                 <button class="veio-botao veio-botao--primario veio-botao--compacto" id="btn-send-anki" type="button">
                   <span data-icone="enviar"></span><span data-voz="PAI-32.enviar"></span>
@@ -179,7 +173,6 @@
           <div class="veio-esqueleto veio-frase-esqueleto" aria-hidden="true"></div>
         </div>
 
-        <!-- Paginação (PAI-07) -->
         <nav class="frases-paginas" id="frases-paginas" data-voz-aria="PAI-26.rotulo" hidden>
           <span class="frases-paginas__intervalo" id="paginas-intervalo"></span>
           <button class="veio-botao-icone" id="btn-first" type="button" data-voz-aria="PAI-26.primeira" data-voz-title="PAI-26.primeira"><span data-icone="primeira"></span></button>
@@ -199,7 +192,6 @@
           </button>
         </header>
 
-        <!-- F1: a Conexão com o Anki está desligada. -->
         <div class="veio-aviso shell-faixa" id="shell-faixa-conexao" role="status" hidden>
           <p class="veio-aviso__texto" data-voz="ENV-01.aviso"></p>
           <div class="veio-aviso__acoes">
@@ -207,12 +199,10 @@
           </div>
         </div>
 
-        <!-- Conectando: a 1ª conferência não voltou (BRG-02). -->
         <div class="anki-faixa-conectando" id="anki-conectando" role="status" hidden>
           <span class="anki-ponto" aria-hidden="true"></span><span data-voz="BRG-02"></span>
         </div>
 
-        <!-- Nunca conectada: o card ONB-16 no lugar das abas. -->
         <section class="anki-primeira-vez" id="anki-primeira-vez" aria-labelledby="anki-primeira-vez-titulo" hidden>
           <div class="apv-topo">
             <h2 class="apv-titulo" id="anki-primeira-vez-titulo"></h2>
@@ -278,7 +268,6 @@
           </div>
         </div>
 
-        <!-- Baralhos e termos e Vocabulário: painel-anki-baralhos.js. -->
         <div class="shell-aba" data-aba="baralhos" hidden>
           <div class="anki-baralhos" id="anki-baralhos">
             <div class="anki-topo" id="anki-baralhos-topo"></div>
@@ -308,7 +297,6 @@
 
         <div class="shell-aba" data-aba="ajustes" hidden>
           <p class="anki-nota" id="anki-ajustes-nota" data-voz="BRG-33.ajustes" hidden></p>
-          <!-- Ajustes de envio: um card por idioma. -->
           <div class="ajustes" id="ajustes">
             <div class="ajustes-aviso" id="ajustes-aviso"></div>
             <div class="shell-cards ajustes-cards" id="ajustes-cards" role="group" data-voz-aria="BRG-07.idiomas"></div>
@@ -321,11 +309,6 @@
           <h1 id="titulo-configuracoes" data-voz="SHL-02.configuracoes"></h1>
         </header>
 
-        <!--
-          Resumo primeiro (variante C): cada card é uma linha fechada com o resumo do estado e abre no lugar; vários podem
-          ficar abertos. A linha inteira abre e fecha (painel-shell.js); o botão do título é o controle para o teclado e o
-          leitor de tela. Quem desenha cada card: CLAUDE.md › Files.
-        -->
         <div class="shell-cards">
           <section class="shell-card cfg-card" id="cfg-conta" aria-labelledby="cfg-conta-titulo">
             <div class="cfg-cabeca">
@@ -534,7 +517,6 @@
         </div>
       </div>
 
-      <!-- ADD-04: o progresso fica no modal e anda a cada frase gravada. -->
       <div class="minerar-progresso" id="minerar-progresso" hidden>
         <b class="minerar-progresso__rotulo" id="minerar-progresso-rotulo" aria-live="polite"></b>
         <div class="minerar-progresso__barra" role="progressbar" aria-labelledby="minerar-progresso-rotulo"

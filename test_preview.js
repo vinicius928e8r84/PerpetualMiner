@@ -1,11 +1,5 @@
 'use strict';
 
-// O preview monta o que as telas da extensão carregam a partir do manifest e das
-// páginas, não de uma lista escrita à mão: toda página da extensão chega ao preview com
-// cada script, estilo e imagem que ela pede. Roda `preview/montar.mjs` numa pasta
-// temporária. `node test_preview.js`. Confere também as páginas públicas do app: `/sobre/` e a
-// política de privacidade em `/privacidade/` e `/privacy/`, que o consentimento OAuth do Google pede.
-
 const assert = require('assert');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
@@ -31,26 +25,20 @@ const extensao = path.join(saida, 'extensao');
   for (const pagina of paginas) {
     const html = fs.readFileSync(pagina, 'utf8');
     const pedidos = [...html.matchAll(/\b(?:src|href)="([^"#?:]+)"/g)].map(m => m[1]).filter(p => !p.startsWith('//'));
-    // A ponte do abridor (lib/abridor.js) é vazia de propósito: um quadro escondido que só empresta o `chrome.runtime`.
     if (pagina !== 'abridor.html') assert(pedidos.length > 0, `${pagina}: não achei o que ela carrega`);
     for (const pedido of pedidos) {
       assert(fs.existsSync(path.join(extensao, pedido)), `${pagina} carrega ${pedido}, que não está no preview`);
     }
   }
 
-  // O arquivo da Conexão não está no manifest: o painel o entrega num link.
   assert(fs.existsSync(path.join(extensao, 'conexao', 'perpetualminer.ankiaddon')), 'falta o .ankiaddon no preview');
 
   assert(fs.readFileSync(path.join(extensao, 'painel.html'), 'utf8').includes('/preview-chrome-simulado.js'));
   assert(!fs.readFileSync('painel.html', 'utf8').includes('preview-chrome-simulado'));
 
-  // As páginas públicas: a política sai nos dois endereços, a página inicial a leva num link, e o que elas
-  // carregam (a Veio e a folha do site) está no site, sem nada de fora.
   const privacidade = fs.readFileSync(path.join(saida, 'privacidade', 'index.html'), 'utf8');
   assert.strictEqual(fs.readFileSync(path.join(saida, 'privacy', 'index.html'), 'utf8'), privacidade);
   assert(privacidade.includes('Política de privacidade') && privacidade.includes('Uso limitado'));
-  // Como apagar (§7): o Apagar tudo é recusado enquanto a Conexão com o Anki não responde (painel-perigo.js), então a política
-  // diz isso e dá o caminho de quem não a usa, pela lista de Frases, com os nomes que o painel mostra (o catálogo da Voz).
   const texto = privacidade.replace(/<[^>]+>/g, '');
   const sete = texto.slice(texto.indexOf('7. Por quanto tempo guardamos'), texto.indexOf('8. Crianças'));
   assert(sete.includes('só funciona com a Conexão com o Anki respondendo'), 'a política devia dizer que o Apagar tudo pede a Conexão');
@@ -58,7 +46,6 @@ const extensao = path.join(saida, 'extensao');
     assert(sete.includes(`“${nome}”`), `a política devia dar o caminho sem a Conexão com o nome do painel: “${nome}”`);
   }
   assert(!sete.includes('use-o antes de desinstalar'), 'desinstalar: o Apagar tudo não é o único caminho');
-  // A conta Google (§2) serve à sincronização e, para quem entra nele, ao ranking: nenhum trecho diz que é só a sincronização.
   const dois = texto.slice(texto.indexOf('2. Conta Google'), texto.indexOf('Uso limitado dos dados'));
   assert((dois.match(/ranking/g) || []).length >= 4, 'a seção da conta Google devia citar o ranking onde diz para que os dados servem');
   assert(!/qualquer outro fim|nada além de fazer a sincronização funcionar/.test(dois), 'a seção da conta Google não pode dizer que os dados só servem à sincronização');

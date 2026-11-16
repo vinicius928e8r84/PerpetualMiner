@@ -107,7 +107,6 @@ body {
   font-weight: var(--veio-peso-num);
 }
 
-/* O ponto de estado: o da Conexão na sidebar e o da conta em Conta & sync. Um desenho só. */
 .shell-ponto,
 .cfg-ponto,
 .bv-ponto {
@@ -210,8 +209,6 @@ body {
   color: var(--veio-danger);
 }
 
-/* A ilha do conteúdo tem a altura da sidebar: as duas começam e terminam
-   juntas, e o conteúdo rola dentro dela. */
 .shell-conteudo {
   min-width: 0;
   height: calc(100vh - 24px);
@@ -235,7 +232,6 @@ body {
   border-bottom: 1px solid var(--veio-border);
 }
 
-/* O chevron de um botão do cabeçalho tem 14 px, como no protótipo. */
 .shell-cabecalho .veio-botao svg {
   width: 14px;
   height: 14px;
@@ -251,8 +247,6 @@ body {
   margin-bottom: 14px;
 }
 
-/* A faixa da Conexão desligada e o aviso dos Ajustes: baixos, com a ação ao
-   lado; a da Conexão abre com o ponto vermelho, como o do item da sidebar. */
 .shell-faixa,
 .ajustes-aviso .veio-aviso {
   align-items: center;
@@ -288,7 +282,6 @@ body {
   margin-bottom: 14px;
 }
 
-/* Dentro da ilha, cards e o conteúdo de hoje invertem para bg: “buracos”. */
 .shell-cards {
   display: flex;
   flex-direction: column;
@@ -395,8 +388,6 @@ body {
   white-space: nowrap;
 }
 
-/* A tecla do resumo de Atalhos segue o protótipo de Configurações: em
-   muted, um pouco maior e mais larga que o kbd base. */
 .cfg-resumo .veio-kbd {
   display: inline-flex;
   align-items: center;
@@ -406,19 +397,15 @@ body {
   font-size: var(--veio-tam-tecla-resumo);
 }
 
-/* Sem atalho, o kbd tracejado fala em texto, não em tecla. */
 .cfg-resumo .veio-kbd--sem-atalho {
   font-family: var(--veio-fonte-ui);
 }
 
-/* A chave do Gemini mascarada, na linha fechada. */
 .cfg-chave-mascarada {
   font-family: var(--veio-fonte-mono);
   font-weight: var(--veio-peso-num);
 }
 
-/* No card aberto, a chave salva fica sob o “Chave salva”, na pílula do
-   protótipo: surface-2, raio 10, sem borda, a chave em text. */
 .cfg-chave-mascarada--card {
   width: fit-content;
   margin-top: 6px;
@@ -429,7 +416,6 @@ body {
   font-size: var(--veio-tam-corpo);
 }
 
-/* O campo da chave com Salvar chave (e Cancelar) ao lado; estreito, eles descem. */
 .cfg-chave-form {
   display: flex;
   flex-wrap: wrap;
@@ -483,12 +469,10 @@ body {
   padding: 4px 16px 16px 62px;
 }
 
-/* O lugar do aviso do card Conexão com o Anki: vazio, não ocupa vão. */
 .cfg-anki-aviso:empty {
   display: none;
 }
 
-/* O seletor de tema tem a largura das opções, não a do card. */
 .cfg-corpo > .veio-segmentado {
   align-self: flex-start;
 }
@@ -522,7 +506,6 @@ body {
   min-width: 0;
 }
 
-/* O nome da conta e, sem conta, o convite para entrar (CFG-06), no mesmo peso. */
 .cfg-nome,
 .cfg-convite {
   font-size: var(--veio-tam-corpo);
@@ -559,8 +542,6 @@ body {
   color: var(--veio-danger);
 }
 
-/* Dentro do card, os botões são os pequenos do protótipo: mais baixos e com a
-   letra de apoio. O Sair da conta fantasma fica em muted até o hover. */
 .cfg-corpo .veio-botao {
   padding: 5px 12px;
   font-size: var(--veio-tam-apoio);
@@ -576,8 +557,6 @@ body {
   color: var(--veio-text);
 }
 
-/* O erro dentro do card: vermelho mais baixo que o aviso solto, a ação em
-   contorno e o Detalhes sem o triângulo, como no protótipo. */
 .cfg-corpo .veio-aviso {
   padding: 10px 12px;
   border-color: color-mix(in srgb, var(--veio-danger) 50%, var(--veio-border));
@@ -705,7 +684,6 @@ body {
   font-family: var(--veio-fonte-ui);
 }
 
-/* Gravando (CFG-13): a tecla vira uma pílula ouro que pulsa. */
 .cfg-gravando {
   display: inline-flex;
   align-items: center;
@@ -722,7 +700,6 @@ body {
   50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--veio-accent) 22%, transparent); }
 }
 
-/* Gravou: a tecla nova pisca uma vez, como a borda do card aberto por endereço. */
 .cfg-atalho__tecla--nova {
   animation: shell-destaque var(--veio-destaque) ease-out;
 }
@@ -737,8 +714,6 @@ body {
   display: none;
 }
 
-/* O Cancelar da gravação: o contorno do Painel em danger, sem o acento, para
-   não competir com a pílula ouro ao lado. */
 .cfg-atalho__cancelar,
 .cfg-atalho__cancelar:hover {
   border-color: var(--veio-danger);
@@ -748,7 +723,6 @@ body {
   background: var(--veio-danger-soft);
 }
 
-/* A região que o leitor de tela anuncia: fora da tela, a pílula é o desenho. */
 .cfg-atalho__anuncio {
   position: absolute;
   width: 1px;
@@ -758,8 +732,6 @@ body {
   white-space: nowrap;
 }
 
-/* Janela estreita: abaixo de ~560 px de conteúdo, o resumo sai da linha
-   fechada e o conteúdo perde o recuo. */
 @container (max-width: 559px) {
   .cfg-resumo {
     display: none;
@@ -770,7 +742,6 @@ body {
   }
 }
 
-/* Filtros numa linha que quebra: os selects em pílula, a busca que cresce e o toggle. */
 .frases-filtros {
   display: flex;
   flex-wrap: wrap;
@@ -809,9 +780,6 @@ body {
   font-weight: var(--veio-peso-rotulo);
 }
 
-/* Os avisos persistentes da área (C1), acima dos filtros: PAI-15 e PAI-17. */
-/* O lembrete “Configuração pela metade” (ONB-15): uma faixa ouro com o anel,
-   o texto, Ocultar e Continuar configuração; quebra em linhas na janela estreita. */
 .frases-lembrete {
   display: flex;
   flex-wrap: wrap;
@@ -852,7 +820,6 @@ body {
   margin-top: 16px;
 }
 
-/* A linha de seleção: sem seleção, o checkbox “Selecionar página” (PAI-31). */
 .frases-selecao {
   margin-top: 10px;
   padding: 2px 4px;
@@ -872,7 +839,6 @@ body {
   cursor: pointer;
 }
 
-/* Com seleção, a linha vira a barra contextual (PAI-32): pílula com borda ouro a 45%, grudada no topo da ilha ao rolar; o checkbox da página no começo. */
 .frases-selecao--barra {
   position: sticky;
   top: 12px;
@@ -917,13 +883,11 @@ body {
   gap: 6px;
 }
 
-/* O × nativo do campo de busca dá lugar ao × da busca Veio. */
 .frases-busca input::-webkit-search-cancel-button,
 .anki-busca input::-webkit-search-cancel-button {
   appearance: none;
 }
 
-/* A lista: cartões `bg` dentro da ilha `surface` (`.veio-frase--na-ilha`). */
 .frases-lista {
   margin-top: 12px;
 }
@@ -936,7 +900,6 @@ body {
   min-width: 0;
 }
 
-/* As ações só-ícone aparecem ao passar o mouse ou ao focar o cartão. */
 .frases-lista .veio-frase__acoes {
   opacity: 0;
   transition: opacity var(--veio-transicao);
@@ -947,7 +910,6 @@ body {
   opacity: 1;
 }
 
-/* Editar texto no lugar (PAI-33): o campo, a dica e Cancelar · Salvar texto. */
 .frase-edicao__campo {
   min-height: 64px;
   font: inherit;
@@ -970,7 +932,6 @@ body {
   font-size: var(--veio-tam-apoio);
 }
 
-/* Os modais de Frases: o modal Veio (com o × da base) e os campos do Contexto. */
 .frases-modal__subtitulo {
   overflow-wrap: anywhere;
 }
@@ -1000,7 +961,6 @@ body {
   margin-top: 4px;
 }
 
-/* O chip `palavra:`/`auto:` e o + ao lado dele. */
 .frase-chip {
   display: flex;
   flex-wrap: wrap;
@@ -1009,7 +969,6 @@ body {
   margin-top: 6px;
 }
 
-/* PAI-02 a PAI-04: o vazio com as ações dele. */
 .frases-lista .veio-vazio {
   padding: 48px 20px;
 }
@@ -1018,7 +977,6 @@ body {
   max-width: 52ch;
 }
 
-/* Sem atalho de legenda gravado (GLB-02): Definir atalho, dentro da frase. */
 .frases-vazio__definir-atalho {
   color: var(--veio-accent-text);
   font-weight: var(--veio-peso-rotulo);
@@ -1031,7 +989,6 @@ body {
   gap: 8px;
 }
 
-/* Paginação: “1–10 de 1.284” à esquerda, « ‹ 1 de 129 › » à direita. */
 .frases-paginas {
   display: flex;
   flex-wrap: wrap;
@@ -1074,7 +1031,6 @@ body {
     padding: 2px 0 18px;
   }
 
-  /* O rótulo sai da tela, mas continua sendo o nome do item (e o tooltip). */
   .shell-lateral .shell-rotulo {
     position: absolute;
     width: 1px;
@@ -1166,7 +1122,6 @@ body {
 .envio-cartao__etapa--ok { color: var(--veio-success); }
 .envio-cartao__etapa--erro { color: var(--veio-danger); }
 
-/* As 7 etapas do caminho: feitas cheias, a atual enchendo pelo done/total dela. */
 .envio-cartao__etapas {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -1193,7 +1148,6 @@ body {
 .envio-cartao__etapas--ok > i.feito { background: var(--veio-success); }
 .envio-cartao__etapas--erro > i.feito { background: var(--veio-danger); }
 
-/* Enquanto o cartão espera a pessoa: tom calmo, quem fala é o motivo. */
 .envio-cartao__etapa--calmo { color: var(--veio-muted); }
 .envio-cartao__etapas--calmo > i.feito { background: color-mix(in srgb, var(--veio-accent) 45%, var(--veio-surface-2)); }
 
@@ -1203,7 +1157,6 @@ body {
   font-size: var(--veio-tam-corpo);
 }
 
-/* A ação do cartão é um link dourado, com a seta no fim. */
 .envio-cartao__acao {
   font-weight: var(--veio-peso-titulo);
   text-decoration: none;
@@ -1227,7 +1180,6 @@ body {
   font-size: var(--veio-tam-apoio);
 }
 
-/* Um bloco por idioma, lado a lado: +N cartões, o baralho e o que não entrou. */
 .envio-resumo__baralhos {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -1286,7 +1238,6 @@ body {
   height: 14px;
 }
 
-/* A pergunta do histórico, depois dos baralhos. */
 .envio-resumo__historico {
   margin-top: 18px;
   padding-top: 16px;
@@ -1324,7 +1275,6 @@ body {
   display: none;
 }
 
-/* O ponto “em espera”: pisca enquanto a Conexão não respondeu. */
 .anki-ponto {
   flex: none;
   width: 8px;
@@ -1334,13 +1284,11 @@ body {
   animation: veio-piscar var(--veio-piscar) steps(1) infinite;
 }
 
-/* Nunca conectada: o card ONB-16 fica no lugar das abas. */
 .anki--primeira-vez .shell-abas,
 .anki--primeira-vez .shell-aba {
   display: none;
 }
 
-/* O card tem a largura do desenho B (a das Boas-vindas), não a da ilha toda. */
 .anki-primeira-vez {
   display: grid;
   gap: 16px;
@@ -1372,8 +1320,6 @@ body {
   display: none;
 }
 
-/* Os passos da Conexão (painel-conexao-passos.js): a lista ao lado do card do passo; na janela estreita, em cima.
-   Dentro de outro card (o passo 4 da Boas-vindas), `pc--empilhado` a põe em fila acima do card, sem moldura. */
 .pc {
   display: grid;
   grid-template-columns: 230px minmax(0, 1fr);
@@ -1432,7 +1378,6 @@ body {
   font-size: var(--veio-tam-modal);
 }
 
-/* O controle real do passo: um bloco surface de raio 14, sobre o card bg. */
 .pc-controle {
   display: grid;
   gap: 14px;
@@ -1453,7 +1398,6 @@ body {
   gap: 10px;
 }
 
-/* O passo Ter o Anki (#146): a pergunta, as duas respostas e o que a escolha mostra. */
 .pc-anki {
   display: grid;
   justify-items: start;
@@ -1491,7 +1435,6 @@ body {
   margin: 0;
 }
 
-/* A animação do aviso do Anki (ONB-19, #146): dois quadros que se alternam sozinhos (o aviso e o Sim marcado); com movimento reduzido, parados. */
 .pc-animacao {
   display: grid;
   justify-items: start;
@@ -1508,7 +1451,6 @@ body {
   animation: pc-quadro var(--veio-ciclo-dos-quadros) steps(1, end) infinite;
 }
 
-/* Antes do atraso do segundo quadro vale o valor da classe: o primeiro parado, o segundo fora. */
 .pc-animacao__quadro--clique {
   opacity: 0;
   animation-delay: calc(var(--veio-ciclo-dos-quadros) / 2);
@@ -1532,14 +1474,12 @@ body {
   }
 }
 
-/* Numa janela estreita os dois quadros não cabem lado a lado (cada um tem a linha Sim · Não inteira): empilham. */
 @media (prefers-reduced-motion: reduce) and (max-width: 560px) {
   .pc-animacao__quadros {
     flex-direction: column;
   }
 }
 
-/* O diálogo do Anki no desenho: uma janela pequena, com o aviso e os dois botões dele. */
 .pc-dialogo {
   display: grid;
   justify-items: start;
@@ -1580,7 +1520,6 @@ body {
   font-size: var(--veio-tam-apoio);
 }
 
-/* O quadro de onde clicar: o Sim com a marca de foco da Base. */
 .pc-animacao__quadro--clique .pc-dialogo__botao--sim {
   outline: 2px solid var(--veio-accent);
   outline-offset: 2px;
@@ -1600,17 +1539,14 @@ body {
   margin: 0;
 }
 
-/* O Detalhes de reserva fica num bloco surface-2: o controle já é surface. */
 .pc-arquivo .veio-aviso__detalhes > pre {
   background: var(--veio-surface-2);
 }
 
-/* Esperando a Conexão: o primeiro passo ainda não tem o que dizer, então fala baixo. */
 .pc-status--espera {
   color: var(--veio-muted);
 }
 
-/* O abridor (passo 3, Abrir o Anki sozinho): a linha do que ele disse, as ações e o Detalhes. */
 .pc-abridor {
   display: grid;
   justify-items: start;
@@ -1639,7 +1575,6 @@ body {
   background: var(--veio-surface-2);
 }
 
-/* Dois minutos sem resposta: o checklist de 3 itens e Baixar de novo. */
 .pc-sem-resposta {
   display: grid;
   justify-items: start;
@@ -1692,7 +1627,6 @@ body {
   margin-right: auto;
 }
 
-/* Embaixo, na largura toda: a conferência sozinha e os dois quadros. */
 .apv-rodape {
   display: grid;
   gap: 12px;
@@ -1752,7 +1686,6 @@ body {
   display: none;
 }
 
-/* Uma nota neutra no topo da aba (os Ajustes com a Conexão desligada). */
 .anki-nota {
   margin: 0 0 12px;
   padding: 10px 14px;
@@ -1767,7 +1700,6 @@ body {
   display: none;
 }
 
-/* A nota com o ponto do protótipo (BRG-13): o ponto fica parado e alinhado à primeira linha. */
 .anki-nota--com-ponto {
   display: flex;
   align-items: flex-start;
@@ -1852,7 +1784,6 @@ body {
   container-type: inline-size;
 }
 
-/* O último dado, com a Conexão desligada (BRG-12), e o código em Detalhes. */
 .anki-antigo {
   display: flex;
   flex-wrap: wrap;
@@ -1868,7 +1799,6 @@ body {
   margin: 0;
 }
 
-/* BRG-38: o Abrir o Anki do vazio, com o que deu ao lado. */
 .veio-vazio .abrir-o-anki {
   display: inline-flex;
   flex-wrap: wrap;
@@ -2242,18 +2172,15 @@ body {
   margin-top: 14px;
 }
 
-/* A dica do Continuar envio abre para a direita: o botão fica no começo. */
 .anki-acao .veio-dica {
   right: auto;
   left: 0;
 }
 
-/* Vazio de Custos (BRG-22): a ilha tem a largura toda, então o texto cabe numa linha, como no protótipo. */
 #anki-custos .veio-vazio__texto {
   max-width: none;
 }
 
-/* Erro: o total indisponível e o aviso, sem a cara do carregando (#9). */
 .anki-numero {
   display: grid;
   gap: 2px;
@@ -2561,8 +2488,6 @@ body {
   white-space: nowrap;
 }
 
-/* Janela estreita: a faixa quebra em linhas, os azulejos só empilham quando
-   não cabem lado a lado (como no protótipo), e o detalhe cai para baixo da lista. */
 @container (max-width: 640px) {
   .anki-lista-e-detalhe {
     grid-template-columns: minmax(0, 1fr);
@@ -2589,7 +2514,6 @@ body {
     animation: none;
   }
 
-  /* A borda ouro aparece parada enquanto dura o destaque. */
   .shell-card--destaque {
     border-color: var(--veio-accent);
   }
@@ -2853,15 +2777,12 @@ body {
   color: var(--veio-text);
 }
 
-/* O item atual, como a nav do shell: surface-2 com o contorno forte. */
 .bv-lista__item[aria-current="step"] {
   background: var(--veio-surface-2);
   box-shadow: inset 0 0 0 1px var(--veio-border-strong);
   color: var(--veio-text);
 }
 
-/* A marca do passo: o número; o ✓ ouro quando feito; tracejada quando
-   “agora não”. O número sai do data-numero, então não entra no texto. */
 .bv-marca {
   display: grid;
   flex: none;
@@ -2903,7 +2824,6 @@ body {
   content: '–';
 }
 
-/* No resumo de Tudo pronto, o passo que falta leva um ponto, não o número. */
 .bv-resumo .bv-marca[data-situacao="falta"]::before {
   content: '·';
 }
@@ -2935,8 +2855,6 @@ body {
   letter-spacing: var(--veio-tracking-display);
 }
 
-/* O título recebe o foco ao trocar de passo, para o leitor de tela ler o
-   passo novo; não é um controle, então não desenha o anel. */
 .bv-titulo:focus,
 .bv-titulo:focus-visible {
   outline: none;
@@ -2952,7 +2870,6 @@ body {
   margin: 0 2px;
 }
 
-/* O controle real do passo: um bloco bg de raio 14. */
 .bv-controle {
   margin-top: 12px;
   padding: 14px 16px;
@@ -2993,8 +2910,6 @@ body {
   flex: none;
 }
 
-/* A legenda marcada, parada: uma tela de vídeo com a linha ouro, a Palavra
-   grifada e o chip, como o overlay a desenha. */
 .bv-ilustracao {
   display: flex;
   flex-direction: column;
@@ -3036,8 +2951,6 @@ body {
   font-size: var(--veio-tam-apoio);
 }
 
-/* O card estica até a altura da lista; o conteúdo cresce e o rodapé fica
-   preso ao fundo, na mesma altura em todos os passos. */
 .bv-telas {
   flex: 1 0 auto;
 }
@@ -3056,12 +2969,10 @@ body {
   flex: 1;
 }
 
-/* Passos 3 e 6: o corpo do card de Configurações, sem o recuo do ícone. */
 .bv-cartao.cfg-corpo {
   padding: 0;
 }
 
-/* Passo 6: o “Onde conseguir a chave” recolhido, numa caixa como no protótipo. */
 .bv-onde {
   margin: 12px 0 0;
   padding: 8px 12px;
@@ -3087,7 +2998,6 @@ body {
   display: none;
 }
 
-/* A linha de status da Conexão com o Tentar de novo ao lado (painel-conexao-passos.js). */
 .bv-conexao {
   display: flex;
   flex-wrap: wrap;
@@ -3105,7 +3015,6 @@ body {
   font-weight: var(--veio-peso-rotulo);
 }
 
-/* Passo 5: um idioma por linha, o switch à esquerda e o limite à direita. */
 .bv-nota--conexao {
   display: flex;
   align-items: center;

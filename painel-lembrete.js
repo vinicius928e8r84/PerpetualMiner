@@ -5,7 +5,7 @@
 
   const porId = id => document.getElementById(id);
 
-  let retrato = null;           // o retrato da configuração, depois da primeira leitura
+  let retrato = null;
 
   function iniciarLembrete() {
     porId('frases-lembrete-continuar').addEventListener('click', () => {
@@ -13,7 +13,6 @@
     });
     porId('frases-lembrete-ocultar').addEventListener('click', () => {
       Configuracao.ocultarLembrete();
-      // A faixa some com o botão focado: o foco vai para o cabeçalho da área.
       porId('btn-minerar-frases').focus();
     });
 

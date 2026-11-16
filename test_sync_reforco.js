@@ -1,12 +1,3 @@
-/**
- * test_sync_reforco.js — O sync do Chrome e as listas de retry são reforço
- *
- * Execução: node test_sync_reforco.js
- *
- * A recusa do chrome.storage (lastError) rejeita; a falha do sync e das listas de retry vai
- * para o `aviso` sem derrubar o apagar nem apagar a lista; o sync cheio fica com as 500 mais novas.
- */
-
 'use strict';
 
 const { criarSincronizacao, armazenamentoDoChrome, PREFIXO_DO_TOMBSTONE } = require('./lib/sincronizacao.js');
