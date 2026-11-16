@@ -72,7 +72,6 @@ test('Ocultar em Frases esconde o lembrete de vez: some do popup e continua ocul
   await faixa(page).getByRole('button', { name: 'Ocultar' }).click();
 
   await expect(faixa(page)).toBeHidden();
-  // O foco não se perde com a faixa: vai para o botão do cabeçalho da área.
   await expect(page.getByRole('button', { name: 'Minerar frases', expanded: false })).toBeFocused();
   await expect(cartaoDoPopup(popup)).toBeHidden();
   expect((await extensao.lerStorage('pm_boas_vindas')).pm_boas_vindas)
@@ -159,7 +158,7 @@ test.describe('quem atualizou a extensão', () => {
 
   test('a atualização tira a lista pm_pending_sync que versões antigas gravavam', async ({ extensao }) => {
     await extensao.gravarStorage({ pm_pending_sync: ['1', '2'], frases: [{ id: 1, texto: 'Fica.', idioma: 'Inglês' }] });
-    // Exceção de teste: chrome-nativo (docs/testes.md). Mesmo motivo do teste acima.
+    // Exceção de teste: chrome-nativo (docs/testes.md)
     await extensao.serviceWorker.evaluate(() => aoInstalar({ reason: 'update', previousVersion: '0.4.27' }));
     expect(await extensao.lerStorage(['pm_pending_sync'])).toEqual({});
     expect((await extensao.frases()).map(f => f.texto)).toEqual(['Fica.']);
@@ -170,7 +169,6 @@ test.describe('quem atualizou a extensão', () => {
     const popup = await context.newPage();
     await abrirPopup(popup, extensao);
 
-    // Frases já desenhou a lista: o lembrete teria aparecido junto.
     await expect(page.getByText('Nenhuma frase ainda')).toBeVisible();
     await expect(faixa(page)).toBeHidden();
     await expect(cartaoDoPopup(popup)).toBeHidden();

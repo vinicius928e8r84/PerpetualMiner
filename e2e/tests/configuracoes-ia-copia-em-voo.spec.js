@@ -1,9 +1,5 @@
 'use strict';
 
-// O card IA dos cartões diz que a Conexão com o Anki guarda a cópia da chave só depois de ela
-// confirmar. Com uma troca de chave em voo, nenhum lugar do card afirma a cópia (S3 da #204, #208).
-// Ler o IndexedDB da extensão é ler o que ficou guardado, como `lerStorage`.
-
 const { test, expect } = require('../fixtures');
 
 const CHAVE = 'sk-proj-chave-de-exemplo-9f3a';
@@ -13,7 +9,6 @@ const card = page => page.locator('#cfg-ia');
 const corpo = page => card(page).locator('.cfg-corpo');
 const campo = page => card(page).getByRole('textbox', { name: 'Chave da OpenAI' });
 
-/** Prova negativa: o cofre antigo da extensão não guarda mais a chave. */
 const chaveNoBancoDaExtensao = page => page.evaluate(() => new Promise((resolver, rejeitar) => {
   const pedido = indexedDB.open('pm-segredos', 1);
   pedido.onupgradeneeded = () => pedido.result.createObjectStore('chaves');
@@ -46,7 +41,6 @@ test('S3: com uma chave nova a caminho, o outro lugar do card não diz que a Con
   await expect(card(page).getByRole('button', { name: 'Conferindo a chave…' })).toHaveAttribute('aria-disabled', 'true');
   await expect.poll(() => typeof liberar).toBe('function');
 
-  // O mesmo card na Boas-vindas, no mesmo documento: a chave que ele mostra ainda é a de antes e a Conexão não confirmou nenhuma.
   await page.goto(extensao.url('painel.html#boas-vindas/ia'));
   const passo = page.locator('.bv-card');
   await expect(passo.getByText('Chave conferida', { exact: true })).toBeVisible();

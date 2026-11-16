@@ -1,9 +1,5 @@
 'use strict';
 
-// Bug grave de #9: minerar várias frases em paralelo (como Minerar de uma foto
-// faz) perdia frases numa corrida read-modify-write no service worker, e a tela
-// dizia "N salvos" mesmo assim.
-
 const { test, expect } = require('../fixtures');
 
 const FRASES = [
@@ -19,7 +15,6 @@ const FRASES = [
 
 test('várias frases mineradas ao mesmo tempo ficam todas no histórico, uma vez cada', async ({ page, extensao, fakes }) => {
   await extensao.semearSessao({ uid: 'uid-paralelo' });
-  // Qualquer página da extensão fala com o service worker pela mesma mensagem que o content script usa.
   await page.goto(extensao.url('bookreader.html'));
 
   const respostas = await page.evaluate(frases => Promise.all(frases.map(texto =>

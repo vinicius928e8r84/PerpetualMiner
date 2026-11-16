@@ -1,11 +1,5 @@
 'use strict';
 
-// Entrar com o ChatGPT (#155, docs/design/login-do-chatgpt.md): a coluna Conta do ChatGPT do card IA dos cartões, o login oficial
-// pelo navegador e a linha “Usando o plano do ChatGPT · Gerenciar uso”. A Conexão com o Anki é o fake do e2e, que responde pelo
-// contrato (complemento/contrato/exemplos-do-chatgpt.json) e guarda o login como a Conexão faria; a página do auth.openai.com é o
-// fake do ChatGPT (e2e/fakes/chatgpt.js), que volta ao retorno da Conexão na 8766. O que fica guardado é o login na Conexão
-// (`fakes.anki.chatgpt.situacao()`) e, no navegador, nada do login: o storage da extensão não ganha nada dele.
-
 const { test, expect } = require('../fixtures');
 const { estadoFinalEm } = require('../estado-final');
 
@@ -20,7 +14,6 @@ async function abrirIA(page, extensao) {
   await expect(coluna(page)).toBeVisible();
 }
 
-/** O storage inteiro da extensão como texto: nada do login (código, `state`, cliente emitido) pode estar nele. */
 const storageInteiro = async extensao => JSON.stringify(await extensao.lerStorage(null));
 
 test('sem login: a coluna do ChatGPT tem o tamanho da da chave, oferece Continuar com o ChatGPT e diz onde o login fica', async ({ page, extensao, fakes }) => {
@@ -103,7 +96,7 @@ test('se a Conexão responde com um endereço que não é o da autorização ofi
 
 test('Sair do ChatGPT: a Conexão apaga o login e a coluna volta a oferecer Continuar com o ChatGPT', async ({ page, extensao, fakes }) => {
   fakes.anki.chatgpt.definir('conectada');
-  await extensao.gravarStorage({ pm_plano_do_chatgpt_avisado: true }); // o modal da primeira vez já foi dado (configuracoes-chatgpt-plano.spec.js)
+  await extensao.gravarStorage({ pm_plano_do_chatgpt_avisado: true });
   await abrirIA(page, extensao);
   await expect(coluna(page)).toContainText('Usando o plano do ChatGPT');
 
@@ -125,8 +118,6 @@ test('com a Conexão desligada, Continuar com o ChatGPT diz que é ela que guard
   await estadoFinalEm('o login do ChatGPT na Conexão', () => fakes.anki.chatgpt.situacao(), 'desconectada');
 });
 
-// O login que acabou (a Conexão recusou a renovação do token, `acabou` no estado): o Envio para e não gasta a chave sozinho, e a
-// coluna dá as duas saídas, que são escolhas da pessoa. A regra, sem navegador: complemento/test_quem_paga.py.
 const ACABOU = 'Conta do ChatGPT: O login do ChatGPT acabou. Entre de novo para seguir pelo plano, ou use a chave da OpenAI.';
 
 test('o login que acabou: a faixa diz que acabou, com o código no Detalhes, e Continuar com o ChatGPT entra de novo', async ({ page, context, extensao, fakes }) => {
@@ -168,7 +159,6 @@ test('o login que acabou: Usar a chave tira o login acabado da Conexão sem dize
   await extensao.gravarStorage({ pm_chave_openai: { ultimos4: '9f3a' } });
   await abrirIA(page, extensao);
   await expect(faixa(page)).toContainText(ACABOU);
-  // Ninguém paga enquanto a pessoa não escolhe: o card não oferece o modelo, nem diz que a chave paga.
   await expect(card(page)).not.toContainText('Pago pela sua chave');
 
   await faixa(page).getByRole('button', { name: 'Usar a chave' }).click();

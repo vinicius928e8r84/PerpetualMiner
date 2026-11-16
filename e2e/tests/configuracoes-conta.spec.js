@@ -28,20 +28,17 @@ const conta = page => card(page, 'conta');
 const chip = page => page.locator('#shell-chip');
 const estadoDoChip = page => page.locator('#shell-chip-estado');
 
-/** Sem conta, o chip diz “Sem conta” no lugar do nome e “Só neste computador” no do estado. */
 async function esperarChipSemConta(page) {
   await expect(page.locator('#shell-chip-nome')).toHaveText('Sem conta');
   await expect(page.locator('#shell-chip-estado')).toHaveText('Só neste computador');
 }
 
-/** Abre o card Conta & sync, se estiver fechado. */
 async function abrirConta(page) {
   const cabeca = cabecaDoCard(page, 'Conta & sync');
   if (await cabeca.getAttribute('aria-expanded') !== 'true') await cabeca.click();
   await expect(cabeca).toHaveAttribute('aria-expanded', 'true');
 }
 
-/** Segura as respostas do Firestore até `liberar()`; depois o fake responde. */
 async function segurarANuvem(page, padrao = /firestore\.googleapis\.com/) {
   let liberar;
   const liberada = new Promise(resolve => { liberar = resolve; });
@@ -52,7 +49,6 @@ async function segurarANuvem(page, padrao = /firestore\.googleapis\.com/) {
   return () => liberar();
 }
 
-/** O Detalhes recolhido do card, aberto, com a causa técnica. */
 async function detalhesDoCard(page) {
   const detalhes = conta(page).locator('details');
   await detalhes.locator('summary', { hasText: 'Detalhes' }).click();
@@ -76,7 +72,6 @@ test('clicar na linha abre o card no lugar, e vários ficam abertos ao mesmo tem
   const descricao = conta(page).getByText('Com a conta, suas frases ficam iguais em qualquer computador em que você entrar.');
   await expect(descricao).toBeHidden();
 
-  // A linha inteira é clicável, não só o título.
   await resumo(page, 'conta').click();
   await expect(cabecaDoCard(page, 'Conta & sync')).toHaveAttribute('aria-expanded', 'true');
   await expect(descricao).toBeVisible();
@@ -127,14 +122,11 @@ test('as linhas fechadas resumem os atalhos, a chave mascarada e o total de fras
   await abrirPainel(page, extensao);
 
   await expect(resumo(page, 'perigo')).toHaveText('1.245 frases');
-  // O botão gravado em inglês aparece em PT-BR (CFG-14), cada tecla no seu kbd.
   await expect(resumo(page, 'atalhos').locator('> span')).toHaveText(['Legenda Alt+S', 'Seleção Alt+Botão voltar']);
   await expect(resumo(page, 'atalhos').locator('kbd')).toHaveText(['Alt+S', 'Alt+Botão voltar']);
-  // A chave aparece só pelas pontas: nunca inteira na tela.
   await expect(resumo(page, 'chave')).toHaveText('AIza••••••••3kQ9');
   await expect(page.getByText(CHAVE_DO_GEMINI)).toHaveCount(0);
 
-  // Abrir o card troca o resumo pelo conteúdo, como no card Conta & sync.
   await cabecaDoCard(page, 'Zona de perigo').click();
   await expect(resumo(page, 'perigo')).toBeHidden();
   await expect(card(page, 'perigo').getByRole('button', { name: 'Apagar todas as 1.245 frases' })).toBeVisible();
@@ -155,7 +147,6 @@ test('sem nada gravado: “Sem atalho” tracejado, “Sem chave” em danger e 
   });
   expect(await resumo(page, 'chave').locator('.cfg-status').evaluate(el => getComputedStyle(el).color)).toBe(corDoPerigo);
 
-  // Gravar em outra página (o popup, o Minerar de uma foto) aparece aqui sem recarregar.
   await extensao.gravarStorage({
     frases: frasesDeExemplo(1),
     geminiApiKey: CHAVE_DO_GEMINI,
@@ -249,7 +240,6 @@ test('Sem sincronizar (CFG-03): só no card e no chip, com Tentar de novo e Deta
 
   await expect(estadoDoChip(page)).toHaveText('Sem sincronizar');
   await expect(estadoDoChip(page)).toHaveClass(/shell-chip__estado--erro/);
-  // Nenhuma faixa nem toast nas outras áreas.
   await expect(page.getByText(/nuvem|sincroniz/i).filter({ visible: true })).toHaveText(['Sem sincronizar']);
 
   await chip(page).click();
@@ -271,7 +261,6 @@ test('apagar uma frase com a nuvem fora do ar: o problema aparece no chip e no c
   await abrirPainel(page, extensao, '#frases');
   await expect(estadoDoChip(page)).toHaveText('Sincronizado agora');
 
-  // Anota todo toast que aparece: o de sucesso do apagar pode cobrir um de erro logo em seguida.
   await page.evaluate(() => {
     window.__toasts = [];
     new MutationObserver(mudancas => {
@@ -280,11 +269,8 @@ test('apagar uma frase com a nuvem fora do ar: o problema aparece no chip e no c
   });
   fakes.google.ficarForaDoAr();
   await page.locator('#frases-lista .veio-frase').first().getByRole('button', { name: 'Apagar frase' }).click();
-  // Apagar 1 frase pede confirmação (PAI-12, #30).
   await page.getByRole('dialog').getByRole('button', { name: 'Apagar frase' }).click();
   await expect(estadoDoChip(page)).toHaveText('Sem sincronizar');
-  // A única fala sobre a nuvem na área é o aviso PAI-15 do apagar (#30), que diz
-  // o que ficou lá e traz “Tentar de novo”. Nada disso é toast.
   await expect(page.getByRole('alert').filter({ hasText: 'As frases foram apagadas deste computador, mas não da nuvem.' })).toBeVisible();
   expect((await page.evaluate(() => window.__toasts)).filter(t => /nuvem|erro/i.test(t))).toEqual([]);
 
@@ -496,7 +482,6 @@ test('Sessão expirou (CFG-08): “Entrar” leva ao login e volta a sincronizar
   await abrirConta(page);
   await expect(conta(page).getByText('Sua sessão expirou. Entre de novo para sincronizar.')).toBeVisible();
   await expect(conta(page).getByRole('button', { name: 'Sair da conta' })).toHaveCount(0);
-  // As frases continuam na lista, deste computador.
   await expect(page.locator('#shell-total')).toHaveText('2');
 
   await conta(page).getByRole('button', { name: 'Entrar', exact: true }).click();
@@ -589,7 +574,6 @@ test('abaixo de ~560 px de conteúdo, o resumo da linha fechada some e o conteú
   const recuo = () => conta(page).locator('.cfg-corpo').evaluate(el => parseFloat(getComputedStyle(el).paddingLeft));
   expect(await recuo()).toBe(62);
 
-  // 700 px de janela: trilho de 76 px, e o conteúdo fica abaixo de 560 px.
   await page.setViewportSize({ width: 700, height: 800 });
   await expect.poll(recuo).toBe(16);
   await cabecaDoCard(page, 'Conta & sync').click();
@@ -617,7 +601,6 @@ test('com movimento reduzido, o ponto do Sincronizando fica parado', async ({ pa
 
   const pontos = conta(page).locator('.cfg-ponto[data-estado="sincronizando"]').filter({ visible: true });
   await expect(pontos.first()).toBeVisible();
-  // Leitura atômica dos nós vivos: o chip pode ser redesenhado durante a rede.
   const animacoes = await pontos.evaluateAll(nos => nos.map(no => getComputedStyle(no).animationName));
   expect(animacoes.length).toBeGreaterThan(0);
   expect([...new Set(animacoes)]).toEqual(['none']);
@@ -625,7 +608,6 @@ test('com movimento reduzido, o ponto do Sincronizando fica parado', async ({ pa
 
 test('com movimento reduzido, #configuracoes/conta mostra a borda ouro parada, e ela sai depois do flash', async ({ page, extensao, relogioParado }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  // O relógio parado segura o destaque de 1,4 s até o `avancar`: sob carga, a leitura da borda não o perde.
   const relogio = await relogioParado({ em: new Date('2026-09-18T12:00:00') });
   await abrirPainel(page, extensao, '#configuracoes/conta');
 

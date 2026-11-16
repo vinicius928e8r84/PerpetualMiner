@@ -1,8 +1,5 @@
 'use strict';
 
-// Minerar de uma foto · a chave do Gemini vai no cabeçalho do pedido, não na URL (#11): uma URL fica no histórico, nos
-// logs e nas mensagens de erro. O Gemini é falsificado na fronteira HTTP; a página minera pelo service worker de verdade.
-
 const { test, expect } = require('../fixtures');
 
 const CHAVE = 'chave-de-teste';

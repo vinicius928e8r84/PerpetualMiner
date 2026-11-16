@@ -1,11 +1,5 @@
 'use strict';
 
-// O modelo dos cartões (#157, docs/design/modelo-dos-cartoes.md): no Avançado do card IA dos cartões, o seletor “Modelo dos cartões”
-// com a lista da conta (Automático por padrão), o aviso âmbar antes da saída de um modelo, a troca para o Automático no dia e a linha
-// verde que conta o que trocou. A Conexão com o Anki é o fake do e2e, que guarda a escolha e responde pelo contrato
-// (complemento/contrato/exemplos-do-modelo.json); o que fica guardado é o que a Conexão guardou (`fakes.anki.modelo.guardado()`).
-// Quem troca o modelo no dia do Envio, de verdade, é provado em complemento/test_modelo_dos_cartoes.py.
-
 const { test, expect } = require('../fixtures');
 const { estadoFinalEm } = require('../estado-final');
 const { INGLESAS, SACK, marcarEEnviar, enviosCriados } = require('../apoio-do-envio');
@@ -19,14 +13,12 @@ const opcoes = page => seletor(page).locator('option').allTextContents();
 
 const AUTOMATICO = { escolha: 'automatico', trocou: null };
 
-/** Abre Configurações › IA com a Conexão ligada; `abrir` deixa o Avançado aberto. */
 async function abrirIA(page, extensao, { abrir = true } = {}) {
   await page.goto(extensao.url('painel.html#configuracoes/ia'));
   await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
   if (abrir) await avancado(page).locator('summary').click();
 }
 
-/** A pessoa já tem a chave guardada na Conexão (e o resumo dela no navegador). */
 async function comAChave(extensao, fakes) {
   fakes.anki.guardarChaveNaConexao('9f3a');
   await extensao.gravarStorage({ pm_chave_openai: { ultimos4: '9f3a' } });
@@ -59,7 +51,7 @@ test('com a chave, o Avançado traz o Modelo dos cartões em Automático, só co
 
 test('com o login do ChatGPT, a lista é a do plano e a linha de baixo diz Usando o plano do ChatGPT · Gerenciar uso', async ({ page, extensao, fakes }) => {
   fakes.anki.chatgpt.definir('conectada');
-  await extensao.gravarStorage({ pm_plano_do_chatgpt_avisado: true }); // o modal da primeira vez já foi dado (configuracoes-chatgpt-plano.spec.js)
+  await extensao.gravarStorage({ pm_plano_do_chatgpt_avisado: true });
   await abrirIA(page, extensao);
 
   await expect(seletor(page)).toHaveValue('automatico');

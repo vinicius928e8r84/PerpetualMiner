@@ -1,14 +1,7 @@
 'use strict';
 
-// Base Veio · os componentes base e a página-vitrine.
-//
-// A vitrine é a referência visual: ela carrega os mesmos tokens, componentes e
-// catálogo da Voz que as páginas da extensão carregam. Os testes afirmam o que
-// a pessoa vê na vitrine e como ela reage ao teclado e ao mouse.
-
 const { test, expect } = require('../fixtures');
 
-/** Os componentes que a vitrine mostra, na ordem em que ela os monta. */
 const COMPONENTES = [
   'Botões', 'Campos', 'Toggle e checkbox', 'Selos', 'Atalhos',
   'Controle segmentado', 'Azulejo', 'Anel de progresso', 'Modal', 'Toast', 'Aviso persistente',
@@ -17,8 +10,7 @@ const COMPONENTES = [
 
 const TEMAS = ['escuro', 'claro'];
 
-// Exceção de teste: catálogo (docs/testes.md).
-/** O texto aprovado de cada estado que a vitrine mostra, lido do catálogo. */
+// Exceção de teste: catálogo (docs/testes.md)
 const copiaDaVitrine = page => page.evaluate(() =>
   PerpetualMiner.Vitrine.CATALOGO_DA_VITRINE.map(([id, valores]) =>
     [id, PerpetualMiner.textoDaVoz(id, valores)]));
@@ -59,7 +51,6 @@ test('a vitrine mostra cada componente nos dois temas', async ({ page, paginas }
     }
   }
 
-  // As duas colunas mostram a mesma galeria, e cada uma lê os tokens dela.
   const fundos = await page.evaluate(() => [...document.querySelectorAll('[data-tema]')]
     .map(no => getComputedStyle(no).backgroundColor));
   expect(new Set(fundos).size).toBe(2);
@@ -78,11 +69,9 @@ test('botões e campos aparecem em normal, foco, desabilitado e erro', async ({ 
       await expect(coluna.locator(`[data-grupo="Campos"] [data-estado="${estado}"]`)).toBeVisible();
     }
 
-    // Desabilitado é desabilitado de verdade, não só mais claro.
     const desligados = coluna.locator('[data-estado="desabilitado"] .veio-botao');
     await expect(desligados.first()).toBeDisabled();
 
-    // Erro é dito pelo aria-invalid, que o leitor de tela também ouve.
     await expect(coluna.locator('[data-estado="erro"] .veio-campo[aria-invalid="true"]').first())
       .toBeVisible();
     await expect(coluna.locator('[data-estado="erro"] .veio-campo-erro')).toBeVisible();
@@ -97,7 +86,6 @@ test('as seis variantes de botão têm cada uma o seu desenho', async ({ page, p
   const fundoDe = variante => linha.locator(`.veio-botao--${variante}`)
     .evaluate(no => getComputedStyle(no).backgroundColor);
 
-  // As cores vêm dos tokens do tema, não de um valor escrito aqui.
   const tokenDe = nome => coluna.evaluate((no, nome) => {
     const valor = getComputedStyle(no).getPropertyValue(nome).trim();
     const medida = document.createElement('span');
@@ -111,7 +99,6 @@ test('as seis variantes de botão têm cada uma o seu desenho', async ({ page, p
   const ouro = await tokenDe('--veio-accent');
   const perigo = await tokenDe('--veio-danger');
 
-  // Primário é ouro preenchido; perigo tem contorno e preenchido.
   expect(await fundoDe('primario')).toBe(ouro);
   expect(await fundoDe('fantasma')).toBe('rgba(0, 0, 0, 0)');
   expect(await fundoDe('perigo')).toBe('rgba(0, 0, 0, 0)');
@@ -119,7 +106,6 @@ test('as seis variantes de botão têm cada uma o seu desenho', async ({ page, p
 
   await expect(linha.locator('.veio-botao--perigo')).toHaveCSS('border-color', perigo);
 
-  // Só-ícone é circular e diz o que faz, porque não tem texto.
   const soIcone = linha.locator('.veio-botao-icone').first();
   await expect(soIcone).toHaveCSS('border-radius', '50%');
   expect((await soIcone.getAttribute('aria-label')).length).toBeGreaterThan(0);
@@ -169,7 +155,6 @@ test('o toggle ligado usa o ouro, e o desligado não', async ({ page, paginas })
 test('o botão do toggle fica centrado no trilho, ligado ou desligado', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
 
-  // Folga entre o botão e a borda de dentro do trilho, dos dois lados.
   const folgas = await page.locator('[data-tema="escuro"] [data-grupo="Toggle e checkbox"] [data-estado="normal"] .veio-toggle__trilho')
     .evaluateAll(nos => nos.map(trilho => {
       const botao = getComputedStyle(trilho, '::after');
@@ -181,8 +166,6 @@ test('o botão do toggle fica centrado no trilho, ligado ou desligado', async ({
       };
     }));
 
-  // Ligado (à direita) e desligado (à esquerda) deixam a mesma folga que o
-  // protótipo: 2 px até a borda.
   const ligado = folgas.find(folga => folga.ligado);
   const desligado = folgas.find(folga => !folga.ligado);
   expect(desligado.esquerda).toBe(2);
@@ -196,7 +179,6 @@ test('sem atalho gravado, o kbd fica tracejado', async ({ page, paginas }) => {
   await expect(semAtalho).toHaveText('Sem atalho');
   await expect(semAtalho).toHaveCSS('border-style', 'dashed');
 
-  // O atalho gravado é sólido, para os dois não se confundirem.
   await expect(page.locator('[data-tema="escuro"] .veio-kbd:not(.veio-kbd--sem-atalho)').first())
     .toHaveCSS('border-style', 'solid');
 });
@@ -227,7 +209,6 @@ test('o estado vazio ensina o que fazer e leva a ação junto', async ({ page, p
     const vazios = page.locator(`[data-tema="${tema}"] [data-grupo="Estado vazio"] .veio-vazio`);
     await expect(vazios).toHaveCount(2);
 
-    // O primeiro uso ensina a minerar; a busca sem resultado limpa a busca.
     await expect(vazios.nth(0)).toContainText('Nenhuma frase ainda');
     await expect(vazios.nth(0).getByRole('button', { name: 'Minerar frases' })).toBeVisible();
     await expect(vazios.nth(1)).toContainText('gavião');
@@ -248,7 +229,6 @@ test('o modal é um diálogo, começa no botão seguro e prende o foco', async (
 
   await expect(dialogo.getByRole('button', { name: 'Cancelar' })).toBeFocused();
 
-  // O Tab dá a volta dentro do modal e não sai para a página atrás.
   const nomesFocados = [];
   for (let i = 0; i < 4; i += 1) {
     await page.keyboard.press('Tab');
@@ -260,7 +240,6 @@ test('o modal é um diálogo, começa no botão seguro e prende o foco', async (
   expect(nomesFocados.every(f => f.dentro)).toBe(true);
   expect(new Set(nomesFocados.map(f => f.nome)).size).toBe(2);
 
-  // O resto da página fica inerte: o leitor de tela também não sai do modal.
   expect(await page.locator('.cabecalho').evaluate(no => no.hasAttribute('inert'))).toBe(true);
 });
 
@@ -290,7 +269,6 @@ test('o clique fora fecha o modal, e dentro dele não', async ({ page, paginas }
   await dialogo.locator('.veio-modal__titulo').click();
   await expect(scrim).toBeVisible();
 
-  // O canto do scrim é a área fora do modal.
   await scrim.click({ position: { x: 5, y: 5 } });
   await expect(scrim).toBeHidden();
   await expect(abrir).toBeFocused();
@@ -321,7 +299,6 @@ test('o toast aparece no tema da coluna que o mostrou', async ({ page, paginas }
     const toast = coluna.locator('.veio-toast');
     await expect(toast).toBeVisible();
 
-    // O fundo do toast é o surface do tema da coluna, não o do outro tema.
     const surface = await coluna.evaluate(no => {
       const medida = document.createElement('span');
       medida.style.backgroundColor = 'var(--veio-surface)';
@@ -338,12 +315,8 @@ test('o toast aparece no tema da coluna que o mostrou', async ({ page, paginas }
 test('o toast fica mais tempo quanto maior o texto', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
 
-  // Exceção de teste: componente-base (docs/testes.md, garantias da base sem gatilho na tela): a
-  // vitrine só mostra um texto de toast, então o teste chama
-  // `mostrarToastDeSucesso` com dois tamanhos e mede quanto cada toast fica
-  // de fato na tela.
+  // Exceção de teste: componente-base
 
-  /** Quanto tempo o toast deste texto fica de fato na tela. */
   const tempoNaTela = texto => page.evaluate(texto => new Promise(resolve => {
     const comecou = performance.now();
     PerpetualMiner.Veio.mostrarToastDeSucesso(texto, {
@@ -368,7 +341,6 @@ test('o aviso persistente fica até ser fechado e tem Detalhes recolhido', async
   await expect(aviso.getByRole('button', { name: 'Tentar de novo' })).toBeVisible();
   await expect(aviso.getByRole('button', { name: 'Ocultar' })).toBeVisible();
 
-  // A causa técnica começa recolhida, e abre quando a pessoa pede.
   const detalhes = aviso.locator('.veio-aviso__detalhes');
   await expect(detalhes.locator('pre')).toBeHidden();
   await detalhes.locator('summary').click();
@@ -379,8 +351,6 @@ test('o aviso persistente fica até ser fechado e tem Detalhes recolhido', async
   await page.waitForTimeout(4000);
   await expect(aviso).toBeVisible();
 
-  // Fechado, ele sai — e a vitrine o repõe, para a referência não perder um
-  // componente no primeiro clique.
   const detalhesAbertos = detalhes.locator('pre');
   await expect(detalhesAbertos).toBeVisible();
   await aviso.getByRole('button', { name: 'Ocultar' }).click();
@@ -398,7 +368,6 @@ test('o aviso que só informa é neutro, fala sem alarme e abre com a 1ª frase 
   await expect(info).toContainText('Leitura cancelada. 2 fotos ficaram sem ler; as frases das fotos já lidas continuam aqui.');
   await expect(info.locator('.veio-aviso__texto svg')).toHaveCount(1);
 
-  // Neutro: nem a borda nem o fundo são os do erro.
   const cores = await page.locator('[data-tema="escuro"]').evaluate(coluna => {
     const erro = getComputedStyle(coluna.querySelector('.veio-aviso[role="alert"]'));
     const neutro = getComputedStyle(coluna.querySelector('.veio-aviso--info'));
@@ -422,7 +391,6 @@ test('a Palavra é grifada de 50% a 94% da linha, sem raio', async ({ page, pagi
     expect(faixa).toContain('50%');
     expect(faixa).toContain('94%');
 
-    // A faixa usa o token kw-bg do tema da coluna, não uma cor solta.
     const kwBg = await page.locator(`[data-tema="${tema}"]`)
       .evaluate(no => getComputedStyle(no).getPropertyValue('--veio-kw-bg').trim());
     const emRgba = kwBg.replace(/\s+/g, '').replace('rgba(', '').replace(')', '').split(',');
@@ -440,7 +408,6 @@ test('o chip diz se a Palavra foi escolhida ou detectada, com o rótulo em mono'
   await expect(chips.nth(0).locator('.veio-chip-palavra__rotulo'))
     .toHaveCSS('font-family', /JetBrains Mono/);
 
-  // "keyword" é nome técnico do código: nunca aparece na tela.
   expect(await page.locator('main').innerText()).not.toContain('keyword');
 });
 
@@ -448,9 +415,7 @@ test('a frase mostra o texto como texto, mesmo com marcação dentro', async ({ 
   await abrirVitrine(page, paginas);
 
   const texto = '<img src=x onerror="window.__injetado=1">Hold the line.';
-  // Exceção de teste: componente-base (docs/testes.md, garantias da base sem gatilho na tela):
-  // nenhuma frase da vitrine traz marcação, então o teste chama `escreverFrase`
-  // numa linha de frase da própria vitrine e confere o que aparece nela.
+  // Exceção de teste: componente-base
   await page.evaluate(texto => {
     const corpo = document.querySelector('[data-tema="escuro"] .veio-frase__texto');
     PerpetualMiner.Veio.escreverFrase(corpo, texto, 'line');
@@ -468,7 +433,6 @@ test('na frase clicável, cada palavra é um botão, a escolhida é grifada e as
 
   const cartao = page.locator('[data-tema="escuro"] [data-estado="palavra clicável, na ilha"] .veio-frase');
   await expect(cartao).toHaveClass(/veio-frase--na-ilha/);
-  // Dentro da ilha `surface`, o cartão é `bg`.
   const [fundoDoCartao, fundoDaIlha, bg] = await cartao.evaluate(no => [
     getComputedStyle(no).backgroundColor,
     getComputedStyle(no.parentElement).backgroundColor,
@@ -501,9 +465,6 @@ test('toda a cópia da vitrine vem do catálogo da Voz', async ({ page, paginas 
   for (const tema of TEMAS) {
     const coluna = page.locator(`[data-tema="${tema}"] [data-componentes]`);
 
-    // Toast e modal só mostram a cópia deles depois de chamados, então os dois
-    // entram na conta abertos. O toast primeiro: com o modal aberto, o resto da
-    // página fica inerte e não recebe mais clique.
     const toast = page.locator('.veio-toast');
     await page.locator(`[data-tema="${tema}"] [data-grupo="Toast"] button`).click();
     await expect(toast).toBeVisible();
@@ -511,8 +472,6 @@ test('toda a cópia da vitrine vem do catálogo da Voz', async ({ page, paginas 
     await page.locator(`[data-abre-o-modal="${tema}"]`).click();
     await expect(page.locator(`[data-modal="${tema}"] [role="dialog"]`)).toBeVisible();
 
-    // O que a pessoa lê na tela, mais o que o leitor de tela fala: o botão
-    // só-ícone diz "Apagar frase" pelo aria-label, não por um texto visível.
     const percebido = [
       await coluna.innerText(),
       await coluna.evaluate(no => no.textContent),
@@ -530,15 +489,9 @@ test('toda a cópia da vitrine vem do catálogo da Voz', async ({ page, paginas 
     await expect(toast).toBeHidden({ timeout: 5000 });
   }
 
-  // E nenhum componente carrega texto solto: o que cada um mostra é um estado
-  // do catálogo, um valor do glossário (a Fonte), a tecla que a pessoa gravou,
-  // ou o andaime da vitrine.
   const aprovados = new Set(doCatalogo.map(([, texto]) => texto));
   const doGlossario = new Set(['Netflix', 'YouTube', 'Web', 'PDF', 'Livro', 'Manual']);
   const teclasGravadas = new Set(['Alt', 'S']);
-  // Os três nomes de padrão que a própria base escreve, com a fonte de cada
-  // um: o rótulo do chip da Palavra (glossary.md, regra V6 da Voz) e o nome do
-  // recolhido da causa técnica (regra V3 da Voz).
   const doPadrao = new Set(['palavra:', 'auto:', 'Detalhes']);
 
   const soltos = await textosEscritos(page);
@@ -548,18 +501,16 @@ test('toda a cópia da vitrine vem do catálogo da Voz', async ({ page, paginas 
 });
 
 test('todo controle da vitrine mostra onde o foco está', async ({ page, paginas }) => {
-  test.setTimeout(90_000); // Sob carga, os cerca de 100 Tabs não cabem nos 30 s padrão.
+  test.setTimeout(90_000);
   await abrirVitrine(page, paginas);
 
   await page.evaluate(() => {
-    // Lido depois que as transições de foco terminam, como a pessoa vê.
     window.desenhoDoFoco = async no => {
       await Promise.all(no.getAnimations().map(animacao => animacao.finished.catch(() => {})));
       const estilo = getComputedStyle(no);
       const anel = estilo.outlineStyle !== 'none' && parseFloat(estilo.outlineWidth) > 0
         ? `${estilo.outlineStyle} ${estilo.outlineWidth} ${estilo.outlineColor}`
         : 'sem anel';
-      // O toggle e o segmentado desenham o foco no trilho, não no <input>.
       const pintado = no.nextElementSibling || no;
       return [anel, estilo.boxShadow, estilo.borderColor, estilo.backgroundColor,
         getComputedStyle(pintado).outlineStyle].join(' | ');
@@ -602,7 +553,6 @@ test('com movimento reduzido, os sinais de estado ficam parados', async ({ page,
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await abrirVitrine(page, paginas);
 
-  // O esqueleto continua no lugar do conteúdo, mas sem brilho correndo.
   const esqueleto = page.locator('[data-tema="escuro"] .veio-esqueleto').first();
   await expect(esqueleto).toBeVisible();
   await expect(esqueleto).toHaveCSS('animation-name', 'none');

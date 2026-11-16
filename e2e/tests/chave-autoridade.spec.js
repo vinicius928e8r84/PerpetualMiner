@@ -1,7 +1,5 @@
 'use strict';
 
-// Opção B: o cofre da Conexão, não uma reserva ou rascunho da extensão,
-// é o valor exibido. Só chaves fictícias. UI nativa + estado guardado.
 const { test, expect } = require('../fixtures');
 const { fotografar } = require('../evidencias-mineracao');
 const CHAVE = 'sk-fake-autoridade-primeira-aaaa';
@@ -33,14 +31,13 @@ async function confirmar(page, chave) {
 for (const bComChave of [false, true]) test(bComChave
   ? 'K1-delete: A vê a chave de B sem Apagar chave e não muda nenhuma das contas'
   : 'K1: a saúde de dois perfis A e B só lê o dono, sem pingue-pongue de sync', async ({ page, extensao, fakes, segundoPerfil, relogioParado }) => {
-  test.slow(); // dois processos Chromium/perfis, não duas abas do mesmo perfil
+  test.slow();
   const relogio = await relogioParado();
   await extensao.semearSessao({ uid: 'A' });
   fakes.google.gravarChaveDaOpenAI('A', { chave: CHAVE, em: 100 });
   if (bComChave) fakes.google.gravarChaveDaOpenAI('B', { chave: NOVA, em: 101 });
   await abrir(page, extensao);
   await expect(page.locator('#shell-chip')).toContainText('Sincronizado agora');
-  // Fronteira de armazenamento de outro perfil real, não outra aba com a mesma sessão.
   await segundoPerfil.extensao.semearSessao({ uid: 'B', displayName: 'Pessoa B' });
   const b = await segundoPerfil.context.newPage();
   const relogioDeB = await relogioParado({ page: b });
@@ -80,8 +77,6 @@ test('K1-delete: dono mudou para B durante o modal de A, confirmar não apaga ne
   await expect(page.locator('#shell-chip')).toContainText('Sincronizado agora');
   await expect(resumo(page)).toHaveText('••••••••aaaa');
   await card(page).getByRole('button', { name: 'Apagar chave', exact: true }).click();
-  // Mudança externa aceita enquanto a confirmação está aberta, não alteração
-  // de internals da extensão: o dono agora pertence a outro perfil.
   fakes.anki.guardarChaveNaConexao('bbbb', 42, 'B', 101, false);
   const dono = fakes.anki.estadoDaChave();
   await page.getByRole('dialog').getByRole('button', { name: 'Apagar chave', exact: true }).click();
@@ -156,7 +151,7 @@ test('K1-PC: três reconfirmações idênticas mantêm v1 e não disparam upload
     revisoes.push(fakes.anki.estadoDaChave().versao);
   }
   expect(revisoes).toEqual([1, 1, 1, 1]);
-  await relogio.avancar(31000); // saúde só lê, não reconfirma chave nem dispara sync
+  await relogio.avancar(31000);
   await expect(resumo(page)).toHaveText('••••••••aaaa');
   expect(fakes.anki.estadoDaChave()).toEqual(antes);
   expect(fakes.google.chaveDaOpenAIDe('A')?.em).toBe(nuvem.em);
@@ -299,7 +294,7 @@ test('legado divergente não vira outro dono: a tela lê a Conexão sem exportar
   expect(fakes.anki.chaveNaConexao()?.endsWith('bbbb')).toBe(true);
   expect(fakes.google.chaveDaOpenAIDe('B')).toBeNull();
   expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai.ultimos4).toBe('bbbb');
-  expect((await segredosLocais(page)).includes('sk-fake-legado-aaaa')).toBe(true); // migração não concluída, sem perda silenciosa
+  expect((await segredosLocais(page)).includes('sk-fake-legado-aaaa')).toBe(true);
 });
 
 test('A3: apagar chave também descarta o legado divergente após a escolha explícita', async ({ page, extensao, fakes }) => {
@@ -375,15 +370,14 @@ test('a conta traz mudança com o mesmo final e apagamento ao painel e ao dono',
   await expect(resumo(page)).toHaveText('••••••••aaaa');
   expect(fakes.anki.chaveNaConexao() === CHAVE).toBe(true);
   fakes.google.gravarChaveDaOpenAI('A', { chave: mesmoFinal, em: 2000 });
-  // Exceção de teste: chrome-nativo — a volta à aba, não uma função do produto.
+  // Exceção de teste: chrome-nativo
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
   await expect.poll(() => fakes.anki.chaveNaConexao() === mesmoFinal).toBe(true);
   await expect(resumo(page)).toHaveText('••••••••aaaa');
   expect(fakes.anki.estadoDaChave().versao).toBe(2);
-  // O sufixo não muda: a máscara não é uma barreira para a leitura do cache.
   await expect.poll(async () => (await extensao.lerStorage('pm_chave_openai')).pm_chave_openai.versao).toBe(2);
   fakes.google.gravarChaveDaOpenAI('A', { chave: '', em: 3000 });
-  // Exceção de teste: chrome-nativo — outra volta à aba recebe o valor vazio.
+  // Exceção de teste: chrome-nativo
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
   await expect(resumo(page)).toHaveText('Sem chave');
   expect(fakes.anki.chaveNaConexao()).toBeNull();
@@ -429,11 +423,9 @@ test('F4: Apagar tudo limpa o dono, a conta e todas as cópias secretas do forma
   await extensao.semearSessao({ uid: 'A' });
   await abrir(page, extensao);
   await confirmar(page, CHAVE);
-  // Termina o Save antes de semear a falha/legado; o clique não aguarda o HTTP.
   await expect(card(page).getByRole('button', { name: 'Conferindo a chave…' })).toHaveCount(0, { timeout: 45000 });
   await expect(resumo(page)).toHaveText('••••••••aaaa');
   await expect.poll(() => fakes.google.chaveDaOpenAIDe('A')?.chave === CHAVE).toBe(true);
-  // Apenas semeia o armazenamento legado na fronteira, não funções do produto.
   await page.evaluate(() => new Promise((resolve, reject) => {
     const req = indexedDB.open('pm-segredos', 1);
     req.onsuccess = () => {
@@ -478,8 +470,6 @@ test('o apagamento aceito não apaga da tela uma chave nova aceita enquanto a re
     await expect(card(outra).getByRole('button', { name: 'Trocar chave' })).toBeVisible();
     expect(fakes.anki.chaveNaConexao() === NOVA).toBe(true);
     liberar();
-    // Sob uma espera longa, a resposta pode ter expirado. Aguarde o resultado
-    // terminal (sucesso ou incerteza), não apenas o cache atualizado pela outra aba.
     await expect(page.locator('.veio-toast').filter({ hasText: 'Chave da OpenAI apagada' })
       .or(card(page).getByRole('alert').filter({ hasText: 'Não deu para confirmar o apagamento' }))).toBeVisible();
     await expect(resumo(page)).toHaveText('••••••••bbbb');
@@ -497,8 +487,6 @@ test('R1: aceitação tardia depois de recarregar aparece no painel já aberto',
   const pedidoEmVoo = new Promise(resolve => { entrou = resolve; });
   await context.route('**/ia/openai/chave', async route => {
     entrou(); await espera;
-    // Só a validação externa espera: o dono continua recebendo o pedido
-    // mesmo quando o navegador abandonou a resposta da página anterior.
     await fakes.anki.tratar({ request: () => route.request(), fulfill: async resposta => route.fulfill(resposta).catch(() => {}) });
   });
   try {
@@ -507,7 +495,6 @@ test('R1: aceitação tardia depois de recarregar aparece no painel já aberto',
     await page.reload();
     await expect(resumo(page)).toHaveText('Sem chave');
     await expect(page.locator('#shell-conexao-descricao')).toHaveText('Conexão com o Anki: ligada');
-    // A primeira leitura é vazia; não deixe a aceitação vencer por acaso o bootstrap.
     const antes = page.waitForResponse(resposta => resposta.url().endsWith('/health'));
     await relogio.avancar(16000);
     await antes;
