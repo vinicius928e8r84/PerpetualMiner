@@ -43,31 +43,31 @@ function criarFakeAnki() {
   const estado = {
     ligada: true,
     vocabulario: { en: [], ru: [] },
-    rotas: new Map(), // 'GET /caminho' → (req, url) => ({ status, json })
-    recusas: new Map(), // lang → { status } | { rede: true }, para o próximo POST /jobs
+    rotas: new Map(),
+    recusas: new Map(),
     agora: () => new Date(),
-    custos: null, // as linhas de POST /analytics/jobs que o teste definiu (definirCustos); null: as dos Envios da fila
-    registrosDeCusto: new Map(), // jobId → os registros de custo do Envio (os da fila do contrato)
-    falhaDosCustos: null, // { status } | { rede: true }: POST /analytics/jobs falha
-    falhaDoApagarFrases: null, // { rede: true }: POST /jobs/apagar-frases não tem resposta
-    baralhos: {}, // deckName → os números do baralho (definirBaralho)
-    fonteDosBaralhos: 'colecao', // 'collection.anki2': lidos do arquivo local (BRG-13)
-    lidoDoArquivo: false, // a Conexão responde lendo o arquivo do Anki: baralhos e vocabulário vêm de `collection.anki2`
-    processosDoAnki: 1, // GET /anki/status: quantos processos do Anki a Conexão vê (0: o Anki está fechado)
-    falhaDosBaralhos: null, // { status } | { rede: true }: POST /anki/stats/decks falha
-    falhaDoVocabulario: null, // { status } | { rede: true }: POST /anki/vocabulary falha
-    baralhosDoAnki: null, // os nomes de POST /anki/decks; null: a lista não vem (definirBaralhosDoAnki)
-    contexto: { perfil: 'Usuário 1', falhaNoPerfil: false, openai: 'aceita', itemDeLogin: 'desligado', firebase: 0 }, // o `contexto` dos exemplos; `colecao` só existe depois de `abrirColecao`
+    custos: null,
+    registrosDeCusto: new Map(),
+    falhaDosCustos: null,
+    falhaDoApagarFrases: null,
+    baralhos: {},
+    fonteDosBaralhos: 'colecao',
+    lidoDoArquivo: false,
+    processosDoAnki: 1,
+    falhaDosBaralhos: null,
+    falhaDoVocabulario: null,
+    baralhosDoAnki: null,
+    contexto: { perfil: 'Usuário 1', falhaNoPerfil: false, openai: 'aceita', itemDeLogin: 'desligado', firebase: 0 },
     versaoDaChave: 0,
     contaDaChave: '',
     horaDaChave: 0,
     chaveNaoEnviada: false,
     google: null,
     filaDaChave: Promise.resolve(),
-    chaveDaOpenAI: null, // a cópia da chave que a Conexão guarda (a inteira: só o teste a vê)
+    chaveDaOpenAI: null,
   };
-  const pareamento = criarPareamento({ agora: () => estado.agora() }); // os navegadores pareados e o código que o Anki mostra (#192)
-  pareamento.parear('primeiro'); // a Conexão do teste já conhece o primeiro navegador de teste; `pareamento.desconectar()` a deixa como a de quem nunca se pareou
+  const pareamento = criarPareamento({ agora: () => estado.agora() });
+  pareamento.parear('primeiro');
   const requisicoes = [];
   const chatgpt = criarFakeChatGPT();
   const voz = criarFakeVoz();
@@ -78,7 +78,7 @@ function criarFakeAnki() {
     contextoDeAgora: () => estado.contexto, mudarContexto, desligar: () => { estado.ligada = false; }, ligar: () => { estado.ligada = true; },
   });
   const previa = criarPrevia({ contexto: () => estado.contexto, exemplos: () => contrato.exemplos });
-  const frente = criarFakeFrente({ contrato, erro: erroDoContrato, colecao: () => estado.contexto.colecao }); // a frente do Cartão (#166)
+  const frente = criarFakeFrente({ contrato, erro: erroDoContrato, colecao: () => estado.contexto.colecao });
   const { contextoDeAgora, respostaDoContrato } = criarRespostaDoContrato({ estado, chatgpt, voz, grupos: () => [perfis, modelo, teto, previa, frente] });
   const modelo = criarModelo(() => contextoDeAgora());
   const { envios, rotas: rotasDoEnvio, api: apiDoEnvio } = criarRotasDoEnvio({ estado, modelo });
@@ -111,18 +111,15 @@ function criarFakeAnki() {
     const req = daPorta.request();
     const url = new URL(req.url());
     const corpoDoPedido = req.postData();
-    // `dados`: o corpo JSON enviado, ou null; o pareamento (#192) tem o registro dele.
     const doPareamento = url.pathname.startsWith('/pareamento/');
     if (doPareamento) pareamento.tentou(url.pathname); else requisicoes.push({ metodo: req.method(), caminho: url.pathname, busca: url.search, corpo: corpoDoPedido, dados: dadosDoCorpo(corpoDoPedido) });
 
     if (!estado.ligada) return daPorta.abort('connectionrefused');
-    // A porta aceita e não responde: o pedido fica no ar até a página desistir.
     if (estado.muda === true || estado.muda === url.pathname) return new Promise(() => {});
     if (doPareamento) {
       const { status, json } = pareamento.responder(req.method(), url.pathname, dadosDoCorpo(corpoDoPedido)) || { status: 404, json: { error: 'not_found' } };
       return responderJson(daPorta, status, json);
     }
-    // O porteiro (#192): abertos, a saúde, o login e o `/anki/status` da ponte antiga; o resto, assinado, e a resposta leva a prova.
     let route = daPorta;
     if (req.method() !== 'GET' || !['/health', '/auth/callback', '/anki/status'].includes(url.pathname)) {
       const assinou = pareamento.verificar(req, url.pathname);
@@ -142,18 +139,13 @@ function criarFakeAnki() {
     padrao: /^http:\/\/(127\.0\.0\.1|localhost):8766\//,
     tratar,
     requisicoes,
-    /** O pareamento (#192, `pareamento.js`): `codigoNoAnki()`, `desconectar()`, `vencerOCodigo()`, `recebidos()`, `pareados()`. */
     pareamento,
     chatgpt,
-    /** O modelo dos cartões (#157, `modelo-dos-cartoes.js`): `definir(cenario)`, `passarOTempoAte(dia)`, `guardado()`. */
     modelo,
-    /** O teto do mês (#160): `definir({ limite, gasto })`, `passarOTempoAte(dia)`, `guardado()`. */
     teto,
-    /** A atualização da Conexão pelo AnkiWeb (#177, `atualizacao.js`): `definir({ versao, versaoNova })`, `reinicios()`; o contexto: `definirAtualizacao`. */
     atualizacao,
     voz,
     previa,
-    /** A frente do Cartão (#166, `frente.js`): `mexerNoTipoDeNota(lang)`, `guardadas()`. */
     frente,
     /** @estado-guardado Os Envios que a Conexão guardou (um por `POST /jobs`), não o pedido que chegou. */
     envios,
@@ -161,38 +153,26 @@ function criarFakeAnki() {
     ...apiDaChave,
     ...apiDosServicos,
     ...apiDaLeitura,
-    /** O que a Conexão tem guardado da atualização (`instalada`, `falhou`, `atualizada`) e como o AnkiWeb responde ao Atualizar agora (`com_versao_nova`, `sem_versao_nova`, `recusa`), como no contexto dos exemplos. */
     definirAtualizacao({ atualizacao: guardada, ankiweb } = {}) { mudarContexto({ atualizacao: guardada, ankiweb }); },
     desligar() { estado.ligada = false; },
     ligar() { estado.ligada = true; },
-    /** O perfil que o Anki tem aberto (`null`: a tela de perfis); precisa de exemplo no contrato. */
     abrirPerfil(perfil) { estado.contexto = { ...estado.contexto, perfil }; },
-    /** O perfil fixo (#149, `perfis.js`): os perfis do Anki, o `marcado` e o `aberto`. */
     definirPerfis: perfis.definir,
     /** @estado-guardado O perfil que a Conexão tem marcado (`null`: nenhum ainda). */
     perfilMarcado: perfis.marcado,
     /** @estado-guardado O perfil que o Anki tem aberto (`null`: a tela de perfis). */
     perfilAberto: perfis.aberto,
-    /** A Conexão não consegue marcar o perfil que a tela escolheu: `POST /anki/profile` responde o erro interno. */
     falharAEscolhaDoPerfil: perfis.falharAEscolha,
-    /**
-     * A coleção que o Anki tem aberta, por nome em `colecoes` do contrato (`null`: nenhuma, o Anki na tela de
-     * perfis): os Baralhos, os números e o vocabulário passam a vir dos exemplos do contrato.
-     */
     abrirColecao(nome) { estado.contexto = { ...estado.contexto, colecao: nome }; },
     /** O complemento não consegue ler o perfil: a saúde responde o erro interno do contrato. */
     falharLeituraDoPerfil() { estado.contexto = { ...estado.contexto, falhaNoPerfil: true }; },
-    /** Como a OpenAI responde à conferência de uma chave: o `openai` dos exemplos (aceita, recusa, sem_credito, limite_de_uso…). */
     responderOpenAI(comportamento) { estado.contexto = { ...estado.contexto, openai: comportamento }; },
-    /** As respostas do contrato a um pedido (com o corpo, se tiver), para o teste que confere o fake contra os exemplos. */
     respostaDoContrato,
-    /** A porta aceita e não responde; com `caminho`, só nele. */
     silenciar(caminho = true) { estado.muda = caminho; },
     voltarAFalar() { estado.muda = false; },
     responder(metodo, caminho, gerar) { estado.rotas.set(`${metodo} ${caminho}`, gerar); },
     pararDeResponder(metodo, caminho) { estado.rotas.delete(`${metodo} ${caminho}`); },
 
-    /** O relógio da Conexão, para o `updatedAt`. */
     usarRelogio(agora) { estado.agora = agora; },
 
     /** @estado-guardado Os `guid` abertos no Anki (#173). */

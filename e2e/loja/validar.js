@@ -15,7 +15,6 @@ const PASTA = path.resolve(__dirname, '..', '..', 'docs', 'loja');
 const ASSINATURA = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const TIPO_DE_COR_RGB = 2;
 
-/** Largura, altura, tipo de cor e se há tRNS, lidos dos chunks do PNG. */
 function lerPng(arquivo) {
   const dados = fs.readFileSync(arquivo);
   if (!dados.subarray(0, 8).equals(ASSINATURA)) throw new Error('não é PNG');

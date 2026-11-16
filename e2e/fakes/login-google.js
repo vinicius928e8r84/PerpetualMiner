@@ -18,7 +18,6 @@ const https = require('https');
 const os = require('os');
 const path = require('path');
 
-/** Um certificado autoassinado, só para este processo de testes. */
 function gerarCertificado() {
   const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-e2e-cert-'));
   const chave = path.join(pasta, 'chave.pem');

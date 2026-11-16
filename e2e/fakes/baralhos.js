@@ -1,10 +1,6 @@
 'use strict';
 
-// O que o fake da Conexão responde de Baralhos e de vocabulário (`POST /anki/vocabulary` e `/anki/stats/decks`), a partir do que o teste pôs em `estado`
-// (`definirBaralho`, `definirVocabulario`). As formas são as de `complemento/normalizacao.py`; `anki.js` monta este módulo com o seu `estado`.
-
 function criarBaralhos({ estado, contrato, nomeDoExemploSemBaralho }) {
-  /** Uma linha do vocabulário como `front_vocabulary_rows_from_cards` (card_normalization.py). */
   function linhaDoVocabulario(item) {
     if (typeof item === 'string') return { word: item, type: 'word', cards: 1, new: 0, recent: 0, mature: 1, status: 'mature' };
     const { word, type = 'word', maduros = 0, recentes = 0, novos = 0 } = item;
@@ -26,7 +22,6 @@ function criarBaralhos({ estado, contrato, nomeDoExemploSemBaralho }) {
       generatedAt: estado.agora().toISOString(),
       deckName: corpo.deck || '',
       lang,
-      // Uma Conexão que lê o arquivo do Anki fechado diz `collection.anki2`.
       source: estado.lidoDoArquivo ? 'collection.anki2' : 'colecao',
       ...(estado.lidoDoArquivo && { sourceDetail: 'AnkiConnect indisponivel; lendo collection.anki2' }),
       totalCards: words.reduce((soma, w) => soma + w.cards, 0),
@@ -36,7 +31,6 @@ function criarBaralhos({ estado, contrato, nomeDoExemploSemBaralho }) {
     };
   }
 
-  /** Os totais de uma leitura de Baralhos, como `deck_stats_totals` (complemento/normalizacao.py). */
   function totaisDosBaralhos(linhas) {
     const soma = campo => linhas.reduce((total, linha) => total + (linha[campo] || 0), 0);
     const somaDoVocabulario = campo => linhas.reduce((total, linha) => total + (linha.vocabulary[campo] || 0), 0);
@@ -57,13 +51,11 @@ function criarBaralhos({ estado, contrato, nomeDoExemploSemBaralho }) {
     };
   }
 
-  /** A linha de um Baralho que o Anki não tem: a que o contrato dá (`missing`, tudo zerado). */
   function linhaDoBaralhoQueNaoExiste(deckName, lang) {
     const exemplo = contrato.exemplos.find(e => e.nome === nomeDoExemploSemBaralho);
     return { ...exemplo.resposta.json.decks.find(baralho => baralho.missing), deckName, lang };
   }
 
-  /** Os baralhos pedidos (`decks`, na ordem), como `numeros_dos_baralhos` do complemento. */
   function numerosDosBaralhos(corpo) {
     const decks = (corpo.decks || []).map(({ deckName, lang = 'en' }) => {
       const baralho = estado.baralhos[deckName];

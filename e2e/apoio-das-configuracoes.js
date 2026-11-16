@@ -1,7 +1,5 @@
 'use strict';
 
-// O que as referências visuais de Configurações (configuracoes-*visual.spec.js) repetem: os dados do protótipo e abrir a área.
-
 const { expect } = require('@playwright/test');
 
 const AGORA = new Date('2026-09-18T12:00:00');
@@ -15,10 +13,6 @@ const FRASES_DO_PROTOTIPO = Array.from({ length: TOTAL_DO_PROTOTIPO }, (_, i) =>
   idioma: 'Inglês',
 }));
 
-/**
- * As frases, a chave do Gemini e o atalho de seleção do protótipo. Com a conta,
- * as frases já estão na nuvem, então abrir o painel não vira uma primeira subida.
- */
 async function semearComoNoPrototipo(extensao, fakes, uid = null) {
   await extensao.gravarStorage({
     frases: FRASES_DO_PROTOTIPO,
