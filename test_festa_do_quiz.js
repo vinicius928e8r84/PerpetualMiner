@@ -5,6 +5,7 @@ const fs = require('fs');
 const vm = require('vm');
 
 globalThis.PerpetualMiner = {};
+require('./lib/ajustes-de-envio.js');
 require('./lib/quiz-de-nivel.js');
 require('./lib/festa-do-quiz.js');
 const { FestaDoQuiz, QuizDeNivel } = globalThis.PerpetualMiner;

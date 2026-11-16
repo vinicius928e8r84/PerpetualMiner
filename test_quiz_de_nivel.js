@@ -3,9 +3,16 @@
 const assert = require('assert');
 
 globalThis.PerpetualMiner = {};
+require('./lib/ajustes-de-envio.js');
 require('./lib/quiz-de-nivel.js');
-const { QuizDeNivel } = globalThis.PerpetualMiner;
+const { AjustesDeEnvio, QuizDeNivel } = globalThis.PerpetualMiner;
 const { TIPOS, NAO_SEI, NIVEIS } = QuizDeNivel;
+
+assert.deepStrictEqual(Object.values(NIVEIS), ['iniciante', 'intermediario', 'avancado']);
+assert.deepStrictEqual(Object.values(NIVEIS), [...AjustesDeEnvio.NIVEIS]);
+const comOutrosNiveis = { PerpetualMiner: { AjustesDeEnvio: { NIVEIS: ['basico', 'fluente'] } } };
+require('vm').runInNewContext(require('fs').readFileSync('./lib/quiz-de-nivel.js', 'utf8'), comOutrosNiveis);
+assert.deepStrictEqual({ ...comOutrosNiveis.PerpetualMiner.QuizDeNivel.NIVEIS }, { BASICO: 'basico', FLUENTE: 'fluente' });
 
 function rodar(lang, inicial, roteiro) {
   const quiz = QuizDeNivel.iniciar(lang, inicial);
