@@ -23,6 +23,11 @@ const QUEM_REGISTRA = ['OWNER', 'MEMBER', 'COLLABORATOR'];
 const MODELO = '.github/PULL_REQUEST_TEMPLATE.md';
 const PUBLICADOR = 'scripts/ci/registrar-na-pr.js';
 
+const URL_DA_ISSUE = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/issues\/\d+$/;
+const LINHA_DE_FECHAMENTO = /^(closes|refs)\s+(\S.*)$/i;
+const SEM_ISSUE = 'Sem issue';
+const PROVA_QUE_FALTA = 'Prova que falta';
+
 const SHA_INTEIRO = /^[0-9a-f]{40}$/;
 const TITULO = /^ {0,3}(#{1,6})\s+(.*?)\s*#*\s*$/;
 const CERCA = /^ {0,3}(`{3,}|~{3,})/;
@@ -104,6 +109,17 @@ function faltaDaRevisao(registros, head) {
   return null;
 }
 
+function faltasDaIssue(textos) {
+  const citadas = textos.map(texto => LINHA_DE_FECHAMENTO.exec(texto)).filter(Boolean);
+  const semUrl = citadas.filter(([, , alvo]) => !URL_DA_ISSUE.test(alvo));
+  const refs = citadas.filter(([, palavra, alvo]) => /^refs$/i.test(palavra) && URL_DA_ISSUE.test(alvo));
+  const faltas = semUrl.map(([linha]) => `a linha "${linha}" não tem a URL completa da issue (https://github.com/<dono>/<repo>/issues/<N>; o número solto não vale)`);
+  if (refs.length && !valoresDe(textos, PROVA_QUE_FALTA).length) faltas.push(`"Refs" sem a linha "${PROVA_QUE_FALTA}: <texto>" (a issue fica aberta e o corpo diz a prova que falta)`);
+  const diz = citadas.length || textos.some(texto => igual(texto, SEM_ISSUE));
+  if (!diz) faltas.push(`o corpo não diz a issue: uma linha "Closes <URL completa da issue>" por issue, "Refs <URL>" com "${PROVA_QUE_FALTA}: <texto>", ou "${SEM_ISSUE}" sozinho na linha`);
+  return faltas;
+}
+
 /** Por que a prova real não vale para o head, ou null. */
 function faltaDaProva(linhas, head) {
   const prova = secao(linhas, SECAO_DA_PROVA);
@@ -129,6 +145,7 @@ function conferir({ corpo, rotulos, registros, head }) {
   const faltas = [
     foraDoModelo.length && `o corpo não segue o modelo do /pr: falta ${foraDoModelo.join(', ')}`,
     semAtencao,
+    ...faltasDaIssue(textos),
     faltaDaRevisao(registros, head),
     alta && faltaDaProva(linhas, head),
   ].filter(Boolean);
