@@ -44,7 +44,7 @@ class SistemaDoWindows:
 
     def _tarefa(self, nome):
         if self.executar(["schtasks", "/Query", "/TN", nome]) != 0:
-            return False  # não existe
+            return False
         if self.executar(["schtasks", "/Delete", "/TN", nome, "/F"]) != 0:
             raise PassagemFalhou("a Tarefa Agendada %s não foi apagada" % nome)
         return True

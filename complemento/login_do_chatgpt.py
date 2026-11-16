@@ -30,21 +30,18 @@ from .configuracao import OPENAI_BASE
 from .openai_api import contexto_tls
 
 TEMPO_DE_CADA_PEDIDO = 15
-VALIDADE_DA_TENTATIVA = 600  # s: depois disso o retorno não vale, e a pessoa aperta o botão de novo
-MARGEM_DA_RENOVACAO = 180  # s antes da validade do `access_token`: um pedido nunca começa com um token quase vencido
+VALIDADE_DA_TENTATIVA = 600
+MARGEM_DA_RENOVACAO = 180
 
-# O que o estado diz de uma tentativa que não virou login.
 SEM_ACESSO = "chatgpt_access_denied"
 SEM_PLANO = "chatgpt_plan_not_granted"
 LOGIN_FALHOU = "chatgpt_login_failed"
 # A segunda troca seguida recusada com `invalid_grant`: a conta (grátis ou Go) não tem o plano (risco 9 da spec). O Envio também grava este código.
 NAO_SERVE = "chatgpt_not_eligible"
-# Os códigos do Envio: o login acabou (entrar de novo); o plano não respondeu (tentar depois); a conta não tem modelo.
 SAIU = "chatgpt_signed_out"
 FORA_DO_AR = "openai_unreachable"
 RECUSOU = "chatgpt_rejected"
 SEM_MODELO = "chatgpt_no_model"
-# O login guardado (`situacao`): uma coisa de cada vez.
 SEM_LOGIN, CONECTADA, ACABOU = "sem_login", "conectada", "acabou"
 
 
@@ -93,9 +90,8 @@ class LoginDoChatGPT:
         self._tentativa = None
         self._trocando = False
         self._falha = None
-        self._recusas = 0  # trocas seguidas recusadas com `invalid_grant`
+        self._recusas = 0
 
-    # -- os arquivos --
     def _caminho(self, nome="chatgpt.json"):
         return os.path.join(self.pasta, nome)
 
@@ -137,10 +133,8 @@ class LoginDoChatGPT:
             return CONECTADA, None
         return (ACABOU, SAIU) if dados.get("acabou") else (SEM_LOGIN, None)
 
-    # -- o que a extensão pede --
     def estado(self):
         """`{ conectada, entrando, falha, acabou }`: o login guardado, a tentativa aberta, o que a última tentativa deu e o motivo do login que acabou."""
-        # Sem a tranca: a troca e a renovação a seguram durante um pedido à rede, e o arquivo é sempre trocado de uma vez.
         tentativa, trocando, falha = self._tentativa, self._trocando, self._falha
         situacao, motivo = self.situacao()
         return {"conectada": situacao == CONECTADA, "falha": falha, "acabou": motivo,
@@ -185,7 +179,7 @@ class LoginDoChatGPT:
                     self._falha = SEM_ACESSO if consulta["error"] == "access_denied" else LOGIN_FALHOU
                 else:
                     self._falha = self._trocar(tentativa, consulta.get("code"), consulta.get("client_id"))
-            except Exception as erro:  # só o tipo vai ao log: a mensagem de um erro pode citar o pedido
+            except Exception as erro:
                 self.logger.error("Entrar com o ChatGPT: o login não foi guardado (%s)", type(erro).__name__)
                 self._falha = LOGIN_FALHOU
             finally:
@@ -234,7 +228,7 @@ class LoginDoChatGPT:
                 gravar_so_do_dono(self._caminho(), dict(login, **tokens))
                 return tokens["access_token"]
             if tokens is not None or (status is not None and status < 500 and resposta.get("error") in oficial.REFRESH_INUTILIZAVEL):
-                gravar_so_do_dono(self._caminho(), {"acabou": SAIU, "em": int(time.time())})  # os tokens saem; fica dito que acabou
+                gravar_so_do_dono(self._caminho(), {"acabou": SAIU, "em": int(time.time())})
                 self.logger.warning("Entrar com o ChatGPT: o login acabou (HTTP %s); é preciso entrar de novo", status)
                 raise ErroDoPlano(SAIU)
             self.logger.warning("Entrar com o ChatGPT: a renovação não deu certo (HTTP %s)", status)
@@ -272,11 +266,10 @@ class LoginDoChatGPT:
         status, configuracao = self._pedir(self.base + oficial.OPENID)
         endereco = configuracao.get("revocation_endpoint") if status == 200 else None
         if not isinstance(endereco, str) or not endereco.startswith(self.base + "/"):
-            return False  # só o servidor de login recebe o refresh_token
+            return False
         status, _ = self._pedir(endereco, formulario={"token": login["refresh_token"], "token_type_hint": "refresh_token", "client_id": login["client_id"]})
         return status == 200
 
-    # -- o HTTP --
     def _pedir_token(self, formulario):
         return self._pedir(self.base + oficial.TOKEN, formulario=formulario)
 

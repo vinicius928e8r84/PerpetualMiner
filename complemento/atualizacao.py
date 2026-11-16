@@ -29,9 +29,7 @@ import threading
 import time
 
 INTERVALO_S = 6 * 60 * 60
-# O Anki está abrindo quando a Conexão sobe: a primeira consulta espera um pouco para não disputar a abertura com ele.
 ESPERA_INICIAL_S = 20
-# Em `user_files`: a pessoa que não quer a atualização em silêncio cria este arquivo (vazio) e a Conexão sobe desligada.
 ARQUIVO_DE_QUEM_DESLIGOU = "sem-atualizacao-automatica"
 
 
@@ -66,8 +64,6 @@ class Atualizacao:
         self._thread = None
         self._anotar_a_subida()
 
-    # ─── o que fica guardado ──────────────────────────────────────────────────
-
     def _ler(self):
         try:
             with open(self.arquivo, encoding="utf-8") as lido:
@@ -77,7 +73,7 @@ class Atualizacao:
             return {}
 
     def _guardar(self, **mudancas):
-        guardado = {"rodava": self.versao, **self._ler(), **mudancas}  # a primeira vez que algo é guardado diz também qual versão rodava
+        guardado = {"rodava": self.versao, **self._ler(), **mudancas}
         try:
             os.makedirs(os.path.dirname(self.arquivo), exist_ok=True)
             provisorio = self.arquivo + ".novo.%d" % threading.get_ident()
@@ -96,8 +92,6 @@ class Atualizacao:
             return
         self._guardar(rodava=self.versao, atualizada=self.versao)
 
-    # ─── o que a extensão lê ──────────────────────────────────────────────────
-
     def estado(self):
         guardado = self._ler()
         no_disco = guardado.get("instalada")
@@ -107,8 +101,6 @@ class Atualizacao:
         if guardado.get("falha"):
             return {"estado": "falhou", "versao": self.versao, "atualizada": atualizada}
         return {"estado": "em_dia", "versao": self.versao, "atualizada": atualizada}
-
-    # ─── a marca ──────────────────────────────────────────────────────────────
 
     def ajustar_a_marca(self):
         """A marca (a atualização automática do Anki desligada) só existe enquanto a Conexão sabe atualizar sozinha: desligada, ou com o
@@ -123,8 +115,6 @@ class Atualizacao:
                 self._guardar(marcou=False)
         except Exception:
             self.logger.exception("A marca da atualização automática não foi ajustada")
-
-    # ─── consultar e instalar ─────────────────────────────────────────────────
 
     def verificar(self, *, a_pedido=False):
         """Consulta o AnkiWeb e instala o que houver. Sozinha (`a_pedido=False`) só se a atualização automática está ligada. Devolve `estado()`."""
@@ -141,7 +131,7 @@ class Atualizacao:
     def _consultar_e_instalar(self, a_pedido):
         id_ = self.anki_web.id()
         if id_ is None:
-            return  # instalada por arquivo, sem a página do AnkiWeb: não há de onde atualizar
+            return
         self.ajustar_a_marca()
         if not self.anki_web.pronto():
             self.logger.warning("As funções do Anki que a atualização usa mudaram: fica o diálogo do Anki")
@@ -156,7 +146,7 @@ class Atualizacao:
             return
         instalada = self.anki_web.versao_instalada()
         if self.ligada:
-            self.anki_web.marcar(True)  # a instalação não deve mexer na marca; se mexeu, volta
+            self.anki_web.marcar(True)
         self._guardar(falha=None, instalada=instalada)
         self.logger.info("A Conexão %s ficou instalada; vale na próxima vez que o Anki abrir", instalada)
 
@@ -172,8 +162,6 @@ class Atualizacao:
         except Exception:
             self.logger.exception("O Anki não entregou o pedido de fechar")
             return False
-
-    # ─── de tempos em tempos ──────────────────────────────────────────────────
 
     def iniciar(self, intervalo_s=INTERVALO_S, espera_inicial_s=ESPERA_INICIAL_S):
         """Ajusta a marca agora e consulta ao abrir o Anki e a cada `intervalo_s`, numa thread."""

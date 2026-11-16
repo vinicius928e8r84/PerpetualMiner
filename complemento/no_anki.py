@@ -13,10 +13,7 @@ from .baralhos import ColecaoIndisponivel, PerfilIlegivel, TipoDeNotaAusente
 from .atualizacao_do_anki import AnkiWebDoAnki
 from .configuracao import OPENAI_BASE, OPENVERSE_BASE, PORTA, VERSAO, VOZ_BASE
 
-# Quanto a Conexão espera a thread principal do Anki ler a coleção antes de dizer que o Anki não respondeu.
 LIMITE_DA_LEITURA_S = 10
-# Depois de pedir ao Anki que entre num perfil, a Conexão não pede de novo por este tempo (s): entrar não é instantâneo, e um segundo
-# pedido no meio abriria o perfil duas vezes.
 ESPERA_DA_ENTRADA_S = 15
 BARALHO_PADRAO = 1  # o id do Baralho que todo Anki tem
 
@@ -63,7 +60,7 @@ class ColecaoDoAnki(CriacaoNoAnki):
         def ler():
             try:
                 resultado["valor"] = leitura(self._colecao() if com_colecao else self._mw)
-            except Exception as erro:  # a leitura volta à thread da Conexão, que decide a resposta
+            except Exception as erro:
                 resultado["erro"] = erro
             finally:
                 pronto.set()
@@ -164,7 +161,7 @@ class ColecaoDoAnki(CriacaoNoAnki):
     def _se_pode_gravar(self, operacao):
         """A `operacao` de gravação precedida das conferências, que rodam na hora em que ela roda (na thread principal)."""
         def sem_sincronizar(colecao):
-            if self._fixo is not None:  # o perfil lido aqui, na hora de gravar: nenhuma troca de perfil cabe entre a conferência e a nota
+            if self._fixo is not None:
                 self._fixo.conferir(self._mw.pm.name, self._mw.pm.profiles())
             if self._sincronizando.is_set():
                 raise ColecaoIndisponivel("anki_syncing")
@@ -279,7 +276,7 @@ def _criar_baralhos_da_instalacao_nova(colecao, nomes):
     if any(baralho.id != BARALHO_PADRAO for baralho in colecao.decks.all_names_and_ids()):
         return []
     for nome in nomes:
-        colecao.decks.id(nome)  # cria o Baralho (e o pai, `PerpetualMiner`)
+        colecao.decks.id(nome)
     return list(nomes)
 
 
@@ -312,7 +309,7 @@ def _cartoes_do_baralho(colecao, nome):
     cartoes = []
     for nota, tipo, intervalo, modelo, campos in linhas:
         if modelo not in nomes_dos_campos:
-            tipo_de_nota = colecao.models.get(modelo)  # None: o tipo de nota sumiu; os campos ficam sem nome
+            tipo_de_nota = colecao.models.get(modelo)
             nomes_dos_campos[modelo] = [campo["name"] for campo in sorted(tipo_de_nota["flds"], key=lambda c: c["ord"])] if tipo_de_nota else []
         nomes = nomes_dos_campos[modelo]
         valores = str(campos or "").split("\x1f")
@@ -357,7 +354,7 @@ def ao_carregar(mw, pasta_do_complemento, *, porta=PORTA, ao_abrir_o_perfil=_ao_
     colecao = ColecaoDoAnki(mw)
     try:
         ao_sincronizar(colecao)
-    except Exception:  # sem os ganchos (um Anki que os mudou), o Envio só não sabe da sincronização: o Anki recusa e ele espera
+    except Exception:
         pass
     criacao_na_revisao.ligar(colecao, ao_receber_mensagem)
     conexao = inicio.iniciar(

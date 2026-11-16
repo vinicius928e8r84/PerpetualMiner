@@ -62,7 +62,7 @@ def _pedir(base, metodo, caminho, chave, corpo=None, ler=False):
             detalhe = {}
         return erro.code, detalhe if isinstance(detalhe, dict) else {}
     except (urllib.error.URLError, OSError, ValueError):
-        raise ErroDaChave(FORA_DO_AR)  # (ValueError: o 200 que não é um JSON também não diz nada)
+        raise ErroDaChave(FORA_DO_AR)
 
 
 def _classificar(status, erro):
@@ -85,9 +85,8 @@ def conferir(base, chave, logger):
         status, erro = _pedir(base, "GET", "/v1/models", chave)
         codigo = _classificar(status, erro)
         if codigo is None and status == 403:
-            codigo = RECUSADA  # uma chave que nem lista os modelos não serve
+            codigo = RECUSADA
         if codigo is None and status != 200:
-            # Um limite de uso (429), um 404 ou qualquer outra coisa: a OpenAI não disse que a chave vale.
             codigo = FORA_DO_AR
         if codigo is None:
             status, erro = _pedir(base, "POST", "/v1/embeddings", chave, {"model": "text-embedding-3-small", "input": "ok"})

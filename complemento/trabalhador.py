@@ -6,7 +6,6 @@ import time
 from . import retencao_dos_envios
 from .paradas_do_envio import Interrompido
 
-# De quanto em quanto tempo a thread de trabalho apaga os Envios terminados que passaram do prazo (#243, `retencao_dos_envios.py`); também ao subir.
 RETENCAO_A_CADA_S = 6 * 60 * 60
 
 
@@ -18,8 +17,6 @@ class Trabalhador:
         self.fila = trabalho.fila
         self.parar = trabalho.parar
         self.intervalo = intervalo
-        # Depois de subir, a thread espera `contato` (um pedido de Envio da extensão) por até `espera_do_contato` s antes de retomar o
-        # que ficou parado: um Apagar tudo feito com o Anki fechado chega antes de a Conexão gastar a chave com as Frases apagadas.
         self.contato = contato
         self.espera_do_contato = espera_do_contato
         self.retencao_a_cada_s = retencao_a_cada_s
@@ -48,7 +45,7 @@ class Trabalhador:
 
     def _rodar(self):
         logger = self.trabalho.logger
-        self._reter_se_for_a_hora()  # nada gasta: não espera a extensão
+        self._reter_se_for_a_hora()
         self._esperar_a_extensao()
         while not self.parar.is_set():
             job_id = None

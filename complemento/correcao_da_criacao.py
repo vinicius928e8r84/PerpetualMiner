@@ -12,7 +12,7 @@ from . import baralhos, tipo_de_nota
 from .modelo_dos_cartoes import PARADO, credencial
 from .motor.openai_http import ErroDaOpenAI
 
-LIMITE_POR_ENVIO = 20  # frases corrigidas por Envio: o custo de uma sessão de Criação não pode surpreender
+LIMITE_POR_ENVIO = 20
 
 
 class CorrecaoDaCriacao:
@@ -27,7 +27,7 @@ class CorrecaoDaCriacao:
             notas = self.colecao.frases_a_corrigir(pedido["lang"], LIMITE_POR_ENVIO)
         except baralhos.ColecaoIndisponivel:
             return
-        except Exception as erro:  # um extra: o Cartão já está no Anki
+        except Exception as erro:
             self.logger.warning("Envio %s: não deu para ler as frases da Criação (%s)", job_id, type(erro).__name__)
             return
         verso_em_dia = False
@@ -36,7 +36,7 @@ class CorrecaoDaCriacao:
                 return
             chave = credencial(self.chatgpt, self.cofre, self.plano, self.modelos, self.fila.estado(job_id).get("usingKey", False))
             if chave.quem == PARADO:
-                return  # sem chave, o login que acabou, ou um plano que não serve agora
+                return
             chave = chave.config
             palavra = re.split(r"\s+-\s+/", nota["palavra"])[0]  # o campo traz a pronúncia depois da Palavra
             try:
@@ -66,5 +66,5 @@ class CorrecaoDaCriacao:
         trocou de frente, fica como está."""
         try:
             tipo_de_nota.atualizar_a_criacao(self.colecao, lang)
-        except Exception as erro:  # a correção já está na nota; o verso é o que falhou
+        except Exception as erro:
             self.logger.warning("Envio %s: o verso da Criação não foi atualizado (%s)", job_id, type(erro).__name__)

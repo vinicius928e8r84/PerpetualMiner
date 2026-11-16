@@ -7,8 +7,6 @@ from . import openai_api
 from .chaves import OutraContaNaoEnviada, LegadoNaoVinculado
 from .nuvem_da_chave import NuvemDaChave, NuvemIndisponivel
 
-# Uma chave da OpenAI é uma palavra só, de caracteres que cabem num cabeçalho HTTP. O que não tem essa
-# forma nem sai da Conexão: não vale gastar um pedido para a OpenAI dizer o que já se vê.
 _FORMA_DA_CHAVE = re.compile(r"^[A-Za-z0-9._\-]{8,256}$")
 
 _STATUS_DO_ERRO_DA_CHAVE = {

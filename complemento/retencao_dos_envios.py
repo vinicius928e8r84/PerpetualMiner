@@ -76,7 +76,7 @@ def venceu(fila, job_id, agora):
     if ultima is None or agora - ultima < timedelta(days=PRAZO_EM_DIAS):
         return False
     if fila.pedido(job_id) is None and fila.ficha(job_id) is None:
-        return False  # sem o pedido nem a ficha, nada diz como a aba Custos descreve o Envio
+        return False
     return not _texto_pago(fila, job_id)
 
 
@@ -92,15 +92,15 @@ def _tirar_o_link(caminho):
 
 def _apagar_o_envio(fila, job_id):
     pedido = fila.pedido(job_id)
-    if pedido is not None:  # sem ele (a rodada que morreu depois do pedido), a ficha que já está é a boa
-        gravar_json(fila.arquivo_da_ficha(job_id), ficha_do_envio(fila.item_da_fila(job_id) or {}, pedido, fila.estado(job_id)))  # antes de tudo
+    if pedido is not None:
+        gravar_json(fila.arquivo_da_ficha(job_id), ficha_do_envio(fila.item_da_fila(job_id) or {}, pedido, fila.estado(job_id)))
     ordem = fila.ordem()
     if any(item.get("jobId") == job_id for item in ordem if isinstance(item, dict)):
         gravar_json(fila._arquivo_da_fila(), {"jobs": [item for item in ordem if not (isinstance(item, dict) and item.get("jobId") == job_id)]})
     apagar(fila._arquivo_do_pedido(job_id))
     pasta = fila.pasta_dos_textos(job_id)
     if _e_link(fila, job_id):
-        _tirar_o_link(pasta)  # só o link: o que ele aponta pode estar fora do `user_files`
+        _tirar_o_link(pasta)
     elif os.path.isdir(pasta):
         for nome in sorted(os.listdir(pasta)):
             apagar(os.path.join(pasta, nome))
@@ -120,7 +120,7 @@ def reter(fila, agora=None):
         return apagados
     for job_id in candidatos:
         try:
-            with fila.tranca:  # confere de novo sob a tranca: um Tentar de novo que chegou no meio ganha
+            with fila.tranca:
                 if not venceu(fila, job_id, agora):
                     continue
                 _apagar_o_envio(fila, job_id)

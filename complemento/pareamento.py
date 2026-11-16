@@ -36,14 +36,10 @@ VALIDADE_DO_CODIGO_S = 5 * 60
 TENTATIVAS = 5
 MAXIMO_DE_NAVEGADORES = 5
 MAXIMO_DE_REVOGADOS = 20
-# Seis caracteres de um alfabeto sem os que se confundem (0 O 1 I L): 31^6, uns 30 bits. Cinco tentativas por código não bastam para fechá-lo: um
-# programa local pode pedir um código novo atrás do outro. Por isso, depois de CODIGOS_ESGOTADOS_PARA_BLOQUEAR códigos que gastaram as 5 tentativas sem
-# que ninguém tenha pareado, a Conexão não sorteia outro por BLOQUEIO_S: no máximo 15 palpites a cada 15 minutos (uns 1.400 por dia, 2 em um milhão).
 ALFABETO = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
 TAMANHO_DO_CODIGO = 6
 CODIGOS_ESGOTADOS_PARA_BLOQUEAR = 3
 BLOQUEIO_S = 15 * 60
-# Quantos nonces a sessão lembra: o mais antigo sai primeiro.
 NONCES_LEMBRADOS = 8192
 
 CLIENTE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
@@ -119,14 +115,12 @@ class Pareamento:
         self.sessao = secrets.token_hex(16)
         self._tranca = threading.RLock()
         self._tranca_do_arquivo = threading.RLock()   # só o arquivo: nenhuma leitura fica aberta durante a troca (no Windows o `os.replace` falha), e a janela do Anki nunca roda sob ela
-        self._pendente = None      # { codigo, vence, tentativas }
-        self._concluido = None     # { codigo, cliente, segredo, vence }: o último código usado, para o `concluir` repetido
+        self._pendente = None
+        self._concluido = None
         self._nonces = OrderedDict()
         self._relogio_de_vencer = None
-        self._esgotados = 0        # os códigos seguidos que gastaram as tentativas; o pareamento que dá certo zera
+        self._esgotados = 0
         self._bloqueado_ate = None
-
-    # --- os navegadores guardados -------------------------------------------------------------------------------------------
 
     def _ler(self, campo="clientes"):
         """As linhas válidas de `campo` (`clientes` ou `revogados`) do arquivo."""
@@ -182,8 +176,6 @@ class Pareamento:
         self._logger.info("Pareamento: %d navegador(es) desconectado(s)", saiu)
         return saiu
 
-    # --- o código ------------------------------------------------------------------------------------------------------------
-
     def _fechar_a_tela(self):
         if self.na_tela is None:
             return
@@ -236,9 +228,9 @@ class Pareamento:
             pendente = self._pendente_valido()
             if pendente is None:
                 if self._bloqueado_ate is not None and self._relogio() < self._bloqueado_ate:
-                    return 429, {"error": "pairing_locked"}   # nenhum código novo, nenhum diálogo: quem insiste só gasta o tempo dele
+                    return 429, {"error": "pairing_locked"}
                 codigo = self.sortear()
-                self._concluido = None   # um código novo: a pessoa recomeçou, e a resposta perdida do anterior já não se repete
+                self._concluido = None
                 pendente = self._pendente = {"codigo": codigo, "vence": self._relogio() + VALIDADE_DO_CODIGO_S, "tentativas": 0}
                 self._vence_em(VALIDADE_DO_CODIGO_S)
             try:
@@ -263,7 +255,7 @@ class Pareamento:
             if feito is not None and feito["vence"] > self._relogio() and hmac.compare_digest(feito["codigo"].encode("ascii"), digitado):
                 if feito["cliente"] != cliente:
                     return 409, {"error": "pairing_code_used"}
-                if self._segredo_de(cliente) is not None:  # a resposta se perdeu: o mesmo segredo, nada regravado
+                if self._segredo_de(cliente) is not None:
                     return 200, {"cliente": cliente, "segredo": feito["segredo"]}
             pendente = self._pendente_valido()
             if pendente is None:
@@ -278,10 +270,10 @@ class Pareamento:
             segredo = base64.b64encode(secrets.token_bytes(32)).decode("ascii")
             clientes = [linha for linha in self._ler() if linha["cliente"] != cliente]
             clientes.append({"cliente": cliente, "segredo": segredo, "nome": nome, "criadoEm": _agora_iso()})
-            revogados = [linha for linha in self._ler("revogados") if linha["cliente"] != cliente]   # pareado de novo, já não está revogado
-            despejados = clientes[:-MAXIMO_DE_NAVEGADORES]   # o mais antigo sai quando passa de 5, e sai revogado: o `conferir` dele prova, e ele volta ao Conectar
+            revogados = [linha for linha in self._ler("revogados") if linha["cliente"] != cliente]
+            despejados = clientes[:-MAXIMO_DE_NAVEGADORES]
             revogados += [{"cliente": s["cliente"], "segredo": s["segredo"], "revogadoEm": _agora_iso()} for s in despejados]
-            self._gravar(clientes[-MAXIMO_DE_NAVEGADORES:], revogados[-MAXIMO_DE_REVOGADOS:])   # o cliente só existe depois de gravado
+            self._gravar(clientes[-MAXIMO_DE_NAVEGADORES:], revogados[-MAXIMO_DE_REVOGADOS:])
             self._concluido = {"codigo": pendente["codigo"], "cliente": cliente, "segredo": segredo, "vence": pendente["vence"]}
             self._esgotados, self._bloqueado_ate = 0, None
             self._acabar_o_pendente()
@@ -303,8 +295,6 @@ class Pareamento:
                 return 401, {"error": "pairing_required"}
             return 401, {"error": "pairing_revoked", "prova": prova_da_revogacao(revogado, desafio)}
         return 200, {"sessao": self.sessao, "prova": prova_do_servidor(segredo, desafio, self.sessao)}
-
-    # --- o porteiro ----------------------------------------------------------------------------------------------------------
 
     def verificar(self, metodo, caminho, corpo, cabecalhos):
         """Confere a assinatura de um pedido. `corpo` são os bytes; `cabecalhos` responde a `.get(nome)`.

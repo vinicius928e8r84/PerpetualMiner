@@ -97,7 +97,7 @@ def _preparar_a_colecao(conexao, logger):
         feito = tipo_de_nota.preparar(conexao.colecao)
     except ColecaoIndisponivel:
         return
-    except Exception:  # um Anki que mudou a API de tipos de nota: o Envio só avisa que o tipo falta; a Conexão sobe assim mesmo
+    except Exception:
         logger.exception("A coleção não foi preparada")
         return
     if any(feito["tipos"].values()) or feito["baralhos"]:
@@ -122,7 +122,7 @@ def _cuidar_do_perfil(conexao, abridor, ao_abrir_o_perfil, logger):
         _atualizar_o_item_de_login(conexao.item_de_login, logger)
         try:
             marcado = conexao.perfil_fixo.marcar_se_falta(conexao.perfil_aberto())
-        except Exception as erro:  # sem marca, o Envio só espera: o resto segue
+        except Exception as erro:
             logger.warning("O perfil aberto não foi marcado: %s", erro)
             return
         _preparar_a_colecao(conexao, logger)
@@ -130,13 +130,13 @@ def _cuidar_do_perfil(conexao, abridor, ao_abrir_o_perfil, logger):
             return
         try:
             perfis = conexao.colecao.perfis()
-        except Exception:  # o Anki não respondeu: não se sabe se o marcado sumiu, então vale o marcado
+        except Exception:
             perfis = []
         if perfis and marcado not in perfis:
             marcado = None  # `-p` com um perfil que o Anki não tem: os Anki mais antigos não abrem; sem ele abrem a tela de perfis
         try:
             abridor.escrever(marcado)
-        except Exception as erro:  # sem abridor, a extensão só não abre o Anki sozinha: o resto segue
+        except Exception as erro:
             logger.warning("O abridor não foi escrito: %s", erro)
 
     conexao.ao_mudar_o_perfil = reagir

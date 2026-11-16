@@ -179,8 +179,6 @@ def _manifesto(script):
     }, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
 
 
-# ─── O script do Mac ───────────────────────────────────────────────────────────
-
 _MODELO_DO_MAC = r"""#!/bin/sh
 # PerpetualMiner: o abridor do Anki, um host de Native Messaging do Chrome.
 # A Conexão com o Anki escreve este arquivo quando o Anki abre e quando um perfil abre: não edite.
@@ -259,8 +257,6 @@ def _script_do_mac(aplicativo, perfil, abrir_com, ler_json_com, conserto, pasta)
         "LERJSON": shlex.quote(ler_json_com),
     })
 
-
-# ─── O script do Windows ───────────────────────────────────────────────────────
 
 # O `.bat` é o que o Chrome roda (pelo cmd.exe). Ele só chama o PowerShell do próprio Windows, pelo caminho
 # completo, com o `.ps1` que está ao lado: a conversa do Native Messaging tem bytes que o cmd não lê.

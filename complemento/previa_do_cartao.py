@@ -20,8 +20,7 @@ from .motor import estilos, nota_do_cartao
 
 AUDIO_DO_EXEMPLO = ("exemplo-da-frase.mp3", "exemplo-da-palavra.mp3")
 IMAGEM_DO_EXEMPLO = "exemplo.jpg"
-TETO_DA_IMAGEM = 2 * 1024 * 1024  # uma imagem maior que isto não vai na prévia: fica o espaço dela
-# Uma foto qualquer, do tamanho de uma miniatura: um retângulo com sol e morro, para o verso do exemplo mostrar onde a imagem fica.
+TETO_DA_IMAGEM = 2 * 1024 * 1024
 ESPACO_DA_IMAGEM = (
     "data:image/svg+xml;base64," + base64.b64encode(
         b'<svg xmlns="http://www.w3.org/2000/svg" width="240" height="150" viewBox="0 0 240 150"><rect width="240" height="150" rx="8" fill="#e5e7eb"/>'
@@ -101,7 +100,7 @@ def pedir(conexao, corpo):
     """A rota `POST /anki/card-preview`: `{ lang, nivel? }` (o exemplo do estilo; sem `nivel`, o Iniciante) ou `{ guid }` (uma nota gravada)."""
     guid, lang = corpo.get("guid"), corpo.get("lang")
     if isinstance(guid, str) and guid and "lang" not in corpo:
-        leitura = lambda: previa_da_nota(conexao.colecao, guid)  # noqa: E731
+        leitura = lambda: previa_da_nota(conexao.colecao, guid)
     elif isinstance(lang, str) and "guid" not in corpo:
         if lang not in estilos.idiomas():
             return 400, {"error": "invalid_lang"}
@@ -110,18 +109,18 @@ def pedir(conexao, corpo):
             return 400, {"error": "invalid_level"}
         if "tipoProprio" in corpo:
             proprio = tipo_proprio.forma(corpo["tipoProprio"])
-            if proprio is None or tipo_proprio.recusa(proprio, set(proprio["mapa"].values())):  # sem a Frase e a resposta em campos diferentes: nem se olha a coleção
+            if proprio is None or tipo_proprio.recusa(proprio, set(proprio["mapa"].values())):
                 return 400, {"error": "invalid_mapping"}
-            leitura = lambda: previa_no_tipo_da_pessoa(conexao.colecao, lang, nivel, proprio)  # noqa: E731
+            leitura = lambda: previa_no_tipo_da_pessoa(conexao.colecao, lang, nivel, proprio)
         else:
-            leitura = lambda: previa_do_exemplo(conexao.colecao, lang, nivel)  # noqa: E731
+            leitura = lambda: previa_do_exemplo(conexao.colecao, lang, nivel)
     else:
         return 400, {"error": "invalid_request"}
     try:
         previa = leitura()
     except ColecaoIndisponivel as motivo:
         return 503, {"error": "anki_card_preview_unavailable", "detail": str(motivo)}
-    if isinstance(previa, tuple):  # a prévia no tipo da pessoa diz também por que não houve
+    if isinstance(previa, tuple):
         previa, motivo = previa
         if previa is None:
             return (409, {"error": motivo}) if motivo == "invalid_mapping" else (404, {"error": motivo})

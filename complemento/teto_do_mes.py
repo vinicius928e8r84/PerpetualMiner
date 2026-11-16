@@ -72,7 +72,7 @@ class TetoDoMes:
                 arquivo = os.path.join(self.fila.pasta_dos_custos(item["jobId"]), "costs.jsonl")
                 try:
                     if os.path.getmtime(arquivo) < desde:
-                        continue  # nada foi anotado neste arquivo desde o começo do mês
+                        continue
                 except OSError:
                     continue
                 registros = self.fila.registros_de_custo(item["jobId"])
