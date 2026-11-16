@@ -1,6 +1,7 @@
 'use strict';
 
 (function (raiz) {
+  const { elemento } = raiz.Veio;
   const TAG_DO_HOST = 'perpetualminer-overlay';
   const FEEDBACK_SOME_EM_MS = 3500;
   const ESTILOS = ['veio/tokens.css', 'veio/componentes.css', 'overlay.css'];
@@ -106,12 +107,6 @@
     partes = { pm, pilula, botao, contador, dica, estado, camada, descricaoDoContador };
     botao.setAttribute('aria-label', rotuloDoBotao);
     desenharEtiqueta();
-  }
-
-  function elemento(tag, classe) {
-    const no = document.createElement(tag);
-    if (classe) no.className = classe;
-    return no;
   }
 
   function posicionar(container) {

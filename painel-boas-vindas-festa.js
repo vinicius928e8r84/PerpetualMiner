@@ -1,6 +1,7 @@
 'use strict';
 
 (function (raiz) {
+  const { elemento } = raiz.Veio;
   const { textoDaVoz } = raiz;
   const VOZ_DO_NIVEL = { iniciante: 'BRG-42.iniciante', intermediario: 'BRG-42.intermediario', avancado: 'BRG-42.avancado' };
 
@@ -9,13 +10,6 @@
   function tempoDoToken(nome) {
     const valor = getComputedStyle(document.documentElement).getPropertyValue(nome).trim();
     return valor.endsWith('ms') ? parseFloat(valor) : parseFloat(valor) * 1000;
-  }
-
-  function elemento(tag, classe, texto) {
-    const no = document.createElement(tag);
-    no.className = classe;
-    if (texto !== undefined) no.textContent = texto;
-    return no;
   }
 
   function saltar(no) {

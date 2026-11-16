@@ -1,7 +1,7 @@
 'use strict';
 
 const { IDIOMAS, textoDaVoz, Atalhos, minerarFraseManual, Configuracao, ConexaoAnki, AbrirOAnki, MineracaoAutomatica, MineracaoDoDia, AjustesDeEnvio, VocabularioDaMineracao } = PerpetualMiner;
-const { iconeVeio, escreverFrase, montarTeclas, montarAnelDeProgresso } = PerpetualMiner.Veio;
+const { iconeVeio, escreverFrase, montarTeclas, montarAnelDeProgresso, criar } = PerpetualMiner.Veio;
 const { fonteDaFrase, nomeDaFonte, rotuloDoDia, diaEHora } = PerpetualMiner.Contexto;
 
 const QUANTAS_ULTIMAS = 5;
@@ -469,9 +469,3 @@ function linhasDeEsqueleto() {
   return [criar('div', 'veio-esqueleto'), criar('div', 'veio-esqueleto popup-esqueleto-curto')];
 }
 
-function criar(tag, classe, texto) {
-  const no = document.createElement(tag);
-  if (classe) no.className = classe;
-  if (texto != null) no.textContent = texto;
-  return no;
-}

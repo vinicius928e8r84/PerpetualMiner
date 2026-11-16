@@ -2,7 +2,7 @@
 
 (function (raiz) {
   const { textoDaVoz, ChaveDaOpenAI, ConexaoAnki } = raiz;
-  const { abrirConfirmacao, montarAviso } = raiz.Veio;
+  const { abrirConfirmacao, montarAviso, elemento, botao } = raiz.Veio;
   const porId = id => document.getElementById(id);
 
   const estado = { n: null, comConta: false, temChave: false, contaDaChave: '', uid: '' };
@@ -104,19 +104,6 @@
       confirmar: textoDaVoz('CFG-17.confirmar', { n }),
       aoConfirmar: apagarSeAConexaoResponde,
     });
-  }
-
-  function botao(variante, ...filhos) {
-    const no = elemento('button', `veio-botao ${variante}`, ...filhos);
-    no.type = 'button';
-    return no;
-  }
-
-  function elemento(tag, classe, ...filhos) {
-    const no = document.createElement(tag);
-    no.className = classe;
-    no.append(...filhos);
-    return no;
   }
 
   raiz.Perigo = {

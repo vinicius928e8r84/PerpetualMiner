@@ -2,13 +2,7 @@
 
 (function (raiz) {
   const { textoDaVoz, Atalhos, Veio, minerarFraseManual } = raiz;
-
-  function elemento(tag, classe, ...filhos) {
-    const no = document.createElement(tag);
-    if (classe) no.className = classe;
-    no.append(...filhos);
-    return no;
-  }
+  const { elemento } = Veio;
 
   function limparErro(campo, erro) {
     erro.replaceChildren();

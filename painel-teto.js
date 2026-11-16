@@ -2,6 +2,7 @@
 
 (function (raiz) {
   const { textoDaVoz, Veio, ConexaoAnki, PedidoAoAnki } = raiz;
+  const { elemento } = Veio;
   const { SITUACAO } = ConexaoAnki;
   const AVISO_A_PARTIR_DE = 0.8;
   const FIM = ['completed', 'partial', 'failed'];
@@ -14,13 +15,6 @@
   const numero = valor => valor.toLocaleString('pt-BR', { maximumFractionDigits: 2, useGrouping: false });
   const lerNumero = texto => (/^\d+(?:[.,]\d+)?$/.test(texto.trim()) ? Number(texto.trim().replace(',', '.')) : NaN);
   const usado = () => (dados && dados.limitUsd > 0 ? dados.spentUsd / dados.limitUsd : 0);
-
-  function elemento(tag, classe, ...filhos) {
-    const no = document.createElement(tag);
-    if (classe) no.className = classe;
-    no.append(...filhos);
-    return no;
-  }
 
   async function chamar(pedido) {
     const resposta = await PedidoAoAnki.pedir(ConexaoAnki.ENDERECO, pedido);

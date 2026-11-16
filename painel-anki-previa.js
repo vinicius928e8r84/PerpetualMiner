@@ -2,6 +2,7 @@
 
 (function (raiz) {
   const { textoDaVoz, Veio, ConexaoAnki, PedidoAoAnki, IDIOMAS } = raiz;
+  const { elemento } = Veio;
   const NOME_DO_IDIOMA = { en: IDIOMAS.INGLES, ru: IDIOMAS.RUSSO };
   const VOZ_DO_NIVEL = { iniciante: 'BRG-42.iniciante', intermediario: 'BRG-42.intermediario', avancado: 'BRG-42.avancado' };
   const ALTURA_MINIMA = 140;
@@ -10,13 +11,6 @@
   const ESTADO = Object.freeze({ CARREGANDO: 'carregando', PRONTA: 'pronta', SEM_CONEXAO: 'semConexao', ANTIGA: 'antiga', FALHOU: 'falhou' });
 
   const lidas = new Map();
-
-  function elemento(tag, classe, ...filhos) {
-    const no = document.createElement(tag);
-    if (classe) no.className = classe;
-    no.append(...filhos);
-    return no;
-  }
 
   /** O documento do quadro: o CSS do tipo de nota, o Cartão dentro do `.card` (como o Anki o põe) e a política que só deixa `data:` entrar. */
   function documentoDoQuadro(css, html) {

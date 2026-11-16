@@ -2,15 +2,9 @@
 
 (function (raiz) {
   const { textoDaVoz, Veio, IDIOMAS, AjustesDeEnvio } = raiz;
+  const { elemento } = Veio;
   const IDIOMAS_DO_PASSO = [{ chave: 'en', idioma: IDIOMAS.INGLES }, { chave: 'ru', idioma: IDIOMAS.RUSSO }];
   const VOZ_DO_NIVEL = { iniciante: 'BRG-42.iniciante', intermediario: 'BRG-42.intermediario', avancado: 'BRG-42.avancado' };
-
-  function elemento(tag, classe, ...filhos) {
-    const no = document.createElement(tag);
-    if (classe) no.className = classe;
-    no.append(...filhos);
-    return no;
-  }
 
   function valorDoResumo(estado) {
     return IDIOMAS_DO_PASSO.filter(({ chave }) => estado.automatica[chave])
