@@ -1,11 +1,5 @@
 'use strict';
 
-// O limite do plano do ChatGPT no Envio (#158, história 85): o cartão do Envio diz “Limite de uso atingido · Faltam 7 cartões” com
-// Gerenciar uso (a ação principal), Usar a minha chave e Tentar de novo, e o Envio volta sozinho quando o plano libera. A Conexão
-// é o fake do e2e (`fakes.anki`), que faz o papel dela: a espera do plano é o `waiting` que o teste põe no Envio (`moverEnvio`), e
-// `POST /jobs/usar-a-chave` responde pelo contrato (`complemento/contrato/exemplos-do-limite.json`). O lado da Conexão está em
-// `complemento/test_limite_do_plano.py`.
-
 const { test, expect } = require('../fixtures');
 const { estadoFinal } = require('../estado-final');
 const { AGORA, INGLESAS, abrirPainel, cartoesDe, envio, marcarEEnviar, enviosCriados, umaVoltaDoEnvio, progresso } = require('../apoio-do-envio');
@@ -17,11 +11,10 @@ const retomadas = fakes => pedidosA(fakes, '/jobs/retry');
 const usosDaChave = fakes => pedidosA(fakes, '/jobs/usar-a-chave');
 
 test.beforeEach(({ fakes }) => {
-  test.slow(); // o painel lê o Envio de 2 em 2 s, e cada teste espera algumas voltas
+  test.slow();
   fakes.anki.usarRelogio(() => AGORA);
 });
 
-/** Três Frases enviadas, o Envio andando com `prontos` de 10 Cartões no Anki, e o plano do ChatGPT chega ao limite. */
 async function planoNoLimite(page, extensao, fakes, prontos = 3) {
   await extensao.gravarStorage({ frases: INGLESAS, pm_anki_ja_conectou: true });
   await abrirPainel(page, extensao);
@@ -43,7 +36,6 @@ test('no limite do plano o cartão diz quantos cartões faltam e oferece Gerenci
   await expect(cartao.getByRole('button', { name: 'Usar a minha chave' })).toBeVisible();
   await expect(cartao.getByRole('button', { name: 'Tentar de novo' })).toBeVisible();
   await expect(cartao.getByRole('button', { name: 'Continuar envio' })).toHaveCount(0);
-  // O plano não é Anki fechado, e só olhar o cartão não mexe na Conexão.
   await umaVoltaDoEnvio(page);
   expect([retomadas(fakes), usosDaChave(fakes)]).toEqual([[], []]);
   await estadoFinal(extensao, { pm_envio: { envios: [{ ids: INGLESAS.map(f => f.id), jobId: job.jobId }] } });
@@ -76,7 +68,6 @@ test('Tentar de novo no limite pede à Conexão que tente já e o cartão segue 
   await cartao.getByRole('button', { name: 'Tentar de novo' }).click();
 
   await expect.poll(() => retomadas(fakes).map(r => r.dados)).toEqual([{ jobId: job.jobId }]);
-  // A Conexão só tentou o texto de novo: o plano ainda está no limite, e o Envio é o mesmo (nada foi criado nem posto na fila).
   await umaVoltaDoEnvio(page);
   await expect(cartao).toContainText('Limite de uso atingido · Faltam 7 cartões');
   expect(fakes.anki.envios).toHaveLength(1);
@@ -122,14 +113,12 @@ test('o Envio volta sozinho quando o plano libera: o limite sai do cartão sem n
   const cartao = envio(page, CARTAO);
   await expect(cartao).toContainText('Limite de uso atingido · Faltam 7 cartões', { timeout: 20_000 });
 
-  // O plano liberou e a Conexão continuou sozinha (o fake faz o papel dela).
   fakes.anki.moverEnvio(job.jobId, { stage: 'generate_cards', progress: { done: 5, total: 10 }, cartoes: cartoesDe(5) });
 
   await expect(cartao).not.toContainText('Limite de uso atingido', { timeout: 20_000 });
   await expect(cartao).toContainText('Criando cartões');
   await expect(cartao.getByRole('button', { name: 'Usar a minha chave' })).toHaveCount(0);
   await expect(cartao.getByRole('link', { name: 'Gerenciar uso' })).toHaveCount(0);
-  // Voltou sozinho: o painel só leu, e a pessoa não clicou em nada.
   expect([retomadas(fakes), usosDaChave(fakes)]).toEqual([[], []]);
   await estadoFinal(extensao, { pm_envio: { envios: [{ ids: INGLESAS.map(f => f.id), jobId: job.jobId }] } });
 });

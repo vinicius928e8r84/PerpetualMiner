@@ -1,12 +1,5 @@
 'use strict';
 
-// Conexão com o Anki · a voz e o sotaque do áudio, no Avançado dos Ajustes de envio (#174, #107): os dois sotaques da voz do
-// Google (a padrão), a voz de reserva (uma lista aberta a outros provedores, que começa pela OpenAI, pela chave) e um Ouvir ao
-// lado de cada seletor. A voz do próprio Anki (`{{tts}}`) não entra.
-//
-// A Conexão é falsificada na fronteira HTTP (e2e/fakes/anki.js, o contrato `exemplos-da-voz.json`); o teste confere o que a pessoa vê,
-// o que atravessou o HTTP, o que o Chromium tocou e o que ficou gravado (`ankiBridgePresets`).
-
 const { test, expect } = require('../fixtures');
 const { MP3_DE_MENTIRA } = require('../fakes/voz');
 const { estadoFinal } = require('../estado-final');
@@ -25,7 +18,6 @@ const ouvir = (page, campo) => formulario(page).getByRole('button', { name: `Ouv
 const salvar = page => formulario(page).getByRole('button', { name: 'Salvar ajustes' });
 const pedidosDeOuvir = fakes => fakes.anki.requisicoes.filter(r => r.caminho === '/voz/ouvir').map(r => r.dados);
 
-// O Chromium toca de verdade; o teste só anota o que foi posto para tocar (a fonte de cada `play()`).
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     window.tocados = [];
@@ -47,7 +39,7 @@ async function abrirOAvancado(page, extensao, { gravado = {} } = {}) {
 const tocados = page => page.evaluate(() => window.tocados);
 const gravado = async extensao => (await extensao.lerStorage(CHAVE))[CHAVE];
 
-// Exceção de teste: sem-estado-guardado — só mostra os seletores e o Ouvir; nada é gravado.
+// Exceção de teste: sem-estado-guardado
 test('o Avançado se chama voz e sotaque do áudio e traz os dois sotaques do Google e a voz de reserva, cada um com o Ouvir', async ({ page, extensao }) => {
   await extensao.gravarStorage({ pm_anki_ja_conectou: true });
   await page.goto(extensao.url('painel.html#anki/ajustes'));
@@ -61,7 +53,7 @@ test('o Avançado se chama voz e sotaque do áudio e traz os dois sotaques do Go
   await expect(formulario(page).getByRole('button', { name: /^Ouvir/ })).toHaveCount(3);
 });
 
-// Exceção de teste: sem-estado-guardado — só mostra a lista da reserva e a nota; nada é gravado.
+// Exceção de teste: sem-estado-guardado
 test('a voz de reserva padrão é a OpenAI pela chave, e a lista não tem a voz do Anki', async ({ page, extensao }) => {
   await abrirOAvancado(page, extensao);
 
@@ -78,7 +70,6 @@ test('Ouvir o sotaque da palavra toca a voz do Google no sotaque que está na te
 
   await expect.poll(() => tocados(page)).toEqual([`data:audio/mpeg;base64,${MP3_DE_MENTIRA}`]);
   expect(pedidosDeOuvir(fakes)).toEqual([{ lang: 'en', provedor: 'google', sotaque: 'com.au' }]);
-  // Ouvir não grava nada: os ajustes seguem sem nada guardado.
   await estadoFinal(extensao, { [CHAVE]: null });
 });
 
@@ -133,10 +124,8 @@ test('com o Google recusando o pedido, Ouvir diz que não deu para tocar e nada 
 
   await expect(avancado(page)).toContainText('Não deu para tocar esta voz. Tente de novo.');
   expect(await tocados(page)).toEqual([]);
-  // O erro some quando a voz volta e a pessoa tenta de novo.
   fakes.anki.voz.definir('aceita');
   await ouvir(page, 'Sotaque da palavra').click();
-  // O Ouvir volta a ficar ativo quando o pedido e o toque terminam: só então o que a tela diz é a resposta, não o meio do caminho.
   await expect(ouvir(page, 'Sotaque da palavra')).toBeEnabled();
   await expect(avancado(page)).not.toContainText('Não deu para tocar esta voz.');
   await expect.poll(() => tocados(page)).toHaveLength(1);
@@ -160,7 +149,7 @@ test('Sem reserva fica gravado, volta ao reabrir, avisa o que acontece e desliga
   await reserva(page).selectOption({ label: 'Sem reserva' });
   await expect(avancado(page)).toContainText('Se o Google falhar, o cartão não entra no Anki.');
   await expect(ouvir(page, 'Voz de reserva')).toBeDisabled();
-  await estadoFinal(extensao, { [CHAVE]: null }); // escolher não grava: só Salvar ajustes grava
+  await estadoFinal(extensao, { [CHAVE]: null });
   await salvar(page).click();
 
   await expect(page.locator('.veio-toast')).toHaveText('Ajustes de envio salvos');
@@ -176,7 +165,6 @@ test('uma reserva gravada que a extensão não conhece volta a ser a padrão, se
 
   await expect(reserva(page).locator('option:checked')).toHaveText('OpenAI, pela chave');
   await expect(sotaqueDaPalavra(page).locator('option:checked')).toHaveText('Estados Unidos');
-  // Abrir não regrava: o valor desconhecido segue guardado como estava.
   await estadoFinal(extensao, { [CHAVE]: { en: { ttsReserva: 'outro-provedor' } } });
 });
 

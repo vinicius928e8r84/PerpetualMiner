@@ -1,13 +1,5 @@
 'use strict';
 
-// Conexão com o Anki (#34): Baralhos e termos, Vocabulário, na
-// arrumação C · Por idioma (docs/design/painel/anki/). A Conexão é o fake da
-// fronteira HTTP (fakes/anki.js), com os baralhos padrão dos Ajustes de envio.
-// Os testes afirmam o que se vê e o que fica gravado.
-//
-// Um bug de #9 fecha aqui, com o teste que falhava antes: o Vocabulário ficava preso em “Aguardando…” quando as
-// estatísticas falhavam. O Reparar Anki saiu da extensão (#152): quem conserta é o abridor (painel-conserto.spec.js).
-
 const { test, expect } = require('../fixtures');
 const DEN = 'PerpetualMiner::Inglês', DRU = 'PerpetualMiner::Russo';
 const { fotografar } = require('../evidencias-mineracao');
@@ -65,7 +57,6 @@ test('baralhos: azulejos Inglês · Russo com as palavras; o escolhido mostra o 
   await expect(azulejos.nth(1)).toContainText('612 palavras');
   await expect(azulejos.nth(0)).toHaveAttribute('aria-pressed', 'true');
 
-  // Maduros sobre todos os cartões por maturidade: 1.410 de 2.140 → 66%.
   await expect(baralhos(page).getByRole('img', { name: '66% de maturidade' })).toBeVisible();
   const numeros = baralhos(page).locator('.anki-baralho dl');
   await expect(baralhos(page).locator('.anki-baralho')).toContainText('palavras diferentes nos cartões');
@@ -83,7 +74,6 @@ test('baralhos: azulejos Inglês · Russo com as palavras; o escolhido mostra o 
   await expect(baralhos(page).locator('.anki-baralho')).toContainText('Russo · PerpetualMiner::Russo');
   await expect(numeros).toContainText('Cartões480');
 
-  // O caminho de hoje: os dois baralhos dos Ajustes de envio numa leitura só. Entrar na área não pede à Conexão que abra o Anki.
   const leitura = pedidos(fakes, '/anki/stats/decks')[0].dados;
   expect(leitura.decks).toEqual([{ deckName: DEN, lang: 'en' }, { deckName: DRU, lang: 'ru' }]);
   expect(leitura).not.toHaveProperty('launch');
@@ -266,7 +256,6 @@ test('cai depois de responder: baralhos e vocabulário mostram o último dado co
   await aba(page, 'Vocabulário').click();
   await expect(vocabulario(page)).toContainText('Anki fechado. Mostrando dados de há 2 h.');
   await expect(listaDoVocabulario(page).getByRole('option')).toHaveCount(5);
-  // A busca continua valendo sobre o último dado.
   await page.getByRole('searchbox', { name: 'Buscar no vocabulário' }).fill('eerie');
   await expect(listaDoVocabulario(page).getByRole('option')).toHaveCount(1);
 });
@@ -285,7 +274,6 @@ test('com a Conexão desligada, entrar na área e a Conexão voltar não pedem p
   await expect(vocabulario(page).getByRole('listbox')).toHaveCount(0);
   expect(pedidos(fakes, '/anki/stats/decks')).toHaveLength(0);
 
-  // A Conexão volta (a F1, Tentar de novo): os dados chegam, e a leitura não pediu para abrir o Anki.
   fakes.anki.ligar();
   await page.getByRole('button', { name: 'Tentar de novo' }).click();
   await expect(listaDoVocabulario(page).getByRole('option')).toHaveCount(5);
@@ -301,7 +289,6 @@ test('Conexão ligada mas o Anki fechado: baralhos e vocabulário vêm do arquiv
   await expect(listaDoVocabulario(page).getByRole('option')).toHaveCount(5);
   await expect(page.getByText(/Anki fechado/)).toHaveCount(0);
 
-  // Duas horas depois o Anki está fechado e a Conexão segue ligada: ela lê o arquivo, que ainda é o de 12:00.
   fakes.anki.fecharOAnki();
   await page.clock.setFixedTime(new Date(AGORA.getTime() + 2 * 3600_000));
   await page.reload();
@@ -315,7 +302,6 @@ test('Conexão ligada mas o Anki fechado: baralhos e vocabulário vêm do arquiv
   await expect(azulejosDosBaralhos(page)).toContainText('3.412 palavras');
   expect(pedidos(fakes, '/anki/stats/decks').slice(1).every(r => !('launch' in r.dados))).toBe(true);
 
-  // O Anki abre e a pessoa aperta Atualizar: a leitura volta a ser do Anki, sem o selo.
   fakes.anki.abrirOAnki();
   await atualizar(page).click();
   await expect(baralhos(page)).not.toContainText('Anki fechado');
@@ -334,7 +320,6 @@ test('Conexão ligada com o Anki aberto mas sem o AnkiConnect: o arquivo é lido
   await aba(page, 'Vocabulário').click();
   await expect(listaDoVocabulario(page).getByRole('option')).toHaveCount(5);
   await expect(page.getByText(/Anki fechado/)).toHaveCount(0);
-  // O que fica guardado diz de onde veio e que o Anki não foi dado como fechado.
   for (const chave of ['pm_anki_baralhos', 'pm_anki_vocabulario']) {
     expect(await lerGravado(extensao, chave)).toMatchObject({ ankiFechado: false });
   }
@@ -358,7 +343,6 @@ test('Atualizar com o Anki fechado renova a idade dos dados na tela: a leitura d
   await expect(baralhos(page)).toContainText('Anki fechado. Mostrando dados de há 4 h.');
   await aba(page, 'Vocabulário').click();
   await expect(vocabulario(page)).toContainText('Anki fechado. Mostrando dados de há 4 h.');
-  // Lido de novo quatro horas depois, os dados seguem sendo os de 12:00, antes de o Anki fechar.
   for (const chave of ['pm_anki_baralhos', 'pm_anki_vocabulario']) {
     expect(await lerGravado(extensao, chave)).toMatchObject({
       quando: AGORA.getTime() + 4 * 3600_000, dadosDe: AGORA.getTime(), ankiFechado: true,
@@ -382,7 +366,6 @@ test('trocar o Baralho com o Anki fechado: o Baralho novo não herda a idade do 
 
   await aba(page, 'Baralhos e termos').click();
   await expect(azulejosDosBaralhos(page).getByRole('button').nth(0)).toContainText('99 palavras');
-  // Nenhuma leitura de “Mining EN” existia: a referência é a deste momento, não a das 12:00 do CIMV.
   await expect(baralhos(page)).toContainText('Anki fechado. Mostrando dados de agora.');
   await aba(page, 'Vocabulário').click();
   await expect(vocabulario(page)).toContainText('Anki fechado. Mostrando dados de agora.');
@@ -411,8 +394,6 @@ test('o último dado que a própria Conexão guardou (stale) segue com “Não d
   await expect(baralhos(page)).not.toContainText('Anki fechado');
 });
 
-// O que o complemento do Anki responde (os exemplos de complemento/contrato/exemplos.json, lidos também
-// pelos testes do complemento) mostra os dados nas duas abas, sem passar pelos números que os outros testes montam.
 test('com a coleção do contrato aberta, Baralhos e termos e Vocabulário mostram o que o complemento leu', async ({ page, extensao, fakes }) => {
   fakes.anki.abrirColecao('inglês com subbaralho');
   await extensao.gravarStorage({ ankiBridgePresets: {
@@ -439,7 +420,6 @@ test('com a coleção do contrato aberta, Baralhos e termos e Vocabulário mostr
   await expect(vocabulario(page).locator('.shell-aviso')).toHaveCount(0);
   await fotografar(page, 'vocabulario-da-colecao-do-contrato.png');
 
-  // O que fica gravado para as abas seguirem mostrando os dados com a Conexão desligada (BRG-12).
   const gravado = await extensao.lerStorage(['pm_anki_baralhos', 'pm_anki_vocabulario']);
   expect(gravado.pm_anki_baralhos.nomes).toEqual({ en: 'Inglês', ru: 'Alemão' });
   expect(gravado.pm_anki_baralhos.dados.source).toBe('colecao');
@@ -452,7 +432,6 @@ test('com a coleção do contrato aberta, Baralhos e termos e Vocabulário mostr
   expect(gravado.pm_anki_vocabulario.dados.en.itens[0]).toMatchObject({ word: 'gave up', type: 'term', status: 'mature' });
   expect(gravado.pm_anki_vocabulario.dados.ru).toMatchObject({ deckName: 'Alemão', total: 0, itens: [] });
 
-  // Atualizar pede de novo os dois Baralhos, com refresh e launch, e a Conexão os lê do mesmo jeito.
   await atualizar(page).click();
   await expect.poll(() => pedidos(fakes, '/anki/stats/decks').at(-1).dados.launch).toBe(true);
   expect(pedidos(fakes, '/anki/stats/decks').at(-1).dados).toEqual({
@@ -461,17 +440,14 @@ test('com a coleção do contrato aberta, Baralhos e termos e Vocabulário mostr
   await aba(page, 'Baralhos e termos').click();
   await expect(baralhos(page).locator('.anki-baralho dl')).toContainText('Cartões4');
   await expect(baralhos(page).locator('.shell-aviso')).toHaveCount(0);
-  // Depois de Atualizar, o que fica gravado segue sendo a leitura da coleção, com os mesmos Baralhos.
   await estadoFinal(extensao, {
     pm_anki_baralhos: { nomes: { en: 'Inglês', ru: 'Alemão' }, dados: { source: 'colecao', decks: [{ deckName: 'Inglês', cards: 4 }, { deckName: 'Alemão', cards: 0, missing: true }] } },
     pm_anki_vocabulario: { nomes: { en: 'Inglês', ru: 'Alemão' }, dados: { en: { deckName: 'Inglês', total: 12, source: 'colecao' }, ru: { deckName: 'Alemão', total: 0 } } },
   });
 });
 
-// A Conexão (o /health) pode responder antes de os Ajustes de envio chegarem do storage: o primeiro
-// `usarBaralhos` faz então a primeira leitura. Ela é a leitura comum, sem `refresh` nem `launch`, e não vira BRG-11.
 test('a Conexão que responde antes dos Ajustes de envio não impede a primeira leitura dos Baralhos', async ({ page, extensao, fakes }) => {
-  // Exceção de teste: chrome-nativo (docs/testes.md). A ordem das respostas do storage não tem como ser pedida pela tela.
+  // Exceção de teste: chrome-nativo (docs/testes.md).
   await page.addInitScript(() => {
     const ler = chrome.storage.local.get.bind(chrome.storage.local);
     chrome.storage.local.get = (chaves, chamar) => {
@@ -502,7 +478,6 @@ test('salvar outro baralho nos Ajustes de envio lê os baralhos e o vocabulário
   await aba(page, 'Vocabulário').click();
   await expect(azulejosDoVocabulario(page).getByRole('button').nth(0)).toContainText('EN · Mining EN');
   expect(pedidos(fakes, '/anki/vocabulary').some(r => r.dados.deck === 'Mining EN')).toBe(true);
-  // O Baralho novo ficou gravado nos Ajustes e nas duas leituras que as abas guardam.
   await estadoFinal(extensao, {
     ankiBridgePresets: { en: { deckName: 'Mining EN' } },
     pm_anki_baralhos: { nomes: { en: 'Mining EN', ru: DRU }, dados: { decks: [{ deckName: 'Mining EN', cards: 2140, uniqueTermTokens: 99 }, { deckName: DRU, cards: 480 }] } },
@@ -521,7 +496,6 @@ test('↻ Atualizar lê de novo os baralhos (abrindo o Anki se precisar) e o voc
   const ultima = pedidos(fakes, '/anki/stats/decks').at(-1).dados;
   expect(ultima.refresh).toBe(true);
   expect(ultima.launch).toBe(true);
-  // A leitura de depois de Atualizar é a que fica gravada: o vocabulário novo, com o baralho de sempre.
   await estadoFinal(extensao, { pm_anki_vocabulario: { nomes: { en: DEN, ru: DRU }, dados: { en: { deckName: DEN, total: 6 } } } });
 });
 

@@ -1,7 +1,5 @@
 'use strict';
 
-// #372: o Envio que a retenção já apagou volta da Conexão só como ficha (terminado, sem Continuar envio, só o que entrou).
-
 const { test, expect } = require('../fixtures');
 const { AGORA, INGLESAS, SACK, ARM, abrirPainel, baralho, marcarEEnviar, enviosCriados } = require('../apoio-do-envio');
 
@@ -15,7 +13,6 @@ test('um Envio retido pela retenção, com Frases fora do sucesso, ganha um Envi
   await marcarEEnviar(page, [SACK.texto, ARM.texto]);
   const [job] = await enviosCriados(fakes, 1);
 
-  // Depois da retenção a Conexão só guarda a ficha: terminado, sem Continuar envio, e só o que entrou.
   fakes.anki.concluirEnvio(job.jobId);
   fakes.anki.responder('POST', '/jobs/list', () => ({
     json: {

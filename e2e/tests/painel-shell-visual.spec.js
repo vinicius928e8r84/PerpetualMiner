@@ -1,16 +1,5 @@
 'use strict';
 
-// Referência visual do shell “Ilhas” (#25). O dono aprovou as telas lado a lado
-// com o protótipo B; estas capturas são essas telas, e qualquer mudança visual
-// no shell faz o teste falhar até alguém olhar e atualizar a referência:
-//
-//   cd e2e && npx playwright test painel-shell-visual --update-snapshots
-//
-// O conteúdo de hoje (baralhos…) ainda vai ser reconstruído, cada área no seu
-// ticket, e a lista de Frases e a aba Custos têm a referência delas em
-// painel-frases-visual.spec.js e painel-anki-visual.spec.js; todos ficam cobertos. O que a captura guarda é
-// o shell — a sidebar, os indicadores, as ilhas, a faixa F1 e o chip.
-
 const { test, expect } = require('../fixtures');
 
 const FRASES = [
@@ -19,8 +8,6 @@ const FRASES = [
   { id: 1_700_000_000_001, texto: 'Я долго думал об этом.', data: '17/09/2026', streaming: 'netflix', idioma: 'Russo' },
 ];
 
-// “(hoje)”, “(ontem)” e “Sincronizado agora” saem do relógio: ele fica parado
-// no dia das frases de exemplo.
 const AGORA = new Date('2026-09-18T12:00:00');
 
 const semOConteudoDeHoje = page => ({
@@ -64,8 +51,6 @@ test('Frases, com a sidebar em trilho', async ({ page, extensao }) => {
 
 test('Conexão com o Anki desligada, com a faixa F1', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
-  // A Conexão já respondeu neste computador: a F1 fica sobre as abas (a primeira
-  // vez, com o card ONB-16, está na referência da área, painel-anki-visual).
   await extensao.gravarStorage({ pm_anki_ja_conectou: true });
   await abrirPainel(page, extensao, '#anki/custos');
   await expect(page.getByRole('button', { name: 'Tentar de novo' })).toBeEnabled();

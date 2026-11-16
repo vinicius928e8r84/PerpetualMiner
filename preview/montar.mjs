@@ -1,24 +1,6 @@
 #!/usr/bin/env node
 'use strict';
 
-// Monta o site do preview em `preview/dist`, a partir do que está no repo.
-//
-// O repositório é uma extensão, não um site: o Vercel não teria o que servir.
-// Este script junta, numa pasta só, o que dá para olhar no navegador — a
-// vitrine da Base Veio, os protótipos travados e as telas da extensão — e
-// injeta `chrome-simulado.js` nas cópias das telas, para elas renderizarem com
-// dados de exemplo em vez de quebrar na primeira chamada de `chrome.*`.
-//
-// Nada aqui altera os arquivos da extensão: tudo é cópia para `dist/`.
-//
-//   node preview/montar.mjs                    # monta em preview/dist
-//   node preview/montar.mjs --servir           # monta e serve em http://127.0.0.1:4173
-//   node preview/montar.mjs --saida <pasta>    # monta noutra pasta (test_preview.js)
-//
-// Além do preview, o site leva as duas páginas públicas do app, que o consentimento
-// OAuth do Google pede: `/sobre/` (a página inicial) e `/privacidade/` (a política,
-// também em `/privacy/`). Elas moram em `preview/site/` e não dependem da extensão.
-
 import { createServer } from 'node:http';
 import { createReadStream } from 'node:fs';
 import fs from 'node:fs/promises';
@@ -30,26 +12,18 @@ const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SAIDA = process.argv.indexOf('--saida');
 const DESTINO = SAIDA > 0 ? path.resolve(process.argv[SAIDA + 1]) : path.join(RAIZ, 'preview', 'dist');
 
-// O que as telas carregam vem do manifest e das páginas, pela mesma lista que o
-// pacote da loja e a atualização automática usam, e não de uma lista escrita aqui.
 const require = createRequire(import.meta.url);
 require('../lib/arquivos-da-extensao.js');
 const { arquivosDaExtensao } = globalThis.PerpetualMiner;
 
-/** As telas da extensão que o preview mostra, com o simulador injetado. */
 const TELAS = [
   { arquivo: 'popup.html', titulo: 'Popup', largura: '340 px' },
   { arquivo: 'painel.html', titulo: 'Painel', largura: 'tela cheia' },
   { arquivo: 'bookreader.html', titulo: 'Minerar de uma foto', largura: 'tela cheia' },
 ];
 
-/**
- * O que não está no manifest nem nas páginas, mas a tela entrega: o arquivo da
- * Conexão, que `PassosDaConexao` oferece num link de download.
- */
 const PASTAS_DE_APOIO = ['conexao'];
 
-/** As páginas públicas de `preview/site/`: o arquivo de origem e os endereços em que ele sai (cada um é uma pasta com `index.html`). */
 const PAGINAS_PUBLICAS = [
   { arquivo: 'sobre.html', enderecos: ['sobre'] },
   { arquivo: 'privacidade.html', enderecos: ['privacidade', 'privacy'] },
@@ -62,14 +36,12 @@ async function copiar(de, para) {
   await fs.cp(de, para, { recursive: true });
 }
 
-/** Injeta o simulador como primeiro script da página, antes dos scripts dela. */
 function injetarSimulador(html) {
   const marca = '<script src="/preview-chrome-simulado.js"></script>';
   if (html.includes('</head>')) return html.replace('</head>', `  ${marca}\n</head>`);
   return `${marca}\n${html}`;
 }
 
-/** Os protótipos de `docs/design`, para a lista da capa. */
 async function acharPrototipos() {
   const base = path.join(RAIZ, 'docs', 'design');
   if (!(await existe(base))) return [];
@@ -181,7 +153,6 @@ async function montar() {
   await fs.rm(DESTINO, { recursive: true, force: true });
   await fs.mkdir(DESTINO, { recursive: true });
 
-  // A identidade, na raiz: a vitrine e a capa pedem `/veio/…`.
   const temVeio = await existe(path.join(RAIZ, 'veio'));
   if (temVeio) {
     await copiar(path.join(RAIZ, 'veio'), path.join(DESTINO, 'veio'));
@@ -200,7 +171,7 @@ async function montar() {
   const daTela = new Set(TELAS.map(tela => tela.arquivo));
   const lerTexto = caminho => fs.readFile(path.join(RAIZ, caminho), 'utf8');
   for (const nome of await arquivosDaExtensao(lerTexto)) {
-    if (daTela.has(nome)) continue; // já foi, com o simulador injetado
+    if (daTela.has(nome)) continue;
     const origem = path.join(RAIZ, nome);
     if (await existe(origem)) await copiar(origem, path.join(DESTINO, 'extensao', nome));
   }
@@ -212,15 +183,10 @@ async function montar() {
     const origem = path.join(RAIZ, pasta);
     if (!(await existe(origem))) continue;
     await copiar(origem, path.join(DESTINO, 'extensao', pasta));
-    // Também na raiz: a vitrine pede `/lib/…` por caminho absoluto, como pede
-    // `/veio/…`, para carregar o mesmo catálogo da Voz que as telas carregam.
     await copiar(origem, path.join(DESTINO, pasta));
   }
   await copiar(path.join(RAIZ, 'preview', 'chrome-simulado.js'), path.join(DESTINO, 'preview-chrome-simulado.js'));
 
-  // A vitrine da Base Veio, que já pede `/veio/…` e `/lib/…` por caminho
-  // absoluto. A pasta inteira vem junto: a galeria de componentes é montada
-  // por `componentes-da-vitrine.js`, ao lado do HTML.
   const vitrine = path.join(RAIZ, 'e2e', 'vitrine');
   const temVitrine = await existe(path.join(vitrine, 'vitrine.html'));
   if (temVitrine) await copiar(vitrine, DESTINO);
@@ -259,7 +225,6 @@ const TIPOS_MIME = {
   '.woff2': 'font/woff2',
 };
 
-/** Serve `dist/` local, do mesmo jeito que o Vercel serve o site estático. */
 function servir() {
   const servidor = createServer(async (req, res) => {
     const pedido = decodeURIComponent(new URL(req.url, 'http://x').pathname);

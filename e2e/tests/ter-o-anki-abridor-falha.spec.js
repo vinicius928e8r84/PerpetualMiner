@@ -1,9 +1,5 @@
 'use strict';
 
-// “Já tenho” quando a conversa com o abridor falha por dentro (#242): `oAbridorAbreOAnki`, em
-// painel-conexao-passos.js, trata a conversa que rejeita como o caminho manual. Sem isso o botão ficava
-// apertado e sem resultado. Os outros casos do passo Ter o Anki estão em ter-o-anki.spec.js.
-
 const { test, expect } = require('../fixtures');
 const { estadoFinal, estadoFinalEm } = require('../estado-final');
 

@@ -1,11 +1,5 @@
 'use strict';
 
-// Referência visual de “Usar um tipo que já tenho” (#165), nos Ajustes de envio › Estilo do cartão: o botão fechado, o mapeamento com a prévia no tipo da pessoa,
-// o tipo sem campos para a Frase e a resposta (a explicação e o estilo pronto) e a janela estreita. Não há protótipo desta seção: ela reusa o controle do Estilo do
-// cartão (#162), a prévia (#164) e o aviso da Base Veio, e o dono compara estas telas com o protótipo aprovado dos Ajustes de envio
-// (`docs/design/painel/anki/prototipo-ajustes-envio.html`). Todas são PROPOSTAS (`test.fixme`, sem PNG na árvore) até a aprovação dele (CODING_STANDARDS regra 10).
-// Aprovando: tirar o `fixme` e `cd e2e && npx playwright test painel-ajustes-tipo-proprio-visual --update-snapshots`, e a entrada no livro `e2e/aprovados-visuais.json`.
-
 const { test, expect } = require('../fixtures');
 
 const AGORA = new Date('2026-09-18T12:00:00');

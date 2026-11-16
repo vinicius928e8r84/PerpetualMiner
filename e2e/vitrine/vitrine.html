@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Vitrine da Base Veio</title>
 
-  <!-- Os mesmos arquivos que as páginas da extensão carregam. -->
   <link rel="stylesheet" href="/veio/tokens.css">
   <link rel="stylesheet" href="/veio/componentes.css">
 
@@ -47,7 +46,6 @@
       margin: 0 auto;
     }
 
-    /* Cada coluna é um tema inteiro: tudo dentro dela lê os tokens dela. */
     .tema {
       min-width: 0;
       padding: 22px;
@@ -330,7 +328,6 @@
       min-width: 0;
     }
 
-    /* A ilha `surface` em volta do cartão `--na-ilha`: andaime da vitrine. */
     .ilha-de-amostra {
       width: 100%;
       padding: 12px;
@@ -381,7 +378,6 @@
       background: var(--veio-surface);
     }
 
-    /* Um pedaço da barra do Chrome: o ícone da extensão com o badge no canto. */
     .barra {
       display: grid;
       place-items: center;
@@ -553,7 +549,6 @@
     </div>
   </section>
 
-  <!-- A mesma base compartilhada que as páginas da extensão carregam. -->
   <script src="/lib/voz/catalogo.js"></script>
   <script src="/lib/voz/texto.js"></script>
   <script src="/veio/componentes.js"></script>
@@ -562,18 +557,12 @@
   <script>
     'use strict';
 
-    // Os nomes vêm da tabela de tokens; os valores são lidos do próprio tema,
-    // para a vitrine nunca discordar do arquivo de tokens.
     const TOKENS_DE_COR = [
       '--veio-bg', '--veio-surface', '--veio-surface-2', '--veio-border', '--veio-border-strong',
       '--veio-text', '--veio-muted', '--veio-accent', '--veio-accent-ink', '--veio-accent-text',
       '--veio-kw-bg', '--veio-kw-fg', '--veio-success', '--veio-danger', '--veio-info',
     ];
 
-    // Cada papel da escala: o nome, a classe que aplica os tokens dele e a frase
-    // de exemplo. O tamanho e o peso não vêm escritos aqui: são medidos na
-    // própria amostra depois de renderizada, para a legenda nunca discordar dos
-    // tokens.
     const ESCALA = [
       ['Display', 't-display', 'Minerar frases'],
       ['Hero', 't-hero', 'Boas-vindas'],
@@ -591,7 +580,6 @@
       '--veio-raio-painel', '--veio-raio-selecao', '--veio-raio-pilula',
     ];
 
-    /** "32px / 800", como o navegador de fato renderizou a amostra. */
     function medidaDe(amostra) {
       const estilo = getComputedStyle(amostra);
       const tamanho = Number(parseFloat(estilo.fontSize).toFixed(2)).toString().replace('.', ',');
@@ -639,7 +627,6 @@
         linha.append(rotulo, amostra);
         escala.append(linha);
 
-        // A medida só existe depois que a amostra está na página.
         rotulo.append(medidaDe(amostra));
       }
 
@@ -651,13 +638,10 @@
         raios.append(caixa);
       }
 
-      // A mesma galeria nos dois temas: o que muda é só o data-tema da coluna.
       PerpetualMiner.Vitrine.montarComponentes(
         tema.querySelector('[data-componentes]'), tema.dataset.tema);
     }
 
-    // Os três estados que o service worker entrega ao Chrome: o texto do badge
-    // e o tooltip do ícone. Sem badge, o tooltip volta a ser o nome da extensão.
     const ESTADOS_DO_BADGE = [
       ['12', 'Mineração automática: 12 hoje', 'Contando'],
       ['25', 'Mineração automática: limite de hoje atingido', 'Todos os ligados no limite'],

@@ -1,14 +1,5 @@
 'use strict';
 
-// Conexão com o Anki · Ajustes de envio por idioma (#35, prototipo-ajustes-envio.html, variante A):
-// um card por idioma, recolhível; só grava em Salvar ajustes; editável com a Conexão desligada.
-//
-// Fecha bugs de #9 (gravação silenciosa, aba desatualizada, padrão divergente).
-// O Baralho padrão é o que a Conexão cria (#366).
-//
-// A Conexão é falsificada na fronteira HTTP (e2e/fakes/anki.js); os testes
-// afirmam o que se vê e o que fica gravado (`ankiBridgePresets`).
-
 const { test, expect } = require('../fixtures');
 const DEN = 'PerpetualMiner::Inglês', DRU = 'PerpetualMiner::Russo', LEN = DEN.replace('::', ' › '), LRU = DRU.replace('::', ' › ');
 
@@ -62,7 +53,6 @@ test('sem nada gravado: os cards dizem o Baralho padrão e a foto real; o do Ing
   await expect(imagens(page, 'Foto do Openverse')).toBeChecked();
   await expect(formulario(page)).toContainText('Quando não acha uma foto boa, gera uma por IA, e aí tem custo.');
   await expect(situacao(page)).toHaveText('Salvo');
-  // Nada fica gravado só por abrir.
   expect(await ajustesGravados(extensao)).toBeUndefined();
 });
 
@@ -93,7 +83,6 @@ test('mexer no formulário não grava nada; Salvar ajustes grava só o idioma ab
   await expect(formulario(page)).toContainText('Toda imagem é gerada por IA e entra nos custos.');
   await expect(situacao(page)).toHaveText('Alterações não salvas');
   await expect(salvar(page)).toHaveClass(/veio-botao--primario/);
-  // O card fechado mostra o que está gravado, não o rascunho.
   await expect(resumo(page, 'Inglês')).toHaveText('Inglês › Mineradas · foto real');
   let gravado = await ajustesGravados(extensao);
   expect(gravado.en).toMatchObject(AJUSTES.en);
@@ -238,7 +227,6 @@ test('o sotaque do áudio fica no Avançado, recolhido, escolhido pelo nome do l
 
   await expect(avancado(page)).toContainText('Escolha o sotaque da voz que fala a palavra e a frase.');
   await expect(avancado(page).getByText('Inglês', { exact: true })).toBeVisible();
-  // O gravado aparece pelo nome do lugar, sem o domínio do Google.
   await expect(palavra.locator('option:checked')).toHaveText('Estados Unidos');
   await expect(frase.locator('option:checked')).toHaveText('Reino Unido');
   await expect(avancado(page)).not.toContainText('co.uk');
@@ -298,7 +286,6 @@ test('a lista de baralhos não é relida em cada health, mas atualiza ao entrar 
     const resposta = page.waitForResponse(r => new URL(r.url()).pathname === '/health');
     await relogio.avancar(15_000);
     await resposta;
-    // O relógio da página está parado: um tique de 1 ms deixa a resposta do health terminar de ser lida.
     await relogio.avancar(1);
     await expect.poll(() => fakes.anki.requisicoes.filter(r => r.caminho === '/health').length).toBe(n);
   }
@@ -344,7 +331,6 @@ test('um baralho gravado que o Anki não tem continua na lista, dizendo que não
   await page.goto(extensao.url('painel.html#anki/ajustes'));
 
   await expect(escolhaDeBaralho(page).locator('option:checked')).toHaveText('Inglês › Mineradas · não está no Anki');
-  // O padrão também fica ao alcance, para voltar a ele.
   await expect(escolhaDeBaralho(page).locator('option', { hasText: `${LEN} · não está no Anki` })).toHaveCount(1);
 });
 
@@ -436,7 +422,6 @@ test('bug #9: a aba desatualizada não sobrescreve os ajustes que outra aba salv
   await expect(aviso).toBeVisible();
   await expect(toasts(page)).toHaveCount(0);
   expect((await ajustesGravados(extensao)).en.deckName).toBe('Da segunda aba');
-  // O rascunho fica na tela até a pessoa escolher trazer o que foi salvo.
   await expect(baralho(page)).toHaveValue('Da primeira aba');
 
   await aviso.getByRole('button', { name: 'Ver os novos' }).click();
@@ -444,7 +429,6 @@ test('bug #9: a aba desatualizada não sobrescreve os ajustes que outra aba salv
   await expect(aviso).toBeHidden();
   await expect(baralho(page)).toBeFocused();
 
-  // Agora em dia, esta aba salva de novo.
   await baralho(page).fill('De novo da primeira');
   await salvar(page).click();
   await expect(toasts(page)).toHaveText('Ajustes de envio salvos');
@@ -464,7 +448,6 @@ test('a aba sem rascunho acompanha o que outra aba salvou, nos cards e no formul
   await expect(resumo(page, 'Russo')).toContainText('Русский новый');
   await cabeca(page, 'Russo').click();
   await expect(baralho(page)).toHaveValue('Русский новый');
-  // O que a outra aba não mexeu continua como estava.
   expect((await ajustesGravados(extensao)).en).toMatchObject(AJUSTES.en);
 });
 
@@ -475,13 +458,11 @@ test('o Baralho padrão é o mesmo em Ajustes, em Baralhos e termos e no envio',
   await abrirAjustes(page, extensao);
   await expect(baralho(page)).toHaveValue(DEN);
 
-  // Baralhos e termos pede os números dos mesmos baralhos.
   await page.goto(extensao.url('painel.html#anki/baralhos'));
   await expect.poll(() => fakes.anki.requisicoes.filter(r => r.caminho === '/anki/stats/decks').length).toBeGreaterThan(0);
   const leitura = fakes.anki.requisicoes.find(r => r.caminho === '/anki/stats/decks').dados;
   expect(leitura.decks.map(baralho => baralho.deckName)).toEqual([DEN, DRU]);
 
-  // E o envio vai para ele.
   await page.goto(extensao.url('painel.html#frases'));
   await page.locator('#frases-lista .veio-frase').getByRole('checkbox', { name: 'Selecionar frase' }).check();
   await page.locator('#frases-barra').getByRole('button', { name: 'Enviar ao Anki', exact: true }).click();

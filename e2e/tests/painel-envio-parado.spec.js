@@ -1,29 +1,22 @@
 'use strict';
 
-// O Envio que parou porque a pessoa fechou o Anki (#151, histórias 83, 84 e 86): o cartão do Envio diz quantos Cartões já estão
-// no Anki e que o Envio continua sozinho quando o Anki abrir; Continuar envio abre o Anki pelo abridor (o host de mentira do fixture,
-// e2e/fakes/abridor.js); e o abridor nunca reabre um Anki que a pessoa fechou: só o clique o chama. Quem retoma o Envio é a Conexão,
-// quando sobe com o Anki (complemento/test_envio_retomada.py); aqui o teste faz o papel dela com o fake (`moverEnvio`).
-
 const fs = require('fs');
 const { test, expect } = require('../fixtures');
 const { estadoFinal, estadoFinalEm } = require('../estado-final');
 const contrato = require('../../complemento/contrato/exemplos.json');
 const { AGORA, INGLESAS, RUSSA, SACK, ARM, abrirPainel, cartoesDe, enviarAoAnki, marcarEEnviar, envio, progresso, enviosCriados, umaVoltaDoEnvio, toasts } = require('../apoio-do-envio');
 
-/** As mensagens `abrir` que o abridor recebeu. */
 const aberturas = fakes => fakes.abridor.pedidos().filter(p => p.mensagem.acao === 'abrir');
 const ABRIR = { mensagem: { acao: 'abrir' }, origem: `${contrato.origemDaExtensao}/` };
 const retomadas = fakes => fakes.anki.requisicoes.filter(r => r.metodo === 'POST' && r.caminho === '/jobs/retry');
 
 test.beforeEach(({ fakes }) => {
-  test.slow(); // o painel só nota o Anki fechado na volta seguinte do Envio, e cada teste espera algumas
+  test.slow();
   fakes.anki.usarRelogio(() => AGORA);
 });
 
 test.use({ permissaoDoAbridor: true });
 
-/** Três Frases enviadas, o Envio andando com `prontos` de 10 Cartões no Anki, e a pessoa fecha o Anki. */
 async function fecharOAnkiNoMeio(page, extensao, fakes, prontos = 3) {
   await extensao.gravarStorage({ frases: INGLESAS, pm_anki_ja_conectou: true });
   await abrirPainel(page, extensao);
@@ -40,9 +33,7 @@ test('o Anki fechado no meio: o cartão diz quantos já estão no Anki e que o E
 
   await expect(envio(page, 'Envio em inglês · 3 frases')).toContainText('3 de 10 no Anki. Quando o Anki abrir, o Envio continua sozinho.', { timeout: 20_000 });
   await expect(envio(page, 'Envio em inglês · 3 frases').getByRole('button', { name: 'Continuar envio' })).toBeVisible();
-  // O cartão já diz o que acontece: a linha “Sem resposta da Conexão” (ENV-09) não repete.
   await expect(progresso(page).getByText('Sem resposta da Conexão com o Anki. Tentando de novo…')).toBeHidden();
-  // A pessoa fechou o Anki: voltas inteiras do acompanhamento passam e ninguém o abre.
   await umaVoltaDoEnvio(page);
   expect(aberturas(fakes)).toEqual([]);
   expect(retomadas(fakes)).toEqual([]);
@@ -72,16 +63,13 @@ test('Continuar envio abre o Anki pelo abridor, uma vez; quando o Anki abre o En
 
   await expect(cartao).toContainText('Abrindo o Anki para enviar…');
   await expect.poll(() => aberturas(fakes)).toEqual([ABRIR]);
-  // O Anki abriu e a Conexão retomou o Envio de onde ele estava (o fake faz o papel dela).
   fakes.anki.ligar();
   fakes.anki.moverEnvio(job.jobId, { stage: 'generate_cards', progress: { done: 5, total: 10 }, cartoes: cartoesDe(5) });
   await expect(cartao).not.toContainText('Quando o Anki abrir', { timeout: 20_000 });
   await expect(cartao).toContainText('Criando cartões');
   await expect(cartao.getByRole('button', { name: 'Continuar envio' })).toHaveCount(0);
-  // Continuar sozinho: o painel só lê, não manda retomar, e não abre o Anki outra vez.
   expect(retomadas(fakes)).toEqual([]);
   expect(aberturas(fakes)).toEqual([ABRIR]);
-  // O Anki abriu e a Conexão respondeu: o abridor não falhou em nada, nem na tela nem no Detalhes.
   await umaVoltaDoEnvio(page);
   await expect(cartao).not.toContainText('Não deu para abrir');
   await cartao.getByText('Detalhes').click();
@@ -106,7 +94,6 @@ test('Continuar envio com o Anki que travou: o abridor o reinicia pelo consertar
   await expect(cartao).not.toContainText('Não deu para abrir');
   await cartao.getByText('Detalhes').click();
   await expect(cartao).not.toContainText('abridor ·');
-  // O consertar já abriu o Anki: nenhum `abrir` por cima, e o painel não manda retomar.
   expect(aberturas(fakes)).toEqual([]);
   expect(retomadas(fakes)).toEqual([]);
   await estadoFinal(extensao, { pm_envio: { envios: [{ ids: INGLESAS.map(f => f.id), jobId: job.jobId }] } });
@@ -195,7 +182,6 @@ test('Tentar de novo no cartão do Envio que ficou em parte pede só o que falta
   fakes.anki.concluirEnvio(ingles.jobId, { falhas: [ARM.id] });
   const cartao = envio(page, 'Envio em inglês · 2 frases');
   await expect(cartao).toContainText('Concluído em parte', { timeout: 10_000 });
-  // O Cartão que falhou tem Tentar de novo nele mesmo; Continuar envio é do Envio parado, não deste.
   await expect(cartao.getByRole('button', { name: 'Continuar envio' })).toHaveCount(0);
 
   await cartao.getByRole('button', { name: 'Tentar de novo' }).click();
