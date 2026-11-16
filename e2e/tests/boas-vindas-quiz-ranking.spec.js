@@ -1,20 +1,14 @@
 'use strict';
 
-// Boas-vindas · o ranking do grupo no resultado do quiz de nível (#172, ONB-24): “Você foi melhor que X% de quem fez o quiz”, a caixa “Aparecer no ranking do grupo” e a lista de quem topou.
-// O Firestore e o login são falsos na fronteira HTTP (e2e/fakes/google.js, que faz em memória as conferências de `docs/seguranca/ranking-do-grupo.rules`): o que ficou guardado
-// é a coleção `ranking` do fake (`fakes.google.rankingDe`). Nada da pessoa vai para lá sem ela marcar a caixa. O ranking “meio multiplayer” (global, grupos, média) fica fora.
-
 const { test, expect } = require('../fixtures');
 const { estadoFinalEm } = require('../estado-final');
 const { abrirOQuiz, responderAParte1, percorrer, quiz } = require('../apoio-do-quiz');
 
-// Quem já topou aparecer, de outras contas. A nota é a de `Ranking.nota`: o nível × 1000 + a parte de acertos (0 a 100).
 const outra = (uid, nome, nivel, nota, melhorSequencia) => ({
   uid, idioma: 'en', nome, foto: '', nivel, melhorSequencia, nota, acertos: 1, perguntas: 3, grupos: [], topou: true, em: 1,
 });
 const OUTRAS = [outra('ana', 'Ana Souza', 'iniciante', 33, 1), outra('bia', 'Bia Lima', 'intermediario', 1100, 4), outra('caio', 'Caio Reis', 'avancado', 2100, 6)];
 
-// Quem faz o quiz acerta 2 de 3 e fica no Iniciante com melhor sequência 2: a nota é 67, acima só da Ana (1 de 3 abaixo dela, 33%).
 async function ateOResultado(page, extensao, fakes, relogioParado, { conta = true } = {}) {
   if (conta) await extensao.semearSessao();
   const relogio = await abrirOQuiz(page, extensao, relogioParado);
@@ -110,7 +104,6 @@ test.describe('o ranking do grupo', () => {
 
   test('se a nuvem recusa o registro, a caixa volta a desmarcada e nada fica gravado', async ({ page, extensao, fakes, relogioParado }) => {
     const ranking = await ateOResultado(page, extensao, fakes, relogioParado);
-    // O token do teste vale para outra conta que a da sessão: as regras recusam gravar o documento de quem não é.
     fakes.google.autenticarComo('outra-conta');
 
     // `click`, não `check`: a caixa volta sozinha ao estado de antes, e `check` falha por ela não ficar marcada.

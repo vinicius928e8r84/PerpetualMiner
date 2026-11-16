@@ -1,12 +1,5 @@
 'use strict';
 
-// Referência visual do quiz de nível no passo do nível da Boas-vindas (#170, ONB-21 e ONB-22): o botão “Não sei meu nível, quero descobrir”, a pergunta sobre a pessoa,
-// as três perguntas de 4 alternativas (escuta, legenda, verso) com a resposta marcada, o alfabeto do russo e o resultado com a prévia do Cartão. Não há protótipo das
-// telas em si (o do quiz é o do #130/#134/#137, sem a festa, que é do #171): elas reusam o card de passo da Boas-vindas, o botão e o controle segmentado do protótipo aprovado
-// (`docs/design/painel/boas-vindas/prototipo-onboarding.html`), e o dono as compara com o protótipo do #134. Todas são PROPOSTAS (`test.fixme`, sem PNG na árvore)
-// até a aprovação dele (CODING_STANDARDS regra 10). Aprovando: tirar o `fixme` e `cd e2e && npx playwright test boas-vindas-quiz-visual --update-snapshots`, e a entrada
-// no livro `e2e/aprovados-visuais.json`.
-
 const { test, expect } = require('../fixtures');
 
 const AGUARDA_O_DONO = 'a referência visual espera a aprovação do dono (regra 10)';
@@ -25,7 +18,6 @@ async function abrir(page, extensao, relogioParado, { largura = 1100, tema } = {
   return relogio;
 }
 
-/** Abre o quiz do inglês e responde à parte 1 como quem aponta o Iniciante; a primeira pergunta de 4 alternativas (a legenda) fica na tela. */
 async function atePrimeiraPergunta(page) {
   await grupo(page, 'Inglês').getByRole('button', { name: 'Não sei meu nível, quero descobrir' }).click();
   await quiz(page, 'Inglês').getByRole('button', { name: 'Só dubladas ou com legenda em português' }).click();

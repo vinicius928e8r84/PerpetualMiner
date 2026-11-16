@@ -1,10 +1,5 @@
 'use strict';
 
-// Boas-vindas · o primeiro Envio (#173, ONB-23): ao chegar ao último passo o Envio começa sozinho, com 1 Cartão (a Frase minerada mais recente, ou uma Frase de
-// teste do idioma), e a tela mostra só “Enviando…” e depois o Cartão enviado, como o Anki o mostra, com o Baralho, Abrir no Anki e Concluir; na falha,
-// “Este cartão não foi”, o motivo, Tentar de novo e Trocar a chave. A configuração só termina quando o Cartão chega ao Anki. A Conexão com o Anki é
-// falsificada na fronteira HTTP (e2e/fakes/anki.js; o contrato `exemplos.json`, `exemplos-da-previa.json` e `exemplos-do-navegador.json`).
-
 const { test, expect } = require('../fixtures');
 const { estadoFinal } = require('../estado-final');
 const { INGLESAS, RUSSA, enviosCriados } = require('../apoio-do-envio');
@@ -15,7 +10,6 @@ const [MAIS_RECENTE] = INGLESAS;
 
 const lista = page => page.getByRole('navigation', { name: 'Passos da configuração' });
 const card = page => page.locator('.bv-card');
-// O texto do passo (o card guarda o de todos os passos, escondidos).
 const passo = page => page.locator('.bv-envio');
 const botao = (page, nome) => card(page).getByRole('button', { name: nome, exact: true });
 const cartao = page => passo(page).locator('.previa').frameLocator('iframe').locator('body');
@@ -28,7 +22,6 @@ async function abrirOEnvio(page, extensao, { frases = [], automatica = SO_O_INGL
   await expect(card(page).getByRole('heading', { level: 2 })).toHaveText('Enviar o primeiro cartão');
 }
 
-/** A Conexão grava o Cartão: o Envio anda e termina com ele no Anki. */
 function chegarAoAnki(fakes, envio) {
   fakes.anki.moverEnvio(envio.jobId, { stage: 'send_to_anki', cartoes: { [idDoCartao(envio)]: 'added' } });
   fakes.anki.concluirEnvio(envio.jobId);
@@ -43,7 +36,6 @@ test('com uma Frase minerada, o Envio começa sozinho com a mais recente e a tel
   await expect(passo(page)).toContainText('Enviando…');
   await expect(passo(page)).not.toContainText(/etapa|US\$|custo|estimativa|Criando cartões/i);
   await expect(botao(page, 'Continuar')).toHaveCount(0);
-  // O pedido fica congelado: é ele que um passo repetido manda de novo.
   await estadoFinal(extensao, { pm_boas_vindas: { primeiroEnvio: { corpo: { jobId: envio.jobId, lang: 'en', entries: [{ phraseId: MAIS_RECENTE.id }] } } } });
 });
 
@@ -172,10 +164,9 @@ test('o Envio que não foi e teve as Frases apagadas na Conexão não se retoma:
   fakes.anki.moverEnvio(envio.jobId, { stage: 'generate_cards', cartoes: { [idDoCartao(envio)]: { status: 'failed', error: 'openai_key_rejected' } } });
   fakes.anki.concluirEnvio(envio.jobId, { erro: 'openai_key_rejected' });
   await expect(passo(page)).toContainText('A OpenAI não aceitou a chave.');
-  fakes.anki.apagarAsFrases();   // o Apagar tudo de outro navegador, na mesma Conexão
+  fakes.anki.apagarAsFrases();
 
   await botao(page, 'Tentar de novo').click();
-  // A Conexão recusa a retomada (do apagado não se sai): não é a Conexão que não respondeu.
   await expect(passo(page)).toContainText('Algo impediu o envio.');
   await expect(passo(page)).not.toContainText('A Conexão com o Anki não respondeu');
 
@@ -271,7 +262,7 @@ test('a página recarregada no meio manda o mesmo pedido congelado, e a Conexão
   await abrirOEnvio(page, extensao, { frases: [MAIS_RECENTE] });
   const [envio] = await enviosCriados(fakes, 1);
 
-  await extensao.gravarStorage({ frases: [INGLESAS[2]] });   // uma Frase mais nova não muda o pedido que já foi
+  await extensao.gravarStorage({ frases: [INGLESAS[2]] });
   await page.reload();
 
   await expect.poll(() => fakes.anki.requisicoes.filter(r => r.caminho === '/jobs').length).toBe(2);

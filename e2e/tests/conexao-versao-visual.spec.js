@@ -1,14 +1,5 @@
 'use strict';
 
-// Referência visual da versão da Conexão com o Anki (#177, BRG-50): o aviso no alto do Painel nos quatro estados (velha demais, falhou,
-// atualizada e a que pede Reiniciar o Anki) e no tema claro. Não há protótipo para ele: o desenho segue os avisos do Painel
-// (`docs/design/painel/anki/prototipo-anki.html`, como o aviso do teto do mês). É PROPOSTA para o dono comparar e aprovar (CODING_STANDARDS
-// regra 10): as imagens não estão na árvore. Aprovando: tirar o `fixme`, rodar
-//
-//   cd e2e && npx playwright test conexao-versao-visual --update-snapshots
-//
-// e anotar a aprovação em e2e/aprovados-visuais.json.
-
 const { test, expect } = require('../fixtures');
 const { AGORA, abrirPainel } = require('../apoio-do-envio');
 

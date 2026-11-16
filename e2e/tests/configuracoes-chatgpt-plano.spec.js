@@ -1,10 +1,5 @@
 'use strict';
 
-// O resto do plano do ChatGPT no card IA dos cartões (#156, docs/design/imagem-pelo-plano.md): o modal da primeira vez, a conta
-// grátis ou Go que o plano não atende, e o plano sem chave (o Cartão sai com foto real ou sem imagem gerada). A Conexão com o Anki é
-// o fake do e2e, que responde pelo contrato (complemento/contrato/exemplos-do-chatgpt.json). O que fica guardado é o aviso já dado,
-// no storage da extensão (`pm_plano_do_chatgpt_avisado`); o login mora na Conexão.
-
 const { test, expect } = require('../fixtures');
 const { estadoFinal, estadoFinalEm } = require('../estado-final');
 

@@ -24,17 +24,14 @@ function tokenDoTemaPadrao(nome) {
   return achado[1];
 }
 
-/** "#F5B83D" como o Chrome devolve a cor: [R, G, B, A]. */
 function comoCorDoChrome(hex) {
   return [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)).concat(255);
 }
 
-/** "#F5B83D" como o navegador devolve a cor calculada: "rgb(245, 184, 61)". */
 function comoRgbDoCss(hex) {
   return `rgb(${comoCorDoChrome(hex).slice(0, 3).join(', ')})`;
 }
 
-/** O que a pessoa vê na toolbar: o texto do badge e o tooltip do ícone. */
 function naToolbar(extensao) {
   return extensao.serviceWorker.evaluate(async () => ({
     badge: await chrome.action.getBadgeText({}),
@@ -42,7 +39,6 @@ function naToolbar(extensao) {
   }));
 }
 
-/** O próximo disparo do alarme da virada do dia, como o Chrome o guarda. */
 async function proximoAlarme(extensao) {
   const alarme = await extensao.serviceWorker.evaluate(
     nome => chrome.alarms.get(nome), ALARME_VIRADA_DO_DIA);
@@ -55,7 +51,6 @@ async function proximoAlarme(extensao) {
   };
 }
 
-/** A data de um dia no formato que o contador diário usa. */
 function diaDe(momento) {
   return [
     momento.getFullYear(),
@@ -64,7 +59,6 @@ function diaDe(momento) {
   ].join('-');
 }
 
-/** Semeia os idiomas e os contadores de um dia da mineração automática. */
 function semearMineracaoAutomatica(extensao, { en, ru, dia = diaDe(new Date()) }) {
   return extensao.gravarStorage({
     pm_auto_miner_settings: {
@@ -85,7 +79,6 @@ test('o badge soma só os idiomas ligados', async ({ extensao }) => {
     ru: { ligado: false, limite: 20, hoje: 13 },
   });
 
-  // O 13 do russo desligado fica de fora: o badge mostra os 12 do inglês.
   await expect.poll(() => naToolbar(extensao)).toEqual({
     badge: '12',
     tooltip: 'Mineração automática: 12 hoje',
@@ -156,8 +149,6 @@ test('cada mineração automática soma um no badge', async ({ page, paginas, ex
     en: { ligado: false, limite: 20, hoje: 0 },
     ru: { ligado: true, limite: 20, hoje: 4 },
   });
-  // O vocabulário do Anki em cache, sem nenhuma palavra conhecida: a frase russa
-  // tem um item novo só, então a mineração automática a aceita.
   await extensao.gravarStorage({
     pm_auto_keyword_vocab_ru: {
       cacheVersion: 2,
@@ -168,8 +159,6 @@ test('cada mineração automática soma um no badge', async ({ page, paginas, ex
   });
   await expect.poll(async () => (await naToolbar(extensao)).badge).toBe('4');
 
-  // O player falso com a legenda russa na tela, tocando de verdade: a mineração
-  // automática só olha legenda de vídeo que não está pausado.
   await page.goto(paginas.url('player.html'));
   await page.evaluate(async frase => {
     document.querySelector('#legenda').textContent = frase;
@@ -208,8 +197,6 @@ test('o alarme da meia-noite acerta o badge e se reagenda para a meia-noite segu
   });
   await expect.poll(async () => (await naToolbar(extensao)).badge).toBe('12');
 
-  // Um badge velho na toolbar, como o de ontem fica depois da meia-noite: a
-  // virada do dia não escreve nada no armazenamento, então só o alarme o acerta.
   await extensao.serviceWorker.evaluate(() => chrome.action.setBadgeText({ text: '99' }));
 
   // O Chrome não deixa o teste esperar a meia-noite: o teste troca o alarme por
@@ -236,8 +223,6 @@ test('a vitrine mostra os três estados do badge, nas cores dos tokens', async (
   // conferir cor e contraste no navegador comum.
   await page.goto(paginas.url('vitrine.html'));
 
-  // A vitrine não carrega o catálogo da Voz; o texto dela é conferido contra o
-  // catálogo, para não ficar para trás quando o catálogo mudar.
   const voz = await extensao.serviceWorker.evaluate(() => ({
     contador: textoDaVoz('MIN-09.contador', { n: 12 }),
     noLimite: textoDaVoz('MIN-09.noLimite'),
@@ -254,12 +239,10 @@ test('a vitrine mostra os três estados do badge, nas cores dos tokens', async (
   await expect(noLimite.locator('.icone-com-badge b')).toHaveText('25');
   await expect(noLimite).toContainText(voz.noLimite);
 
-  // Desligado não tem badge nenhum, e o tooltip é o nome da extensão.
   const desligado = estados.filter({ hasText: 'Os dois idiomas desligados' });
   await expect(desligado.locator('.icone-com-badge b')).toHaveCount(0);
   await expect(desligado).toContainText('PerpetualMiner');
 
-  // A cor sai dos tokens, não de um literal repetido na vitrine.
   await expect(contando.locator('.icone-com-badge b')).toHaveCSS(
     'background-color', comoRgbDoCss(tokenDoTemaPadrao('--veio-accent')));
   await expect(contando.locator('.icone-com-badge b')).toHaveCSS(
@@ -278,12 +261,9 @@ test('o badge usa as cores da identidade Veio', async ({ extensao }) => {
     texto: await chrome.action.getBadgeTextColor({}),
   }));
 
-  // #F5B83D com texto #1A1204, a dupla da spec da identidade.
   expect(cores.fundo).toEqual([0xF5, 0xB8, 0x3D, 255]);
   expect(cores.texto).toEqual([0x1A, 0x12, 0x04, 255]);
 
-  // E são as mesmas de `veio/tokens.css`: mudar o token sem mudar a cópia de
-  // `background.js` quebra aqui, em vez de sair um badge fora da identidade.
   expect(cores.fundo).toEqual(comoCorDoChrome(tokenDoTemaPadrao('--veio-accent')));
   expect(cores.texto).toEqual(comoCorDoChrome(tokenDoTemaPadrao('--veio-accent-ink')));
 });

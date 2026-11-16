@@ -1,23 +1,8 @@
 'use strict';
 
-// Referência visual do overlay na página (#40, #41): o botão flutuante, a marca
-// sobre o texto capturado (a linha, o grifo e o chip) e a pílula, a reserva.
-//
-// O dono revisa estas telas lado a lado com o protótipo travado
-// (docs/design/overlay/prototipo-overlay.html?variant=M1). Depois de aprovadas,
-// elas são a referência: uma mudança visual faz o teste falhar até alguém olhar
-// e atualizar:
-//
-//   cd e2e && npx playwright test overlay-visual --update-snapshots
-//
-// O sucesso some em ~3,5 s: cada foto é tirada logo que o feedback aparece.
-// A marca entra em 150 ms: a foto espera a entrada terminar.
-
 const { test, expect } = require('../fixtures');
 const DRU = 'PerpetualMiner::Russo';
 
-// O player tem o tamanho do player do protótipo (1118 × 630): lado a lado com
-// ele, a pílula aparece na mesma escala, e não maior porque o player é menor.
 const JANELA = { width: 1166, height: 678 };
 
 async function abrirPlayer(page, paginas) {
@@ -28,7 +13,6 @@ async function abrirPlayer(page, paginas) {
       no.style.width = '1118px';
       no.style.height = '630px';
     }
-    // A legenda como a do protótipo: centrada, até ~560 px, quebrando em duas linhas.
     Object.assign(document.querySelector('.caption-window').style, {
       bottom: '110px', left: '50%', right: 'auto', width: '560px', transform: 'translateX(-50%)',
     });
@@ -40,7 +24,6 @@ async function abrirPlayer(page, paginas) {
 
 const player = page => page.locator('.player');
 
-/** A marca na tela, com a entrada (150 ms) terminada. */
 async function marcaParada(page) {
   const chip = page.locator('perpetualminer-overlay .pm-chip');
   await expect(chip).toBeVisible();
@@ -153,7 +136,6 @@ test('MIN-05: a marca sob a seleção numa página comum', async ({ page, pagina
   await page.locator('#trecho').selectText();
   await page.keyboard.press('Alt+KeyE');
   await marcaParada(page);
-  // A seleção azul do navegador sai da foto: a marca é o que se compara.
   await page.evaluate(() => window.getSelection().removeAllRanges());
   await expect(page).toHaveScreenshot('min-05.png');
 });
@@ -167,7 +149,6 @@ test('MIN-06: a mineração automática, a mesma marca mais apagada, com o idiom
     pm_auto_keyword_vocab_ru: { cacheVersion: 2, deckName: DRU, createdAt: Date.now(), words: [], terms: [], wordInfo: {}, termInfo: {} },
   });
   await abrirPlayer(page, paginas);
-  // Um vídeo tocando de verdade: a mineração automática só olha legenda de vídeo que não está pausado.
   await page.evaluate(async () => {
     document.querySelector('#legenda').textContent = 'Я улыбаюсь';
     const tela = document.createElement('canvas');
@@ -178,7 +159,6 @@ test('MIN-06: a mineração automática, a mesma marca mais apagada, com o idiom
   });
   await expect(page.getByText('Mineração automática', { exact: true })).toBeVisible();
   await marcaParada(page);
-  // O vídeo toca um canvas todo preto, então o quadro não muda a foto.
   await expect(player(page)).toHaveScreenshot('min-06.png');
 });
 

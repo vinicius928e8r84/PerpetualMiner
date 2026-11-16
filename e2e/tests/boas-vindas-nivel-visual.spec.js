@@ -1,11 +1,5 @@
 'use strict';
 
-// Referência visual do passo do nível do cartão da Boas-vindas (#164, ONB-20): o controle do nível de cada idioma ligado com a prévia do Cartão,
-// e “Mais estilos em Ajustes de envio”. Não há protótipo deste passo: ele reusa o card de passo e o controle segmentado do protótipo aprovado da
-// Boas-vindas (`docs/design/painel/boas-vindas/prototipo-onboarding.html`) e a prévia de Ajustes de envio, e o dono compara estas telas com ele.
-// Todas são PROPOSTAS (`test.fixme`, sem PNG na árvore) até a aprovação dele (CODING_STANDARDS regra 10). Aprovando: tirar o `fixme` e
-// `cd e2e && npx playwright test boas-vindas-nivel-visual --update-snapshots`, e a entrada no livro `e2e/aprovados-visuais.json`.
-
 const { test, expect } = require('../fixtures');
 
 const AGUARDA_O_DONO = 'a referência visual espera a aprovação do dono (regra 10)';

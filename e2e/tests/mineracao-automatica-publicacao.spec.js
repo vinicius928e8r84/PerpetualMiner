@@ -76,7 +76,6 @@ test('a frase no limite atualiza o popup e a aba mesmo com a gravação do diagn
   await tocarVideo(page);
 
   await expect.poll(async () => (await extensao.frases()).map(frase => frase.texto)).toEqual([FRASE_RUSSA]);
-  // A gravação do diagnóstico foi tentada, falhou e nada ficou guardado como "saved".
   await expect.poll(() => extensao.serviceWorker.evaluate(() => globalThis.__gravacoesQueFalharam)).toBe(1);
   expect((await extensao.lerStorage('pm_auto_miner_last_event')).pm_auto_miner_last_event?.action).not.toBe('saved');
   expect((await extensao.lerStorage('pm_auto_miner_daily')).pm_auto_miner_daily.ru.count).toBe(3);

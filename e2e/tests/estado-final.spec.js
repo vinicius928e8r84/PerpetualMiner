@@ -1,7 +1,5 @@
 'use strict';
 
-// As conferências de e2e/estado-final.js: confirmam o que está guardado e recusam ficar vazias.
-
 const { test, expect } = require('../fixtures');
 const { estadoFinal, estadoFinalEm, estadoFinalInalterado } = require('../estado-final');
 
