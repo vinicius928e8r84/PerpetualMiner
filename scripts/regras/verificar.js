@@ -1,10 +1,6 @@
 #!/usr/bin/env node
 'use strict';
 
-// As regras que a revisão cobrava à mão, conferidas por máquina. O mesmo comando
-// roda aqui e no CI (.github/workflows/regras.yml); o uso e o funcionamento
-// estão em AJUDA, logo abaixo (`node scripts/regras/verificar.js --help`).
-
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -53,7 +49,6 @@ Uma exceção vencida, mal escrita ou numa linha que a regra não acusa também 
 
 Prova de cada regra com os erros reais que ela pega: node scripts/regras/test_regras.js`;
 
-// Erros de uso (bandeira desconhecida, valor faltando): stdout, código 2.
 class ErroDeUso extends Error {}
 
 function lerArgumentos(argv) {
@@ -91,7 +86,6 @@ function git(raiz, args) {
   }
 }
 
-// A exceção escrita na linha, se houver: { valida, regra, erro }.
 function excecaoNaLinha(texto, hoje) {
   const m = EXCECAO.exec(texto);
   if (!m || !REGRAS.some(regra => regra.id === m[1])) return null;
@@ -107,12 +101,11 @@ function excecaoNaLinha(texto, hoje) {
   return { regra: m[1], valida: true };
 }
 
-/** Os achados de todas as regras: { [regra]: { [arquivo]: [{ linha, detalhe }] } } e os erros de exceção. `base` é o commit que as regras que comparam com a branch-alvo leem (ou null). */
 function coletar(raiz, hoje, base = null) {
   const arquivos = arquivosDoRepositorio(raiz);
   const porRegra = {};
   const errosDeExcecao = [];
-  const acusadas = new Set(); // `regra arquivo:linha` de todo achado, com ou sem exceção
+  const acusadas = new Set();
   const textos = new Map();
   const ler = arquivo => {
     if (!textos.has(arquivo)) textos.set(arquivo, fs.readFileSync(path.join(raiz, arquivo), 'utf8'));
@@ -134,8 +127,6 @@ function coletar(raiz, hoje, base = null) {
       if (achados.length) porRegra[regra.id][arquivo] = achados;
     }
   }
-  // Toda exceção escrita num comentário é conferida: mal escrita, vencida, ou numa
-  // linha que a regra não acusa (ficou para trás depois de um conserto).
   for (const arquivo of arquivos.filter(a => /\.(js|mjs|css|html|py|sh|ya?ml)$|^scripts\/ganchos\/[^./]+$/.test(a))) {
     for (const [linha, texto] of comentariosDe(arquivo)) {
       const excecao = excecaoNaLinha(texto, hoje);
@@ -160,7 +151,6 @@ function contagens(porRegra) {
 
 const total = porArquivo => Object.values(porArquivo || {}).reduce((soma, n) => soma + n, 0);
 
-// As linhas que a mudança acrescentou em `arquivo`, comparadas com `base`; null sem git.
 function linhasNovas(raiz, base, arquivo) {
   if (!base) return null;
   const diff = git(raiz, ['diff', '-U0', base, '--', arquivo]);
@@ -177,12 +167,6 @@ function linhasNovas(raiz, base, arquivo) {
 
 const COMMIT_VAZIO = /^0+$/;
 
-// O teto da linha de base: a ponta da --base (REGRAS_BASE no CI: no PR, a branch-alvo;
-// no push, o commit anterior), sem passar pelo merge-base, para uma permissão que a
-// main já tirou não voltar por um ramo antigo. O merge-base só serve para achar as
-// linhas que a mudança acrescentou. null quando não há base: o primeiro push de um
-// ramo (commit vazio) ou, sem --base nem REGRAS_BASE, um clone sem origin/main. Uma
-// base pedida que não resolve é erro, não um verde sem comparação.
 function baseDeComparacao(raiz, pedida) {
   const doAmbiente = process.env.REGRAS_BASE || null;
   const ref = pedida || doAmbiente || 'origin/main';
@@ -244,8 +228,6 @@ function main(argv) {
       const tem = agora[regra.id][arquivo] || 0;
       const pode = permitido[arquivo] || 0;
       if (tem < pode) {
-        // Uma regra de teto (`baixarObrigatorio`) não deixa folga: a linha de base desce junto com o arquivo
-        // (e o --atualizar é justamente o que a baixa, então ele não a acusa).
         if (regra.baixarObrigatorio && !opcoes.atualizar) erros.push(regra.mensagemDeFolga({ arquivo, tem, pode }));
         else podeBaixar.push(`${regra.id} ${arquivo}: ${pode} → ${tem}`);
       }
@@ -267,7 +249,6 @@ function main(argv) {
     }
   }
 
-  // A linha de base só desce: o total de cada regra não passa o da linha de base do teto.
   if (!base) {
     avisos.push('sem base de comparação (primeiro push, ou nem --base, nem REGRAS_BASE, nem origin/main): '
       + 'a linha de base não foi comparada');
@@ -278,13 +259,10 @@ function main(argv) {
     } else {
       const antes = lerJson(anterior, `${base.ref}:${ARQUIVO_DA_LINHA_DE_BASE}`);
       for (const regra of REGRAS) {
-        // Uma regra que a base ainda não tem entra com a primeira linha de base dela: não há teto a comparar.
         if (!(regra.id in antes)) {
           avisos.push(`${base.ref} ainda não tem a regra ${regra.id}: esta é a primeira linha de base dela (${total(linhaDeBase[regra.id])})`);
           continue;
         }
-        // Uma regra de teto confere também cada arquivo: o total só desce, mas sem isto a folga de um arquivo
-        // da lista passaria para outro (ou para um arquivo novo) editando a linha de base à mão.
         if (regra.baixarObrigatorio) {
           for (const [arquivo, n] of Object.entries(linhaDeBase[regra.id] || {}).sort()) {
             const anteriorDoArquivo = (antes[regra.id] || {})[arquivo];

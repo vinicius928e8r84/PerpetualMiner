@@ -1,7 +1,5 @@
 'use strict';
 
-// As provas das regras indice-de-arquivos e aprovacao-visual; a catraca inteira é provada em test_regras.js.
-
 const assert = require('assert');
 const fs = require('fs');
 
@@ -11,8 +9,6 @@ const { repositorioDeTestes } = require('./apoio-de-testes');
 let total = 0;
 const nulo = (achados, quantas, porque) => { assert.strictEqual(achados.length, quantas, `${porque}\n${JSON.stringify(achados, null, 2)}`); total++; return achados; };
 
-// indice-de-arquivos: o arquivo novo sem linha nas tabelas de docs/arquivos/ e a linha que sobrou de um arquivo que saiu
-// (as omissões que a revisão do #183 e do #187 apontava à mão). O índice são todos os .md de docs/arquivos/.
 {
   const EXTENSAO = [
     '# Arquivos da extensão', '', '| File | Role |', '|---|---|',
@@ -55,8 +51,6 @@ const nulo = (achados, quantas, porque) => { assert.strictEqual(achados.length, 
   fs.rmSync(pasta, { recursive: true, force: true });
 }
 
-// aprovacao-visual: o PNG novo de um --update-snapshots sem a aprovação do dono (regra 10 do CODING_STANDARDS),
-// o que espera num test.fixme e o que o livro já registra.
 {
   const SPEC = [
     "test('tela pronta', async ({ page }) => {", "  await expect(page).toHaveScreenshot('pronta.png');", '});',

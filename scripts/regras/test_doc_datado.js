@@ -1,8 +1,5 @@
 'use strict';
 
-// A prova da regra doc-datado (scripts/regras/doc-datado.js): acusa o erro real que a fez existir e
-// deixa passar o jeito certo; a catraca inteira é provada em test_regras.js.
-
 const assert = require('assert');
 const path = require('path');
 
@@ -16,7 +13,6 @@ function acusa(id, arquivo, fonte, quantas, porque) {
   total++;
 }
 
-// Os erros reais: a SKILL.md de verificação carregou "41" como o tamanho da suíte e o CLAUDE.md de então ainda falava em "about 700 tests".
 acusa('doc-datado', '.agents/skills/verify-perpetualminer/SKILL.md', 'that the suite is collectable (41 specs listed by `playwright test --list`)\n', 1, 'contagem de specs (a SKILL.md antes do #226)');
 acusa('doc-datado', 'docs/arquitetura.md', 'the whole suite (about 700 tests) runs in CI\n', 1, 'contagem de tests (docs/arquitetura.md)');
 acusa('doc-datado', 'docs/instalar-extensao.md', 'São 12 testes de ponta a ponta.\n', 1, 'contagem em português');
@@ -31,13 +27,11 @@ acusa('doc-datado', 'docs/arquitetura.md', [
   'Rode os specs da área; a prova de cada regra fica em test_regras.js (Python 3.9, 3.13).',
   'Veja o PR no git log; a rodada de revisão fica no ticket.',
 ].join('\n'), 0, 'comandos, variável com número, sem contagem');
-// Os falsos positivos: a versão do Python antes de "tests" e o número da regra antes de "Every test".
 acusa('doc-datado', 'docs/arquitetura.md', [
   'Add-on: the Python 3.9 tests and the Python 3.13 tests run in CI.',
   '| 12 Every test runs in CI | `testes-no-portao` |',
 ].join('\n'), 0, 'versão decimal e "Every test" não são contagem');
 acusa('doc-datado', 'docs/arquitetura.md', 'o grupo roda 1.200 tests e 3 e2e specs\n', 2, 'milhar com ponto e um e2e ainda são contagem');
-// Onde a regra vale: docs/ (inclusive docs/arquitetura.md, que era o CLAUDE.md), complemento/ e as skills, só em Markdown.
 const aplica = arquivo => regras['doc-datado'].seAplica(arquivo);
 for (const sim of ['docs/arquitetura.md', 'docs/superpowers/specs/2026-06-nota.md', 'docs/instalar-extensao.md', 'docs/design/voz/README.md', 'complemento/LEIA-ME.md', 'complemento/contrato/LEIA-ME.md',
   '.agents/skills/verify-perpetualminer/SKILL.md', '.agents/skills/verify-perpetualminer/features/ia.md']) {

@@ -1,10 +1,5 @@
 'use strict';
 
-// Teste Python que lê o texto do código (`assertIn("…", fonte_da_funcao)`) passa
-// com o comportamento quebrado e quebra com uma renomeação (CODING_STANDARDS.md
-// regra 9). A revisão da D1 (#124) pediu duas vezes para trocá-los por testes
-// da rota; os que sobraram estão na linha de base, e um novo é acusado.
-
 const id = 'teste-le-codigo';
 
 const conserto = 'Exercite a rota ou a função, não o texto dela: a rota por HTTP '
@@ -14,12 +9,10 @@ const conserto = 'Exercite a rota ou a função, não o texto dela: a rota por H
 
 const seAplica = arquivo => /(^|\/)test_[^/]*\.py$/.test(arquivo);
 
-// O texto sem comentários de linha; strings ficam (os nomes de arquivo estão nelas).
 function semComentarios(fonte) {
   return fonte.split('\n').map(linha => (/^\s*#/.test(linha) ? '' : linha)).join('\n');
 }
 
-// As funções de primeiro nível e de classe: nome, onde começa e onde termina o corpo.
 function funcoes(codigo) {
   const linhas = codigo.split('\n');
   const lista = [];
@@ -37,15 +30,12 @@ function funcoes(codigo) {
 function verificar(arquivo, fonte) {
   const codigo = semComentarios(fonte);
   const linhas = codigo.split('\n');
-  // As constantes que apontam para um .py (`SERVER_PATH = Path(__file__).with_name("server.py")`).
   const caminhosDeCodigo = new Set();
   for (const m of codigo.matchAll(/^(\w+)\s*=.*['"][\w./-]+\.py['"]/gm)) caminhosDeCodigo.add(m[1]);
   const leCodigo = linha => /\b(?:inspect\.)?getsource\s*\(|\bget_source_segment\s*\(/.test(linha)
     || (/\.read_text\s*\(|\bopen\s*\(|\.read_bytes\s*\(/.test(linha)
       && (/['"][\w./-]+\.py['"]/.test(linha) || [...caminhosDeCodigo].some(nome => new RegExp(`\\b${nome}\\b`).test(linha))));
 
-  // Quem lê o código, direta ou indiretamente: os auxiliares como `_function_source`.
-  // Um `test_…` nunca é auxiliar: é nele que a leitura conta.
   const defs = funcoes(codigo).filter(def => !/^test/.test(def.nome));
   const leitores = new Set();
   for (let mudou = true; mudou;) {

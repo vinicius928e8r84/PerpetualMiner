@@ -1,16 +1,5 @@
 'use strict';
 
-// Um link relativo de Markdown para um arquivo que não existe, ou para um título (#âncora) que o arquivo
-// de destino não tem, deixa o leitor num beco: o texto aponta para um lugar que sumiu ou foi renomeado
-// (os 4 links de docs/arquitetura.md na revisão do #446; o `#movimento` de
-// docs/design/identidade-veio/README.md, cujo título é "Movimento (da C)"). Esta regra confere, em todo
-// arquivo .md do repositório, os links `[texto](alvo)`, as imagens, as definições `[id]: alvo` e os
-// `href`/`src` em HTML: o arquivo precisa existir (relativo à pasta do .md, ou à raiz se o alvo começa com `/`) e,
-// quando o alvo é um .md com `#âncora`, a âncora precisa ser o título de lá (a regra de nome do GitHub) ou um
-// `id`/`name` escrito no texto. Não olha links com esquema (https:, mailto:), nem código (cercado ou entre crases),
-// nem `#L12` (linha de arquivo). Não há exceção na linha: o verificar.js só lê exceções em comentários de js,
-// mjs, css, html e py, não em Markdown; um link que precisa ficar entra na linha de base.
-
 const fs = require('fs');
 const path = require('path');
 
@@ -21,10 +10,8 @@ const conserto = 'Aponte o link para o arquivo ou o título que existe hoje (o a
 
 const seAplica = arquivo => arquivo.endsWith('.md');
 
-// Uma linha em branco no lugar do código: as linhas e as colunas ficam as do arquivo.
 const branco = texto => texto.replace(/[^\n]/g, ' ');
 
-/** O Markdown sem o código cercado (``` ou ~~~) e sem os trechos entre crases (a menos que `manterCrases`), com as mesmas linhas. */
 function semCodigo(fonte, { manterCrases = false } = {}) {
   let cerca = null;
   // Um clone com core.autocrlf=true (Git for Windows) entrega o Markdown com CRLF: o `\r` não pode ficar no fim da linha.
@@ -44,12 +31,10 @@ function semCodigo(fonte, { manterCrases = false } = {}) {
 
 const sinalDeEsquema = /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i;
 
-// Os alvos: `](alvo)` (com `<...>`, parênteses dentro e título depois), `[id]: alvo` e href/src de HTML.
 const EM_LINHA = /\]\(\s*(<[^>\n]*>|[^\s()]*(?:\([^\s()]*\)[^\s()]*)*)/g;
 const DEFINICAO = /^ {0,3}\[[^\]\n]+\]:\s*(<[^>\n]*>|\S+)/;
 const EM_HTML = /<(?:a|img)\b[^>]*?\b(?:href|src)=(?:"([^"]*)"|'([^']*)')/gi;
 
-/** Os links de uma linha: { alvo, texto } (texto é o que a mensagem mostra). */
 function linksDaLinha(linha) {
   const achados = [];
   const limpar = bruto => bruto.replace(/^<|>$/g, '');
@@ -75,7 +60,6 @@ function ancoraDoTitulo(titulo) {
     .replace(/\s/g, '-');
 }
 
-/** As âncoras de um .md: os títulos (com -1, -2 nos repetidos) e os `id=`/`name=` do texto. */
 function ancorasDe(fonte) {
   // Os títulos leem o código em linha (o GitHub tira só as crases e mantém o texto); os `id=` não.
   const limpo = semCodigo(fonte);
@@ -100,7 +84,6 @@ function ancorasDe(fonte) {
   return { ancoras, explicitas };
 }
 
-/** Os títulos que um leitor provavelmente quis dizer com `pedida`: a âncora começa igual ou contém a outra. */
 function parecidas(pedida, ancoras) {
   return ancoras.filter(a => a.ancora && (a.ancora.startsWith(pedida) || pedida.startsWith(a.ancora) || a.ancora.includes(pedida)))
     .slice(0, 3).map(a => `#${a.ancora}`);
