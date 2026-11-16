@@ -1,12 +1,5 @@
 'use strict';
 
-// Referência visual da aba Custos com o plano do ChatGPT (#159, BRG-40): o card acima da faixa de resumo (Cartões feitos,
-// “Você economizou”, Gerenciar uso ↗). Não há protótipo para ele: o desenho segue o card das imagens da variante C
-// (`docs/design/painel/anki/prototipo-anki.html?variant=C`). É PROPOSTA para o dono comparar e aprovar (CODING_STANDARDS regra 10):
-// as imagens não estão na árvore. Aprovando: tirar o `fixme` e
-//
-//   cd e2e && npx playwright test painel-custos-plano-visual --update-snapshots
-
 const { test, expect } = require('../fixtures');
 
 const AGORA = new Date('2026-09-18T12:00:00');

@@ -1,10 +1,5 @@
 'use strict';
 
-// Bug grave de #9: o content script aceitava as mensagens de copiar/salvar de
-// qualquer um, então qualquer site injetava frases no histórico e sobrescrevia
-// o clipboard. O caminho legítimo (player em iframe que cai para o frame de
-// cima quando o clipboard falha) tem de continuar funcionando.
-
 const { test, expect } = require('../fixtures');
 
 const CLIPBOARD_ORIGINAL = 'O que a pessoa tinha copiado antes.';
@@ -18,7 +13,6 @@ async function prepararClipboard(context, page, origem) {
 
 const lerClipboard = page => page.evaluate(() => navigator.clipboard.readText());
 
-// A página hostil age sozinha; nada pode ter sido gravado nem copiado.
 async function esperarQuePaginaHostilNaoMudeNada({ context, page, paginas, extensao }, agir) {
   await page.goto(paginas.url('hostil.html'));
   await expect(page.getByRole('button', { name: /^Minerar legenda/ })).toBeVisible();
@@ -46,7 +40,6 @@ test('legenda num player em iframe de outra origem: minerar ainda grava a frase 
   await expect(player.getByRole('button', { name: /^Minerar legenda/ })).toBeVisible();
   await prepararClipboard(context, page, paginas.origem);
 
-  // O foco fica no player, como quando a pessoa clica no vídeo antes do atalho.
   await player.locator('video').click();
   await page.keyboard.press('Alt+KeyS');
 

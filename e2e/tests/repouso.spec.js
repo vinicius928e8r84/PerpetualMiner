@@ -1,10 +1,5 @@
 'use strict';
 
-// O repouso (e2e/repouso.js): o painel aberto e parado, sem clique, não escreve nada. Passam os ciclos de
-// saúde de 15 s e a Conexão com o Anki, o Firestore e o `chrome.storage.local` seguem como estavam. O card da
-// IA e o Conta & sync são as telas que consultam sozinhas; cada um roda com um perfil e com dois (A e B, duas
-// contas Google, uma Conexão só). Só chaves fictícias.
-
 const { test, expect } = require('../fixtures');
 const { emRepouso, assentar } = require('../repouso');
 
@@ -12,10 +7,8 @@ const CHAVE_A = 'sk-fake-repouso-primeira-aaaa';
 const CHAVE_B = 'sk-fake-repouso-segunda-bbbb';
 const CICLOS = 4;
 
-// Quatro ciclos esperam quatro respostas por tela, e a primeira sincronização pode demorar com a máquina carregada.
 test.beforeEach(() => { test.slow(); });
 
-/** O relógio da página anda só quando o teste manda; a tela abre nele e espera o chip da conta assentar. */
 async function abrirComRelogio(relogioParado, page, extensao, secao) {
   await relogioParado({ page });
   await page.goto(extensao.url(`painel.html#configuracoes/${secao}`));
@@ -61,7 +54,6 @@ for (const bComChave of [false, true]) {
     const b = await segundoPerfil.context.newPage();
     await abrirComRelogio(relogioParado, b, segundoPerfil.extensao, 'ia');
     const resumoFinal = bComChave ? '••••••••bbbb' : 'Sem chave';
-    // A lê o dono que B deixou na Conexão ao abrir; só depois vem o repouso
     await assentar([{ page, extensao }, { page: b, extensao: segundoPerfil.extensao }], { esperar: '/ia/estado' });
     await expect(cardDaIA(b).locator('.cfg-resumo')).toHaveText(resumoFinal);
 
@@ -97,7 +89,6 @@ test('Conta & sync com dois perfis: parados, A e B não escrevem um no outro', a
   const b = await segundoPerfil.context.newPage();
   await abrirComRelogio(relogioParado, b, segundoPerfil.extensao, 'conta');
   await expect(cardDaConta(b)).toContainText('Sincronizado');
-  // A lê o dono que B deixou na Conexão ao abrir; só depois vem o repouso
   await assentar([{ page, extensao }, { page: b, extensao: segundoPerfil.extensao }]);
 
   await emRepouso(page, { ciclos: CICLOS, fakes, extensao, tambem: [{ page: b, extensao: segundoPerfil.extensao }] });
@@ -109,7 +100,6 @@ test('Conta & sync com dois perfis: parados, A e B não escrevem um no outro', a
   expect(fakes.google.chaveDaOpenAIDe('B')?.chave).toBe(CHAVE_B);
 });
 
-// O próprio helper: um repouso que escreve precisa ficar vermelho, em cada um dos três lugares.
 const escreveNoCiclo = {
   'um pedido que muda algo na Conexão': () => fetch('http://127.0.0.1:8766/ia/openai/sincronizar', { method: 'POST', body: '{}' }),
   'uma escrita no Firestore': () => fetch('https://firestore.googleapis.com/v1/projects/perpetualminer-4c219/databases/(default)/documents/usuarios/A/segredos/openai', { method: 'PATCH', body: '{"fields":{}}' }),
@@ -122,6 +112,6 @@ for (const [descricao, escrita] of Object.entries(escreveNoCiclo)) {
     await page.evaluate(`setTimeout(${escrita.toString()}, 5000)`);
 
     await expect(emRepouso(page, { ciclos: 1, fakes, extensao })).rejects.toThrow(/em 1 ciclos de repouso/);
-    // Exceção de teste: sem-estado-guardado — o teste prova que o helper recusa; o que ele grava de propósito não é estado do produto
+    // Exceção de teste: sem-estado-guardado
   });
 }

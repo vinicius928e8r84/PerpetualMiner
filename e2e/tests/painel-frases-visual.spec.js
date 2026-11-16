@@ -1,21 +1,7 @@
 'use strict';
 
-// Referência visual da lista de Frases (#29), da seleção, das ações do cartão
-// e dos modais (#30) e do Minerar frases (#31), no layout A · Cartões do
-// protótipo travado (docs/design/painel/frases/prototipo-frases.html?variant=A).
-// O dono revisa estas telas lado a lado com o protótipo; depois de aprovadas,
-// qualquer mudança visual na lista faz o teste falhar até alguém olhar e
-// atualizar a referência:
-//
-//   cd e2e && npx playwright test painel-frases-visual --update-snapshots
-//
-// A sidebar e a ilha do conteúdo têm a altura da janela e começam e terminam
-// juntas; a lista rola dentro da ilha. Por isso a lista é capturada duas
-// vezes: o topo, e a ilha rolada até a paginação.
-
 const { test, expect } = require('../fixtures');
 
-// O cabeçalho de data sai do relógio: ele fica parado no dia das frases.
 const AGORA = new Date('2026-09-18T12:00:00');
 
 const FRASES = [
@@ -33,8 +19,6 @@ const FRASES = [
   { id: 1, texto: 'That ship has sailed.', data: '13/09/2026', streaming: 'netflix', idioma: 'Inglês', contexto: { fonte: 'netflix', titulo: 'Succession', detalhe: 'T2E1' } },
 ];
 
-
-/** O topo da lista e o fim dela, rolada até a paginação. */
 async function capturarTopoEFim(page, nome) {
   await expect(page).toHaveScreenshot(`${nome}.png`);
   await page.locator('.shell-conteudo').evaluate(ilha => ilha.scrollTo(0, ilha.scrollHeight));
@@ -101,7 +85,6 @@ test('busca sem resultado com filtro ligado (PAI-04)', async ({ page, extensao }
   await expect(page).toHaveScreenshot('frases-busca-vazia.png', { fullPage: true });
 });
 
-
 const primeiroCartao = page => page.locator('#frases-lista .veio-frase').first();
 
 test('a barra contextual da seleção, com o cartão selecionado', async ({ page, extensao }) => {
@@ -159,7 +142,6 @@ test('o modal Editar contexto, para a seleção (PAI-20)', async ({ page, extens
   await expect(page).toHaveScreenshot('frases-modal-contexto.png');
 });
 
-
 const modalDeMinerar = page => page.getByRole('dialog', { name: 'Minerar frases' });
 
 async function abrirModoDeMinerar(page, modo) {
@@ -168,7 +150,6 @@ async function abrirModoDeMinerar(page, modo) {
   await expect(modalDeMinerar(page)).toBeVisible();
 }
 
-/** Segura a detecção da Palavra (vocabulário da Conexão com o Anki): a primeira gravação fica esperando. */
 function segurarGravacoes(fakes) {
   let soltar;
   const segurada = new Promise(resolve => { soltar = resolve; });
@@ -257,14 +238,10 @@ test('a nuvem falhou (ADD-06): o aviso persistente no topo de Frases', async ({ 
   await expect(page.locator('#frases-avisos').getByRole('alert')).toBeVisible();
 
   await expect(page).toHaveScreenshot('frases-minerar-nuvem-falhou.png', {
-    // A lista ganha as frases coladas com o id da hora: ela já tem a própria referência.
     mask: [page.locator('#frases-lista, #frases-paginas')],
   });
 });
 
-// O lembrete “Configuração pela metade” (ONB-15, #44): a faixa ouro no topo de
-// Frases, com o anel, Ocultar e Continuar configuração; na janela estreita ela
-// quebra em linhas. As frases e a Conexão respondendo são 2 dos 9 passos.
 test.describe('configuração pela metade (ONB-15)', () => {
   test.use({ lembreteDaConfiguracao: true });
 

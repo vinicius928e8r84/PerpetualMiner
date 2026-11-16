@@ -1,9 +1,5 @@
 'use strict';
 
-// Referências visuais do perfil fixo do Anki (#149). As duas telas são novas, então ficam `fixme`, sem PNG, até o dono
-// compará-las com o protótipo aprovado do #133 (“B BOA OPÇAO”, Configurações) e com o do #105 (o Envio) e aprovar (regra 10):
-// a linha “Perfil do Anki ▾” com o aviso em vermelho, e o cartão do Envio esperando em outro perfil.
-
 const { test, expect } = require('../fixtures');
 const { AGORA, INGLESAS, SACK, ARM, abrirPainel, envio, marcarEEnviar, enviosCriados } = require('../apoio-do-envio');
 

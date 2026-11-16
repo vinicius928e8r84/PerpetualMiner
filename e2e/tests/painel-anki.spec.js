@@ -1,17 +1,10 @@
 'use strict';
 
-// Conexão com o Anki (#33): a área por idioma, os estados da conexão e a aba Custos
-// (docs/design/painel/anki/, variante C). A Conexão é o fake da fronteira HTTP
-// (fakes/anki.js): /health diz se ela está ligada, POST /analytics/jobs traz os
-// Envios do período no do /jobs. Os testes afirmam o que a pessoa vê e o
-// que fica gravado.
-
 const { test, expect } = require('../fixtures');
 const { fotografar } = require('../evidencias-mineracao');
 
 const AGORA = new Date('2026-09-18T12:00:00');
 
-// Setembro tem 4 Envios (3 em inglês, 1 em russo); o de julho só entra em “Tudo”.
 const ENVIOS = [
   {
     jobId: 'job-en-concluido', lang: 'en', createdAt: '2026-09-18T11:00:00', status: 'completed', pedidas: 12,
@@ -47,16 +40,13 @@ const detalheDoEnvio = (page, titulo) => page.getByRole('region', { name: titulo
 const primeiraVez = page => page.getByRole('region', { name: 'Ainda não houve conexão neste computador' });
 const atualizar = page => page.getByRole('button', { name: 'Atualizar', exact: true });
 const pedidosDeCustos = fakes => fakes.anki.requisicoes.filter(r => r.caminho === '/analytics/jobs');
-// A camada principal de Custos: tudo menos o Avançado, que sempre mostra 4 casas.
 const camadaPrincipal = page => page.locator('#anki-custos-azulejos, #anki-custos-corpo');
 
-/** O rádio é escondido pelo controle segmentado: quem recebe o clique é o rótulo. */
 async function escolher(page, nome) {
   await page.locator('label.veio-segmentado__opcao').filter({ hasText: new RegExp(`^${nome}$`) }).click();
   await expect(page.getByRole('radio', { name: nome, exact: true })).toBeChecked();
 }
 
-/** Liga ou desliga uma chave do Avançado como a pessoa faz: clicando no rótulo. */
 async function usarChave(page, nome, ligada) {
   await page.getByText(nome, { exact: true }).click();
   await expect(page.getByRole('checkbox', { name: nome })).toBeChecked({ checked: ligada });
@@ -102,7 +92,6 @@ test('cai depois de responder: a F1 e o último dado com o selo BRG-12; Continua
   await expect(custos(page)).toContainText('Anki fechado. Mostrando dados de há 2 h.');
   await expect(listaDeEnvios(page).getByRole('option')).toHaveCount(4);
   await expect(primeiraVez(page)).toBeHidden();
-  // O código fica em Detalhes; e outro período não teria de onde vir.
   const antigo = page.locator('#anki-custos-antigo');
   await antigo.getByText('Detalhes', { exact: true }).click();
   await expect(antigo.locator('pre')).toContainText('/health');
@@ -113,10 +102,8 @@ test('cai depois de responder: a F1 e o último dado com o selo BRG-12; Continua
   const continuar = detalheDoEnvio(page, 'Envio em russo · 4 frases').getByRole('button', { name: 'Continuar envio' });
   await expect(continuar).toHaveAttribute('aria-disabled', 'true');
   await expect(continuar).toHaveAccessibleDescription(/Indisponível: a Conexão com o Anki está desligada/);
-  // aria-disabled deixa o botão no Tab (a dica diz por quê), mas apertar não faz nada.
   await continuar.click({ force: true });
   expect(fakes.anki.requisicoes.filter(r => r.caminho === '/jobs/retry')).toHaveLength(0);
-  // O clique não deixa a dica presa: com o mouse fora ela some, e pelo teclado ela volta.
   const dica = page.locator('#anki-continuar-indisponivel');
   await page.mouse.move(0, 0);
   await expect(dica).toBeHidden();
@@ -125,7 +112,6 @@ test('cai depois de responder: a F1 e o último dado com o selo BRG-12; Continua
   await expect(continuar).toBeFocused();
   await expect(dica).toBeVisible();
 
-  // O Reparar Anki saiu da extensão (#152): nem Baralhos e termos tem mais botão para ele.
   await escolher(page, 'Baralhos e termos');
   await expect(page.getByRole('button', { name: 'Reparar Anki' })).toHaveCount(0);
 });
@@ -174,7 +160,6 @@ test('erro na leitura de custos: BRG-04 inline com Tentar de novo e Detalhes, di
   const aviso = custos(page).getByRole('alert');
   await expect(aviso).toContainText('Não deu para carregar os custos. Confira se a Conexão com o Anki está ligada.');
   await expect(custos(page)).toContainText('Custo indisponível');
-  // O erro não tem a cara do carregando.
   await expect(custos(page).getByText('Somando os custos…')).toBeHidden();
   await expect(custos(page).locator('.veio-esqueleto')).toHaveCount(0);
   await expect(custos(page).locator('#anki-custos-corpo')).not.toContainText('US$ 0,00');
@@ -216,14 +201,12 @@ test('o período abre em Este mês; Hoje e De/Até pedem as datas certas', async
 
 test('azulejos por idioma com total e envios; o escolhido filtra o resumo, as imagens e a lista', async ({ page, extensao }) => {
   await page.setViewportSize({ width: 1280, height: 1100 });
-  // Atrasa a leitura na fronteira HTTP: pegar os botões cedo não pode passar por sorte.
   await page.route('http://127.0.0.1:8766/analytics/jobs', async route => {
     await new Promise(resolve => setTimeout(resolve, 500));
     await route.fallback();
   });
   await abrirAnki(page, extensao);
 
-  // Os azulejos só aparecem com os dados lidos: esperar por eles antes de pegar os botões.
   await expect(azulejos(page).getByRole('button')).toHaveCount(3);
   const [todos, ingles, russo] = await azulejos(page).getByRole('button').all();
   await expect(todos).toHaveAttribute('aria-pressed', 'true');
