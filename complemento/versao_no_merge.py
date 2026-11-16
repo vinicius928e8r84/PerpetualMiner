@@ -1,6 +1,6 @@
 """Dá a versão da Conexão com o Anki na hora do merge, num commit só.
 
-    python3 complemento/versao_no_merge.py [--acima-de 0.4.33 | --versao 0.4.34] [--sem-testes | --testes "comando"]
+    python3 complemento/versao_no_merge.py [--acima-de 0.4.33] [--versao 0.4.34] [--sem-testes | --testes "comando"]
 
 Uma PR não mexe na `VERSAO`, no `versoes.json` nem no `conexao/perpetualminer.ankiaddon` (a regra `versoes-publicadas` a
 barra); depois de cada merge, quem junta roda este script na main, com a árvore limpa:
@@ -14,7 +14,7 @@ barra); depois de cada merge, quem junta roda este script na main, com a árvore
 
 `versoes-reservadas.json` lista os números que PRs abertas já carregam (o script nunca os dá, e a regra só deixa uma PR
 escrevê-los à mão enquanto estiverem ali; esvazie a lista quando elas mesclarem); `--acima-de` reserva mais um, de passagem.
-`--versao X.Y.Z` cumpre a reserva: dá exatamente esse número (a PR que o prometeu), que tem de estar na lista e ainda não estar no `versoes.json`. O resultado é o que o fluxo antigo (subir a versão à mão, registrar
+`--versao X.Y.Z` cumpre a reserva: dá exatamente esse número (a PR que o prometeu), que tem de estar na lista, fora do `versoes.json`, acima do maior número dele e de `--acima-de`. O resultado é o que o fluxo antigo (subir a versão à mão, registrar
 o hash e refazer o arquivo) dava para a mesma versão: `test_versao_no_merge.py` compara byte a byte.
 """
 
@@ -112,6 +112,13 @@ def main(argv):
     if opcoes.versao:
         if opcoes.versao not in reservadas() or opcoes.versao in registradas:
             print("--versao %s: o número tem de estar em versoes-reservadas.json e ainda não estar no versoes.json" % opcoes.versao, file=sys.stderr)
+            return 2
+        maior = max(registradas, key=como_tupla)
+        if como_tupla(opcoes.versao) <= como_tupla(maior):
+            print("--versao %s: o versoes.json já vai até %s e a lista só cresce; o número tem de ser maior" % (opcoes.versao, maior), file=sys.stderr)
+            return 2
+        if opcoes.acima_de and como_tupla(opcoes.versao) <= como_tupla(opcoes.acima_de):
+            print("--versao %s: não pode ser menor ou igual ao teto de --acima-de %s" % (opcoes.versao, opcoes.acima_de), file=sys.stderr)
             return 2
         nova = opcoes.versao
     else:
