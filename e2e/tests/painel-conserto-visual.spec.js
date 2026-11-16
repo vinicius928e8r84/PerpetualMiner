@@ -1,12 +1,5 @@
 'use strict';
 
-// Referência visual do Consertar sozinho (#152): a faixa do Envio com o abridor conferindo a Conexão, a Conexão que sumiu
-// do Anki (Instalar de novo) e o conserto que falhou (Baixar diagnóstico). As cópias são as da tabela da spec do #138 na Voz
-// (BRG-39); o protótipo da tabela (#102) é a referência que o dono compara. Os três testes são PROPOSTAS (`test.fixme`) até o
-// dono aprovar as telas olhando; depois de aprovadas, tire o `.fixme` e acrescente a entrada em e2e/aprovados-visuais.json:
-//
-//   cd e2e && npx playwright test painel-conserto-visual --update-snapshots
-
 const { test, expect } = require('../fixtures');
 const { AGORA, INGLESAS, SACK, marcar, enviarAoAnki, abrirPainel } = require('../apoio-do-envio');
 

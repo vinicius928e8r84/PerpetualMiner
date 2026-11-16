@@ -1,14 +1,5 @@
 'use strict';
 
-// Referência visual do Envio ao Anki (#32): o modal de progresso, o resumo e o
-// Enviar ao Anki indisponível, no layout A do protótipo travado
-// (docs/design/painel/frases/prototipo-frases.html?variant=A, “⚙ Estados do
-// protótipo” › Envio ao Anki termina). O dono revisa estas telas lado a lado
-// com o protótipo; depois de aprovadas, uma mudança visual faz o teste falhar
-// até alguém olhar e atualizar a referência:
-//
-//   cd e2e && npx playwright test painel-envio-visual --update-snapshots
-
 const { test, expect } = require('../fixtures');
 
 const AGORA = new Date('2026-09-18T12:00:00');
@@ -22,9 +13,6 @@ const FRASES = [
   { id: 2, texto: 'Мне всё равно.', data: HOJE, streaming: 'youtube', idioma: 'Russo', contexto: { fonte: 'youtube', titulo: 'Russian with Max', detalhe: '' } },
 ];
 
-// AGUARDANDO A APROVAÇÃO DO DONO (CODING_STANDARDS regra 10, #151): o Envio parado porque o Anki fechou é tela nova, e Tentar de novo
-// tomou o lugar de Continuar envio nos cartões que terminaram em parte ou não concluídos. As referências só entram depois que ele
-// aprova; aprovadas: tire o `test.fixme`, rode com --update-snapshots e anote a aprovação em e2e/aprovados-visuais.json.
 const AGUARDA_O_DONO = 'a referência visual espera a aprovação do dono (regra 10)';
 
 const progresso = page => page.getByRole('dialog', { name: 'Enviando ao Anki…' });
@@ -35,7 +23,6 @@ test.beforeEach(({ fakes }) => {
 });
 
 async function abrirFrases(page, extensao) {
-  // As referências mostram o Baralho de quem já escolheu CIMV e RUSSIAN, não o padrão de uma pessoa nova (#366).
   await extensao.gravarStorage({ frases: FRASES, ankiBridgePresets: { en: { deckName: 'CIMV' }, ru: { deckName: 'RUSSIAN' } } });
   await page.clock.setFixedTime(AGORA);
   await page.setViewportSize({ width: 1280, height: 900 });
@@ -113,9 +100,6 @@ test('Enviar ao Anki indisponível com a Conexão desligada, com o tooltip', asy
   await expect(page).toHaveScreenshot('envio-indisponivel.png');
 });
 
-// #142: o Envio dentro da Conexão com o Anki. O dono aprovou as duas telas como referência (#269, 2026-10-26); o
-// Envio com um código da Conexão fica assim até o #173 e o #177 trazerem o texto de o que fazer.
-
 test('o Envio esperando o Anki: a coleção fechada ou sincronizando, e a Conexão espera', async ({ page, extensao, fakes }) => {
   await abrirFrases(page, extensao);
   await enviarTodas(page, fakes, 2);
@@ -129,9 +113,7 @@ test('o Envio esperando o Anki: a coleção fechada ou sincronizando, e a Conex�
 
 test('o Envio com um código da Conexão: um Cartão não entrou, Tentar de novo e o código em Detalhes', async ({ page, extensao, fakes }) => {
   test.fixme(true, AGUARDA_O_DONO);
-  // Uma Conexão de antes do Envio (≤ 0.2.0) não tem a rota: o russo não começa, com o 404 em Detalhes.
   fakes.anki.recusarEnvios('ru', { status: 404, erro: 'not_found' });
-  // O id do Envio aparece em Detalhes: fixo, para a referência não mudar a cada execução.
   await page.addInitScript(() => {
     let n = 0;
     crypto.randomUUID = () => `00000000-0000-4000-8000-${String(++n).padStart(12, '0')}`;
@@ -146,7 +128,6 @@ test('o Envio com um código da Conexão: um Cartão não entrou, Tentar de novo
   await expect(page).toHaveScreenshot('envio-codigo-da-conexao.png');
 });
 
-// #150: o Envio com o Anki fechado, aprovado pelo dono contra o protótipo do #105 (o Envio esperando o Anki).
 const faixaDoAnkiFechado = page => page.locator('#frases-avisos [data-aviso="envio-anki-fechado"]');
 
 async function enviarComOAnkiFechado(page, extensao, fakes) {
@@ -175,7 +156,6 @@ test('Enviar com o Anki fechado e sem a permissão: a faixa “Abra o Anki para 
   await expect(page).toHaveScreenshot('envio-abra-o-anki.png');
 });
 
-// #151: o Envio parado porque a pessoa fechou o Anki: a frase com a contagem e o Continuar envio.
 test('o Envio parado porque o Anki fechou: “3 de 10 no Anki” e Continuar envio', async ({ page, extensao, fakes }) => {
   test.fixme(true, AGUARDA_O_DONO);
   await extensao.gravarStorage({ pm_anki_ja_conectou: true });
@@ -192,7 +172,6 @@ test('o Envio parado porque o Anki fechou: “3 de 10 no Anki” e Continuar env
   await expect(page).toHaveScreenshot('envio-parado.png');
 });
 
-// #158: o Envio no limite do plano do ChatGPT: “Limite de uso atingido · Faltam 7 cartões” e Gerenciar uso, Usar a minha chave e Tentar de novo.
 test('o Envio no limite do plano: “Faltam 7 cartões” com Gerenciar uso, Usar a minha chave e Tentar de novo', async ({ page, extensao, fakes }) => {
   test.fixme(true, AGUARDA_O_DONO);
   await abrirFrases(page, extensao);
@@ -206,8 +185,6 @@ test('o Envio no limite do plano: “Faltam 7 cartões” com Gerenciar uso, Usa
   await expect(page).toHaveScreenshot('envio-limite-do-plano.png');
 });
 
-// #156: o Envio que o plano do ChatGPT parou no primeiro limite de uso. O protótipo é o P3 do #105 (“Limite de uso atingido”, com Gerenciar uso);
-// a cópia que não diz que a cota acabou é do catálogo (ENV-20) e espera o olhar do dono.
 test('o Envio que o plano do ChatGPT parou no limite de uso: o resumo com Gerenciar uso e Tentar de novo', async ({ page, extensao, fakes }) => {
   test.fixme(true, AGUARDA_O_DONO);
   await abrirFrases(page, extensao);

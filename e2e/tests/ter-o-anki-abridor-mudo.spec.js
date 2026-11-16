@@ -1,7 +1,5 @@
 'use strict';
 
-// O passo “Ter o Anki” com um abridor mudo (#234): “Já tenho” não fica calado nos 10 s da conversa.
-
 const { test, expect } = require('../fixtures');
 const { estadoFinalEm } = require('../estado-final');
 const contrato = require('../../complemento/contrato/exemplos.json');
@@ -29,13 +27,11 @@ test.describe('com a permissão do abridor já dada', () => {
 
     await jaTenho(page).click();
 
-    // Durante a conversa a tela não fica calada: o estado verdadeiro é “tentando abrir”.
     await expect(resultadoDoAnki(page)).toHaveText('O Anki está abrindo…');
     await expect.poll(() => fakes.abridor.pedidos()).toEqual([ABRIR]);
     await relogio.avancar(5_000);
     await expect(resultadoDoAnki(page)).toHaveText('O Anki está abrindo…');
 
-    // Passado o limite da conversa (10 s), o abridor mudo vira o caminho manual.
     await relogio.avancar(6_000);
     await expect(resultadoDoAnki(page)).toHaveText('Abra o Anki para continuar.');
     await expect(itemDaLista(page, /^Ter o Anki/)).not.toHaveAccessibleName(/feito$|agora não$/);

@@ -1,10 +1,5 @@
 'use strict';
 
-// O desenho de arrastar o Anki para Aplicativos, no passo Ter o Anki do Mac (ONB-25, #238), com “menos movimento”: os dois
-// quadros parados, lado a lado. É PROPOSTA (`test.fixme`): o dono ainda não olhou (CODING_STANDARDS regra 10), então a imagem
-// não está na árvore. A tela de sempre, com o primeiro quadro, é o `nao-tenho` de `painel-anki-visual.spec.js` (também `test.fixme`).
-// Aprovando: tirar o `fixme` e `cd e2e && npx playwright test ter-o-anki-mac-visual --update-snapshots`.
-
 const { test, expect, comOSistema, SISTEMAS } = require('../fixtures');
 
 const AGORA = new Date('2026-09-18T12:00:00');

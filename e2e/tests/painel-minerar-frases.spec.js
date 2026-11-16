@@ -42,7 +42,6 @@ async function abrirArquivo(page) {
   await expect(modal(page)).toBeVisible();
 }
 
-/** Escolhe um arquivo pela área do modal, como a pessoa faria. */
 async function escolherArquivo(page, conteudo, nome = 'frases.txt') {
   const [seletor] = await Promise.all([
     page.waitForEvent('filechooser'),
@@ -88,7 +87,6 @@ test('pelo teclado: setas andam no menu, Esc fecha e devolve o foco ao botão', 
   await expect(botaoMinerar(page)).toBeFocused();
   await expect(botaoMinerar(page)).toHaveAttribute('aria-expanded', 'false');
 
-  // O foco à vista no botão do cabeçalho.
   const contorno = await botaoMinerar(page).evaluate(b => getComputedStyle(b).outlineStyle);
   expect(contorno).not.toBe('none');
 });
@@ -126,7 +124,6 @@ test('Colar abre o modal na aba Colar, com o campo focado, a contagem ao vivo e 
   await expect(botaoDeMinerar(page)).toHaveText('Minerar frases');
 
   await campoDeFrases(page).fill('Break a leg.\n\n   \nKeep me posted.\nThat ship has sailed.');
-  // Linhas em branco não contam.
   await expect(modal(page).locator('.minerar-contagem')).toHaveText('3 frases');
   await expect(botaoDeMinerar(page)).toHaveText('Minerar 3 frases');
 
@@ -216,8 +213,6 @@ test('duplo clique em Minerar N frases: as frases entram uma vez só (bug de #9)
 });
 
 test('carregando (ADD-04): “Minerando N de M…” no próprio modal, sem campos nem botões para mexer', async ({ page, extensao, fakes }) => {
-  // A Palavra detectada pergunta à Conexão com o Anki pelo vocabulário: segurar
-  // a resposta segura a primeira gravação.
   let soltar;
   const segurada = new Promise(resolve => { soltar = resolve; });
   fakes.anki.responder('POST', '/anki/vocabulary', async () => { await segurada; return { json: { words: [] } }; });
@@ -240,8 +235,6 @@ test('carregando (ADD-04): “Minerando N de M…” no próprio modal, sem camp
 
 test('o progresso acompanha as gravações reais: nunca mostra mais frases do que as gravadas (bug de #9)', async ({ page, extensao }) => {
   await abrirFrases(page, extensao);
-  // A cada troca do texto do progresso, conta quantas frases estão gravadas
-  // naquele momento.
   await page.evaluate(() => {
     window.leituras = [];
     new MutationObserver(() => {
@@ -275,7 +268,6 @@ test('Cancelar e Esc fecham o modal sem minerar nada', async ({ page, extensao }
   await expect(botaoMinerar(page)).toBeFocused();
 
   await abrirColar(page);
-  // O campo abre limpo.
   await expect(campoDeFrases(page)).toHaveValue('');
   await page.keyboard.press('Escape');
   await expect(modal(page)).toBeHidden();
@@ -307,16 +299,12 @@ test('a nuvem falhou: fica o aviso persistente ADD-06 com Tentar de novo, sem De
 
   const aviso = avisos(page).getByRole('alert');
   await expect(aviso).toContainText('2 frases mineradas neste computador, mas não foram para a nuvem.');
-  // A causa técnica fica no card Conta & sync; o aviso só diz o que houve e oferece Tentar de novo.
   await expect(aviso.getByText('Detalhes')).toHaveCount(0);
   await expect(modal(page)).toBeHidden();
   await expect(toasts(page)).toHaveCount(0);
-  // As frases estão neste computador e na lista.
   expect(await extensao.frases()).toHaveLength(2);
   await expect(cartoes(page)).toHaveCount(2);
-  // O card e o chip da conta dizem que este computador está sem sincronizar.
   await expect(page.locator('#shell-chip')).toContainText('Sem sincronizar');
-  // O aviso não some sozinho.
   await page.waitForTimeout(4000);
   await expect(aviso).toBeVisible();
 
@@ -349,7 +337,6 @@ test('as abas trocam no lugar e o texto colado não se perde', async ({ page, ex
   await expect(aba(page, 'Arquivo .txt')).toBeChecked();
   await expect(campoDeFrases(page)).toBeHidden();
 
-  // Setas também trocam de aba (o controle segmentado é um grupo de rádios).
   await aba(page, 'Arquivo .txt').focus();
   await page.keyboard.press('ArrowLeft');
   await expect(aba(page, 'Colar')).toBeChecked();
@@ -406,7 +393,6 @@ test('arquivo vazio: “O arquivo está vazio.” no modal (ADD-08)', async ({ p
 test('arquivo ilegível: ADD-07 no modal', async ({ page, extensao }) => {
   await abrirFrases(page, extensao);
   await abrirArquivo(page);
-  // Um binário: não é texto em UTF-8.
   await escolherArquivo(page, Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x00, 0xff, 0xfe, 0x00, 0x1a]), 'foto.png');
 
   await expect(modal(page).getByRole('alert')).toHaveText(
@@ -446,7 +432,6 @@ test('nada novo só com linhas ilegíveis: ADD-09 não fala de zero repetidas', 
   await expect(modal(page).locator('.minerar-resultado')).toHaveText('Nenhuma frase nova: 1 linha não pôde ser lida.');
 });
 
-// `keywords` guarda a Palavra por posição na frase (palavra@índice do token).
 const PARA_EXPORTAR = [
   frase(4, 'The harbour : a quiet place.', {
     keywords: ['harbour@2'], autoKeyword: false,
@@ -465,7 +450,6 @@ const PARA_EXPORTAR = [
   }),
 ];
 
-/** Exporta `frases` pela barra de seleção e importa o .txt num histórico vazio; devolve as frases gravadas por texto. */
 async function exportarEImportar(page, extensao, frases) {
   await extensao.gravarStorage({ frases });
   await abrirFrases(page, extensao);
@@ -495,7 +479,6 @@ test('exportar → importar o mesmo .txt num histórico vazio devolve as mesmas 
     expect(importada.contexto).toEqual(original.contexto);
     expect(importada.idioma).toBe(original.idioma);
   }
-  // Na tela, a Palavra volta grifada com o chip de escolhida.
   await expect(cartao(page, 'The harbour : a quiet place.')).toContainText('palavra:');
   await expect(cartao(page, 'The harbour : a quiet place.').locator('.veio-chip-palavra')).toContainText('harbour');
   await expect(cartao(page, 'Note : this matters a lot.').locator('.veio-chip-palavra')).toHaveCount(0);
@@ -530,9 +513,6 @@ test('exportar → importar: uma Palavra que já não está no texto (texto edit
 
 test('enquanto o .txt ainda está sendo lido, Minerar no Colar não começa uma segunda mineração', async ({ page, extensao }) => {
   await abrirFrases(page, extensao);
-  // Um arquivo grande num disco lento: a leitura só termina quando o teste soltar.
-  // É um fake na fronteira do navegador (como os fakes de rede), segurando a
-  // leitura do arquivo que o painel faz com `arrayBuffer()`.
   await page.evaluate(() => {
     const ler = Blob.prototype.arrayBuffer;
     Blob.prototype.arrayBuffer = function () {

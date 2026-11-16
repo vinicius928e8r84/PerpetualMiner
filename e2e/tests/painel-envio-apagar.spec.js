@@ -17,7 +17,6 @@ test('Apagar tudo tira a Palavra e a Frase do que o painel guarda do Envio e da 
   await marcarEEnviar(page, [sentinela.texto]);
   await expect(envio(page, 'Envio em inglês · 1 frase')).toContainText('Não começou');
   const [naConexao] = await enviosCriados(fakes, 1);
-  // Antes: a Frase está onde o Envio precisa dela (o corpo congelado do painel e a linha do pedido na Conexão).
   expect(JSON.stringify(await extensao.lerStorage())).toContain(SENTINELA);
   expect(JSON.stringify(naConexao.corpo)).toContain(SENTINELA);
 
@@ -29,8 +28,6 @@ test('Apagar tudo tira a Palavra e a Frase do que o painel guarda do Envio e da 
   await expect.poll(async () => JSON.stringify(await extensao.lerStorage())).not.toContain(SENTINELA);
   await expect.poll(() => JSON.stringify(fakes.anki.envios.map(e => e.corpo))).not.toContain(SENTINELA);
   expect(fakes.anki.requisicoes.filter(r => r.metodo === 'POST' && r.caminho === '/jobs/apagar-frases')).toHaveLength(1);
-  // O Envio sem resposta (jobId nulo) não tem mais o que reenviar: nada de Tentar de novo, nada de `POST /jobs` novo.
-  // O fake muda antes de a resposta chegar à extensão: `pm_envio` só sai quando o painel a lê.
   await expect.poll(async () => (await extensao.lerStorage('pm_envio')).pm_envio).toBeUndefined();
   await page.goto(extensao.url('painel.html#frases'));
   await page.waitForTimeout(500);
@@ -52,7 +49,6 @@ test('Apagar tudo sem a Conexão responder: as Frases saem do painel e o pedido 
   await page.locator('#cfg-perigo').getByRole('button', { name: 'Apagar 1 frase' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Apagar 1 frase' }).click();
 
-  // O que o painel guardava já saiu, e ele não acompanha mais o Envio; a Conexão ainda não confirmou, e o pedido fica marcado.
   await expect.poll(async () => JSON.stringify(await extensao.lerStorage())).not.toContain(SENTINELA);
   const { pm_envio: pendente } = await extensao.lerStorage('pm_envio');
   expect(pendente).toStrictEqual({ envios: [], apagarFrases: true });
@@ -76,18 +72,15 @@ test('Apagar tudo no meio de um Envio encerra o Envio no painel: nenhum resumo o
   await page.goto(extensao.url('painel.html#configuracoes/perigo'));
   await page.locator('#cfg-perigo').getByRole('button', { name: 'Apagar todas as 4 frases' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Apagar 4 frases' }).click();
-  // A Conexão parou os dois Envios (as Frases deles não existem mais).
   await expect.poll(() => [ingles, russo].map(e => fakes.anki.envios.find(x => x.jobId === e.jobId).state.lastError))
     .toEqual(['frases_apagadas', 'frases_apagadas']);
 
-  // De volta a Frases: nada do Envio aparece, nem o resumo, nem o progresso.
   await page.goto(extensao.url('painel.html#frases'));
   await expect(page.getByText('Nenhuma frase ainda.')).toBeVisible();
   await umaVoltaDoEnvio(page);
   await expect(resumo(page)).toBeHidden();
   await expect(progresso(page)).toBeHidden();
   expect(fakes.anki.requisicoes.filter(r => r.caminho === '/jobs/retry')).toHaveLength(0);
-  // O painel não guarda mais Envio nenhum: a Conexão confirmou o Apagar tudo.
   await expect.poll(async () => (await extensao.lerStorage('pm_envio')).pm_envio).toBeUndefined();
 });
 
@@ -99,7 +92,6 @@ test('Apagar tudo numa aba encerra o Envio nas outras abas: nenhuma abre um resu
   await expect.poll(async () => (await extensao.lerStorage('pm_envio')).pm_envio?.envios?.map(e => e.jobId)).toEqual([ingles.jobId, russo.jobId]);
   fakes.anki.moverEnvio(ingles.jobId, { stage: 'generate_cards', progress: { done: 1, total: 2 } });
 
-  // A outra aba acompanha os mesmos Envios (a remessa vem de `pm_envio`).
   const outra = await context.newPage();
   await abrirPainel(outra, extensao);
   await expect(outra.locator('#frases-lista .veio-frase').first()).toBeVisible();
@@ -112,7 +104,6 @@ test('Apagar tudo numa aba encerra o Envio nas outras abas: nenhuma abre um resu
     .toEqual(['frases_apagadas', 'frases_apagadas']);
   await expect.poll(async () => (await extensao.lerStorage('pm_envio')).pm_envio).toBeUndefined();
 
-  // A outra aba soube do Apagar tudo: as Frases dos Envios não existem mais, então não há resumo "+0 cartões" nem Tentar de novo.
   await outra.bringToFront();
   await umaVoltaDoEnvio(outra);
   await expect(outra.getByText('Nenhuma frase ainda.')).toBeVisible();
@@ -136,19 +127,16 @@ test('Apagar tudo é recusado com um Envio andando e a Conexão sem responder: n
   await expect.poll(async () => (await extensao.lerStorage('pm_envio')).pm_envio?.envios?.[0]?.jobId).toBe(naConexao.jobId);
   const antes = (await extensao.lerStorage('pm_envio')).pm_envio;
 
-  // O Anki fecha com o Envio no meio: a Conexão não responde, e um Apagar tudo agora ficaria marcado sem chegar a ela.
   fakes.anki.desligar();
   await progresso(page).getByRole('button', { name: 'Fechar' }).first().click();
   await page.goto(extensao.url('painel.html#configuracoes/perigo'));
   await apagarTodas(page, 4);
 
   await expect(page.locator('#cfg-perigo').getByRole('alert')).toContainText(RECUSA);
-  // Nada saiu: as Frases e o Envio estão como estavam, e não há marca de Apagar tudo esperando.
   expect((await extensao.frases()).map(f => f.id).sort()).toEqual([...INGLESAS, RUSSA].map(f => f.id).sort());
   expect((await extensao.lerStorage('pm_envio')).pm_envio).toStrictEqual(antes);
   expect(fakes.anki.requisicoes.filter(r => r.caminho === '/jobs/apagar-frases')).toHaveLength(0);
 
-  // O Anki abre de novo e a pessoa tenta outra vez: agora a Conexão ouve o pedido.
   fakes.anki.ligar();
   await apagarTodas(page, 4);
   await expect(page.locator('#cfg-perigo').getByRole('alert')).toBeHidden();
@@ -166,23 +154,19 @@ test('Apagar tudo é recusado sempre que a Conexão não responde, sem Envio nen
   await expect(faixa).toContainText(RECUSA);
   await expect(faixa.getByRole('button', { name: 'Tentar de novo' })).toBeVisible();
   await expect(faixa.getByText('Detalhes', { exact: true })).toBeVisible();
-  // Nada saiu e nada ficou marcado: nem as Frases, nem `pm_envio`.
   expect((await extensao.frases()).map(f => f.id).sort()).toEqual([...INGLESAS, RUSSA].map(f => f.id).sort());
   expect((await extensao.lerStorage('pm_envio')).pm_envio).toBeUndefined();
   expect(fakes.anki.requisicoes.filter(r => r.caminho === '/jobs/apagar-frases')).toHaveLength(0);
 
-  // Tentar de novo com a Conexão ainda fora: a recusa continua, sem pedir de novo a confirmação.
   await faixa.getByRole('button', { name: 'Tentar de novo' }).click();
   await expect(faixa).toContainText(RECUSA);
   expect((await extensao.frases())).toHaveLength(4);
 
-  // A Conexão volta a responder: a faixa sai sozinha, e as Frases continuam até a pessoa tentar.
   fakes.anki.ligar();
   await pedirConferenciaDaConexao(page);
   await expect(faixa).toBeHidden();
   expect((await extensao.frases())).toHaveLength(4);
 
-  // Recusado de novo e, com a Conexão de volta, o Tentar de novo da faixa apaga (a confirmação já foi dada).
   fakes.anki.desligar();
   await apagarTodas(page, 4);
   await expect(faixa).toContainText(RECUSA);
@@ -213,7 +197,6 @@ test('Apagar tudo numa aba aberta antes do Enviar também é recusado com a Cone
   expect(fakes.anki.requisicoes.filter(r => r.caminho === '/jobs/apagar-frases')).toHaveLength(0);
 });
 
-// O service worker repete o pedido com todo painel fechado (background.js › ApagarFrasesPendente): a marca em `pm_envio` e o alarme de 30 s.
 test('uma marca de Apagar tudo sem nenhum painel aberto chega à Conexão pelo alarme do service worker, e a marca sai', async ({ extensao, fakes }) => {
   test.setTimeout(90_000);
   await extensao.gravarStorage({ pm_envio: { envios: [], apagarFrases: true } });
@@ -224,7 +207,6 @@ test('uma marca de Apagar tudo sem nenhum painel aberto chega à Conexão pelo a
 
 test('Apagar tudo enquanto o pedido de um Envio espera a Conexão: a resposta que chega depois não traz o Envio de volta, e o outro idioma não sai', async ({ page, extensao, fakes }) => {
   await extensao.gravarStorage({ frases: [...INGLESAS, RUSSA] });
-  // O primeiro POST /jobs (o inglês) fica esperando até o teste soltar; os idiomas que chegam são anotados.
   const idiomasPedidos = [];
   let soltar;
   const solto = new Promise(r => { soltar = r; });
@@ -238,7 +220,6 @@ test('Apagar tudo enquanto o pedido de um Envio espera a Conexão: a resposta qu
   await marcarEEnviar(page, [SACK.texto, RUSSA.texto]);
   await expect.poll(() => idiomasPedidos).toEqual(['en']);
 
-  // Mesma página: o painel que espera a resposta é o que apaga.
   await progresso(page).getByRole('button', { name: 'Fechar' }).first().click();
   await page.locator('.shell-item[data-area="configuracoes"]').click();
   await page.locator('#cfg-perigo-titulo').click();
@@ -250,15 +231,12 @@ test('Apagar tudo enquanto o pedido de um Envio espera a Conexão: a resposta qu
   soltar();
   await umaVoltaDoEnvio(page, { resposta });
   expect(idiomasPedidos).toEqual(['en']);
-  // Nada do Envio voltou ao que o painel guarda, nem as Frases dele.
   expect((await extensao.lerStorage('pm_envio')).pm_envio).toBeUndefined();
   expect(JSON.stringify(await extensao.lerStorage())).not.toContain('hit the sack');
 });
 
-// O painel lê `pm_envio` de novo depois de a Conexão responder, como o service worker: a cópia de antes do pedido não tem o Envio que nasceu no meio.
 test('a confirmação do Apagar tudo que chega depois de outra aba criar um Envio tira só a marca: o Envio novo continua guardado', async ({ page, extensao, fakes }) => {
   await extensao.gravarStorage({ pm_envio: { envios: [], apagarFrases: true } });
-  // O `POST /jobs/apagar-frases` fica esperando até o teste soltar.
   let pedidos = 0;
   let soltar;
   const solto = new Promise(r => { soltar = r; });
@@ -270,7 +248,6 @@ test('a confirmação do Apagar tudo que chega depois de outra aba criar um Envi
   await abrirPainel(page, extensao);
   await expect.poll(() => pedidos).toBe(1);
 
-  // Outra aba cria um Envio enquanto o pedido espera: a marca fica, como `gravar` de painel-envio.js a mantém.
   const novo = { id: 'envio-de-outra-aba', lang: 'en', ids: [SACK.id], baralho: 'CIMV', jobId: 'envio-de-outra-aba', criadoEm: AGORA.getTime(), falhaAoCriar: null };
   await extensao.gravarStorage({ pm_envio: { envios: [novo], apagarFrases: true } });
   soltar();

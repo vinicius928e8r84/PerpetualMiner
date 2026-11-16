@@ -1,11 +1,5 @@
 'use strict';
 
-// Popup · Cockpit (#38): o popup refeito na Veio, variante A do protótipo
-// travado (docs/design/popup/prototipo-popup.html?variant=A).
-//
-// O popup abre aqui como aba (`popup.html`), a página do balão do ícone.
-// Os testes afirmam o que se vê e o que fica gravado.
-
 const { test, expect } = require('../fixtures');
 const DEN = 'PerpetualMiner::Inglês', DRU = 'PerpetualMiner::Russo';
 const { fotografar, registrarEstado } = require('../evidencias-mineracao');
@@ -46,7 +40,6 @@ async function semearMineracaoAutomatica(extensao, { en, ru }) {
   });
 }
 
-/** A aba que o Chrome diz estar ativa, como o service worker a vê. */
 async function abaAtiva(extensao) {
   return extensao.serviceWorker.evaluate(async () => {
     const [aba] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
@@ -105,7 +98,6 @@ test('mineração rápida: Minerar só com texto; Enter minera, o campo limpa e 
   await campoRapido(page).fill('   ');
   await expect(minerar).toBeDisabled();
 
-  // Shift+Enter quebra a linha, não minera.
   await campoRapido(page).fill('Break a leg');
   await campoRapido(page).press('Shift+Enter');
   await expect(campoRapido(page)).toHaveValue('Break a leg\n');
@@ -140,10 +132,6 @@ test('mineração rápida com o service worker falhando: POP-06 com o alerta, se
   await page.goto(extensao.url('popup.html'));
   await expect(ultimas(page)).toHaveCount(5);
 
-  // O disco recusa a gravação. Nenhuma rota HTTP chega a esta falha: o
-  // teste troca o `chrome.storage.local.set` do service worker, que é a
-  // fronteira de armazenamento dele, e afirma o que a pessoa vê e o que
-  // fica gravado, como veria com o perfil cheio ou corrompido.
   await extensao.serviceWorker.evaluate(() => {
     globalThis.gravarDeVerdade = chrome.storage.local.set.bind(chrome.storage.local);
     chrome.storage.local.set = () => { throw new Error('QUOTA_BYTES quota exceeded'); };
@@ -162,7 +150,6 @@ test('mineração rápida com o service worker falhando: POP-06 com o alerta, se
   await expect(ultimas(page).first()).not.toContainText('Break a leg');
   expect((await extensao.frases()).map(f => f.texto)).not.toContain('Break a leg');
 
-  // O disco volta: tentar de novo com o mesmo texto minera, e o erro sai.
   await extensao.serviceWorker.evaluate(() => { chrome.storage.local.set = globalThis.gravarDeVerdade; });
   await page.getByRole('button', { name: 'Minerar', exact: true }).click();
   await expect(campoRapido(page)).toHaveValue('');
@@ -188,7 +175,6 @@ test('as 5 últimas, só leitura: a Palavra grifada e o Contexto; sem checkbox, 
     await expect(page.getByRole('button', { name: nome })).toHaveCount(0);
   }
   await expect(page.getByRole('checkbox')).toHaveCount(0);
-  // O gravador de atalho saiu para Configurações › Atalhos.
   await expect(page.getByText('Clique aqui para gravar atalho')).toHaveCount(0);
 });
 
@@ -205,9 +191,6 @@ test('a frase minerada em outra aba aparece no topo na hora', async ({ page, ext
 
 test('carregando (POP-01): só esqueleto, sem texto', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: SETE_FRASES });
-  // Segura a leitura das frases, como um disco lento. Como na falha de
-  // gravação acima, o falso fica na fronteira de armazenamento (o
-  // `chrome.storage.local.get` da página), não numa função do popup.
   await page.addInitScript(() => {
     const ler = chrome.storage.local.get.bind(chrome.storage.local);
     chrome.storage.local.get = (chaves, callback) => {
@@ -319,7 +302,6 @@ test('os azulejos Inglês | Russo mostram o dia, e o toggle e o limite gravam', 
   await expect(ru).toContainText('0 de 30 hoje');
   await expect.poll(async () => (await extensao.lerStorage('pm_auto_miner_settings')).pm_auto_miner_settings.ru.dailyLimit).toBe(30);
 
-  // O limite vai de 1 a 100.
   await limite.fill('150');
   await limite.press('Enter');
   await expect(ru).toContainText('0 de 100 hoje');
@@ -344,8 +326,6 @@ test('Enter no limite grava e o foco do teclado fica no campo', async ({ page, e
   await expect(page.locator('.popup-azulejo[data-idioma="ru"]')).toContainText('0 de 30 hoje');
   await expect(limite).toBeFocused();
 
-  // Baixar o limite até a contagem troca o campo por POP-08 (o service worker
-  // prende a contagem no limite novo): o foco vai ao toggle do idioma.
   const limiteEn = page.getByRole('spinbutton', { name: 'Limite por dia em inglês' });
   await limiteEn.fill('10');
   await limiteEn.press('Enter');
@@ -364,7 +344,6 @@ test('o limite atingido enquanto a pessoa está no campo troca o campo por POP-0
   await page.getByRole('spinbutton', { name: 'Limite por dia em russo' }).focus();
   await page.getByRole('spinbutton', { name: 'Limite por dia em inglês' }).focus();
 
-  // A mineração automática chega ao limite do inglês com o campo em foco.
   const estado = await extensao.serviceWorker.evaluate(async () => {
     const { pm_auto_miner_state_view: visto } = await chrome.storage.local.get('pm_auto_miner_state_view');
     return visto;
@@ -378,9 +357,6 @@ test('o limite atingido enquanto a pessoa está no campo troca o campo por POP-0
 });
 
 test('mineração automática carregando: esqueleto nos azulejos, sem texto', async ({ page, extensao }) => {
-  // Segura a leitura do estado no service worker, como um disco lento. Como na
-  // falha da mineração rápida, o falso fica na fronteira de armazenamento do
-  // service worker (`chrome.storage.local.get`), não numa função da extensão.
   await extensao.serviceWorker.evaluate(() => {
     const ler = chrome.storage.local.get.bind(chrome.storage.local);
     chrome.storage.local.get = (chaves, callback) => {
@@ -409,7 +385,6 @@ test('mineração automática sem o estado do service worker: POP-16 diz o que f
     en: { ligado: true, limite: 20, hoje: 3 },
     ru: { ligado: false, limite: 20, hoje: 0 },
   });
-  // O disco recusa a leitura do estado, na fronteira de armazenamento do service worker.
   await extensao.serviceWorker.evaluate(() => {
     globalThis.lerDeVerdade = chrome.storage.local.get.bind(chrome.storage.local);
     chrome.storage.local.get = (chaves, callback) => {
@@ -426,7 +401,6 @@ test('mineração automática sem o estado do service worker: POP-16 diz o que f
   await expect(erro.getByRole('button')).toHaveCount(0);
   await expect(erro).not.toContainText('IO error');
 
-  // Fechar e abrir o popup de novo, com o disco de volta, traz os azulejos.
   await extensao.serviceWorker.evaluate(() => { chrome.storage.local.get = globalThis.lerDeVerdade; });
   await page.reload();
   await expect(page.locator('.popup-azulejo[data-idioma="en"]')).toContainText('3 de 20 hoje');
@@ -442,7 +416,6 @@ test('gravar a mineração automática falhando: o toggle volta ao gravado e POP
   const russo = page.getByRole('switch', { name: 'Mineração automática em russo' });
   await expect(russo).not.toBeChecked();
 
-  // O disco recusa a gravação, na fronteira de armazenamento do service worker.
   await extensao.serviceWorker.evaluate(() => {
     globalThis.gravarDeVerdade = chrome.storage.local.set.bind(chrome.storage.local);
     chrome.storage.local.set = () => { throw new Error('QUOTA_BYTES quota exceeded'); };
@@ -455,7 +428,6 @@ test('gravar a mineração automática falhando: o toggle volta ao gravado e POP
   await expect(russo).not.toBeChecked();
   await expect(page.locator('.popup-azulejo')).toHaveCount(2);
 
-  // O disco volta: ligar de novo grava, e a linha sai.
   await extensao.serviceWorker.evaluate(() => { chrome.storage.local.set = globalThis.gravarDeVerdade; });
   await page.locator('.popup-azulejo[data-idioma="ru"] .veio-toggle__trilho').click();
   await expect(russo).toBeChecked();
@@ -474,10 +446,8 @@ test('limite de hoje atingido: “Limite de hoje atingido” no lugar do campo, 
   await expect(en.locator('.popup-azulejo__no-limite')).toHaveText('Limite de hoje atingido');
   await expect(page.getByRole('spinbutton', { name: 'Limite por dia em inglês' })).toHaveCount(0);
   await expect(page.getByRole('spinbutton', { name: 'Limite por dia em russo' })).toHaveValue('15');
-  // O leitor de tela ouve POP-08 ao chegar no toggle do idioma.
   await expect(page.getByRole('switch', { name: 'Mineração automática em inglês' }))
     .toHaveAccessibleDescription('Limite de hoje atingido');
-  // A contagem fica só no contador: “20/20” na tela.
   await expect(en.locator('.popup-azulejo__contador [aria-hidden="true"]')).toHaveText('20/20');
 });
 
@@ -510,7 +480,6 @@ test('no campo de limite, clicar seleciona o número: digitar troca o limite int
   await expect.poll(async () => (await extensao.lerStorage('pm_auto_miner_settings')).pm_auto_miner_settings.en.dailyLimit).toBe(35);
 });
 
-/** Um momento de ontem às 14:02, a hora local: o selo diz “Vocabulário de ontem, 14:02”. */
 function ontemAs1402() {
   const quando = new Date();
   quando.setDate(quando.getDate() - 1);
@@ -549,7 +518,6 @@ test('o selo do popup diz o dia e a hora da leitura mais antiga entre os idiomas
   await page.goto(extensao.url('popup.html'));
   await expect(selo(page)).toHaveText('Vocabulário de ontem, 14:02');
 
-  // A leitura de um idioma desligado não conta: ele não mineraria com ela.
   await extensao.gravarStorage({ pm_auto_miner_settings: {
     en: { enabled: true, dailyLimit: 20 }, ru: { enabled: false, dailyLimit: 15 },
   } });
@@ -576,7 +544,6 @@ test('com a Conexão respondendo mas o Anki fechado (leitura do arquivo), o selo
     en: { ligado: true, limite: 20, hoje: 12 },
     ru: { ligado: false, limite: 15, hoje: 0 },
   });
-  // Lida agora do arquivo, mas com os dados de ontem às 14:02: a leitura de antes de o Anki fechar.
   await extensao.gravarStorage({
     pm_auto_keyword_vocab_en: leitura(DEN, Date.now() - 60_000, { source: 'collection.anki2', dadosDe: ontemAs1402(), ankiFechado: true }),
   });
@@ -586,9 +553,7 @@ test('com a Conexão respondendo mas o Anki fechado (leitura do arquivo), o selo
 
   await expect(selo(page)).toHaveText('Vocabulário de ontem, 14:02');
   await expect(page.locator('.popup-azulejo[data-idioma="en"]')).toContainText('12 de 20 hoje');
-  // O popup só lê: a leitura guardada segue como estava.
   expect((await extensao.lerStorage('pm_auto_keyword_vocab_en')).pm_auto_keyword_vocab_en).toEqual(gravada);
-  // A Conexão responde e já leu o arquivo: o azulejo não está esperando nada.
   await expect(page.locator('.popup-azulejo__espera:visible')).toHaveCount(0);
 });
 
@@ -712,7 +677,6 @@ test('todo controle do popup tem nome para o leitor de tela', async ({ page, ext
 });
 
 test('o Tab passa por todos os controles do popup, em ordem, e cada um mostra o foco', async ({ page, extensao }) => {
-  // Sem transição, o estilo lido é o final, não um quadro do meio do anel.
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await semearMineracaoAutomatica(extensao, {
     en: { ligado: true, limite: 20, hoje: 12 },
@@ -723,15 +687,11 @@ test('o Tab passa por todos os controles do popup, em ordem, e cada um mostra o 
   await expect(ultimas(page)).toHaveCount(5);
   await expect(page.locator('.popup-azulejo')).toHaveCount(2);
   await campoRapido(page).fill('Break a leg');
-  // Volta pelo teclado até o primeiro controle, para cada parada chegar pelo Tab.
   const abrir = page.getByRole('button', { name: 'Abrir painel' });
   for (let i = 0; i < 12 && !(await abrir.evaluate(no => no === document.activeElement)); i++) {
     await page.keyboard.press('Shift+Tab');
   }
 
-  // O foco que se vê: o contorno ou a sombra do controle com o foco, comparados
-  // com os dele sem o foco (o botão primário já tem sombra). No toggle, o que
-  // aparece é o trilho, não o checkbox.
   const aparencia = () => page.evaluate(() => {
     const no = document.activeElement;
     if (!no || no === document.body) return null;

@@ -1,13 +1,5 @@
 'use strict';
 
-// Referência visual do teto do mês (#160, BRG-41 e ENV-21): o aviso aos 80% no alto do Painel, o card Teto do mês na aba Custos e o cartão do
-// Envio pausado. Não há protótipo para eles: o desenho segue os avisos e os cards do Painel (`docs/design/painel/anki/prototipo-anki.html`).
-// É PROPOSTA para o dono comparar e aprovar (CODING_STANDARDS regra 10): as imagens não estão na árvore. Aprovando: tirar o `fixme`, rodar
-//
-//   cd e2e && npx playwright test painel-teto-visual --update-snapshots
-//
-// e anotar a aprovação em e2e/aprovados-visuais.json.
-
 const { test, expect } = require('../fixtures');
 const { AGORA, INGLESAS, abrirPainel, cartoesDe, marcarEEnviar, enviosCriados, progresso } = require('../apoio-do-envio');
 

@@ -1,10 +1,5 @@
 'use strict';
 
-// O desenho de arrastar o Anki para Aplicativos (ONB-25, #238), no passo Ter o Anki depois de “Não tenho”, só no Mac.
-// É do mesmo estilo da animação do aviso (ONB-19, `ter-o-anki.spec.js`): dois quadros que se alternam sozinhos — o
-// ícone do Anki ao lado da pasta Aplicativos e o ícone já dentro dela —, parados e lado a lado com “menos movimento”.
-// É só imagem: a frase do passo (ONB-18) é o que o leitor de tela lê. O Windows e os outros sistemas não o têm.
-
 const { test, expect, comOSistema, SISTEMAS } = require('../fixtures');
 const { estadoFinal } = require('../estado-final');
 const { fotografar } = require('../evidencias-mineracao');
@@ -13,7 +8,6 @@ const card = page => page.getByRole('region', { name: 'Ainda não houve conexão
 const naoTenho = page => card(page).getByRole('button', { name: 'Não tenho' });
 const baixarOAnki = page => card(page).getByRole('link', { name: 'Baixar o Anki' });
 
-/** O painel como um usuário do sistema dado (o user agent e o `userAgentData` são os dele). */
 async function abrirComo(page, extensao, sistema) {
   await comOSistema(page, sistema);
   await page.goto(extensao.url('painel.html#anki/custos'));
@@ -33,23 +27,18 @@ test('“Não tenho” no Mac: o desenho mostra o Anki sendo arrastado para Apli
   const desenho = card(page).locator('.pc-arraste');
   await expect(desenho).toBeVisible();
   await expect(desenho.locator('.pc-arraste__quadro')).toHaveCount(2);
-  // O desenho é só imagem: quem lê por voz tem a frase logo abaixo (a mesma que o passo já dizia).
   await expect(desenho.locator('.pc-arraste__quadro').first()).toHaveAttribute('aria-hidden', 'true');
   await expect(desenho.locator('.pc-arraste__quadro').nth(1)).toHaveAttribute('aria-hidden', 'true');
-  // Os dois quadros dizem os nomes que a pessoa vê no Mac: o Anki e a pasta Aplicativos.
   const primeiro = desenho.locator('.pc-arraste__quadro').first();
   const solto = desenho.locator('.pc-arraste__quadro--solto');
   await expect(primeiro).toContainText('Anki');
   await expect(primeiro).toContainText('Aplicativos');
   await expect(primeiro.locator('.pc-arraste__pasta .pc-arraste__miniatura')).toHaveCount(0);
-  // O segundo quadro é o Anki já dentro da pasta, com a marca de foco da Base.
   await expect(solto).toHaveCount(1);
   await expect(solto.locator('.pc-arraste__pasta .pc-arraste__miniatura')).toHaveCount(1);
   await expect(solto.locator('.pc-arraste__pasta')).toHaveCSS('outline-style', 'solid');
-  // Alternam sozinhos, como a animação do aviso.
   await expect(primeiro).toHaveCSS('animation-name', 'pc-quadro');
   await expect(solto).toHaveCSS('animation-name', 'pc-quadro');
-  // Entre o link do download e a frase.
   const doLink = await baixarOAnki(page).boundingBox();
   const doDesenho = await desenho.boundingBox();
   const daFrase = await card(page).locator('.pc-anki__depois').boundingBox();
@@ -84,7 +73,7 @@ test('“Não tenho” no Mac, com menos movimento: os dois quadros do desenho f
 });
 
 test('“Não tenho” no Mac, com menos movimento numa janela estreita: os quadros empilham e cabem no card', async ({ page, extensao }) => {
-  // Exceção de teste: sem-estado-guardado — só o layout dos quadros muda com a largura; nada é gravado.
+  // Exceção de teste: sem-estado-guardado
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await abrirComo(page, extensao, SISTEMAS.MAC);
   await expect(card(page)).toBeVisible();

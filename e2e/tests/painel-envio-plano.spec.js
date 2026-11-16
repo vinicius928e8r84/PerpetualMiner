@@ -1,9 +1,5 @@
 'use strict';
 
-// O Envio que o plano do ChatGPT parou (#156, docs/design/imagem-pelo-plano.md): o primeiro limite de uso logo depois de entrar mostra
-// Gerenciar uso e deixa tentar de novo, sem concluir que a cota acabou; a conta que o plano não atende diz que a chave é o caminho.
-// A Conexão com o Anki é o fake do e2e: ele termina o Envio com o código que a Conexão de verdade grava (`lastError`, complemento/envio.py).
-
 const { test, expect } = require('../fixtures');
 const { estadoFinalEm } = require('../estado-final');
 const { AGORA, INGLESAS, RUSSA, SACK, abrirPainel, resumo, envio, baralho, marcarEEnviar, enviosCriados } = require('../apoio-do-envio');
