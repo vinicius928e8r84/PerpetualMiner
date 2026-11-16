@@ -11,12 +11,9 @@ from . import tipo_proprio
 from .motor import estilos
 
 _ID_DO_ENVIO = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
-# A reserva da voz (#174): uma lista de nomes de provedor, sem tamanho de abuso; a Conexão pula o nome que não conhece.
 _PROVEDOR_DA_VOZ = re.compile(r"^[a-z0-9_-]{1,32}$")
 MAXIMO_DE_RESERVAS = 8
-# O teto de Frases de um Envio (#243): a mineração de uma sessão leva centenas; acima disto o pedido não é de uma pessoa (limite 5.a).
 MAXIMO_DE_FRASES = 500
-# A etiqueta que o Cartão da Frase de teste do primeiro Envio (#173) leva no Anki, para a pessoa achá-lo e apagá-lo.
 ETIQUETA_DE_TESTE = "perpetualminer-teste"
 
 
@@ -55,19 +52,19 @@ def validar_pedido(corpo):
     """O pedido de `POST /jobs` normalizado, ou (status, erro) se ele não serve. Frases com o mesmo `phraseId` valem uma vez (a primeira)."""
     if not id_valido(corpo.get("jobId")):
         return None, (400, "invalid_job_id")
-    if corpo.get("lang") not in estilos.idiomas():  # os idiomas são os dos dados de estilo
+    if corpo.get("lang") not in estilos.idiomas():
         return None, (400, "invalid_lang")
     deck = corpo.get("deckName")
     if not isinstance(deck, str) or not deck.strip() or len(deck) > 256:
         return None, (400, "invalid_request")
     nivel = corpo.get("nivel")
-    if "nivel" in corpo and nivel not in estilos.niveis(corpo["lang"]):  # sem `nivel`, o Cartão sai no padrão (o Iniciante)
+    if "nivel" in corpo and nivel not in estilos.niveis(corpo["lang"]):
         return None, (400, "invalid_level")
     if "teste" in corpo and type(corpo["teste"]) is not bool:
         return None, (400, "invalid_request")
     proprio = tipo_proprio.forma(corpo.get("tipoProprio")) if "tipoProprio" in corpo else None
     if "tipoProprio" in corpo and (proprio is None or tipo_proprio.recusa(proprio, set(proprio["mapa"].values()))):
-        return None, (400, "invalid_mapping")  # sem a Frase e a resposta em campos diferentes não há Cartão: nada é aceito
+        return None, (400, "invalid_mapping")
     entradas = corpo.get("entries")
     if not isinstance(entradas, list) or not entradas:
         return None, (400, "entries_required")

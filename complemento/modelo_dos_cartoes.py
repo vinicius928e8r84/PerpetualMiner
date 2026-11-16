@@ -20,10 +20,9 @@ from .chaves import gravar_so_do_dono
 from .login_do_chatgpt import ACABOU, CONECTADA, SAIU, SEM_LOGIN, ErroDoPlano
 
 AUTOMATICO = "automatico"
-# Quem paga o texto de um Cartão (`quem_paga`): o plano do ChatGPT, a chave da OpenAI, ou ninguém (parado, com o motivo).
 PLANO, CHAVE, PARADO = "plano", "chave", "parado"
 SEM_CHAVE = "openai_key_missing"
-Pagador = namedtuple("Pagador", "quem config motivo")  # `config`: o que o motor recebe para pedir o texto (None no parado)
+Pagador = namedtuple("Pagador", "quem config motivo")
 LISTA_NOSSA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "modelos_da_ia.json")
 
 
@@ -54,7 +53,6 @@ class ModeloDosCartoes:
                 logger.warning("Modelo dos cartões: a data de saída de %s não é um dia (AAAA-MM-DD)", modelo["modelo"])
         self._tranca = threading.Lock()
 
-    # -- o que fica guardado --
     def _ler(self):
         """(a escolha, o que foi trocado, quem pagava quando ela foi feita: None num arquivo de antes de se guardar isso)."""
         try:
@@ -71,7 +69,6 @@ class ModeloDosCartoes:
         with self._tranca:
             gravar_so_do_dono(self._arquivo, {"escolha": escolha, "trocou": trocou, "paga": paga})
 
-    # -- o que a conta oferece --
     def _saiu(self, modelo):
         return modelo in self._saidas and self._hoje() >= self._saidas[modelo]
 
@@ -118,7 +115,6 @@ class ModeloDosCartoes:
             return AUTOMATICO, dict({"de": escolha}, **({"porque": "pagador"} if outro_pagador else {}))
         return escolha, None
 
-    # -- o que a extensão pede --
     def estado(self):
         """`{ paga, escolha, modelos, aviso, trocou }`: a escolha que vale hoje, a lista, o aviso antes da saída e o que foi trocado."""
         paga, oferta = self.conta()
@@ -138,7 +134,6 @@ class ModeloDosCartoes:
         self._gravar(modelo, None, paga)
         return 200, {"ok": True, "escolha": modelo}
 
-    # -- o Envio --
     def do_envio(self, oferta, automatico, paga):
         """O modelo do texto dos Cartões deste Envio (`paga` é quem o paga): o da escolha, ou `automatico`; se a escolha caiu, guarda a troca e segue."""
         escolha, _, quem_escolheu = self._ler()
@@ -184,18 +179,18 @@ def credencial(login, cofre, plano, modelos, so_a_chave=False):
     if quem == PLANO:
         try:
             token = login.token()
-            if not token:  # a pessoa saiu do login entre as duas leituras: a escolha foi dela
+            if not token:
                 return credencial(None, cofre, plano, modelos, so_a_chave)
             return Pagador(PLANO, {"openai_api_key": None, "plano_do_chatgpt": {"token": token, "modelo": _modelo_do_plano(login, token, plano, modelos)}}, None)
         except ErroDoPlano as erro:
             return Pagador(PARADO, None, erro.codigo)
     if quem == PARADO:
         return Pagador(PARADO, None, motivo)
-    if "modelo_da_chave" not in plano:  # o da chave fica à parte do do plano: o Envio pode passar de um para o outro (#158)
+    if "modelo_da_chave" not in plano:
         try:
             oferta = modelos.da_chave(chave)
         except openai_api.ErroDaChave:
-            oferta = None  # a lista não veio: vale a escolha da pessoa, sem conferir se a conta ainda a tem
+            oferta = None
         plano["modelo_da_chave"] = modelos.do_envio(oferta, modelos.automatico_da_chave(oferta), CHAVE)
     return Pagador(CHAVE, {"openai_api_key": chave, "modelo_do_texto": plano["modelo_da_chave"]}, None)
 
@@ -205,6 +200,6 @@ def credencial_da_imagem(login, cofre, plano, modelos, so_a_chave=False):
     como em `credencial`) quando há login e a pessoa não pediu Usar a minha chave (`so_a_chave`, #158); a triagem e a imagem gerada vão sempre
     pela chave do cofre (None sem ela). Levanta `ErroDoPlano`."""
     token = login.token() if login is not None and not so_a_chave else None
-    if token and "automatico" not in plano:  # o juiz usa o Automático do plano, não o modelo que a pessoa escolheu para o texto
+    if token and "automatico" not in plano:
         plano["automatico"] = _oferta_do_plano(login, token, modelos)[0]
     return ({"token": token, "modelo": plano["automatico"]} if token else None), cofre.ler("openai") or None

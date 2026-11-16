@@ -4,11 +4,8 @@ vai do Google à coleção do Anki na mesma volta, e o nome vem do `guid` do Car
 
 from . import custos, voz, voz_da_openai
 
-# A reserva da voz (#174): uma lista aberta de provedores; o pedido a diz (`tts.reserva`), e sem ela vale esta. Um nome que a Conexão
-# não conhece é pulado, então um provedor novo entra aqui e em `_a_reserva`, sem mudar o pedido.
 RESERVA_PADRAO = ["openai"]
 
-# As Frases foram apagadas (Apagar tudo) antes de este Cartão ter o texto: não há de onde gerá-lo.
 FRASE_APAGADA = "phrase_wiped"
 
 

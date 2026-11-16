@@ -36,7 +36,7 @@ class ImagemDoCartao:
         self._etapa(job_id, "generate_images")
         try:
             dados = self._escolher_a_imagem(pedido, config, cartao_id, conteudo, self.fila.estado(job_id).get("usingKey", False))
-        except Exception as erro:  # nada do que a OpenAI ou o Openverse disseram é guardado: o log leva só o Cartão e o tipo do erro
+        except Exception as erro:
             if getattr(erro, "codigo", None) in DO_PLANO_QUE_PARA:
                 raise ParaOEnvio(erro.codigo) from None
             self.logger.warning("Envio %s: a imagem do Cartão %s não veio (%s)", job_id, cartao_id, getattr(erro, "codigo", type(erro).__name__))
@@ -49,9 +49,9 @@ class ImagemDoCartao:
 
     def _escolher_a_imagem(self, pedido, config, cartao_id, conteudo, so_a_chave):
         """Os bytes do PNG escolhido para o Cartão, ou None se nenhuma imagem serviu. `so_a_chave`: Usar a minha chave (#158), o juiz também."""
-        plano, chave = credencial_da_imagem(self.chatgpt, self.cofre, self.plano, self.modelos, so_a_chave)  # lidos antes do pedido, só para ele (C5)
+        plano, chave = credencial_da_imagem(self.chatgpt, self.cofre, self.plano, self.modelos, so_a_chave)
         if not (plano or chave) or (pedido["imageSource"] != "1" and not chave):
-            return None  # sem login nem chave (Apagar chave no meio), ou só a imagem gerada pedida e nenhuma chave: sem imagem
+            return None
         motor = self.motor
         self._usar_o_adaptador_de_imagem()
         configurada = dict(config, openai_api_key=chave, plano_do_chatgpt=plano, openai_base=self.openai_base, openverse_base=self.openverse_base,
@@ -61,7 +61,7 @@ class ImagemDoCartao:
         with tempfile.TemporaryDirectory(prefix="perpetualminer_imagem_") as pasta:
             destino = Path(pasta) / "imagem.png"
             if pedido["imageSource"] == "1":
-                feita = pipeline.real_first(cartao_id, prompt, destino, generation_policy="normal" if chave else "free_only")  # sem chave, só a foto real
+                feita = pipeline.real_first(cartao_id, prompt, destino, generation_policy="normal" if chave else "free_only")
             else:
                 feita = pipeline.generate_direct(cartao_id, prompt, destino) == "ok"
             return destino.read_bytes() if feita and destino.exists() else None

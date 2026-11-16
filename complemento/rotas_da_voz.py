@@ -48,7 +48,7 @@ def falar_a_frase(conexao, corpo):
     try:
         audio = voz.pedir_o_audio(conexao.voz_base, frase, lang, sotaque)
     except voz.ErroDaVoz as erro:
-        conexao.logger.warning("Falar: a voz do Google não veio (%s)", erro.codigo)  # nunca a frase: é o log da Conexão
+        conexao.logger.warning("Falar: a voz do Google não veio (%s)", erro.codigo)
         return 502, {"error": erro.codigo}
     return 200, {"audio": base64.b64encode(audio).decode("ascii")}
 

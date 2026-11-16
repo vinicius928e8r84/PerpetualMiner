@@ -54,7 +54,7 @@ _MODELO = re.compile(r"\{([^{}]+)\}")
 def _preencher(modelo, valores, id_):
     def trocar(achado):
         nome, *formas = achado.group(1).split("|")
-        valor = valores[nome]  # KeyError: falta o valor, como o erro da extensão
+        valor = valores[nome]
         if formas:
             if not isinstance(valor, int):
                 raise TypeError("o valor %r do texto %s escolhe o plural, então precisa ser número" % (nome, id_))

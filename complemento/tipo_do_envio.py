@@ -5,7 +5,7 @@ from . import tipo_de_nota, tipo_proprio
 
 
 class TipoDoEnvio:
-    _campos_do_tipo = None  # os campos do tipo de nota da Conexão que a coleção tem, vistos no começo do Envio
+    _campos_do_tipo = None
 
     def _o_tipo_do_envio(self, job_id, pedido):
         """`(nome do tipo de nota, se ele serve ao Cartão)`. O da Conexão é criado se falta; o da pessoa só se confere (nunca é criado nem mudado): ele tem de existir

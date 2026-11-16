@@ -17,10 +17,8 @@ from .motor import PASTA as PASTA_DO_MOTOR
 
 Antiga = namedtuple("Antiga", "pid raiz motor jobs_root fila")
 
-# O `.env` do motor de hoje guarda `OPENAI_API_KEY`; uma chave tem esta forma (`rotas_da_chave`) e o exemplo do arquivo não é chave.
 _FORMA_DA_CHAVE = re.compile(r"^[A-Za-z0-9._\-]{8,256}$")
 _EXEMPLO_DO_ENV = "your-openai-api-key-here"
-# Os custos de hoje levam a Palavra (`keyword`); os desta Conexão não: só o que a aba Custos separa pelo prefixo fica.
 _MARCAS_DO_CUSTO = ("[image_judge]", "[image_guard]")
 _NAMESPACE = uuid.UUID("4f0f3a9e-6d0a-4c43-9e53-8c0d6a1b7f10")
 
@@ -132,7 +130,7 @@ def copiar_os_prompts_editados(antiga, pasta_dos_prompts):
         if not nome.endswith(".txt") or not texto or os.path.exists(destino):
             continue
         if texto == _texto_do_prompt(os.path.join(PASTA_DO_MOTOR, "prompts", nome)):
-            continue  # é o padrão, não foi editado
+            continue
         os.makedirs(pasta_dos_prompts, exist_ok=True)
         shutil.copyfile(os.path.join(de_hoje, nome), destino + ".novo")
         os.replace(destino + ".novo", destino)

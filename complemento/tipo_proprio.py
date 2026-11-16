@@ -10,8 +10,6 @@ que o mapeamento não cita. Sem um campo para a Frase e outro, diferente, para a
 from . import baralhos
 from .motor import estilos
 
-# As partes que a pessoa mapeia, na ordem em que os textos se juntam num campo. Cada uma é um grupo de campos do Cartão da Conexão (as chaves de
-# `estilos.json`): a resposta é o verso do nível (a pronúncia, as traduções, o contexto, a definição, outro exemplo…), sem a Palavra, o áudio e a imagem.
 PARTES = ("frase", "audio_da_frase", "resposta", "palavra", "audio_da_palavra", "imagem")
 OBRIGATORIAS = ("frase", "resposta")
 FORA_DA_RESPOSTA = ("palavra", "imagem", "audio_da_frase", "audio_da_palavra", "fonte")

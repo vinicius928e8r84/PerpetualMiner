@@ -125,22 +125,17 @@ class Cofre:
                 return {'resultado': resultado, 'versao': atual.get('versao', 0)}
             chave = aqui.get('chave', '')
             if chave and not aqui.get('conta'):
-                # Nem legado nem chave colada sem Google pertencem ao primeiro
-                # UID que pedir: a pessoa precisa conferir de novo naquela conta.
                 raise LegadoNaoVinculado()
             if aqui.get('conta') and aqui['conta'] != conta and aqui.get('naoEnviada', bool(chave)):
                 raise OutraContaNaoEnviada()
             remota = nuvem.ler()
             if not remota and not chave and not aqui.get('em'):
-                return confirmado(None) # uma leitura vazia não é uma mudança
+                return confirmado(None)
             if aqui.get('conta', '') != conta:
                 valor = remota or {'chave': '', 'em': 0}
                 self.guardar(nome, valor['chave'], aqui.get('versao', 0), conta, em=valor['em'], nao_enviada=False)
                 return confirmado('chegou' if valor['chave'] else ('apagada' if chave else None))
             hora = aqui.get('em') or (1 if chave else 0)
-            # Em empate, entrega uma mudança ainda não replicada; se já foi
-            # replicada, recebe o valor observado na nuvem. Só confirma o
-            # mesmo valor inteiro, nunca a igualdade da hora ou do sufixo.
             pendente = aqui.get('naoEnviada', bool(chave))
             empate = remota and remota['em'] == hora and remota['chave'] != chave
             if remota and (remota['em'] > hora or (empate and not pendente)):

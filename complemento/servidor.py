@@ -42,13 +42,9 @@ from .rotas_do_pareamento import ROTAS_DO_PAREAMENTO
 from .rotas_do_item_de_login import ROTAS_DO_ITEM_DE_LOGIN
 from .rotas_do_perfil import abrir_o_perfil_marcado, anki_responde, escolher_o_perfil, listar_os_perfis
 
-# Um pedido maior que isto não é da extensão: a leitura mais pesada (os Baralhos pedidos) cabe em poucos KB.
 LIMITE_DO_CORPO = 64 * 1024
-# O Envio leva as Frases escolhidas de uma vez (centenas de linhas de mineração): só ele vai até aqui.
 LIMITE_DO_ENVIO = 4 * 1024 * 1024
-# Depois que a Conexão sobe, a thread do Envio espera este tempo (s) um pedido de Envio da extensão antes de retomar o que ficou parado.
 ESPERA_DO_CONTATO = 60.0
-# As rotas cujo corpo pode passar de `LIMITE_DO_CORPO`.
 LIMITES_POR_ROTA = {("POST", "/jobs"): LIMITE_DO_ENVIO}
 
 
@@ -62,15 +58,11 @@ def _saude(conexao, corpo):
 
 ROTAS = {
     ("GET", "/health"): _saude,
-    # O que lê o Anki da pessoa é POST: o GET de uma página da extensão vai sem `Origin` (contrato/LEIA-ME.md).
     **ROTAS_DOS_BARALHOS,
-    # O perfil fixo (#149): a lista com o marcado, escolher outro e abrir o marcado.
     ("POST", "/anki/profiles"): listar_os_perfis,
     ("POST", "/anki/profile"): escolher_o_perfil,
     ("POST", "/anki/profile/open"): abrir_o_perfil_marcado,
-    # A pergunta do abridor que conserta sozinho (#152): sem assinatura.
     ("POST", "/anki/responde"): anki_responde,
-    # A chave da OpenAI: POST com a origem da extensão, e nenhuma resposta devolve a chave inteira.
     ("POST", "/ia/openai/chave"): guardar_chave_da_openai,
     ("POST", "/ia/openai/chave/apagar"): apagar_chave_da_openai,
     ("POST", "/ia/openai/sincronizar"): sincronizar_chave_da_openai,
@@ -85,22 +77,17 @@ ROTAS = {
     **ROTAS_DA_PREVIA,
     **ROTAS_DO_ITEM_DE_LOGIN,
     **ROTAS_DO_ENVIO,
-    # O pareamento (#192): por elas o navegador chega a ter o segredo que assina os pedidos das outras.
     **ROTAS_DO_PAREAMENTO,
 }
 
-# As rotas que respondem sem a origem da extensão. Rota nova não entra aqui sem decisão do dono:
-# o que gasta a chave ou lê dado da pessoa é POST e exige a origem.
 ROTAS_ABERTAS = frozenset([("GET", "/health")]) | frozenset(PAGINAS)
-# As rotas que dispensam a assinatura de um navegador pareado: as do pareamento e a pergunta do abridor (`anki_responde`, sem dado).
-# Rota nova não entra aqui sem decisão do dono.
 ROTAS_SEM_ASSINATURA = frozenset(ROTAS_DO_PAREAMENTO) | frozenset([("POST", "/anki/responde")])
 
 
 class _Atendente(BaseHTTPRequestHandler):
     server_version = "PerpetualMiner"
     sys_version = ""
-    _assinado = None   # o navegador pareado que assinou o pedido de agora (`pareamento.Verificacao`); a resposta leva a prova dele
+    _assinado = None
 
     @property
     def conexao(self):
@@ -115,7 +102,6 @@ class _Atendente(BaseHTTPRequestHandler):
         self.conexao.logger.warning("http: " + formato, *args)
 
     def log_request(self, code="-", size="-"):
-        # A linha do pedido é do cliente e pode ser qualquer coisa, a chave colada inclusive: o log só leva a resposta.
         self.conexao.logger.debug("http: resposta %s", code)
 
     def send_error(self, code, message=None, explain=None):
@@ -138,7 +124,6 @@ class _Atendente(BaseHTTPRequestHandler):
             self.send_header("Access-Control-Expose-Headers", CABECALHO_DA_PROVA)
             self.send_header("Vary", "Origin")
         if self._assinado is not None:
-            # A prova de que quem respondeu tem o segredo do navegador que pediu: a extensão a confere antes de usar a resposta.
             self.send_header(CABECALHO_DA_PROVA, prova_da_resposta(self._assinado.segredo, self.conexao.pareamento.sessao, self._assinado.nonce, status, corpo))
         for nome, valor in (extras or {}).items():
             self.send_header(nome, valor)
@@ -223,7 +208,7 @@ class _Atendente(BaseHTTPRequestHandler):
             self.conexao.logger.exception("Erro na rota %s %s", self.command, caminho)
             return self._responder(500, {"error": "internal_error"}, origem=origem)
         if self.command == "POST" and caminho.startswith("/jobs"):
-            self.conexao.contato.set()  # depois da rota: um apagar-frases já apagou quando a thread de trabalho é solta
+            self.conexao.contato.set()
         return self._responder(status, dados, origem=origem)
 
     def __getattr__(self, nome):
@@ -245,7 +230,7 @@ class _Servidor(ThreadingHTTPServer):
         # O padrão imprime o erro no stderr.
         erro = sys.exc_info()[1]
         if sys.excepthook is None or sys.is_finalizing():
-            return  # o Anki está fechando: nenhuma thread nasce mais, e cada pedido em voo diria o mesmo
+            return
         if isinstance(erro, ConnectionError):
             self.conexao.logger.info("O pedido de %s não terminou: o cliente fechou a conexão", client_address)
             return
@@ -295,13 +280,10 @@ class Conexao:
         self.colecao = colecao or SemColecao()
         self.logger = logger
         self.dados = dados
-        # O perfil fixo (#149): o marcado fica em `user_files/perfil.json`, e o adaptador da coleção só grava nele.
         self.perfil_fixo = PerfilFixo(os.path.join(dados.raiz, "perfil.json"))
         self.colecao.fixar_o_perfil(self.perfil_fixo)
-        # Chamado depois de a pessoa escolher outro perfil: o que depende do marcado (o abridor) se refaz. Quem monta a Conexão o troca.
         self.ao_mudar_o_perfil = lambda: None
         self.cofre = Cofre(dados.chaves)
-        # Os navegadores pareados (#192); a janela do Anki (`na_tela`) vem de `janela.ligar`, e sem ela o código não tem onde aparecer.
         self.pareamento = Pareamento(os.path.join(dados.raiz, "pareamento.json"), logger)
         self.chatgpt = LoginDoChatGPT(dados.chaves, logger, base=chatgpt_base, api=openai_base)
         self.openai_base, self.voz_base = openai_base, voz_base
@@ -310,23 +292,18 @@ class Conexao:
                                         logger, self.chatgpt, self.cofre, openai_base,
                                         lambda: motor.config_loader.base_config()["openai"]["chat_model"])
         self.firestore_base = firestore_base
-        # O item de login de “Abrir o Anki com o computador”; None onde o sistema não tem (nem Mac nem Windows).
         self.item_de_login = item_de_login
-        # A atualização pelo AnkiWeb (#177, `atualizacao.Atualizacao`); sem o Anki (os testes) ela não tem de onde atualizar nem o que fechar.
         self.atualizacao = atualizacao or Atualizacao(
             arquivo=os.path.join(dados.raiz, "atualizacao.json"), anki_web=AnkiWebAusente(), versao=versao, logger=logger)
-        # De quanto em quanto tempo o servidor olha se mandaram parar; `parar()` espera até esse tempo.
         self.intervalo_de_parada = intervalo_de_parada
         self._servidor = None
         self._thread = None
-        # Posto no primeiro pedido de Envio da extensão (`POST /jobs…`) depois da subida; o `/health` não conta.
         self.contato = threading.Event()
-        # A passagem do Windows do dono (#178): `"esperando"` enquanto espera o Envio de agora da Conexão de hoje terminar; senão None.
         self.situacao_da_passagem = None
         self._cancelar = threading.Event()
         self._thread_da_passagem = None
         self.fila = envio.Fila(dados, motor, logger)
-        self.teto = TetoDoMes(os.path.join(dados.raiz, "teto-do-mes.json"), self.fila, hoje)  # o teto do mês (#160)
+        self.teto = TetoDoMes(os.path.join(dados.raiz, "teto-do-mes.json"), self.fila, hoje)
         trabalho = envio.Trabalho(self.fila, self.colecao, self.cofre, logger, openai_base, threading.Event(), chatgpt=self.chatgpt, modelos=self.modelos,
                                   espera_do_anki=espera_do_anki, esperas_da_openai=esperas_da_openai, espera_do_plano=espera_do_plano, voz_base=voz_base,
                                   openverse_base=openverse_base, adaptador_de_imagem=adaptador_de_imagem)

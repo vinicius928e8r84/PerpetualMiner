@@ -6,14 +6,12 @@ from urllib.parse import parse_qs
 from . import chatgpt_oficial
 from .rotas_do_chatgpt import entrar_com_o_chatgpt, estado_do_chatgpt, retorno_do_login, sair_do_chatgpt
 
-# Entrar com o ChatGPT: nenhuma resposta devolve um token.
 ROTAS_DO_CHATGPT = {
     ("POST", "/ia/chatgpt/estado"): estado_do_chatgpt,
     ("POST", "/ia/chatgpt/entrar"): entrar_com_o_chatgpt,
     ("POST", "/ia/chatgpt/sair"): sair_do_chatgpt,
 }
 
-# Cada página é `(conexao, consulta, host) -> bytes` de um HTML, e nunca levanta erro.
 PAGINAS = {("GET", chatgpt_oficial.CAMINHO_DO_RETORNO): retorno_do_login}
 
 

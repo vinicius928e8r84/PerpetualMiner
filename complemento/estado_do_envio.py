@@ -12,7 +12,7 @@ logo depois de reservado, antes da primeira etapa).
 
 QUEUED, RUNNING, COMPLETED, PARTIAL, FAILED = "queued", "running", "completed", "partial", "failed"
 FIM = (COMPLETED, PARTIAL, FAILED)
-STATUS = (QUEUED, RUNNING) + FIM  # o que o campo `status` pode dizer
+STATUS = (QUEUED, RUNNING) + FIM
 ESPERANDO, APAGADO = "esperando", "apagado"
 FRASES_APAGADAS = "frases_apagadas"
 
@@ -25,7 +25,6 @@ TRANSICOES = {
     FAILED: {QUEUED, APAGADO},
     APAGADO: set(),
 }
-# O que o apagado não deixa mudar. Os Cartões ficam de fora: o que já estava indo ao Anki ainda é dito.
 _DO_APAGADO = ("status", "stage", "waiting", "wiped", "lastError", "progress")
 
 
@@ -76,7 +75,6 @@ def conferir(antes, estado):
         raise TransicaoInvalida("Envio %s não pode ficar na etapa %s%s" % (estado.get("status"), estado.get("stage"), " esperando" if estado.get("waiting") else ""))
 
 
-# -- os eventos: cada um deixa o status, a etapa e a espera coerentes --
 def reservar(estado):
     """A thread de trabalho pegou o Envio da fila."""
     estado["status"] = RUNNING

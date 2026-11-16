@@ -1,7 +1,3 @@
-// O script do modelo de Cartão da frente Criação (#168). `tipo_de_nota.py` o põe dentro do modelo, na frente e no verso; roda dentro do Anki (e do
-// AnkiMobile e do AnkiDroid), sem a extensão e sem IA. Na frente, guarda o que a pessoa escreve (padrão “Anki Persistence”: o texto passa da frente
-// para o verso pelo que a página guarda) e, só no Anki do computador, manda a frase à Conexão (`pycmd`), que a grava no campo “Frase escrita”.
-// No verso, mostra o que foi escrito e confere, no próprio Cartão, se a Palavra (ou o radical dela) está na frase.
 (function () {
   var CHAVE = 'perpetualminer_escrita';
   var MENSAGEM = 'perpetualminer:criacao:';
@@ -24,7 +20,6 @@
     }
   })();
 
-  // Minúsculas, sem acento nem sinal de tônica (o russo escreve ё e é): os dois lados da conta passam por aqui.
   function normalizar(texto) {
     return String(texto || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   }
@@ -33,7 +28,6 @@
     return normalizar(texto).split(/[^\p{L}\p{N}]+/u).filter(Boolean);
   }
 
-  // O radical de uma palavra do inglês: sem -ing, -ed, -es, -s, o -e ou -y do fim e a consoante dobrada (running, run). Uma palavra de outro alfabeto fica como é.
   function radical(palavra) {
     if (!/^[a-z]+$/.test(palavra) || palavra.length < 4) return palavra;
     var raiz = /(ies|ied)$/.test(palavra) ? palavra.replace(/(ies|ied)$/, 'y') : palavra.replace(/(ing|ed|es|s)$/, '');
@@ -42,7 +36,6 @@
     return raiz.length > 3 ? raiz.replace(/[ey]$/, '') : raiz;
   }
 
-  // “✓ usou a palavra”: a frase tem a Palavra (todas as palavras dela) ou o radical. Com `raiz` (os campos da morfologia do russo), vale uma palavra da frase que a contenha.
   function usouAPalavra(frase, palavra, raiz) {
     var escritas = palavras(frase);
     var radicalDado = normalizar(raiz).replace(/[^\p{L}\p{N}]/gu, '');
@@ -79,7 +72,7 @@
   }
 
   function noVerso(lugar) {
-    var escrita = Persistence.ler(CHAVE) || texto('perpetualminer-gravada'); // sem o que a página guardou (outra tela), o campo gravado pela Conexão
+    var escrita = Persistence.ler(CHAVE) || texto('perpetualminer-gravada');
     if (!escrita.trim()) return;
     lugar.textContent = escrita;
     document.getElementById('perpetualminer-escreveu').hidden = false;
