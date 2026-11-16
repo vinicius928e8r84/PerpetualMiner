@@ -1,20 +1,5 @@
 'use strict';
 
-// Um arquivo de código tem no máximo 1.000 linhas. Acima disso ele deixa de caber na cabeça de quem o abre e
-// vira o lugar onde toda mudança esbarra na de outro PR (painel.css 3.163 linhas, painel.js 1.894 quando a regra
-// entrou). A regra acusa o arquivo de código (JS, TS, Python, HTML, CSS e shell) com mais de LIMITE linhas.
-//
-// Fora da conta: documentação (docs/), pastas de fixtures, saída de build e cópia de terceiros (dist/, build/,
-// coverage/, node_modules/, vendor/, third_party/), arquivo minificado (*.min.*) e o que traz a marca de gerado
-// nas primeiras linhas (`@generated`, `DO NOT EDIT`, `Code generated`, as mesmas de scripts/ganchos/limite-de-tokens.json),
-// menos o arquivo que a linha de base da main já tem na lista (a marca não o tira dela).
-// Trava de pacotes e dado (JSON, Markdown) nem têm a extensão.
-//
-// A catraca é a de scripts/regras/linha-de-base.json, contada em linhas ACIMA do teto: o arquivo que já passava de 1.000
-// quando a regra entrou tem ali o excesso que tinha; ele não pode crescer (o excesso sobe, a regra falha), e a linha
-// de base tem de descer junto com ele (`--atualizar`) para o teto de cada um ser sempre o tamanho de hoje. Ao cair
-// para 1.000 ou menos, o arquivo sai da lista. Um arquivo novo, ou fora da lista, falha acima de 1.000.
-
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -35,7 +20,6 @@ const configuracao = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'ganc
 const LINHAS_DO_CABECALHO = configuracao.linhasDoCabecalho;
 const MARCAS_DE_GERADO = configuracao.marcasDeGerado;
 
-/** As linhas do arquivo: a última quebra de linha fecha a última linha, não abre uma nova (o mesmo que `wc -l`, com a última linha sem quebra contada). */
 function contarLinhas(fonte) {
   if (fonte === '') return 0;
   const quebras = fonte.split('\n').length - 1;
@@ -47,8 +31,6 @@ const ehGerado = fonte => {
   return MARCAS_DE_GERADO.some(marca => cabecalho.includes(marca));
 };
 
-// Os arquivos que a linha de base da --base (a main) já tem na lista: a marca de gerado não os isenta, senão
-// bastaria escrever `DO NOT EDIT` no topo para um deles crescer e sair da lista. null sem base, sem git ou sem lista.
 const listasDasBases = new Map();
 function naListaDaBase(raiz, base, arquivo) {
   if (!raiz || !base) return false;
@@ -58,13 +40,12 @@ function naListaDaBase(raiz, base, arquivo) {
     try {
       const texto = execFileSync('git', ['show', `${base}:scripts/regras/linha-de-base.json`], { cwd: raiz, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
       lista = JSON.parse(texto)[id] || {};
-    } catch { /* a base não tem a linha de base (ou a regra): nada na lista */ }
+    } catch {}
     listasDasBases.set(chave, lista);
   }
   return arquivo in listasDasBases.get(chave);
 }
 
-// Uma ocorrência por linha acima do teto (a de número LIMITE + 1 em diante): o que a linha de base conta.
 function verificar(arquivo, fonte, raiz, base) {
   const linhas = contarLinhas(fonte);
   if (linhas <= LIMITE || (ehGerado(fonte) && !naListaDaBase(raiz, base, arquivo))) return [];
@@ -74,7 +55,6 @@ function verificar(arquivo, fonte, raiz, base) {
   }));
 }
 
-/** O erro de um arquivo (o que verificar.js mostra no lugar do texto padrão): o arquivo, a contagem, o teto. */
 function mensagem({ arquivo, tem, pode }) {
   const linhas = LIMITE + tem;
   const naLista = pode > 0
@@ -83,7 +63,6 @@ function mensagem({ arquivo, tem, pode }) {
   return [`✗ ${id} — ${arquivo}: ${linhas} linhas; o teto é ${LIMITE} (${tem} acima). ${naLista}`, `  Conserto: ${conserto}`].join('\n');
 }
 
-/** O arquivo da lista que encolheu: a linha de base tem de descer com ele, para não sobrar folga para crescer de novo. */
 function mensagemDeFolga({ arquivo, tem, pode }) {
   const o = tem === 0
     ? `ficou em ${LIMITE} linhas ou menos: tire-o da linha de base`

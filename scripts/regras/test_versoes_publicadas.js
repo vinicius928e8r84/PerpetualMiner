@@ -1,9 +1,5 @@
 'use strict';
 
-// A prova da regra `versoes-publicadas` (#225): o hash de uma VERSAO que já saiu não se reescreve; muda-se o código, sobe-se a
-// VERSAO. O hash da 0.2.0 reescrito em vez de subir a versão passava no test_pacote.py, que só compara o hash registrado da
-// VERSAO de hoje com o de hoje.
-
 const assert = require('assert');
 const { execFileSync, spawnSync } = require('child_process');
 const fs = require('fs');
@@ -12,7 +8,6 @@ const path = require('path');
 
 const regra = require('./versoes-publicadas');
 
-// O ambiente do CI de uma PR liga a parte "a versão é dada no merge"; as provas abaixo escolhem o seu.
 const ambienteDoCi = { GITHUB_EVENT_NAME: process.env.GITHUB_EVENT_NAME, REGRAS_PR: process.env.REGRAS_PR };
 const emPr = ligado => {
   delete process.env.GITHUB_EVENT_NAME;
@@ -63,7 +58,6 @@ try {
   assert.strictEqual(regra.seAplica(ARQUIVO), true);
   assert.strictEqual(regra.seAplica('complemento/configuracao.py'), false);
 
-  // De ponta a ponta, pelo verificar.js: contra a ponta da base, reescrever um hash publicado falha; uma versão nova passa.
   escrever('scripts/regras/linha-de-base.json', `${JSON.stringify({ 'versoes-publicadas': {} }, null, 2)}\n`);
   commit('linha de base');
   git('checkout', '-q', '-b', 'mudanca');
@@ -80,8 +74,6 @@ try {
   fs.rmSync(pasta, { recursive: true, force: true });
 }
 
-// A versão é dada no merge: numa PR, mexer à mão na VERSAO, no versoes.json ou no .ankiaddon falha; o commit de versão e os
-// números que as PRs abertas já escreveram passam; fora de PR (a main, o commit de versão empurrado) a regra não pergunta.
 const CONFIGURACAO = 'complemento/configuracao.py';
 const PACOTE = 'conexao/perpetualminer.ankiaddon';
 const RESERVADAS = 'complemento/versoes-reservadas.json';
@@ -137,8 +129,6 @@ try {
   mudar({ pacote: 'zip-novo' });
   barrado([PACOTE], 'só o arquivo da extensão');
 
-  // As PRs abertas que já carregam número (#381 = 0.4.28, #387 = 0.4.32, #389 = 0.4.33, #363 = 0.4.34) seguem como estão:
-  // só os números da lista de complemento/versoes-reservadas.json, não um teto.
   for (const reservada of ['0.4.28', '0.4.32', '0.4.33', '0.4.34']) {
     voltar();
     mudar({ versao: reservada, chaves: { [reservada]: 'cccc' }, pacote: 'zip-novo' });
@@ -157,7 +147,6 @@ try {
   mudar({ versao: '0.4.50', chaves: { '0.4.50': 'cccc' } });
   barrado(['`VERSAO`'], 'a PR amplia a lista; vale a da base');
 
-  // O commit de versão (versao_no_merge.py), mesmo que chegue por uma PR.
   voltar();
   mudar({ versao: '0.5.0', chaves: { '0.5.0': 'cccc' }, pacote: 'zip-novo' });
   registrar('Conexão 0.5.0: versão dada no merge');
@@ -166,14 +155,12 @@ try {
   registrar('Conexão 0.5.1: ajuste feito à mão');
   barrado(['`VERSAO`'], 'um commit à mão junto com o de versão');
 
-  // O assunto do commit de versão não basta: ele só pode tocar os arquivos da versão.
   voltar();
   mudar({ versao: '0.5.0', chaves: { '0.5.0': 'cccc' }, pacote: 'zip-novo' });
   gravar('README.md', 'de carona\n');
   registrar('Conexão 0.5.0: versão dada no merge');
   barrado(['`VERSAO`'], 'um commit com o assunto da versão que leva outro arquivo');
 
-  // De ponta a ponta, pelo verificar.js, com a mensagem que o autor da PR lê.
   voltar();
   mudar({ versao: '0.5.0' });
   gravar('scripts/regras/linha-de-base.json', `${JSON.stringify({ 'versoes-publicadas': {} }, null, 2)}\n`);

@@ -1,7 +1,5 @@
 'use strict';
 
-// O que as provas de scripts/regras/ dividem: um repositório git temporário com só os arquivos que a regra lê.
-
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');

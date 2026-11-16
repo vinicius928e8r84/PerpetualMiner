@@ -1,13 +1,5 @@
 'use strict';
 
-// Um texto que ensina como o repositório funciona não pode falar de "esta PR" nem de "nesta
-// rodada": quem lê meses depois não sabe qual era. O mesmo vale para a contagem fixa de testes
-// ("41 specs", "cerca de 700 tests"), que o primeiro teste novo desmente (a SKILL.md da skill de
-// verificação carregou um 41 muito depois de a suíte passar dele). Esta regra acusa as duas coisas
-// nos textos de docs/, complemento/ e
-// .agents/skills/. Não há exceção na linha: o verificar.js só lê exceções em comentários de
-// js, mjs, css, html e py, não em Markdown; um texto que precisa ficar entra na linha de base.
-
 const id = 'doc-datado';
 
 const conserto = 'Escreva o que vale sempre, sem dizer de qual PR ou rodada fala (o número do PR está no `git log`, '
@@ -21,9 +13,6 @@ const seAplica = arquivo => arquivo.endsWith('.md') && (
 );
 
 const DE_ESTA_PR = /\b(?:nest[ae]|dest[ae]|ness[ae]|dess[ae]|est[ae]|ess[ae])\s+(?:PR|rodada)\b|\bthis\s+PR\b/gi;
-// Um inteiro (com milhar "1.200" ou "1,200"; "3.9" é versão, não conta), no máximo uma palavra (e2e,
-// Playwright, Node) e então "testes", "tests" ou "specs". "12 Every test" é o número de uma regra
-// e a palavra "every": um determinante no lugar da palavra não é contagem.
 const DETERMINANTE = 'every|each|all|any|no|the|this|that|these|those|such|a|an|one|cada|todo|todos|todas|qualquer';
 const CONTAGEM_DE_TESTES = new RegExp(
   String.raw`(?<![=\w.,])\d+(?:[.,]\d{3})*\+?(?![.,]?\d)\s+(?:(?!(?:${DETERMINANTE})\b)[\w-]+\s+)?(?:tests?|testes|specs?)\b`, 'gi');

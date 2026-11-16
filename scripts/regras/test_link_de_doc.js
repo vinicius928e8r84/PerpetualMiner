@@ -1,8 +1,5 @@
 'use strict';
 
-// A prova da regra link-de-doc (scripts/regras/link-de-doc.js): acusa os erros reais que a fez existir e deixa passar
-// o jeito certo, e o comando inteiro (verificar.js) falha dizendo qual arquivo e qual link consertar.
-
 const assert = require('assert');
 const { execFileSync, spawnSync } = require('child_process');
 const fs = require('fs');
@@ -33,7 +30,6 @@ const acusa = (arquivo, fonte, quantas, porque) => {
   return a;
 };
 
-// Os erros reais. fc1c5d05, docs/arquitetura.md (revisão do #446): links escritos a partir da raiz, num arquivo de docs/.
 const doArquitetura = [
   'Edge cases: [shell](docs/design/painel/shell/README.md#casos-de-borda); the common retry: [Boas-vindas § F1](docs/design/painel/boas-vindas/README.md#conexão-com-o-anki-como-ligar-f1).',
   'The user-visible rollover behavior is in [the popup spec](docs/design/popup/README.md).',
@@ -43,15 +39,12 @@ const a = acusa('docs/arquitetura.md', doArquitetura, 4, 'os 4 links de docs/arq
 assert.deepStrictEqual(a.map(x => x.linha), [1, 1, 2, 3]);
 assert.match(a[0].detalhe, /\[shell\]\(docs\/design\/painel\/shell\/README\.md#casos-de-borda\).*docs\/docs\/design\/painel\/shell\/README\.md.*não existe.*conserte o link em docs\/arquitetura\.md/);
 total += 2;
-// Como o conserto os escreve: relativos à pasta do arquivo.
 acusa('docs/arquitetura.md', doArquitetura.replaceAll('](docs/', ']('), 0, 'os mesmos links relativos a docs/');
-// Hoje na main: `[Movimento](#movimento)` num arquivo cujo título é "Movimento (da C)".
 const b = acusa('docs/design/identidade-veio/README.md', 'ver [Movimento](#movimento).\n\n## Movimento (da C)\n', 1, 'a âncora #movimento (identidade-veio/README.md:23)');
 assert.match(b[0].detalhe, /âncora `#movimento`.*títulos parecidos: #movimento-da-c.*conserte o link em docs\/design\/identidade-veio\/README\.md/);
 total++;
 acusa('docs/design/identidade-veio/README.md', 'ver [Movimento](#movimento-da-c).\n\n## Movimento (da C)\n', 0, 'o título inteiro, como o GitHub o escreve');
 
-// O que vale como link bom.
 acusa('docs/x.md', [
   '[popup](../popup.js) [pasta](pasta/) [de novo](design/popup/README.md "título") [raiz](/popup.js)',
   '[forma](design/identidade-veio/README.md#forma-da-d) [forma 2](design/identidade-veio/README.md#forma-da-d-1)',
@@ -62,7 +55,6 @@ acusa('docs/x.md', [
   '[ancora no mesmo](#título-aqui)',
   '## Título aqui',
 ].join('\n'), 0, 'links que existem');
-// O que não é link de verdade: código cercado, código em linha, definição de referência que existe.
 acusa('docs/x.md', [
   '```md',
   '[exemplo](nao-existe.md)',
@@ -91,7 +83,6 @@ acusa('docs/x.md', [
 ].join('\n'), 0, 'âncora de título com código em linha');
 acusa('docs/x.md', '[a](com-codigo.md#o----portão) [b](com-codigo.md#no-cerco)\n', 2, 'o título com o código apagado e o título dentro de um bloco cercado não são âncoras');
 
-// Os erros de cada forma.
 acusa('docs/x.md', '[a](nao-existe.md)\n', 1, 'arquivo que não existe');
 acusa('docs/x.md', '![a](assets/nao-existe.png)\n', 1, 'imagem que não existe');
 acusa('docs/x.md', '[ref]: sumiu.md "título"\n', 1, 'definição de referência para arquivo que não existe');
@@ -104,7 +95,6 @@ acusa('docs/x.md', '[a](nao-existe.md) e [b](outro-que-sumiu.md)\n', 2, 'dois na
 acusa('docs/x.md', '[a](../popup.js#qualquer) [b](pasta/vazia.txt#x)\n', 0, 'âncora em arquivo que não é Markdown não é conferida');
 acusa('docs/x.md', 'Setext\n------\n[a](#setext) [b](#outro)\n', 1, 'título sublinhado');
 
-// O comando inteiro, num repositório com a linha de base vazia: falha, e a mensagem diz o arquivo e o link.
 const tmp = repositorioDeTestes({
   ...alvos,
   'docs/arquitetura.md': doArquitetura,

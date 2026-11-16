@@ -1,11 +1,5 @@
 'use strict';
 
-// O idioma da Frase tem um dono: lib/idioma.js (CODING_STANDARDS.md regra 5). A
-// regra "cirílico → Russo" já esteve copiada em cinco arquivos e as cópias
-// divergiram (bf640d9); `ehRussa` foi copiada de novo e voltou para lá em
-// 7b7c475; a C1 (#129) ainda achou entradas gravando idiomas diferentes para o
-// mesmo texto. Esta regra acusa o nome solto e o detector copiado.
-
 const { ehJsDaExtensao, linhaDe, semComentariosJs } = require('./comum');
 
 const id = 'idioma-solto';
