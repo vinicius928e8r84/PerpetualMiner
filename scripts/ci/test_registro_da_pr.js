@@ -1,8 +1,5 @@
 'use strict';
 
-// O registro da PR (scripts/ci/registro-da-pr.js, workflow Registro da PR): só passa a PR com o corpo no modelo do /pr e a
-// atenção preenchida, o registro do /code-review do head exato (CLEAN, revisor diferente do autor) e, na atenção ALTA, a prova real.
-
 const assert = require('assert');
 const { execFile } = require('child_process');
 const fs = require('fs');
@@ -96,14 +93,12 @@ recusa({ corpo: altaCom(FRASE, `Head: ${HEAD.slice(0, 7)}`) }, /abreviado/, 'o S
 recusa({ corpo: altaCom(FRASE, `Head: ${HEAD}0`) }, /não tem a linha "Head:" com o SHA do head/, 'um texto maior que contém o SHA não é o SHA');
 recusa({ corpo: altaCom('```', FRASE, `Head: ${HEAD}`, '```') }, /não tem a linha PROVADO 100% REAL/, 'a prova dentro de um bloco de código');
 
-// O head mudou: a revisão e a prova do commit anterior deixam de valer, e a mensagem diz as duas faltas.
 {
   const { ok, mensagem } = conferir({ corpo: ALTA, rotulos: [], registros: [revisao()], head: OUTRO });
   assert.strictEqual(ok, false, 'o mesmo corpo e o mesmo registro depois de um commit novo');
   assert.match(mensagem, new RegExp(`- o registro do /code-review mais recente é do commit ${HEAD}[^]*- atenção ALTA: a seção "Prova real" é do commit ${HEAD}`));
 }
 
-// O modelo da PR ensina o formato que o script aceita: vazio não passa; preenchido como ele diz, passa.
 {
   const modelo = fs.readFileSync(path.join(RAIZ, '.github', 'PULL_REQUEST_TEMPLATE.md'), 'utf8');
   recusa({ corpo: modelo, registros: [modelo] }, /campo de atenção preenchido[^]*nenhum comentário ou revisão/, 'o modelo sem preencher');
@@ -115,7 +110,6 @@ recusa({ corpo: altaCom('```', FRASE, `Head: ${HEAD}`, '```') }, /não tem a lin
   assert(modelo.includes(ROTULO_DE_RISCO_ALTO), 'o modelo cita o rótulo');
 }
 
-// O workflow roda o script em toda PR e de novo quando muda o head (synchronize), o corpo (edited) ou os rótulos.
 {
   const workflow = lerYaml(fs.readFileSync(path.join(RAIZ, '.github', 'workflows', 'registro-da-pr.yml'), 'utf8'));
   assert(rodaNoPR(workflow), 'roda em pull_request');
@@ -131,7 +125,6 @@ recusa({ corpo: altaCom('```', FRASE, `Head: ${HEAD}`, '```') }, /não tem a lin
   }, 'o head é o da PR (não o commit de merge do checkout), e nada da PR entra no comando');
 }
 
-// Pelo comando que o workflow roda, diante de um GitHub de teste: o corpo, os rótulos, os comentários e as revisões vêm de lá.
 (async () => {
   const github = {};
   const pedidos = [];
@@ -185,7 +178,6 @@ recusa({ corpo: altaCom('```', FRASE, `Head: ${HEAD}`, '```') }, /não tem a lin
     assert.strictEqual((await rodar({ pr: { body: ALTA, labels: [] }, comentarios: [comentario(revisao(), '2026-01-02T00:00:00Z')] })).status, 0, 'ALTA com a prova e a revisão');
     assert.strictEqual((await rodar({ pr: { body: ALTA, labels: [] }, comentarios: [comentario(revisao(), '2026-01-02T00:00:00Z')] }, { HEAD: OUTRO })).status, 1, 'o head mudou');
 
-    // Sem conseguir ler a PR, ou sem os dados dela, o passo falha: nunca vira "nada a conferir".
     const semGitHub = await rodar({ status: 500 });
     assert.strictEqual(semGitHub.status, 2, 'o GitHub fora do ar');
     assert.match(semGitHub.stdout, /^✗ Não consegui ler a PR 7 no GitHub: o GitHub respondeu 500/);

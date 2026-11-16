@@ -1,4 +1,3 @@
-// O executor dos grupos de teste (scripts/testar.mjs): o que ele lista, recusa e devolve.
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -88,7 +87,6 @@ assert.match(semModulo.stdout, /error: falharam: engine/);
   assert.equal(status, 0, 'a linha do stderr devia chegar antes de o processo acabar');
 }
 
-// Chamado por um caminho com link simbólico, o executor roda do mesmo jeito: nada de sucesso falso.
 {
   const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-link-'));
   fs.symlinkSync(RAIZ, path.join(pasta, 'repo'));
@@ -109,8 +107,6 @@ fs.writeFileSync(path.join(pasta, 'scripts', 'testes.json'), '{ "fora": [] }');
 assert.throws(() => lerRegistro(pasta), /não tem o objeto "grupos"/);
 fs.rmSync(pasta, { recursive: true, force: true });
 
-
-// Numa branch de trabalho o complemento não cobra a versão (é dada no merge); na main, no CI e com a variável posta, nada muda.
 assert.equal(baseDaVersao({}, 'fm/uma-tarefa', true), 'origin/main');
 assert.equal(baseDaVersao({}, 'main', true), null);
 assert.equal(baseDaVersao({}, 'HEAD', true), null);

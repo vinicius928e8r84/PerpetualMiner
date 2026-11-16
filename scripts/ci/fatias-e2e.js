@@ -15,7 +15,6 @@ const PASTA_DOS_SPECS = process.env.FATIAS_E2E_PASTA || path.join(RAIZ, 'e2e', '
 const NUMERO_DE_FATIAS = 8;
 const ESTIMATIVA_DO_SPEC_NOVO = 10;
 
-/** Os specs do disco, como o Playwright os acha em e2e/tests (caminho relativo a essa pasta, com `/`). */
 function specsDoDisco(pasta = PASTA_DOS_SPECS) {
   const saida = [];
   const visitar = (diretorio, prefixo) => {
@@ -28,7 +27,6 @@ function specsDoDisco(pasta = PASTA_DOS_SPECS) {
   return saida.sort();
 }
 
-/** Do mais longo ao mais curto, cada spec vai para a fatia mais vazia; empate: a de menor número. Dentro da fatia, por nome. */
 function montarFatias(duracoes, quantas = NUMERO_DE_FATIAS) {
   const fatias = Array.from({ length: quantas }, () => ({ specs: [], segundos: 0 }));
   const ordem = Object.entries(duracoes).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
@@ -40,7 +38,6 @@ function montarFatias(duracoes, quantas = NUMERO_DE_FATIAS) {
   return fatias.map(fatia => fatia.specs.sort());
 }
 
-/** O que está errado entre os specs do disco, as durações e as fatias; lista vazia quando está tudo certo. */
 function problemas({ duracoes, fatias }, specs) {
   const achados = [];
   const lugares = new Map();
@@ -56,12 +53,10 @@ function problemas({ duracoes, fatias }, specs) {
   return achados;
 }
 
-/** Os filtros do Playwright de uma fatia: o caminho do spec como expressão regular, ancorado no fim e depois de `tests/`. */
 function filtros(specs) {
   return specs.map(spec => `tests/${spec.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
 }
 
-/** Soma, por spec, a duração dos testes que passaram numa saída do reporter `list` do Playwright. */
 function duracoesDosLogs(textos) {
   const soma = {};
   const linha = /(?:✓|ok)\s+\d+\s+(?:\[[^\]]+\]\s+›\s+)?([\w./-]+\.spec\.js):\d+:\d+ › .*?\((\d+(?:\.\d+)?)(ms|s|m)\)\s*$/;
@@ -95,7 +90,6 @@ function gravar(duracoes) {
   fs.writeFileSync(ARQUIVO, linhas.join('\n'));
 }
 
-/** As durações de hoje para os specs do disco: as já medidas, a estimativa para os novos, sem as de spec que sumiu. */
 function duracoesParaOsSpecs(duracoes, specs) {
   return Object.fromEntries(specs.map(spec => [spec, spec in duracoes ? duracoes[spec] : ESTIMATIVA_DO_SPEC_NOVO]));
 }
@@ -107,7 +101,6 @@ if (require.main === module) {
   const specs = specsDoDisco();
   if (pedido === '--medir' && resto.length) {
     const medidas = duracoesDosLogs(resto.map(arquivo => fs.readFileSync(arquivo, 'utf8')));
-    // Um spec sem teste que passou nos logs (só pulados) custa quase nada: 1 s.
     gravar(Object.fromEntries(specs.map(spec => [spec, Math.max(1, Math.round(medidas[spec] || 0))])));
   } else if (/^\d+$/.test(pedido || '')) {
     const fatias = fatiasDe(ler().duracoes, specs);

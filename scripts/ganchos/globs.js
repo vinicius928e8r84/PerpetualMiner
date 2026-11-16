@@ -1,8 +1,5 @@
 'use strict';
 
-// --- Globs: `*.lock` (nome, em qualquer pasta), `dist/` (pasta, em qualquer lugar), `a/b/` (pasta
-// na raiz), `a/**/x.json` (caminho a partir da raiz); `{a,b}` vira alternativa. ---
-
 function expandirChaves(glob) {
   const chaves = /\{([^{}]*)\}/.exec(glob);
   if (!chaves) return [glob];

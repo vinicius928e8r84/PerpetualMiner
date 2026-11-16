@@ -1,23 +1,11 @@
 'use strict';
 
-// Diz se uma mudança é só documentação, caso em que o workflow Testes pula o trabalho das fatias
-// e2e. Uso: `node scripts/ci/so-documentacao.js <base> <head>` imprime `true` ou `false` para
-// o que mudou entre os dois commits. Na dúvida (nada mudou, ou não deu para ver) é `false`:
-// a suíte roda.
-
 const { execFileSync } = require('child_process');
 
-// Pastas que a suíte, o CI ou a extensão usam: nada nelas é documentação, nem um .md ou um .png.
 const CODIGO = [/^e2e\//, /^\.github\//, /^scripts\//, /^lib\//, /^veio\//, /^conexao\//];
 
-// A suíte e2e lê estes arquivos de documentação (docs/design/voz/README.md em
-// catalogo-da-voz.spec.js, os assets da marca em base-veio.spec.js, as imagens da loja em
-// e2e/loja/, o cartão do russo em cartao-do-russo-visual.spec.js): mudá-los muda o que ela confere.
 const LIDOS_PELA_SUITE = [/^docs\/design\/voz\//, /^docs\/design\/identidade-veio\//, /^docs\/loja\//, /^docs\/design\/cartao-do-russo\.html$/];
 
-// O que é documentação, e só com estas extensões: texto em qualquer pasta, e em docs/ também as
-// imagens e os protótipos em HTML que ilustram o texto. `.agents/` e `.claude/` guardam scripts
-// (doctor.sh, drive.sh...) junto das instruções: só o texto delas fica de fora da suíte.
 const TEXTO = /\.md$/i;
 const ILUSTRACAO = /\.(png|jpe?g|gif|webp|svg|html)$/i;
 
@@ -32,11 +20,6 @@ function soDocumentacao(arquivos) {
   return arquivos.length > 0 && arquivos.every(ehDocumentacao);
 }
 
-/**
- * Os caminhos que mudaram entre dois commits. Sem detectar renomeações: um arquivo movido
- * aparece como apagado no caminho de origem e criado no de destino, e os dois entram na conta
- * (com a detecção, só o destino apareceria e mover um teste para docs/ passaria por texto).
- */
 function arquivosMudados(base, head, repositorio) {
   const saida = execFileSync('git', ['-C', repositorio || '.', 'diff', '--no-renames', '--name-only', base, head], { encoding: 'utf8' });
   return saida.split('\n').map(l => l.trim()).filter(Boolean);

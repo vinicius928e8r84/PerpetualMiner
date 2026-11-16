@@ -1,8 +1,5 @@
 'use strict';
 
-// As decisões que os workflows tomam com código: quando a suíte e2e pode ser pulada, quais testes passaram só na
-// segunda tentativa (workflow Testes) e os checks obrigatórios. A autoria dos commits (workflow Regras) está em test_autoria.js.
-
 const assert = require('assert');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
@@ -23,16 +20,13 @@ assert.strictEqual(soDocumentacao(['.github/workflows/testes.yml']), false);
 assert.strictEqual(soDocumentacao(['.agents/skills/verify-perpetualminer/scripts/doctor.sh']), false);
 assert.strictEqual(soDocumentacao(['scripts/ci/so-documentacao.js']), false);
 
-// Lista vazia (não deu para ver o que mudou): roda tudo.
 assert.strictEqual(soDocumentacao([]), false);
 
-// A suíte lê estes arquivos de documentação: mudá-los muda o que ela confere.
 assert.strictEqual(soDocumentacao(['docs/design/voz/README.md']), false);
 assert.strictEqual(soDocumentacao(['docs/design/identidade-veio/assets/veio.svg']), false);
 assert.strictEqual(soDocumentacao(['docs/loja/pequena.png']), false);
 assert.strictEqual(soDocumentacao(['docs/design/cartao-do-russo.html']), false, 'e2e/tests/cartao-do-russo-visual.spec.js fotografa esta página');
 
-// Nada que a suíte, o CI ou a extensão usam passa por documentação, nem com extensão de texto.
 assert.strictEqual(soDocumentacao(['e2e/pages/fixture.md']), false);
 assert.strictEqual(soDocumentacao(['e2e/tests/painel-visual.spec.js-snapshots/a.png']), false);
 assert.strictEqual(soDocumentacao(['e2e/tests/referencia.png']), false);
@@ -120,8 +114,6 @@ function saidaDoPasso(conteudo) {
 assert.strictEqual(saidaDoPasso(relatorio), 'achou=true\n', 'com um teste instável o job guarda os resultados');
 assert.strictEqual(saidaDoPasso({ suites: [] }), 'achou=false\n', 'sem nenhum, não guarda');
 
-// Os checks obrigatórios: cada nome da lista sai de algum workflow. O erro real é o do #262/#263, em que o
-// revisor conferiu à mão que "nenhum nome de check mudou".
 {
   const RAIZ = path.resolve(__dirname, '..', '..');
   assert.deepStrictEqual(checksQueFaltam(RAIZ), [], 'todo check obrigatório sai de um workflow (ou a lista e a proteção da main mudam juntas)');

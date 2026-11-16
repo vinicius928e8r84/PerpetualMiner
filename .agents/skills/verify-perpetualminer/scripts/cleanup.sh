@@ -1,15 +1,4 @@
 #!/usr/bin/env bash
-# Tears down one run: stops what drive.sh started for it (drive.sh and the Playwright job's whole process group,
-# even after drive.sh itself died) and removes its scratch (profiles, Playwright output). Evidence is never touched. Safe to run again after an interruption: every step checks before it acts, and a
-# second run on an already-clean directory only reports what is kept.
-#
-# Safety: the run ID must be one plain segment, the run directory a real directory directly under the verification
-# root (no symlink anywhere in what gets removed). A process is signalled only while it is still the process collected
-# from drive.pid: drive.sh only when pid + start time + exact command line + this checkout's drive.sh path all match,
-# the job's group only while the recorded group still has members and its leader is not a newer process, descendants
-# by pid + start time. A pid alone is never enough. If anything survives SIGKILL the script exits 1 and keeps
-# drive.pid, so a re-run retries instead of forgetting it.
-# Usage: cleanup.sh <run-id>
 set -u
 [ $# -eq 1 ] || { echo 'usage: cleanup.sh <run-id>' >&2; exit 2; }
 ID="$1"
@@ -39,7 +28,6 @@ if [ -f "$RUN/drive.pid" ]; then
       sleep 0.5
     done
     if [ -n "$(pm_sobreviventes "${alvos[@]}")" ]; then
-      # Collect again: the job may have spawned more since the first pass. Each is still identity-checked per signal.
       primeiros=("${alvos[@]}"); coletar; alvos=("${primeiros[@]}" "${alvos[@]}")
       pm_sinalizar KILL "${alvos[@]}"
       sleep 1

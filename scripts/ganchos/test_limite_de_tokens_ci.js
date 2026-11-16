@@ -1,9 +1,5 @@
 'use strict';
 
-// A conferência de tamanho no CI (limite-de-tokens.js --base <ref>): o que a branch mudou desde a base
-// passa pelo mesmo limite e pela mesma linha de base que só desce do gancho. Roda num repositório de
-// mentira com uma "main" e uma branch, criado e apagado aqui.
-
 const assert = require('assert');
 const { execFileSync, spawnSync } = require('child_process');
 const fs = require('fs');
@@ -41,9 +37,8 @@ try {
   commit('main');
 
   git('checkout', '-q', '-b', 'branch');
-  passa('main'); // nada mudou
+  passa('main');
 
-  // Arquivo novo no limite passa; um byte acima barra, com o nome e os números.
   escrever('lib/no-limite.js', 'a'.repeat(20000));
   commit('no limite');
   passa('main');
@@ -54,9 +49,8 @@ try {
   assert.ok(!r.stderr.includes('lib/no-limite.js'), r.stderr);
   git('rm', '-q', 'lib/acima.js');
   commit('sem o acima');
-  passa('main'); // o mesmo teste, sem o arquivo, passa
+  passa('main');
 
-  // Arquivo da linha de base: encolher e editar sem crescer passa; crescer barra.
   escrever('grande.js', 'a'.repeat(29000));
   commit('encolhe');
   passa('main');
@@ -67,13 +61,11 @@ try {
   commit('volta');
   passa('main');
 
-  // Afrouxar a linha de base (entrada nova) barra, mesmo com o arquivo dentro do limite da base editada.
   escrever('outro.js', 'a'.repeat(25000));
   gravarBase({ 'grande.js': 30000, 'outro.js': 25000 });
   commit('afrouxa');
   assert.ok(barra('main').stderr.includes('outro.js'));
 
-  // Uma base que não existe é erro, não verde.
   const inexistente = rodar('nao-existe');
   assert.strictEqual(inexistente.status, 1, inexistente.stdout + inexistente.stderr);
   assert.ok(inexistente.stderr.includes('nao-existe'), inexistente.stderr);

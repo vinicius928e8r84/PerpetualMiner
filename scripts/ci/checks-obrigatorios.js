@@ -11,11 +11,9 @@ const { lerYaml } = require('../yaml-de-workflow');
 const PASTA_DOS_WORKFLOWS = '.github/workflows';
 const ARQUIVO_DA_LISTA = 'scripts/ci/checks-obrigatorios.json';
 
-/** Uma lista inline do YAML (`[1, 2]`, `['3.9', '3.13']`) como valores de texto. */
 const valoresDaMatriz = texto => String(texto).replace(/^\s*\[|\]\s*$/g, '').split(',')
   .map(valor => valor.trim().replace(/^(['"])(.*)\1$/, '$2')).filter(Boolean);
 
-/** Todas as combinações da matriz: [{ chave: valor }]; uma lista vazia sem matriz. */
 function combinacoes(matriz) {
   let saida = [{}];
   for (const [chave, valores] of Object.entries(matriz || {})) {
@@ -35,7 +33,6 @@ function nomesDoJob(id, job) {
   });
 }
 
-/** Os checks que os workflows de `raiz` produzem. */
 function checksDosWorkflows(raiz) {
   const pasta = path.join(raiz, PASTA_DOS_WORKFLOWS);
   const nomes = new Set();
@@ -46,7 +43,6 @@ function checksDosWorkflows(raiz) {
   return nomes;
 }
 
-/** Os checks obrigatórios que nenhum workflow produz. */
 function checksQueFaltam(raiz) {
   const lista = JSON.parse(fs.readFileSync(path.join(raiz, ARQUIVO_DA_LISTA), 'utf8')).checks;
   const existentes = checksDosWorkflows(raiz);

@@ -10,7 +10,6 @@ const NOMES_DA_SPEC = ['README.md', 'catalogo-popup-e-pagina.md', 'catalogo-foto
 const CAMINHOS_DA_SPEC = NOMES_DA_SPEC.map(nome => path.join(PASTA_DA_SPEC, nome));
 const lerASpec = () => CAMINHOS_DA_SPEC.map(caminho => fs.readFileSync(caminho, 'utf8')).join('\n');
 
-/** Divide uma linha de tabela nas barras que não vêm escapadas (`\|`). */
 function celulasDaLinha(linha) {
   const celulas = [];
   let atual = '';
@@ -22,17 +21,11 @@ function celulasDaLinha(linha) {
   return celulas;
 }
 
-/** O texto da célula como a tela o mostra: sem `**`, e `_(sem texto)_` é o silêncio. */
 function textoDaCelula(celula) {
   if (celula === '_(sem texto)_') return '';
   return celula.replace(/\*\*/g, '');
 }
 
-/**
- * @param {string} [spec] o markdown da spec (por padrão, o arquivo do repositório)
- * @returns {{secao: string, id: string, estado: string, categoria: string, hoje: string, copia: string, nota: string, marca: string}[]}
- *   `marca` é 'novo' ou 'some' quando o estado traz **(novo)** ou **(some)**, senão ''.
- */
 function linhasDaSpec(spec = lerASpec()) {
   const catalogo = spec.slice(spec.indexOf('## 3. Catálogo de estados-chave'));
   const linhas = [];
@@ -47,10 +40,6 @@ function linhasDaSpec(spec = lerASpec()) {
   }
   return linhas;
 }
-
-// `docs/design/voz/catalogo.html` é a versão interativa da spec. A tabela dele
-// (`const CAT`) é gerada daqui, entre as duas marcas abaixo, e não se edita à mão:
-// `node scripts/gerar-catalogo-da-voz.js` regrava, `--conferir` só confere.
 
 const CAMINHO_DO_HTML = path.join(__dirname, '..', 'docs', 'design', 'voz', 'catalogo.html');
 const MARCA_INICIAL = '// ─── gerado por scripts/gerar-catalogo-da-voz.js a partir de README.md: não edite à mão ───';
@@ -77,7 +66,6 @@ function htmlDoCatalogo(html = fs.readFileSync(CAMINHO_DO_HTML, 'utf8'), linhas 
   const tabela = tabelaDoHtml(linhas);
   const comMarcas = new RegExp(`${escapar(MARCA_INICIAL)}[\\s\\S]*?${escapar(MARCA_FINAL)}`);
   if (comMarcas.test(html)) return html.replace(comMarcas, () => tabela);
-  // Primeira vez: troca o `const CAT = [...]` escrito à mão.
   const aMao = /\/\/ \[id, estado\/gatilho[^\n]*\nconst CAT = \[[\s\S]*?\n\];/;
   if (!aMao.test(html)) throw new Error('catalogo.html: não achei a tabela `const CAT` para trocar');
   return html.replace(aMao, () => tabela);

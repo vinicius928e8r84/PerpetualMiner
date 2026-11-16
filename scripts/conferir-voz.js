@@ -1,8 +1,5 @@
 'use strict';
 
-// A conferência do catálogo da Voz que `test_voz.js` roda: o que `lib/voz/catalogo.js`
-// (o que a extensão mostra) tem de bater com a spec (`docs/design/voz/README.md`).
-
 const CAMINHO_DO_RETRATO = require('path').join(__dirname, '..', 'docs', 'design', 'voz', 'catalogo-textos.json');
 
 function textosDoCatalogo(catalogo) {
@@ -17,7 +14,6 @@ function textosDoCatalogo(catalogo) {
 const normalizar = texto => texto.replace(/[“”]/g, '"').replace(/\s+/g, ' ').trim();
 const escapar = texto => texto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-/** O modelo do catálogo como expressão: `{nome}` vira qualquer valor e `{n|a|b}`, uma das duas formas. */
 function expressaoDoModelo(modelo) {
   const corpo = normalizar(modelo).split(/(\{[^{}]+\})/).map(parte => {
     if (!/^\{[^{}]+\}$/.test(parte)) return escapar(parte);
@@ -27,14 +23,6 @@ function expressaoDoModelo(modelo) {
   return new RegExp(corpo);
 }
 
-/**
- * @param {object} catalogo o `CATALOGO_DA_VOZ`
- * @param {{id: string, copia: string, nota: string}[]} linhas a spec, de `linhasDaSpec()`
- * @param {Record<string, string>} retrato todos os textos e partes de `catalogo.js`, `ID` ou `ID.parte` →
- *   texto, como a última regravação os deixou (`docs/design/voz/catalogo-textos.json`)
- * @param {Set<string>} naoEscritos textos que a spec não escreve por extenso
- * @returns {string[]} o que não bate; vazio quando tudo bate
- */
 function problemasDaVoz({ catalogo, linhas, retrato, naoEscritos }) {
   const problemas = [];
   const idsDaSpec = linhas.map(l => l.id);
@@ -43,7 +31,6 @@ function problemasDaVoz({ catalogo, linhas, retrato, naoEscritos }) {
   for (const id of idsDaSpec.filter(id => !(id in catalogo))) problemas.push(`${id}: está na spec e falta no catalogo.js`);
   for (const id of idsDoCatalogo.filter(id => !idsDaSpec.includes(id))) problemas.push(`${id}: está no catalogo.js e falta na spec`);
 
-  // Todo texto e toda parte, por inteiro: um texto mudado ou uma parte apagada aparece aqui.
   const atuais = retratoDoCatalogo(catalogo);
   for (const nome of Object.keys(retrato)) {
     if (!(nome in atuais)) problemas.push(`${nome}: estava no retrato e saiu do catalogo.js`);
@@ -61,7 +48,6 @@ function problemasDaVoz({ catalogo, linhas, retrato, naoEscritos }) {
   return problemas;
 }
 
-/** O retrato do catálogo: todos os textos e partes, na ordem do `catalogo.js`. */
 const retratoDoCatalogo = catalogo => Object.fromEntries(textosDoCatalogo(catalogo).map(({ nome, modelo }) => [nome, modelo]));
 
 module.exports = { CAMINHO_DO_RETRATO, problemasDaVoz, retratoDoCatalogo, textosDoCatalogo };

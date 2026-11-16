@@ -1,17 +1,6 @@
 #!/usr/bin/env node
 'use strict';
 
-// Regrava o que se deriva da Voz:
-//   - a tabela de `docs/design/voz/catalogo.html`, a partir da spec
-//     (`docs/design/voz/README.md`, a fonte do texto);
-//   - `docs/design/voz/catalogo-textos.json`, o retrato de todos os textos e partes de
-//     `lib/voz/catalogo.js`. `test_voz.js` falha quando o `catalogo.js` se afasta dele:
-//     regravar é o passo de quem muda um texto de propósito, e o diff mostra a mudança.
-//
-// `--conferir` não grava: sai com 1 se alguma das duas cópias não bate.
-//
-//   node scripts/gerar-catalogo-da-voz.js [--conferir]
-
 const fs = require('fs');
 const { CAMINHO_DO_HTML, htmlDoCatalogo } = require('./voz-da-spec.js');
 const { CAMINHO_DO_RETRATO, retratoDoCatalogo } = require('./conferir-voz.js');

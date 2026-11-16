@@ -1,16 +1,5 @@
 'use strict';
 
-// O registro que o portão exige de toda PR (.github/workflows/registro-da-pr.yml), lido do GitHub na hora, no head exato:
-//   1. o corpo segue o modelo do /pr (as seções Summary, Evidence e Merge Danger, com "Door:" e "Blast Radius:" preenchidos)
-//      e tem a linha "Atenção:" com BAIXA, MÉDIA ou ALTA;
-//   2. um comentário ou revisão da PR é o registro do /code-review deste head: "Veredito: CLEAN", "Head:" com o SHA inteiro
-//      do head e um "Revisor:" diferente do "Autor:";
-//   3. com atenção ALTA (ou o rótulo `risco:alto`), o corpo tem a seção "Prova real" com a linha PROVADO 100% REAL e
-//      "Head:" com o SHA inteiro do head.
-// Um commit novo muda o head: o registro e a prova do commit anterior deixam de valer. O formato: .github/PULL_REQUEST_TEMPLATE.md.
-// O limite: confere o artefato e o SHA, não que a revisão ou a prova aconteceram; autor e revisor são os que o registro declara.
-// Uso: GITHUB_TOKEN=… GITHUB_REPOSITORY=<dono/repo> PR=<número> HEAD=<SHA do head> node scripts/ci/registro-da-pr.js
-
 const SECOES_DO_MODELO = ['Summary', 'Evidence', 'Merge Danger'];
 const CAMPOS_DO_MODELO = ['Door', 'Blast Radius'];
 const ATENCOES = ['BAIXA', 'MÉDIA', 'ALTA'];
@@ -38,11 +27,6 @@ const semMarcacao = texto => texto.replace(/[*_`]/g, '').replace(/^[\s-]+|[\s.!]
 const semCaixaNemAcento = texto => texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 const igual = (a, b) => semCaixaNemAcento(a) === semCaixaNemAcento(b);
 
-/**
- * As linhas que valem de um texto em Markdown: [{ texto, nivel }], o texto sem a marcação em volta e o nível quando a
- * linha é um título. Não conta o que está em comentário de HTML (o modelo da PR traz o formato dentro de um), em bloco
- * de código (um exemplo do formato, um `# comentário` de shell) ou em citação (a resposta que cita um registro antigo).
- */
 function linhasQueValem(markdown) {
   const saida = [];
   let cerca = null;
@@ -58,7 +42,6 @@ function linhasQueValem(markdown) {
   return saida;
 }
 
-/** Os textos da seção de título `nome`, até o próximo título do mesmo nível ou acima; null sem a seção. */
 function secao(linhas, nome) {
   const inicio = linhas.findIndex(linha => linha.nivel && igual(linha.texto, nome));
   if (inicio < 0) return null;
@@ -67,14 +50,12 @@ function secao(linhas, nome) {
   return (fim < 0 ? resto : resto.slice(0, fim)).map(linha => linha.texto);
 }
 
-/** O que as linhas "Campo: valor" dizem (a caixa e o acento do nome do campo não contam). */
 const valoresDe = (textos, campo) => textos.filter(texto => texto.includes(':'))
   .map(texto => [texto.slice(0, texto.indexOf(':')), texto.slice(texto.indexOf(':') + 1).trim()])
   .filter(([nome, valor]) => valor && igual(nome, campo)).map(([, valor]) => valor);
 
 const hexasDe = textos => textos.join('\n').toLowerCase().match(/[0-9a-f]+/g) || [];
 
-/** Por que a linha "Head:" dos textos não é a do head, ou null: só vale o SHA inteiro, e o de outro commit diz que o head mudou. */
 function faltaDoHead(textos, head, oQue) {
   const hexas = hexasDe(valoresDe(textos, 'Head'));
   if (hexas.includes(head)) return null;
@@ -84,7 +65,6 @@ function faltaDoHead(textos, head, oQue) {
   return `${oQue} não tem a linha "Head:" com o SHA do head`;
 }
 
-/** A atenção do corpo ('BAIXA', 'MÉDIA', 'ALTA') ou a falta: sem o campo preenchido, com outro valor ou com dois valores. */
 function atencaoDe(textos) {
   const ditas = [...new Set(valoresDe(textos, 'Atenção').map(valor => ATENCOES.find(atencao => igual(atencao, valor)) || valor))];
   if (ditas.length === 1 && ATENCOES.includes(ditas[0])) return { atencao: ditas[0] };
@@ -93,7 +73,6 @@ function atencaoDe(textos) {
   return { falta: `a atenção "${ditas[0]}" do corpo não é ${ATENCOES.join(' nem ')} (o valor sozinho na linha)` };
 }
 
-/** Por que não há registro do /code-review que valha para o head, ou null. Vale o mais recente cuja linha "Head:" é a do head. */
 function faltaDaRevisao(registros, head) {
   const todos = registros.map(linhasQueValem).map(linhas => linhas.map(linha => linha.texto)).filter(textos => valoresDe(textos, 'Veredito').length);
   const doHead = todos.filter(textos => !faltaDoHead(textos, head)).pop();
@@ -124,7 +103,6 @@ function faltasDaIssue(linhas, repositorio) {
   return faltas;
 }
 
-/** Por que a prova real não vale para o head, ou null. */
 function faltaDaProva(linhas, head) {
   const prova = secao(linhas, SECAO_DA_PROVA);
   if (!prova) return `atenção ALTA: o corpo não tem a seção "${SECAO_DA_PROVA}"`;
@@ -133,10 +111,6 @@ function faltaDaProva(linhas, head) {
   return semHead && `atenção ALTA: ${semHead}`;
 }
 
-/**
- * { ok, mensagem }: se a PR pode passar, e o que o check mostra. `registros` são os comentários e as revisões da PR,
- * do mais antigo ao mais recente.
- */
 function conferir({ corpo, rotulos, registros, head, repositorio }) {
   const linhas = linhasQueValem(corpo);
   const textos = linhas.map(linha => linha.texto);
@@ -165,7 +139,6 @@ function conferir({ corpo, rotulos, registros, head, repositorio }) {
   };
 }
 
-/** O corpo, os rótulos, os registros (comentários e revisões de quem pode escrever, por data) e o head da PR, lidos do GitHub. */
 async function lerDoGitHub(env) {
   const ler = async caminho => {
     const resposta = await fetch(`${env.GITHUB_API_URL || 'https://api.github.com'}/repos/${env.GITHUB_REPOSITORY}/${caminho}`, {

@@ -1,18 +1,10 @@
 'use strict';
 
-// Lê o que um workflow do GitHub Actions faz de fato, sem biblioteca (o repositório não tem dependências de
-// Node): o YAML de `.github/workflows/` é só mapas, listas, textos e blocos `|`. `rodaNoPR` diz se ele roda
-// em pull_request e `comandos` lista cada linha de `run:` com o job e o passo em que está e se ela executa:
-// um job ou passo com `if` que nunca é verdade ou que só vale fora do PR, `continue-on-error: true` (o passo
-// pode falhar sem barrar), um comando que só imprime (`echo …`) ou que engole a falha (`|| true`) não executa nada.
-// Quem usa: a regra `testes-no-portao` (scripts/regras/).
-
 const LINHA = Symbol('linha');
 const LINHAS_DAS_CHAVES = Symbol('linhasDasChaves');
 
 const recuo = texto => texto.length - texto.trimStart().length;
 
-/** O texto de um valor escalar: sem comentário no fim e sem aspas. */
 function escalar(texto) {
   let valor = texto.trim();
   const aspas = /^(['"])(.*)\1$/.exec(valor);
@@ -21,10 +13,6 @@ function escalar(texto) {
   return valor.trim();
 }
 
-/**
- * Transforma o texto do workflow em objetos e listas; cada mapa guarda a linha de cada chave.
- * O fim de linha pode ser CRLF: é como o arquivo chega num clone com `core.autocrlf=true`, o padrão do Git for Windows.
- */
 function lerYaml(texto) {
   const linhas = texto.split(/\r?\n/).map((conteudo, i) => ({ conteudo, numero: i + 1 }));
   let posicao = 0;
@@ -85,7 +73,6 @@ function lerYaml(texto) {
     for (let linha = proxima(); linha && recuo(linha.conteudo) === nivel && linha.conteudo.trim().startsWith('- '); linha = proxima()) {
       const resto = linha.conteudo.trim().slice(2);
       if (/^[^:#'"[{][^:]*:(\s|$)/.test(resto)) {
-        // `- chave: valor`: o item é um mapa cujas chaves ficam alinhadas com a primeira.
         linha.conteudo = `${' '.repeat(nivel + 2)}${resto}`;
         const item = mapa(nivel + 2);
         item[LINHA] = linha.numero;
@@ -108,10 +95,6 @@ function lerYaml(texto) {
   return primeira ? bloco(recuo(primeira.conteudo)) : {};
 }
 
-// O valor de uma condição `if:` num pull request: true, false, ou null quando o leitor não sabe interpretá-la.
-// Entendidas: true/false, always(), success(), `github.event_name ==|!= 'evento'`, `env.NOME ==|!= 'true'|'false'` e `&&` / `||`
-// entre elas. Um `env.NOME` que o job define com uma saída de outro job (`${{ needs.x.outputs.y … }}`) é decidido por esse job
-// (a e2e que só roda quando a PR não é só documentação): no pull request conta como verdadeiro; o valor fixo vale pelo que é.
 function valorDoIf(condicao, env = {}) {
   const texto = String(condicao).trim().replace(/^\$\{\{\s*([^]*?)\s*\}\}$/, '$1').trim();
   const atomo = parte => {
@@ -137,7 +120,6 @@ function valorDoIf(condicao, env = {}) {
   return ou.includes(null) ? null : false;
 }
 
-/** Por que um `if:` impede de contar como portão do pull request (ou null se roda nele). */
 function motivoDoIf(condicao, env) {
   if (condicao === undefined || condicao === null) return null;
   const valor = valorDoIf(condicao, env);
@@ -163,7 +145,6 @@ function rodaNoPR(workflow) {
   return Object.keys(gatilho).includes('pull_request');
 }
 
-/** Cada linha de `run:` do workflow: { job, passo, linha, texto, executa, motivo }. */
 function comandos(workflow) {
   const saida = [];
   for (const [nomeDoJob, job] of Object.entries((workflow && workflow.jobs) || {})) {
