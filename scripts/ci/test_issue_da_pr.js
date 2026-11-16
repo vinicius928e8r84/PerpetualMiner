@@ -8,7 +8,7 @@ const MODELO_DO_PR = ['## Summary', '', 'O que mudou.', '', 'Sem issue', '', '##
 const corpoCom = (...linhas) => [...MODELO_DO_PR, ...linhas].join('\n');
 const REVISAO = ['## Code review', '', 'Veredito: CLEAN', `Head: ${HEAD}`, 'Autor: sessão do autor', 'Revisor: sessão da revisão'].join('\n');
 
-const resultado = pr => conferir({ corpo: '', rotulos: [], registros: [REVISAO], head: HEAD, ...pr });
+const resultado = pr => conferir({ corpo: '', rotulos: [], registros: [REVISAO], head: HEAD, repositorio: 'dono/repo', ...pr });
 const passa = (pr, caso) => {
   const { ok, mensagem } = resultado(pr);
   assert.strictEqual(ok, true, `${caso}: ${mensagem}`);
@@ -48,5 +48,13 @@ recusa({ corpo: comIssue('Sem issue nenhuma por enquanto') }, FALTA_A_ISSUE, 'Se
 recusa({ corpo: comIssue(`Fecha ${ISSUE}`) }, FALTA_A_ISSUE, 'a issue citada sem Closes nem Refs');
 recusa({ corpo: comIssue(`Closes: ${ISSUE}`) }, FALTA_A_ISSUE, 'Closes com dois-pontos não é a linha de fechamento do GitHub');
 recusa({ corpo: comIssue(`<!-- Closes ${ISSUE} -->`, '```', `Closes ${ISSUE}`, '```', `> Closes ${ISSUE}`, '> Sem issue') }, FALTA_A_ISSUE, 'a linha num comentário, num bloco de código ou numa citação');
+passa({ corpo: comIssue('Closes https://github.com/DONO/Repo/issues/12') }, 'o repositório sem diferenciar maiúsculas');
+recusa({ corpo: comIssue('Closes https://github.com/fulano/outro/issues/1') }, SEM_URL, 'Closes de uma issue de outro repositório');
+recusa({ corpo: comIssue('Refs https://github.com/fulano/outro/issues/1', 'Prova que falta: o envio real') }, SEM_URL, 'Refs de uma issue de outro repositório');
+recusa({ corpo: comIssue(`\`Closes ${ISSUE}\``) }, FALTA_A_ISSUE, 'Closes em código na linha: o GitHub não fecha');
+recusa({ corpo: comIssue(`Closes ${ISSUE}`, '', `    Closes ${OUTRA_ISSUE}`).replace(`Closes ${ISSUE}\n\n`, '') }, FALTA_A_ISSUE, 'Closes num bloco de código indentado');
+recusa({ corpo: comIssue(`\tCloses ${ISSUE}`) }, FALTA_A_ISSUE, 'Closes depois de um tab');
+recusa({ corpo: comIssue('`Sem issue`') }, FALTA_A_ISSUE, 'Sem issue em código na linha');
+passa({ corpo: comIssue(`   Closes ${ISSUE}`) }, 'até três espaços ainda é texto');
 
 console.log('test_issue_da_pr: ok');
