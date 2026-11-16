@@ -17,7 +17,7 @@ import threading
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from test_servidor import ORIGEM, ConexaoNoTeste, configuracao  # noqa: E402
+from test_harness import ORIGEM, ConexaoNoTeste, configuracao  # noqa: E402
 
 CHAVE = "sk-proj-ChaveSecretaDeTeste0123456789-abcd"
 OUTRA_CHAVE = "sk-proj-OutraChaveSecreta9876543210-wxyz"

@@ -1,4 +1,4 @@
-"""O que um exemplo do contrato (`contexto`) põe na Conexão antes de ela subir: o item de login e a chave que ela já guardava (apoio de `test_servidor.ConexaoNoTeste`)."""
+"""O que um exemplo do contrato (`contexto`) põe na Conexão antes de ela subir: o item de login e a chave que ela já guardava (apoio de `test_harness.ConexaoNoTeste`)."""
 
 import os
 

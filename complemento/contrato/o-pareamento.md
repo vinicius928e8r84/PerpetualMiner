@@ -46,6 +46,6 @@ A Conexão **de antes do pareamento** (404 no `conferir`) não recebe da extens�
 
 - `contexto` dos exemplos: `pareado: false` (a Conexão não conhece nenhum navegador; o padrão é o navegador `primeiro` de `navegadoresDeTeste`), `semTela` (o Anki não tem onde mostrar o código), `codigoPendente` (o Anki mostra
   este código), `codigoUsadoPor` (outro navegador já o usou) e `desconectado` (o Desconectar navegadores já foi apertado: o navegador de teste está revogado). `navegadoresDeTeste` guarda o `cliente` e o `segredo` dos dois navegadores de teste, que o e2e e os testes do complemento usam.
-- O harness de `test_servidor.py` assina por padrão todo exemplo que traz a origem da extensão (`pedir_como_o_exemplo`); o fake do e2e verifica a assinatura de todo pedido e assina toda resposta
+- O harness de `test_harness.py` assina por padrão todo exemplo que traz a origem da extensão (`pedir_como_o_exemplo`); o fake do e2e verifica a assinatura de todo pedido e assina toda resposta
   (`e2e/fakes/pareamento.js`); `PM_CONEXAO=real` roda os mesmos fluxos contra o servidor de verdade.
 - Respostas com `"<segredo>"`, `"<prova>"` (32 bytes em base64) e `"<sessão>"` (32 hexadecimais) no JSON mudam a cada pareamento e a cada subida.
