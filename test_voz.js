@@ -10,11 +10,17 @@ const { CAMINHO_DO_RETRATO, problemasDaVoz, retratoDoCatalogo, textosDoCatalogo 
 const CATALOGO_DA_VOZ = carregarCatalogo();
 const retrato = JSON.parse(fs.readFileSync(CAMINHO_DO_RETRATO, 'utf8'));
 
-const notas = Object.assign({}, ...Object.values(NOTAS_POR_AREA));
-const idsSemNota = Object.keys(CATALOGO_DA_VOZ).filter(id => typeof notas[id] !== 'string');
-assert.deepStrictEqual(idsSemNota, [], 'um ID do catálogo não tem a nota em docs/design/voz/notas-<área>.json (sem nota é "")');
-assert.deepStrictEqual(Object.keys(notas).filter(id => !(id in CATALOGO_DA_VOZ)), [], 'uma nota em docs/design/voz/notas-<área>.json é de um ID que não está no catálogo');
-assert.strictEqual(Object.values(NOTAS_POR_AREA).reduce((soma, doArea) => soma + Object.keys(doArea).length, 0), Object.keys(notas).length, 'um ID tem nota em duas áreas');
+const decisoes = Object.assign({}, ...Object.values(NOTAS_POR_AREA));
+const idsSemEntrada = Object.keys(CATALOGO_DA_VOZ).filter(id => typeof decisoes[id] !== 'object');
+assert.deepStrictEqual(idsSemEntrada, [], 'um ID do catálogo não tem entrada em docs/design/voz/notas-<área>.json');
+const vazio = campo => Object.keys(CATALOGO_DA_VOZ).filter(id => typeof decisoes[id]?.[campo] !== 'string' || (campo !== 'nota' && decisoes[id][campo] === ''));
+assert.deepStrictEqual(vazio('estado'), [], 'um ID do catálogo não tem o estado em docs/design/voz/notas-<área>.json');
+assert.deepStrictEqual(vazio('categoria'), [], 'um ID do catálogo não tem a categoria em docs/design/voz/notas-<área>.json');
+assert.deepStrictEqual(vazio('hoje'), [], 'um ID do catálogo não tem o “hoje” em docs/design/voz/notas-<área>.json');
+assert.deepStrictEqual(vazio('nota'), [], 'um ID do catálogo não tem a nota em docs/design/voz/notas-<área>.json (sem nota é "")');
+assert.deepStrictEqual(Object.keys(decisoes).filter(id => ![undefined, 'novo', 'some'].includes(decisoes[id].marca)), [], 'a marca de um ID é novo ou some, ou não existe');
+assert.deepStrictEqual(Object.keys(decisoes).filter(id => !(id in CATALOGO_DA_VOZ)), [], 'uma entrada em docs/design/voz/notas-<área>.json é de um ID que não está no catálogo');
+assert.strictEqual(Object.values(NOTAS_POR_AREA).reduce((soma, doArea) => soma + Object.keys(doArea).length, 0), Object.keys(decisoes).length, 'um ID tem entrada em duas áreas');
 
 const conferir = catalogo => problemasDaVoz({ catalogo, retrato });
 
@@ -27,10 +33,16 @@ assert.strictEqual(fs.readFileSync(CAMINHO_DO_HTML, 'utf8'), htmlDoCatalogo(),
 
 const noHtml = linhasDoHtml(fs.readFileSync(CAMINHO_DO_HTML, 'utf8'));
 assert.deepStrictEqual(noHtml.map(l => l.id).sort(), Object.keys(CATALOGO_DA_VOZ).sort(), 'o catalogo.html não tem os mesmos IDs do catálogo');
-for (const { id, texto, nota } of noHtml) {
-  assert.strictEqual(nota, notas[id], `${id}: a nota do catalogo.html não é a de notas-<área>.json`);
+for (const { id, texto, estado, categoria, hoje, nota, marca } of noHtml) {
+  const { estado: doEstado, categoria: daCategoria, hoje: doHoje, nota: daNota, marca: daMarca = '' } = decisoes[id];
+  assert.deepStrictEqual({ estado, categoria, hoje, nota, marca }, { estado: doEstado, categoria: daCategoria, hoje: doHoje, nota: daNota, marca: daMarca }, `${id}: o catalogo.html não traz o estado, a categoria, o “hoje”, a nota e a marca de notas-<área>.json`);
   for (const { nome, modelo } of textosDoCatalogo({ [id]: CATALOGO_DA_VOZ[id] })) assert(texto.includes(modelo), `${nome}: o texto do catalogo.html não traz o do catálogo`);
 }
+
+const PASTA_DA_VOZ = path.dirname(CAMINHO_DO_HTML);
+const mdComTabelaDeTextos = fs.readdirSync(PASTA_DA_VOZ).filter(nome => nome.endsWith('.md')
+  && /^\| [A-Z]{3}-\d+ \|/m.test(fs.readFileSync(path.join(PASTA_DA_VOZ, nome), 'utf8')));
+assert.deepStrictEqual(mdComTabelaDeTextos, [], 'a tabela de textos não mora em docs/design/voz/*.md: o texto é do catalogo.js e se vê no catalogo.html');
 
 function comMudanca(mudar) {
   const copia = JSON.parse(JSON.stringify(CATALOGO_DA_VOZ));
