@@ -8,7 +8,7 @@ const CAMINHO_DO_HTML = path.join(PASTA_DA_VOZ, 'catalogo.html');
 const AREAS = {
   'popup-e-pagina': 'Popup e página', foto: 'Minerar de uma foto', 'painel-frases': 'Painel · Frases', envio: 'Envio ao Anki',
   'painel-anki': 'Painel · Conexão com o Anki', configuracoes: 'Configurações', 'boas-vindas': 'Boas-vindas (primeira execução)', global: 'Global',
-  nivel: 'Boas-vindas e Ajustes de envio: o nível, a prévia do Cartão e o quiz',
+  nivel: 'Continuação do catálogo (catalogo-nivel.js)',
 };
 
 const lerNotas = nome => JSON.parse(fs.readFileSync(path.join(PASTA_DA_VOZ, nome), 'utf8'));
