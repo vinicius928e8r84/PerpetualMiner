@@ -15,8 +15,6 @@ from complemento.test_cartao_russo_de_mentira import cartao_russo
 from complemento.test_correcao_de_mentira import CorrecaoDeMentira
 from complemento.test_imagens_de_mentira import png_de
 
-# O que cada comportamento faz com os dois pedidos que a Conexão faz ao conferir uma chave:
-# (status, corpo) de GET /v1/models e de POST /v1/embeddings.
 MODELOS_OK = (200, {"object": "list", "data": [{"id": "gpt-4.1-mini", "object": "model"}]})
 EMBEDDINGS_OK = (200, {"object": "list", "data": [{"embedding": [0.0]}]})
 # A lista de modelos que o plano do ChatGPT devolve ao `access_token` do login (a forma da doc: `models`, `slug`, `visibility`).
@@ -47,17 +45,14 @@ COMPORTAMENTOS = {
         MODELOS_OK,
         _erro(403, "Your organization must be verified to use this feature.", "invalid_request_error", None),
     ),
-    # O limite de uso (429 que não diz “quota”) nos dois pedidos: nada foi conferido.
     "limite_de_uso": (
         _erro(429, "Rate limit reached for requests.", "requests", "rate_limit_exceeded"),
         _erro(429, "Rate limit reached for requests.", "requests", "rate_limit_exceeded"),
     ),
-    # Os modelos responderam, mas o pedido pago bateu no limite: a conta não tem como pagar o uso agora.
     "limite_so_no_pago": (
         MODELOS_OK,
         _erro(429, "Rate limit reached for requests.", "requests", "rate_limit_exceeded"),
     ),
-    # O pagamento recusado por um 402, direto, em cada um dos dois pedidos.
     "pagamento_402_nos_modelos": (
         _erro(402, "Payment required.", "billing_error", None),
         EMBEDDINGS_OK,
@@ -86,7 +81,7 @@ def _cartao_de_mentira(mensagens, prompt=""):
     texto_do_prompt = " ".join(prompt.split())
     partes = re.findall(r"(%s): \[" % "|".join(PARTES_DE_MENTIRA), texto_do_prompt) or list(PARTES_DE_MENTIRA)[:3] + ["Gist"]
     com_alinhamento = not prompt or "Alignment: 1 |" in texto_do_prompt
-    russo = cartao_russo(pedido, texto_do_prompt)  # o pedido em russo: a frase inteira é a frente
+    russo = cartao_russo(pedido, texto_do_prompt)
     if russo:
         return russo
     alvo = re.search(r"Target keyword for this card: (.+)", pedido)
@@ -124,22 +119,20 @@ class OpenAIDeMentira(CorrecaoDeMentira):
 
     def __init__(self, comportamento="aceita"):
         self.comportamento = comportamento
-        self.pedidos = []  # (metodo, caminho, Authorization)
-        self.chats = []  # (Authorization, corpo) de cada pedido de texto
-        self.recusas_do_chat = {}  # Palavra (ou "*") → (status, código)
+        self.pedidos = []
+        self.chats = []
+        self.recusas_do_chat = {}
         self.respostas = []
         self.recusa_das_respostas = None
         self.falha_no_stream = None
         self.recusa_do_juiz_do_plano = None
-        self.modelos_da_conta = self.modelos_do_plano = None  # os ids de `GET /v1/models` para a chave e para o plano (None: os de cima)
-        # As imagens do Cartão (#144): o juiz (`juiz(modo, candidatas) -> veredito`, `candidatas`: `{index, title, kind, imagem}`), a triagem
-        # (a letra que ela responde) e a imagem gerada (`recusa_da_imagem`: (status, código); `imagem_gerada`: o que devolve).
+        self.modelos_da_conta = self.modelos_do_plano = None
         self.juiz = _juiz_que_gosta_da_primeira
         self.triagem = "C"
         self.recusa_da_imagem = None
         self.imagem_gerada = png_de("gerada")
-        self.juizes, self.triagens, self.imagens = [], [], []  # (Authorization, modo, candidatas) / (…, palavra) / (…, corpo)
-        self.falas, self.recusa_da_fala = [], None  # a voz (`/v1/audio/speech`): (Authorization, corpo) de cada pedido; (status, código)
+        self.juizes, self.triagens, self.imagens = [], [], []
+        self.falas, self.recusa_da_fala = [], None
         self.antes_de_responder = lambda _metodo, _autorizacao: None
         dono = self
 

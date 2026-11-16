@@ -14,9 +14,9 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
-from complemento.test_envio import ID, INGLES, EnvioNoTeste, pedido  # noqa: E402
-from complemento.test_harness import ConexaoNoTeste  # noqa: E402
+from complemento.test_colecao_em_memoria import ColecaoEmMemoria
+from complemento.test_envio import ID, INGLES, EnvioNoTeste, pedido
+from complemento.test_harness import ConexaoNoTeste
 
 ORIGEM_DE_OUTRO_SITE = "https://exemplo.invalid"
 
@@ -65,7 +65,7 @@ def estragar_o_perfil_json(pasta, como):
     caminho = os.path.join(pasta, "perfil.json")
     if como == "texto":
         with open(caminho, "w", encoding="utf-8") as arquivo:
-            arquivo.write('{"perfil": "Ana"')  # cortado no meio
+            arquivo.write('{"perfil": "Ana"')
     else:
         os.makedirs(caminho)
     return caminho
@@ -174,7 +174,7 @@ class OEnvioSoVaiParaOPerfilMarcado(unittest.TestCase):
             conexao.criar(pedido(ID, "give up : She gave up smoking"))
             esperando = conexao.esperar(ID, lambda estado: estado.get("waiting"))
             gravadas_na_espera, trocas, entradas = list(colecao.gravadas), list(colecao.trocas), list(colecao.entradas)
-            colecao.abrir("Ana")  # a pessoa fecha o Beto pelo Anki e abre a Ana
+            colecao.abrir("Ana")
             conexao.perfil = "Ana"
             fim = conexao.esperar(ID)
         self.assertEqual((esperando["status"], esperando["stage"]), ("running", "wait_anki"))

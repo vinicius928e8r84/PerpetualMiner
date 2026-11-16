@@ -35,7 +35,6 @@ class PaginaDoAnkiWeb(unittest.TestCase):
         codigo = codigo_do_ankiweb_da_extensao()
         for manifesto in (self.manifesto_entregue(), json.load(open(os.path.join(AQUI, "manifest.json"), encoding="utf-8"))):
             if codigo is None:
-                # Antes do primeiro upload o painel diz “vem em breve” e o `package` é o provisório.
                 self.assertEqual(manifesto["package"], "perpetualminer")
             else:
                 self.assertEqual(manifesto["package"], codigo)

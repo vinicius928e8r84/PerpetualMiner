@@ -19,12 +19,12 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import pareamento, registro  # noqa: E402
-from complemento.test_pareamento_de_mentira import (  # noqa: E402
+from complemento import pareamento, registro
+from complemento.test_pareamento_de_mentira import (
     CLIENTE, CODIGO, DESAFIO, OUTRO_CLIENTE, OUTRO_SEGREDO, SEGREDO, UM_CLIENTE_NOVO, VETOR, TelaDeMentira, arquivo_do_pareamento, bytes_de, cabecalhos_assinados,
     comecar, concluir, json_de, semear,
 )
-from complemento.test_harness import ConexaoNoTeste  # noqa: E402
+from complemento.test_harness import ConexaoNoTeste
 
 
 class OVetorDeAssinatura(unittest.TestCase):
@@ -53,7 +53,7 @@ class ComecarOPareamento(unittest.TestCase):
             tela, log = conexao.tela.codigo, conexao.log()
             todas = repr((status, cabecalhos, corpo, sem_assinar)) + log
         self.assertEqual((status, json_de(corpo), tela), (200, {"ok": True}, "K7M-4PX"))
-        self.assertEqual(sem_assinar[0], 200)  # o pareamento não exige a assinatura que ele existe para dar
+        self.assertEqual(sem_assinar[0], 200)
         for forma in (CODIGO, "K7M-4PX"):
             self.assertNotIn(forma, todas)
 
@@ -93,7 +93,7 @@ class ConcluirOPareamento(unittest.TestCase):
     def test_o_codigo_certo_grava_o_navegador_e_entrega_o_segredo_so_nesta_resposta(self):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta, pareado=False) as conexao:
             comecar(conexao)
-            status, resposta, cabecalhos = concluir(conexao, codigo="k7m 4px")  # o painel manda o que a pessoa digitou: caixa e separador não contam
+            status, resposta, cabecalhos = concluir(conexao, codigo="k7m 4px")
             guardado = arquivo_do_pareamento(conexao)
             modo = stat.S_IMODE(os.stat(os.path.join(pasta, "pareamento.json")).st_mode)
             fechou, conectados = conexao.tela.fechou, conexao.tela.conectados

@@ -26,8 +26,8 @@ class OCartaoDeExemploDeCadaEstilo(unittest.TestCase):
             with self.subTest(lang=lang, nivel=nivel):
                 nomes = estilos.idioma(lang)["campos"]
                 estilo = estilos.estilo(lang, nivel)
-                guardados = {nomes[parte] for parte in estilo.get("guarda", [])}  # o que o Envio grava e o verso não mostra (a Morfologia e a Raiz do russo)
-                esperados = {nomes[parte] for parte in estilo["verso"]} | guardados | {nomes["frase"], nomes["audio_da_frase"], nomes["audio_da_palavra"], nomes["lacuna"], nomes["dica"]}  # a lacuna e a Dica da frente Lacuna (#166)
+                guardados = {nomes[parte] for parte in estilo.get("guarda", [])}
+                esperados = {nomes[parte] for parte in estilo["verso"]} | guardados | {nomes["frase"], nomes["audio_da_frase"], nomes["audio_da_palavra"], nomes["lacuna"], nomes["dica"]}
                 self.assertEqual(set(campos) - {nomes["fonte"]}, esperados)
 
     def test_o_exemplo_leva_as_cores_do_alinhamento_ou_da_morfologia_so_nos_niveis_que_as_tem_e_a_palavra_chave_destacada_nos_que_pedem(self):

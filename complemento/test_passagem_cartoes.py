@@ -14,10 +14,10 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
-from complemento.test_conexao_antiga_de_mentira import ConexaoAntigaDeMentira  # noqa: E402
-from complemento.test_envio import ID, OUTRO_ID  # noqa: E402
-from complemento.test_passagem_de_mentira import (  # noqa: E402
+from complemento.test_colecao_em_memoria import ColecaoEmMemoria
+from complemento.test_conexao_antiga_de_mentira import ConexaoAntigaDeMentira
+from complemento.test_envio import ID, OUTRO_ID
+from complemento.test_passagem_de_mentira import (
     CHAVE_DO_DONO, LINHA, PROMPT_EDITADO, TERCEIRO_ID, NaPassagem, uma_conexao_de_hoje)
 
 
@@ -132,7 +132,7 @@ class APassagemPassaOsEnvios(unittest.TestCase):
                 def passar_e_ligar_outro(antiga_, fila):
                     chamadas.append(1)
                     if len(chamadas) == 1:
-                        antiga.estado(OUTRO_ID, "running", [21])  # a de hoje ligou o Envio seguinte no meio-tempo
+                        antiga.estado(OUTRO_ID, "running", [21])
                     return original(antiga_, fila)
 
                 passagem_das_copias.passar_a_fila = passar_e_ligar_outro

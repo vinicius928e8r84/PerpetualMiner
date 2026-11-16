@@ -12,11 +12,11 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import no_anki  # noqa: E402
-from complemento.test_pareamento_de_mentira import ao_carregar_pareado, pedir_como_a_extensao, travar_o_item_de_login_do_computador  # noqa: E402
-from complemento.test_anki_de_mentira import AnkiComColecaoDeMentira  # noqa: E402
-from complemento.test_colecao_em_memoria import DESCRICAO  # noqa: E402
-from complemento.test_no_anki import SemRegistroReal, ler_pelo_http  # noqa: E402
+from complemento import no_anki
+from complemento.test_pareamento_de_mentira import ao_carregar_pareado, pedir_como_a_extensao, travar_o_item_de_login_do_computador
+from complemento.test_anki_de_mentira import AnkiComColecaoDeMentira
+from complemento.test_colecao_em_memoria import DESCRICAO
+from complemento.test_no_anki import SemRegistroReal, ler_pelo_http
 
 
 def setUpModule():
@@ -66,7 +66,7 @@ class OPerfilFixoNoAnki(SemRegistroReal, unittest.TestCase):
 
     def test_com_um_dialogo_modal_aberto_na_tela_de_perfis_a_conexao_nao_entra_no_perfil(self):
         anki = AnkiComColecaoDeMentira(None, perfis=("Ana", "Beto"))
-        anki.janela_modal = object()  # a pessoa está no “Excluir” ou no “Renomear” do perfil Beto: o que ela confirmar vale para `pm.name`
+        anki.janela_modal = object()
         conexao = self.conectar(anki, marcado="Ana")
         status, corpo = ler_pelo_http(conexao.porta, "/anki/profile/open", {})
         self.assertEqual((status, corpo), (200, {"ok": True, "profile": "Ana"}))
@@ -90,7 +90,7 @@ class OPerfilFixoNoAnki(SemRegistroReal, unittest.TestCase):
 
     def test_dois_cliques_em_abrir_durante_a_sincronizacao_ao_fechar_fecham_o_perfil_uma_vez_so(self):
         anki = AnkiComColecaoDeMentira(DESCRICAO, perfis=("Ana", "Beto"), aberto="Beto")
-        anki.fechamentos_adiados = []  # o Anki ainda sincroniza: o perfil continua aberto
+        anki.fechamentos_adiados = []
         conexao = self.conectar(anki, marcado="Ana")
         ler_pelo_http(conexao.porta, "/anki/profile/open", {})
         ler_pelo_http(conexao.porta, "/anki/profile/open", {})
@@ -105,7 +105,7 @@ class OPerfilFixoNoAnki(SemRegistroReal, unittest.TestCase):
         conexao = self.conectar(anki, marcado="Ana")
         ler_pelo_http(conexao.porta, "/anki/profile/open", {})
         anki.terminar_o_fechamento()
-        anki.abrir("Beto")  # a pessoa volta ao Beto por conta própria
+        anki.abrir("Beto")
         ler_pelo_http(conexao.porta, "/anki/profile/open", {})
         self.assertEqual(anki.passos.count(("unloadProfile", "Beto")), 2)
 

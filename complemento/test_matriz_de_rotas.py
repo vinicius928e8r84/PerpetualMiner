@@ -41,9 +41,9 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento.test_atualizacao import MATRIZ_DA_ATUALIZACAO  # noqa: E402
-from complemento.test_matriz_da_previa import MATRIZ_DA_PREVIA  # noqa: E402
-from complemento.test_matriz_do_pareamento import MATRIZ_DO_PAREAMENTO  # noqa: E402
+from complemento.test_atualizacao import MATRIZ_DA_ATUALIZACAO
+from complemento.test_matriz_da_previa import MATRIZ_DA_PREVIA
+from complemento.test_matriz_do_pareamento import MATRIZ_DO_PAREAMENTO
 
 
 SEM_LEITURA = {"le_a_colecao": False, "le_o_perfil": False}

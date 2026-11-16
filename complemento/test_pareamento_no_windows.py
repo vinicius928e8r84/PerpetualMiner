@@ -14,8 +14,8 @@ from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import pareamento  # noqa: E402
-from complemento.test_pareamento_de_mentira import CLIENTE, OUTRO_CLIENTE, SEGREDO, UM_CLIENTE_NOVO, semear  # noqa: E402
+from complemento import pareamento
+from complemento.test_pareamento_de_mentira import CLIENTE, OUTRO_CLIENTE, SEGREDO, UM_CLIENTE_NOVO, semear
 
 ESPERA_DA_GRAVACAO_S = 0.3
 
@@ -133,7 +133,7 @@ class AGravacaoComUmaLeituraAberta(unittest.TestCase):
 
             def replace_demorado(origem, destino):
                 troca.set()
-                threading.Event().wait(ESPERA_DA_GRAVACAO_S)   # a troca leva um tempo; quem lê no meio dela espera e vê o arquivo novo
+                threading.Event().wait(ESPERA_DA_GRAVACAO_S)
                 return real(origem, destino)
             gravando = threading.Thread(target=p.desconectar)
             with mock.patch.object(os, "replace", replace_demorado):

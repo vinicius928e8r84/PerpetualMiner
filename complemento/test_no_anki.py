@@ -16,13 +16,13 @@ from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import baralhos, configuracao, no_anki  # noqa: E402
-from complemento.test_pareamento_de_mentira import ao_carregar_pareado, pedir_como_a_extensao, travar_o_item_de_login_do_computador  # noqa: E402
-from complemento.test_anki_de_mentira import AnkiComColecaoDeMentira, AnkiDeMentira  # noqa: E402
-from complemento.test_colecao_em_memoria import DESCRICAO, ContratoDoAdaptadorDaColecao  # noqa: E402
-from complemento.test_contrato_da_criacao import ContratoDaCriacao  # noqa: E402
-from complemento.test_contrato_da_previa import ContratoDaPrevia  # noqa: E402
-from complemento.test_contrato_do_perfil_fixo import ContratoDoPerfilFixo  # noqa: E402
+from complemento import baralhos, configuracao, no_anki
+from complemento.test_pareamento_de_mentira import ao_carregar_pareado, pedir_como_a_extensao, travar_o_item_de_login_do_computador
+from complemento.test_anki_de_mentira import AnkiComColecaoDeMentira, AnkiDeMentira
+from complemento.test_colecao_em_memoria import DESCRICAO, ContratoDoAdaptadorDaColecao
+from complemento.test_contrato_da_criacao import ContratoDaCriacao
+from complemento.test_contrato_da_previa import ContratoDaPrevia
+from complemento.test_contrato_do_perfil_fixo import ContratoDoPerfilFixo
 
 
 def setUpModule():
@@ -88,10 +88,10 @@ class AdaptadorDoAnki(ContratoDoAdaptadorDaColecao, ContratoDoPerfilFixo, Contra
 
     def test_a_gravacao_que_o_anki_ocupado_atrasou_nao_dobra_a_nota_quando_o_envio_tenta_de_novo(self):
         colecao = no_anki.ColecaoDoAnki(self.adaptador(DESCRICAO)._mw, limite_s=0.2)
-        self.anki.taskman.livre.clear()  # o Anki fica ocupado mais que o limite
+        self.anki.taskman.livre.clear()
         with self.assertRaises(baralhos.ColecaoIndisponivel):
             colecao.adicionar_nota("Inglês", "Básico", {"Frente": "a", "Verso": "b"}, [], "guid-1")
-        self.anki.taskman.livre.set()  # a gravação atrasada roda; o Envio tenta de novo
+        self.anki.taskman.livre.set()
         colecao.adicionar_nota("Inglês", "Básico", {"Frente": "a", "Verso": "b"}, [], "guid-1")
         self.assertEqual([guid for _, guid, _ in self.anki.col.notas_gravadas()], ["guid-1"])
 
@@ -104,13 +104,11 @@ class AdaptadorDoAnki(ContratoDoAdaptadorDaColecao, ContratoDoPerfilFixo, Contra
         self.anki.taskman.livre.clear()
         with self.assertRaises(baralhos.ColecaoIndisponivel):
             self.gravar_o_cartao(colecao)
-        self.anki.taskman.livre.set()  # a função atrasada roda e grava; a thread de trabalho já tinha desistido
-        self.assertEqual(self.gravar_o_cartao(colecao), "added")  # nunca “duplicate” da própria nota
+        self.anki.taskman.livre.set()
+        self.assertEqual(self.gravar_o_cartao(colecao), "added")
         self.assertEqual([guid for _, guid, _ in self.anki.col.notas_gravadas()], ["guid-1"])
 
     def test_a_funcao_de_gravar_que_roda_depois_de_o_perfil_fechar_nao_levanta_na_thread_principal(self):
-        # O perfil fecha com a função na fila: ela acha `mw.col` vazio, devolve `ColecaoIndisponivel` à thread de trabalho
-        # e nada escapa para a thread principal (o diálogo de erro do Anki nunca abriria).
         colecao = no_anki.ColecaoDoAnki(self.adaptador(DESCRICAO)._mw, limite_s=0.2)
         escapou = []
         anterior = threading.excepthook
@@ -162,7 +160,7 @@ class AdaptadorDoAnki(ContratoDoAdaptadorDaColecao, ContratoDoPerfilFixo, Contra
 
     def test_um_anki_que_nao_responde_a_tempo_diz_que_esta_ocupado_sem_prender_a_conexao(self):
         leitor = no_anki.ColecaoDoAnki(self.adaptador(DESCRICAO)._mw, limite_s=0.2)
-        self.anki.taskman.parada = True  # a thread principal está ocupada com outra coisa
+        self.anki.taskman.parada = True
         with self.assertRaises(baralhos.ColecaoIndisponivel) as erro:
             leitor.nomes_dos_baralhos()
         self.assertEqual(str(erro.exception), "anki_busy")

@@ -11,7 +11,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento.test_harness import ORIGEM, ConexaoNoTeste  # noqa: E402
+from complemento.test_harness import ORIGEM, ConexaoNoTeste
 
 
 class OrigemDosPedidos(unittest.TestCase):

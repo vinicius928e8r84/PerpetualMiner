@@ -9,7 +9,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento.test_estado_guardado import confere_a_repeticao  # noqa: E402
+from complemento.test_estado_guardado import confere_a_repeticao
 
 
 class RepeticaoDoContrato(unittest.TestCase):

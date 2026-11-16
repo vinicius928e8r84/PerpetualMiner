@@ -12,12 +12,12 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import pareamento  # noqa: E402
-from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
-from complemento.test_pareamento_de_mentira import (  # noqa: E402
+from complemento import pareamento
+from complemento.test_colecao_em_memoria import ColecaoEmMemoria
+from complemento.test_pareamento_de_mentira import (
     CLIENTE, DESAFIO, OUTRO_CLIENTE, OUTRO_SEGREDO, SEGREDO, UM_CLIENTE_NOVO, bytes_de, cabecalhos_assinados, comecar, concluir, json_de, segredo_em_base64, semear,
 )
-from complemento.test_harness import ORIGEM, ConexaoNoTeste  # noqa: E402
+from complemento.test_harness import ORIGEM, ConexaoNoTeste
 
 
 class OPorteiro(unittest.TestCase):

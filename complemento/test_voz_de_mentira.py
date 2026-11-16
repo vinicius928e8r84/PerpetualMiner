@@ -27,9 +27,9 @@ class VozDeMentira:
     def __init__(self):
         self.pedidos = []
         self.cabecalhos = []
-        self.recusas = {}  # sotaque (ou "*") → [status, vezes que ainda recusa (None: sempre)]
+        self.recusas = {}
         self.responde_sem_audio = False
-        self.antes_de_responder = lambda: None  # o teste age aqui, com o pedido de áudio já anotado e ainda sem resposta
+        self.antes_de_responder = lambda: None
         dono = self
 
         class Atendente(BaseHTTPRequestHandler):
