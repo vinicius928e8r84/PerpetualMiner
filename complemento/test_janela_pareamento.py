@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from complemento import janela  # noqa: E402
 from complemento.test_janela import QtDeMentira, a_janela  # noqa: E402
 from complemento.test_pareamento_de_mentira import UM_CLIENTE_NOVO, comecar, concluir  # noqa: E402
-from complemento.test_servidor import ConexaoNoTeste  # noqa: E402
+from complemento.test_harness import ConexaoNoTeste  # noqa: E402
 
 
 class QtComCodigo(QtDeMentira):

@@ -18,7 +18,7 @@ from urllib.parse import parse_qs, urlencode, urlsplit
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento.test_chatgpt_de_mentira import MARCA  # noqa: E402
-from complemento.test_servidor import ConexaoNoTeste  # noqa: E402
+from complemento.test_harness import ConexaoNoTeste  # noqa: E402
 
 ESCOPOS = {"openid", "profile", "email", "offline_access", "resource.invoke", "chatgpt.tokens.use.direct"}
 

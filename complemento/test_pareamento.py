@@ -24,7 +24,7 @@ from complemento.test_pareamento_de_mentira import (  # noqa: E402
     CLIENTE, CODIGO, DESAFIO, OUTRO_CLIENTE, OUTRO_SEGREDO, SEGREDO, UM_CLIENTE_NOVO, VETOR, TelaDeMentira, arquivo_do_pareamento, bytes_de, cabecalhos_assinados,
     comecar, concluir, json_de, semear,
 )
-from complemento.test_servidor import ConexaoNoTeste  # noqa: E402
+from complemento.test_harness import ConexaoNoTeste  # noqa: E402
 
 
 class OVetorDeAssinatura(unittest.TestCase):
