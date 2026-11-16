@@ -22,7 +22,10 @@ assert.strictEqual(soDocumentacao(['scripts/ci/so-documentacao.js']), false);
 
 assert.strictEqual(soDocumentacao([]), false);
 
-assert.strictEqual(soDocumentacao(['docs/design/voz/README.md']), false);
+assert.strictEqual(soDocumentacao(['docs/design/voz/README.md']), true);
+assert.strictEqual(soDocumentacao(['docs/design/voz/catalogo-textos.json']), false);
+assert.strictEqual(soDocumentacao(['docs/design/voz/notas-global.json']), false);
+assert.strictEqual(soDocumentacao(['docs/design/voz/catalogo.html']), false);
 assert.strictEqual(soDocumentacao(['docs/design/identidade-veio/assets/veio.svg']), false);
 assert.strictEqual(soDocumentacao(['docs/loja/pequena.png']), false);
 assert.strictEqual(soDocumentacao(['docs/design/cartao-do-russo.html']), false, 'e2e/tests/cartao-do-russo-visual.spec.js fotografa esta página');

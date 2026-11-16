@@ -59,7 +59,7 @@
     },
     {
       "glob": "docs/design/voz/catalogo.html",
-      "motivo": "regravado por scripts/gerar-catalogo-da-voz.js a partir da spec (o README da Voz); test_voz.js falha se sair da mão, e a página não se divide"
+      "motivo": "regravado por scripts/gerar-catalogo-da-voz.js a partir de lib/voz/catalogo.js e das notas; test_voz.js falha se sair da mão, e a página não se divide"
     },
     {
       "glob": "node_modules/",
