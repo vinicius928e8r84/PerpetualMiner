@@ -13,10 +13,10 @@ from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import envio, motor_do_envio  # noqa: E402
-from complemento.palavras_do_cartao import cartoes_da_frase  # noqa: E402
-from complemento.test_imagens_de_mentira import JPEG_DE_MENTIRA, png_de  # noqa: E402
-from complemento.test_openai_de_mentira import OpenAIDeMentira  # noqa: E402
+from complemento import envio, motor_do_envio
+from complemento.palavras_do_cartao import cartoes_da_frase
+from complemento.test_imagens_de_mentira import JPEG_DE_MENTIRA, png_de
+from complemento.test_openai_de_mentira import OpenAIDeMentira
 
 SEM_AS_BIBLIOTECAS_DE_FORA = {"yaml": None, "dotenv": None, "openai": None, "httpx": None, "requests": None, "PIL": None, "gtts": None}
 

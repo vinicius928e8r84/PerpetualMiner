@@ -12,7 +12,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento.passagem_do_windows import PassagemFalhou, SistemaDoWindows  # noqa: E402
+from complemento.passagem_do_windows import PassagemFalhou, SistemaDoWindows
 
 
 class WindowsDeMentira:
@@ -72,7 +72,7 @@ class ApagarOInicioAutomatico(unittest.TestCase):
     def test_o_lancador_que_nao_da_para_apagar_faz_a_passagem_parar(self):
         with tempfile.TemporaryDirectory() as appdata:
             inicializar = pasta_inicializar(appdata)
-            os.mkdir(os.path.join(inicializar, "perpetualminer-anki-bridge.vbs"))  # uma pasta no lugar do arquivo: remover falha
+            os.mkdir(os.path.join(inicializar, "perpetualminer-anki-bridge.vbs"))
             sistema = SistemaDoWindows(ambiente={"APPDATA": appdata}, executar=WindowsDeMentira(existe=()))
             with self.assertRaises(PassagemFalhou):
                 sistema.apagar_o_inicio_automatico()

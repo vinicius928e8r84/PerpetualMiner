@@ -11,9 +11,9 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import retencao_dos_envios  # noqa: E402
-from complemento.test_envio import ID, EnvioNoTeste  # noqa: E402
-from complemento.test_retencao_dos_envios import envelhecer, ler_estado, mudar_estado, terminado  # noqa: E402
+from complemento import retencao_dos_envios
+from complemento.test_envio import ID, EnvioNoTeste
+from complemento.test_retencao_dos_envios import envelhecer, ler_estado, mudar_estado, terminado
 
 
 class AListaDepoisDaRetencao(unittest.TestCase):
@@ -28,7 +28,7 @@ class AListaDepoisDaRetencao(unittest.TestCase):
         self.assertTrue(enviadas)
         self.assertEqual([(job["jobId"], job["state"]["status"], job["state"]["successfulPhraseIds"]) for job in lista], [(ID, "completed", enviadas)])
         self.assertEqual(ficha["successfulPhraseIds"], enviadas)
-        self.assertNotIn("entries", json.dumps(lista))  # só ids: nunca a Palavra nem a Frase
+        self.assertNotIn("entries", json.dumps(lista))
 
     def test_depois_da_retencao_as_frases_que_ja_estavam_no_anki_continuam_duplicadas(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:

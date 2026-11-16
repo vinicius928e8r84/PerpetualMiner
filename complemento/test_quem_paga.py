@@ -16,10 +16,10 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento.login_do_chatgpt import ACABOU, CONECTADA, SEM_LOGIN  # noqa: E402
-from complemento.modelo_dos_cartoes import CHAVE, PARADO, PLANO, quem_paga  # noqa: E402
-from complemento.test_envio import CHAVE as CHAVE_GUARDADA, ID, EnvioNoTeste, pedido  # noqa: E402
-from complemento.test_login_do_chatgpt import arquivo_do_login, entrar, entrar_e_voltar, estado, json_de, voltar  # noqa: E402
+from complemento.login_do_chatgpt import ACABOU, CONECTADA, SEM_LOGIN
+from complemento.modelo_dos_cartoes import CHAVE, PARADO, PLANO, quem_paga
+from complemento.test_envio import CHAVE as CHAVE_GUARDADA, ID, EnvioNoTeste, pedido
+from complemento.test_login_do_chatgpt import arquivo_do_login, entrar, entrar_e_voltar, estado, json_de, voltar
 
 SAIU = "chatgpt_signed_out"
 FRASE = "gave up : She gave up smoking"
@@ -37,9 +37,9 @@ class OPagadorDeCadaCartao(unittest.TestCase):
             ((CONECTADA, None, False, False), (PLANO, None)),
             ((CONECTADA, None, True, True), (CHAVE, None)),
             ((CONECTADA, None, True, False), (PARADO, "openai_key_missing")),
-            ((ACABOU, SAIU, False, True), (PARADO, SAIU)),  # a chave está lá, e o Envio não a gasta sozinho
+            ((ACABOU, SAIU, False, True), (PARADO, SAIU)),
             ((ACABOU, SAIU, False, False), (PARADO, SAIU)),
-            ((ACABOU, SAIU, True, True), (CHAVE, None)),  # Usar a minha chave, no Envio: a escolha é da pessoa
+            ((ACABOU, SAIU, True, True), (CHAVE, None)),
             ((ACABOU, SAIU, True, False), (PARADO, "openai_key_missing")),
         ]
         for entrada, esperado in linhas:
@@ -49,7 +49,7 @@ class OPagadorDeCadaCartao(unittest.TestCase):
 
 def acabar_o_login(conexao, frase=FRASE):
     """A pessoa entrou, e a renovação do token passa a ser recusada: o primeiro Envio acha o login acabado. Devolve o fim dele."""
-    conexao.servidor_de_login.validade = 60  # abaixo da margem: o token é renovado antes de cada Cartão
+    conexao.servidor_de_login.validade = 60
     entrar_e_voltar(conexao)
     conexao.servidor_de_login.renovacao = "invalid_grant"
     conexao.criar(pedido(ID, frase))
@@ -171,7 +171,7 @@ class DoParadoSoSeSaiPorEscolha(unittest.TestCase):
             conexao.criar(pedido(ID, FRASE))
             conexao.esperar(ID, lambda estado: estado.get("waiting"))
             with open(arquivo_do_login(conexao), "w", encoding="utf-8") as arquivo:
-                json.dump({"acabou": SAIU, "em": 1}, arquivo)  # o login acabou enquanto o Envio esperava
+                json.dump({"acabou": SAIU, "em": 1}, arquivo)
             status, _, _ = conexao.pedir("POST", "/jobs/usar-a-chave", corpo={"jobId": ID})
             fim = conexao.esperar(ID)
             pela_chave = len(conexao.openai.chats)

@@ -17,8 +17,8 @@ from urllib.parse import parse_qs, urlencode, urlsplit
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento.test_chatgpt_de_mentira import MARCA  # noqa: E402
-from complemento.test_harness import ConexaoNoTeste  # noqa: E402
+from complemento.test_chatgpt_de_mentira import MARCA
+from complemento.test_harness import ConexaoNoTeste
 
 ESCOPOS = {"openid", "profile", "email", "offline_access", "resource.invoke", "chatgpt.tokens.use.direct"}
 
@@ -157,7 +157,6 @@ class ORetorno(unittest.TestCase):
         self.assertEqual(depois, {"conectada": False, "entrando": False, "falha": None, "acabou": None})
 
     def test_o_retorno_so_vale_no_endereco_de_loopback_da_conexao(self):
-        # Um site que aponta o próprio nome para 127.0.0.1 (DNS rebinding) chega à porta com outro `Host`.
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
             url, _ = entrar(conexao)
             consulta = conexao.servidor_de_login.autorizar(url)

@@ -15,9 +15,9 @@ from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import retencao_dos_envios, trabalhador  # noqa: E402
-from complemento.gravacao_de_json import gravar_json  # noqa: E402
-from complemento.test_envio import ID, LINHA, OUTRO_ID, PALAVRA, EnvioNoTeste, arquivos_sem_o_log, pedido  # noqa: E402
+from complemento import retencao_dos_envios, trabalhador
+from complemento.gravacao_de_json import gravar_json
+from complemento.test_envio import ID, LINHA, OUTRO_ID, PALAVRA, EnvioNoTeste, arquivos_sem_o_log, pedido
 
 PRAZO = timedelta(days=retencao_dos_envios.PRAZO_EM_DIAS)
 
@@ -34,7 +34,7 @@ def ler_estado(conexao, job_id):
 def mudar_estado(conexao, job_id, **campos):
     estado = ler_estado(conexao, job_id)
     estado.update(campos)
-    gravar_json(arquivo_do_estado(conexao, job_id), estado)  # inteiro de uma vez: a thread de trabalho lê o estado enquanto o teste o muda
+    gravar_json(arquivo_do_estado(conexao, job_id), estado)
 
 
 def terminado(conexao, job_id, linha=LINHA):
@@ -67,7 +67,7 @@ class UmEnvioTerminadoEVelho(unittest.TestCase):
                          [os.path.join("estado", ID + ".json"), os.path.join("fila", ID + ".json")])
         self.assertEqual([nome for nome in depois if nome.startswith(("fila" + os.sep + ID, "estado" + os.sep + ID))], [])
         self.assertEqual(json.loads(depois[os.path.join("fila", "fila.json")]), {"jobs": []})
-        self.assertEqual([job["jobId"] for job in na_fila], [ID])  # só a ficha com os ids das Frases enviadas (#372); a fila em si está vazia, acima
+        self.assertEqual([job["jobId"] for job in na_fila], [ID])
         self.assertEqual(
             {nome: dados for nome, dados in depois.items() if nome.startswith("custos" + os.sep) and not nome.endswith("ficha.json")},
             {nome: dados for nome, dados in antes.items() if nome.startswith("custos" + os.sep)})
@@ -265,7 +265,7 @@ class UmLinkNoLugarDaPasta(unittest.TestCase):
             for nome in ("1-0.txt", "outro.json", "qualquer"):
                 with open(os.path.join(fora, nome), "w", encoding="utf-8") as arquivo:
                     arquivo.write("do usuário, fora da Conexão")
-            os.rmdir(fila.pasta_dos_textos(ID))  # a pasta vazia que o Envio deixa
+            os.rmdir(fila.pasta_dos_textos(ID))
             try:
                 os.symlink(fora, fila.pasta_dos_textos(ID), target_is_directory=True)
             except (OSError, NotImplementedError, AttributeError):
@@ -336,9 +336,9 @@ class QuandoARetencaoRoda(unittest.TestCase):
         self.assertEqual(trabalhador.RETENCAO_A_CADA_S, 6 * 60 * 60)
         with mock.patch.object(trabalhador.retencao_dos_envios, "reter") as reter, mock.patch.object(trabalhador.time, "monotonic", relogio):
             for _ in range(2):
-                work._reter_se_for_a_hora()  # sobe (100) e uma hora depois: só a primeira roda
-            work._reter_se_for_a_hora()  # 5 h 59 min depois do começo: ainda não
-            work._reter_se_for_a_hora()  # 6 h depois: roda
+                work._reter_se_for_a_hora()
+            work._reter_se_for_a_hora()
+            work._reter_se_for_a_hora()
         self.assertEqual(reter.call_count, 2)
 
 

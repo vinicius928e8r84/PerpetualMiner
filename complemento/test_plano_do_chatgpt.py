@@ -14,9 +14,9 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento.test_chatgpt_de_mentira import MARCA  # noqa: E402
-from complemento.test_envio import ID, EnvioNoTeste, pedido  # noqa: E402
-from complemento.test_login_do_chatgpt import arquivo_do_login, entrar_e_voltar, estado, trocas, tudo_o_que_ficou  # noqa: E402
+from complemento.test_chatgpt_de_mentira import MARCA
+from complemento.test_envio import ID, EnvioNoTeste, pedido
+from complemento.test_login_do_chatgpt import arquivo_do_login, entrar_e_voltar, estado, trocas, tudo_o_que_ficou
 
 
 class CartaoPeloPlano(unittest.TestCase):
@@ -59,7 +59,6 @@ class CartaoPeloPlano(unittest.TestCase):
         )
         self.assertNotIn("scope", renovacoes[0])
         self.assertNotEqual(depois["refresh_token"], antes["refresh_token"])
-        # Com a validade abaixo da margem, a escolha da imagem renova de novo depois do texto: o arquivo guarda o último, o do texto é um renovado.
         self.assertNotEqual(autorizacao, "Bearer " + antes["access_token"])
         self.assertNotEqual(depois["access_token"], antes["access_token"])
 
@@ -115,7 +114,7 @@ class OsCustosDoPlano(unittest.TestCase):
             conexao.openai.recusa_das_respostas = (429, "subscription_sharing_usage_limit_exceeded")
             entrar_e_voltar(conexao)
             conexao.criar(pedido(ID, "gave up : She gave up smoking"))
-            conexao.esperar(ID, lambda estado: estado.get("waiting"))  # o limite do plano espera, não falha (#158)
+            conexao.esperar(ID, lambda estado: estado.get("waiting"))
             [linha] = json.loads(conexao.pedir("POST", "/analytics/jobs", corpo={"lang": "all"})[2])["jobs"]
         self.assertNotIn("plan", linha)
 
@@ -123,7 +122,7 @@ class OsCustosDoPlano(unittest.TestCase):
 class OsTokensSoNoArquivoDoLogin(unittest.TestCase):
     def test_nenhum_token_codigo_ou_verificador_aparece_fora_do_arquivo_do_login(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
-            conexao.servidor_de_login.validade = 60  # renova antes do Cartão: o token novo também
+            conexao.servidor_de_login.validade = 60
             consulta, retorno = entrar_e_voltar(conexao)
             conexao.criar(pedido(ID, "gave up : She gave up smoking"))
             conexao.esperar(ID)
@@ -142,7 +141,6 @@ class OsTokensSoNoArquivoDoLogin(unittest.TestCase):
         self.assertFalse([nome for nome in ficou if re.search(MARCA, nome)])
 
     def test_quando_a_renovacao_ou_a_responses_api_falham_nenhum_token_vai_ao_log_nem_ao_que_a_conexao_responde(self):
-        # Os de mentira devolvem o token no corpo do erro: o que a Conexão guarda ou responde não pode repeti-lo.
         falhas = {
             "renovacao fora do ar": lambda conexao: setattr(conexao.servidor_de_login, "renovacao", "fora_do_ar"),
             "renovacao recusada": lambda conexao: setattr(conexao.servidor_de_login, "renovacao", "invalid_grant"),
@@ -152,11 +150,11 @@ class OsTokensSoNoArquivoDoLogin(unittest.TestCase):
         }
         for nome, falhar in falhas.items():
             with self.subTest(nome), tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
-                conexao.servidor_de_login.validade = 60  # renova antes do Cartão
+                conexao.servidor_de_login.validade = 60
                 entrar_e_voltar(conexao)
                 falhar(conexao)
                 conexao.criar(pedido(ID, "gave up : She gave up smoking"))
-                conexao.esperar(ID, lambda estado: estado["status"] == "failed" or estado.get("waiting"))  # o limite do plano espera, não falha
+                conexao.esperar(ID, lambda estado: estado["status"] == "failed" or estado.get("waiting"))
                 segredos = list(conexao.servidor_de_login.emitidos)
                 respostas = [conexao.pedir("POST", caminho, corpo=corpo)[2] for caminho, corpo in (
                     ("/ia/chatgpt/estado", {}), ("/ia/estado", {}), ("/jobs/list", {}), ("/jobs/get", {"jobId": ID}),

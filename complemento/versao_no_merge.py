@@ -31,14 +31,13 @@ PASTA = os.path.dirname(os.path.abspath(__file__))
 RAIZ = os.path.dirname(PASTA)
 sys.path.insert(0, RAIZ)
 
-from complemento import empacotar  # noqa: E402
+from complemento import empacotar
 
 CONFIGURACAO = os.path.join(PASTA, "configuracao.py")
 VERSOES = os.path.join(PASTA, "versoes.json")
 RESERVADAS = os.path.join(PASTA, "versoes-reservadas.json")
 EXEMPLOS = sorted(glob.glob(os.path.join(PASTA, "contrato", "*.json")))
 PACOTE = os.path.normpath(empacotar.ARQUIVO_DA_EXTENSAO)
-# O que a versão muda; o resto da árvore tem de estar commitado, porque o hash vale para o que está no disco.
 ARQUIVOS_DA_VERSAO = [CONFIGURACAO, VERSOES, *EXEMPLOS, PACOTE]
 PASTAS_DO_PACOTE = [PASTA, empacotar.ENGINE, os.path.dirname(PACOTE)]
 LINHA_DA_VERSAO = re.compile(r'^VERSAO = "([^"]+)"', re.M)
@@ -126,7 +125,7 @@ def main(argv):
     escrever(CONFIGURACAO, LINHA_DA_VERSAO.sub('VERSAO = "%s"' % nova, ler(CONFIGURACAO), count=1))
     for exemplo in EXEMPLOS:
         escrever(exemplo, ler(exemplo).replace('"%s"' % atual, '"%s"' % nova))
-    hash_novo = empacotar.hash_das_fontes()  # depois de subir a VERSAO: ela está num arquivo do pacote
+    hash_novo = empacotar.hash_das_fontes()
     registradas[nova] = hash_novo
     escrever(VERSOES, json.dumps(registradas, indent=2, ensure_ascii=False) + "\n")
     empacotar.empacotar(PACOTE)
@@ -140,7 +139,7 @@ def main(argv):
 
     arquivos = relativos(ARQUIVOS_DA_VERSAO)
     git("add", "--", *arquivos)
-    git(  # só estes arquivos: o que mais estiver no índice fica de fora do commit
+    git(
         "commit", "-q", "-m", ASSUNTO % nova,
         "-m", "Versão dada pelo complemento/versao_no_merge.py depois do merge (era %s).\nHash das fontes: %s" % (atual, hash_novo),
         "--", *arquivos,

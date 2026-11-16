@@ -15,7 +15,7 @@ import warnings
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento.test_harness import ConexaoNoTeste  # noqa: E402
+from complemento.test_harness import ConexaoNoTeste
 
 VARIAVEIS_DE_PROXY = ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY", "http_proxy", "https_proxy", "all_proxy", "no_proxy")
 
@@ -53,7 +53,7 @@ class ProcessoDoAnki(unittest.TestCase):
             with tempfile.TemporaryDirectory() as pasta:
                 with contextlib.redirect_stdout(saida), contextlib.redirect_stderr(erro):
                     with ConexaoNoTeste(pasta, falha_no_perfil=True) as conexao:
-                        conexao.pedir("GET", "/health")  # a resposta 500 é o exemplo do contrato
+                        conexao.pedir("GET", "/health")
                         registrado = conexao.log()
         finally:
             sys.excepthook = original

@@ -10,7 +10,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento.test_harness import ConexaoNoTeste  # noqa: E402
+from complemento.test_harness import ConexaoNoTeste
 
 
 class OErroAoAtender(unittest.TestCase):
@@ -27,7 +27,7 @@ class OErroAoAtender(unittest.TestCase):
         original = sys.excepthook
         with tempfile.TemporaryDirectory() as pasta:
             with ConexaoNoTeste(pasta) as conexao:
-                sys.excepthook = None  # o interpretador no fim: nenhuma thread nova nasce
+                sys.excepthook = None
                 try:
                     acrescentado = self.erro_ao_atender(conexao, RuntimeError("sys.excepthook is None"))
                 finally:

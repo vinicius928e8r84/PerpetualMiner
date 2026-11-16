@@ -13,8 +13,8 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
-from complemento.test_envio import ID, EnvioNoTeste, pedido  # noqa: E402
+from complemento.test_colecao_em_memoria import ColecaoEmMemoria
+from complemento.test_envio import ID, EnvioNoTeste, pedido
 
 FRASE = "gave up : She gave up smoking [Context: Série - The Office - S01E01]"
 MEU_TIPO = "Meu Inglês"
@@ -50,7 +50,7 @@ class OCartaoVaiNosCamposQueAPessoaEscolheu(unittest.TestCase):
         self.assertIn("gave up", nota["campos"]["Anotações"])
         self.assertRegex(nota["campos"]["Som"], r"^\[sound:pm[0-9a-f]+_phrase\.mp3\]$")
         self.assertEqual(colecao.tipo_de_nota(MEU_TIPO), CAMPOS)
-        self.assertEqual(sorted(colecao.tipos_de_nota()), sorted([MEU_TIPO, "Só um campo"]))  # nada criado: nem o tipo da Conexão
+        self.assertEqual(sorted(colecao.tipos_de_nota()), sorted([MEU_TIPO, "Só um campo"]))
 
     def test_varias_partes_podem_ir_no_mesmo_campo_uma_em_cada_linha(self):
         mapa = {"frase": "Pergunta", "resposta": "Resposta", "audio_da_frase": "Resposta", "palavra": "Resposta"}
@@ -59,7 +59,7 @@ class OCartaoVaiNosCamposQueAPessoaEscolheu(unittest.TestCase):
         [nota] = colecao.gravadas
         resposta = nota["campos"]["Resposta"]
         self.assertEqual(sorted(nota["campos"]), ["Pergunta", "Resposta"])
-        self.assertLess(resposta.index("[sound:"), resposta.index("tradução de mentira"))  # o áudio vem antes: a ordem das partes é a da Conexão
+        self.assertLess(resposta.index("[sound:"), resposta.index("tradução de mentira"))
         self.assertIn("<br>", resposta)
 
     def test_o_cartao_nao_escreve_em_campo_que_o_mapeamento_nao_cita(self):

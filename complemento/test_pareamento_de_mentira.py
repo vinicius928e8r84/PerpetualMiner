@@ -11,8 +11,6 @@ import unittest
 
 from complemento import pareamento
 
-# Os dois navegadores de teste e o vetor de assinatura vêm do contrato, para o e2e (`e2e/pareamento-de-teste.js`) e os testes do complemento
-# falarem dos mesmos.
 with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "contrato", "exemplos-do-pareamento.json"), encoding="utf-8") as _arquivo:
     _CONTRATO = json.load(_arquivo)
 CLIENTE = _CONTRATO["navegadoresDeTeste"]["primeiro"]["cliente"]
@@ -61,12 +59,12 @@ class TelaDeMentira:
     """A janela do Anki (`pareamento.Pareamento.na_tela`): guarda o que a pessoa veria, e o teste lê o código que "apareceu"."""
 
     def __init__(self):
-        self.codigos = []      # os códigos mostrados, na ordem
+        self.codigos = []
         self.fechou = 0
         self.conectados = 0
         self.cancelar = None
         self.quebra = False
-        self.aberta = False    # o diálogo do código está na tela
+        self.aberta = False
 
     def mostrar_codigo(self, codigo, validade_s, ao_cancelar):
         if self.quebra:
@@ -169,7 +167,6 @@ def pedir_como_o_exemplo(conexao, pedido, corpo=None):
     )
 
 
-# O que o porteiro responde a qualquer rota que não é do pareamento (`servidor._pedido_aceito`): os exemplos dele são os de uma rota só.
 RECUSAS_DO_PORTEIRO = frozenset(["pairing_required", "pairing_invalid", "session_expired"])
 
 
@@ -189,7 +186,7 @@ def preparar_o_pareamento(p, com_tela, contexto=None):
         p.comecar()
         if contexto.get("codigoUsadoPor"):
             p.concluir(contexto["codigoPendente"], contexto["codigoUsadoPor"], "Outro")
-    if contexto.get("desconectado"):   # o Desconectar navegadores já foi apertado: o navegador de teste está revogado
+    if contexto.get("desconectado"):
         p.desconectar()
     if contexto.get("bloqueado"):
         for _ in range(pareamento.CODIGOS_ESGOTADOS_PARA_BLOQUEAR):

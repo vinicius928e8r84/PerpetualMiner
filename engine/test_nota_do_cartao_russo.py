@@ -111,7 +111,7 @@ class OIntermediarioDoRusso(unittest.TestCase):
     def test_a_palavra_aparece_uma_vez_no_verso_e_so_na_silaba_forte_e_o_resto_e_o_dicionario_e_o_simples(self):
         campos = nota(RUSSO_INTERMEDIARIO, nivel="intermediario", audio_da_palavra="p.mp3")
         self.assertEqual((campos["Sílaba forte"], campos["Pronúncia"], campos["Áudio da palavra"]), ("приходи́ла", "pri-ha-DI-la", "[sound:p.mp3]"))
-        self.assertEqual(campos["Palavra"], "приходила")  # gravada para a Criação; o verso não a mostra
+        self.assertEqual(campos["Palavra"], "приходила")
         self.assertTrue(campos["Definição"].startswith("To come or to arrive"))
         self.assertTrue(campos["Significado simples"].startswith("It is when a person walks"))
         self.assertFalse({"Tradução literal", "Tradução natural", "Contexto da cena", "Mesma raiz"} & set(campos))
