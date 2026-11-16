@@ -17,9 +17,7 @@
   "testes-no-portao": {
     ".agents/skills/verify-perpetualminer/scripts/test_helpers.sh": 1
   },
-  "contrato-fechado": {
-    "lib/vocabulario-da-mineracao.js": 1
-  },
+  "contrato-fechado": {},
   "e2e-estado-final": {
     "e2e/tests/badge-da-toolbar.spec.js": 1,
     "e2e/tests/base-veio.spec.js": 4,
@@ -36,7 +34,7 @@
     "e2e/tests/overlay-marca.spec.js": 4,
     "e2e/tests/overlay.spec.js": 6,
     "e2e/tests/painel-ajustes.spec.js": 5,
-    "e2e/tests/painel-anki-baralhos.spec.js": 11,
+    "e2e/tests/painel-anki-baralhos.spec.js": 10,
     "e2e/tests/painel-anki-primeira-conexao.spec.js": 1,
     "e2e/tests/painel-anki.spec.js": 14,
     "e2e/tests/painel-envio.spec.js": 14,
@@ -58,7 +56,7 @@
     "e2e/tests/configuracoes-visual.spec.js": 14,
     "e2e/tests/minerar-foto-visual.spec.js": 15,
     "e2e/tests/overlay-visual.spec.js": 11,
-    "e2e/tests/painel-anki-baralhos-visual.spec.js": 11,
+    "e2e/tests/painel-anki-baralhos-visual.spec.js": 10,
     "e2e/tests/painel-anki-visual.spec.js": 5,
     "e2e/tests/painel-envio-visual.spec.js": 4,
     "e2e/tests/painel-frases-visual.spec.js": 23,
@@ -69,7 +67,7 @@
   "versoes-publicadas": {},
   "link-de-doc": {},
   "limite-de-linhas": {
-    "painel.css": 2072,
+    "painel.css": 2057,
     "painel.js": 646
   },
   "sem-comentario-novo": {}

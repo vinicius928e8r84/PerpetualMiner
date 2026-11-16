@@ -22,8 +22,7 @@ function criarBaralhos({ estado, contrato, nomeDoExemploSemBaralho }) {
       generatedAt: estado.agora().toISOString(),
       deckName: corpo.deck || '',
       lang,
-      source: estado.lidoDoArquivo ? 'collection.anki2' : 'colecao',
-      ...(estado.lidoDoArquivo && { sourceDetail: 'AnkiConnect indisponivel; lendo collection.anki2' }),
+      source: 'colecao',
       totalCards: words.reduce((soma, w) => soma + w.cards, 0),
       filters: { status, type: tipo, q: busca, limit: corpo.limit || 1000, offset: corpo.offset || 0 },
       totalWords: words.length,
@@ -74,9 +73,7 @@ function criarBaralhos({ estado, contrato, nomeDoExemploSemBaralho }) {
         maturePct: reviewed ? Math.round((maduros / reviewed) * 1000) / 10 : 0,
       };
     });
-    const dados = { generatedAt: estado.agora().toISOString(), decks, totals: totaisDosBaralhos(decks), source: estado.fonteDosBaralhos };
-    if (estado.fonteDosBaralhos === 'collection.anki2') dados.sourceDetail = 'AnkiConnect indisponivel; lendo collection.anki2';
-    return dados;
+    return { generatedAt: estado.agora().toISOString(), decks, totals: totaisDosBaralhos(decks), source: 'colecao' };
   }
 
   return { vocabulario, numerosDosBaralhos };

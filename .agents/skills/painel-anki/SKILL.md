@@ -110,8 +110,8 @@ fail never hold the vocabulary (it used to stay in “Aguardando…”, #9).
   BRG-27, and its detail is BRG-14 with Abrir Ajustes de envio (→ `#anki/ajustes`). The chosen deck: the maturity ring
   (an SVG `role="img"` named “66% de maturidade”: mature over all cards, recentes = `young + learning`), the big
   number, “palavras diferentes nos cartões” and Cartões · Termos-alvo · Palavra nova por cartão (1 decimal) · Maduros ·
-  Recentes · Novos. Ring, bars and legend use the maturity series (ouro · info · muted). Read from the local file
-  (`source: 'collection.anki2'`): the BRG-13 note on top; an older reading kept by the Conexão: the BRG-12 selo “Mostrando dados de … Não deu para atualizar agora.” (`BRG-12.atualizacao`; with the Conexão off, or answering from the file with the Anki confirmed closed (`ankiFechado`), it is `BRG-12.anki`, “Anki fechado. Mostrando dados de {quando}.”, `{quando}` being the stored `dadosDe` (never another Baralho's), and the Abrir o Anki button; off with nothing stored the two tabs say BRG-37, with the same button) (see the
+  Recentes · Novos. Ring, bars and legend use the maturity series (ouro · info · muted). An older reading kept by
+  the Conexão: the BRG-12 selo “Mostrando dados de … Não deu para atualizar agora.” (`BRG-12.atualizacao`; with the Conexão off it is `BRG-12.anki`, “Anki fechado. Mostrando dados de {quando}.”, `{quando}` being the stored `quando` (never another Baralho's), and the Abrir o Anki button; off with nothing stored the two tabs say BRG-37, with the same button) (see the
   [design states](../../../docs/design/painel/anki/README.md#estados) for presentation by tab). Loading BRG-10 + skeleton;
   failure is the persistent BRG-11 aviso with Tentar de novo and the cause in Detalhes.
 - **Vocabulário** reads `POST /anki/vocabulary` (`{ deck, lang, limit: 10000 }`) of each language whole and filters in the panel, so

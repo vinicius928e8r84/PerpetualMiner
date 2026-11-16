@@ -51,9 +51,6 @@ function criarFakeAnki() {
     falhaDosCustos: null,
     falhaDoApagarFrases: null,
     baralhos: {},
-    fonteDosBaralhos: 'colecao',
-    lidoDoArquivo: false,
-    processosDoAnki: 1,
     falhaDosBaralhos: null,
     falhaDoVocabulario: null,
     baralhosDoAnki: null,
@@ -121,7 +118,7 @@ function criarFakeAnki() {
       return responderJson(daPorta, status, json);
     }
     let route = daPorta;
-    if (req.method() !== 'GET' || !['/health', '/auth/callback', '/anki/status'].includes(url.pathname)) {
+    if (req.method() !== 'GET' || !['/health', '/auth/callback'].includes(url.pathname)) {
       const assinou = pareamento.verificar(req, url.pathname);
       if (assinou.erro) return responderJson(daPorta, 401, { error: assinou.erro });
       route = pareamento.comProva(daPorta, assinou);

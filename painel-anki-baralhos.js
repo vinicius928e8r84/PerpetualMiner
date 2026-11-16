@@ -3,7 +3,6 @@
 (function (raiz) {
   const CHAVE_BARALHOS = 'pm_anki_baralhos';
   const CHAVE_VOCABULARIO = 'pm_anki_vocabulario';
-  const FONTE_ARQUIVO = raiz.VocabularioDaMineracao.FONTE_ARQUIVO;
   const MOSTRAR_NO_MAXIMO = 200;
 
   const IDIOMAS_DOS_AZULEJOS = [
@@ -40,7 +39,7 @@
     { chave: 'novos', rotulo: 'BRG-34.novos' },
   ];
 
-  const { textoDaVoz, Veio, Shell, ConexaoAnki, IDIOMAS, VocabularioDaMineracao } = raiz;
+  const { textoDaVoz, Veio, Shell, ConexaoAnki, IDIOMAS } = raiz;
   const { haQuanto } = raiz.Contexto;
   const { esqueleto, linhaDeEspera, seloDoDadoAntigo } = raiz.Anki.pecas;
   const { ENDERECO: ENDERECO_DA_CONEXAO, SITUACAO: CONEXAO } = ConexaoAnki;
@@ -51,8 +50,6 @@
     baralhos: {
       dados: null,
       quando: 0,
-      dadosDe: 0,
-      ankiFechado: false,
       nomes: null,
       carregando: false,
       erro: null,
@@ -62,8 +59,6 @@
     vocabulario: {
       dados: null,
       quando: 0,
-      dadosDe: 0,
-      ankiFechado: false,
       nomes: null,
       carregando: false,
       erro: null,
@@ -138,14 +133,13 @@
       erro = `POST /anki/stats/decks · ${falha.message}`;
     }
     const quando = Date.now();
-    const marca = dados && await marcaDaLeitura(baralhos, nomes, dados.source, quando);
     if (leitura !== baralhos.leitura) return;
 
     baralhos.carregando = false;
     baralhos.erro = erro;
     if (dados) {
-      Object.assign(baralhos, { dados, quando, nomes, dadosDe: marca.dadosDe, ankiFechado: marca.ankiFechado });
-      chrome.storage.local.set({ [CHAVE_BARALHOS]: { dados, quando, nomes, dadosDe: marca.dadosDe, ankiFechado: marca.ankiFechado } });
+      Object.assign(baralhos, { dados, quando, nomes });
+      chrome.storage.local.set({ [CHAVE_BARALHOS]: { dados, quando, nomes } });
     }
     desenhar();
   }
@@ -162,7 +156,7 @@
       const deckName = estado.nomes[idioma];
       const resposta = await pedirJson(raiz.PedidoAoAnki.vocabulario(deckName, idioma));
       const itens = Array.isArray(resposta.words) ? resposta.words : [];
-      return { deckName: resposta.deckName || deckName, itens, total: numero(resposta.totalWords ?? itens.length), source: resposta.source };
+      return { deckName: resposta.deckName || deckName, itens, total: numero(resposta.totalWords ?? itens.length) };
     };
     let dados = null;
     let erro = null;
@@ -173,23 +167,15 @@
       erro = `POST /anki/vocabulary · ${falha.message}`;
     }
     const quando = Date.now();
-    const doArquivo = dados && Object.values(dados).some(doIdioma => doIdioma.source === FONTE_ARQUIVO);
-    const marca = dados && await marcaDaLeitura(vocabulario, nomes, doArquivo ? FONTE_ARQUIVO : null, quando);
     if (leitura !== vocabulario.leitura) return;
 
     vocabulario.carregando = false;
     vocabulario.erro = erro;
     if (dados) {
-      Object.assign(vocabulario, { dados, quando, nomes, dadosDe: marca.dadosDe, ankiFechado: marca.ankiFechado });
-      chrome.storage.local.set({ [CHAVE_VOCABULARIO]: { dados, quando, nomes, dadosDe: marca.dadosDe, ankiFechado: marca.ankiFechado } });
+      Object.assign(vocabulario, { dados, quando, nomes });
+      chrome.storage.local.set({ [CHAVE_VOCABULARIO]: { dados, quando, nomes } });
     }
     desenhar();
-  }
-
-  function marcaDaLeitura(aba, nomes, source, quando) {
-    const mesmosBaralhos = aba.nomes?.en === nomes.en && aba.nomes?.ru === nomes.ru;
-    const anterior = mesmosBaralhos ? { dadosDe: aba.dadosDe, createdAt: aba.quando } : null;
-    return VocabularioDaMineracao.marcaDaLeitura(anterior, source, ENDERECO_DA_CONEXAO, quando);
   }
 
   async function pedirJson(pedido) {
@@ -220,8 +206,6 @@
     if (!iguais) lugar.replaceChildren(...nos);
   }
 
-  const momentoDosDados = leitura => leitura.dadosDe || leitura.quando;
-
   function seloAntigo(quando, motivo = 'anki') {
     return elemento('div', 'anki-antigo', seloDoDadoAntigo(quando, motivo), ...(motivo === 'anki' ? [raiz.AbrirOAnki.montarBotao()] : []));
   }
@@ -242,10 +226,9 @@
 
     const topo = [];
     const comDados = qual === 'dados' || qual === 'antiga';
-    if (comDados && baralhos.dados.source === FONTE_ARQUIVO) topo.push(oMesmo('baralhos:arquivo', true, notaDoArquivoLocal));
-    if (qual === 'antiga' || (qual === 'dados' && baralhos.ankiFechado)) {
-      const idade = haQuanto(momentoDosDados(baralhos));
-      topo.push(oMesmo('baralhos:selo', idade, () => seloAntigo(momentoDosDados(baralhos))));
+    if (qual === 'antiga') {
+      const idade = haQuanto(baralhos.quando);
+      topo.push(oMesmo('baralhos:selo', idade, () => seloAntigo(baralhos.quando)));
     } else if (qual === 'dados' && baralhos.dados.stale) topo.push(oMesmo('baralhos:cache', baralhos.dados, () => seloDoCache(baralhos.dados)));
     mostrar(porId('anki-baralhos-topo'), topo);
 
@@ -275,12 +258,6 @@
       elemento('p', 'veio-vazio__titulo', textoDaVoz('BRG-37.esperando')),
       elemento('p', 'veio-vazio__texto', textoDaVoz('BRG-37.comeca')),
       raiz.AbrirOAnki.montarBotao());
-  }
-
-  function notaDoArquivoLocal() {
-    const ponto = elemento('span', 'anki-ponto anki-ponto--parado');
-    ponto.setAttribute('aria-hidden', 'true');
-    return elemento('p', 'anki-nota anki-nota--com-ponto', ponto, textoDaVoz('BRG-13'));
   }
 
   function seloDoCache(dados) {
@@ -439,11 +416,9 @@
     const vocabulario = estado.vocabulario;
     const qual = vista(vocabulario);
     const comDados = qual === 'dados' || qual === 'antiga';
-    const idade = haQuanto(momentoDosDados(vocabulario));
+    const idade = haQuanto(vocabulario.quando);
     mostrar(porId('anki-vocabulario-topo'),
-      qual === 'antiga' || (qual === 'dados' && vocabulario.ankiFechado)
-        ? [oMesmo('vocabulario:selo', idade, () => seloAntigo(momentoDosDados(vocabulario)))]
-        : []);
+      qual === 'antiga' ? [oMesmo('vocabulario:selo', idade, () => seloAntigo(vocabulario.quando))] : []);
 
     porId('anki-vocabulario-azulejos').hidden = !comDados;
     porId('anki-vocabulario-filtros').hidden = !comDados;

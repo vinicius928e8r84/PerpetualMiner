@@ -192,7 +192,7 @@ A slice that touches the Conexão com o Anki (the key, sync, any route that carr
 | # | Variant | Today | Missing |
 |---|---|---|---|
 | 1 | No Conexão | `fakes.anki.desligar()` (`configuracoes-ia.spec.js`: `N2:`, "com a Conexão desligada…") | |
-| 2 | Anki closed | `configuracoes-ia.spec.js -g 'K3:'`: the add-on runs inside Anki, so closed means nothing on 8766, `fakes.anki.desligar()` (`fecharOAnki()` fakes a Conexão that reads the file, which the add-on never does) | |
+| 2 | Anki closed | `configuracoes-ia.spec.js -g 'K3:'`: the add-on runs inside Anki, so closed means nothing on 8766, `fakes.anki.desligar()` | |
 | 3 | Old add-on (0.1.0, unversioned state) | `configuracoes-ia.spec.js -g 'K4'` (`K4:` and `K4-delete:`), built by hand with `fakes.anki.responder('POST', '/ia/estado', …)` without `versao`; `guardarChaveNaConexao(…)` only seeds the key | an old-version mode of the fake |
 | 4 | An add-on version without the key routes | `configuracoes-ia.spec.js -g 'B1:'`, a 404 set per route with `fakes.anki.responder('POST', rota, …)` | a mode of the fake that 404s every key route |
 | 5 | Two profiles or accounts on one Conexão | `chave-autoridade.spec.js -g 'K1:'` (a second Chromium profile), `-g 'K1-delete:'`, `-g 'P1'` | |

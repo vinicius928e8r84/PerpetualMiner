@@ -275,10 +275,10 @@ function refletirOVocabularioDoAnkiFechado() {
   const desligada = ConexaoAnki.situacao() === ConexaoAnki.SITUACAO.DESLIGADA;
   const ligados = IDIOMAS_DA_MINERACAO.filter(({ chave }) => mineracaoAutomatica?.settings?.[chave]?.enabled);
   const lidos = leituras ? ligados.map(({ chave }) => leituras[chave]).filter(Boolean) : [];
-  const semOAnki = lidos.some(leitura => desligada || leitura.ankiFechado);
+  const semOAnki = desligada && lidos.length > 0;
 
   selo.hidden = !semOAnki;
-  if (semOAnki) porId('selo-vocabulario-texto').textContent = textoDaVoz('POP-17.selo', { quando: diaEHora(Math.min(...lidos.map(leitura => leitura.dadosDe))) });
+  if (semOAnki) porId('selo-vocabulario-texto').textContent = textoDaVoz('POP-17.selo', { quando: diaEHora(Math.min(...lidos.map(leitura => leitura.createdAt))) });
   for (const { chave } of IDIOMAS_DA_MINERACAO) {
     const espera = document.querySelector(`.popup-azulejo[data-idioma="${chave}"] .popup-azulejo__espera`);
     AbrirOAnki.montarSeJaConectou(espera);

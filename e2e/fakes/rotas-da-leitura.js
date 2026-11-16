@@ -21,13 +21,6 @@ function criarRotasDaLeitura({ estado, contrato, respostaDoContrato }) {
       }
       return PASSA;
     }),
-    rota('*', '/anki/status', ({ responder }) => {
-      const processos = Array.from({ length: estado.processosDoAnki }, (_, i) => ({ pid: 4000 + i, visibleWindow: true }));
-      return responder(200, {
-        generatedAt: estado.agora().toISOString(), connectAvailable: !estado.lidoDoArquivo, collectionReady: true,
-        processes: processos, processCount: processos.length, visibleWindow: processos.length > 0, healthy: true,
-      });
-    }),
     rota('*', '/anki/vocabulary', ({ req, route, responder }) => {
       const falha = estado.falhaDoVocabulario;
       if (falha?.rede) return route.abort('connectionrefused');
@@ -53,10 +46,6 @@ function criarRotasDaLeitura({ estado, contrato, respostaDoContrato }) {
 
     definirBaralho(deckName, numeros) { estado.baralhos[deckName] = numeros; },
     definirBaralhosDoAnki(nomes) { estado.baralhosDoAnki = nomes; },
-    lerBaralhosDoArquivo() { estado.fonteDosBaralhos = 'collection.anki2'; },
-    fecharOAnki() { estado.lidoDoArquivo = true; estado.processosDoAnki = 0; estado.fonteDosBaralhos = 'collection.anki2'; },
-    ankiAbertoSemAnkiConnect() { estado.lidoDoArquivo = true; estado.processosDoAnki = 1; estado.fonteDosBaralhos = 'collection.anki2'; },
-    abrirOAnki() { estado.lidoDoArquivo = false; estado.processosDoAnki = 1; estado.fonteDosBaralhos = 'colecao'; },
     falharBaralhos(falha = { status: 503 }) { estado.falhaDosBaralhos = falha; },
     voltarBaralhos() { estado.falhaDosBaralhos = null; },
   };
