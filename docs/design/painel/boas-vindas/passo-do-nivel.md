@@ -1,6 +1,6 @@
 # O passo do nível do cartão (#164)
 
-O passo 7 da [Boas-vindas](README.md), depois da mineração automática (é ela que diz quais idiomas estão ligados). Opcional. A cópia é `ONB-20` e `BRG-43` ([`lib/voz/catalogo-nivel.js`](../../../../lib/voz/catalogo-nivel.js), spec em [`catalogo-nivel.md`](../../voz/catalogo-nivel.md)). Fatia fechada: o código é `painel-boas-vindas-nivel.js`, `painel-boas-vindas-quiz.js` e `lib/quiz-de-nivel.js`; esta página guarda só as decisões e os limites.
+O passo 7 da [Boas-vindas](README.md), depois da mineração automática (é ela que diz quais idiomas estão ligados). Opcional. A cópia é `ONB-20` e `BRG-43` ([`lib/voz/catalogo-nivel.js`](../../../../lib/voz/catalogo-nivel.js), a nota de cada ID em [`notas-nivel.json`](../../voz/notas-nivel.json)). Fatia fechada: o código é `painel-boas-vindas-nivel.js`, `painel-boas-vindas-quiz.js` e `lib/quiz-de-nivel.js`; esta página guarda só as decisões e os limites.
 
 - **O onboarding só pergunta o nível**: o controle **Estilo do cartão** de Ajustes de envio e a prévia do Cartão; o resto fica em Ajustes de envio (o link **Mais estilos** leva a `#anki/ajustes`).
 - **Escolher salva na hora**, em `ankiBridgePresets` (só o `nivel` daquele idioma), pelo mesmo `AjustesDeEnvio.salvar` de Ajustes de envio. Nada é gravado ao entrar no passo.

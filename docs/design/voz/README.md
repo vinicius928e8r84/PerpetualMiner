@@ -2,9 +2,11 @@
 
 Ticket #4 do mapa Redesign do front-end (#1).
 
-O que está aqui: o **guia de voz e tom** (as regras de qualquer mensagem nova), as **regras por categoria** (onde cada tipo de mensagem aparece) e o **catálogo** de estados-chave com a cópia aprovada, que os protótipos e a construção usam. Só o *conteúdo*: a aparência é da identidade visual, onde cada área mora é do shell do painel e a lógica é da auditoria do front.
+O que está aqui: o **guia de voz e tom** (as regras de qualquer mensagem nova) e as **regras por categoria** (onde cada tipo de mensagem aparece). Só o *conteúdo*: a aparência é da identidade visual, onde cada área mora é do shell do painel e a lógica é da auditoria do front.
 
-Os termos seguem [`glossary.md`](../../../glossary.md). A versão interativa do catálogo está em [`catalogo.html`](catalogo.html).
+O texto de cada estado não está aqui: a fonte é [`lib/voz/catalogo.js`](../../../lib/voz/catalogo.js) e [`catalogo-nivel.js`](../../../lib/voz/catalogo-nivel.js), e texto novo entra primeiro neles. Para ver todos juntos, com o estado, a categoria, o “hoje” e a nota de cada ID (`notas-<área>.json`, que `test_voz.js` exige), abra [`catalogo.html`](catalogo.html), gerado por `node scripts/gerar-catalogo-da-voz.js`.
+
+Os termos seguem [`glossary.md`](../../../glossary.md).
 
 ---
 
@@ -42,25 +44,3 @@ Os termos seguem [`glossary.md`](../../../glossary.md). A versão interativa do 
 ## 2. Regras por categoria
 
 C1 a C9 e F1 estão em [`regras-por-categoria.md`](regras-por-categoria.md).
-
----
-
-## 3. Catálogo de estados-chave
-
-“Hoje” é o texto atual do código, em `HEAD 42994e0`. **(novo)** marca uma mensagem que hoje não existe: um silêncio que passa a ter voz. **(some)** marca um texto que sai sem nada no lugar.
-
-As contagens são exemplos e sempre seguem o plural certo. Um erro sem cópia própria usa GLB-01 como último recurso, sempre com Detalhes.
-
-A coluna **Nota** de cada linha (a decisão por trás do estado) também mora como dado em `notas-<área>.json`, ao lado de cada `catalogo-<área>.md`; `test_voz.js` falha se um ID do catálogo ficar sem entrada lá.
-
-O catálogo mora em um arquivo por área, lidos nesta ordem (um PR mexe no da sua área). Um ID novo entra no arquivo da área da tela:
-
-- [`catalogo-popup-e-pagina.md`](catalogo-popup-e-pagina.md): Popup; Minerar na página (componente de feedback)
-- [`catalogo-foto.md`](catalogo-foto.md): Minerar de uma foto
-- [`catalogo-painel-frases.md`](catalogo-painel-frases.md): Painel · Shell; Painel · Frases; Painel · Minerar frases (Colar · Arquivo .txt · Foto)
-- [`catalogo-envio.md`](catalogo-envio.md): Envio ao Anki
-- [`catalogo-painel-anki.md`](catalogo-painel-anki.md): Painel · Conexão com o Anki
-- [`catalogo-configuracoes.md`](catalogo-configuracoes.md): Configurações · Conta & sync · Atalhos · Chave · Aparência · Zona de perigo
-- [`catalogo-boas-vindas.md`](catalogo-boas-vindas.md): Boas-vindas (primeira execução)
-- [`catalogo-global.md`](catalogo-global.md): Global
-- [`catalogo-nivel.md`](catalogo-nivel.md): o passo do nível e a prévia do Cartão (#164), em continuação

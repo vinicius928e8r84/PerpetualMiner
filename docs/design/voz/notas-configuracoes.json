@@ -1,46 +1,293 @@
 {
-  "CFG-01": "Nunca o estado otimista (C8).",
-  "CFG-02": "",
-  "CFG-03": "Status persistente com “Tentar de novo” e Detalhes; ícone próprio de erro.",
-  "CFG-04": "A instrução de dev vai para Detalhes.",
-  "CFG-05": "“Tentar de novo” e Detalhes.",
-  "CFG-06": "",
-  "CFG-07": "Cancelar não é erro. Inline no card Conta & sync, com Detalhes.",
-  "CFG-08": "Botão “Entrar”.",
-  "CFG-09": "“Enviar” fica reservado para o Anki.",
-  "CFG-10": "",
-  "CFG-11": "V8.",
-  "CFG-12": "",
-  "CFG-13": "",
-  "CFG-14": "V6. Os outros botões seguem o modelo “Botão N do mouse”, com o número que o evento dá ao botão.",
-  "CFG-15": "Salva: “Chave salva” + a chave mascarada (CFG-28) + Trocar chave, que abre o campo com Salvar chave e Cancelar. Vazia: o campo aberto e a nota.",
-  "CFG-16": "",
-  "CFG-17": "C6: sem digitar. Singular: “Apagar 1 frase?”. Sem conta, só “Elas somem deste computador.”. A frase da chave só entra com chave da OpenAI guardada. Falha de conexão não é apagamento concluído (#154). Sem resposta da Conexão nada é apagado (#142).",
-  "CFG-18": "A lista fica em outra área, então fica o toast.",
-  "CFG-19": "Inline na linha, em `danger`; a gravação continua e nada muda até sair uma combinação livre. Faz parte do item “atalho gravável” da lista fechada.",
-  "CFG-20": "O botão da Zona de perigo fica indisponível com este rótulo.",
-  "CFG-21": "Botão fantasma no card Atalhos (lista fechada, item 7). Devolve os atalhos de fábrica sem confirmação: a mudança aparece na linha na hora.",
-  "CFG-22": "Ao lado de “Restaurar atalhos padrão”.",
-  "CFG-23": "Botão fantasma no card Conta & sync.",
-  "CFG-24": "Singular: “Apagar 1 frase”. Sem conta, o alcance é “1.284 frases neste computador”; sem frases, “Nenhuma frase no histórico” e o botão CFG-20. Perigo em contorno: só abre a confirmação (CFG-17).",
-  "CFG-25": "Sob o título, com o card aberto.",
-  "CFG-26": "Sob a conta, quando o sync está em dia.",
-  "CFG-27": "A linha fechada: nome (ou CFG-10) + o estado do chip (SHL-05). Sem conta: “Sem conta · só neste computador”.",
-  "CFG-28": "A linha fechada de Atalhos (“Legenda [Alt+S]  Seleção [Alt+Botão voltar]”, com as teclas em `kbd`; sem atalho, CFG-12), da Chave do Gemini (a chave mascarada em mono; vazia, ponto `danger` + “Sem chave”) e da Zona de perigo (PAI-05: “1.284 frases”, “1 frase”; sem frases, “Nenhuma frase”).",
-  "CFG-29": "O título do card; a descrição aparece sob ele com o card aberto. Seletor de tema: lista fechada, item 10.",
-  "CFG-30": "“Tema” rotula o grupo para o leitor de tela; as opções são o controle segmentado. Trocar não tem toast: o tema muda na tela (C4).",
-  "CFG-31": "A linha fechada mostra o tema em uso. Sem escolha gravada: “Escuro”.",
-  "CFG-32": "Sob o título, com o card aberto. Sem conta: “Apagar tudo aqui não dá para desfazer.”",
-  "CFG-33": "Sob o título, com o card aberto.",
-  "CFG-34": "Sob o nome de cada linha (CFG-11) do card Atalhos.",
-  "CFG-35": "Desenho A do #101. A recusa de outra conta e a atualização também aparecem na Zona de perigo; a atualização, na Conta. Apagar chave é perigo em contorno (C6).",
-  "CFG-36": "O rótulo do interruptor (história 101, #106) e a nota sob ele. Vem desligado. O custo é a janela do Anki abrindo no login, e a nota o diz.",
-  "CFG-37": "A linha fechada do card. “Indisponível agora” é a Conexão desligada: o item de login mora na Conexão, então sem ela não se sabe o estado (C8).",
-  "CFG-38": "A primeira enquanto a Conexão não disse se o item de login existe (C3); as outras com o interruptor indisponível, e dizem a verdade: a Conexão desligada; uma Conexão que não tem a rota (o bridge de hoje, antes do complemento); a leitura que falhou.",
-  "CFG-39": "Persistente, com Detalhes e o interruptor no que está de verdade (C8). A terceira: a Conexão não achou o Anki ao ligar; a quarta, um sistema sem item de login (só o Mac e o Windows têm); a quinta, a resposta não chegou: o interruptor fica indisponível e a tela confere sozinha.",
-  "CFG-40": "Sob o título, com o card aberto.",
-  "CFG-41": "C8: falha de leitura não afirma que uma chave já enviada não chegou; falha da chave não diz que as frases estão só neste computador. Chip e resumo continuam Sem sincronizar; o aviso persiste com repetição e Detalhes.",
-  "CFG-42": "Um dono: não descarta a única mudança de A ao entrar em B, nem exporta um segredo legado sem UID provado.",
-  "CFG-43": "A linha do card Conexão com o Anki (#149); o aviso é vermelho.",
-  "CFG-44": "No Avançado do card (#157). O aviso é âmbar; o que o Envio trocou, uma linha verde."
+  "CFG-01": {
+    "estado": "Sync: estado inicial",
+    "categoria": "status",
+    "hoje": "Sincronizado (antes de sincronizar)",
+    "nota": "Nunca o estado otimista (C8)."
+  },
+  "CFG-02": {
+    "estado": "Sync OK",
+    "categoria": "status",
+    "hoje": "Sincronizado",
+    "nota": ""
+  },
+  "CFG-03": {
+    "estado": "Sync falhou",
+    "categoria": "erro",
+    "hoje": "Erro de sync (com ícone de sincronizando) · Erro na nuvem — usando dados locais.",
+    "nota": "Status persistente com “Tentar de novo” e Detalhes; ícone próprio de erro."
+  },
+  "CFG-04": {
+    "estado": "Nuvem recusou acesso",
+    "categoria": "erro",
+    "hoje": "Firestore: permissão negada — verifique as regras de segurança no console Firebase.",
+    "nota": "A instrução de dev vai para Detalhes."
+  },
+  "CFG-05": {
+    "estado": "Sync parcial",
+    "categoria": "erro",
+    "hoje": "Sync parcial: 8/10 frases enviadas.",
+    "nota": "“Tentar de novo” e Detalhes."
+  },
+  "CFG-06": {
+    "estado": "Entrar",
+    "categoria": "status",
+    "hoje": "Login com Google — Sincronize suas frases em qualquer dispositivo",
+    "nota": ""
+  },
+  "CFG-07": {
+    "estado": "Login falhou / cancelado",
+    "categoria": "erro",
+    "hoje": "Erro no login: Login cancelado · Erro no login: <msg crua>",
+    "nota": "Cancelar não é erro. Inline no card Conta & sync, com Detalhes."
+  },
+  "CFG-08": {
+    "estado": "Sessão expirou",
+    "categoria": "erro",
+    "hoje": "Token expirado — faça login novamente",
+    "nota": "Botão “Entrar”."
+  },
+  "CFG-09": {
+    "estado": "Primeira subida para a nuvem",
+    "categoria": "loading",
+    "hoje": "Migrando… · 12 frase(s) migrada(s) para a nuvem! · Migração falhou: …",
+    "nota": "“Enviar” fica reservado para o Anki."
+  },
+  "CFG-10": {
+    "estado": "Nome sem perfil",
+    "categoria": "status",
+    "hoje": "Usuário",
+    "nota": ""
+  },
+  "CFG-11": {
+    "estado": "Atalhos: nomes",
+    "categoria": "status",
+    "hoje": "Atalho de Captura · (Alt+S invisível)",
+    "nota": "V8."
+  },
+  "CFG-12": {
+    "estado": "Atalho: gravador",
+    "categoria": "status",
+    "hoje": "Não configurado · Clique aqui para gravar atalho · Cancelar gravação",
+    "nota": ""
+  },
+  "CFG-13": {
+    "estado": "Atalho: gravando",
+    "categoria": "loading",
+    "hoje": "⏺ Aguardando… pressione uma tecla ou clique com um botão extra do mouse",
+    "nota": ""
+  },
+  "CFG-14": {
+    "estado": "Atalho: botões do mouse",
+    "categoria": "status",
+    "hoje": "Middle Click · Mouse Back · Mouse Forward · Mouse Btn 5",
+    "nota": "V6. Os outros botões seguem o modelo “Botão N do mouse”, com o número que o evento dá ao botão."
+  },
+  "CFG-15": {
+    "estado": "Chave do Gemini",
+    "categoria": "status",
+    "hoje": "Gemini API Key · AIza... · Salvar Key",
+    "nota": "Salva: “Chave salva” + a chave mascarada (CFG-28) + Trocar chave, que abre o campo com Salvar chave e Cancelar. Vazia: o campo aberto e a nota."
+  },
+  "CFG-16": {
+    "estado": "Chave: vazia / salva",
+    "categoria": "sucesso",
+    "hoje": "Digite uma API Key antes de salvar. · API Key salva!",
+    "nota": ""
+  },
+  "CFG-17": {
+    "estado": "Apagar todas as frases",
+    "categoria": "confirmação",
+    "hoje": "Apagar TODAS as frases? Esta ação não pode ser desfeita.",
+    "nota": "C6: sem digitar. Singular: “Apagar 1 frase?”. Sem conta, só “Elas somem deste computador.”. A frase da chave só entra com chave da OpenAI guardada. Falha de conexão não é apagamento concluído (#154). Sem resposta da Conexão nada é apagado (#142)."
+  },
+  "CFG-18": {
+    "estado": "Todas apagadas",
+    "categoria": "sucesso",
+    "hoje": "(nada)",
+    "marca": "novo",
+    "nota": "A lista fica em outra área, então fica o toast."
+  },
+  "CFG-19": {
+    "estado": "Atalho repetido",
+    "categoria": "erro",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "Inline na linha, em `danger`; a gravação continua e nada muda até sair uma combinação livre. Faz parte do item “atalho gravável” da lista fechada."
+  },
+  "CFG-20": {
+    "estado": "Apagar tudo sem frases",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "O botão da Zona de perigo fica indisponível com este rótulo."
+  },
+  "CFG-21": {
+    "estado": "Restaurar atalhos padrão",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "Botão fantasma no card Atalhos (lista fechada, item 7). Devolve os atalhos de fábrica sem confirmação: a mudança aparece na linha na hora."
+  },
+  "CFG-22": {
+    "estado": "Atalhos de fábrica (dica)",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "Ao lado de “Restaurar atalhos padrão”."
+  },
+  "CFG-23": {
+    "estado": "Sair da conta",
+    "categoria": "status",
+    "hoje": "Sair da conta",
+    "marca": "novo",
+    "nota": "Botão fantasma no card Conta & sync."
+  },
+  "CFG-24": {
+    "estado": "Entrada do Apagar tudo",
+    "categoria": "status",
+    "hoje": "(lixeira sem texto ao lado do total)",
+    "marca": "novo",
+    "nota": "Singular: “Apagar 1 frase”. Sem conta, o alcance é “1.284 frases neste computador”; sem frases, “Nenhuma frase no histórico” e o botão CFG-20. Perigo em contorno: só abre a confirmação (CFG-17)."
+  },
+  "CFG-25": {
+    "estado": "Conta & sync: descrição",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "Sob o título, com o card aberto."
+  },
+  "CFG-26": {
+    "estado": "Sair da conta: nota",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "Sob a conta, quando o sync está em dia."
+  },
+  "CFG-27": {
+    "estado": "Conta & sync: resumo",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "A linha fechada: nome (ou CFG-10) + o estado do chip (SHL-05). Sem conta: “Sem conta · só neste computador”."
+  },
+  "CFG-28": {
+    "estado": "Resumos da linha fechada",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "A linha fechada de Atalhos (“Legenda [Alt+S]  Seleção [Alt+Botão voltar]”, com as teclas em `kbd`; sem atalho, CFG-12), da Chave do Gemini (a chave mascarada em mono; vazia, ponto `danger` + “Sem chave”) e da Zona de perigo (PAI-05: “1.284 frases”, “1 frase”; sem frases, “Nenhuma frase”)."
+  },
+  "CFG-29": {
+    "estado": "Aparência: título e descrição",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "O título do card; a descrição aparece sob ele com o card aberto. Seletor de tema: lista fechada, item 10."
+  },
+  "CFG-30": {
+    "estado": "Tema: opções",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "“Tema” rotula o grupo para o leitor de tela; as opções são o controle segmentado. Trocar não tem toast: o tema muda na tela (C4)."
+  },
+  "CFG-31": {
+    "estado": "Aparência: resumo",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "A linha fechada mostra o tema em uso. Sem escolha gravada: “Escuro”."
+  },
+  "CFG-32": {
+    "estado": "Zona de perigo: descrição",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "Sob o título, com o card aberto. Sem conta: “Apagar tudo aqui não dá para desfazer.”"
+  },
+  "CFG-33": {
+    "estado": "Atalhos: descrição",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "Sob o título, com o card aberto."
+  },
+  "CFG-34": {
+    "estado": "Atalhos: o que cada um faz",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "Sob o nome de cada linha (CFG-11) do card Atalhos."
+  },
+  "CFG-35": {
+    "estado": "IA dos cartões: o card",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "Desenho A do #101. A recusa de outra conta e a atualização também aparecem na Zona de perigo; a atualização, na Conta. Apagar chave é perigo em contorno (C6)."
+  },
+  "CFG-36": {
+    "estado": "Abrir o Anki com o computador",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "O rótulo do interruptor (história 101, #106) e a nota sob ele. Vem desligado. O custo é a janela do Anki abrindo no login, e a nota o diz."
+  },
+  "CFG-37": {
+    "estado": "Conexão com o Anki: resumo",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "A linha fechada do card. “Indisponível agora” é a Conexão desligada: o item de login mora na Conexão, então sem ela não se sabe o estado (C8)."
+  },
+  "CFG-38": {
+    "estado": "Interruptor sem resposta",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "A primeira enquanto a Conexão não disse se o item de login existe (C3); as outras com o interruptor indisponível, e dizem a verdade: a Conexão desligada; uma Conexão que não tem a rota (o bridge de hoje, antes do complemento); a leitura que falhou."
+  },
+  "CFG-39": {
+    "estado": "Interruptor não mudou",
+    "categoria": "erro",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "Persistente, com Detalhes e o interruptor no que está de verdade (C8). A terceira: a Conexão não achou o Anki ao ligar; a quarta, um sistema sem item de login (só o Mac e o Windows têm); a quinta, a resposta não chegou: o interruptor fica indisponível e a tela confere sozinha."
+  },
+  "CFG-40": {
+    "estado": "Conexão com o Anki: descrição",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "Sob o título, com o card aberto."
+  },
+  "CFG-41": {
+    "estado": "Conta & sync: falha da chave da OpenAI",
+    "categoria": "erro + recuperação",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "C8: falha de leitura não afirma que uma chave já enviada não chegou; falha da chave não diz que as frases estão só neste computador. Chip e resumo continuam Sem sincronizar; o aviso persiste com repetição e Detalhes."
+  },
+  "CFG-42": {
+    "estado": "Conta & sync: chave de outra conta ou legado",
+    "categoria": "erro + recuperação",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "Um dono: não descarta a única mudança de A ao entrar em B, nem exporta um segredo legado sem UID provado."
+  },
+  "CFG-43": {
+    "estado": "Perfil do Anki",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "A linha do card Conexão com o Anki (#149); o aviso é vermelho."
+  },
+  "CFG-44": {
+    "estado": "IA dos cartões: o modelo",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "No Avançado do card (#157). O aviso é âmbar; o que o Envio trocou, uma linha verde."
+  }
 }

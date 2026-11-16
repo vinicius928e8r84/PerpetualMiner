@@ -1,4 +1,15 @@
 {
-  "GLB-01": "Último recurso, sempre com Detalhes. Todo erro conhecido tem cópia própria acima.",
-  "GLB-02": "Onde a cópia supõe Alt+S (POP-11, PAI-02, ONB-05; POP-02 tem frase própria), sem atalho gravado a tecla dá lugar a “Sem atalho” e à ação “Definir atalho”, que abre `#configuracoes/atalhos` (na Boas-vindas, leva ao passo 2 da própria página, onde está o gravador)."
+  "GLB-01": {
+    "estado": "Erro sem tradução conhecida",
+    "categoria": "erro",
+    "hoje": "<err.message cru>",
+    "nota": "Último recurso, sempre com Detalhes. Todo erro conhecido tem cópia própria acima."
+  },
+  "GLB-02": {
+    "estado": "Atalho “Minerar legenda” vazio",
+    "categoria": "status",
+    "hoje": "(Alt+S fixo, não dá para esvaziar)",
+    "marca": "novo",
+    "nota": "Onde a cópia supõe Alt+S (POP-11, PAI-02, ONB-05; POP-02 tem frase própria), sem atalho gravado a tecla dá lugar a “Sem atalho” e à ação “Definir atalho”, que abre `#configuracoes/atalhos` (na Boas-vindas, leva ao passo 2 da própria página, onde está o gravador)."
+  }
 }

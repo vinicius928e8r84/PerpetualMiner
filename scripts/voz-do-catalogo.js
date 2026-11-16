@@ -40,12 +40,13 @@ function tabelaDoHtml(catalogo, notasPorArea) {
   const texto = valor => JSON.stringify(escaparParaInnerHtml(valor));
   const dados = Object.keys(AREAS).filter(area => area in notasPorArea).map(area => {
     const linhas = Object.keys(notasPorArea[area]).map(id => {
-      if (!(id in catalogo)) throw new Error(`voz-do-catalogo.js: ${id} tem nota em notas-${area}.json e não está no catálogo`);
-      return `  [${[id, textoDaEntrada(catalogo[id]), notasPorArea[area][id]].map(texto).join(', ')}],`;
+      if (!(id in catalogo)) throw new Error(`voz-do-catalogo.js: ${id} tem entrada em notas-${area}.json e não está no catálogo`);
+      const { estado, categoria, hoje, marca, nota } = notasPorArea[area][id];
+      return `  [${[id, estado, categoria, hoje, textoDaEntrada(catalogo[id]), nota].map(texto).join(', ')}${marca ? `, ${JSON.stringify(marca)}` : ''}],`;
     });
     return ` {s:${JSON.stringify(AREAS[area])}, rows:[\n${linhas.join('\n')}\n ]},`;
   });
-  return `${MARCA_INICIAL}\n// [id, proposto (texto do catalogo.js, uma parte por linha), nota (notas-<área>.json)]\nconst CAT = [\n${dados.join('\n')}\n];\n${MARCA_FINAL}`;
+  return `${MARCA_INICIAL}\n// [id, estado/gatilho, categoria, hoje, proposto (texto do catalogo.js, uma parte por linha), nota, marca]\nconst CAT = [\n${dados.join('\n')}\n];\n${MARCA_FINAL}`;
 }
 
 const DO_GERADO = /\/\/ ─── gerado por scripts\/gerar-catalogo-da-voz\.js[^\n]*\n[\s\S]*?\n\/\/ ─── fim do gerado ───/;
@@ -60,8 +61,8 @@ function linhasDoHtml(html) {
   const gerado = DO_GERADO.exec(html)?.[0];
   if (!gerado) throw new Error('catalogo.html: não achei a tabela gerada');
   return gerado.split('\n').filter(linha => linha.startsWith('  [')).map(linha => {
-    const [id, texto, nota] = JSON.parse(linha.trim().replace(/,$/, ''));
-    return { id, texto: desfazerEscape(texto), nota: desfazerEscape(nota) };
+    const [id, estado, categoria, hoje, texto, nota, marca = ''] = JSON.parse(linha.trim().replace(/,$/, ''));
+    return { id, estado: desfazerEscape(estado), categoria, hoje: desfazerEscape(hoje), texto: desfazerEscape(texto), nota: desfazerEscape(nota), marca };
   });
 }
 
