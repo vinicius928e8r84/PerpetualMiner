@@ -31,7 +31,6 @@ const contrato = require('../../complemento/contrato/carregar.js');
 
 const HOST = contrato.abridor.host;
 const PROGRAMA_DO_HOST = path.join(__dirname, 'abridor-host.js');
-// A situação do fake e o contexto dos exemplos do contrato que ela escolhe.
 const CONTEXTO_DA_SITUACAO = { achei: 'no_lugar', nao_achei: 'sumiu', achei_sem_abrir: 'nao_abre' };
 const SEM_RESPOSTA = 'sem_resposta';
 const NO_WINDOWS = process.platform === 'win32';
@@ -41,7 +40,6 @@ const NO_WINDOWS = process.platform === 'win32';
 // por vez (`--workers=1`), porque dois testes o registrariam no mesmo lugar.
 const CHAVE_DO_REGISTRO = `HKCU\\Software\\Chromium\\NativeMessagingHosts\\${HOST}`;
 
-/** Os exemplos do contrato que o abridor responde numa situação. */
 function exemplosDa(situacao) {
   return contrato.abridor.exemplos.filter(e => e.contexto.anki === CONTEXTO_DA_SITUACAO[situacao]);
 }
@@ -121,14 +119,13 @@ function criarFakeAbridor() {
     },
     limpar() {
       if (NO_WINDOWS && manifestos.length) {
-        try { execFileSync('reg', ['delete', CHAVE_DO_REGISTRO, '/f'], { stdio: 'ignore' }); } catch { /* já não estava */ }
+        try { execFileSync('reg', ['delete', CHAVE_DO_REGISTRO, '/f'], { stdio: 'ignore' }); } catch { }
       }
       fs.rmSync(pasta, { recursive: true, force: true });
     },
   };
 }
 
-/** Onde `desregistrar()` não existe (Windows): o teste que simula "sem abridor" pula ali. */
 const SEM_ABRIDOR_IMPOSSIVEL = NO_WINDOWS;
 
 module.exports = { criarFakeAbridor, SEM_ABRIDOR_IMPOSSIVEL };

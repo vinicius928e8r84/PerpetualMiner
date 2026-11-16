@@ -1,19 +1,9 @@
 'use strict';
 
-// Os pedidos que a extensão faz à Conexão com o Anki, um de cada, para `node test_contrato_fechado.js` pedir ao contrato um exemplo de cada
-// (regra 13 de CODING_STANDARDS.md; complemento/contrato/LEIA-ME.md). Apoio de teste: não vai no pacote da extensão. Carregado depois de
-// lib/pedido-ao-anki.js, com a mesma `PerpetualMiner`.
-
 (function (raiz) {
   const { saude, comecarOPareamento, concluirOPareamento, conferirOPareamento, baralhos, estatisticas, vocabulario, previaDoCartao, tiposDeNota, previaDaNota, abrirNoAnki, estadoDoItemDeLogin, abrirComOComputador, perfisDoAnki, escolherOPerfil, abrirOPerfilMarcado, chaveDaOpenAI, estadoDaIA, apagarChaveDaOpenAI, sincronizarChaveDaOpenAI, vincularLegadoDaOpenAI, estadoDoChatGPT, entrarComOChatGPT, sairDoChatGPT, estadoDoModelo, escolherOModelo, trocarAFrente, criarEnvio, ouvirAVoz, falarAFrase, listarEnvios, verEnvio, tentarEnvioDeNovo, usarAChaveNoEnvio, pacoteDeDiagnostico, apagarFrasesDosEnvios, custosDosEnvios, tetoDoMes, definirOTeto, atualizarAConexao, reiniciarOAnki, LEITURAS_DOS_NUMEROS } = raiz.PedidoAoAnki;
-  // O tipo de nota que a pessoa já tem, mapeado (#165): o que o contrato mostra no pedido.
   const TIPO_PROPRIO_DE_EXEMPLO = Object.freeze({ nome: 'Meu Inglês', mapa: Object.freeze({ frase: 'Pergunta', audio_da_frase: 'Som', resposta: 'Resposta' }) });
 
-  /**
-   * Todos os pedidos que a extensão pode fazer, para os Baralhos `baralhosPedidos` (um por idioma):
-   * `[{ nome, pedido }]`; `chaveDeExemplo` é a chave que o pedido da IA leva e `envioDeExemplo` o corpo de um Envio
-   * (o `jobId` dele é o que os outros pedidos do Envio levam). O teste do contrato confere um exemplo de cada.
-   */
   function variantes(baralhosPedidos, chaveDeExemplo, envioDeExemplo) {
     return [
       { nome: 'saúde', pedido: saude() },

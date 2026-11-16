@@ -1,9 +1,5 @@
 'use strict';
 
-// As imagens da loja: o nome, o tamanho e o campo do formulário onde cada uma
-// vai. O gerador, o `validar.js` e a tabela do `docs/loja/LEIA-ME.md` leem
-// daqui, então nenhum dos três desanda dos outros.
-
 const CAPTURA = { largura: 1280, altura: 800 };
 
 const IMAGENS = {
@@ -16,7 +12,6 @@ const IMAGENS = {
   promo: { arquivo: 'promo-pequena-440x280.png', largura: 440, altura: 280, campo: '**Imagem promocional pequena**' },
 };
 
-/** A linha da tabela do LEIA-ME para uma imagem. */
 const linhaDaTabela = ({ arquivo, largura, altura, campo }) => `| \`${arquivo}\` | ${largura}×${altura} | ${campo} |`;
 
 module.exports = { IMAGENS, CAPTURA, linhaDaTabela };

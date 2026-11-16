@@ -1,7 +1,5 @@
 'use strict';
 
-// O que as specs do Envio ao Anki (painel-envio*.spec.js) repetem: as Frases do cenário, abrir o painel e achar o progresso e o resumo.
-
 const { expect } = require('@playwright/test');
 
 const AGORA = new Date('2026-09-18T12:00:00');
@@ -31,7 +29,6 @@ const enviarAoAnki = page => page.locator('#frases-barra').getByRole('button', {
 const progresso = page => page.getByRole('dialog', { name: 'Enviando ao Anki…' });
 const resumo = page => page.getByRole('dialog', { name: /^Envio concluído/ });
 const envio = (page, nome) => progresso(page).getByRole('group', { name: nome });
-/** O bloco de um idioma no resumo: “+N cartões”, o baralho, o que já estava e o que não entrou. */
 const baralho = (page, idioma) => resumo(page).getByRole('group', { name: idioma });
 const toasts = page => page.locator('.veio-toast');
 
@@ -40,19 +37,15 @@ async function marcarEEnviar(page, textos) {
   await enviarAoAnki(page).click();
 }
 
-/** Espera o painel criar os Envios na Conexão falsa. */
 async function enviosCriados(fakes, n) {
   await expect.poll(() => fakes.anki.envios.length).toBe(n);
   return fakes.anki.envios;
 }
 
-// O “Tentar de novo” da faixa F1 mora na área da Conexão, fora da tela em Frases;
-// o clique por evaluate faz o shell conferir a Conexão agora, sem esperar 15 s.
 async function pedirConferenciaDaConexao(page) {
   await page.locator('#shell-tentar-de-novo').evaluate(el => el.click());
 }
 
-/** O `cards` de um Envio das três Frases em inglês: dez Cartões, `prontos` deles já no Anki (`fakes.anki.moverEnvio(..., { cartoes })`). */
 function cartoesDe(prontos) {
   const ids = [SACK, ARM, LATE].flatMap((f, i) => Array.from({ length: [4, 3, 3][i] }, (_, n) => `${f.id}-${n}`));
   return Object.fromEntries(ids.map((id, i) => [id, i < prontos ? 'added' : 'pending']));
@@ -61,10 +54,6 @@ function cartoesDe(prontos) {
 /** De quanto em quanto tempo o painel lê os Envios na Conexão (`INTERVALO` em painel-envio.js). */
 const INTERVALO_DO_ENVIO = 2_000;
 
-/**
- * Para um teste que afirma que algo NÃO aconteceu: espera a resposta que o teste soltou (`resposta`, de `page.waitForResponse`),
- * uma volta inteira do acompanhamento (o `/jobs/list` a cada 2 s) e a resposta de cada pedido da tela nessa volta.
- */
 async function umaVoltaDoEnvio(page, { resposta } = {}) {
   const pedidos = [];
   const anotar = pedido => pedidos.push(pedido);

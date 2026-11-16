@@ -1,13 +1,5 @@
 'use strict';
 
-// Gera as capturas e a imagem promocional da Chrome Web Store em `docs/loja/`,
-// pelas telas reais da extensão no Chromium, com a rede falsificada e frases
-// de exemplo (nada pessoal, nenhuma série ou marca de streaming na tela).
-//
-//   cd e2e && npx playwright test -c loja --workers=1 && node loja/validar.js
-//
-// O que sai daqui não muda a extensão: só lê as telas e escreve PNGs.
-
 const fs = require('fs');
 const path = require('path');
 const { test, expect } = require('../fixtures');
@@ -130,7 +122,6 @@ test('captura 5: popup da barra com a mineração automática do dia', async ({ 
     pm_auto_miner_daily: { date: dia, en: { count: 12 }, ru: { count: 0 } },
   });
 
-  // O popup tem 340 px: sai em dobro de resolução e entra numa composição 1280 × 800.
   await page.clock.setFixedTime(AGORA);
   await page.setViewportSize({ width: 340, height: 600 });
   const cdp = await context.newCDPSession(page);
@@ -155,7 +146,6 @@ test('promoção pequena 440x280 e ícone 128 sobre o fundo do tema', async ({ p
   await page.evaluate(() => document.fonts.ready);
   await salvar(page, IMAGENS.promo);
 
-  // O ícone existente é RGBA: achatado sobre o fundo do tema, sai sem alfa.
   await page.setViewportSize({ width: IMAGENS.icone.largura, height: IMAGENS.icone.altura });
   await page.goto(paginas.url('loja-icone.html'));
   await expect(page.locator('img')).toBeVisible();
