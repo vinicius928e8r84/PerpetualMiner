@@ -1,16 +1,10 @@
 'use strict';
 
 (function (raiz) {
+  const { elemento } = raiz.Veio;
   const { textoDaVoz, Ranking, Sincronizacao } = raiz;
   const VOZ_DO_NIVEL = { iniciante: 'BRG-42.iniciante', intermediario: 'BRG-42.intermediario', avancado: 'BRG-42.avancado' };
   const AVISO_DO_CONVITE_MS = 4000;
-
-  function elemento(tag, classe, ...filhos) {
-    const no = document.createElement(tag);
-    if (classe) no.className = classe;
-    no.append(...filhos);
-    return no;
-  }
 
   function botao(texto, aoClicar) {
     const no = elemento('button', 'veio-botao veio-botao--secundario', texto);

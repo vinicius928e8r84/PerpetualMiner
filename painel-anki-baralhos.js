@@ -40,6 +40,7 @@
   ];
 
   const { textoDaVoz, Veio, Shell, ConexaoAnki, IDIOMAS } = raiz;
+  const { elemento } = Veio;
   const { haQuanto } = raiz.Contexto;
   const { esqueleto, linhaDeEspera, seloDoDadoAntigo } = raiz.Anki.pecas;
   const { ENDERECO: ENDERECO_DA_CONEXAO, SITUACAO: CONEXAO } = ConexaoAnki;
@@ -612,13 +613,6 @@
 
   function nomeDoIdioma(idioma) {
     return IDIOMAS[IDIOMAS_DOS_AZULEJOS.find(item => item.idioma === idioma)?.nome] || idioma;
-  }
-
-  function elemento(tag, classe, ...filhos) {
-    const no = document.createElement(tag);
-    if (classe) no.className = classe;
-    no.append(...filhos);
-    return no;
   }
 
   function botao(rotulo, classe, aoUsar) {

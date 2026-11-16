@@ -2,7 +2,7 @@
 
 (function (raiz) {
   const { textoDaVoz, ChaveDaOpenAI, ConexaoAnki } = raiz;
-  const { mostrarToastDeSucesso, montarAviso, abrirConfirmacao } = raiz.Veio;
+  const { mostrarToastDeSucesso, montarAviso, abrirConfirmacao, elemento } = raiz.Veio;
   const porId = id => document.getElementById(id);
 
   const ONDE_CRIAR_A_CHAVE = 'https://platform.openai.com/api-keys';
@@ -377,13 +377,6 @@
     b.type = 'button';
     b.addEventListener('click', aoUsar);
     return b;
-  }
-
-  function elemento(tag, classe, ...filhos) {
-    const no = document.createElement(tag);
-    no.className = classe;
-    no.append(...filhos);
-    return no;
   }
 
   document.addEventListener('DOMContentLoaded', iniciar);

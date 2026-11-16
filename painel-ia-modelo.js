@@ -2,7 +2,7 @@
 
 (function (raiz) {
   const { textoDaVoz } = raiz;
-  const { montarAviso } = raiz.Veio;
+  const { montarAviso, elemento } = raiz.Veio;
 
   const AUTOMATICO = 'automatico';
   const estado = { modelo: null, erro: false, aberto: null };
@@ -33,13 +33,6 @@
     if (resposta?.status === 200) return reler();
     estado.erro = true;
     desenharTudo();
-  }
-
-  function elemento(tag, classe, ...filhos) {
-    const no = document.createElement(tag);
-    no.className = classe;
-    no.append(...filhos);
-    return no;
   }
   const botao = (rotulo, aoUsar) => Object.assign(elemento('button', 'veio-botao veio-botao--contorno', rotulo), { type: 'button', onclick: aoUsar });
 

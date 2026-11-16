@@ -1,6 +1,7 @@
 'use strict';
 
 (function (raiz) {
+  const { elemento } = raiz.Veio;
   const { textoDaVoz, AjustesDeEnvio, IDIOMAS, ConexaoAnki } = raiz;
   const { NIVEIS, FRENTES, frenteDisponivel } = AjustesDeEnvio;
   const AO_MUDAR_O_NIVEL = new WeakMap();
@@ -19,13 +20,6 @@
     ditado: ['BRG-44.ditado', 'BRG-44.textoDitado'],
     criacao: ['BRG-44.criacao', 'BRG-44.textoCriacao'],
   };
-
-  function elemento(tag, classe, ...filhos) {
-    const no = document.createElement(tag);
-    no.className = classe;
-    no.append(...filhos);
-    return no;
-  }
 
   function preencher(lang, nivel, texto) {
     texto.textContent = textoDaVoz(VOZ_DO_NIVEL[nivel][1], { idioma: NOME_DO_IDIOMA[lang].toLowerCase() });

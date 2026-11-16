@@ -2,6 +2,7 @@
 
 (function (raiz) {
   const { textoDaVoz, Veio, AjustesDeEnvio, IDIOMAS, Shell, ConexaoAnki } = raiz;
+  const { elemento } = Veio;
   const { IMAGENS, SOTAQUES } = AjustesDeEnvio;
   const NOME_DO_IDIOMA = { en: IDIOMAS.INGLES, ru: IDIOMAS.RUSSO };
   const CODIGO_DO_IDIOMA = { en: 'BRG-28.codigoEn', ru: 'BRG-28.codigoRu' };
@@ -421,13 +422,6 @@
   function opcao(valor, texto) {
     const no = elemento('option', '', texto);
     no.value = valor;
-    return no;
-  }
-
-  function elemento(tag, classe, ...filhos) {
-    const no = document.createElement(tag);
-    if (classe) no.className = classe;
-    no.append(...filhos);
     return no;
   }
 

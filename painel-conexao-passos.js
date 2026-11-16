@@ -28,6 +28,7 @@
   const ITENS_DO_CHECKLIST = ['ONB-16.confira1', 'ONB-16.confira2', 'ONB-16.confira3'];
 
   const { textoDaVoz, Veio, ConexaoAnki, ConexaoNaTela, Configuracao, Abridor, ConversaComOAbridor } = raiz;
+  const { elemento } = Veio;
   const { SITUACAO: CONEXAO } = ConexaoAnki;
   const { SITUACAO } = Configuracao;
 
@@ -81,13 +82,6 @@
   function dizerAgoraNao() {
     despacharAoAbridor(EVENTO.AGORA_NAO, { valor: true });
     Abridor.guardarAgoraNao(true);
-  }
-
-  function elemento(tag, classe, ...filhos) {
-    const no = document.createElement(tag);
-    if (classe) no.className = classe;
-    no.append(...filhos);
-    return no;
   }
 
   function textoDeAchei() {

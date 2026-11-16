@@ -2,6 +2,7 @@
 
 (function (raiz) {
   const { textoDaVoz, Atalhos, Veio, IDIOMAS, Configuracao, ConexaoAnki, Conta, PassosDaConexao, MineracaoAutomatica, MineracaoDoDia, PassoDoNivel, PassoDeMinerar, PassoDoPrimeiroEnvio, AjustesDeEnvio } = raiz;
+  const { elemento } = Veio;
   const { SITUACAO: CONEXAO } = ConexaoAnki;
 
   const ABERTURA = 'abertura';
@@ -397,13 +398,6 @@
     botao.type = 'button';
     botao.addEventListener('click', aoClicar);
     return botao;
-  }
-
-  function elemento(tag, classe, ...filhos) {
-    const no = document.createElement(tag);
-    if (classe) no.className = classe;
-    no.append(...filhos);
-    return no;
   }
 
   document.addEventListener('DOMContentLoaded', iniciarBoasVindas);

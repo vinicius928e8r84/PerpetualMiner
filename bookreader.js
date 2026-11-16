@@ -2,7 +2,7 @@
 
 (function (raiz) {
   const { textoDaVoz, Mineracao } = raiz;
-  const { iconeVeio, montarAviso, mostrarToastDeSucesso, refletirSelecao, abrirConfirmacao } = raiz.Veio;
+  const { iconeVeio, montarAviso, mostrarToastDeSucesso, refletirSelecao, abrirConfirmacao, elemento, botao } = raiz.Veio;
 
   const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent';
 
@@ -799,19 +799,6 @@ To be or not to be, that is the question`;
     linha.classList.toggle('foto-frase--minerada', frase.minerada);
     linha.classList.toggle('foto-frase--desmarcada', !frase.minerada && !frase.marcada);
     linha.querySelector('.foto-frase__minerada').hidden = !frase.minerada;
-  }
-
-  function elemento(tag, classe, ...filhos) {
-    const no = document.createElement(tag);
-    if (classe) no.className = classe;
-    no.append(...filhos);
-    return no;
-  }
-
-  function botao(variante, ...filhos) {
-    const no = elemento('button', `veio-botao ${variante}`, ...filhos);
-    no.type = 'button';
-    return no;
   }
 
   function selo(modificador, texto) {
