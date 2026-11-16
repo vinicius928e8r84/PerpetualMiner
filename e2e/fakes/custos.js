@@ -1,15 +1,11 @@
 'use strict';
 
-// Os custos do fake da Conexão: o resumo dos registros de um Envio e a linha da aba Custos (`POST /analytics/jobs`), com as
-// mesmas chaves de `complemento/custos.py`. Só os registros de texto (e a correção da Criação, #169); as imagens são do #144.
-
-/** O resumo dos registros de custo de um Envio, como `custos.resumir` do complemento (só os registros de texto). */
 function resumoDosCustos(registros, de, ate) {
   const custos = { cardUsd: 0, imageJudgeUsd: 0, imageGuardUsd: 0, imageGenerationUsd: 0, otherUsd: 0, totalUsd: 0 };
   let contados = 0;
-  const doPlano = new Set(); // os Cartões que o plano do ChatGPT fez (#159)
+  const doPlano = new Set();
   let naChave = 0;
-  let correcao = null; // a correção das frases da Criação (#169): só tem a chave quando algum registro dela cai no período
+  let correcao = null;
   for (const registro of registros) {
     const dia = String(registro.date || '').slice(0, 10);
     if ((de && dia < de) || (ate && dia > ate)) continue;
@@ -34,7 +30,6 @@ function imagensZeradas() {
   };
 }
 
-/** As linhas de Custos do período e do idioma pedidos (`POST /analytics/jobs`), como `JobAnalytics.jobs`: as que o teste definiu (`definidas`) ou as dos Envios da fila. */
 function linhasDosCustosDaFila({ definidas, envios, registrosDeCusto }, corpo) {
   const { lang = 'all', from: de, to: ate } = corpo || {};
   const doPeriodo = linha => (lang === 'all' || linha.lang === lang) && (!de || String(linha.createdAt).slice(0, 10) >= de) && (!ate || String(linha.createdAt).slice(0, 10) <= ate);
@@ -53,7 +48,6 @@ function linhasDosCustosDaFila({ definidas, envios, registrosDeCusto }, corpo) {
   }).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
 }
 
-/** Um Envio da aba Custos no formato das linhas do contrato (`POST /analytics/jobs`). `plano`: { cartoes, economia }. */
 function linhaDeCustos({
   jobId, lang = 'en', createdAt, status = 'completed', stage, pedidas = 1, enviadas, lastError = null,
   custos = {}, imagens = {}, economia = 0, baralho = '', plano = null,
@@ -64,7 +58,7 @@ function linhaDeCustos({
     imageGuardUsd: custos.triagem || 0,
     imageGenerationUsd: custos.geradas || 0,
     otherUsd: custos.outros || 0,
-    ...(custos.correcao ? { correctionUsd: custos.correcao } : {}), // a correção das frases da Criação (#169)
+    ...(custos.correcao ? { correctionUsd: custos.correcao } : {}),
   };
   costs.totalUsd = Object.values(costs).reduce((a, b) => a + b, 0);
   const images = {
@@ -95,7 +89,7 @@ function linhaDeCustos({
     costs,
     images,
     matchedRecords: 1,
-    ...(plano ? { plan: { cards: plano.cartoes, wouldCostUsd: plano.economia } } : {}), // o Envio que o plano escreveu (#159)
+    ...(plano ? { plan: { cards: plano.cartoes, wouldCostUsd: plano.economia } } : {}),
   };
 }
 

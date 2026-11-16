@@ -12,9 +12,6 @@
   </style>
 </head>
 <body>
-  <!-- Uma página qualquer tentando usar a extensão sem a pessoa pedir: manda as
-       mensagens de copiar/salvar para si mesma e de um iframe dela para ela, e
-       simula o atalho e o clique no botão flutuante sobre uma legenda plantada. -->
   <div class="player">
     <video muted></video>
     <div class="caption-window"><span class="caption-text">Planted caption that nobody asked to mine.</span></div>
@@ -34,7 +31,6 @@
     window.simularAtalhoEClique = () => {
       const tecla = { altKey: true, code: 'KeyS', key: 's', bubbles: true, cancelable: true };
       document.dispatchEvent(new KeyboardEvent('keydown', tecla));
-      // O botão mora na sombra aberta do host do overlay, que a página alcança.
       document.querySelector('perpetualminer-overlay')?.shadowRoot?.querySelector('button')?.click();
     };
   </script>
