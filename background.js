@@ -258,13 +258,6 @@ function isEnglishPhrase(frase) {
   return idioma.includes('ingl') || idioma === 'en' || (!idioma && detectarIdioma(frase?.texto || '') === IDIOMAS.INGLES);
 }
 
-function autoTokenizar(texto) {
-  return (String(texto || '').match(/[\p{L}\p{N}]+(?:[-'][\p{L}\p{N}]+)*|[^\p{L}\p{N}]/gu) || []).map(tok => {
-    const isWord = /[\p{L}\p{N}]/u.test(tok);
-    return { text: tok, isWord, clean: isWord ? autoCleanWord(tok) : null };
-  });
-}
-
 function autoCleanWord(value) {
   return String(value || '').toLowerCase().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
 }
@@ -295,7 +288,7 @@ async function autoKeywordsForPhraseByLang(frase, lang, options = {}) {
 }
 
 async function autoKeywordsForEnglishPhrase(frase, options = {}) {
-  const tokens = autoTokenizar(frase?.texto || '');
+  const tokens = Mineracao.tokenizar(frase?.texto || '');
   const words = tokens
     .map((tok, index) => ({ ...tok, index }))
     .filter(tok => tok.isWord && tok.clean);
@@ -307,7 +300,7 @@ async function autoKeywordsForEnglishPhrase(frase, options = {}) {
 }
 
 async function autoKeywordsForRussianPhrase(frase, options = {}) {
-  const tokens = autoTokenizar(frase?.texto || '');
+  const tokens = Mineracao.tokenizar(frase?.texto || '');
   const words = tokens
     .map((tok, index) => ({ ...tok, index }))
     .filter(tok => tok.isWord && tok.clean);
