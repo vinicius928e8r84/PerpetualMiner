@@ -15,10 +15,10 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
-from complemento.test_envio import CHAVE, ID, INGLES, EnvioNoTeste, pedido  # noqa: E402
-from complemento.test_imagens_de_mentira import JPEG_DE_MENTIRA, png_de  # noqa: E402
-from complemento.test_openai_de_mentira import audio_da_openai, veredito_do_juiz  # noqa: E402
+from complemento.test_colecao_em_memoria import ColecaoEmMemoria
+from complemento.test_envio import CHAVE, ID, INGLES, EnvioNoTeste, pedido
+from complemento.test_imagens_de_mentira import JPEG_DE_MENTIRA, png_de
+from complemento.test_openai_de_mentira import audio_da_openai, veredito_do_juiz
 
 FRASE = "gave up : She gave up smoking [Context: Série - The Office - S01E01]"
 FOTOS = {"gave up": ["foto-a", "foto-b"]}
@@ -159,7 +159,7 @@ class JuntoComOAudio(unittest.TestCase):
             conexao.openverse.fotos = FOTOS
             conexao.voz.recusar("com", 400)
             sem_reserva = pedido(ID, FRASE)
-            sem_reserva["tts"]["reserva"] = []  # com a reserva (#174) a voz da OpenAI falaria e o Cartão entraria
+            sem_reserva["tts"]["reserva"] = []
             estado, notas = enviar(conexao, corpo=sem_reserva)
             buscas, geradas = list(conexao.openverse.buscas), list(conexao.openai.imagens)
         self.assertEqual((estado["status"], estado["lastError"], notas), ("failed", "tts_rejected", []))
@@ -190,7 +190,7 @@ class SoAImagemFalha(unittest.TestCase):
     """Se só a imagem falha, o Cartão vai sem ela e conta como enviado."""
 
     def conferir_cartao_sem_imagem(self, estado, notas, conexao, tentou_gerar=True):
-        self.assertEqual(bool(conexao.openai.imagens), tentou_gerar)  # a imagem foi mesmo tentada: só ela falhou
+        self.assertEqual(bool(conexao.openai.imagens), tentou_gerar)
         self.assertEqual((estado["status"], estado["successfulPhraseIds"], estado["failedPhraseIds"]), ("completed", [1760000000000], []))
         self.assertEqual(estado["cards"]["1760000000000-0"], {"phraseId": 1760000000000, "status": "added", "error": None, "guid": notas[0]["guid"]})
         self.assertEqual((len(notas), imagens(notas[0]["campos"]), so_a_imagem(notas[0]["midia"])), (1, [], {}))
@@ -216,7 +216,6 @@ class SoAImagemFalha(unittest.TestCase):
         self.conferir_cartao_sem_imagem(estado, notas, conexao, tentou_gerar=False)
 
     def test_uma_foto_que_nao_se_converte_e_sem_geracao_possivel_o_cartao_vai_sem_imagem(self):
-        # Sem o Qt do Anki nem outro adaptador (é o caso aqui), o JPEG não vira PNG: a foto não serve.
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
             conexao.openverse.fotos = {"gave up": ["foto.jpg"]}
             conexao.openai.recusa_da_imagem = (500, "server_error")
@@ -254,7 +253,7 @@ class OQueFicaGuardado(unittest.TestCase):
         for fonte in ("1", "2"):
             with self.subTest(imageSource=fonte), tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
                 conexao.openverse.fotos = FOTOS
-                conexao.openai.juiz = juiz_fraco_que_prefere_a_gerada  # a foto não presta: o Envio paga a OpenAI pelo juiz e pela geração
+                conexao.openai.juiz = juiz_fraco_que_prefere_a_gerada
                 enviar(conexao, corpo=dict(pedido(ID, FRASE), imageSource=fonte))
                 arquivos = conexao.arquivos()
                 _, _, pacote = conexao.pedir("POST", "/jobs/debug-bundle", corpo={"jobId": ID})

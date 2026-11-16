@@ -10,10 +10,10 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import baralhos, previa_do_cartao  # noqa: E402
-from complemento.motor import estilos  # noqa: E402
-from complemento.test_contrato_da_criacao import ANKI_EM_INGLES, SO_O_DEFAULT  # noqa: E402
-from complemento.test_contrato_do_navegador import ContratoDoNavegador  # noqa: E402
+from complemento import baralhos, previa_do_cartao
+from complemento.motor import estilos
+from complemento.test_contrato_da_criacao import ANKI_EM_INGLES, SO_O_DEFAULT
+from complemento.test_contrato_do_navegador import ContratoDoNavegador
 
 ESTILOS = [(lang, nivel) for lang in ("en", "ru") for nivel in estilos.niveis(lang)]
 
@@ -31,7 +31,6 @@ class ContratoDaPrevia(ContratoDoNavegador):
                 frase = texto_de(previa_do_cartao.campos_do_exemplo(lang, nivel)["Frase"])
                 self.assertIn(frase, texto_de(previa["front"]))
                 self.assertIn("pm-tocar", previa["front"])
-                # O verso repete a Frase, salvo o nível que diz que não (o Intermediário e o Avançado do russo, #163).
                 self.assertEqual(frase in texto_de(previa["back"]), estilos.estilo(lang, nivel).get("repete_a_frase", True), "a Frase no verso")
 
     def test_a_previa_de_cada_estilo_mostra_no_verso_as_partes_do_nivel_e_so_elas(self):

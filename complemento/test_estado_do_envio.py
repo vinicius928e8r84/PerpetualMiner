@@ -14,14 +14,13 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import estado_do_envio as maquina  # noqa: E402
-from complemento.estado_do_envio import (  # noqa: E402
+from complemento import estado_do_envio as maquina
+from complemento.estado_do_envio import (
     APAGADO, COMPLETED, ESPERANDO, FAILED, PARTIAL, QUEUED, RUNNING, TRANSICOES, TransicaoInvalida, coerente, conferir, retrato, situacao,
 )
-from complemento.test_envio import ID, LINHA, EnvioNoTeste, apagar_as_frases, arquivos_sem_o_log, chats, pedido  # noqa: E402
+from complemento.test_envio import ID, LINHA, EnvioNoTeste, apagar_as_frases, arquivos_sem_o_log, chats, pedido
 
 ESPERA = {"reason": "plan_limit"}
-# Um estado gravado de cada situação, como o arquivo o diz.
 DE_CADA = {
     QUEUED: {"status": "queued", "stage": "queued"},
     RUNNING: {"status": "running", "stage": "generate_cards"},
@@ -104,7 +103,7 @@ class ATabelaDasTransicoes(unittest.TestCase):
                 conferir(retrato(estado_de(APAGADO)), depois)
                 self.assertEqual({k: depois.get(k) for k in ("status", "stage", "waiting", "wiped", "lastError")},
                                  {"status": "failed", "stage": "failed", "waiting": None, "wiped": True, "lastError": "frases_apagadas"})
-                self.assertEqual(depois["cards"], {"1-0": {"status": "added"}})  # o Cartão que já estava indo ao Anki fica dito
+                self.assertEqual(depois["cards"], {"1-0": {"status": "added"}})
 
     def test_a_mudanca_que_deixa_o_status_e_a_etapa_tortos_e_recusada(self):
         for de, torto in ((RUNNING, {"status": "running", "stage": "failed"}), (RUNNING, {"status": "completed", "stage": "send_to_anki"}),
@@ -151,7 +150,7 @@ class CadaEventoLevaAUmEstadoCoerente(unittest.TestCase):
             estado = self.aplicar(de, maquina.apagar)
             self.assertEqual((estado["status"], estado["stage"], estado["lastError"], estado["wiped"], estado.get("waiting")),
                              ("failed", "failed", "frases_apagadas", True, None))
-        for de in (COMPLETED, PARTIAL, FAILED):  # o que terminou fica com o fim que teve
+        for de in (COMPLETED, PARTIAL, FAILED):
             estado = self.aplicar(de, maquina.apagar)
             self.assertEqual((estado["status"], estado["stage"], estado["wiped"]), (de, de, True))
 
@@ -191,10 +190,10 @@ class Espia:
 class TodoEscritorPassaPeloPortao(unittest.TestCase):
     def test_do_criar_ao_fim_ao_tentar_de_novo_e_ao_apagar_tudo_nenhum_estado_e_gravado_fora_do_portao(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
-            espia = Espia(conexao.conexao.fila)  # a thread de trabalho ainda não tem o que pegar
+            espia = Espia(conexao.conexao.fila)
             conexao.openai.recusar_o_chat_de("run", 429, "rate_limit_exceeded")
             conexao.criar(pedido(ID, "keep running | run : They keep running", "give up : She gave up smoking"))
-            conexao.esperar(ID)  # partial
+            conexao.esperar(ID)
             conexao.pedir("POST", "/jobs/retry", corpo={"jobId": ID})
             conexao.esperar(ID)
             apagar_as_frases(conexao)
@@ -212,9 +211,9 @@ class TodoEscritorPassaPeloPortao(unittest.TestCase):
         with tempfile.TemporaryDirectory() as pasta:
             with EnvioNoTeste(pasta, trabalhando=False) as conexao:
                 conexao.criar(pedido(ID, LINHA))
-                conexao.conexao.fila.mudar(ID, maquina.reservar)  # a Conexão morreu com o Envio rodando e esperando
+                conexao.conexao.fila.mudar(ID, maquina.reservar)
                 conexao.conexao.fila.mudar(ID, lambda estado: estado.update(stage="generate_cards", waiting=dict(ESPERA)))
-            with EnvioNoTeste(pasta, espera_do_contato=60.0) as conexao:  # sobe, e espera a extensão antes de pegar o Envio
+            with EnvioNoTeste(pasta, espera_do_contato=60.0) as conexao:
                 time.sleep(0.3)
                 estado = conexao.conexao.fila.estado(ID)
         self.assertEqual((estado["status"], estado["stage"], estado.get("waiting")), ("queued", "queued", None))
@@ -237,7 +236,6 @@ class OApagadoETerminal(unittest.TestCase):
         self.assertEqual(antes, depois)
 
     def test_a_thread_que_ainda_ia_gravar_a_etapa_nao_tira_o_envio_do_apagado(self):
-        # O Apagar tudo chega entre a thread conferir o `wiped` e gravar a etapa: antes ficava `failed` com a etapa `generate_cards`.
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta, trabalhando=False) as conexao:
             self.apagado(conexao, rodando=True)
             fila = conexao.conexao.fila
@@ -253,7 +251,7 @@ class OApagadoETerminal(unittest.TestCase):
             with EnvioNoTeste(pasta, trabalhando=False) as conexao:
                 self.apagado(conexao, rodando=True)
             with EnvioNoTeste(pasta) as conexao:
-                conexao.pedir("POST", "/jobs/list", corpo={})  # a extensão apareceu: a thread pega o que houver na fila
+                conexao.pedir("POST", "/jobs/list", corpo={})
                 time.sleep(0.4)
                 estado = conexao.conexao.fila.estado(ID)
                 pedidos = len(chats(conexao.openai))

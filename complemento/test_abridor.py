@@ -25,14 +25,13 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import abridor, configuracao  # noqa: E402
+from complemento import abridor, configuracao
 
 CONTRATO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "contrato", "exemplos.json")
 with open(CONTRATO, encoding="utf-8") as _arquivo:
     DO_ABRIDOR = json.load(_arquivo)["abridor"]
 
 HOST = DO_ABRIDOR["host"]
-# Os contextos do contrato em que o Anki está no lugar anotado: `nao_abre` é o Anki lá e o sistema sem abri-lo.
 ANKI_NO_LUGAR = ("no_lugar", "nao_abre")
 ORIGEM_DA_EXTENSAO = configuracao.ORIGENS_ACEITAS[0] + "/"
 # Opera GX 136 encontrou/chamou o host só na chave HKCU do Chrome no Windows real (W4, 2026-10-10).
@@ -103,8 +102,6 @@ class Pastas:
         self.open = OpenDeMentira(raiz)
         self.ler_json = "/usr/bin/osascript"
         if sys.platform != "darwin":
-            # No Linux só a CLI do JXA é adaptada: o mesmo programa JavaScript recebe a
-            # mesma mensagem e faz JSON.parse de verdade. Não substituímos o parser.
             self.ler_json = os.path.join(raiz, "javascript-do-mac-em-node")
             with open(self.ler_json, "w", encoding="utf-8") as arquivo:
                 arquivo.write("#!/bin/sh\nexec node -e " + shlex.quote(

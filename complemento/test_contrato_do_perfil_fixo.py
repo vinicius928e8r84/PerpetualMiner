@@ -9,7 +9,7 @@ import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import baralhos, perfil  # noqa: E402
+from complemento import baralhos, perfil
 
 
 class ContratoDoPerfilFixo:
@@ -21,8 +21,6 @@ class ContratoDoPerfilFixo:
         if marcado:
             fixo.marcar(marcado)
         return fixo
-
-    # O perfil fixo (#149): os Cartões só entram no perfil marcado.
 
     def gravar_uma_nota(self, colecao):
         colecao.adicionar_nota("Inglês", "Básico", {"Frente": "a", "Verso": "b"}, [], "guid-1")
@@ -40,7 +38,7 @@ class ContratoDoPerfilFixo:
             with self.assertRaises(baralhos.OutroPerfil) as erro:
                 operacao()
             self.assertEqual((str(erro.exception), erro.exception.aberto, erro.exception.marcado), ("anki_other_profile", "Beto", "Ana"))
-        self.assertEqual(len(colecao.cartoes_do_baralho("Inglês")), 4)  # a leitura segue; nada foi gravado
+        self.assertEqual(len(colecao.cartoes_do_baralho("Inglês")), 4)
 
     def test_a_gravacao_vale_no_perfil_marcado(self):
         colecao = self.adaptador(self.DESCRICAO, perfis=("Ana", "Beto"), aberto="Ana")
@@ -93,7 +91,7 @@ class ContratoDoPerfilFixo:
         colecao.fixar_o_perfil(self.perfil_fixo("Ana"))
         self.assertTrue(colecao.trocar_para_o_perfil_fixo())
         self.assertEqual(colecao.perfil_aberto(), "Ana")
-        self.assertFalse(colecao.trocar_para_o_perfil_fixo())  # já é o marcado: nada a fazer
+        self.assertFalse(colecao.trocar_para_o_perfil_fixo())
 
     def test_o_clique_em_abrir_o_perfil_com_o_anki_na_tela_de_perfis_entra_no_marcado(self):
         colecao = self.adaptador_fechado(perfis=("Ana", "Beto"))

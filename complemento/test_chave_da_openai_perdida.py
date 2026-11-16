@@ -16,8 +16,8 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from test_chave_da_openai import CHAVE, ORIGEM, ConexaoNoTeste, tudo_em_disco  # noqa: E402
-from complemento.test_pareamento_de_mentira import cabecalhos_assinados  # noqa: E402
+from test_chave_da_openai import CHAVE, ORIGEM, ConexaoNoTeste, tudo_em_disco
+from complemento.test_pareamento_de_mentira import cabecalhos_assinados
 
 
 class AutoridadeVersionadaPerdida(unittest.TestCase):

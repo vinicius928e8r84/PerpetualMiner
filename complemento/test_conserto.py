@@ -22,10 +22,10 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import abridor, conserto_do_anki  # noqa: E402
-from complemento.test_abridor import ANKI_DO_WINDOWS, Pastas, RegistroDeMentira, conversar  # noqa: E402
+from complemento import abridor, conserto_do_anki
+from complemento.test_abridor import ANKI_DO_WINDOWS, Pastas, RegistroDeMentira, conversar
 
-PID = 4242   # o do Anki de mentira: o programa de mentira `ps` o lista, o `kill` de mentira o fecha
+PID = 4242
 COMANDO_DO_ANKI = "/Applications/Anki.app/Contents/MacOS/anki"
 CONSERTAR = {"acao": "consertar"}
 
@@ -60,7 +60,6 @@ class Mundo:
         programa(self.programas["date"], 'cat "%s/relogio"\n' % e)
         programa(self.programas["sleep"],
                  'echo "sleep $1" >> "%s"\nprintf %%s $(( $(cat "%s/relogio") + $1 )) > "%s/relogio"\n' % (self.registro, e, e))
-        # A lista de processos do computador: o Anki (se vive), o abridor e um processo qualquer, como o `ps` de verdade os mostra.
         programa(self.programas["ps"],
                  'echo "ps $*" >> "%s"\nprintf "  100 /usr/sbin/cron\\n  200 sh /x/abrir-o-anki.sh chrome-extension://x/\\n"\n'
                  'chamada=$(( $(cat "%s/chamadas_do_ps" 2>/dev/null || echo 0) + 1 )); echo $chamada > "%s/chamadas_do_ps"\n'
@@ -69,7 +68,6 @@ class Mundo:
                  '[ -f "%s/vivo" ] && printf "  %d %%s\\n" "$(cat "%s/comando")"\n'
                  '[ -f "%s/vivo" ] && [ -f "%s/outros" ] && while read -r p; do printf "  %%s %%s\\n" "$p" "$(cat "%s/comando")"; done < "%s/outros"\n'
                  'exit 0\n' % ((self.registro,) + (e,) * 10 + (PID, e) + (e,) * 4))
-        # Quem ouve a porta: o Anki (o padrão) ou o que o teste disser (`escuta`: os pids, um por linha; vazio, ninguém).
         programa(self.programas["lsof"],
                  'echo "lsof $*" >> "%s"\nif [ -f "%s/escuta" ]; then cat "%s/escuta"; elif [ -f "%s/vivo" ]; then echo %d; fi\n' % (self.registro, e, e, e, PID))
         programa(self.programas["curl"],

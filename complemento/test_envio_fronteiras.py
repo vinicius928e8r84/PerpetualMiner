@@ -25,9 +25,9 @@ from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import envio  # noqa: E402
-from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
-from complemento.test_envio import (  # noqa: E402
+from complemento import envio
+from complemento.test_colecao_em_memoria import ColecaoEmMemoria
+from complemento.test_envio import (
     ID, INGLES, LINHA, SENTINELAS, EnvioNoTeste, apagar_as_frases, arquivos_sem_o_log, chats, pedido)
 
 
@@ -68,7 +68,7 @@ class Fronteiras:
             return gravar_json(*argumentos)
 
         def _apagar(caminho):
-            if os.path.exists(caminho):  # apagar o que não existe não grava nada
+            if os.path.exists(caminho):
                 fronteiras.passar()
             return apagar(caminho)
 
@@ -165,7 +165,7 @@ class AMorteEmCadaGravacaoDoCriarEDoTrabalho(unittest.TestCase):
             na_fila_ao_morrer = ler_a_fila(pasta)
             with EnvioNoTeste(pasta, colecao=colecao) as conexao:
                 time.sleep(0.15)
-                na_fila_na_subida = ler_a_fila(pasta)  # a subida não põe na fila um pedido que ninguém acompanha
+                na_fila_na_subida = ler_a_fila(pasta)
                 resposta = conexao.criar(dois_cartoes())
                 conexao.pedir("POST", "/jobs/retry", corpo={"jobId": ID})
                 estado = conexao.esperar(ID)
@@ -223,7 +223,7 @@ class AMorteEmCadaGravacaoDoApagarTudo(unittest.TestCase):
                 depois = arquivos_sem_o_log(conexao)
             with EnvioNoTeste(pasta, colecao=colecao) as conexao:
                 resposta = conexao.criar(pedido(ID, LINHA))
-                retomada = json.loads(conexao.pedir("POST", "/jobs/retry", corpo={"jobId": ID})[2])  # do apagado não se sai: 409
+                retomada = json.loads(conexao.pedir("POST", "/jobs/retry", corpo={"jobId": ID})[2])
                 time.sleep(0.3)
                 estado = conexao.estado(ID)
                 pedidos = chats(conexao.openai)
@@ -260,7 +260,7 @@ class AMorteDepoisDoArquivoProvisorioEAntesDoRenomear(unittest.TestCase):
                 return renomear(origem, destino, *argumentos, **nomeados)
             if morta or len(contadas) == morrer_em:
                 morta.append(origem)
-                raise Morte()  # o provisório já foi escrito; o renomear não acontece
+                raise Morte()
             contadas.append(origem)
             return renomear(origem, destino, *argumentos, **nomeados)
 
@@ -288,7 +288,6 @@ class AMorteDepoisDoArquivoProvisorioEAntesDoRenomear(unittest.TestCase):
                 for sentinela in SENTINELAS:
                     for nome, conteudo in restos.items():
                         self.assertNotIn(sentinela.encode(), conteudo, "%s em %s" % (sentinela, nome))
-                # `perfil.json.novo` (a marca do perfil fixo, #149) guarda só o nome do perfil: o Apagar tudo não precisa levá-lo.
                 self.assertEqual([nome for nome in restos if nome.endswith(".novo") and not nome.startswith("chaves") and nome != "perfil.json.novo"], [])
                 self.assertTrue(provisorios, "a prova só vale se a morte deixou o provisório")
 

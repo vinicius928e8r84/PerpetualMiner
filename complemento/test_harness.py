@@ -14,17 +14,17 @@ from datetime import date
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento.test_atualizacao import atualizacao_do_exemplo  # noqa: E402
-from complemento import configuracao, pasta_de_dados, registro, servidor  # noqa: E402
-from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
-from complemento.test_contexto_da_conexao import chave_guardada_antes, item_de_login_do_contexto  # noqa: E402
-from complemento.test_fila_de_mentira import semear_a_fila  # noqa: E402,F401
-from complemento.test_imagens_de_mentira import OpenverseDeMentira  # noqa: E402
-from complemento.test_openai_de_mentira import OpenAIDeMentira, FirestoreDeMentira  # noqa: E402
-from complemento.test_voz_de_mentira import VozDeMentira  # noqa: E402
-from complemento.test_chatgpt_de_mentira import ChatGPTDeMentira, situar_o_login  # noqa: E402
-from complemento.test_modelos_de_mentira import preparar_o_cenario  # noqa: E402
-from complemento.test_pareamento_de_mentira import cabecalhos_assinados, preparar_o_pareamento, recusa_do_porteiro, semear  # noqa: E402
+from complemento.test_atualizacao import atualizacao_do_exemplo
+from complemento import configuracao, pasta_de_dados, registro, servidor
+from complemento.test_colecao_em_memoria import ColecaoEmMemoria
+from complemento.test_contexto_da_conexao import chave_guardada_antes, item_de_login_do_contexto
+from complemento.test_fila_de_mentira import semear_a_fila
+from complemento.test_imagens_de_mentira import OpenverseDeMentira
+from complemento.test_openai_de_mentira import OpenAIDeMentira, FirestoreDeMentira
+from complemento.test_voz_de_mentira import VozDeMentira
+from complemento.test_chatgpt_de_mentira import ChatGPTDeMentira, situar_o_login
+from complemento.test_modelos_de_mentira import preparar_o_cenario
+from complemento.test_pareamento_de_mentira import cabecalhos_assinados, preparar_o_pareamento, recusa_do_porteiro, semear
 
 CONTRATO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "contrato", "exemplos.json")
 ORIGEM = configuracao.ORIGENS_ACEITAS[0]

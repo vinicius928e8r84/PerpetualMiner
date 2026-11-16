@@ -13,11 +13,11 @@ from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import item_de_login  # noqa: E402
-from complemento import inicio  # noqa: E402
-from complemento.test_inicio import parar, saude  # noqa: E402
-from complemento.test_item_de_login import ANKI_DO_WINDOWS, atalho_das_conexoes_0_4_21_a_0_4_24  # noqa: E402
-from complemento.test_pareamento_de_mentira import iniciar_pareado, travar_o_item_de_login_do_computador  # noqa: E402
+from complemento import item_de_login
+from complemento import inicio
+from complemento.test_inicio import parar, saude
+from complemento.test_item_de_login import ANKI_DO_WINDOWS, atalho_das_conexoes_0_4_21_a_0_4_24
+from complemento.test_pareamento_de_mentira import iniciar_pareado, travar_o_item_de_login_do_computador
 
 
 def setUpModule():
