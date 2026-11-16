@@ -1,16 +1,5 @@
 'use strict';
 
-// O contrato da Conexão com o Anki (o complemento do Anki em 127.0.0.1:8766), visto
-// da extensão. Os exemplos de `complemento/contrato/exemplos.json` são lidos pelos
-// dois lados: os testes do complemento (`python3 complemento/test_servidor.py`)
-// conferem o servidor real contra eles, e este arquivo confere o fake do e2e, que é
-// o que todos os outros testes da extensão usam no lugar da Conexão.
-//
-// Os exemplos de outra origem ou de outra página só valem no lado do complemento:
-// uma página da extensão não consegue mandar o pedido como se fosse de outro site.
-// O que o Chrome manda de verdade (o GET da extensão sem `Origin`, o POST com ela)
-// está em `complemento/contrato/LEIA-ME.md`.
-
 const { test, expect } = require('../fixtures');
 const contrato = require('../../complemento/contrato/carregar');
 const { exemploDaExtensao, diferencaDoContrato } = require('../fakes/anki');
@@ -44,11 +33,8 @@ for (const exemplo of daExtensao) {
     if (exemplo.contexto.tetoUsd) fakes.anki.teto.definir({ limite: exemplo.contexto.tetoUsd });
     fakes.anki.pareamento.definirContexto(exemplo.contexto);
     if (exemplo.contexto.perfis) fakes.anki.definirPerfis(exemplo.contexto.perfis, { marcado: exemplo.contexto.perfilMarcado ?? null, aberto: exemplo.contexto.perfil });
-    // O seam é o HTTP: uma página do produto poderia alterar o contexto
-    // semeado. Um recurso estático mantém a origem sem executar o painel/popup.
     await page.goto(extensao.url('manifest.json'), { waitUntil: 'domcontentloaded' });
 
-    // Assinado como a extensão assina (#192): a Conexão só atende o pedido de um navegador pareado, fora a saúde e o pareamento.
     const resposta = await pedirDaPagina(page, exemplo.pedido);
 
     const mensagem = `O fake (e2e/fakes/anki.js) e o contrato (complemento/contrato/exemplos.json) se separaram no exemplo "${exemplo.nome}". `

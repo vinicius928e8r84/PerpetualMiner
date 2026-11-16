@@ -1,11 +1,5 @@
 'use strict';
 
-// A legenda na Max: o player da Max escreve o nome do episódio numa classe
-// `Subtitle-Fuse-Web-Play…`, e a leitura pegava esse nome no lugar da fala
-// (a frase gravada era “DNR”). A página-fixture tem o player da Max com o cue, o
-// título, a temporada/episódio, o nome do episódio e o rótulo oculto, e é servida
-// em www.max.com por rota, sem rede.
-
 const fs = require('fs');
 const path = require('path');
 const { test, expect, botaoFlutuante, tocarVideo } = require('../fixtures');
@@ -24,7 +18,6 @@ async function abrirPlayerDaMax(page) {
   await expect(botaoFlutuante(page)).toBeVisible();
 }
 
-/** Troca o que o player mostra na janela da legenda (o cue e o rótulo oculto). */
 const trocarJanelaDaLegenda = (page, html) =>
   page.locator('.legenda').evaluate((no, html) => { no.innerHTML = html; }, html);
 
@@ -78,7 +71,6 @@ test('na Max, o cue de uma faixa antiga, escondida, não entra na fala', async (
 
 test('na Max, sem nenhuma fala na tela, o nome do episódio não é minerado', async ({ page, extensao }) => {
   await abrirPlayerDaMax(page);
-  // Sem cue, e o bloco do título embaixo, onde a leitura pela posição procura a legenda.
   await trocarJanelaDaLegenda(page, '');
   await page.locator('.contexto').evaluate(no => { no.style.top = 'auto'; no.style.bottom = '36px'; });
 

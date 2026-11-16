@@ -1,11 +1,5 @@
 'use strict';
 
-// Referência visual do Avançado do card IA dos cartões com o modelo (#157): o seletor com “Pago pela sua chave”, o aviso âmbar antes da
-// saída e a linha verde da troca. O dono compara com o protótipo do #123 (ticket de origem do mapa #87); até ele aprovar, os testes ficam
-// em `test.fixme` e não há PNG (regra 10, e2e/aprovados-visuais.json). Depois:
-//
-//   cd e2e && npx playwright test configuracoes-modelo-visual --update-snapshots
-
 const { test, expect } = require('../fixtures');
 const { semearComoNoPrototipo, abrirConfiguracoes } = require('../apoio-das-configuracoes');
 

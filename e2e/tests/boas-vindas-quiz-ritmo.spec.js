@@ -1,11 +1,5 @@
 'use strict';
 
-// Boas-vindas · o quiz de nível (#170, ONB-21 e ONB-22), o ritmo, o resultado e o áudio (a regra dos dois portões está em `boas-vindas-quiz.spec.js`): a pessoa que não sabe o nível abre “Não sei meu nível, quero descobrir” de um idioma,
-// responde às 2 perguntas sobre o que já faz e a de 3 a 6 de 4 alternativas, e vê o nível sugerido com a prévia do Cartão. Cada teste percorre um caminho da regra dos dois
-// portões (#134) e confere o nível que ficou guardado nos Ajustes de envio (`ankiBridgePresets`). A Conexão com o Anki é falsificada na fronteira HTTP
-// (e2e/fakes/anki.js): a fala vem de `POST /voz/falar` e a prévia de `POST /anki/card-preview`. O relógio fica parado (`relogioParado`): a próxima pergunta entra
-// quando o teste anda 1 s. Sem a festa (#171); o ranking é de `boas-vindas-quiz-ranking.spec.js` (#172).
-
 const { test, expect } = require('../fixtures');
 const { estadoFinal } = require('../estado-final');
 const {
@@ -28,7 +22,7 @@ test.describe('o ritmo e a sequência', () => {
     await expect(quiz(page, 'Inglês')).toContainText('Pergunta 2 de 3');
     await expect(pergunta(page, 'Inglês')).toHaveText(ESCUTA);
     await expect.poll(() => dizeres(fakes)).toEqual([{ lang: 'en', sotaque: 'co.uk', texto: 'Could you tell me where the nearest pharmacy is?' }]);
-    // Exceção de teste: sem-estado-guardado — o ritmo do quiz é só o que aparece na tela; o nível só é guardado em Usar este estilo.
+    // Exceção de teste: sem-estado-guardado
     expect((await extensao.lerStorage(CHAVE))[CHAVE]).toBeUndefined();
   });
 
@@ -49,10 +43,9 @@ test.describe('o ritmo e a sequência', () => {
     await expect(quiz(page, 'Inglês').locator('.quiz__opcao[data-estado="certa"]')).toHaveCount(1);
     await relogio.avancar(PAUSA_DA_RESPOSTA_MS);
 
-    // Com “Não sei” numa de legenda o portão não passa: são 3 perguntas e o nível é o Iniciante, com a melhor sequência de 2 no resumo.
     await expect(quiz(page, 'Inglês').locator('.quiz__resumo')).toHaveText('2 de 3 certas · melhor sequência: 2 · escuta: 1 de 1');
     await expect(quiz(page, 'Inglês').getByRole('radio', { name: 'Iniciante' })).toBeChecked();
-    // Exceção de teste: sem-estado-guardado — a sequência é só o que aparece na tela; nada é guardado até Usar este estilo.
+    // Exceção de teste: sem-estado-guardado
     expect((await extensao.lerStorage(CHAVE))[CHAVE]).toBeUndefined();
   });
 
@@ -85,7 +78,7 @@ test.describe('o ritmo e a sequência', () => {
     await expect(quiz(page, 'Inglês').locator('.quiz__feedback')).toHaveText('Não foi essa. A certa está marcada.');
     await relogio.avancar(PAUSA_DA_RESPOSTA_MS);
     await expect(quiz(page, 'Inglês')).toContainText('Pergunta 2 de 3');
-    // Exceção de teste: sem-estado-guardado — só mostra a resposta na tela; nada é guardado até Usar este estilo.
+    // Exceção de teste: sem-estado-guardado
     expect((await extensao.lerStorage(CHAVE))[CHAVE]).toBeUndefined();
   });
 });
@@ -100,7 +93,6 @@ test.describe('o resultado', () => {
     await expect(quiz(page, 'Inglês')).toContainText('Dá para trocar depois em Ajustes de envio › Estilo do cartão.');
     await expect(quiz(page, 'Inglês').locator('.previa')).toContainText('Exemplo do Intermediário em inglês, como o Anki mostra.');
     await expect(quiz(page, 'Inglês').locator('.previa').frameLocator('iframe').locator('body')).toContainText('Desistir de fazer algo, parar de tentar.');
-    // Trocar o nível ali só muda o que está na tela: nada é guardado antes de Usar este estilo.
     await quiz(page, 'Inglês').locator('label', { hasText: 'Avançado' }).click();
     await expect(quiz(page, 'Inglês').locator('.previa')).toContainText('Exemplo do Avançado em inglês, como o Anki mostra.');
     await expect(quiz(page, 'Inglês').locator('.previa').frameLocator('iframe').locator('body')).toContainText('To stop doing or trying something');
@@ -135,7 +127,7 @@ test.describe('o resultado', () => {
 
     await expect(quiz(page, 'Inglês')).toHaveCount(0);
     await expect(grupo(page, 'Inglês').getByRole('radio', { name: 'Iniciante' })).toBeChecked();
-    // Exceção de teste: sem-estado-guardado — sair do quiz não grava nível nenhum.
+    // Exceção de teste: sem-estado-guardado
     expect((await extensao.lerStorage(CHAVE))[CHAVE]).toBeUndefined();
   });
 });
@@ -155,7 +147,7 @@ test.describe('quando o áudio não vem', () => {
     await expect.poll(() => dizeres(fakes).at(-1)).toEqual({ lang: 'en', sotaque: 'co.uk', texto: 'Could you tell me where the nearest pharmacy is?' });
     await quiz(page, 'Inglês').getByRole('button', { name: 'Não sei', exact: true }).click();
     await expect(quiz(page, 'Inglês').locator('.quiz__opcao[data-estado="certa"]')).toHaveCount(1);
-    // Exceção de teste: sem-estado-guardado — o aviso do áudio é só o que aparece na tela; nada é guardado até Usar este estilo.
+    // Exceção de teste: sem-estado-guardado
     expect((await extensao.lerStorage(CHAVE))[CHAVE]).toBeUndefined();
   });
 
@@ -167,7 +159,7 @@ test.describe('quando o áudio não vem', () => {
     await relogio.avancar(PAUSA_DA_RESPOSTA_MS);
 
     await expect(quiz(page, 'Inglês').locator('.quiz__aviso')).toHaveText('Atualize a Conexão com o Anki para ouvir as perguntas.');
-    // Exceção de teste: sem-estado-guardado — o aviso do áudio é só o que aparece na tela.
+    // Exceção de teste: sem-estado-guardado
     expect((await extensao.lerStorage(CHAVE))[CHAVE]).toBeUndefined();
   });
 

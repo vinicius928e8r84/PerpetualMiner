@@ -1,16 +1,5 @@
 'use strict';
 
-// O card IA dos cartões de Configurações (#140, docs/design/painel/configuracoes/): as duas entradas em
-// colunas do mesmo tamanho, a coluna da Chave da OpenAI.
-//
-// A pessoa cola a chave; a Conexão com o Anki (o fake do e2e, que fala o contrato de
-// complemento/contrato/exemplos.json) a confere na OpenAI e guarda a cópia dela; a tela mostra a chave
-// mascarada. O segredo local fica só na Conexão; `chrome.storage.local` só tem
-// máscara/UID/revisão/flag. O banco antigo da extensão fica sem segredos.
-//
-// Os testes afirmam o que a pessoa vê e o que fica gravado, nunca funções internas. Ler o IndexedDB da
-// extensão é ler o que ficou guardado, como `lerStorage`.
-
 const { test, expect } = require('../fixtures');
 const { fotografar } = require('../evidencias-mineracao');
 
@@ -29,7 +18,6 @@ const campo = page => card(page).getByRole('textbox', { name: 'Chave da OpenAI' 
 const conferir = page => card(page).getByRole('button', { name: 'Conferir e salvar' });
 const erro = page => card(page).getByRole('alert');
 
-/** Prova negativa: o cofre antigo da extensão não guarda mais a chave. */
 const chaveNoBancoDaExtensao = page => page.evaluate(() => new Promise((resolver, rejeitar) => {
   const pedido = indexedDB.open('pm-segredos', 1);
   pedido.onupgradeneeded = () => pedido.result.createObjectStore('chaves');
@@ -63,7 +51,6 @@ async function colarEConferir(page, chave = CHAVE) {
 }
 
 for (const configurada of [false, true]) test(`K4: complemento antigo responde, mas exige atualização antes de enviar a chave — ${configurada ? 'com chave' : 'sem chave'}`, async ({ page, extensao, fakes }) => {
-  // Fronteira HTTP do main 0.1.0: /ia/estado não traz revisão/conta/flag.
   if (configurada) fakes.anki.guardarChaveNaConexao('9f3a');
   fakes.anki.responder('POST', '/ia/estado', () => ({ status: 200,
     json: { openai: configurada ? { configurada: true, ultimos4: '9f3a' } : { configurada: false } } }));
@@ -207,7 +194,6 @@ test('sem chave: as duas entradas aparecem em colunas do mesmo tamanho e nada fi
   expect(Math.abs(a.y - b.y)).toBeLessThan(1);
   expect(b.x).toBeGreaterThan(a.x + a.width - 1);
 
-  // O que cada coluna diz.
   await expect(colunaDaChave).toContainText('Você paga à OpenAI pelo uso, direto na sua conta.');
   await expect(colunaDaChave).toContainText('Crie a chave num projeto próprio da OpenAI, com limite de gasto por mês. Para desligar de verdade, revogue a chave na OpenAI.');
   await expect(colunaDaChave.getByRole('link', { name: 'Onde criar a chave' })).toHaveAttribute('href', 'https://platform.openai.com/api-keys');
@@ -229,7 +215,6 @@ test('colar a chave: a Conexão a confere e guarda a cópia, a tela mostra só a
   await expect(corpo(page).getByText('Chave conferida', { exact: true })).toBeVisible();
   await expect(corpo(page).getByText(MASCARADA)).toBeVisible();
   await expect(card(page).locator('.cfg-resumo')).toHaveText(MASCARADA);
-  // Sem conta, a chave fica neste computador: a tela diz o estado verdadeiro (C8).
   await expect(corpo(page)).toContainText('Fica neste computador, na Conexão com o Anki. Para levá-la à conta Google, entre e confira a chave de novo.');
   await expect(corpo(page)).not.toContainText('vai junto com a sua conta Google');
   await expect(corpo(page)).toContainText('A Conexão com o Anki guarda a chave.');
@@ -237,9 +222,7 @@ test('colar a chave: a Conexão a confere e guarda a cópia, a tela mostra só a
   await expect(page.getByText(CHAVE)).toHaveCount(0);
   await expect(page.getByText('sk-proj-chave-de-exemplo')).toHaveCount(0);
 
-  // O que atravessou: a chave foi ao complemento, que a guarda (o fake faz como ele).
   expect(fakes.anki.chaveNaConexao()).toBe(CHAVE);
-  // O que ficou: a chave inteira só no banco da extensão; no storage, só o fim dela.
   expect(await chaveNoBancoDaExtensao(page)).toBe('');
   expect(await extensao.lerStorage('pm_chave_openai')).toMatchObject({ pm_chave_openai: { ultimos4: '9f3a' } });
   expect(JSON.stringify(await extensao.lerStorage(null))).not.toContain('sk-proj-chave-de-exemplo');
@@ -266,7 +249,6 @@ test('conferir com o campo vazio é recusado no campo e nada vai à Conexão', a
   await campo(page).fill('s');
   await expect(campo(page)).not.toHaveAttribute('aria-invalid', 'true');
   expect(fakes.anki.requisicoes.filter(r => r.caminho === '/ia/openai/chave')).toEqual([]);
-  // Nada foi guardado: nem no banco da extensão, nem no storage, nem na cópia da Conexão.
   expect(await chaveNoBancoDaExtensao(page)).toBe('');
   expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai?.ultimos4 || '').toBe('');
   expect(fakes.anki.chaveNaConexao()).toBeNull();
@@ -292,7 +274,6 @@ test('enquanto a Conexão confere, o campo guarda o que foi colado e o botão n�
   liberar();
   await expect(card(page).locator('.cfg-resumo')).toHaveText(MASCARADA);
   expect(fakes.anki.requisicoes.filter(r => r.caminho === '/ia/openai/chave')).toHaveLength(1);
-  // Depois da resposta, a chave inteira só no banco da extensão e, no storage, só o fim dela.
   expect(await chaveNoBancoDaExtensao(page)).toBe('');
   expect(await extensao.lerStorage('pm_chave_openai')).toMatchObject({ pm_chave_openai: { ultimos4: '9f3a' } });
   expect(JSON.stringify(await extensao.lerStorage(null))).not.toContain('sk-proj-chave-de-exemplo');
@@ -317,11 +298,9 @@ for (const { comportamento, texto, acao, detalhes } of [
     await expect(erro(page).getByRole('button', { name: acao })).toBeVisible();
     await erro(page).getByText('Detalhes').click();
     await expect(erro(page)).toContainText(detalhes);
-    // A faixa atravessa o card, abaixo das duas colunas.
     const faixa = await erro(page).boundingBox();
     const colunas = await card(page).locator('.ia-colunas').boundingBox();
     expect(faixa.y).toBeGreaterThan(colunas.y + colunas.height - 1);
-    // O campo volta com o que foi colado, para a pessoa corrigir; a chave não foi guardada em lugar nenhum.
     await expect(campo(page)).toHaveValue(CHAVE);
     await expect(card(page).locator('.cfg-resumo')).toHaveText('Sem chave');
     expect(fakes.anki.chaveNaConexao()).toBeNull();
@@ -352,14 +331,12 @@ test('chave sem crédito: Adicionar crédito abre a OpenAI numa aba nova', async
   await abrirPainel(page, extensao, '#configuracoes/ia');
   await colarEConferir(page);
 
-  // A rede é bloqueada no e2e: o que se confere é o pedido que a aba nova fez.
   const [pedido] = await Promise.all([
     context.waitForEvent('request', r => r.url().startsWith('https://platform.openai.com/')),
     erro(page).getByRole('button', { name: 'Adicionar crédito' }).click(),
   ]);
 
   expect(pedido.url()).toBe('https://platform.openai.com/settings/organization/billing/overview');
-  // A chave sem crédito não foi guardada em lugar nenhum, nem depois de abrir a OpenAI.
   expect(await chaveNoBancoDaExtensao(page)).toBe('');
   expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai?.ultimos4 || '').toBe('');
   expect(fakes.anki.chaveNaConexao()).toBeNull();
@@ -434,7 +411,6 @@ test('com a Conexão desligada o card não afirma nada sobre a cópia', async ({
 });
 
 test('o content script e o overlay não alcançam a chave: ela não está no storage que eles leem nem no banco que eles abrem', async ({ page, extensao, context, paginas, fakes }) => {
-  // Upgrade from the old readable storage must migrate both tokens to restricted origin storage.
   await extensao.gravarStorage({
     pm_user_info: { uid: 'uid-isolamento', displayName: 'Pessoa de Teste' },
     pm_firebase_auth: { uid: 'uid-isolamento', idToken: 'token-teste', refreshToken: 'refresh-teste', expiresAt: Date.now() + 3600000 },
@@ -445,7 +421,6 @@ test('o content script e o overlay não alcançam a chave: ela não está no sto
 
   await expect.poll(() => Boolean(fakes.google.chaveDaOpenAIDe('uid-isolamento'))).toBe(true);
 
-  // O mundo isolado do content script numa página comum: é de onde o content script e o overlay leem.
   const pagina = await context.newPage();
   await pagina.goto(paginas.url('texto.html'));
   const cdp = await context.newCDPSession(pagina);
@@ -504,10 +479,8 @@ test('o content script e o overlay não alcançam a chave: ela não está no sto
 
 test('a chave colada num lugar do card e confirmada no outro nunca volta à tela em Trocar chave', async ({ page, extensao, fakes }) => {
   await abrirPainel(page, extensao, '#configuracoes/ia');
-  // Colada em Configurações, sem conferir: fica como rascunho do card daqui.
   await campo(page).fill(CHAVE);
 
-  // Conferida no passo da Boas-vindas, que é o mesmo card em outro lugar.
   await page.goto(extensao.url('painel.html#boas-vindas/ia'));
   const passo = page.locator('.bv-card');
   await passo.getByRole('textbox', { name: 'Chave da OpenAI' }).fill(OUTRA_CHAVE);
@@ -521,7 +494,6 @@ test('a chave colada num lugar do card e confirmada no outro nunca volta à tela
   await expect(campo(page)).toHaveValue('');
   await expect(page.getByText(CHAVE)).toHaveCount(0);
 
-  // O que ficou guardado: a chave confirmada, inteira só no banco da extensão e na cópia da Conexão.
   expect(await chaveNoBancoDaExtensao(page)).toBe('');
   expect(fakes.anki.chaveNaConexao()).toBe(OUTRA_CHAVE);
   expect(await extensao.lerStorage('pm_chave_openai')).toMatchObject({ pm_chave_openai: { ultimos4: 'wxyz' } });
@@ -539,7 +511,6 @@ test('Trocar chave aberto num lugar, com um erro e a chave colada, é reposto qu
   await colarEConferir(page, OUTRA_CHAVE);
   await expect(erro(page).getByRole('button', { name: 'Tentar de novo' })).toBeVisible();
 
-  // No passo da Boas-vindas, o mesmo card confirma outra chave.
   fakes.anki.responderOpenAI('aceita');
   await page.goto(extensao.url('painel.html#boas-vindas/ia'));
   const passo = page.locator('.bv-card');
@@ -548,7 +519,6 @@ test('Trocar chave aberto num lugar, com um erro e a chave colada, é reposto qu
   await passo.getByRole('button', { name: 'Conferir e salvar' }).click();
   await expect(passo.getByText('••••••••mnop')).toBeVisible();
 
-  // De volta a Configurações o card mostra a chave confirmada, sem campo, sem faixa e sem um Tentar de novo que não manda nada.
   await page.goto(extensao.url('painel.html#configuracoes/ia'));
   await expect(corpo(page).getByText('••••••••mnop')).toBeVisible();
   await expect(campo(page)).toHaveCount(0);
@@ -566,11 +536,9 @@ test('com a Conexão desligada depois de conferir, o card deixa de dizer que ela
 
   fakes.anki.desligar();
 
-  // A Conexão é conferida a cada 15 s.
   await expect(corpo(page)).not.toContainText('cópia da chave', { timeout: 25_000 });
   await expect(card(page).locator('.cfg-resumo')).toHaveText(MASCARADA);
 
-  // Desligar a Conexão não mexe no que está guardado: a mesma chave, e nenhuma chave inteira no storage.
   expect(await chaveNoBancoDaExtensao(page)).toBe('');
   expect(await extensao.lerStorage('pm_chave_openai')).toMatchObject({ pm_chave_openai: { ultimos4: '9f3a' } });
   expect(JSON.stringify(await extensao.lerStorage(null))).not.toContain('sk-proj-chave-de-exemplo');
@@ -594,9 +562,6 @@ test('abaixo de ~620 px de largura do card, as colunas viram linhas', async ({ p
   expect(Math.abs(estreita.chatgpt.width - estreita.chave.width)).toBeLessThan(1);
 });
 
-// A Conexão é o único dono local; a nuvem replica o valor. A extensão só
-// guarda o resumo público. As chaves são fictícias; os provedores são fronteiras.
-
 const UID = 'uid-da-chave';
 const modal = page => page.getByRole('dialog');
 
@@ -618,10 +583,9 @@ for (const comChave of [false, true]) {
       await expect(conta).toContainText('as frases estão só neste computador');
     }
     const resposta = page.waitForResponse(r => r.url().includes('/ia/openai/sincronizar') && r.status() === 503);
-    // Exceção de teste: chrome-nativo — simula a volta à aba, sem chamar funções do painel.
+    // Exceção de teste: chrome-nativo
     await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
     await (await resposta).finished();
-    // O evento nativo foi simulado; aguarda a resposta e o próximo desenho, não chama sync por dentro.
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     await expect(conta).toContainText('as frases estão só neste computador');
     await expect(conta).not.toContainText('Não deu para conferir a sincronização da chave da OpenAI.');
@@ -641,8 +605,6 @@ for (const falha of ['acesso recusado', 'token recusado', 'renovação recusada'
       await extensao.semearSessao({ uid: UID });
       await extensao.gravarStorage({ frases: [frase], pm_migrated: UID });
       fakes.google.gravarFrases(UID, [frase]);
-      // A sessão captura Date.now ao nascer; instala o relógio antes de abrir,
-      // para avançar depois o mesmo relógio usado na verificação de validade.
       await page.clock.setFixedTime(new Date());
       await abrirPainel(page, extensao, '#configuracoes/ia');
       await expect(page.locator('#shell-chip')).toContainText('Sincronizado', { timeout: 45000 });
@@ -660,7 +622,7 @@ for (const falha of ['acesso recusado', 'token recusado', 'renovação recusada'
         fakes.google.expirarSessao();
         await page.clock.setFixedTime(new Date(Date.now() + 2 * 60 * 60 * 1000));
       }
-      // Exceção de teste: chrome-nativo — simula a volta à aba para tentar o sync novamente.
+      // Exceção de teste: chrome-nativo
       await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
       const conta = page.locator('#cfg-conta');
       await expect(conta).toContainText(falha === 'acesso recusado'
@@ -690,7 +652,7 @@ test('R2: falha ao ler uma chave já na nuvem não diz que ela ainda não chegou
   await expect(page.locator('#shell-chip')).toContainText('Sincronizado');
   await page.locator('#shell-chip').click();
   fakes.anki.responderFirebase(503);
-  // Exceção de teste: chrome-nativo — simula voltar à aba para tentar a leitura da nuvem.
+  // Exceção de teste: chrome-nativo
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
   const conta = page.locator('#cfg-conta');
   await expect(conta).toContainText('Não deu para conferir a sincronização da chave da OpenAI.');
@@ -765,7 +727,6 @@ test('PATCH recusado: a chave colada em A nunca sobe para B e a nota não promet
   await colarEConferir(page);
   await expect(card(page).locator('.cfg-resumo')).toHaveText(MASCARADA);
   await expect.poll(() => fakes.google.requisicoes.filter(r => r.metodo === 'PATCH' && r.url.includes('/segredos/')).length).toBeGreaterThan(0);
-  // A recusa terminou antes de trocar o UID; não deixa outro retry de A em voo.
   await expect(page.locator('#shell-chip')).toContainText('Sem sincronizar');
   expect(fakes.anki.estadoDaChave().naoEnviada).toBe(true);
   fakes.google.recusarEscritas(false);
@@ -799,11 +760,9 @@ test('a chave de uma conta Google não sobe para outra conta que entra no mesmo 
   await abrirPainel(page, extensao, '#configuracoes/ia');
   await expect(card(page).locator('.cfg-resumo')).toHaveText('••••••••wxyz');
 
-  // A pessoa sai e entra com outra conta, que nunca teve chave.
   await extensao.semearSessao({ uid: 'uid-de-outra-pessoa', email: 'outra@teste.dev', displayName: 'Outra Pessoa' });
   await page.reload();
   await expect(page.locator('#shell-chip')).toContainText('Sincronizado');
-  // O sync da chave roda ao abrir o painel; a volta à aba (visibilitychange) o roda de novo, e ele termina antes da leitura.
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
   await expect.poll(() => fakes.google.requisicoes.filter(r => r.url.includes('uid-de-outra-pessoa/segredos')).length).toBeGreaterThan(1);
 
@@ -829,8 +788,7 @@ test('S4: apagamento aceito com falha no cache mostra resultado incerto, Detalhe
   await colarEConferir(page);
   await expect(card(page).locator('.cfg-resumo')).toHaveText(MASCARADA);
   await expect(campo(page)).toHaveCount(0);
-  // Exceção de teste: chrome-nativo — falha só a escrita do cache público,
-  // não o cofre legado que já foi removido nem uma função interna do produto.
+  // Exceção de teste: chrome-nativo
   await page.evaluate(() => {
     window.gravarAntesDoTeste = chrome.storage.local.set.bind(chrome.storage.local);
     chrome.storage.local.set = valores => {
@@ -844,10 +802,10 @@ test('S4: apagamento aceito com falha no cache mostra resultado incerto, Detalhe
   await erro(page).getByText('Detalhes').click();
   await expect(erro(page)).toContainText('StorageUnavailable');
   await fotografar(card(page), 'ia-apagar-falhou.png');
-  expect(fakes.anki.chaveNaConexao()).toBeNull(); // não repõe o segredo a partir do cache
+  expect(fakes.anki.chaveNaConexao()).toBeNull();
   await expect(card(page)).not.toContainText('A Conexão com o Anki guarda a chave.');
   expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai.ultimos4).toBe('9f3a');
-  // Exceção de teste: chrome-nativo — restaura a API de armazenamento na fronteira.
+  // Exceção de teste: chrome-nativo
   await page.evaluate(() => { chrome.storage.local.set = window.gravarAntesDoTeste; });
   expect(await chaveNoBancoDaExtensao(page)).toBe('');
   await erro(page).getByRole('button', { name: 'Tentar de novo' }).click();

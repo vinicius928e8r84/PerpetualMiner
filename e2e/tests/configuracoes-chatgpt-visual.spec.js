@@ -1,11 +1,5 @@
 'use strict';
 
-// Referência visual da coluna Conta do ChatGPT do card IA dos cartões com o login (#155): “Usando o plano do ChatGPT ·
-// Gerenciar uso” e Sair do ChatGPT, ao lado da chave. O dono compara com o protótipo do #101 (desenho A, ticket de origem do mapa
-// #87); até ele aprovar, o teste fica em `test.fixme` e não há PNG (regra 10, e2e/aprovados-visuais.json). Depois:
-//
-//   cd e2e && npx playwright test configuracoes-chatgpt-visual --update-snapshots
-
 const { test, expect } = require('../fixtures');
 const { semearComoNoPrototipo, abrirConfiguracoes } = require('../apoio-das-configuracoes');
 
@@ -34,8 +28,6 @@ test('IA dos cartões com o ChatGPT recusado: a faixa da Conta do ChatGPT', asyn
   await expect(page).toHaveScreenshot('ia-chatgpt-recusado.png', { animations: 'disabled' });
 });
 
-// #156: as telas novas do resto do plano. O protótipo é o P1 e o P2 do #101 (o modal “Você está usando o seu plano do ChatGPT”, a conta
-// não elegível que leva à chave); a nota de quem usa o plano sem chave (história 31) não tem desenho e espera o olhar do dono.
 test('IA dos cartões: o modal da primeira vez com o plano do ChatGPT', async ({ page, extensao, fakes }) => {
   test.fixme(true, AGUARDA_O_DONO);
   await semearComoNoPrototipo(extensao, fakes);

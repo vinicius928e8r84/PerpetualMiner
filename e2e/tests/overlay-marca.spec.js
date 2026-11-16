@@ -1,11 +1,5 @@
 'use strict';
 
-// A marca no texto capturado (#41): a linha ouro de 3 px sob o texto, a Palavra
-// grifada por cima dele e o chip (título · auto:/palavra: · meta). Quando não dá
-// para marcar — a legenda já trocou, a seleção não tem retângulo —, a pílula fala.
-// A mineração automática usa a mesma marca, mais apagada, e o contador do botão
-// é o do idioma da captura.
-
 const { test, expect } = require('../fixtures');
 const DRU = 'PerpetualMiner::Russo';
 
@@ -19,19 +13,15 @@ const MIN_05 = 'Frase minerada';
 const MIN_06 = 'Mineração automática';
 
 const SELECAO_EM_ALT_E = { type: 'keyboard', code: 'KeyE', altKey: true, ctrlKey: false, shiftKey: false };
-// O botão “voltar” do mouse: um atalho de seleção que vale com o foco num campo.
 const SELECAO_NO_BOTAO_VOLTAR = { type: 'mouse', button: 3, altKey: false, ctrlKey: false, shiftKey: false };
 
 const botaoFlutuante = page => page.getByRole('button', { name: /^Minerar legenda/ });
 const feedback = page => page.getByRole('status');
-// A linha e o grifo são desenho, não texto: moram na sombra do overlay, fora da
-// árvore de acessibilidade, e se acham pelo que são na tela.
 const linhas = page => page.locator('perpetualminer-overlay .pm-linha');
 const grifos = page => page.locator('perpetualminer-overlay .pm-grifo');
 const chip = page => page.locator('perpetualminer-overlay .pm-chip');
 const pilulaAberta = page => page.locator('perpetualminer-overlay .pm-pilula--aberta');
 
-/** A caixa de um desenho da marca depois da entrada (a linha cresce da esquerda em 150 ms). */
 async function caixaParada(locator) {
   await locator.evaluate(no => Promise.all(no.getAnimations().map(animacao => animacao.finished)));
   return locator.boundingBox();
@@ -43,7 +33,6 @@ async function abrirPlayer(page, context, paginas) {
   await expect(botaoFlutuante(page)).toBeVisible();
 }
 
-/** Onde uma palavra do texto do site está na tela: o retângulo dela, medido na própria página. */
 function caixaDaPalavra(page, seletor, palavra) {
   return page.locator(seletor).evaluate((no, palavra) => {
     const texto = no.firstChild;
@@ -56,7 +45,6 @@ function caixaDaPalavra(page, seletor, palavra) {
   }, palavra);
 }
 
-/** O retângulo do texto (sem o padding do elemento), como a pessoa o lê. */
 function caixaDoTexto(page, seletor) {
   return page.locator(seletor).evaluate(no => {
     const trecho = document.createRange();
@@ -66,7 +54,6 @@ function caixaDoTexto(page, seletor) {
   });
 }
 
-// As falhas do armazenamento do service worker, injetadas na fronteira (ver overlay.spec.js).
 const segurarGravacoes = extensao => extensao.serviceWorker.evaluate(() => {
   globalThis.__setOriginal ??= chrome.storage.local.set;
   globalThis.__seguradas = [];
@@ -88,17 +75,14 @@ test('Alt+S num player com legenda: a linha fica sob a legenda e o grifo sobre a
 
   await page.keyboard.press('Alt+KeyS');
 
-  // O chip: o título, a Palavra detectada e o idioma.
   await expect(chip(page)).toBeVisible();
   await expect(chip(page)).toContainText(MIN_01);
   await expect(chip(page)).toContainText('auto:');
   await expect(chip(page)).toContainText('gulls');
   await expect(chip(page).getByText('EN', { exact: true })).toBeVisible();
-  // O leitor de tela ouve o feedback inteiro, com a frase.
   await expect(feedback(page)).toContainText(MIN_01);
   await expect(feedback(page)).toContainText(LEGENDA);
 
-  // A linha: 3 px, logo abaixo do texto da legenda e da largura dele.
   const texto = await caixaDoTexto(page, '#legenda');
   await expect(linhas(page)).toHaveCount(1);
   const linha = await caixaParada(linhas(page));
@@ -108,7 +92,6 @@ test('Alt+S num player com legenda: a linha fica sob a legenda e o grifo sobre a
   expect(Math.abs(linha.x - texto.x)).toBeLessThanOrEqual(1);
   expect(Math.abs(linha.width - texto.width)).toBeLessThanOrEqual(1);
 
-  // O grifo: a faixa de marca-texto sobre “gulls”, na metade de baixo da linha.
   const palavra = await caixaDaPalavra(page, '#legenda', 'gulls');
   await expect(grifos(page)).toHaveCount(1);
   const grifo = await caixaParada(grifos(page));
@@ -117,14 +100,11 @@ test('Alt+S num player com legenda: a linha fica sob a legenda e o grifo sobre a
   expect(grifo.y).toBeGreaterThanOrEqual(palavra.y + palavra.height * 0.4);
   expect(grifo.y + grifo.height).toBeLessThanOrEqual(palavra.y + palavra.height + 1);
 
-  // O chip fica acima da legenda; a pílula não abre.
   expect((await chip(page).boundingBox()).y + (await chip(page).boundingBox()).height).toBeLessThanOrEqual(texto.y);
   await expect(pilulaAberta(page)).toHaveCount(0);
-  // Nada do site foi tocado: a legenda continua com o texto e os nós de antes.
   expect(await page.locator('#legenda').evaluate(no => no.childNodes.length)).toBe(1);
   expect((await extensao.frases()).map(f => f.texto)).toEqual([LEGENDA]);
 
-  // Sucesso some sozinho, com a marca inteira.
   await expect(chip(page)).toBeHidden({ timeout: 5000 });
   await expect(linhas(page)).toHaveCount(0);
   await expect(grifos(page)).toHaveCount(0);
@@ -142,7 +122,6 @@ test('a legenda troca antes da resposta: a pílula fala, com a frase e a Palavra
 
   await expect(pilulaAberta(page)).toHaveCount(1);
   await expect(feedback(page)).toContainText(MIN_01);
-  // A prévia começa perto da Palavra, que a pílula nunca corta.
   await expect(feedback(page)).toContainText('before the gulls did.');
   await expect(feedback(page).locator('mark')).toHaveText('gulls');
   await expect(feedback(page).getByText('EN', { exact: true })).toBeVisible();
@@ -162,7 +141,6 @@ test('a legenda troca com a marca na tela: linha, grifo e chip saem na hora', as
 
   await page.locator('#legenda').evaluate((no, texto) => { no.textContent = texto; }, OUTRA_LEGENDA);
 
-  // Bem antes dos ~3,5 s do sucesso: a marca não fica sobre um texto que já não é o dela.
   await expect(linhas(page)).toHaveCount(0, { timeout: 500 });
   await expect(grifos(page)).toHaveCount(0);
   await expect(chip(page)).toHaveCount(0);
@@ -196,7 +174,6 @@ test('seleção numa página comum: a linha sob o trecho, o grifo na Palavra gra
   await expect(feedback(page)).toContainText(TRECHO);
   await expect(pilulaAberta(page)).toHaveCount(0);
 
-  // O grifo cai sobre a Palavra que ficou gravada com a frase.
   const [gravada] = await extensao.frases();
   expect(gravada.texto).toBe(TRECHO);
   const palavra = String(gravada.keywords.find(k => k && k !== '|')).split('@')[0];
@@ -207,7 +184,6 @@ test('seleção numa página comum: a linha sob o trecho, o grifo na Palavra gra
   expect(Math.abs(grifo.x - caixa.x)).toBeLessThanOrEqual(2);
   expect(Math.abs(grifo.width - caixa.width)).toBeLessThanOrEqual(3);
 
-  // A linha fica sob o trecho selecionado.
   const texto = await caixaDoTexto(page, '#trecho');
   const linha = await caixaParada(linhas(page).first());
   expect(Math.round(linha.height)).toBe(3);
@@ -234,7 +210,6 @@ test('seleção dentro de um textarea: sem retângulo do texto, a pílula livre 
   await expect(pilulaAberta(page)).toHaveCount(1);
   await expect(feedback(page).getByText(MIN_05, { exact: true })).toBeVisible();
   await expect(feedback(page).getByText('Web', { exact: true })).toBeVisible();
-  // A pílula nunca corta a Palavra grifada: a prévia começa perto dela.
   const palavraNaPilula = await feedback(page).locator('mark').textContent();
   expect(TRECHO).toContain(palavraNaPilula);
   await expect(linhas(page)).toHaveCount(0);
@@ -242,14 +217,12 @@ test('seleção dentro de um textarea: sem retângulo do texto, a pílula livre 
   await expect(chip(page)).toHaveCount(0);
   expect((await extensao.frases()).map(f => f.texto)).toEqual([TRECHO]);
 
-  // Sem vídeo, a pílula livre fica no canto inferior direito e some por inteiro.
   const caixa = await feedback(page).boundingBox();
   const janela = page.viewportSize();
   expect(caixa.x + caixa.width).toBeGreaterThan(janela.width - 120);
   expect(caixa.y + caixa.height).toBeGreaterThan(janela.height - 120);
   await expect(page.getByRole('button', { name: /^Minerar legenda/ })).toHaveCount(0);
   await expect(pilulaAberta(page)).toHaveCount(0, { timeout: 5000 });
-  // Fechada, ela não pega o clique do site no canto em que estava (nem onde ficava o azulejo).
   const cantos = await page.locator('perpetualminer-overlay').evaluate(host => {
     const { left, top, right, bottom } = host.getBoundingClientRect();
     return [[(left + right) / 2, (top + bottom) / 2], [right - 4, bottom - 4]];
@@ -259,7 +232,6 @@ test('seleção dentro de um textarea: sem retângulo do texto, a pílula livre 
   }
 });
 
-/** Uma legenda nova no player, como a de um vídeo tocando. */
 const trocarLegenda = (page, texto) => page.locator('#legenda').evaluate((no, texto) => { no.textContent = texto; }, texto);
 const contador = page => page.locator('perpetualminer-overlay .pm-contador');
 
@@ -270,12 +242,10 @@ test('RU desligado: o contador do botão é o do inglês da legenda, não a soma
   });
   await abrirPlayer(page, context, paginas);
 
-  // Antes, “10/20”: EN + RU, mesmo com o RU desligado.
   await expect(contador(page)).toHaveText('3/20');
   await expect(botaoFlutuante(page)).toHaveAccessibleDescription('Mineração automática · Inglês: 3 de 20 hoje');
   await expect(contador(page)).not.toHaveClass(/pm-contador--limite/);
 
-  // Uma legenda russa com o RU desligado: o contador some.
   await trocarLegenda(page, FRASE_RUSSA);
   await expect(contador(page)).toBeHidden();
   await expect(botaoFlutuante(page)).toHaveAccessibleDescription('');
@@ -293,10 +263,8 @@ test('o contador do idioma da legenda: no limite vira contorno e o leitor de tel
   await expect(contador(page)).toHaveText('15/15');
   await expect(contador(page)).toHaveClass(/pm-contador--limite/);
   await expect(botaoFlutuante(page)).toHaveAccessibleDescription('Mineração automática · Russo: limite de hoje atingido');
-  // A pessoa desliga o russo no popup com o contador dele na tela: ele some na hora.
   const popup = await context.newPage();
   await popup.goto(extensao.url('popup.html'));
-  // O trilho é o que a pessoa vê e clica (como em popup.spec.js).
   await popup.locator('.popup-azulejo[data-idioma="ru"] .veio-toggle__trilho').click();
   await expect(popup.getByRole('switch', { name: 'Mineração automática em russo' })).not.toBeChecked();
   await expect(contador(page)).toBeHidden();
@@ -304,7 +272,6 @@ test('o contador do idioma da legenda: no limite vira contorno e o leitor de tel
 });
 
 async function tocarVideoComLegenda(page, texto) {
-  // A mineração automática só olha a legenda de um vídeo que está tocando.
   await page.evaluate(async texto => {
     document.querySelector('#legenda').textContent = texto;
     const tela = document.createElement('canvas');
@@ -317,8 +284,6 @@ async function tocarVideoComLegenda(page, texto) {
 
 const MINERACAO_AUTOMATICA_EM_RU = {
   pm_auto_miner_settings: { en: { enabled: false, dailyLimit: 20 }, ru: { enabled: true, dailyLimit: 20 } },
-  // O vocabulário do Anki em cache, sem nenhuma palavra conhecida: a frase russa
-  // tem um item novo só, então a mineração automática a aceita.
   pm_auto_keyword_vocab_ru: {
     cacheVersion: 2, deckName: DRU, createdAt: Date.now(),
     words: [], terms: [], wordInfo: {}, termInfo: {},
@@ -340,11 +305,9 @@ test('a mineração automática usa a mesma marca, mais apagada, com auto: e o c
   await expect(linhas(page)).toHaveCount(1);
   await expect(grifos(page)).toHaveCount(1);
 
-  // Mais apagada que a marca de uma captura: a linha e o grifo ficam translúcidos.
   const opacidade = async locator => Number(await locator.evaluate(no => getComputedStyle(no).opacity));
   expect(await opacidade(linhas(page))).toBeLessThan(1);
   expect(await opacidade(grifos(page))).toBeLessThan(1);
-  // O contador do botão é o do russo (o inglês está desligado e tem 9).
   await expect(contador(page)).toHaveText('5/20');
   expect((await extensao.frases()).map(f => f.texto)).toEqual([FRASE_RUSSA]);
 });
@@ -389,7 +352,6 @@ async function apertarVoltar(page) {
   await cdp.detach();
 }
 
-/** O dia de hoje como a mineração automática o grava (AAAA-MM-DD, hora local). */
 function hoje() {
   const agora = new Date();
   return [agora.getFullYear(), String(agora.getMonth() + 1).padStart(2, '0'), String(agora.getDate()).padStart(2, '0')].join('-');

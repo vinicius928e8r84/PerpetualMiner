@@ -1,10 +1,5 @@
 'use strict';
 
-// Boas-vindas · o passo do nível do cartão (#164, ONB-20): a pessoa escolhe o nível de cada idioma ligado na mineração automática e vê a prévia do
-// Cartão desse nível, desenhada pelo Anki (a Conexão responde o exemplo do estilo). Escolher salva na hora, no mesmo lugar que Ajustes de envio ›
-// Estilo do cartão (`ankiBridgePresets`). A Conexão com o Anki é falsificada na fronteira HTTP (e2e/fakes/anki.js, o contrato `exemplos-da-previa.json`).
-// Os trechos de cada nível são os do Cartão de exemplo do `engine/estilos.json`.
-
 const { test, expect } = require('../fixtures');
 const { estadoFinal } = require('../estado-final');
 
@@ -35,7 +30,7 @@ async function abrirONivel(page, extensao, { automatica = SO_O_INGLES, gravado =
   await expect(card(page).getByRole('heading', { level: 2 })).toHaveText('Escolher o nível do cartão');
 }
 
-// Exceção de teste: sem-estado-guardado — só mostra o aviso de não haver idioma ligado; nada é gravado.
+// Exceção de teste: sem-estado-guardado
 test('sem idioma ligado, o passo diz onde ligar e leva à mineração automática', async ({ page, extensao }) => {
   await abrirONivel(page, extensao, { automatica: { en: { enabled: false, dailyLimit: 20 }, ru: { enabled: false, dailyLimit: 20 } } });
 
@@ -64,7 +59,6 @@ test('com o inglês ligado, o passo mostra o Iniciante e a prévia do Cartão; e
 
   await expect(itemDaLista(page, 'Escolher o nível do cartão')).toHaveAccessibleName(/feito$/);
   await expect.poll(() => pedidosDaPrevia(fakes)).toEqual([{ lang: 'en', nivel: 'iniciante' }, { lang: 'en', nivel: 'intermediario' }]);
-  // Só o nível do inglês foi salvo; o russo não foi tocado (versão 0, o Iniciante).
   await estadoFinal(extensao, { [CHAVE]: { en: { nivel: 'intermediario', versao: 1 }, ru: { nivel: 'iniciante', versao: 0 } } });
 });
 
@@ -79,7 +73,7 @@ test('a prévia tem as duas faces: a Frente só com a Frase e o botão de áudio
   await previa(page, 'Inglês').locator('label', { hasText: 'Verso' }).click();
   await expect(cartao(page, 'Inglês')).toContainText(INICIANTE);
   await expect(cartao(page, 'Inglês').locator('img')).toHaveAttribute('src', /^data:image\//);
-  // Exceção de teste: sem-estado-guardado — só vira a face da prévia; nada é gravado.
+  // Exceção de teste: sem-estado-guardado
   expect((await extensao.lerStorage(CHAVE))[CHAVE]).toBeUndefined();
 });
 
@@ -105,7 +99,6 @@ test('com os dois idiomas ligados, cada um tem o seu nível e a sua prévia', as
   await expect(cartao(page, 'Inglês')).toContainText(AVANCADO);
   await expect(itemDaLista(page, 'Escolher o nível do cartão')).not.toHaveAccessibleName(/feito/);
   await escolher(page, 'Russo', 'Intermediário');
-  // O Cartão do russo no Intermediário: o verso sem a Frase, com a Palavra e a definição em inglês.
   await expect(cartao(page, 'Russo')).toContainText('To come or to arrive on foot');
   await expect(cartao(page, 'Russo')).not.toContainText('Eu não sou um menino!');
   await expect(itemDaLista(page, 'Escolher o nível do cartão')).toHaveAccessibleName(/feito$/);
@@ -145,7 +138,7 @@ test('Mais estilos em Ajustes de envio leva à aba dos Ajustes, onde o nível es
 });
 
 test.describe('quando a prévia não vem', () => {
-  // Exceção de teste: sem-estado-guardado — a prévia é só leitura; o que falha aqui é o que aparece na tela.
+  // Exceção de teste: sem-estado-guardado
   test('com a Conexão desligada, a prévia diz que precisa dela e Tentar de novo a mostra quando ela volta', async ({ page, extensao, fakes }) => {
     fakes.anki.desligar();
     await abrirONivel(page, extensao);
@@ -172,7 +165,7 @@ test.describe('quando a prévia não vem', () => {
     await expect(previa(page, 'Inglês').getByRole('button', { name: 'Tentar de novo' })).toHaveCount(0);
   });
 
-  // Exceção de teste: sem-estado-guardado — a prévia é só leitura; o que muda é o que aparece na tela.
+  // Exceção de teste: sem-estado-guardado
   test('um erro da Conexão diz que não deu para montar a prévia e Tentar de novo a monta', async ({ page, extensao, fakes }) => {
     fakes.anki.responder('POST', PREVIA, () => ({ status: 500, json: { error: 'internal_error' } }));
     await abrirONivel(page, extensao);
@@ -196,7 +189,6 @@ test.describe('quando a prévia não vem', () => {
 test('escolher um nível não refaz o controle: o foco fica no radio e a seta seguinte salva o nível seguinte', async ({ page, extensao }) => {
   await abrirONivel(page, extensao);
   await expect(nivel(page, 'Inglês', 'Iniciante')).toBeChecked();
-  // Marca o controle de hoje: se o passo o refizer, a marca some junto com o nó.
   await estilo(page, 'Inglês').evaluate(no => { no.dataset.mesmoNo = 'sim'; });
 
   await nivel(page, 'Inglês', 'Iniciante').focus();
