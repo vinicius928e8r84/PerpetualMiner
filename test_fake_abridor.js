@@ -1,10 +1,5 @@
 'use strict';
 
-// O abridor de mentira do e2e (e2e/fakes/abridor.js) responde pelos exemplos do contrato
-// (complemento/contrato/exemplos.json › abridor), os mesmos que o script de verdade responde em
-// complemento/test_abridor.py. Ele é um programa: aqui ele roda como o Chrome o roda, com a mensagem
-// em 4 bytes de tamanho + JSON na entrada e a origem da extensão no primeiro argumento.
-
 const assert = require('assert');
 const { spawn } = require('child_process');
 
@@ -13,7 +8,6 @@ const contrato = require('./complemento/contrato/carregar.js');
 
 const ORIGEM = `${contrato.origemDaExtensao}/`;
 
-/** Roda o host do fake como o Chrome: devolve a resposta (ou null se ele não respondeu em `espera` ms). */
 function conversar(fake, mensagem, espera = 5000) {
   return new Promise((resolve, reject) => {
     // No Windows o programa é um `.cmd`, que o Node só roda por um shell.
@@ -54,7 +48,6 @@ async function main() {
     }
   }
 
-  // O consertar (#152): cada exemplo do contrato, na situação que o nome dele diz, e o padrão é o Anki que a pessoa fechou.
   for (const exemplo of contrato.conserto.exemplos.filter(e => e.daExtensao)) {
     const fake = criarFakeAbridor();
     try {
@@ -73,7 +66,6 @@ async function main() {
     padrao.limpar();
   }
 
-  // Sem resposta: o host lê a mensagem e fica quieto (a extensão é que desiste).
   const quieto = criarFakeAbridor();
   try {
     quieto.definir('sem_resposta');
@@ -82,7 +74,6 @@ async function main() {
     quieto.limpar();
   }
 
-  // Uma situação que o contrato não tem não vira resposta inventada.
   const semExemplo = criarFakeAbridor();
   try {
     assert.throws(() => semExemplo.definir('abriu_outro_programa'), /não tem essa situação/);
@@ -90,7 +81,6 @@ async function main() {
     semExemplo.limpar();
   }
 
-  // Registrado num perfil, o manifesto do host só aceita a extensão e aponta para o programa do fake.
   const fs = require('fs');
   const os = require('os');
   const path = require('path');

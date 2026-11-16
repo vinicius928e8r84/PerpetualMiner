@@ -1,4 +1,3 @@
-/* O teto do mês: “US$ [ 10 ] Salvar teto” numa linha, o campo com a largura de poucos dígitos. */
 .anki-teto-linha {
   display: flex;
   align-items: center;
@@ -18,7 +17,6 @@
   text-align: right;
 }
 
-/* Conectar este navegador ao Anki (painel-conexao-versao.js, #192): o campo do código e o Confirmar numa linha, o campo com a largura de poucos caracteres. */
 .painel-pareamento__linha {
   display: flex;
   align-items: center;

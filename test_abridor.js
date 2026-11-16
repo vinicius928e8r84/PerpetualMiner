@@ -1,15 +1,5 @@
 'use strict';
 
-// O abridor visto da extensão (lib/abridor.js, #147): o que cada resposta do host de Native Messaging
-// quer dizer na tela. A seam é o `chrome.runtime.sendNativeMessage`: aqui ele é uma função de teste;
-// no e2e, o host de mentira que o Chromium roda de verdade (e2e/fakes/abridor.js). As respostas boas
-// saem do contrato (complemento/contrato/exemplos.json › abridor), o mesmo arquivo que o script de
-// verdade responde, para este teste não inventar uma resposta que ninguém dá.
-//
-// O que o e2e não alcança e mora aqui: um host que responde fora do contrato. O fake nunca inventa
-// uma resposta, então só este teste pode provar que um `null` (ou qualquer outra coisa) nunca é lido
-// como “achei o Anki” nem como “o Anki abriu”.
-
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
@@ -23,15 +13,10 @@ const comoValores = async promessa => JSON.parse(JSON.stringify(await promessa))
 const exemploDoAbridor = (acao, anki) => contrato.abridor.exemplos
   .find(e => e.daExtensao && e.mensagem.acao === acao && e.contexto.anki === anki).resposta;
 
-/**
- * A lib como a página a carrega, com um host que responde o que o teste disser: `responder` recebe a
- * mensagem e devolve a resposta (ou joga, como o Chrome faz com um host que não existe).
- */
 function carregarOAbridor({ responder, permissao = true }) {
   const enviadas = [];
   const contexto = vm.createContext({
     setTimeout, clearTimeout,
-    // Sem o quadro escondido do painel, a conversa usa o `chrome.runtime` da própria página.
     document: { getElementById: () => null },
     chrome: {
       permissions: { contains: async () => permissao },
@@ -69,7 +54,6 @@ async function main() {
       'o abrir sem o Anki no lugar não abriu');
   }
 
-  // O Anki no lugar que não abriu (o `open` falhou): o caminho manual, sem Detalhes de abridor quebrado.
   {
     const { Abridor } = carregarOAbridor({ responder: m => exemploDoAbridor(m.acao, 'nao_abre') });
     assert.deepStrictEqual(await comoValores(Abridor.conferirOAnki()), { resultado: Abridor.RESULTADO.ACHOU, detalhe: '' },
@@ -96,10 +80,6 @@ async function main() {
       'o abrir sem o host diz SEM_ABRIDOR com o recado do Chrome');
   }
 
-  // `null` é a armadilha: é o que um host quebrado responde, e também o valor que um código de
-  // dentro usaria para dizer “não houve resposta”. Confundir os dois põe “O Anki está abrindo…”
-  // na tela sem nada ter aberto.
-  // Os dois campos “verdadeiros” sem ser `true` também ficam de fora: só o booleano exato é abriu.
   for (const esquisita of [null, undefined, {}, { achou: 'sim' }, { abriu: true }, 'achou', 0,
     { achou: 'sim', abriu: 'sim' }, { achou: 1, abriu: 1 }]) {
     const { Abridor } = carregarOAbridor({ responder: () => esquisita });
@@ -116,7 +96,6 @@ async function main() {
       `o abrir com ${JSON.stringify(meiaVerdade)} diz NAO_ABRIU`);
   }
 
-  // O consertar (#152): cada exemplo do contrato vira o resultado que a tela lê, com o motivo da falha.
   {
     const { Abridor } = carregarOAbridor({ responder: () => null });
     for (const exemplo of contrato.conserto.exemplos) {
@@ -138,7 +117,6 @@ async function main() {
     assert.deepStrictEqual(await comoValores(Abridor.consertarOAnki()), { resultado: Abridor.RESULTADO.SEM_ABRIDOR, detalhe: recado });
     assert.deepStrictEqual(enviadas.map(e => e.mensagem), [{ acao: 'consertar' }]);
   }
-  // Um abridor de antes do consertar responde acao_desconhecida; uma resposta fora do contrato nunca vira “reiniciado”.
   for (const esquisita of [null, {}, { erro: 'acao_desconhecida' }, { situacao: 'quase' }, { situacao: 'achou' }, { achou: true, abriu: true }, { situacao: ['reiniciado'] }]) {
     const { Abridor } = carregarOAbridor({ responder: () => esquisita });
     assert.deepStrictEqual(await comoValores(Abridor.consertarOAnki()),

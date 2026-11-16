@@ -45,8 +45,6 @@ function loadBackground(storage = {}) {
     },
     __storage: storage,
   };
-  // O service worker carrega a base compartilhada com importScripts; aqui o stub
-  // roda os mesmos arquivos no mesmo contexto.
   context.importScripts = (...arquivos) => {
     for (const arquivo of arquivos) {
       vm.runInContext(fs.readFileSync(arquivo, 'utf8'), context, { filename: arquivo });
@@ -148,7 +146,6 @@ async function russianManualSaveDoesNotAutoKeyword() {
 }
 
 async function baralhoGravadoQueNaoRespondeNaoViraVocabularioVazio() {
-  // A pessoa gravou o Baralho CIMV; a Conexão não o lê (503) e o Baralho padrão novo nem existe (200, vazio).
   const pedidos = [];
   const respostas = {
     CIMV: { ok: false, status: 503, json: async () => ({}) },
@@ -156,7 +153,6 @@ async function baralhoGravadoQueNaoRespondeNaoViraVocabularioVazio() {
   };
   const storage = { ankiBridgePresets: { en: { deckName: 'CIMV' } } };
   const context = loadBackground(storage);
-  // O pedido sai assinado por um navegador pareado; aqui a assinatura não é o assunto, só o que vai ao fetch.
   context.PerpetualMiner.PareamentoComOAnki = {
     pedirAssinado: async (endereco, pedido, opcoes, enviar) => enviar(endereco, pedido, JSON.stringify(pedido.corpo), opcoes),
   };
@@ -171,7 +167,6 @@ async function baralhoGravadoQueNaoRespondeNaoViraVocabularioVazio() {
   assert.deepStrictEqual(pedidos, ['CIMV'], 'só o Baralho gravado é pedido, nunca o padrão no lugar dele');
   assert.ok(!('pm_auto_keyword_vocab_en' in storage), 'nada vazio vai para o cache');
 
-  // Com uma leitura boa e vencida daquele Baralho, a falha devolve essa leitura e não a troca.
   const velha = { ...vocabulary({ words: ['gruel'] }), deckName: 'CIMV', createdAt: 1 };
   storage.pm_auto_keyword_vocab_en = velha;
   const renovado = await context.getAutoKeywordVocabulary('en');

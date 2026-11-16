@@ -1,9 +1,5 @@
 'use strict';
 
-// O Apagar tudo que a Conexão não confirmou (a marca `apagarFrases` em `pm_envio`) é pedido de novo pelo service worker,
-// mesmo com todo painel fechado: um alarme de 30 s existe enquanto a marca existe. Roda sem navegador:
-// `node test_apagar_frases_pendente.js`.
-
 const assert = require('assert');
 
 globalThis.PerpetualMiner = {};
@@ -14,7 +10,6 @@ const { ApagarFrasesPendente, PedidoAoAnki } = globalThis.PerpetualMiner;
 
 const ENDERECO = 'http://127.0.0.1:8766';
 
-/** Um `chrome` mínimo: o armazenamento local e os alarmes; `pedidos` anota o que saiu para a Conexão. */
 function montar({ gravado, conexao = 'responde' }) {
   const armazenamento = { ...gravado };
   const alarmes = new Map();
@@ -66,7 +61,6 @@ const MARCA = { pm_envio: { envios: [], apagarFrases: true } };
     assert.strictEqual(alarmes.size, 1, 'e o alarme também, para a próxima volta');
   }
   {
-    // Uma Conexão antiga que responde 404 à rota: não confirmou, a marca fica.
     const { armazenamento, alarmes, pedidos, pendente } = montar({ gravado: MARCA, conexao: 'erro' });
     await pendente.cuidar();
     await pendente.conferir();
@@ -88,8 +82,6 @@ const MARCA = { pm_envio: { envios: [], apagarFrases: true } };
     assert.strictEqual(alarmes.get(ApagarFrasesPendente.ALARME).delayInMinutes, 0.1, 'acordar de novo não empurra o alarme que já existe');
   }
   {
-    // A ligação do service worker (`background.js` chama `ligar`): ao ligar e a cada mudança de `pm_envio` o alarme é conferido,
-    // a volta do alarme pede o apagamento, e outro alarme ou outra chave não fazem nada.
     const { chrome, armazenamento, alarmes, pedidos } = montar({ gravado: MARCA });
     const ouvintes = [];
     chrome.alarms.onAlarm = 'onAlarm';
@@ -97,7 +89,6 @@ const MARCA = { pm_envio: { envios: [], apagarFrases: true } };
     const ouvirChrome = (evento, ouvinte) => ouvintes.push([evento, ouvinte]);
     globalThis.PerpetualMiner.PedidoAoAnki = { ...PedidoAoAnki, pedir: async (endereco, pedido) => { pedidos.push(`${pedido.metodo} ${pedido.caminho}`); return { ok: true }; } };
     ApagarFrasesPendente.ligar({ chrome, ouvirChrome, endereco: ENDERECO });
-    // O ouvinte não devolve a promessa do que dispara: o teste espera o que está pendente.
     const aguardar = () => new Promise(r => setImmediate(r));
     const ouvinte = evento => async (...args) => { ouvintes.find(([nome]) => nome === evento)[1](...args); await aguardar(); };
     await aguardar();
