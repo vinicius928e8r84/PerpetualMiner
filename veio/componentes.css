@@ -39,7 +39,6 @@
   color: var(--veio-text);
 }
 
-/* O botão comum do Painel: contorno, sem fundo; o acento aparece no hover. */
 .veio-botao--contorno {
   background: transparent;
   border-color: var(--veio-border-strong);
@@ -65,21 +64,16 @@
   width: 100%;
 }
 
-/* Compacto: o botão dentro de uma barra ou pílula, onde a altura é apertada. */
 .veio-botao--compacto {
   padding: 6px 12px;
   font-size: var(--veio-tam-apoio);
 }
 
-/* Perigo sem contorno: a entrada destrutiva onde uma borda vermelha pesaria
-   demais (a barra contextual da seleção, cheia de ações lado a lado). */
 .veio-botao--perigo-fantasma {
   background: transparent;
   color: var(--veio-danger);
 }
 
-/* Link: a ação secundária que se oferece no meio de um texto, como o
-   “Selecionar todas as N frases” da barra contextual. */
 .veio-botao--link {
   padding: 0;
   border: 0;
@@ -100,7 +94,6 @@
   background: var(--veio-danger-soft);
 }
 
-/* Só-ícone: círculo, sempre com aria-label, porque não tem texto. */
 .veio-botao-icone {
   display: inline-grid;
   place-items: center;
@@ -202,8 +195,6 @@
   cursor: not-allowed;
 }
 
-/* O número curto do limite por dia (lib/mineracao-automatica.js): sem as
-   setinhas do navegador — digita-se o número, ou ↑ ↓ no teclado —, em mono. */
 .veio-campo.veio-campo--limite {
   width: 48px;
   padding: 3px 4px;
@@ -227,7 +218,6 @@ textarea.veio-campo {
   line-height: 1.45;
 }
 
-/* Número: o limite diário. Mono, porque é número. */
 input[type="number"].veio-campo {
   font-family: var(--veio-fonte-mono);
   font-weight: var(--veio-peso-num);
@@ -239,9 +229,6 @@ select.veio-campo {
   padding-right: 30px;
 }
 
-/* O select mora num `.veio-select`, que desenha a seta: o chevron fino do
-   protótipo (12 px, traço 2,5 no desenho de 24), recortado por máscara e
-   pintado com `muted`, para nenhuma cor sair dos tokens. */
 .veio-select {
   position: relative;
   display: flex;
@@ -273,7 +260,6 @@ select.veio-campo {
   font-weight: 600;
 }
 
-/* Busca: ícone à esquerda e × à direita, que só aparece com texto. */
 .veio-busca {
   position: relative;
   display: block;
@@ -296,7 +282,6 @@ select.veio-campo {
   padding-right: 34px;
 }
 
-/* O ícone da lupa pode vir dentro de um lugar (um <span> que o recebe). */
 .veio-busca__lupa svg {
   display: block;
   width: 100%;
@@ -462,7 +447,6 @@ select.veio-campo {
   color: var(--veio-danger);
 }
 
-/* Concluído em parte: o acento suave (um Envio que ainda pode continuar). */
 .veio-selo--parte {
   background: var(--veio-accent-soft);
   color: var(--veio-accent-text);
@@ -475,7 +459,6 @@ select.veio-campo {
   color: var(--veio-accent-text);
 }
 
-/* Em andamento: o ponto pisca (parado com movimento reduzido, lá embaixo). */
 .veio-selo--lendo .veio-selo__ponto {
   animation: veio-piscar var(--veio-piscar) steps(1) infinite;
 }
@@ -502,7 +485,6 @@ select.veio-campo {
   line-height: 1.5;
 }
 
-/* Uma tecla por kbd, com o + entre elas (montarTeclas). */
 .veio-teclas {
   display: inline-flex;
   align-items: baseline;
@@ -638,8 +620,6 @@ select.veio-campo {
   box-shadow: var(--veio-sombra);
 }
 
-/* O × no canto: o modal é `position: relative` para ele. O rótulo vem do
-   catálogo (PAI-34), como o resto da cópia. */
 .veio-modal {
   position: relative;
 }
@@ -786,8 +766,6 @@ select.veio-campo {
   user-select: text;
 }
 
-/* Só para o leitor de tela: o texto continua sendo o nome do controle, mas sai
-   da tela (a sidebar do Painel ainda tem a cópia dela desta regra). */
 .veio-so-leitor {
   position: absolute;
   width: 1px;
@@ -844,8 +822,6 @@ select.veio-campo {
 }
 
 .veio-frase {
-  /* O fundo do cartão, uma variável só dele (não é token: guarda um token); o
-     selecionado mistura o acento sobre ela. */
   --_fundo: var(--veio-surface);
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -861,8 +837,6 @@ select.veio-campo {
   margin-top: 3px;
 }
 
-/* O cartão dentro de uma ilha `surface` (a lista de Frases): fundo `bg`, e a
-   borda firma ao passar o mouse. */
 .veio-frase--na-ilha {
   --_fundo: var(--veio-bg);
 }
@@ -899,8 +873,6 @@ select.veio-campo {
   gap: 2px;
 }
 
-/* A Palavra que o cartão ensina: uma faixa de marca-texto que cobre de 50% a
-   94% da altura da linha, atrás do texto, sem raio. */
 .veio-palavra {
   padding: 0 1px;
   border-radius: 0;
@@ -913,7 +885,6 @@ select.veio-campo {
   color: var(--veio-kw-fg);
 }
 
-/* A frase em que cada palavra é clicável: clicar grifa ou desgrifa a Palavra. */
 .veio-palavra-clicavel {
   cursor: pointer;
 }
@@ -922,7 +893,6 @@ select.veio-campo {
   background: var(--veio-accent-soft);
 }
 
-/* O chip diz de onde a Palavra veio: "palavra:" escolhida, "auto:" detectada. */
 .veio-chip-palavra {
   display: inline-flex;
   align-items: center;
@@ -959,8 +929,6 @@ select.veio-campo {
   background: var(--veio-border);
 }
 
-/* As ações do chip da Palavra: × dentro dele remove, + ao lado começa outro
-   grupo. */
 .veio-chip-palavra .veio-botao-icone {
   width: 20px;
   height: 20px;
@@ -990,8 +958,6 @@ select.veio-campo {
   color: var(--veio-text);
 }
 
-/* O cartão enquanto a lista carrega: um bloco de esqueleto do tamanho de um
-   cartão, sem texto e sem borda (o `.veio-esqueleto` traz o brilho). */
 .veio-frase-esqueleto {
   height: 74px;
   margin-bottom: 8px;

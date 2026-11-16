@@ -1,9 +1,5 @@
 'use strict';
 
-// O Baralho padrão de uma pessoa nova é o que a Conexão cria (#366), e quem já gravou
-// outro Baralho (o dono, com CIMV e RUSSIAN) não muda. O resto dos Ajustes de envio
-// está em painel-ajustes.spec.js.
-
 const { test, expect } = require('../fixtures');
 
 const CHAVE = 'ankiBridgePresets';

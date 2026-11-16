@@ -1,9 +1,5 @@
 'use strict';
 
-// A aba Custos com a chave e com o plano do ChatGPT (#159, histórias 110 e 111): com a chave, o que a pessoa gastou em US$; com o
-// plano, os Cartões feitos, o que teriam custado na chave (“Você economizou”) e Gerenciar uso ↗. O Envio nunca mostra valor.
-// A Conexão é o fake da fronteira HTTP (fakes/anki.js); as linhas de Custos têm a forma do contrato (`exemplos-dos-custos.json`).
-
 const { test, expect } = require('../fixtures');
 const { estadoFinal } = require('../estado-final');
 const { AGORA, INGLESAS, SACK, abrirPainel, marcarEEnviar, enviosCriados, progresso, resumo } = require('../apoio-do-envio');
@@ -45,7 +41,6 @@ test('com o plano, a aba Custos mostra os Cartões feitos, o que teriam custado 
   const gerenciar = plano(page).getByRole('link', { name: 'Gerenciar uso ↗' });
   await expect(gerenciar).toHaveAttribute('href', 'https://chatgpt.com/settings/usage');
   await expect(gerenciar).toHaveAttribute('target', '_blank');
-  // O plano não cobra por Cartão: o que se gastou na chave continua zerado.
   await expect(custos(page).locator('#anki-custos-faixa')).toContainText('Criação de cartões US$ 0,00');
 });
 
@@ -57,7 +52,7 @@ test('cada computador conta os seus Cartões: o que a Conexão deste computador 
   await estadoFinal(extensao, { pm_anki_custos: { envios: [{ jobId: 'job-en-plano', plan: { cards: 12 } }, { jobId: 'job-ru-plano', plan: { cards: 4 } }] } });
 });
 
-// Exceção de teste: sem-estado-guardado — o azulejo só muda o que a aba mostra
+// Exceção de teste: sem-estado-guardado
 test('o azulejo de um idioma conta só os Cartões do plano desse idioma', async ({ page, extensao, fakes }) => {
   fakes.anki.definirCustos(PELO_PLANO);
   await abrirCustos(page, extensao);

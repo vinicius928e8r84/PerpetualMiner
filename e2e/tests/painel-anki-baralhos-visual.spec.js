@@ -1,18 +1,5 @@
 'use strict';
 
-// Referência visual de Baralhos e termos e Vocabulário (#34), na
-// arrumação C · Por idioma do protótipo travado
-// (docs/design/painel/anki/prototipo-anki.html?variant=C, “⚙ Estados do
-// protótipo”), com os números do protótipo. O dono revisa estas telas lado a
-// lado com o protótipo; depois de aprovadas, uma mudança visual faz o teste
-// falhar até alguém olhar e atualizar a referência:
-//
-//   cd e2e && npx playwright test painel-anki-baralhos-visual --update-snapshots
-//
-// As telas de Baralhos e termos perderam o Avançado e o Reparar Anki (#152). As referências aprovadas das telas de antes
-// (`baralhos*.png`) ficam como estavam até o dono olhar as de agora, que são PROPOSTAS (`test.fixme`, `*-sem-reparo.png`).
-// Depois de aprovadas: tire o `.fixme`, troque cada referência antiga pela nova e acrescente a entrada em e2e/aprovados-visuais.json.
-
 const { test, expect } = require('../fixtures');
 
 const AGORA = new Date('2026-09-18T12:00:00');
@@ -35,7 +22,6 @@ const VOCABULARIO_RU = [
 
 const baralhos = page => page.locator('.shell-aba[data-aba="baralhos"]');
 const vocabulario = page => page.locator('.shell-aba[data-aba="vocabulario"]');
-// A sidebar é a do shell, que tem a própria referência: aqui só a ilha da área.
 const ilha = page => page.locator('.shell-conteudo');
 
 test.beforeEach(({ fakes }) => {

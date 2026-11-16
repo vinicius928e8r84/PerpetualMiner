@@ -1,11 +1,5 @@
 'use strict';
 
-// O teto do mês (#160, histórias 112 e 113): vem ligado com US$ 10; aos 80% o Painel avisa; aos 100% o Envio pausa antes do próximo
-// Cartão (“Envio pausado: o teto do mês chegou” e Ver Custos, sem valor no Envio); a pessoa ajusta o teto em Custos e o Envio volta.
-// A Conexão é o fake da fronteira HTTP (fakes.anki): o teto e o gasto são os dela, `fakes.anki.teto.guardado()` é o que ela guardou neste
-// computador, e a pausa é o `waiting: { reason: 'monthly_cap' }` que o teste põe no Envio (`moverEnvio`). O lado da Conexão está em
-// `complemento/test_teto_do_mes.py`; as respostas são as de `complemento/contrato/exemplos-do-teto.json`.
-
 const { test, expect } = require('../fixtures');
 const { estadoFinalEm } = require('../estado-final');
 const { AGORA, INGLESAS, abrirPainel, cartoesDe, envio, marcarEEnviar, enviosCriados, umaVoltaDoEnvio } = require('../apoio-do-envio');
@@ -176,7 +170,6 @@ test('com a Conexão desligada o Painel não mostra aviso nem card do teto', asy
   await expect(card(page)).toHaveCount(0);
 });
 
-/** Três Frases enviadas e o Envio pausado pelo teto com 3 de 10 Cartões no Anki. */
 async function envioNoTeto(page, extensao, fakes) {
   fakes.anki.teto.definir({ gasto: 10 });
   await extensao.gravarStorage({ frases: INGLESAS, pm_anki_ja_conectou: true });
@@ -195,7 +188,6 @@ test('no teto o Envio pausa e o cartão diz “Envio pausado: o teto do mês che
   await expect(cartao).toContainText('Quando você subir o teto ou o mês virar, o Envio continua sozinho.');
   await expect(cartao.getByRole('button', { name: 'Ver Custos' })).toBeVisible();
   await expect(cartao).not.toContainText(/US\$|%/);
-  // Nada foi refeito nem retomado pelo cartão: a Conexão é quem continua sozinha.
   await umaVoltaDoEnvio(page);
   expect(['/jobs/retry', '/jobs/usar-a-chave'].flatMap(c => fakes.anki.requisicoes.filter(r => r.caminho === c))).toEqual([]);
   await estadoFinalEm('o Envio pausado na Conexão', () => fakes.anki.envios.map(e => [e.jobId, e.state.status, e.state.waiting]), [[job.jobId, 'running', NO_TETO]]);

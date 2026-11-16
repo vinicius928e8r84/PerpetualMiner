@@ -1,20 +1,9 @@
 'use strict';
 
-// Referência visual do popup “Cockpit” (#38), na variante A do protótipo
-// travado (docs/design/popup/prototipo-popup.html?variant=A). O dono revisa
-// estas telas lado a lado com o protótipo; depois de aprovadas, qualquer
-// mudança visual no popup faz o teste falhar até alguém olhar e atualizar a
-// referência:
-//
-//   cd e2e && npx playwright test popup-visual --update-snapshots
-//
-// O popup tem 340 px de largura e teto de 600 px, como no balão do ícone.
-
 const { test, expect } = require('../fixtures');
 const DEN = 'PerpetualMiner::Inglês';
 const { leituraDoVocabulario: leitura } = require('../leitura-do-vocabulario');
 
-// O Contexto diz o dia da frase (PAI-11): o relógio fica parado no dia delas.
 const AGORA = new Date('2026-09-18T12:00:00');
 
 const FRASES = [
@@ -134,10 +123,6 @@ test('carregando: esqueleto', async ({ page, extensao }) => {
   await expect(page).toHaveScreenshot('popup-carregando.png', { animations: 'disabled' });
 });
 
-// O lembrete “Configuração pela metade” (ONB-14, #44): a instalação deixou a
-// configuração começada e a Boas-vindas ainda não chegou a Tudo pronto. As
-// frases, a Conexão com o Anki respondendo e o inglês ligado na mineração
-// automática são 3 dos 9 passos.
 test.describe('configuração pela metade (ONB-14)', () => {
   test.use({ lembreteDaConfiguracao: true });
 

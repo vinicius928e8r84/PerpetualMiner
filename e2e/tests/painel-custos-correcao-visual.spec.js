@@ -1,11 +1,5 @@
 'use strict';
 
-// Referência visual da aba Custos com a correção das frases da Criação (#169, BRG-29): a linha “Correção das frases” na faixa de
-// resumo e no detalhe do Envio. Não há protótipo para ela: segue as linhas de custo da variante C (`docs/design/painel/anki/prototipo-anki.html?variant=C`).
-// É PROPOSTA para o dono comparar e aprovar (CODING_STANDARDS regra 10): as imagens não estão na árvore. Aprovando: tirar o `fixme` e
-//
-//   cd e2e && npx playwright test painel-custos-correcao-visual --update-snapshots
-
 const { test, expect } = require('../fixtures');
 
 const AGORA = new Date('2026-09-18T12:00:00');

@@ -1,12 +1,5 @@
 'use strict';
 
-// O Consertar sozinho (#152, histórias 90, 91, 92, 94 e 95): quando a Conexão não responde, o abridor da Conexão com o Anki
-// (o host de mentira do fixture, e2e/fakes/abridor.js, que responde pelos exemplos de
-// complemento/contrato/exemplos-do-conserto.json) fecha à força o Anki que travou, liga a Conexão desativada, ou diz que ela
-// sumiu do Anki; a extensão só conta o que o abridor fez. Cada linha da tabela do Consertar da spec (#138) tem um teste aqui.
-// O que o abridor de verdade faz (esperar 30 s, fechar, abrir, o meta.json) é complemento/test_conserto.py; fechar um Anki
-// real só o ensaio do dono vê (riscos 3 e 12 do #138). O Reparar Anki, que só existia no Windows, saiu da extensão.
-
 const fs = require('fs');
 const { test, expect } = require('../fixtures');
 const { SEM_ABRIDOR_IMPOSSIVEL } = require('../fakes/abridor');
@@ -14,7 +7,6 @@ const { estadoFinal } = require('../estado-final');
 const { AGORA, INGLESAS, SACK, abrirPainel, marcar, enviarAoAnki, progresso, enviosCriados } = require('../apoio-do-envio');
 
 const F1 = 'A Conexão com o Anki está desligada. Ligue-a neste computador e tente de novo.';
-/** As mensagens que o abridor recebeu, na ordem (o passo Abrir o Anki sozinho também manda `conferir`). */
 const acoesDoAbridor = fakes => fakes.abridor.pedidos().map(p => p.mensagem.acao).filter(acao => acao !== 'conferir');
 const faixa = page => page.locator('#frases-avisos [data-aviso="envio-anki-fechado"]');
 const toasts = page => page.locator('.veio-toast');
@@ -24,7 +16,6 @@ test.beforeEach(({ fakes }) => {
   fakes.anki.usarRelogio(() => AGORA);
 });
 
-/** O Anki que não responde num computador onde a Conexão já respondeu uma vez, e uma Frase marcada para enviar. */
 async function prepararComAConexaoMuda(page, extensao, fakes, conserto, opcoes) {
   fakes.abridor.definirConserto(conserto, opcoes);
   await extensao.gravarStorage({ frases: INGLESAS, pm_anki_ja_conectou: true });
@@ -65,7 +56,6 @@ test.describe('com a permissão do abridor', () => {
     const comOAnkiFechado = await telaDaConexao('anki_fechado');
     const comAConexaoDesativada = await telaDaConexao('complemento_desativado');
 
-    // A extensão só vê a Conexão sem responder, nos dois casos: a mesma tela, e o abridor ainda não foi chamado.
     expect(comAConexaoDesativada).toBe(comOAnkiFechado);
     expect(acoesDoAbridor(fakes)).toEqual([]);
     await estadoFinal(extensao, { pm_anki_ja_conectou: true });
@@ -81,7 +71,6 @@ test.describe('com a permissão do abridor', () => {
     fakes.anki.ligar();
     await expect(toasts(page)).toHaveText('O Anki travou e foi reiniciado.', { timeout: 10_000 });
     await expect(faixa(page)).toBeHidden();
-    // O abridor já abriu o Anki de novo: a extensão não manda abrir por cima, e as Frases saem.
     const [job] = await enviosCriados(fakes, 1);
     expect(job.entries.map(e => e.phraseId)).toEqual([SACK.id]);
     expect(acoesDoAbridor(fakes)).toEqual(['consertar']);

@@ -2,18 +2,15 @@
 
 const { test, expect } = require('../fixtures');
 
-// O cabeçalho de data sai do relógio: ele fica parado neste dia.
 const AGORA = new Date('2026-09-18T12:00:00');
 const HOJE = '18/09/2026';
 const ONTEM = '17/09/2026';
 const HA_TRES_DIAS = '15/09/2026';
 
-/** Uma frase gravada como o service worker grava, com o que o teste pedir. */
 function frase(id, texto, extras = {}) {
   return { id, texto, data: HOJE, streaming: 'netflix', idioma: 'Inglês', ...extras };
 }
 
-/** `n` frases de hoje, a mais nova primeiro. */
 function frasesDeExemplo(n) {
   return Array.from({ length: n }, (_, i) =>
     frase(1_700_000_000_000 + (n - i), `Sentence number ${n - i} about the harbour.`));
@@ -31,7 +28,6 @@ const cartao = (page, texto) => cartoes(page).filter({ hasText: texto });
 const busca = page => page.getByRole('searchbox', { name: 'Buscar nas frases' });
 const filtro = (page, nome) => page.getByRole('combobox', { name: nome, exact: true });
 const ocultar = page => page.getByRole('switch', { name: 'Ocultar enviadas e exportadas' });
-/** A pessoa liga o toggle pelo rótulo: o <input> só existe para o leitor de tela. */
 async function ligarOcultar(page) {
   await page.locator('.veio-toggle').getByText('Ocultar enviadas e exportadas').click();
   await expect(ocultar(page)).toBeChecked();
@@ -53,7 +49,6 @@ test('cada frase é um cartão sob o cabeçalho do seu dia: hoje, ontem, há 3 d
   const cabecalhos = lista(page).locator('.veio-cabecalho-de-data');
   await expect(cabecalhos).toHaveText(['hoje', 'ontem', 'há 3 dias']);
   await expect(cartoes(page)).toHaveText([/close call/, /barely made it/, /call it a day/]);
-  // O cabeçalho aparece em maiúsculas, pelo estilo, sem mudar o texto.
   expect(await cabecalhos.first().evaluate(el => getComputedStyle(el).textTransform)).toBe('uppercase');
 });
 
@@ -92,7 +87,6 @@ test('a frase em cirílico sai marcada como russa e reta; a inglesa, como ingles
   const russa = cartao(page, 'улыбаюсь').locator('.veio-frase__texto');
   await expect(russa).toHaveAttribute('lang', 'ru');
   expect(await russa.evaluate(el => getComputedStyle(el).fontStyle)).toBe('normal');
-  // Cada palavra clicável também sai reta, não só o bloco da frase.
   const estilos = await russa.getByRole('button').evaluateAll(els => els.map(el => getComputedStyle(el).fontStyle));
   expect(estilos).toHaveLength(6);
   expect(new Set(estilos)).toEqual(new Set(['normal']));
@@ -125,7 +119,6 @@ test('o chip diz palavra: quando foi escolhida e auto: quando foi detectada, e a
   await expect(cartao(page, 'close call').locator('.veio-chip-palavra')).toHaveText(/^palavra:\s*close call/);
   await expect(palavra(page, 'close call', 'close')).toHaveAttribute('aria-pressed', 'true');
   await expect(palavra(page, 'close call', 'That')).toHaveAttribute('aria-pressed', 'false');
-  // A grifada usa o marca-texto kw-bg (a faixa de 50% a 94% da linha).
   const fundo = await palavra(page, 'close call', 'close').evaluate(el => getComputedStyle(el).backgroundImage);
   expect(fundo).toContain('linear-gradient');
   await expect(cartao(page, 'close call')).not.toContainText('keyword');
@@ -146,7 +139,6 @@ test('clicar numa palavra grava a Palavra (chip palavra:), e ela continua grifad
   await expect(palavra(page, 'barely', 'barely')).toHaveAttribute('aria-pressed', 'true');
   await expect(cartao(page, 'barely').locator('.veio-chip-palavra')).toHaveText(/^palavra:\s*barely/);
 
-  // Clicar de novo desgrifa, e o chip sai.
   await palavra(page, 'barely', 'barely').click();
   await expect(palavra(page, 'barely', 'barely')).toHaveAttribute('aria-pressed', 'false');
   await expect(cartao(page, 'barely').locator('.veio-chip-palavra')).toHaveCount(0);
@@ -200,7 +192,6 @@ test('pelo teclado: Tab entra na frase, as setas andam pelas palavras e Enter es
 
   await expect(palavra(page, 'Keep me posted', 'posted')).toHaveAttribute('aria-pressed', 'true');
   await expect.poll(async () => (await extensao.frases())[0].keywords).toEqual(['posted@4']);
-  // A frase é uma parada só do Tab: as outras palavras ficam fora da ordem.
   await expect(cartao(page, 'Keep me posted').locator('[role="button"][tabindex="0"]')).toHaveCount(1);
 });
 
@@ -252,7 +243,6 @@ test('Fonte, idioma, ordem e “Ocultar enviadas e exportadas” filtram a lista
   await extensao.gravarStorage({ frases: PARA_FILTRAR });
   await abrirFrases(page, extensao);
 
-  // Um dropdown só de Fonte, com as Fontes do histórico.
   await expect(filtro(page, 'Fonte').locator('option')).toHaveText(['Todas as fontes', 'Netflix', 'YouTube']);
   await filtro(page, 'Fonte').selectOption({ label: 'YouTube' });
   await expect(cartoes(page)).toHaveText([/перезвоню/, /call it a day/]);
@@ -272,8 +262,6 @@ test('o filtro de Fonte escolhe pela mesma Fonte que o selo do cartão mostra', 
   await extensao.gravarStorage({
     frases: [
       frase(3, 'Nothing ventured, nothing gained.', { streaming: 'youtube', contexto: { fonte: 'youtube', titulo: 'Veritasium', detalhe: '' } }),
-      // Uma frase de antes grava o nome antigo da Fonte, sem Contexto; a de hoje
-      // grava o nome novo. O selo diz Prime Video nas duas, e o filtro também.
       frase(2, 'We are on a roll.', { streaming: 'amazon' }),
       frase(1, 'Break a leg tonight.', { streaming: 'primevideo', contexto: { fonte: 'primevideo', titulo: 'Fleabag', detalhe: '' } }),
     ],
@@ -304,7 +292,6 @@ test('primeiro uso: PAI-02 com o atalho de legenda padrão (Alt+S) e Minerar fra
   await abrirFrases(page, extensao);
 
   const vazio = lista(page).locator('.veio-vazio');
-  // O título vem em destaque, acima do texto que ensina.
   await expect(vazio.locator('.veio-vazio__titulo')).toHaveText('Nenhuma frase ainda.');
   await expect(vazio.locator('.veio-vazio__texto')).toHaveText(
     'Minere de um vídeo com Alt+S ou use Minerar frases para colar, importar ou ler uma foto.');
@@ -326,7 +313,6 @@ test('primeiro uso com o atalho de legenda trocado para Ctrl+Shift+K: PAI-02 mos
     'Minere de um vídeo com Ctrl+Shift+K ou use Minerar frases para colar, importar ou ler uma foto.');
   await expect(vazio.locator('kbd')).toHaveText('Ctrl+Shift+K');
 
-  // Gravar outro atalho em Configurações aparece aqui sem recarregar.
   await extensao.gravarStorage({
     pm_atalho_legenda: { type: 'keyboard', code: 'KeyL', altKey: true, ctrlKey: false, shiftKey: false },
   });
@@ -401,7 +387,6 @@ test('10 por página, com “1–10 de 24” e ‹ › para andar', async ({ pag
   await expect(cartoes(page)).toHaveCount(4);
   await expect(paginas(page).getByRole('button', { name: 'Próxima página' })).toBeDisabled();
 
-  // Buscar volta para a primeira página.
   await busca(page).fill('Sentence');
   await expect(paginas(page)).toContainText('1–10 de 24');
 });
@@ -413,9 +398,6 @@ test('os números da paginação saem em PT-BR: “1–10 de 1.284” e “1 de 
   await expect(paginas(page)).toContainText('1–10 de 1.284');
   await expect(paginas(page)).toContainText('1 de 129');
 });
-
-// A barra contextual, o Exportar .txt, o Apagar com confirmação e as ações do
-// cartão são do #30: `painel-frases-selecao.spec.js`.
 
 test('o cartão selecionado ganha o destaque', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: frasesDeExemplo(12) });
@@ -472,8 +454,6 @@ test('os controles da lista têm nome, e o foco do teclado aparece', async ({ pa
   await expect(busca(page)).toBeVisible();
   await expect(ocultar(page)).toBeVisible();
 
-  // O foco aparece como contorno (botões, toggle, palavra) ou como o anel dos
-  // campos Veio (box-shadow).
   const focoAparece = async locator => {
     await locator.focus();
     return locator.evaluate(el => {
@@ -482,7 +462,6 @@ test('os controles da lista têm nome, e o foco do teclado aparece', async ({ pa
       return estilo.outlineStyle === 'solid' || estilo.boxShadow !== 'none';
     });
   };
-  // O foco pelo teclado (não o do mouse) é o que precisa aparecer.
   await page.keyboard.press('Tab');
   for (const controle of [filtro(page, 'Fonte'), busca(page), ocultar(page), palavra(page, 'close call', 'That')]) {
     expect(await focoAparece(controle), await controle.evaluate(el => el.outerHTML.slice(0, 80))).toBe(true);
@@ -511,7 +490,6 @@ test('cada controle do cartão, do chip e da paginação tem nome, e o foco do t
     paginas(page).getByRole('button', { name: 'Próxima página' }),
     paginas(page).getByRole('button', { name: 'Última página' }),
   ];
-  // Na primeira página, voltar está desligado: fora do Tab, mas com nome.
   const voltar = [
     paginas(page).getByRole('button', { name: 'Primeira página' }),
     paginas(page).getByRole('button', { name: 'Página anterior' }),
@@ -527,11 +505,9 @@ test('cada controle do cartão, do chip e da paginação tem nome, e o foco do t
     expect(contorno, await controle.evaluate(el => el.outerHTML.slice(0, 80))).toBe(true);
     await expect(controle).toBeVisible();
   };
-  // O foco pelo teclado (não o do mouse) é o que precisa aparecer.
   await page.keyboard.press('Tab');
   for (const controle of controles) await focoAparece(controle);
 
-  // Na segunda página, os dois de voltar ligam e também mostram o foco.
   await paginas(page).getByRole('button', { name: 'Próxima página' }).click();
   await page.keyboard.press('Tab');
   for (const botao of voltar) await focoAparece(botao);

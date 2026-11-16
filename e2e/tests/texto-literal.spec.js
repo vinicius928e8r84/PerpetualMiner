@@ -1,9 +1,5 @@
 'use strict';
 
-// Texto da página (legenda, seleção, título) aparece nos avisos da extensão
-// como texto: marcação dentro dele é mostrada literalmente, não vira elemento
-// e nenhum handler roda.
-
 const { test, expect } = require('../fixtures');
 
 const LEGENDA = '<img src=x onerror="window.__injetado = \'legenda\'">Hold the line.';
@@ -25,8 +21,6 @@ test('minerar uma legenda com marcação mostra o texto literal e não injeta na
 
   await page.keyboard.press('Alt+KeyS');
 
-  // A pílula mostra a frase numa linha (a prévia pode começar perto da Palavra);
-  // o Título não vai para o overlay, mas vai gravado no Contexto.
   const aviso = page.getByRole('status');
   await expect(aviso).toContainText('Hold the line.');
   await nadaFoiInjetado(page);
@@ -43,7 +37,6 @@ test('minerar uma seleção com marcação mostra o texto literal e não injeta 
   await page.locator('#trecho').selectText();
   await page.keyboard.press('Alt+KeyE');
 
-  // A prévia da pílula começa perto da Palavra: o trecho com a marcação aparece como texto.
   await expect(page.getByRole('status')).toContainText('onerror="__injetado=1">Salt wind');
   await nadaFoiInjetado(page);
   await expect.poll(async () => (await extensao.frases()).map(f => f.texto)).toEqual([SELECAO]);

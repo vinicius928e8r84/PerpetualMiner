@@ -1,16 +1,5 @@
 'use strict';
 
-// Conexão com o Anki · primeira conexão no desenho B (#77, ONB-16): o card que
-// fica no lugar das abas enquanto a Conexão nunca respondeu neste computador
-// (docs/design/painel/anki/prototipo-primeira-conexao.html, variante B), com os
-// passos de pôr a Conexão no Anki por um arquivo, sem terminal (#145; o componente
-// é o de painel-conexao-passos.js, o mesmo do passo 4 da Boas-vindas, que
-// boas-vindas.spec.js confere). A Conexão é o fake da fronteira HTTP
-// (fakes/anki.js). Os testes afirmam o que a pessoa vê e o que fica gravado.
-// O passo 3, Abrir o Anki sozinho (#147), tem o seu arquivo: abrir-o-anki-sozinho.spec.js.
-// Aqui, os testes do momento Pronto começam com a pessoa tendo dito “Agora não” a ele
-// (`jaDisseAgoraNaoAoAbridor`): o Pronto então vem logo que a Conexão responde.
-
 const { test, expect } = require('../fixtures');
 const fs = require('fs');
 const { fotografar } = require('../evidencias-mineracao');
@@ -29,8 +18,6 @@ const baixar = page => card(page).getByRole('link', { name: 'Baixar a Conexão c
 const baixarDeNovo = page => card(page).getByRole('link', { name: 'Baixar de novo' });
 const naoRespondeu = page => card(page).getByText('A Conexão com o Anki ainda não respondeu. Confira:');
 
-// O que o /health do complemento diz de si no exemplo do contrato (a versão e o perfil), para o teste
-// não repetir o número que o contrato já tem.
 const saude = contexto => contrato.exemplos.find(e => e.pedido.caminho === '/health' && e.daExtensao
   && e.resposta.status === 200 && e.contexto.perfil === contexto).resposta.json;
 const abas = page => page.getByRole('radiogroup', { name: 'Seções da Conexão com o Anki' });
@@ -39,7 +26,6 @@ const tentarDaF1 = page => page.locator('#shell-tentar-de-novo');
 const pedidosDeHealth = fakes => fakes.anki.requisicoes.filter(r => r.caminho === '/health');
 const PASSOS = ['Ter o Anki', 'Pôr a Conexão no Anki', 'Reiniciar o Anki', 'Abrir o Anki sozinho'];
 
-/** A pessoa já respondeu “Agora não” ao passo 3 (Abrir o Anki sozinho): a Conexão ligada leva direto ao Pronto. */
 const jaDisseAgoraNaoAoAbridor = extensao => extensao.gravarStorage({ pm_abridor: { agoraNao: true } });
 
 async function abrir(page, extensao) {
@@ -64,7 +50,6 @@ test('nunca conectada: abre no passo 1, Ter o Anki, com os dois quadros e a F1 e
   await expect(card(page)).toContainText('A Conexão com o Anki fica dentro do Anki, neste computador, e é ela que cria os cartões.');
   await expect(abas(page)).toBeHidden();
 
-  // A lista tem os 4 passos, o primeiro é o atual e nenhum está feito.
   await expect(lista(page).getByRole('button')).toHaveText(PASSOS);
   await expect(itemDaLista(page, 'Ter o Anki')).toHaveAttribute('aria-current', 'step');
   await expect(lista(page).locator('[aria-current="step"]')).toHaveCount(1);
@@ -74,9 +59,7 @@ test('nunca conectada: abre no passo 1, Ter o Anki, com os dois quadros e a F1 e
   await expect(tituloDoPasso(page)).toHaveText('Ter o Anki');
   await expect(card(page)).toContainText('O Anki é o programa que guarda os cartões e onde você estuda. Ele roda neste computador, junto com a Conexão com o Anki.');
   await expect(card(page)).toContainText('Você já tem o Anki?');
-  // O Anki não é lido antes da Conexão: o passo espera, nunca diz “não encontrado”.
   await expect(card(page)).not.toContainText('não encontrado');
-  // Sem terminal: nenhum comando de pip ou python, nenhum Detalhes de comandos, nenhum Copiar.
   await expect(card(page)).not.toContainText(/pip|python|install_autostart/i);
   await expect(card(page).getByRole('button', { name: 'Copiar' })).toHaveCount(0);
 
@@ -94,7 +77,6 @@ test('no passo 2, Pôr a Conexão no Anki, o status espera a Conexão e o downlo
   await itemDaLista(page, 'Pôr a Conexão no Anki').click();
   await expect(card(page)).toContainText('Como ligar · Passo 2 de 4');
   await expect(card(page)).toContainText('Baixe o arquivo e abra-o. Se o Anki estiver fechado, ele abre sozinho. Quando o Anki perguntar se você quer instalar, responda Sim.');
-  // O Anki não é lido antes da Conexão: o passo espera, nunca diz “não encontrado”.
   await expect(status(page)).toHaveText('Esperando a Conexão');
   await expect(card(page)).not.toContainText('não encontrado');
   await expect(baixar(page)).toBeVisible();
@@ -123,7 +105,6 @@ test('os passos: Continuar, Voltar e a lista andam pelo card, e o foco vai ao t�
   await expect(tentarDoCard(page)).toBeVisible();
   await expect(baixar(page)).toBeHidden();
 
-  // O último passo, Abrir o Anki sozinho: sem a Conexão ainda não há o que pedir, e o Continuar sai.
   await card(page).getByRole('button', { name: 'Continuar' }).click();
   await expect(card(page)).toContainText('Como ligar · Passo 4 de 4');
   await expect(tituloDoPasso(page)).toHaveText('Abrir o Anki sozinho');
@@ -204,12 +185,10 @@ test('conectando (depois de Tentar de novo): abre no passo 3 com “Conectando a
   await expect(status(page)).toHaveText('Conectando ao Anki…');
   await expect(tentarDoCard(page)).toHaveAttribute('aria-disabled', 'true');
   await expect(page.locator('#apv-confere')).toHaveText('Conferindo agora…');
-  // Apertar indisponível não pergunta de novo.
   const antes = pedidosDeHealth(fakes).length;
   await tentarDoCard(page).click({ force: true });
   expect(pedidosDeHealth(fakes)).toHaveLength(antes);
 
-  // Sem resposta, e sem escolha da pessoa, o card volta ao primeiro passo que falta.
   liberar();
   await expect(card(page)).toContainText('Como ligar · Passo 1 de 4');
   await expect(status(page)).toBeHidden();
@@ -272,12 +251,10 @@ test('a Conexão passa a responder: o momento Pronto, e depois as abas voltam co
   await expect(status(page)).toHaveText(`Achei o Anki · ${saude('Usuário 1').perfil} · versão ${saude('Usuário 1').versao}`);
   await expect(lista(page).getByRole('button', { name: /feito$/ })).toHaveCount(3);
   await expect(abas(page)).toBeHidden();
-  // A chave fica gravada já na primeira resposta.
   await expect.poll(async () => (await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou).toBe(true);
   await expect(tituloDoPasso(page)).toBeFocused();
   await fotografar(page, 'anki-pronto.png');
 
-  // O card cobre as abas pelos 1,8 s inteiros; o relógio parado não depende da carga do host.
   await relogio.avancar(1799);
   await expect(pronto(page)).toBeVisible();
   await expect(abas(page)).toBeHidden();
@@ -287,11 +264,9 @@ test('a Conexão passa a responder: o momento Pronto, e depois as abas voltam co
   await expect(pronto(page)).toBeHidden();
   await expect(page.getByText(F1)).toBeHidden();
   await expect(page.locator('.veio-toast')).toHaveText('Conexão com o Anki: ligada');
-  // Custos carrega sozinha, como se a Conexão sempre tivesse estado ali.
   await expect(listaDeEnvios(page).getByRole('option')).toHaveCount(1);
   await expect(page.getByRole('radio', { name: 'Custos' })).toBeFocused();
   await fotografar(page, 'anki-abas-toast.png');
-  // E continua gravada depois do foco, do toast e das abas de volta.
   await expect.poll(async () => (await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou).toBe(true);
 });
 
@@ -302,7 +277,6 @@ test('reiniciar o Anki sem apertar nada: a consulta automática mostra Conectand
   await lista(page).getByRole('button', { name: 'Reiniciar o Anki' }).click();
   await expect(status(page)).toHaveText('Conexão com o Anki: desligada');
 
-  // A pessoa reinicia o Anki fora da extensão; a consulta de 15 s sai e demora.
   let liberar;
   const segurada = new Promise(r => { liberar = r; });
   fakes.anki.responder('GET', '/health', async () => { await segurada; return fakes.anki.respostaDoContrato('GET', '/health'); });
@@ -344,7 +318,6 @@ test('um destaque só por tela: no passo 1 é Baixar o Anki depois de “Não te
   await abrir(page, extensao);
   await expect(card(page)).toBeVisible();
 
-  // A pergunta não tem destaque: as duas respostas são escolhas, não a ação do passo.
   await expect(card(page)).toContainText('Como ligar · Passo 1 de 4');
   await expect(page.locator('.veio-botao--primario:visible')).toHaveCount(0);
   await card(page).getByRole('button', { name: 'Não tenho' }).click();
@@ -377,12 +350,10 @@ test('a Conexão liga sozinha, sem ninguém apertar: a conferência de 15 s do s
 
 test('o foco não cai no fim da página: fica no título do card no Pronto e vai para a aba quando o card sai', async ({ page, extensao, fakes, relogioParado }) => {
   await jaDisseAgoraNaoAoAbridor(extensao);
-  // O relógio da página é do teste: o Pronto fica na tela até ele andar.
   const relogio = await relogioParado({ em: AGORA });
   await page.goto(extensao.url('painel.html#anki/custos'));
   await expect(card(page)).toBeVisible();
 
-  // O Tentar de novo da F1 some no Pronto, com o foco nele.
   fakes.anki.ligar();
   await tentarDaF1(page).focus();
   await page.keyboard.press('Enter');
@@ -434,7 +405,6 @@ test('o passo que a pessoa abriu continua aberto depois de uma conferência que 
   await expect(linha).toHaveText('Confere sozinho a cada 15 s · última vez há 0 s');
   expect(pedidosDeHealth(fakes)).toHaveLength(1);
 
-  // O passo que a pessoa abre é o 3 (Reiniciar o Anki): é onde a conferência aparece como Conectando.
   await card(page).getByRole('button', { name: 'Continuar' }).click();
   await card(page).getByRole('button', { name: 'Continuar' }).click();
   await expect(card(page)).toContainText('Como ligar · Passo 3 de 4');
@@ -448,7 +418,6 @@ test('o passo que a pessoa abriu continua aberto depois de uma conferência que 
   await relogio.avancar(15_000);
   await expect.poll(() => pedidosDeHealth(fakes)).toHaveLength(2);
   await expect(linha).toHaveText('Conferindo agora…');
-  // A consulta automática também aparece como Conectando nos passos, sem ninguém apertar nada.
   await expect(status(page)).toHaveText('Conectando ao Anki…');
   await expect(tentarDoCard(page)).toHaveAttribute('aria-disabled', 'true');
   await fotografar(page, 'anki-passo3-conferindo.png');
@@ -479,8 +448,6 @@ test('a Conexão liga com a pessoa em outra área: as abas já estão lá quando
   await relogio.avancar(15_000);
   await expect.poll(async () => (await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou).toBe(true);
 
-  // O relógio anda o bastante para o Pronto acabar, se ele tivesse começado.
-  // (Lida na hora: o toast sai sozinho, então esperar por ele esconderia o erro.)
   await relogio.avancar(2_000);
   expect(await page.locator('.veio-toast').count()).toBe(0);
 
@@ -501,7 +468,6 @@ test('“Confere sozinho a cada 15 s” segue a conferência do shell, sem um se
   await expect(linha).toHaveText('Confere sozinho a cada 15 s · última vez há 5 s');
   expect(pedidosDeHealth(fakes)).toHaveLength(1);
 
-  // A conferência do shell sai aos 15 s: a linha diz que está conferindo, e é uma pergunta só.
   let liberar;
   const segurada = new Promise(r => { liberar = r; });
   fakes.anki.responder('GET', '/health', async () => { await segurada; return { status: 503, json: {} }; });
@@ -531,7 +497,6 @@ test('Baixar a Conexão com o Anki entrega o arquivo que vai dentro do pacote da
   // É um zip: o Anki instala o `.ankiaddon` pelo `manifest.json` dentro dele.
   expect(baixado.subarray(0, 2).toString()).toBe('PK');
   expect(baixado.includes(Buffer.from('manifest.json'))).toBe(true);
-  // Baixar o arquivo não é conectar.
   expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
 });
 
@@ -543,7 +508,6 @@ test('o Detalhes “O arquivo não abriu?” mostra o código real da página do
   await card(page).getByText('O arquivo não abriu?', { exact: true }).click();
   await expect(card(page).locator('pre')).toHaveText('No Anki, abra Ferramentas › Extensões › Obter extensões, cole o código 1108882947 e reinicie o Anki.');
 
-  // O Detalhes é do passo do arquivo: no passo de reiniciar, ele sai.
   await card(page).getByRole('button', { name: 'Continuar' }).click();
   await expect(card(page).getByText('O arquivo não abriu?', { exact: true })).toBeHidden();
   expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
@@ -594,7 +558,6 @@ test('o Anki na tela de perfis: “Achei o Anki · versão”, sem perfil', asyn
 test('dois minutos sem resposta: o checklist de 3 itens e “Baixar de novo”, e a conferência segue sozinha', async ({ page, extensao, fakes, relogioParado }) => {
   await jaDisseAgoraNaoAoAbridor(extensao);
   const relogio = await relogioParado({ em: AGORA });
-  // Pronto é transitório: o relógio só anda quando o teste mandar.
   await page.goto(extensao.url('painel.html#anki/custos'));
   await expect(card(page)).toBeVisible();
   await expect(naoRespondeu(page)).toBeHidden();
@@ -609,19 +572,15 @@ test('dois minutos sem resposta: o checklist de 3 itens e “Baixar de novo”, 
     'Você fechou o Anki e abriu de novo?',
     'A Conexão com o Anki está ativada em Ferramentas › Extensões?',
   ]);
-  // Baixar de novo entrega o mesmo arquivo.
   const [arquivo] = await Promise.all([page.waitForEvent('download'), baixarDeNovo(page).click()]);
   expect(arquivo.suggestedFilename()).toBe('perpetualminer.ankiaddon');
-  // O checklist vale em qualquer passo que a pessoa esteja olhando.
   await card(page).getByRole('button', { name: 'Continuar' }).click();
   await expect(naoRespondeu(page)).toBeVisible();
 
-  // A conferência continua: uma pergunta nova ao /health a cada 15 s, e quando a Conexão responde o checklist sai.
   const antes = pedidosDeHealth(fakes).length;
   await relogio.avancar(15_000);
   await expect.poll(() => pedidosDeHealth(fakes).length).toBeGreaterThan(antes);
   await expect(naoRespondeu(page)).toBeVisible();
-  // Quinze segundos de checklist sem resposta não gravaram nada.
   expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
   fakes.anki.ligar();
   await relogio.avancar(15_000);
@@ -631,7 +590,6 @@ test('dois minutos sem resposta: o checklist de 3 itens e “Baixar de novo”, 
 });
 
 test('os dois minutos contam desde que a pessoa vê os passos: quem chega depois não vê o checklist de cara', async ({ page, extensao, relogioParado }) => {
-  // Nunca conectou e a Conexão está desligada: a pessoa começa em Frases, onde o card não está à vista.
   const relogio = await relogioParado({ em: AGORA });
   await page.goto(extensao.url('painel.html#frases'));
   await expect(page.getByRole('link', { name: 'Conexão com o Anki' })).toBeVisible();
@@ -642,7 +600,6 @@ test('os dois minutos contam desde que a pessoa vê os passos: quem chega depois
   await expect(card(page)).toBeVisible();
   await expect(naoRespondeu(page)).toBeHidden();
 
-  // A espera é a de dois minutos inteiros, a partir de agora que ela vê os passos.
   await relogio.avancar(119_000);
   await expect(naoRespondeu(page)).toBeHidden();
   await relogio.avancar(1_000);
@@ -684,7 +641,6 @@ test('o foco é visível na lista e nos botões, e piscar e pulsar ficam estáti
   await expect(itemDaLista(page, 'Reiniciar o Anki')).toBeFocused();
   await expect(itemDaLista(page, 'Reiniciar o Anki')).toHaveCSS('outline-style', 'solid');
 
-  // O ponto que pisca da linha da conferência dura 1 ms, uma volta só.
   await expect(page.locator('.apv-confere .anki-ponto')).toHaveCSS('animation-duration', '0.001s');
   expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
 });
@@ -699,7 +655,6 @@ test('nos dois temas o card usa os tokens Veio: o fundo do card e o do controle 
   });
   const escuro = await cores();
 
-  // O tema muda pela escolha da pessoa em Configurações › Aparência, e fica gravado.
   await page.goto(extensao.url('painel.html#configuracoes/aparencia'));
   await page.locator('#cfg-tema label').filter({ hasText: 'Claro' }).click();
   await expect.poll(async () => (await extensao.lerStorage('pm_tema')).pm_tema).toBe('claro');

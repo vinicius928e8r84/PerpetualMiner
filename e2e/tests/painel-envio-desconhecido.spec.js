@@ -1,8 +1,5 @@
 'use strict';
 
-// O Envio que a Conexão não conhece (#245): veio do bridge, ou a pasta de dados dela foi apagada. O cartão não o dá por não concluído:
-// diz que a Conexão não o conhece e oferece Esquecer, que o tira do acompanhamento sem tocar nas Frases.
-
 const { test, expect } = require('../fixtures');
 const { estadoFinal } = require('../estado-final');
 const { AGORA, INGLESAS, abrirPainel, envio, progresso, resumo } = require('../apoio-do-envio');

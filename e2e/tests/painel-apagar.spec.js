@@ -1,9 +1,5 @@
 'use strict';
 
-// O painel gravava o tombstone com o caminho de campo `ids.{id}` sem crases,
-// que o Firestore recusa: apagar uma frase não deixava tombstone na nuvem, e
-// "Apagar tudo" esperava essa gravação e nunca chegava ao DELETE.
-
 const { test, expect } = require('../fixtures');
 const { estadoFinalEm } = require('../estado-final');
 
@@ -35,7 +31,6 @@ test('com a conta conectada, a frase apagada no painel sai da nuvem e fica no to
 
   await abrirPainelSincronizado(page, extensao);
   await page.locator('#frases-lista .veio-frase', { hasText: PRIMEIRA }).getByRole('button', { name: 'Apagar frase' }).click();
-  // Apagar 1 frase pede confirmação (PAI-12, #30).
   await page.getByRole('dialog').getByRole('button', { name: 'Apagar frase' }).click();
   await expect(page.getByText(PRIMEIRA)).toHaveCount(0);
 
@@ -49,7 +44,6 @@ test('com a conta conectada, "Apagar tudo" no painel apaga todas as frases da nu
   const mineradas = await minerar(page, [PRIMEIRA, SEGUNDA]);
   await expect.poll(() => fakes.google.frasesDe('uid-tudo').length).toBe(2);
 
-  // “Apagar tudo” mora em Configurações › Zona de perigo.
   await abrirPainelSincronizado(page, extensao, '#configuracoes/perigo');
   await page.getByRole('button', { name: 'Apagar todas as 2 frases' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Apagar 2 frases' }).click();
@@ -67,7 +61,6 @@ const muitasFrases = () => Array.from({ length: MUITAS }, (_, i) => ({
   data: new Date().toLocaleDateString('pt-BR'), streaming: 'manual', idioma: 'Inglês',
 }));
 const idsDas = frases => frases.map(f => String(f.id)).sort();
-// A nuvem recebe um DELETE por frase: são 400 pedidos até ela ficar vazia.
 const ATE_A_NUVEM_ESVAZIAR = { timeout: 20_000 };
 
 test('com a conta conectada, "Apagar tudo" com 400 frases apaga todas da nuvem e deixa o tombstone de cada uma', async ({ page, extensao, fakes }) => {
@@ -83,7 +76,6 @@ test('com a conta conectada, "Apagar tudo" com 400 frases apaga todas da nuvem e
 
   await expect.poll(() => fakes.google.frasesDe('uid-muitas').length, ATE_A_NUVEM_ESVAZIAR).toBe(0);
   expect(fakes.google.apagadasDe('uid-muitas').sort()).toEqual(idsDas(frases));
-  // A nuvem confirmou: o Apagar tudo não fica pendente, e a conta volta a dizer que está em dia.
   await expect.poll(async () => (await extensao.lerStorage(['pm_apagar_tudo', 'pm_deleted_ids']))).toEqual({ pm_deleted_ids: [] });
   await expect(page.locator('#shell-chip')).toContainText('Sincronizado');
 });
@@ -105,9 +97,6 @@ test('com a conta conectada, apagar 400 frases selecionadas deixa o tombstone de
   await expect.poll(() => fakes.google.apagadasDe('uid-selecao').sort()).toEqual(idsDas(frases));
 });
 
-// A política de privacidade (preview/site/privacidade.html, §7) dá este caminho a quem tem conta e não usa a Conexão com o Anki:
-// o Apagar tudo da Zona de perigo é recusado enquanto a Conexão não responde (painel-envio-apagar.spec.js), e a seleção da lista
-// de Frases não depende dela.
 test('com a conta conectada e a Conexão sem responder, apagar a seleção inteira tira todas as frases do navegador e da nuvem', async ({ page, extensao, fakes }) => {
   const frases = muitasFrases().slice(0, 12);
   await extensao.semearSessao({ uid: 'uid-sem-conexao' });

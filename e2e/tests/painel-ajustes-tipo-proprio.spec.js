@@ -1,11 +1,5 @@
 'use strict';
 
-// Conexão com o Anki · “Usar um tipo que já tenho” nos Ajustes de envio (#165, Estilo do cartão): a pessoa escolhe um tipo de nota do Anki dela e diz em que campo
-// vai cada parte do Cartão (várias partes podem ir num campo só) e vê a prévia. Continuar só liga com um campo para a Frase e outro, diferente, para a resposta; sem
-// isso nada é gravado, a tela explica e oferece o estilo pronto. Um tipo da pessoa fica com a frente que ela já tem (a escolha da Frente some). O Envio seguinte
-// leva o mapeamento. A Conexão é falsificada na fronteira HTTP (e2e/fakes/anki.js, o contrato `exemplos-do-tipo-proprio.json`); o teste confere o que a pessoa
-// vê, o que ficou gravado (`ankiBridgePresets`) e o que atravessou o HTTP.
-
 const { test, expect } = require('../fixtures');
 const { estadoFinal } = require('../estado-final');
 const { AGORA, INGLESAS, SACK, abrirPainel, marcarEEnviar, enviosCriados } = require('../apoio-do-envio');
@@ -41,11 +35,10 @@ test('mapear o tipo que a pessoa já tem: a prévia aparece, Continuar liga e Sa
   await abrirOTipo(page).click();
   await expect(continuar(page)).toBeDisabled();
   await campo(page, 'Tipo de nota').selectOption('Meu Inglês');
-  // O Básico de sempre: a Frase no primeiro campo e a resposta no segundo.
   await expect(campo(page, 'Frase')).toHaveValue('Pergunta');
   await expect(campo(page, 'Resposta')).toHaveValue('Resposta');
   await campo(page, 'Áudio da frase').selectOption('Som');
-  await campo(page, 'Palavra').selectOption('Resposta'); // várias partes num campo só
+  await campo(page, 'Palavra').selectOption('Resposta');
   await expect(continuar(page)).toBeEnabled();
   await expect(page.getByRole('region', { name: 'Prévia do cartão' }).last()).toHaveAttribute('data-estado', 'pronta');
   expect(pedidosDaPrevia(fakes).at(-1)).toEqual({
