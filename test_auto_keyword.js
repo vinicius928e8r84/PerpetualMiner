@@ -205,8 +205,9 @@ async function run() {
 
   assert.strictEqual(typeof loadBackground().autoTokenizar, 'undefined', 'the service worker tokenizes with Mineracao.tokenizar, not its own copy');
 
-  const { idiomaDe } = loadBackground().PerpetualMiner;
+  const { idiomaDe, contarLetras } = loadBackground().PerpetualMiner;
   assert.deepStrictEqual([idiomaDe('ru'), idiomaDe('en')], ['Russo', 'Inglês'], 'o código da frase vira o idioma gravado');
+  assert.deepStrictEqual([contarLetras('ab 12'), contarLetras('Да, he'), contarLetras('12 :.'), contarLetras('é ç')], [2, 4, 0, 0], 'contam-se as letras latinas e cirílicas');
 
   await baralhoGravadoQueNaoRespondeNaoViraVocabularioVazio();
   await russianAutoMinerStorage();
