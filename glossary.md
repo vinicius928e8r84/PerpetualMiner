@@ -88,7 +88,7 @@ _Avoid_: Onboarding
 
 **Conexão com o Anki**:
 O complemento do Anki mais o Abridor: o complemento roda dentro do Anki do computador do usuário, grava as frases como cartões na coleção e responde à extensão; o Abridor abre o Anki quando ele está fechado. Não há programa à parte nem serviço residente para instalar ou rodar, e o Windows não tem caminho próprio. Na tela, o nome é sempre “Conexão com o Anki”, e ela está ligada ou desligada. A Área do Painel e a seção de Configurações que cuidam dela levam o mesmo nome.
-_Nome no código_: `ConexaoAnki` (`lib/conexao-anki.js`), `complemento/`, `http://127.0.0.1:8766`; sobras do nome antigo: `ankiBridgePresets`, `CODIGOS_DO_BRIDGE`, IDs `BRG-`
+_Nome no código_: `ConexaoAnki` (`lib/conexao-anki.js`), `complemento/`, `http://127.0.0.1:8766`; sobras do nome antigo: `ankiBridgePresets`, IDs `BRG-`
 _Avoid_: Anki Bridge, Bridge, AnkiConnect, serviço residente, servidor local, Conexão de hoje
 
 **Complemento**:
