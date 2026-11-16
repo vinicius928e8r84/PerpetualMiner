@@ -98,6 +98,25 @@ class GenerateCardsKeywordValidationTests(unittest.TestCase):
 
         self.assertFalse(generate_cards._validate_keyword(partial_front, "exerts himself"))
 
+    def _card_com_front(self, front: str, keyword: str) -> str:
+        return GOOD_CARD.replace("He *exerts himself* on brands of his own, if at all.", front).replace(
+            "exerts himself - /ig-ZURTS him-SELF/", f"{keyword} - /x/")
+
+    def test_front_com_rotulo_depois_da_frase_e_recusado(self):
+        casos = [
+            ("Stop putting off your homework until the last minute <br>Expressão-alvo: *put off*", "put off"),
+            ("She turned down the job offer because the salary was too low.\n\nTarget: *turn down*", "turn down"),
+            ("Our car broke down in the middle of the highway<br><br>Target: *break down*", "break down"),
+        ]
+        for front, keyword in casos:
+            with self.subTest(keyword=keyword):
+                self.assertFalse(generate_cards._validate_keyword(self._card_com_front(front, keyword), keyword))
+
+    def test_front_sem_rotulo_com_a_expressao_na_frase_continua_aceito(self):
+        card = self._card_com_front("She *turned down* the job offer because the salary was too low.", "turned down")
+
+        self.assertTrue(generate_cards._validate_keyword(card, "turned down"))
+
     def test_front_que_perde_uma_palavra_da_frase_original_e_recusado(self):
         phrase = "He exerts himself on brands of his own, if at all."
         dropped = GOOD_CARD.replace("He *exerts himself* on", "*exerts himself* on")
