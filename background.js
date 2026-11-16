@@ -1,7 +1,7 @@
 'use strict';
 
 importScripts('lib/voz/catalogo.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/mineracao.js', 'lib/ajustes-de-envio.js', 'lib/mineracao-do-dia.js', 'lib/vocabulario-da-mineracao.js', 'lib/pedido-ao-anki.js', 'lib/pareamento.js', 'lib/envio-gravado.js', 'lib/apagar-frases-pendente.js', 'lib/sincronizacao.js');
-const { textoDaVoz, detectarIdioma, IDIOMAS, MineracaoDoDia, Mineracao, VocabularioDaMineracao, Sincronizacao } = PerpetualMiner;
+const { textoDaVoz, detectarIdioma, idiomaDe, IDIOMAS, MineracaoDoDia, Mineracao, VocabularioDaMineracao, Sincronizacao } = PerpetualMiner;
 
 if (chrome.storage.local.setAccessLevel) {
   chrome.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' })
@@ -155,7 +155,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       request.texto,
       request.origem,
       request.contexto  || null,
-      request.idioma    || 'Inglês',
+      request.idioma    || IDIOMAS.INGLES,
       palavras?.length ? { keywords: palavras, autoKeyword: false } : {},
       { comPalavraAutomatica: !palavras, comNuvem: !request.semNuvem },
     )
@@ -202,7 +202,7 @@ function proximoIdDeFrase(historico) {
   return Math.max(Date.now(), maiorId + 1);
 }
 
-async function salvarFrase(texto, origem, contexto = null, idioma = 'Inglês', extras = {},
+async function salvarFrase(texto, origem, contexto = null, idioma = IDIOMAS.INGLES, extras = {},
   { comPalavraAutomatica = true, comNuvem = true } = {}) {
   const novaFrase = {
     texto,
@@ -688,7 +688,7 @@ async function handleAutoMinerCandidate(request) {
     autoMinerReason: evaluation.reason || 'accepted',
     ...(lang === 'en' ? { keywords: evaluation.keywords, autoKeyword: true } : {}),
   };
-  const frase = await salvarFrase(texto, request.origem || 'auto', request.contexto || null, lang === 'ru' ? 'Russo' : 'Inglês', saveExtras);
+  const frase = await salvarFrase(texto, request.origem || 'auto', request.contexto || null, idiomaDe(lang), saveExtras);
   const updatedState = await incrementAutoMinerDaily(lang);
   publicarEstadoDaAutomatica(updatedState);
   await recordAutoMinerEvent({ action: 'saved', reason: evaluation.reason || 'accepted', texto, lang, contexto: request.contexto || null, evaluation, phraseId: frase.id });
@@ -715,7 +715,7 @@ async function recordAutoMinerEvent(event) {
 
 async function evaluateAutoMinerPhrase(texto, lang, contexto = null) {
   if (!isAutoMinerCleanText(texto)) return { accept: false, reason: 'low_quality_text' };
-  const frase = { texto, idioma: lang === 'ru' ? 'Russo' : 'Inglês', contexto };
+  const frase = { texto, idioma: idiomaDe(lang), contexto };
   if (lang === 'ru') {
     const keywords = await autoKeywordsForPhraseByLang(frase, 'ru', { limit: 2 });
     const groups = keywordGroups(keywords);

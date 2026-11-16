@@ -10,6 +10,8 @@ const { TIPOS, NAO_SEI, NIVEIS } = QuizDeNivel;
 
 assert.deepStrictEqual(Object.values(NIVEIS), ['iniciante', 'intermediario', 'avancado']);
 assert.deepStrictEqual(Object.values(NIVEIS), [...AjustesDeEnvio.NIVEIS]);
+assert.deepStrictEqual([...AjustesDeEnvio.IDIOMAS_DO_ENVIO], ['en', 'ru']);
+assert.strictEqual(AjustesDeEnvio.CODIGOS_DO_BRIDGE, undefined);
 const comOutrosNiveis = { PerpetualMiner: { AjustesDeEnvio: { NIVEIS: ['basico', 'fluente'] } } };
 require('vm').runInNewContext(require('fs').readFileSync('./lib/quiz-de-nivel.js', 'utf8'), comOutrosNiveis);
 assert.deepStrictEqual({ ...comOutrosNiveis.PerpetualMiner.QuizDeNivel.NIVEIS }, { BASICO: 'basico', FLUENTE: 'fluente' });

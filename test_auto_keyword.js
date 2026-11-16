@@ -205,6 +205,9 @@ async function run() {
 
   assert.strictEqual(typeof loadBackground().autoTokenizar, 'undefined', 'the service worker tokenizes with Mineracao.tokenizar, not its own copy');
 
+  const { idiomaDe } = loadBackground().PerpetualMiner;
+  assert.deepStrictEqual([idiomaDe('ru'), idiomaDe('en')], ['Russo', 'Inglês'], 'o código da frase vira o idioma gravado');
+
   await baralhoGravadoQueNaoRespondeNaoViraVocabularioVazio();
   await russianAutoMinerStorage();
   await russianManualSaveDoesNotAutoKeyword();
