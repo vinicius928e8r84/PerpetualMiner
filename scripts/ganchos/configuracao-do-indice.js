@@ -1,10 +1,5 @@
 'use strict';
 
-// A configuração do gancho de tamanho (limite-de-tokens.json) vale pelo índice, o que será commitado,
-// nunca pela cópia de trabalho; e só aperta em relação ao HEAD, como a linha de base: subir o limite,
-// ou acrescentar glob em `ignorar` ou marca em `marcasDeGerado`, afrouxaria o limite para todos sem
-// aparecer como violação, então barra o commit.
-
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -14,7 +9,6 @@ const { ErroDeEntrada, lerConfiguracaoDoTexto } = require('./entrada-do-gancho.j
 const ARQUIVO_DA_CONFIGURACAO = path.join(__dirname, 'limite-de-tokens.json');
 const CAMINHO_NO_REPOSITORIO = 'scripts/ganchos/limite-de-tokens.json';
 
-/** A cópia da configuração ao lado do gancho; ilegível ou inválida lança ErroDeEntrada (barra o commit). */
 function lerConfiguracao(arquivo = ARQUIVO_DA_CONFIGURACAO) {
   const onde = `scripts/ganchos/${path.basename(arquivo)}`;
   let texto;
@@ -26,7 +20,6 @@ function lerConfiguracao(arquivo = ARQUIVO_DA_CONFIGURACAO) {
   return lerConfiguracaoDoTexto(texto, onde);
 }
 
-/** A configuração de uma versão do git (`:caminho` = índice, `HEAD:caminho`); `null` se o arquivo não existe nela; inválida lança ErroDeEntrada. */
 function lerConfiguracaoDaVersao(raiz, versao) {
   let texto;
   try {
@@ -40,7 +33,6 @@ function lerConfiguracaoDaVersao(raiz, versao) {
 const globsDe = config => (Array.isArray(config.ignorar) ? config.ignorar : []).map(regra => regra.glob);
 const marcasDe = config => (Array.isArray(config.marcasDeGerado) ? config.marcasDeGerado : []);
 
-/** O que a configuração preparada afrouxa em relação à do HEAD (lista de textos, vazia se nada). */
 function afrouxamentosDaConfiguracao(preparada, doHead) {
   const achados = [];
   for (const campo of ['limiteDeBytes', 'linhasDoCabecalho']) {
@@ -57,11 +49,6 @@ function afrouxamentosDaConfiguracao(preparada, doHead) {
   return achados;
 }
 
-/**
- * A configuração a valer: a do índice (a cópia do gancho, `padrao`, se o repositório não tem o arquivo) e o
- * que ela afrouxa em relação ao HEAD (`nova` e `velha` trocam o índice e o HEAD pelas versões do CI). Sem a do HEAD (a primeira) não há o que comparar.
- * Um JSON quebrado no índice não pode desligar o gancho: vira problema, e vale `padrao`.
- */
 function carregarConfiguracao(raiz, padrao, nova = '', velha = 'HEAD') {
   let doIndice;
   try {
@@ -75,7 +62,6 @@ function carregarConfiguracao(raiz, padrao, nova = '', velha = 'HEAD') {
   try {
     doHead = lerConfiguracaoDaVersao(raiz, velha);
   } catch {
-    // um HEAD quebrado não tem o que comparar: vale a do índice
   }
   return { config: doIndice, problemas: doHead ? afrouxamentosDaConfiguracao(doIndice, doHead) : [] };
 }

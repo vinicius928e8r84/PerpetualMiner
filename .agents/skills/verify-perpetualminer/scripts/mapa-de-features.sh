@@ -1,11 +1,4 @@
 #!/usr/bin/env bash
-# CI ratchet for the feature map (SKILL.md § Keeping the feature map honest). A PR that changes a user-facing surface
-# must touch .agents/skills/verify-perpetualminer/features/ or say "feature map unchanged" in its body.
-# Usage: PR_BODY="<body>" mapa-de-features.sh <base-ref>        e.g. origin/main
-# Exit 0 = fine, 1 = a surface changed and neither happened, 2 = usage.
-# Surfaces: manifest.json, every *.html in the repo root, popup.js, painel*.js, bookreader.js, overlay.js, content.js,
-# background.js, complemento/servidor.py (its routes are what the panel calls), lib/voz/catalogo.js
-# (the Voice catalog: the copy a person reads).
 set -u
 [ $# -eq 1 ] || { echo 'usage: PR_BODY=... mapa-de-features.sh <base-ref>' >&2; exit 2; }
 git rev-parse --verify --quiet "$1^{commit}" >/dev/null || { echo "base ref '$1' not found" >&2; exit 2; }

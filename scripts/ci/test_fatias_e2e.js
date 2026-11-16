@@ -44,15 +44,12 @@ try {
   fs.rmSync(pastaDeTeste, { recursive: true, force: true });
 }
 
-// Equilíbrio: a fatia mais lenta não passa de 10% acima da média, nem do maior spec quando ele já é maior que isso.
 const segundos = lista => lista.reduce((soma, spec) => soma + durações[spec], 0);
 const total = segundos(specs);
 const maiorSpec = Math.max(...specs.map(spec => durações[spec]));
 const maiorFatia = Math.max(...fatias.map(segundos));
 assert(maiorFatia <= Math.max(maiorSpec, (total / NUMERO_DE_FATIAS) * 1.1), `fatia mais lenta ${maiorFatia}s, média ${(total / NUMERO_DE_FATIAS).toFixed(0)}s, maior spec ${maiorSpec}s`);
 
-// O Playwright e este script enxergam os mesmos arquivos: o `testMatch` do Playwright é só `*.spec.js` (senão um
-// `zz.test.js` rodaria no Playwright sem estar em fatia nenhuma), e nenhum arquivo de e2e/tests parece teste sem ser `.spec.js`.
 const configuracao = fs.readFileSync(path.join(RAIZ, 'e2e', 'playwright.config.js'), 'utf8');
 assert(/testMatch:\s*'\*\*\/\*\.spec\.js'/.test(configuracao), "e2e/playwright.config.js precisa de testMatch: '**/*.spec.js'");
 const quePareceTeste = (function listar(pasta, prefixo = '') {
@@ -62,7 +59,6 @@ const quePareceTeste = (function listar(pasta, prefixo = '') {
 })(path.join(RAIZ, 'e2e', 'tests'));
 assert.deepStrictEqual(quePareceTeste, [], 'um arquivo de e2e/tests que parece teste mas não termina em .spec.js não roda no CI: renomeie para .spec.js');
 
-// O workflow: a matriz tem uma entrada por fatia, o nome do check diz quantas são, e o job pede a lista desta fatia.
 const workflow = fs.readFileSync(path.join(RAIZ, '.github', 'workflows', 'testes.yml'), 'utf8');
 const matriz = /^\s*fatia: \[([\d, ]+)\]\s*$/m.exec(workflow);
 assert(matriz, 'a matriz de fatias do workflow');
@@ -71,7 +67,6 @@ assert(workflow.includes(`name: e2e (\${{ matrix.fatia }}/${fatias.length})`), '
 assert(/fatias-e2e\.js \$\{\{ matrix\.fatia \}\}/.test(workflow), 'a fatia roda os specs da lista, não um --shard');
 assert(!/--shard/.test(workflow.split('\n').filter(l => !/^\s*#/.test(l)).join('\n')), 'nenhum --shard nos comandos do workflow');
 
-// A conferência pega o erro de verdade.
 const exemplo = { duracoes: { 'a.spec.js': 5, 'b.spec.js': 3, 'c.spec.js': 2 }, fatias: [['a.spec.js'], ['b.spec.js', 'c.spec.js']] };
 const todos = ['a.spec.js', 'b.spec.js', 'c.spec.js'];
 assert.deepStrictEqual(problemas(exemplo, todos), []);
@@ -80,18 +75,15 @@ assert.deepStrictEqual(problemas({ ...exemplo, fatias: [['a.spec.js', 'b.spec.js
 assert.deepStrictEqual(problemas(exemplo, [...todos, 'd.spec.js']), ['d.spec.js não está em nenhuma fatia', 'd.spec.js não tem duração'], 'um spec novo');
 assert.deepStrictEqual(problemas(exemplo, ['a.spec.js', 'b.spec.js']), ['c.spec.js está numa fatia mas não existe em e2e/tests', 'c.spec.js tem duração mas não existe em e2e/tests'], 'um spec apagado');
 
-// A montagem: cada spec uma vez, a fatia mais cheia recebe o próximo, repetível.
 assert.deepStrictEqual(montarFatias(exemplo.duracoes, 2), [['a.spec.js'], ['b.spec.js', 'c.spec.js']]);
 assert.deepStrictEqual(montarFatias({ 'x.spec.js': 4, 'y.spec.js': 4, 'z.spec.js': 4 }, 2), [['x.spec.js', 'z.spec.js'], ['y.spec.js']], 'empate: a fatia de menor número');
 assert.deepStrictEqual(fatias, fatiasDe({ ...arquivo.duracoes }, specs), 'repetível');
 
-// Os filtros do Playwright: o caminho do spec, ancorado, sem pegar outro spec de nome parecido.
 assert.deepStrictEqual(filtros(['painel.spec.js', 'x/y-z.spec.js']), ['tests/painel\\.spec\\.js$', 'tests/x/y-z\\.spec\\.js$']);
 for (const [spec, regex] of specs.map(spec => [spec, new RegExp(filtros([spec])[0], 'i')])) {
   assert.deepStrictEqual(specs.filter(outro => regex.test(`/repo/e2e/tests/${outro}`)), [spec], `o filtro de ${spec} pega só ele`);
 }
 
-// A leitura dos logs do CI (reporter `list`): soma os testes que passaram, em ms, s e m, e ignora os que falharam.
 const log = [
   '2026-11-11T19:00:00.0000000Z   ✓   1 [chromium] › tests/popup.spec.js:10:1 › abre (1.5s)',
   '2026-11-11T19:00:01.0000000Z   ✓   2 tests/popup.spec.js:20:1 › fecha (500ms)',

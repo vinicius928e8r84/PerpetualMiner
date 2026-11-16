@@ -1,17 +1,10 @@
 'use strict';
 
-// A issue única da suíte noturna (.github/workflows/noturna.yml, job "Issue da noturna"). Uso:
-//   node scripts/ci/issue-da-noturna.js <url da execução> <resultado das fatias> <resultado da Conexão real>
-// Os resultados são os de `needs.<job>.result`. Vermelha (alguma falhou ou foi cortada pelo teto de tempo, `cancelled`): abre a issue com o rótulo `noturna`, ou comenta
-// na que já está aberta, para haver uma só enquanto a main não voltar. Verde (todas passaram): comenta e fecha a aberta.
-// Pulada ou sem resultado: não mexe em nada. Se o `gh` falha, o passo reprova.
-
 const { execFileSync } = require('child_process');
 
 const ROTULO = 'noturna';
 const TITULO = 'Suíte noturna vermelha na main';
 
-/** 'vermelha', 'verde' ou 'nada', pelos resultados dos jobs da noturna. */
 function decidir(resultados) {
   // `cancelled` conta como vermelha: o `timeout-minutes` corta o job e ele termina cancelled, que é a travada que a noturna procura.
   // O cancelamento manual da execução não chega aqui (o job do workflow tem `!cancelled()`).
@@ -22,7 +15,6 @@ function decidir(resultados) {
 
 const gh = (...args) => execFileSync('gh', args, { encoding: 'utf8' });
 
-/** O número da issue aberta da noturna (a mais recente), ou null. */
 function issueAberta() {
   const lista = JSON.parse(gh('issue', 'list', '--label', ROTULO, '--state', 'open', '--json', 'number', '--limit', '1'));
   return lista.length ? lista[0].number : null;

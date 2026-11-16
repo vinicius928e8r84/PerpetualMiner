@@ -1,14 +1,4 @@
 #!/usr/bin/env node
-// O único jeito de rodar os testes do repositório, aqui e no CI: cada workflow chama
-// `node scripts/testar.mjs <grupo>` e a lista de grupos é scripts/testes.json. Um teste
-// novo só entra no portão ao entrar num grupo; `node scripts/regras/verificar.js`
-// (regra `testes-no-portao`) falha quando um teste ou um grupo ficou de fora.
-//
-//   node scripts/testar.mjs                 os grupos leves, na ordem do cadastro
-//   node scripts/testar.mjs <grupo>...      só esses grupos
-//   node scripts/testar.mjs <grupo> -- ...  o que vem depois do `--` vai ao comando do grupo
-//                                           (unittest e Playwright: `-- --shard=1/8`, um spec)
-//   node scripts/testar.mjs --listar        os grupos e os arquivos que cada um roda
 
 import { spawn, spawnSync } from 'node:child_process';
 import path from 'node:path';
@@ -26,7 +16,6 @@ const AJUDA = `uso: node scripts/testar.mjs [--listar] [<grupo>...] [-- <argumen
 Roda os grupos de teste de scripts/testes.json. Sem grupo, roda os leves (o e2e é "pesado": peça por nome).
 O Python é o de $PYTHON, senão o do .venv (scripts/preparar-python.sh o cria), senão python3.`;
 
-/** Os comandos de um grupo: [{ comando, argumentos, cwd }]. */
 function comandosDoGrupo(grupo, arquivos, extras) {
   const python = escolherPython(process.env, RAIZ).comando;
   if (grupo.executor === 'node') return arquivos.map(arquivo => ({ comando: 'node', argumentos: [arquivo], cwd: RAIZ }));
@@ -39,7 +28,6 @@ function comandosDoGrupo(grupo, arquivos, extras) {
   throw new Error(`executor desconhecido: ${grupo.executor}`);
 }
 
-/** Roda o comando com a saída à vista; com `copiarErro`, o erro padrão também é guardado em `stderr`. */
 function rodar(comando, argumentos, cwd, copiarErro) {
   return new Promise(resolve => {
     const filho = spawn(comando, argumentos, { cwd, stdio: ['inherit', 'inherit', copiarErro ? 'pipe' : 'inherit'] });
@@ -83,7 +71,6 @@ async function main(argv) {
     if (deFora.length) console.log(`(sem ${deFora.join(', ')}: pesado; rode \`node scripts/testar.mjs ${deFora[0]}\`)`);
   }
 
-  // Numa branch de trabalho, o hash e o .ankiaddon do complemento não são cobrados: a versão é dada no merge.
   const git = (...args) => spawnSync('git', args, { cwd: RAIZ, encoding: 'utf8' });
   const baseDaPr = baseDaVersao(process.env, git('rev-parse', '--abbrev-ref', 'HEAD').stdout.trim(), git('rev-parse', '--verify', '--quiet', 'origin/main').status === 0);
   if (baseDaPr) process.env.PM_VERSAO_BASE = baseDaPr;
@@ -99,7 +86,6 @@ async function main(argv) {
     }
     for (const { comando, argumentos, cwd } of comandosDoGrupo(grupo, doGrupo, extras)) {
       console.log(`\n▶ ${nome}: ${[comando, ...argumentos].join(' ')}`);
-      // O erro padrão sai na hora, e uma cópia fica para reconhecer o ModuleNotFoundError; o Playwright não o precisa.
       const resultado = await rodar(comando, argumentos, cwd, grupo.executor !== 'playwright');
       if (resultado.error) {
         console.log(`✗ ${nome}: não consegui rodar ${comando} (${resultado.error.message})${grupo.precisa ? `; o grupo precisa de: ${grupo.precisa}` : ''}`);

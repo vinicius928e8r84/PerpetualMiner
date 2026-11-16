@@ -1,13 +1,8 @@
 'use strict';
 
-// Os textos de erro do gancho do tamanho dos arquivos (limite-de-tokens.js): o que fazer para dividir
-// um arquivo grande e o que desfazer numa linha de base afrouxada. Só monta texto; não lê o git.
-
 const path = require('path');
 
 const tokensDe = (bytes, bytesPorToken = 4) => Math.ceil(bytes / bytesPorToken);
-
-// --- A mensagem de erro ---
 
 const PASSOS_COMUNS = [
   'Cada arquivo novo fica abaixo do limite (confira com `git show :<arquivo> | wc -c`).',

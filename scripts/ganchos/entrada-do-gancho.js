@@ -1,10 +1,5 @@
 'use strict';
 
-// A leitura confiável do que o gancho do tamanho dos arquivos (limite-de-tokens.js) recebe como
-// entrada: a configuração (limite-de-tokens.json) e a linha de base preparada. Arquivo ilegível, JSON
-// quebrado ou formato errado lança ErroDeEntrada, que barra o commit (fail closed) dizendo o arquivo
-// e a linha. Só a falha do ambiente (git indisponível, por exemplo) deixa o commit passar com aviso.
-
 class ErroDeEntrada extends Error {
   constructor(onde, detalhe, linha, aproximada = false) {
     const ondeNoArquivo = linha ? `${aproximada ? 'perto da ' : ''}linha ${linha}` : '';
@@ -17,7 +12,6 @@ class ErroDeEntrada extends Error {
 const ehObjeto = valor => valor !== null && typeof valor === 'object' && !Array.isArray(valor);
 const ehNumeroDeBytes = valor => typeof valor === 'number' && Number.isFinite(valor) && valor >= 0;
 
-/** A linha (de 1) da primeira linha do texto que cita a chave; `null` se nenhuma cita. */
 function linhaDaChave(texto, chave) {
   const indice = texto.split('\n').findIndex(linha => linha.includes(JSON.stringify(chave)));
   return indice < 0 ? null : indice + 1;
@@ -29,7 +23,6 @@ function lerJson(texto, onde) {
   } catch (erro) {
     const posicao = /position (\d+)/.exec(erro.message);
     if (posicao) throw new ErroDeEntrada(onde, `não é um JSON válido (${erro.message})`, texto.slice(0, Number(posicao[1])).split('\n').length);
-    // Sem a posição, a mensagem traz o trecho em volta do erro: a linha onde ele começa fica a uma ou duas do erro.
     const trecho = /, (?:\.\.\.)?"(.+?)"(?:\.\.\.)? is not valid JSON/s.exec(erro.message);
     const inicio = trecho ? texto.indexOf(trecho[1]) : -1;
     const linha = inicio < 0 ? null : texto.slice(0, inicio).split('\n').length;
@@ -37,7 +30,6 @@ function lerJson(texto, onde) {
   }
 }
 
-/** A linha de base `{ caminho: bytes }` de um texto JSON `{ arquivos: {...} }`; `onde` nomeia o arquivo nas mensagens. */
 function lerLinhaDeBaseDoTexto(texto, onde) {
   const dados = lerJson(texto, onde);
   if (!ehObjeto(dados)) throw new ErroDeEntrada(onde, 'esperava um objeto com a chave "arquivos"', 1);
@@ -57,7 +49,6 @@ const CAMPOS_DA_CONFIGURACAO = [
   ['ignorar', valor => Array.isArray(valor) && valor.every(r => ehObjeto(r) && typeof r.glob === 'string' && typeof r.motivo === 'string'), 'uma lista de { glob, motivo }'],
 ];
 
-/** A configuração `{ limiteDeBytes, linhaDeBase, ignorar, ... }` de um texto JSON; `onde` nomeia o arquivo nas mensagens. */
 function lerConfiguracaoDoTexto(texto, onde) {
   const config = lerJson(texto, onde);
   if (!ehObjeto(config)) throw new ErroDeEntrada(onde, 'esperava um objeto de configuração', 1);

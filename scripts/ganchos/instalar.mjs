@@ -1,8 +1,3 @@
-// Liga os ganchos do repositório (scripts/ganchos/): `git config core.hooksPath scripts/ganchos`.
-// Roda sozinho no `npm ci` de e2e/ (script `prepare`); num clone que já existe, uma vez:
-//   node scripts/ganchos/instalar.mjs
-// Não mexe se o clone já escolheu outra pasta de ganchos (local, global ou do sistema), avisa dos ganchos de
-// .git/hooks que passam a não rodar, não faz nada no CI e nunca falha (não pode quebrar o `npm ci`).
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -19,7 +14,7 @@ function hooksPathEscolhido() {
     try {
       const valor = git('config', escopo, '--get', 'core.hooksPath');
       if (valor) return valor;
-    } catch { /* sem valor nesse escopo */ }
+    } catch {}
   }
   return '';
 }
