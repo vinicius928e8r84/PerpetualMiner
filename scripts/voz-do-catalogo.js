@@ -59,8 +59,10 @@ function htmlDoCatalogo(html = fs.readFileSync(CAMINHO_DO_HTML, 'utf8'), catalog
 function linhasDoHtml(html) {
   const gerado = DO_GERADO.exec(html)?.[0];
   if (!gerado) throw new Error('catalogo.html: não achei a tabela gerada');
-  const secoes = new Function(`${gerado}\nreturn CAT;`)();
-  return secoes.flatMap(({ rows }) => rows.map(([id, texto, nota]) => ({ id, texto: desfazerEscape(texto), nota: desfazerEscape(nota) })));
+  return gerado.split('\n').filter(linha => linha.startsWith('  [')).map(linha => {
+    const [id, texto, nota] = JSON.parse(linha.trim().replace(/,$/, ''));
+    return { id, texto: desfazerEscape(texto), nota: desfazerEscape(nota) };
+  });
 }
 
 module.exports = { CAMINHO_DO_HTML, NOTAS_POR_AREA, carregarCatalogo, htmlDoCatalogo, linhasDoHtml };
