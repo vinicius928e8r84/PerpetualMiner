@@ -1,11 +1,5 @@
 'use strict';
 
-// A prévia do Cartão (#164, BRG-43): o Cartão de exemplo de um estilo (idioma × nível) como o Anki o desenha. É o Anki que o desenha (a Conexão pede
-// ao renderizador dele, `POST /anki/card-preview`), e esta página só o mostra, num quadro isolado: o HTML do Cartão vem de fora e o quadro não roda
-// script nenhum (`sandbox` sem `allow-scripts`) nem carrega nada que não seja `data:` (a política do documento). Frente e Verso são as duas faces; o Verso
-// traz a frente em cima, como o Anki depois de “Mostrar resposta”. Um componente só: Ajustes de envio › Estilo do cartão e o passo do nível da Boas-vindas
-// o montam, e o do primeiro Cartão (#173) pode pedir o de uma nota gravada.
-
 (function (raiz) {
   const { textoDaVoz, Veio, ConexaoAnki, PedidoAoAnki, IDIOMAS } = raiz;
   const NOME_DO_IDIOMA = { en: IDIOMAS.INGLES, ru: IDIOMAS.RUSSO };
@@ -15,7 +9,7 @@
   const POLITICA = "default-src 'none'; img-src data:; style-src 'unsafe-inline'";
   const ESTADO = Object.freeze({ CARREGANDO: 'carregando', PRONTA: 'pronta', SEM_CONEXAO: 'semConexao', ANTIGA: 'antiga', FALHOU: 'falhou' });
 
-  const lidas = new Map();   // `${idioma}/${nível}` → a leitura (a promessa de `{ estado, previa }`): o exemplo de um estilo não muda enquanto a página está aberta
+  const lidas = new Map();
 
   function elemento(tag, classe, ...filhos) {
     const no = document.createElement(tag);
@@ -30,9 +24,8 @@
       + `<style>html { min-height: 100%; } body { margin: 0; } .card { min-height: 100vh; box-sizing: border-box; padding: 16px; } ${css}</style><div class="card">${html}</div>`;
   }
 
-  /** Pede o exemplo à Conexão (um pedido por estilo, repartido entre quem o mostra); devolve `{ estado, previa }`, nunca levanta. Só a leitura boa fica guardada. */
   function ler(lang, nivel, tipoProprio) {
-    if (tipoProprio) return pedir(lang, nivel, tipoProprio);   // no tipo de nota da pessoa (#165) o Cartão muda com o Anki dela: nada fica guardado
+    if (tipoProprio) return pedir(lang, nivel, tipoProprio);
     const chave = `${lang}/${nivel}`;
     if (!lidas.has(chave)) {
       const leitura = pedir(lang, nivel);
@@ -58,11 +51,6 @@
     return { estado: ESTADO.PRONTA, previa };
   }
 
-  /**
-   * A prévia de um idioma. `prefixo` separa os ids de quem a monta (a Boas-vindas e Ajustes de envio vivem na mesma página). Devolve `{ no, mostrar }`:
-   * `mostrar(nivel, tipoProprio)` pede e desenha o exemplo do nível (um pedido que chega depois de outro mais novo é descartado); com `tipoProprio`
-   * (`{ nome, mapa }`, #165), o exemplo no tipo de nota que a pessoa já tem, com as partes nos campos do mapa.
-   */
   function montar({ prefixo, lang }) {
     const id = `${prefixo}-previa-${lang}`;
     const estado = { nivel: null, tipoProprio: null, nota: null, face: 'back', previa: null, vez: 0 };
@@ -110,7 +98,6 @@
       }));
     }
 
-    /** Mostra a leitura `ler()` (`{ estado, previa }`) sob a `legenda`; um pedido que chega depois de outro mais novo é descartado. */
     async function exibir(textoDaLegenda, ler) {
       const vez = ++estado.vez;
       legenda.textContent = textoDaLegenda;
@@ -130,7 +117,6 @@
       return exibir(textoDaVoz('BRG-43.legenda', { nivel: textoDaVoz(VOZ_DO_NIVEL[nivel]), idioma: NOME_DO_IDIOMA[lang].toLowerCase() }), () => ler(lang, nivel, tipoProprio));
     }
 
-    /** O Cartão da nota que o Envio gravou (o primeiro Cartão da Boas-vindas, #173), pelo `guid`; a nota muda, então a leitura não fica guardada. */
     function mostrarNota(guid) {
       estado.nota = guid;
       return exibir(textoDaVoz('BRG-43.legendaDaNota'), () => pedirAoAnki(PedidoAoAnki.previaDaNota(guid)));

@@ -10,16 +10,16 @@
   const porId = id => document.getElementById(id);
 
   const estado = {
-    aberto: 'en', // o card aberto (um por vez); null com todos fechados
-    gravados: null, // os ajustes gravados, como os cards fechados mostram
-    lidos: { en: null, ru: null }, // o gravado de onde cada rascunho partiu (com a versão)
+    aberto: 'en',
+    gravados: null,
+    lidos: { en: null, ru: null },
     rascunhos: { en: null, ru: null },
-    erros: { en: false, ru: false }, // o nome do baralho tem um nível vazio (só no campo de texto)
-    baralhos: null, // os baralhos do Anki; null sem a lista (campo de texto)
+    erros: { en: false, ru: false },
+    baralhos: null,
     ultimaLeituraDeBaralhos: 0,
     salvando: null,
-    erroDeOuvir: {}, // o ID da Voz do que deu errado em cada Ouvir, por `<idioma>:<campo>`
-    audio: null, // o que está tocando
+    erroDeOuvir: {},
+    audio: null,
   };
 
   function iniciar() {
@@ -44,7 +44,6 @@
     return Boolean(lido && rascunho) && CAMPOS.some(campo => rascunho[campo] !== lido[campo]);
   }
 
-  /** O gravado volta ao formulário do idioma, sem o rascunho. */
   function adotarGravado(lang) {
     estado.lidos[lang] = estado.gravados[lang];
     estado.rascunhos[lang] = copia(estado.gravados[lang]);
@@ -74,24 +73,20 @@
         const dados = await resposta.json();
         if (Array.isArray(dados.decks)) baralhos = dados.decks.map(String);
       }
-    } catch {
-      // Sem a lista, o Baralho é um campo de texto.
-    }
+    } catch {}
     if (leitura !== estado.ultimaLeituraDeBaralhos) return;
     if (JSON.stringify(baralhos) === JSON.stringify(estado.baralhos)) return;
     estado.baralhos = baralhos;
     desenhar();
   }
 
-  /** A Conexão caiu: a lista lida deixa de valer e o Baralho volta a ser um campo de texto. */
   function esquecerOsBaralhos() {
-    estado.ultimaLeituraDeBaralhos++;   // uma leitura em andamento não devolve a lista
+    estado.ultimaLeituraDeBaralhos++;
     if (!estado.baralhos) return;
     estado.baralhos = null;
     desenhar();
   }
 
-  /** As opções do Baralho: os do Anki e, fora deles, o escolhido e o padrão, dizendo que o Anki não os tem. */
   function opcoesDeBaralho(lang) {
     const escolhido = estado.rascunhos[lang].deckName;
     const padrao = AjustesDeEnvio.baralhoPadrao(lang);
@@ -252,7 +247,6 @@
     return elemento('div', 'ajustes-campo', rotulo, campo, ajudaDoBaralho(lang, id));
   }
 
-  /** Embaixo do campo de texto: o que vale em branco, ou (nome com nível vazio) o porquê da recusa. */
   function ajudaDoBaralho(lang, id) {
     const ajuda = estado.erros[lang]
       ? elemento('p', 'veio-campo-erro', textoDaVoz('BRG-07.nivelVazio'))
@@ -313,7 +307,6 @@
     return detalhes;
   }
 
-  /** O sotaque da voz do Google, pelo nome do lugar; um domínio gravado que não está na lista continua lá, com o próprio nome. */
   function campoDoSotaque(lang, campo, vozDoRotulo) {
     const rascunho = estado.rascunhos[lang];
     const dominio = rascunho[campo];
@@ -326,7 +319,6 @@
     return comOuvir(lang, campo, vozDoRotulo, escolha);
   }
 
-  /** A voz de reserva: a lista de provedores que a Conexão tenta quando a do Google falha (a voz do Anki não está nela). */
   function campoDaReserva(lang) {
     const rascunho = estado.rascunhos[lang];
     const escolha = elemento('select', 'veio-campo', ...AjustesDeEnvio.RESERVAS.map(valor => opcao(valor, textoDaVoz(VOZ_DA_RESERVA[valor]))));
@@ -344,10 +336,8 @@
   }
 
   const notaDaReserva = lang => textoDaVoz(estado.rascunhos[lang].ttsReserva === 'nenhuma' ? 'BRG-07.reservaNotaNenhuma' : 'BRG-07.reservaNotaOpenai');
-  /** Sem reserva não há voz para ouvir. */
   const semVozParaOuvir = (lang, campo) => campo === 'ttsReserva' && estado.rascunhos[lang].ttsReserva === 'nenhuma';
 
-  /** O seletor com o Ouvir ao lado e, embaixo, o que deu errado ao ouvir. */
   function comOuvir(lang, campo, vozDoRotulo, escolha, ...embaixo) {
     const rotulo = elemento('label', 'ajustes-campo__rotulo', textoDaVoz(vozDoRotulo));
     rotulo.htmlFor = escolha.id;
@@ -372,7 +362,6 @@
     if (erro) [erro.textContent, erro.hidden] = [voz ? textoDaVoz(voz) : '', !voz];
   }
 
-  /** Ouvir: a Conexão fala a amostra com a voz que está na tela (mesmo sem salvar) e o painel a toca. */
   async function ouvir(lang, campo) {
     const rascunho = estado.rascunhos[lang];
     const botao = porId(`ajustes-ouvir-${campo}-${lang}`);
@@ -385,7 +374,6 @@
     botao.disabled = semVozParaOuvir(lang, campo);
   }
 
-  /** Pede a amostra à Conexão e a toca; devolve null, ou o ID da Voz que diz por que não tocou. */
   async function tocarAAmostra(pedido) {
     let resposta;
     try {
@@ -415,7 +403,6 @@
     return elemento('div', 'ajustes-acoes', salvar, situacao);
   }
 
-  /** Salvar em destaque só com o que salvar; ao lado, se o que está na tela já está gravado. */
   function mostrarSituacao(lang, salvar = porId(`ajustes-salvar-${lang}`), situacao = porId(`ajustes-situacao-${lang}`)) {
     if (!salvar || !situacao) return;
     const sujo = temRascunho(lang);
@@ -427,7 +414,6 @@
     situacao.replaceChildren(ponto, textoDaVoz(sujo ? 'BRG-07.estadoNaoSalvo' : 'BRG-07.estadoSalvo'));
   }
 
-  /** Mexeu no formulário: só a situação muda, o campo em uso não é redesenhado. */
   function aoEditar(lang) {
     mostrarSituacao(lang);
   }

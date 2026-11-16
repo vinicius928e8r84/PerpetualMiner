@@ -75,7 +75,6 @@ figure {
   margin-left: auto;
 }
 
-/* O rótulo em versalete das seções; o marcado leva o losango ouro. */
 .foto-rotulo {
   display: flex;
   align-items: center;
@@ -133,7 +132,6 @@ figure {
   font-size: var(--veio-tam-apoio);
 }
 
-/* Progresso da leitura (FOT-20). */
 .foto-progresso__trilho {
   height: 6px;
   overflow: hidden;
@@ -157,7 +155,6 @@ figure {
   font-size: var(--veio-tam-legenda);
 }
 
-/* Área de envio: clique, arraste ou “Escolher”. */
 .foto-envio {
   display: flex;
   align-items: center;
@@ -195,15 +192,12 @@ figure {
   min-width: 0;
 }
 
-/* Os formatos aceitos (FOT-02) no fim da linha do título, para a área de
-   envio não ganhar uma linha a mais. Somem com a primeira foto. */
 .foto-fotos__formatos {
   margin-left: auto;
   color: var(--veio-muted);
   font-size: var(--veio-tam-legenda);
 }
 
-/* A fila: um cartão por foto, com miniatura e status. */
 .foto-fila {
   display: grid;
   gap: 8px;
@@ -278,12 +272,10 @@ figure {
   line-height: 1.35;
 }
 
-/* “Tentar de novo” só na foto que falhou, abaixo da causa. */
 .foto-cartao__de-novo {
   margin-top: 6px;
 }
 
-/* A legenda das marcações, no pé da fila e no estado vazio. */
 .foto-legenda {
   display: grid;
   gap: 9px;
@@ -372,7 +364,6 @@ figure {
   color: var(--veio-danger);
 }
 
-/* A causa da falha cabe numa linha só, e o texto do começo em duas. */
 .foto-vazio.foto-vazio--falha .veio-vazio__texto {
   max-width: none;
 }
@@ -381,8 +372,6 @@ figure {
   max-width: 58ch;
 }
 
-/* Os avisos da leitura, como no protótipo: o ícone, a abertura em negrito e
-   a causa na mesma linha, centrados com o ×. */
 .foto-avisos .veio-aviso {
   align-items: center;
 }
@@ -395,7 +384,6 @@ figure {
   margin-top: 6px;
 }
 
-/* Mais de um botão no vazio (Abrir Configurações · Recomeçar), lado a lado. */
 .foto-vazio__acoes {
   display: flex;
   flex-wrap: wrap;
@@ -403,14 +391,12 @@ figure {
   gap: 8px;
 }
 
-/* O ícone do botão continua o do botão, não o grande do estado vazio. */
 .foto-vazio .veio-botao svg {
   width: 16px;
   height: 16px;
   color: inherit;
 }
 
-/* Prévia de uma foto, antes de ler. */
 .foto-previa {
   display: grid;
   gap: 14px;
@@ -462,7 +448,6 @@ figure {
   gap: 8px;
 }
 
-/* A lista: cabeçalho, grupos por foto e o botão fixo no pé. */
 .foto-lista {
   display: flex;
   flex-direction: column;
@@ -534,7 +519,6 @@ figure {
   gap: 8px;
 }
 
-/* A linha é a .veio-frase da base; aqui só o texto editável e os estados. */
 .foto-frase {
   transition: opacity var(--veio-transicao);
 }
@@ -593,8 +577,6 @@ figure {
     margin-top: 0;
   }
 
-  /* Minerar vira uma barra no pé da coluna, com o fundo da página e uma
-     borda em cima: não flutua mais sobre os cartões das frases. */
   .foto-minerar {
     bottom: 0;
     margin: 8px calc(-1 * clamp(16px, 3vw, 32px)) -40px;
