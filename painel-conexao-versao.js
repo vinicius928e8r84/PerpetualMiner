@@ -237,7 +237,7 @@
     ConexaoAnki.acompanhar(lerASaude);
     ConexaoAnki.acompanhar(desenharOPareamento);
     PareamentoComOAnki.aoMudar(desenharOPareamento);
-    addEventListener('hashchange', () => setTimeout(() => { const no = porId('painel-pareamento'); if (no) ponhaNoLugar(no); }));
+    addEventListener('hashchange', () => setTimeout(() => { const no = porId('painel-pareamento'); if (no) ponhaNoLugar(no); }));   // a Boas-vindas e o Painel trocam de lugar sem recarregar
   }
 
   raiz.ConexaoVersao = { iniciar };
