@@ -14,11 +14,11 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento.test_envio import CHAVE, ID, EnvioNoTeste, pedido  # noqa: E402
-from complemento.test_envio_imagem import FOTOS, FRASE, imagens, juiz_fraco_que_prefere_a_gerada, juiz_que_prefere, so_a_imagem  # noqa: E402
-from complemento.test_imagens_de_mentira import png_de  # noqa: E402
-from complemento.test_login_do_chatgpt import arquivo_do_login, entrar_e_voltar, tudo_o_que_ficou  # noqa: E402
-from complemento.test_modelo_dos_cartoes import cenario, escolher  # noqa: E402
+from complemento.test_envio import CHAVE, ID, EnvioNoTeste, pedido
+from complemento.test_envio_imagem import FOTOS, FRASE, imagens, juiz_fraco_que_prefere_a_gerada, juiz_que_prefere, so_a_imagem
+from complemento.test_imagens_de_mentira import png_de
+from complemento.test_login_do_chatgpt import arquivo_do_login, entrar_e_voltar, tudo_o_que_ficou
+from complemento.test_modelo_dos_cartoes import cenario, escolher
 
 JUIZ = "You are an expert visual selector"
 
@@ -172,7 +172,6 @@ class OPrimeiroLimiteDeUsoDoPlano(unittest.TestCase):
         self.assertEqual((fim["lastError"], so_a_imagem(notas[0]["midia"]), textos, textos_depois), (None, {arquivo: png_de("foto-b")}, 1, 1))
 
     def test_quando_o_juiz_do_plano_falha_o_token_nao_vai_ao_log_nem_aos_arquivos_nem_a_resposta_da_conexao(self):
-        # A OpenAI de mentira repete o `Authorization` na mensagem do erro: o que a Conexão guarda ou responde não pode repeti-lo.
         for recusa in ((429, "subscription_sharing_usage_limit_exceeded"), (403, "subscription_sharing_user_not_eligible"), (500, "server_error")):
             with self.subTest(recusa), tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
                 conexao.openverse.fotos = FOTOS
@@ -200,7 +199,7 @@ class QuandoOJuizDoPlanoFalhaPorErroPassageiro(unittest.TestCase):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
             conexao.openverse.fotos = FOTOS
             conexao.openai.juiz = juiz_que_prefere(1)
-            conexao.openai.recusa_do_juiz_do_plano = lambda quantos: (503, "server_error") if quantos == 2 else None  # o texto foi o 1º pedido, o juiz o 2º e o 3º
+            conexao.openai.recusa_do_juiz_do_plano = lambda quantos: (503, "server_error") if quantos == 2 else None
             acesso, estado, notas = enviar_com_o_plano(conexao)
             pedidos, juizes = len(do_juiz(conexao)), [a for a, _, _ in conexao.openai.juizes]
         arquivo, = imagens(notas[0]["campos"])

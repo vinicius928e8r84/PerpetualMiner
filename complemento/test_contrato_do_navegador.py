@@ -8,8 +8,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import baralhos  # noqa: E402
-from complemento.test_contrato_da_criacao import SO_O_DEFAULT  # noqa: E402
+from complemento import baralhos
+from complemento.test_contrato_da_criacao import SO_O_DEFAULT
 
 
 class ContratoDoNavegador:

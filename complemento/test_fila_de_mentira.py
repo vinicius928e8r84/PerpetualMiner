@@ -9,7 +9,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import envio  # noqa: E402
+from complemento import envio
 
 
 def semear_a_fila(pasta, fila):

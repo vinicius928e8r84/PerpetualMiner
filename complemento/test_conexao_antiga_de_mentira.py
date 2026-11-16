@@ -37,7 +37,6 @@ class ConexaoAntigaDeMentira:
         _gravar(self.fila, json.dumps({"jobs": []}))
         self.servidor = None
 
-    # -- os Envios de hoje --
     def envio(self, id_, status, frases, *, lang="en", baralho="Inglês", prontas=(), falharam=(), custos=(), criado=CRIADO):
         """`frases`: [(phraseId, linha)]. `prontas`/`falharam`: os phraseId que o estado de hoje diz já enviados/falhados."""
         _gravar(os.path.join(self.jobs, id_, "job.json"), json.dumps({
@@ -78,7 +77,6 @@ class ConexaoAntigaDeMentira:
                     achados[os.path.relpath(caminho, self.raiz)] = hashlib.sha256(arquivo.read()).hexdigest()
         return achados
 
-    # -- o servidor --
     def saude(self):
         return {"ok": True, "bridge": "running", "jobs": 0, "activeJobId": None, "automaticAnkiPath": self.motor,
                 "runtime": {"pid": PID, "startedAt": CRIADO, "root": self.raiz, "jobsRoot": self.jobs, "queueFile": self.fila}}

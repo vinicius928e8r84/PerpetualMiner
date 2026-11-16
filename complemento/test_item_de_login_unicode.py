@@ -12,8 +12,8 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import item_de_login  # noqa: E402
-from complemento.test_item_de_login import ANKI_DO_WINDOWS, ler_lista_do_alvo  # noqa: E402
+from complemento import item_de_login
+from complemento.test_item_de_login import ANKI_DO_WINDOWS, ler_lista_do_alvo
 
 
 class NoWindowsComNomeForaDoAscii(unittest.TestCase):

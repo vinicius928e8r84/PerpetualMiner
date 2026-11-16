@@ -34,7 +34,6 @@ ARQUIVO_DA_EXTENSAO = os.path.join(PASTA, "..", "conexao", "perpetualminer.ankia
 FORA_DO_PACOTE = ("test_", "empacotar.py", "__pycache__", "user_files", "contrato", "LEIA-ME.md", "versoes.json", "versoes-reservadas.json", "versao_no_merge.py")
 RAIZ = os.path.normpath(os.path.join(PASTA, ".."))
 ENGINE = os.path.normpath(os.path.join(PASTA, "..", "engine"))
-# O que o Envio usa do motor (só a biblioteca padrão; o áudio e a imagem entram com o #143 e o #144).
 ARQUIVOS_DO_MOTOR = (
     "config.json",
     "config_loader.py",
@@ -82,7 +81,6 @@ def versao_vem_no_merge():
     if not base:
         return False
     try:
-        # Desde onde a branch saiu: a base pode ter andado (e dado versão) depois.
         saiu = subprocess.run(["git", "-C", RAIZ, "merge-base", base, "HEAD"], capture_output=True, text=True)
         base = saiu.stdout.strip() if saiu.returncode == 0 else base
         antes = subprocess.run(["git", "-C", RAIZ, "show", base + ":complemento/configuracao.py"], capture_output=True, text=True)
@@ -100,7 +98,6 @@ def versao_vem_no_merge():
 
 
 def _entra_no_pacote(relativo):
-    # Nome que começa com ponto é de máquina (`.DS_Store` do Finder), não do complemento: não entra, nem muda o hash.
     return not any(parte.startswith(".") or parte.startswith(FORA_DO_PACOTE) for parte in relativo.split(os.sep))
 
 

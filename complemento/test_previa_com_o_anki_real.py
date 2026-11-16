@@ -17,9 +17,9 @@ try:
 except ImportError:
     Collection = None
 
-from complemento import no_anki, previa_do_cartao  # noqa: E402
-from complemento.motor import estilos  # noqa: E402
-from complemento.test_contrato_da_previa import texto_de  # noqa: E402
+from complemento import no_anki, previa_do_cartao
+from complemento.motor import estilos
+from complemento.test_contrato_da_previa import texto_de
 
 
 @unittest.skipIf(Collection is None, "a biblioteca `anki` não está instalada")
@@ -42,7 +42,6 @@ class PreviaNaColecaoDeVerdade(unittest.TestCase):
                     campos = previa_do_cartao.campos_do_exemplo(lang, nivel)
                     self.assertIn(texto_de(campos["Frase"]), texto_de(previa["front"]))
                     self.assertIn("pm-tocar", previa["front"])
-                    # O verso repete a Frase, salvo o nível que diz que não (o Intermediário e o Avançado do russo).
                     self.assertEqual(texto_de(campos["Frase"]) in texto_de(previa["back"]), estilos.estilo(lang, nivel).get("repete_a_frase", True))
                     self.assertIn(".card", previa["css"])
                     self.assertIn('<img src="data:image/svg+xml;base64,', previa["back"])

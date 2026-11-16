@@ -13,9 +13,9 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import baralhos, servidor  # noqa: E402
-from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
-from complemento.test_harness import ORIGEM, ConexaoNoTeste, ler_o_contrato  # noqa: E402
+from complemento import baralhos, servidor
+from complemento.test_colecao_em_memoria import ColecaoEmMemoria
+from complemento.test_harness import ORIGEM, ConexaoNoTeste, ler_o_contrato
 
 
 class LeituraDaColecao(unittest.TestCase):

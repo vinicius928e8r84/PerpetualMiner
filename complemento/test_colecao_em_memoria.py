@@ -13,12 +13,12 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import baralhos  # noqa: E402
-from complemento.test_contrato_da_criacao import ContratoDaCriacao  # noqa: E402
-from complemento.test_modelos_em_memoria import ModelosEmMemoria  # noqa: E402
-from complemento.test_contrato_da_previa import ContratoDaPrevia  # noqa: E402
-from complemento.test_contrato_do_perfil_fixo import ContratoDoPerfilFixo  # noqa: E402
-from complemento.test_renderizador_de_mentira import PreviaEmMemoria  # noqa: E402
+from complemento import baralhos
+from complemento.test_contrato_da_criacao import ContratoDaCriacao
+from complemento.test_modelos_em_memoria import ModelosEmMemoria
+from complemento.test_contrato_da_previa import ContratoDaPrevia
+from complemento.test_contrato_do_perfil_fixo import ContratoDoPerfilFixo
+from complemento.test_renderizador_de_mentira import PreviaEmMemoria
 
 
 def guardar_na_midia(arquivos, nome, dados):
@@ -55,16 +55,16 @@ class ColecaoEmMemoria(PreviaEmMemoria, ModelosEmMemoria):
         self._perfil_aberto = perfil_aberto or self._perfis[0]
         self._anki_inteiro = False
         self._fixo = None
-        self.entradas = []  # os perfis em que a Conexão entrou sozinha (o Anki na tela de perfis)
-        self.trocas = []  # (o perfil que estava aberto, o perfil aberto no lugar): o clique em “Abrir <perfil>”
+        self.entradas = []
+        self.trocas = []
         self._quebra = bool((descricao or {}).get("quebra"))
         self._padrao = (descricao or {}).get("baralhoPadrao", "Default")  # o nome do Baralho padrão segue o idioma do Anki (“Padrão” em português)
         self._tipos = {nome: list(campos) for nome, campos in ((descricao or {}).get("tiposDeNota") or {"Básico": ["Frente", "Verso"]}).items()}
         self._guids = set()
-        self._cartoes_dos_tipos = {}  # o modelo de Cartão (frente, verso, css) dos tipos que a Conexão criou; os outros têm o do Anki
-        self._notas = {}  # guid → { baralho, tipo_de_nota, campos } das notas que a Conexão gravou
+        self._cartoes_dos_tipos = {}
+        self._notas = {}
         self.gravadas = []
-        self.midia = {}  # a mídia da coleção: nome do arquivo → bytes
+        self.midia = {}
         self.sincronizando = False
         self._baralhos = {}
         proxima = 1700000000000
@@ -75,7 +75,7 @@ class ColecaoEmMemoria(PreviaEmMemoria, ModelosEmMemoria):
                 campos = list((nota.get("campos") or {"Frente": nota.get("frente", ""), "Verso": nota.get("verso", "")}).items())
                 for cartao in nota.get("cartoes", [{"tipo": 0, "intervalo": 0}]):
                     cartoes.append({"nota": proxima, "campos": campos, "tipo": cartao["tipo"], "intervalo": cartao["intervalo"]})
-                if nota.get("guid"):  # uma nota que o Envio gravou: a prévia a acha pelo `guid`
+                if nota.get("guid"):
                     self._notas[nota["guid"]] = {"baralho": baralho["nome"], "tipo_de_nota": nota.get("tipo", "Básico"), "campos": dict(campos)}
             self._baralhos[baralho["nome"]] = cartoes
         self._proxima = proxima
@@ -269,8 +269,6 @@ class ContratoDoAdaptadorDaColecao:
             fechada.nomes_dos_baralhos()
         with self.assertRaises(baralhos.ColecaoIndisponivel):
             fechada.cartoes_do_baralho("Inglês")
-
-    # O lado de gravação: o Envio grava cada Cartão por ele.
 
     def test_a_nota_gravada_fica_no_baralho_com_os_campos_do_tipo_de_nota(self):
         colecao = self.adaptador(DESCRICAO)

@@ -16,12 +16,12 @@ from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import abridor, atualizacao, configuracao, inicio, item_de_login  # noqa: E402
-from complemento.test_pareamento_de_mentira import iniciar_pareado, pedir_como_a_extensao, travar_o_item_de_login_do_computador  # noqa: E402
-from complemento.test_atualizacao import AnkiWebDeMentira  # noqa: E402
-from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
-from complemento.test_abridor import Pastas, RegistroDeMentira, abridor_do_mac, conversar  # noqa: E402
-from complemento.test_openai_de_mentira import OpenAIDeMentira  # noqa: E402
+from complemento import abridor, atualizacao, configuracao, inicio, item_de_login
+from complemento.test_pareamento_de_mentira import iniciar_pareado, pedir_como_a_extensao, travar_o_item_de_login_do_computador
+from complemento.test_atualizacao import AnkiWebDeMentira
+from complemento.test_colecao_em_memoria import ColecaoEmMemoria
+from complemento.test_abridor import Pastas, RegistroDeMentira, abridor_do_mac, conversar
+from complemento.test_openai_de_mentira import OpenAIDeMentira
 
 ORIGEM = configuracao.ORIGENS_ACEITAS[0]
 
@@ -215,7 +215,7 @@ class AoCarregarNoAnki(unittest.TestCase):
                 abridor=abridor_do_mac(pastas), ao_abrir_o_perfil=ganchos.append,
             )
             parar(conexao)
-            for aberto in ("Maria", "Joana"):  # a Maria estava aberta na primeira conexão; depois a Joana abre
+            for aberto in ("Maria", "Joana"):
                 perfil["aberto"] = aberto
                 for gancho in ganchos:
                     gancho()
@@ -246,7 +246,7 @@ class AoCarregarNoAnki(unittest.TestCase):
             pastas = Pastas(raiz)
             os.makedirs(os.path.join(raiz, "complemento", "user_files"))
             with open(os.path.join(raiz, "complemento", "user_files", "perfil.json"), "w", encoding="utf-8") as arquivo:
-                json.dump({"perfil": "Ana"}, arquivo)  # marcado antes; a Ana foi apagada ou renomeada no Anki
+                json.dump({"perfil": "Ana"}, arquivo)
             colecao = ColecaoEmMemoria(perfis=("Beto", "Carla"), perfil_aberto="Beto")
             conexao = inicio.iniciar(
                 os.path.join(raiz, "complemento"), lambda: "Beto", porta=0, colecao=colecao, abridor=abridor_do_mac(pastas),
@@ -308,7 +308,7 @@ class AoCarregarNoAnki(unittest.TestCase):
 
     def test_com_o_arquivo_de_log_indisponivel_a_conexao_sobe_e_nada_vai_ao_stderr(self):
         with tempfile.TemporaryDirectory() as pasta:
-            os.makedirs(os.path.join(pasta, "user_files", "logs", "complemento.log"))  # uma pasta no lugar do arquivo
+            os.makedirs(os.path.join(pasta, "user_files", "logs", "complemento.log"))
             erro = io.StringIO()
             with contextlib.redirect_stderr(erro):
                 conexao = inicio.iniciar(pasta, lambda: "Usuário 1", porta=0, abridor=None)

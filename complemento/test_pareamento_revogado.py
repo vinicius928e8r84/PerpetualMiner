@@ -14,11 +14,11 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import pareamento  # noqa: E402
-from complemento.test_pareamento_de_mentira import (  # noqa: E402
+from complemento import pareamento
+from complemento.test_pareamento_de_mentira import (
     _CONTRATO, CLIENTE, DESAFIO, OUTRO_CLIENTE, OUTRO_SEGREDO, SEGREDO, UM_CLIENTE_NOVO, arquivo_do_pareamento, cabecalhos_assinados, comecar, concluir, json_de, segredo_em_base64, semear,
 )
-from complemento.test_harness import ConexaoNoTeste  # noqa: E402
+from complemento.test_harness import ConexaoNoTeste
 
 VETOR_DA_REVOGACAO = _CONTRATO["vetorDaRevogacao"]
 
@@ -95,7 +95,7 @@ class OConferirDeQuemFoiDesconectado(unittest.TestCase):
             p = conexao.conexao.pareamento
             clientes = ["%08x-0000-4000-8000-000000000000" % n for n in range(pareamento.MAXIMO_DE_REVOGADOS + 3)]
             for cliente in clientes:
-                p._gravar([{"cliente": cliente, "segredo": segredo_em_base64(SEGREDO)}])   # `semear` apagaria os revogados
+                p._gravar([{"cliente": cliente, "segredo": segredo_em_base64(SEGREDO)}])
                 p.desconectar()
             primeiro, ultimo = conferir(conexao, cliente=clientes[0])[1], conferir(conexao, cliente=clientes[-1])[1]
             guardados = len(arquivo_do_pareamento(conexao)["revogados"])

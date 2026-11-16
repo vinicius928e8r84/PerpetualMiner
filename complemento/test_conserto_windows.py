@@ -13,8 +13,8 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import abridor  # noqa: E402
-from complemento.test_abridor import ANKI_DO_WINDOWS, RegistroDeMentira  # noqa: E402
+from complemento import abridor
+from complemento.test_abridor import ANKI_DO_WINDOWS, RegistroDeMentira
 
 
 class NoWindows(unittest.TestCase):
@@ -82,7 +82,7 @@ class NoWindows(unittest.TestCase):
         self.assertIn("if ($processo.CloseMainWindow()) { $recebeu++ }", corpo)
         self.assertNotIn("[void]$processo.CloseMainWindow()", corpo)
         sem_ninguem = "if ($recebeu -eq 0) { NinguemRecebeu; return }"
-        self.assertEqual(corpo.count(sem_ninguem), 2)   # o do desativado e o do kill
+        self.assertEqual(corpo.count(sem_ninguem), 2)
         primeiro = corpo.index(sem_ninguem)
         self.assertLess(corpo.index("CloseMainWindow"), primeiro)
         self.assertLess(primeiro, corpo.index("EsperarOAnkiSair $espera"))

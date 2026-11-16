@@ -15,7 +15,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import atualizacao, configuracao  # noqa: E402
+from complemento import atualizacao, configuracao
 
 
 class AnkiWebDeMentira:
@@ -25,7 +25,7 @@ class AnkiWebDeMentira:
     def __init__(self, id_=12345678, versao_no_ankiweb="0.9.0", pronto=True):
         self.id_, self.versao_no_ankiweb, self._pronto = id_, versao_no_ankiweb, pronto
         self.consultas, self.instalacoes, self.fechamentos = [], [], 0
-        self.update_enabled = True      # o padrão do Anki: ele mostra o diálogo
+        self.update_enabled = True
         self.tem_versao_nova = True
         self.instalar_funciona = True
         self.consulta_quebra = False
@@ -119,7 +119,7 @@ class AtualizacaoEmSilencio(unittest.TestCase):
     def test_depois_de_instalar_a_marca_continua_la(self):
         conexao, ankiweb = montar(self.pasta)
         conexao.ajustar_a_marca()
-        ankiweb.update_enabled = True  # uma instalação que regravou o meta.json
+        ankiweb.update_enabled = True
         conexao.verificar()
         self.assertFalse(ankiweb.update_enabled)
 
@@ -130,7 +130,6 @@ class AtualizacaoEmSilencio(unittest.TestCase):
     def test_a_versao_nova_vale_so_na_proxima_vez_e_depois_disso_o_estado_e_atualizada(self):
         conexao, _ = montar(self.pasta)
         conexao.verificar()
-        # o Anki abre de novo: a Conexão que sobe já é a nova
         depois, _ = montar(self.pasta, versao="0.9.0")
         self.assertEqual(depois.estado(), {"estado": "em_dia", "versao": "0.9.0", "atualizada": "0.9.0"})
         self.assertEqual(depois.na_saude(), {"estado": "em_dia", "versao": "0.9.0", "atualizada": "0.9.0"})
@@ -158,7 +157,7 @@ class AtualizacaoEmSilencio(unittest.TestCase):
         conexao, ankiweb = montar(self.pasta)
         conexao.ajustar_a_marca()
         self.assertFalse(ankiweb.update_enabled)
-        ankiweb._pronto = False  # o Anki novo mudou o que a Conexão lia
+        ankiweb._pronto = False
         conexao.ajustar_a_marca()
         self.assertTrue(ankiweb.update_enabled, "o diálogo do Anki tem de voltar")
         self.assertEqual(conexao.verificar()["estado"], "falhou")

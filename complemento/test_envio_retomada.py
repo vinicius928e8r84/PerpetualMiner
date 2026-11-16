@@ -14,9 +14,9 @@ from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
-from complemento.test_envio import ID, INGLES, EnvioNoTeste, chats, pedido  # noqa: E402
-from complemento.test_openai_de_mentira import _palavra_do_pedido  # noqa: E402
+from complemento.test_colecao_em_memoria import ColecaoEmMemoria
+from complemento.test_envio import ID, INGLES, EnvioNoTeste, chats, pedido
+from complemento.test_openai_de_mentira import _palavra_do_pedido
 
 TRES_FRASES = (
     "give up : She gave up smoking",
@@ -61,15 +61,14 @@ class OEnvioQueOAnkiFechadoParou(unittest.TestCase):
                 conexao.criar(pedido(ID, *TRES_FRASES))
                 parado = conexao.esperar(ID, lambda estado: estado["stage"] == "wait_anki")
                 antes = palavras_pedidas(conexao.openai)
-            # A Conexão morreu com o Anki. A pessoa o abre de novo: a Conexão sobe, com a mesma pasta de dados.
             colecao.notas_ate_fechar = 99
             colecao.abrir()
             with EnvioNoTeste(pasta, colecao=colecao) as conexao:
                 final = conexao.esperar(ID)
                 depois = palavras_pedidas(conexao.openai)
-        self.assertEqual((parado["status"], antes), ("running", ["give up"]))  # um Cartão no Anki, o seguinte espera o Anki antes de pagar
+        self.assertEqual((parado["status"], antes), ("running", ["give up"]))
         self.assertEqual((final["status"], len(colecao.gravadas)), ("completed", 3))
-        self.assertEqual(depois, ["keep running", "better late"])  # só o que faltava: o Cartão que já estava no Anki não paga de novo
+        self.assertEqual(depois, ["keep running", "better late"])
 
     def test_continuar_envio_com_o_envio_parado_so_diz_o_estado_e_nao_paga_a_openai(self):
         colecao = ColecaoEmMemoria(INGLES)
@@ -114,8 +113,8 @@ class APalavraDoCartaoFicaComoOCriarDecidiu(unittest.TestCase):
             conexao.esperar(ID, lambda estado: estado["stage"] == "wait_anki")
             parser = conexao.conexao.fila.motor.parser
             le = parser.parse_line
-            le_ao_contrario = lambda entrada, linha: _com_as_palavras_ao_contrario(le(entrada, linha))  # noqa: E731
-            with mock.patch.object(parser, "parse_line", side_effect=le_ao_contrario):  # uma atualização do complemento muda o parser
+            le_ao_contrario = lambda entrada, linha: _com_as_palavras_ao_contrario(le(entrada, linha))
+            with mock.patch.object(parser, "parse_line", side_effect=le_ao_contrario):
                 colecao.abrir()
                 final = conexao.esperar(ID)
             pedidas = palavras_pedidas(conexao.openai)

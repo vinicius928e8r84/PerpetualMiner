@@ -45,8 +45,8 @@ class ChatGPTDeMentira:
         self.pedidos = []
         self.revogados = []
         self.emitidos = []
-        self._codigos = {}  # código → o que a autorização pediu
-        self._renovaveis = {}  # refresh_token → client_id
+        self._codigos = {}
+        self._renovaveis = {}
         self._tranca = threading.Lock()
         dono = self
 

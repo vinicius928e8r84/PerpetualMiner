@@ -11,8 +11,8 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento.pedido_do_envio import MAXIMO_DE_FRASES  # noqa: E402
-from complemento.test_envio import ID, OUTRO_ID, EnvioNoTeste, pedido  # noqa: E402
+from complemento.pedido_do_envio import MAXIMO_DE_FRASES
+from complemento.test_envio import ID, OUTRO_ID, EnvioNoTeste, pedido
 
 LINHA = "give up : She gave up smoking"
 

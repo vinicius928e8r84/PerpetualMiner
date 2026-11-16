@@ -9,7 +9,7 @@ import estilos
 
 PARTES_DO_INICIANTE = ["pronuncia", "literal", "natural", "cena", "palavra", "imagem"]
 PARTES_DO_RUSSO_COM_MORFOLOGIA = ["pronuncia", "silaba_forte", "definicao", "significado_simples", "outro_exemplo", "explicacao_das_cores", "imagem"]
-PARTES_SEM_CORES = ["cena", "palavra", "definicao", "outro_exemplo", "imagem"]  # o Intermediário e o Avançado do inglês
+PARTES_SEM_CORES = ["cena", "palavra", "definicao", "outro_exemplo", "imagem"]
 
 
 class OEstiloVemDosDados(unittest.TestCase):
@@ -22,7 +22,7 @@ class OEstiloVemDosDados(unittest.TestCase):
         for lang in ("en", "ru"):
             with self.subTest(lang=lang):
                 estilo = estilos.estilo(lang)
-                partes = PARTES_DO_INICIANTE if lang == "en" else [parte for parte in PARTES_DO_INICIANTE if parte != "palavra"]  # o russo não mostra a palavra do dicionário
+                partes = PARTES_DO_INICIANTE if lang == "en" else [parte for parte in PARTES_DO_INICIANTE if parte != "palavra"]
                 self.assertEqual((estilo["explicacao"], estilo["cores"], estilo["verso"]), ("pt", True, partes))
 
     def test_os_dois_idiomas_tem_o_iniciante_o_intermediario_e_o_avancado(self):

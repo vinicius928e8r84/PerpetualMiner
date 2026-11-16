@@ -156,7 +156,6 @@ class GerarCartoesPorHttp(unittest.TestCase):
         self.assertEqual((salvos, falhas), ([], {build_card_stem(ENTRADA.keywords[0], ENTRADA.phrase): openai_http.RECUSADA}))
 
     def test_gerar_nao_escreve_na_saida_do_processo(self):
-        # Dentro do Anki, o que o motor escrevesse no stdout/stderr iria para o processo do Anki: vai ao logger.
         import contextlib
         import io
 

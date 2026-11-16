@@ -19,7 +19,7 @@ import zipfile
 AQUI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(AQUI))
 
-from complemento import configuracao, empacotar  # noqa: E402
+from complemento import configuracao, empacotar
 
 
 RAIZ = os.path.dirname(AQUI)
@@ -138,12 +138,10 @@ class ArquivoDoComplemento(unittest.TestCase):
             try:
                 inicio = importlib.import_module("123456789.inicio")
                 self.assertTrue(callable(inicio.iniciar))
-                # O motor que o Envio usa é o da pasta instalada, e lê a configuração e os prompts de lá.
                 motor = importlib.import_module("123456789.envio").motor_do_complemento()
                 self.assertTrue(motor.generate_cards.__file__.startswith(instalado))
                 self.assertEqual(motor.config_loader.base_config()["anki"]["note_type"], "Básico")
                 self.assertTrue(os.path.isfile(os.path.join(os.path.dirname(motor.config_loader.__file__), "prompts", "en_card.txt")))
-                # E gera um Cartão de dentro da pasta instalada, contra a OpenAI de mentira, sem PyYAML, dotenv nem o SDK da OpenAI.
                 from complemento.test_openai_de_mentira import OpenAIDeMentira
                 from complemento.test_motor import SEM_AS_BIBLIOTECAS_DE_FORA, configuracao_do_teste
 
@@ -153,7 +151,6 @@ class ArquivoDoComplemento(unittest.TestCase):
                     salvos = motor.generate_cards.run([entrada], config, openai_base=openai.base, card_stem=lambda trabalho, posicao: "9-%d" % posicao)
                 self.assertEqual(salvos, ["9-0"])
                 self.assertTrue(os.path.isfile(os.path.join(pasta, "textos", "9-0.txt")))
-                # E escolhe a imagem do Cartão de lá (a gerada, pela OpenAI de mentira), também sem Pillow nem `requests`.
                 from pathlib import Path
 
                 from complemento.test_imagens_de_mentira import png_de
@@ -289,7 +286,7 @@ class HoraDoEmpacotamento(unittest.TestCase):
         self.copia = copiar_o_complemento(self.pasta)
         os.makedirs(os.path.join(self.pasta, "conexao"))
         self.entregue = os.path.join(self.pasta, "conexao", "perpetualminer.ankiaddon")
-        self.mod_entregue = 1700000000  # do código de hoje: o arquivo da extensão pode estar atrás dele numa PR
+        self.mod_entregue = 1700000000
         empacotar.empacotar(self.entregue, mod=self.mod_entregue)
 
     def empacotar(self, nome, **variaveis):

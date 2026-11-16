@@ -16,9 +16,9 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento.test_leitura_dos_arquivos import arquivos_da_pasta  # noqa: E402
-from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
-from complemento.test_harness import ConexaoNoTeste, ler_o_contrato, semear_a_fila  # noqa: E402
+from complemento.test_leitura_dos_arquivos import arquivos_da_pasta
+from complemento.test_colecao_em_memoria import ColecaoEmMemoria
+from complemento.test_harness import ConexaoNoTeste, ler_o_contrato, semear_a_fila
 
 CHAVE = "sk-proj-chave-do-envio-0000"
 FIM = ("completed", "partial", "failed")
@@ -126,7 +126,6 @@ class UmaFraseViraCartao(unittest.TestCase):
         self.assertEqual(colecao.gravadas, [])
 
     def test_com_o_chrome_fechado_o_envio_termina_sozinho_e_a_lista_traz_o_que_chegou(self):
-        # Depois de criar, ninguém pergunta nada (o painel e o Chrome fechados); ao reabrir, a lista diz o que aconteceu.
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
             conexao.criar(pedido(ID, "give up : She gave up smoking"))
             fim = time.monotonic() + 15
@@ -239,7 +238,6 @@ class AChave(unittest.TestCase):
 
 class ARetomada(unittest.TestCase):
     def test_um_envio_interrompido_continua_de_onde_parou_sem_refazer_um_cartao_pronto(self):
-        # A Conexão parou no meio: um Cartão já estava no Anki, outro tinha o texto pago e a nota gravada sem o estado gravado.
         fila = ler_o_contrato()["filas"]["um Envio que terminou em parte"]
         job = dict(fila[0]["job"])
         estado = json.loads(json.dumps(fila[0]["state"]))
@@ -297,7 +295,6 @@ class ARetomada(unittest.TestCase):
         self.assertEqual((len(lista), len(pedidos)), (1, 1))
 
     def test_o_pedido_gravado_sem_entrar_na_fila_entra_quando_o_painel_pede_de_novo(self):
-        # A Conexão parou entre gravar o pedido e pô-lo na fila; o painel manda o mesmo pedido de novo.
         corpo = pedido(ID, "gave up : She gave up smoking")
         with tempfile.TemporaryDirectory() as pasta:
             with EnvioNoTeste(pasta, trabalhando=False) as conexao:
@@ -462,7 +459,6 @@ class OCriarInterrompido(unittest.TestCase):
             with EnvioNoTeste(pasta, colecao=colecao) as conexao:
                 estado = conexao.esperar(ID)
                 pedidos = chats(conexao.openai)
-        # A Frase já tinha chegado ao Anki (a linha virou só `noAnki`): o estado refeito a diz, e nada se paga nem se grava de novo.
         self.assertEqual((estado["status"], estado["cards"]["1760000000000-0"]["status"], pedidos), ("completed", "added", []))
         self.assertEqual(len(colecao.gravadas), 1)
 
@@ -604,7 +600,7 @@ class OApagarTudo(unittest.TestCase):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
             conexao.openai.recusar_o_chat_de("run", 429, "rate_limit_exceeded")
             conexao.criar(pedido(ID, "keep running | run : They keep running", "give up : She gave up smoking"))
-            conexao.esperar(ID)  # partial
+            conexao.esperar(ID)
             apagar_as_frases(conexao)
             antes = arquivos_sem_o_log(conexao)
             pedidos = len(chats(conexao.openai))
@@ -631,7 +627,6 @@ class AFraseNaoSobreviveAoApagarTudo(unittest.TestCase):
     def test_a_palavra_e_a_frase_unicas_nao_estao_em_user_files_no_log_nem_no_pacote_depois_do_apagar_tudo(self):
         colecao = ColecaoEmMemoria(INGLES)
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta, colecao=colecao) as conexao:
-            # O Anki fecha com o texto já pago e a linha ainda no pedido: é onde a Frase mais mora na Conexão.
             conexao.openai.antes_de_responder = lambda metodo, autorizacao: colecao.fechar()
             conexao.criar(pedido(ID, LINHA))
             conexao.esperar(ID, lambda estado: estado["stage"] == "wait_anki")

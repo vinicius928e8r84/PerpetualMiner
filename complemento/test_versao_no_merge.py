@@ -16,8 +16,8 @@ import zipfile
 AQUI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(AQUI))
 
-from complemento import empacotar, versao_no_merge  # noqa: E402
-from complemento.test_pacote import CONFERE_A_VERSAO, copiar_o_complemento  # noqa: E402
+from complemento import empacotar, versao_no_merge
+from complemento.test_pacote import CONFERE_A_VERSAO, copiar_o_complemento
 
 RAIZ = os.path.dirname(AQUI)
 EPOCA = "1700000000"
@@ -168,7 +168,6 @@ class QuemMudouOCodigoRecebeAProximaVersao(Casa):
         velha = versao_de(self.repo)
         nova = proxima_depois(velha)
         with tempfile.TemporaryDirectory() as outra:
-            # O fluxo de hoje, à mão: sobe a VERSAO, troca o número nos exemplos, registra o hash e refaz o arquivo.
             a_mao = repositorio(outra)
             mudar_o_codigo(a_mao)
             codigo = ler(a_mao, "complemento/configuracao.py")
@@ -207,7 +206,7 @@ class QuemMudouOCodigoRecebeAProximaVersao(Casa):
     def test_a_sequencia_continua_do_maior_numero_de_versoes_json(self):
         registradas = json.loads(ler(self.repo, "complemento/versoes.json"))
         adiante = a_frente(self.repo, 5)
-        registradas[adiante] = "f" * 64  # a PR que chegou antes e já leva o seu número
+        registradas[adiante] = "f" * 64
         escrever(self.repo, "complemento/versoes.json", json.dumps(registradas, indent=2) + "\n")
         mudar_o_codigo(self.repo)
         git(self.repo, "commit", "-qam", "uma PR com número")
