@@ -22,14 +22,11 @@ def safe_filename(text: str) -> str:
     converts spaces to underscores, and removes reserved characters.
     Hyphens that are part of the word (e.g. do-gooders) are preserved.
     """
-    # Remove bracket pairs and their content (e.g. "[Context: ...]")
     stem = re.sub(r'\[.*?\]', '', text).strip()
-    # If the entire text was wrapped in brackets, just strip the bracket chars
     if not stem:
         stem = re.sub(r'[\[\]]', '', text).strip()
     stem = stem.lower()
     stem = re.sub(r'\s+', '_', stem)
-    # Strip Windows-reserved and bracket chars (keep hyphens)
     stem = re.sub(r'[<>:"/\\|?*\[\]]+', '', stem)
     stem = re.sub(r'_+', '_', stem).strip('_-')
     return stem
@@ -59,8 +56,8 @@ def stable_phrase_stem(text: str, prefix_words: int = 6, hash_len: int = 10) -> 
 
 @dataclass
 class MiningEntry:
-    keywords: List[str]   # All keywords (split by |)
-    phrase: str           # Original phrase
+    keywords: List[str]
+    phrase: str
     context_source: Optional[str] = None
     context_title: Optional[str] = None
     context_detail: Optional[str] = None
@@ -80,8 +77,8 @@ class MiningEntry:
 class CardJob:
     """One card to be generated - one per keyword in a MiningEntry."""
     keyword: str
-    phrase: str         # Original phrase, or an AI instruction for secondary keywords
-    is_generated: bool  # True = AI must invent a new sentence
+    phrase: str
+    is_generated: bool
     entry: MiningEntry
     file_stem: Optional[str] = None
 
@@ -192,14 +189,11 @@ def parse_mining_line_ru(raw_line: str) -> Optional[MiningEntry]:
     line = raw_line.strip()
     if not line:
         return None
-    # Capture the optional [Context: ...] block so the Russian prompt can build a Gist line, then remove it
-    # from the phrase: the Russian model expects only the bare Russian phrase in Front (metadata triggers refusals).
     body, context_source, context_title, context_detail = _split_context(line)
     target, body = _split_target_word(body)
     phrase = normalize_ru_phrase(body)
     if not phrase:
         return None
-    # Keep a short human-readable label, but use the full phrase for the stem.
     words = phrase.split()
     keyword = target or (" ".join(words[:2]) if len(words) >= 2 else words[0])
     return MiningEntry(

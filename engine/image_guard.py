@@ -57,12 +57,11 @@ def _heuristic(keyword: str) -> Optional[bool]:
         if re.search(pat, kw, re.IGNORECASE):
             return False
 
-    # Multi-word with verb-like structure → probably phrasal/idiomatic
     words = kw.split()
     if len(words) >= 3:
-        return None  # let GPT decide
+        return None
 
-    return None  # single/dual word — let GPT decide
+    return None
 
 
 _SYSTEM = (
@@ -99,7 +98,6 @@ def should_generate_image(
             repeticoes=provedores.REPETICOES_DA_IMAGEM,
         )
 
-        # Record the tiny cost
         if usage:
             cost_tracker.record_tokens(
                 log_dir,
@@ -111,5 +109,4 @@ def should_generate_image(
 
         return verdict.upper() == "C"
     except Exception:
-        # On any API error, default to generating the image
         return True

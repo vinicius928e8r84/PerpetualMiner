@@ -212,7 +212,7 @@ def rank_candidates(
             len(valid_index_map),
         )
         return _invalid_image_format_fallback(mode, valid_index_map)
-    if not plano:  # the plan is not paid per call
+    if not plano:
         _record_cost(log_dir, model, usage, f"[image_judge] {label or keyword}")
 
     try:

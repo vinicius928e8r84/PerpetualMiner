@@ -24,11 +24,10 @@ import urllib.request
 
 OPENAI_BASE = "https://api.openai.com"
 TEMPO_PADRAO = 120
-TEMPO_DA_IMAGEM = 240  # an image takes longer than a text
+TEMPO_DA_IMAGEM = 240
 REPETICOES_DA_IMAGEM = 2
-ESPERA_ENTRE_TENTATIVAS = 0.5  # seconds before the first repetition; doubles for the next
+ESPERA_ENTRE_TENTATIVAS = 0.5
 
-# The same codes the add-on uses when it checks a key (complemento/openai_api.py).
 RECUSADA = "openai_key_rejected"
 SEM_CREDITO = "openai_no_credit"
 LIMITE_DE_USO = "openai_rate_limited"
@@ -49,7 +48,6 @@ _DO_PLANO = {
     "chatpass_v2_scope_not_authorized": PLANO_RECUSOU,
     "chatpass_v2_invalid_authorization_context": PLANO_RECUSOU,
 }
-# OpenAI's own machine code for an image it cannot read (the image judge discards the candidates); no text of its answer is kept.
 IMAGEM_INVALIDA = "openai_invalid_image"
 
 
@@ -98,7 +96,7 @@ def _classificar_do_plano(status, detalhe):
     if codigo:
         return codigo
     if status == 400 and detalhe.get("code") == "invalid_image_format":
-        return IMAGEM_INVALIDA  # the image judge discards the candidates, as on the key's path
+        return IMAGEM_INVALIDA
     if status in (401, 403):
         return PLANO_RECUSOU
     return FORA_DO_AR if status >= 500 else (LIMITE_DE_USO if status == 429 else PEDIDO_RECUSADO)
@@ -133,7 +131,7 @@ def _responder_uma_vez(base, token, modelo, instrucoes, mensagem, tempo, formato
         raise ErroDaOpenAI(_classificar_do_plano(erro.code, _detalhe_do_erro(erro)), erro.code) from None
     except (urllib.error.URLError, OSError, ValueError):
         raise ErroDaOpenAI(FORA_DO_AR) from None
-    raise ErroDaOpenAI(FORA_DO_AR)  # the stream ended without `response.completed`
+    raise ErroDaOpenAI(FORA_DO_AR)
 
 
 def responder(base, token, modelo, instrucoes, mensagem, tempo=TEMPO_PADRAO, formato_json=False, repeticoes=0):

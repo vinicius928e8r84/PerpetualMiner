@@ -19,7 +19,6 @@ PRICES = {
     "gpt-4o-mini": {"input": 0.00015, "output": 0.0006},
     "gpt-4.1": {"input": 0.002, "output": 0.008},
     "gpt-4.1-mini": {"input": 0.0004, "output": 0.0016},
-    # Images — flat per-image price
     "dall-e-3-1024": 0.040,
     "dall-e-3-512":  0.020,
     "gpt-image-1":   0.040,

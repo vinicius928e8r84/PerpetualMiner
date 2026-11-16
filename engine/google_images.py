@@ -32,7 +32,7 @@ _HEADERS = {
 
 OPENVERSE_BASE = "https://api.openverse.org"
 TEMPO_DO_PEDIDO = 20
-LIMITE_DA_FOTO = 25 * 1024 * 1024  # bigger than this is not a card's picture; the thumbnail is tried instead
+LIMITE_DA_FOTO = 25 * 1024 * 1024
 
 
 def _ler(url: str, limite: int) -> bytes | None:

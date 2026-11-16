@@ -40,7 +40,7 @@ def build(config, output_dir, img_source, api_key, log_dir):
     def guard_extra(stem: str) -> dict:
         return dict(openai_host, label=stem) if by_card else dict(openai_host)
 
-    def judge_extra(stem: str) -> dict:  # the judge alone goes through the ChatGPT plan when there is one; the guard and the generation use the key
+    def judge_extra(stem: str) -> dict:
         return dict(guard_extra(stem), plano=config["plano_do_chatgpt"]) if config.get("plano_do_chatgpt") else guard_extra(stem)
 
     stopwords = {

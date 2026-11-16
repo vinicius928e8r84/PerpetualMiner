@@ -41,7 +41,7 @@ def modelo_do_texto(config):
 
 def credencial_do_texto(config, base=None):
     """The credential of the text stage in `config`: the ChatGPT plan's (`plano_do_chatgpt`), else the key with its model."""
-    plano = config.get("plano_do_chatgpt")  # {token, modelo}
+    plano = config.get("plano_do_chatgpt")
     if plano:
         return {"provedor": OPENAI, "via": "plano", "segredo": plano["token"], "modelo": plano["modelo"], "base": base}
     return {"provedor": OPENAI, "segredo": config["openai_api_key"], "modelo": modelo_do_texto(config), "base": base}
