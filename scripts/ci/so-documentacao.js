@@ -4,7 +4,7 @@ const { execFileSync } = require('child_process');
 
 const CODIGO = [/^e2e\//, /^\.github\//, /^scripts\//, /^lib\//, /^veio\//, /^conexao\//];
 
-const LIDOS_PELA_SUITE = [/^docs\/design\/voz\//, /^docs\/design\/identidade-veio\//, /^docs\/loja\//, /^docs\/design\/cartao-do-russo\.html$/];
+const LIDOS_PELA_SUITE = [/^docs\/design\/voz\/.*\.(json|html)$/, /^docs\/design\/identidade-veio\//, /^docs\/loja\//, /^docs\/design\/cartao-do-russo\.html$/];
 
 const TEXTO = /\.md$/i;
 const ILUSTRACAO = /\.(png|jpe?g|gif|webp|svg|html)$/i;

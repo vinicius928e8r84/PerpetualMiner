@@ -1,19 +1,9 @@
 'use strict';
 
-const fs = require('fs');
-const path = require('path');
-
 const { test, expect } = require('../fixtures');
-const { NOMES_DA_SPEC } = require('../../scripts/voz-da-spec.js');
+const { carregarCatalogo } = require('../../scripts/voz-do-catalogo.js');
 
 const FRASE_RUSSA = 'Я улыбаюсь каждое утро без причины.';
-
-function idsDaSpecDaVoz() {
-  const spec = NOMES_DA_SPEC.map(nome => fs.readFileSync(
-    path.join(__dirname, '..', '..', 'docs', 'design', 'voz', nome), 'utf8')).join('\n');
-  const catalogo = spec.slice(spec.indexOf('## 3. Catálogo de estados-chave'));
-  return [...catalogo.matchAll(/^\| ([A-Z]{3}-\d{2}) \|/gm)].map(m => m[1]);
-}
 
 const PEDIR_TODOS_OS_TEXTOS = () => {
   const { CATALOGO_DA_VOZ, textoDaVoz } = PerpetualMiner;
@@ -37,10 +27,10 @@ test('todo ID do catálogo tem texto, e um ID que não existe falha na hora', as
 
   const pedidos = await page.evaluate(PEDIR_TODOS_OS_TEXTOS);
 
-  const naSpec = idsDaSpecDaVoz();
   const noModulo = [...new Set(pedidos.map(p => p.id.split('.')[0]))];
-  expect(naSpec.length).toBeGreaterThan(0);
-  expect(noModulo.sort()).toEqual([...naSpec].sort());
+  const noCatalogo = Object.keys(carregarCatalogo());
+  expect(noCatalogo.length).toBeGreaterThan(0);
+  expect(noModulo.sort()).toEqual([...noCatalogo].sort());
 
   for (const { id, modelo, resultado } of pedidos) {
     expect(resultado, `${id} deixou um modelo sem valor`).not.toMatch(/[{}]/);
