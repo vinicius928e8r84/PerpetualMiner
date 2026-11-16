@@ -35,6 +35,21 @@ for (const caminho of CAMINHOS_DA_SPEC.filter(caminho => caminho !== CAMINHO_DA_
   assert(readme.includes(`(${path.basename(caminho)})`), `o README da Voz não aponta ${path.basename(caminho)}`);
 }
 
+const notasPorArea = Object.fromEntries(fs.readdirSync(pastaDaVoz).filter(nome => /^notas-.*\.json$/.test(nome))
+  .map(nome => [nome.replace(/^notas-|\.json$/g, ''), JSON.parse(fs.readFileSync(path.join(pastaDaVoz, nome), 'utf8'))]));
+const notas = Object.assign({}, ...Object.values(notasPorArea));
+const idsSemNota = Object.keys(CATALOGO_DA_VOZ).filter(id => typeof notas[id] !== 'string');
+assert.deepStrictEqual(idsSemNota, [], 'um ID do catálogo não tem a nota em docs/design/voz/notas-<área>.json (sem nota é "")');
+assert.deepStrictEqual(Object.keys(notas).filter(id => !(id in CATALOGO_DA_VOZ)), [], 'uma nota em docs/design/voz/notas-<área>.json é de um ID que não está no catálogo');
+assert.strictEqual(Object.values(notasPorArea).reduce((soma, doArea) => soma + Object.keys(doArea).length, 0), Object.keys(notas).length, 'um ID tem nota em duas áreas');
+assert.deepStrictEqual(Object.fromEntries(linhas.map(l => [l.id, l.nota])), Object.fromEntries(Object.keys(CATALOGO_DA_VOZ).map(id => [id, notas[id]])),
+  'a nota de um ID não bate com a coluna Nota da spec da Voz');
+for (const caminho of CAMINHOS_DA_SPEC.filter(caminho => caminho !== CAMINHO_DA_SPEC)) {
+  const area = path.basename(caminho).replace(/^catalogo-|\.md$/g, '');
+  assert.deepStrictEqual(Object.keys(notasPorArea[area] || {}).sort(), linhasDaSpec(`## 3. Catálogo de estados-chave\n${fs.readFileSync(caminho, 'utf8')}`).map(l => l.id).sort(),
+    `docs/design/voz/notas-${area}.json não tem os mesmos IDs de catalogo-${area}.md`);
+}
+
 const conferir = (catalogo, spec = linhas) => problemasDaVoz({ catalogo, linhas: spec, retrato, naoEscritos: SPEC_NAO_ESCREVE });
 
 assert(linhas.length > 0, 'não li nenhuma linha do catálogo na spec');
