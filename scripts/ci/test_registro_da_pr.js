@@ -14,7 +14,7 @@ const { lerYaml, rodaNoPR, comandos } = require('../yaml-de-workflow');
 const RAIZ = path.resolve(__dirname, '..', '..');
 const HEAD = '96cfa870d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6';
 const OUTRO = '091be854aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
-const MODELO_DO_PR = ['## Summary', '', 'O que mudou.', '', '## Evidence', '', 'Rodei.', '', '## Merge Danger', '', '**Door:** two-way', '', '**Blast Radius:** CI', ''];
+const MODELO_DO_PR = ['## Summary', '', 'O que mudou.', '', 'Sem issue', '', '## Evidence', '', 'Rodei.', '', '## Merge Danger', '', '**Door:** two-way', '', '**Blast Radius:** CI', ''];
 const corpoCom = (...linhas) => [...MODELO_DO_PR, ...linhas].join('\n');
 const provaCom = (...linhas) => ['', '## Prova real', '', ...linhas, '', '## Known limits', '', 'Nenhum.'];
 const BAIXA = corpoCom('**Atenção:** BAIXA');
@@ -107,7 +107,7 @@ recusa({ corpo: altaCom('```', FRASE, `Head: ${HEAD}`, '```') }, /não tem a lin
 {
   const modelo = fs.readFileSync(path.join(RAIZ, '.github', 'PULL_REQUEST_TEMPLATE.md'), 'utf8');
   recusa({ corpo: modelo, registros: [modelo] }, /campo de atenção preenchido[^]*nenhum comentário ou revisão/, 'o modelo sem preencher');
-  const exemplo = /<!--([^]*?)-->/.exec(modelo)[1].replace(/<SHA[^>]*>/g, HEAD).replace(/<quem escreveu[^>]*>/, 'a').replace(/<quem revisou[^>]*>/, 'b');
+  const exemplo = /<!--([^]*?)-->/.exec(modelo)[1].replace(/<SHA[^>]*>/g, HEAD).replace(/<quem escreveu[^>]*>/, 'a').replace(/<quem revisou[^>]*>/, 'b').replace(/<URL[^>]*>/g, 'https://github.com/dono/repo/issues/12').replace(/<o que falta[^>]*>/, 'o envio real');
   recusa({ corpo: modelo.replace('**Atenção:**', '**Atenção:** BAIXA'), registros: [exemplo] }, /falta o campo "Door:" preenchido, o campo "Blast Radius:" preenchido\n/, 'o modelo só com a atenção');
   const preenchido = modelo.replace('**Door:**', '**Door:** two-way').replace('**Blast Radius:**', '**Blast Radius:** CI').replace('**Atenção:**', '**Atenção:** ALTA');
   recusa({ corpo: preenchido, registros: [exemplo] }, /o corpo não tem a seção "Prova real"/, 'ALTA no modelo, ainda sem a prova');
