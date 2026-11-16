@@ -13,10 +13,10 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import janela  # noqa: E402
-from complemento.test_janela import QtDeMentira, a_janela  # noqa: E402
-from complemento.test_pareamento_de_mentira import UM_CLIENTE_NOVO, comecar, concluir  # noqa: E402
-from complemento.test_harness import ConexaoNoTeste  # noqa: E402
+from complemento import janela
+from complemento.test_janela import QtDeMentira, a_janela
+from complemento.test_pareamento_de_mentira import UM_CLIENTE_NOVO, comecar, concluir
+from complemento.test_harness import ConexaoNoTeste
 
 
 class QtComCodigo(QtDeMentira):
@@ -25,7 +25,7 @@ class QtComCodigo(QtDeMentira):
     def __init__(self):
         super().__init__()
         self.desconectar = None
-        self.codigos, self.fechados = [], 0   # o diálogo do código: (texto, rótulo de cancelar, ao_cancelar)
+        self.codigos, self.fechados = [], 0
 
     def abrir_janela(self, mw, ler_estado, desconectar=None):
         self.desconectar = desconectar

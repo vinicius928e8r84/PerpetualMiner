@@ -13,12 +13,11 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
-from complemento.test_contrato_da_criacao import ANKI_EM_INGLES  # noqa: E402
-from complemento.test_envio import ID, OUTRO_ID, EnvioNoTeste, pedido  # noqa: E402
+from complemento.test_colecao_em_memoria import ColecaoEmMemoria
+from complemento.test_contrato_da_criacao import ANKI_EM_INGLES
+from complemento.test_envio import ID, OUTRO_ID, EnvioNoTeste, pedido
 
 FRASE = "gave up : She gave up smoking [Context: Série - The Office - S01E01]"
-# As Frases de teste que a extensão manda (`painel-boas-vindas-envio.js`), com o contexto no formato que o painel escreve.
 CONTEXTO = "[Contexto: Teste - Boas-vindas - Primeiro cartão]"
 DE_TESTE = "give up : She gave up smoking last year. " + CONTEXTO
 DE_TESTE_RUSSA = "приходила : Она приходила вчера. " + CONTEXTO

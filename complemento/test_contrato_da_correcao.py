@@ -7,7 +7,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import baralhos, tipo_de_nota  # noqa: E402
+from complemento import baralhos, tipo_de_nota
 
 MENSAGEM = tipo_de_nota.MENSAGEM_DA_CRIACAO
 INGLES = "PerpetualMiner::Inglês"

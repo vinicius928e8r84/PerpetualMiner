@@ -17,7 +17,7 @@ import threading
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from test_harness import ORIGEM, ConexaoNoTeste, configuracao  # noqa: E402
+from test_harness import ORIGEM, ConexaoNoTeste, configuracao
 
 CHAVE = "sk-proj-ChaveSecretaDeTeste0123456789-abcd"
 OUTRA_CHAVE = "sk-proj-OutraChaveSecreta9876543210-wxyz"
@@ -31,8 +31,6 @@ def enviar(conexao, chave=CHAVE, **opcoes):
 
 def estado(conexao):
     status, _, corpo = conexao.pedir("POST", "/ia/estado")
-    # Estes testes anteriores verificam só máscara/ausência. AutoridadeVersionada
-    # verifica a revisão/conta/flag pelo HTTP completo, sem essa projeção.
     dono = json.loads(corpo)['openai']
     return status, {'openai': {k: v for k, v in dono.items() if k in ('configurada', 'ultimos4')}}
 
@@ -248,7 +246,7 @@ class ChaveNoLog(unittest.TestCase):
                     conexao.pedir("POST", "/ia/openai/chave", corpo_bruto="{ quebrado " + CHAVE)
                     conexao.pedir("POST", "/ia/openai/chave", corpo={"chave": CHAVE}, origem=OUTRA_ORIGEM)
             with ConexaoNoTeste(pasta) as conexao:
-                os.chmod(conexao.chaves, 0o500)  # gravar falha: o erro interno também vai ao log
+                os.chmod(conexao.chaves, 0o500)
                 try:
                     status, _, _ = enviar(conexao, OUTRA_CHAVE)
                 finally:
@@ -287,7 +285,7 @@ class PedidoQueOProtocoloRecusa(unittest.TestCase):
         "GET /%s HTTP/9.9\r\n\r\n",       # versão que o servidor não fala
         "%s /x HTTP/1.1\r\n\r\n",         # método que o servidor não tem
         "GET /x HTTP/1.1 %s\r\n\r\n",     # palavras demais
-        "GET /x HTTP/1.1\r\n%s\r\n\r\n",  # linha de cabeçalho sem “:”
+        "GET /x HTTP/1.1\r\n%s\r\n\r\n",
     )
 
     @staticmethod
@@ -337,10 +335,10 @@ class AutoridadeVersionada(unittest.TestCase):
                 self.assertEqual(conexao.pedir('POST', '/ia/openai/chave',
                     corpo={'chave': CHAVE, 'versao': versao, 'conta': 'A'})[0], 200)
                 revisoes.append(json.loads(conexao.pedir('POST', '/ia/estado')[2])['openai']['versao'])
-            self.assertEqual(revisoes, [1, 1, 1, 1]) # sequência v1→2→3→4 observada no PC real
+            self.assertEqual(revisoes, [1, 1, 1, 1])
             self.assertTrue(conexao.conexao.cofre.documento('openai') == antes)
             self.assertEqual(len(conexao.openai.pedidos), pedidos)
-            for _ in range(3): # CAS público após validação, inclusive sem passar pelo atalho HTTP
+            for _ in range(3):
                 self.assertTrue(conexao.conexao.cofre.guardar('openai', CHAVE, versao=1, conta='A'))
             self.assertTrue(conexao.conexao.cofre.documento('openai') == antes)
 
@@ -359,14 +357,13 @@ class AutoridadeVersionada(unittest.TestCase):
             self.assertFalse(antes['naoEnviada'])
             self.assertEqual(len(conexao.openai.pedidos), pedidos)
             conexao.openai.comportamento = 'aceita'
-            # A mesma chave numa conta diferente é uma mudança explícita, não replay.
             self.assertEqual(conexao.pedir('POST', '/ia/openai/chave',
                 corpo={'chave': CHAVE, 'versao': 1, 'conta': 'B'})[0], 200)
             self.assertEqual(json.loads(conexao.pedir('POST', '/ia/estado')[2])['openai']['versao'], 2)
             for versao, conta in ((0, 'B'), (1, 'A')):
                 self.assertEqual(conexao.pedir('POST', '/ia/openai/chave',
                     corpo={'chave': CHAVE, 'versao': versao, 'conta': conta})[0], 409)
-            outra = 'sk-proj-OutroValorInteiro-abcd' # mesmo sufixo não é a mesma chave
+            outra = 'sk-proj-OutroValorInteiro-abcd'
             self.assertEqual(conexao.pedir('POST', '/ia/openai/chave',
                 corpo={'chave': outra, 'versao': 2, 'conta': 'B'})[0], 200)
             self.assertTrue(conexao.conexao.cofre.ler('openai') == outra)
@@ -382,8 +379,6 @@ class AutoridadeVersionada(unittest.TestCase):
                 {'configurada': False, 'conta': '', 'versao': 0, 'naoEnviada': False})
 
     def test_P1_chave_sem_conta_nao_sai_para_A_ou_B_sem_nova_confirmacao(self):
-        # #192: este cliente HTTP não é autenticado só por declarar ORIGEM.
-        # Mesmo assim, sync não pode exportar a chave local para o UID que ele pede.
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
             self.assertEqual(enviar(conexao)[0], 200)
             antes = conexao.conexao.cofre.documento('openai')
@@ -395,7 +390,6 @@ class AutoridadeVersionada(unittest.TestCase):
                     self.assertEqual(conexao.conexao.cofre.documento('openai'), antes)
                     self.assertEqual(conexao.firestore.pedidos, [])
                     self.assertEqual(conexao.firestore.documentos, {})
-            # Escolha explícita: colar/conferir na conta A, não apenas entrar nela.
             self.assertEqual(conexao.pedir('POST', '/ia/openai/chave',
                 corpo={'chave': CHAVE, 'versao': 1, 'conta': 'A'})[0], 200)
             self.assertEqual(conexao.pedir('POST', '/ia/openai/sincronizar',
@@ -418,7 +412,6 @@ class AutoridadeVersionada(unittest.TestCase):
                 {'configurada': False, 'conta': '', 'versao': 2, 'naoEnviada': True})
             self.assertEqual(conexao.firestore.pedidos, [])
             self.assertTrue(conexao.firestore.documentos == antes)
-            # Apagar só aqui não revoga/retira a chave da conta: entrar pode trazê-la.
             self.assertEqual(conexao.pedir('POST', '/ia/openai/sincronizar',
                 corpo={'uid': 'A', 'token': 'token-ficticio-A', 'versao': 2})[0], 200)
             self.assertTrue(conexao.conexao.cofre.ler('openai') == CHAVE)
@@ -431,7 +424,6 @@ class AutoridadeVersionada(unittest.TestCase):
                 corpo={'chave': CHAVE, 'versao': 0, 'conta': 'A'})
             self.assertEqual(status, 200)
             conexao.openai.comportamento = 'recusa'
-            # O adapter externo é a OpenAI: nenhuma revisão é reservada na extensão.
             status, _, _ = conexao.pedir('POST', '/ia/openai/chave',
                 corpo={'chave': OUTRA_CHAVE, 'versao': 1, 'conta': 'A'})
             self.assertEqual(status, 401)
@@ -446,7 +438,7 @@ class AutoridadeVersionada(unittest.TestCase):
     def test_conta_em_duas_conexoes_recebe_troca_e_apagamento_sem_outro_dono(self):
         with tempfile.TemporaryDirectory() as pasta_a, tempfile.TemporaryDirectory() as pasta_b:
             with ConexaoNoTeste(pasta_a) as a, ConexaoNoTeste(pasta_b) as b:
-                b.conexao.firestore_base = a.firestore.base # só a fronteira externa é compartilhada
+                b.conexao.firestore_base = a.firestore.base
                 def sync(conexao, versao):
                     status, _, corpo = conexao.pedir('POST', '/ia/openai/sincronizar',
                         corpo={'uid': 'A', 'token': 'token-ficticio-A', 'versao': versao})
@@ -546,8 +538,6 @@ class AutoridadeVersionada(unittest.TestCase):
                 corpo={'chave': CHAVE, 'versao': 0, 'conta': 'C'})
             self.assertEqual(conexao.pedir('POST', '/ia/openai/chave/apagar',
                 corpo={'versao': 1, 'conta': 'C'})[0], 200)
-            # Conclui a única mudança de C antes de trocar o dono ativo: não
-            # existe uma marca de A que possa ser reentregue quando A entrar.
             self.assertEqual(conexao.pedir('POST', '/ia/openai/sincronizar',
                 corpo={'uid': 'C', 'token': 'token-ficticio-C', 'versao': 2})[0], 200)
             status, _, _ = conexao.pedir('POST', '/ia/openai/sincronizar',

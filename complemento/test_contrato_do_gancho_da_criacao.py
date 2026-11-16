@@ -8,13 +8,12 @@ import types
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import criacao_na_revisao, tipo_de_nota  # noqa: E402
+from complemento import criacao_na_revisao, tipo_de_nota
 
 SO_O_DEFAULT = {"baralhos": [{"nome": "Default"}]}
 
 
 class ContratoDoGanchoDaCriacao:
-    # -- a frente Criação (#168): o gancho da revisão grava a frase no campo da nota --
 
     def na_revisao(self, colecao, guid, mensagem):
         """A página do Cartão manda `mensagem` (`pycmd`) durante a revisão da nota de `guid`; devolve o que o gancho responde. O adaptador do Anki roda na thread principal."""

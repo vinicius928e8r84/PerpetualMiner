@@ -16,11 +16,11 @@ from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import tipo_de_nota  # noqa: E402
-from complemento.motor import estilos  # noqa: E402
-from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
-from complemento.test_contrato_da_criacao import ANKI_EM_INGLES, SO_O_DEFAULT  # noqa: E402
-from complemento.test_envio import ID, OUTRO_ID, EnvioNoTeste, pedido  # noqa: E402
+from complemento import tipo_de_nota
+from complemento.motor import estilos
+from complemento.test_colecao_em_memoria import ColecaoEmMemoria
+from complemento.test_contrato_da_criacao import ANKI_EM_INGLES, SO_O_DEFAULT
+from complemento.test_envio import ID, OUTRO_ID, EnvioNoTeste, pedido
 
 FRASE = "gave up : She gave up smoking [Context: Série - The Office - S01E01]"
 PERPETUALMINER_INGLES = "PerpetualMiner::Inglês"
@@ -89,7 +89,7 @@ class OCartaoNovoSaiNoIniciante(unittest.TestCase):
         self.assertEqual((estado["status"], notas[0]["tipo"], notas[0]["baralho"]), ("completed", "PerpetualMiner Russo", "PerpetualMiner::Russo"))
         self.assertEqual(re.sub("<[^>]+>", "", campos["Frase"]), "Я не мальчик!")
         self.assertEqual(campos["Tradução natural"], "tradução de mentira")
-        self.assertEqual(campos["Palavra"], "Я не")  # gravada (a Criação a usa); o verso do Iniciante não a mostra
+        self.assertEqual(campos["Palavra"], "Я не")
         self.assertEqual([texto for _, texto in cores_de(campos["Frase"])], ["Я"])
 
     def test_a_imagem_do_cartao_vai_no_campo_proprio_e_a_foto_fica_na_midia_da_nota(self):

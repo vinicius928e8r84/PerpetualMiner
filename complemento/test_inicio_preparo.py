@@ -13,10 +13,10 @@ from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import inicio  # noqa: E402
-from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
-from complemento.test_contrato_da_criacao import SO_O_DEFAULT  # noqa: E402
-from complemento.test_pareamento_de_mentira import travar_o_item_de_login_do_computador  # noqa: E402
+from complemento import inicio
+from complemento.test_colecao_em_memoria import ColecaoEmMemoria
+from complemento.test_contrato_da_criacao import SO_O_DEFAULT
+from complemento.test_pareamento_de_mentira import travar_o_item_de_login_do_computador
 
 TIPOS = ("PerpetualMiner Inglês", "PerpetualMiner Russo")
 
@@ -51,7 +51,7 @@ class AConexaoPreparaAColecao(unittest.TestCase):
             conexao, ganchos = iniciar(raiz, colecao, perfil=None)
             try:
                 colecao.abrir()
-                self.assertEqual(tipos_de(colecao), [])  # até o perfil abrir, nada foi criado
+                self.assertEqual(tipos_de(colecao), [])
                 for gancho in ganchos:
                     gancho()
             finally:

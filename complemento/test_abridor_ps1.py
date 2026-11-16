@@ -20,8 +20,8 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import abridor  # noqa: E402
-from complemento.test_abridor import ANKI_NO_LUGAR, DO_ABRIDOR, RegistroDeMentira  # noqa: E402
+from complemento import abridor
+from complemento.test_abridor import ANKI_NO_LUGAR, DO_ABRIDOR, RegistroDeMentira
 
 
 @unittest.skipUnless(shutil.which("pwsh") and os.name == "posix", "o .ps1 só roda aqui onde houver PowerShell (pwsh) num sistema POSIX")
