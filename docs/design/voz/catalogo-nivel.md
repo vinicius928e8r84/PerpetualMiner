@@ -1,8 +1,8 @@
 # A Voz do passo do nível e da prévia do Cartão (#164)
 
 Continuação do catálogo de [`README.md`](README.md) (§ 3): estas linhas são do mesmo catálogo e seguem as mesmas regras (V1–V10, C1–C9), mas moram aqui porque o
-README não pode crescer (o limite de tamanho dos arquivos). `scripts/voz-da-spec.js` lê os dois arquivos como um só, e o texto de cada linha está em
-[`lib/voz/catalogo-nivel.js`](../../../lib/voz/catalogo-nivel.js); `test_voz.js` confere os dois contra elas.
+README não pode crescer (o limite de tamanho dos arquivos). o texto de cada linha está em
+[`lib/voz/catalogo-nivel.js`](../../../lib/voz/catalogo-nivel.js), que é a fonte; nenhum script lê mais esta tabela (`test_voz.js` confere só o catálogo com `catalogo-textos.json`).
 
 ### Boas-vindas e Ajustes de envio: o nível, a prévia do Cartão e o primeiro Envio
 
