@@ -11,7 +11,7 @@ const { corpoComAProva, planejar, secaoDaProva } = require('./registrar-na-pr.js
 
 const HEAD = '1d606d78aac180096ca7cc5df8279355f21ac729';
 const ANTERIOR = '13cf9d9a6ec64ca5d07f1266fe8998323de16ef3';
-const MODELO = ['## Summary', '', 'O que mudou.', '', 'Sem issue', '', '## Evidence', '', 'Rodei.', '', '## Merge Danger', '', '**Door:** two-way', '', '**Blast Radius:** CI', ''];
+const MODELO = ['## Summary', '', 'O que mudou.', '', 'Sem issue', '', '## Evidence', '', 'Rodei.', '', '## Merge Danger', '', '**Door:** two-way', '', '**Blast Radius:** CI', '', '**Política:** sem mudança', ''];
 const corpoCom = (...linhas) => [...MODELO, ...linhas].join('\n');
 const MEDIA = corpoCom('**Atenção:** MÉDIA');
 const ALTA = corpoCom('**Atenção:** ALTA', 'Muda o estado do Envio.');

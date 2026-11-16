@@ -11,7 +11,7 @@ const { lerYaml, rodaNoPR, comandos } = require('../yaml-de-workflow');
 const RAIZ = path.resolve(__dirname, '..', '..');
 const HEAD = '96cfa870d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6';
 const OUTRO = '091be854aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
-const MODELO_DO_PR = ['## Summary', '', 'O que mudou.', '', 'Sem issue', '', '## Evidence', '', 'Rodei.', '', '## Merge Danger', '', '**Door:** two-way', '', '**Blast Radius:** CI', ''];
+const MODELO_DO_PR = ['## Summary', '', 'O que mudou.', '', 'Sem issue', '', '## Evidence', '', 'Rodei.', '', '## Merge Danger', '', '**Door:** two-way', '', '**Blast Radius:** CI', '', '**Política:** sem mudança', ''];
 const corpoCom = (...linhas) => [...MODELO_DO_PR, ...linhas].join('\n');
 const provaCom = (...linhas) => ['', '## Prova real', '', ...linhas, '', '## Known limits', '', 'Nenhum.'];
 const BAIXA = corpoCom('**Atenção:** BAIXA');
@@ -38,8 +38,15 @@ const recusa = (pr, padrao, caso) => {
 assert.match(passa({}, 'atenção BAIXA com a revisão'), /atenção BAIXA, \/code-review CLEAN$/);
 assert.match(passa({ corpo: corpoCom('Atencao: media') }, 'sem negrito, sem acento, em minúsculas'), /atenção MÉDIA/);
 passa({ corpo: BAIXA.replace(/\n/g, '\r\n'), registros: [revisao().replace(/\n/g, '\r\n')] }, 'o que é escrito no site chega com CRLF');
-recusa({ corpo: '' }, /não segue o modelo do \/pr: falta a seção Summary, a seção Evidence, a seção Merge Danger, o campo "Door:" preenchido, o campo "Blast Radius:" preenchido\n.*campo de atenção/, 'corpo vazio');
+recusa({ corpo: '' }, /não segue o modelo do \/pr: falta a seção Summary, a seção Evidence, a seção Merge Danger, o campo "Door:" preenchido, o campo "Blast Radius:" preenchido, o campo "Política:" preenchido\n.*campo de atenção/, 'corpo vazio');
 recusa({ corpo: null }, /falta a seção Summary/, 'PR sem corpo');
+for (const [caso, corpo] of [
+  ['sem a linha', BAIXA.replace('**Política:** sem mudança\n', '')],
+  ['o campo vazio do modelo', BAIXA.replace('sem mudança', '')],
+  ['a linha num comentário', BAIXA.replace('**Política:** sem mudança', '<!-- Política: sem mudança -->')],
+  ['a linha num bloco de código', BAIXA.replace('**Política:** sem mudança', '```\nPolítica: sem mudança\n```')],
+]) recusa({ corpo }, /falta o campo "Política:" preenchido\n/, `Política: ${caso}`);
+for (const valor of ['sem mudança', 'sem mudança: só documentação', 'https://github.com/vinicius928e8r84/perpetualminer-site/pull/41']) passa({ corpo: BAIXA.replace('sem mudança', valor) }, `Política: ${valor}`);
 recusa({ corpo: BAIXA.replace('## Evidence', 'Evidence') }, /falta a seção Evidence\n/, 'uma seção do modelo que falta');
 recusa({ corpo: BAIXA.replace('two-way', '').replace('**Blast Radius:** CI', '') }, /falta o campo "Door:" preenchido, o campo "Blast Radius:" preenchido\n/, 'os campos do Merge Danger vazios ou ausentes');
 recusa({ corpo: `\`\`\`markdown\n${BAIXA}\n\`\`\`` }, /falta a seção Summary[^]*campo de atenção/, 'o modelo dentro de um bloco de código não é o corpo');
@@ -103,11 +110,12 @@ recusa({ corpo: altaCom('```', FRASE, `Head: ${HEAD}`, '```') }, /não tem a lin
   const modelo = fs.readFileSync(path.join(RAIZ, '.github', 'PULL_REQUEST_TEMPLATE.md'), 'utf8');
   recusa({ corpo: modelo, registros: [modelo] }, /campo de atenção preenchido[^]*nenhum comentário ou revisão/, 'o modelo sem preencher');
   const exemplo = /<!--([^]*?)-->/.exec(modelo)[1].replace(/<SHA[^>]*>/g, HEAD).replace(/<quem escreveu[^>]*>/, 'a').replace(/<quem revisou[^>]*>/, 'b').replace(/<URL[^>]*>/g, 'https://github.com/dono/repo/issues/12').replace(/<o que falta[^>]*>/, 'o envio real');
-  recusa({ corpo: modelo.replace('**Atenção:**', '**Atenção:** BAIXA'), registros: [exemplo] }, /falta o campo "Door:" preenchido, o campo "Blast Radius:" preenchido\n/, 'o modelo só com a atenção');
-  const preenchido = modelo.replace('**Door:**', '**Door:** two-way').replace('**Blast Radius:**', '**Blast Radius:** CI').replace('**Atenção:**', '**Atenção:** ALTA');
+  recusa({ corpo: modelo.replace('**Atenção:**', '**Atenção:** BAIXA'), registros: [exemplo] }, /falta o campo "Door:" preenchido, o campo "Blast Radius:" preenchido, o campo "Política:" preenchido\n/, 'o modelo só com a atenção');
+  const preenchido = modelo.replace('**Door:**', '**Door:** two-way').replace('**Blast Radius:**', '**Blast Radius:** CI').replace('**Política:**', '**Política:** sem mudança').replace('**Atenção:**', '**Atenção:** ALTA');
   recusa({ corpo: preenchido, registros: [exemplo] }, /o corpo não tem a seção "Prova real"/, 'ALTA no modelo, ainda sem a prova');
   assert.match(passa({ corpo: preenchido + exemplo, registros: [exemplo] }, 'o modelo preenchido com os exemplos dele'), /PROVADO 100% REAL$/);
   assert(modelo.includes(ROTULO_DE_RISCO_ALTO), 'o modelo cita o rótulo');
+  assert(modelo.includes('perpetualminer-site') && modelo.includes('sem mudança: <motivo>'), 'o modelo explica a linha Política: o link da PR do site ou sem mudança com o motivo');
 }
 
 {

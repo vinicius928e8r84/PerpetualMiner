@@ -7,8 +7,7 @@ const os = require('os');
 const path = require('path');
 
 require('./lib/arquivos-da-extensao.js');
-require('./lib/voz/catalogo.js');
-const { arquivosDaExtensao, CATALOGO_DA_VOZ: VOZ } = globalThis.PerpetualMiner;
+const { arquivosDaExtensao } = globalThis.PerpetualMiner;
 
 const saida = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-preview-'));
 execFileSync('node', ['preview/montar.mjs', '--saida', saida], { stdio: 'pipe' });
@@ -36,22 +35,10 @@ const extensao = path.join(saida, 'extensao');
   assert(fs.readFileSync(path.join(extensao, 'painel.html'), 'utf8').includes('/preview-chrome-simulado.js'));
   assert(!fs.readFileSync('painel.html', 'utf8').includes('preview-chrome-simulado'));
 
-  const privacidade = fs.readFileSync(path.join(saida, 'privacidade', 'index.html'), 'utf8');
-  assert.strictEqual(fs.readFileSync(path.join(saida, 'privacy', 'index.html'), 'utf8'), privacidade);
-  assert(privacidade.includes('Política de privacidade') && privacidade.includes('Uso limitado'));
-  const texto = privacidade.replace(/<[^>]+>/g, '');
-  const sete = texto.slice(texto.indexOf('7. Por quanto tempo guardamos'), texto.indexOf('8. Crianças'));
-  assert(sete.includes('só funciona com a Conexão com o Anki respondendo'), 'a política devia dizer que o Apagar tudo pede a Conexão');
-  for (const nome of [VOZ['PAI-31'], VOZ['PAI-32'].selecionarTodas.replace('{n} {n|frase|frases}', 'N frases'), VOZ['PAI-32'].apagar]) {
-    assert(sete.includes(`“${nome}”`), `a política devia dar o caminho sem a Conexão com o nome do painel: “${nome}”`);
-  }
-  assert(!sete.includes('use-o antes de desinstalar'), 'desinstalar: o Apagar tudo não é o único caminho');
-  const dois = texto.slice(texto.indexOf('2. Conta Google'), texto.indexOf('Uso limitado dos dados'));
-  assert((dois.match(/ranking/g) || []).length >= 4, 'a seção da conta Google devia citar o ranking onde diz para que os dados servem');
-  assert(!/qualquer outro fim|nada além de fazer a sincronização funcionar/.test(dois), 'a seção da conta Google não pode dizer que os dados só servem à sincronização');
+  assert(!fs.existsSync(path.join(saida, 'privacidade')) && !fs.existsSync(path.join(saida, 'privacy')), 'a política mora no repositório do site: o preview não a publica');
   const sobre = fs.readFileSync(path.join(saida, 'sobre', 'index.html'), 'utf8');
-  assert(sobre.includes('href="/privacidade/"'), 'a página inicial devia levar à política');
-  for (const [nome, html] of [['privacidade', privacidade], ['sobre', sobre]]) {
+  assert(sobre.includes('href="https://perpetualminer.com/privacidade/"') && !sobre.includes('href="/privacidade/"'), 'a página inicial devia levar à política do site, que não está neste preview');
+  for (const [nome, html] of [['sobre', sobre]]) {
     assert(!/<script/i.test(html), `${nome}: página pública sem script`);
     const pedidos = [...html.matchAll(/\b(?:src|href)="(\/[^"#?]*)"/g)].map(m => m[1]);
     for (const pedido of pedidos) {

@@ -10,6 +10,7 @@ As mudanças da chave chegam automaticamente às instalações de teste que segu
 
 - **#192:** o pareamento (cliente e listener do loopback) está no código (`docs/design/pareamento-da-conexao.md`); falta a **prova real**: o Anki no Mac e no Windows, o cliente forjado e o impostor (§ 6).
 - **P6 (dono):** regras Firestore reais, publicadas e comprovadas: próprio UID lê/escreve; outros UIDs e pedidos sem autenticação são recusados. Fakes/CI não encerram esse gate.
+- **Política:** toda PR desta versão com link em `Política:` tem a política no ar em perpetualminer.com/privacidade/, e a aba Práticas de privacidade da loja diz o mesmo.
 
 Atualize primeiro a Conexão com o Anki para **0.2.0** (abra o `.ankiaddon` desta extensão no Anki e reinicie), depois a extensão. Usuários do main com chave e conta precisam colar/conferir a mesma chave de novo na conta escolhida; o aviso oferece Trocar chave, não um retry de migração sem vínculo. Se não guardaram a chave, criam outra na OpenAI. Limites: [nota de ameaça](seguranca/chave-da-openai.md).
 
@@ -119,9 +120,7 @@ Não marque histórico de navegação, localização, atividade do usuário nem 
 
 ### Política de privacidade
 
-> **Substituído** pela página pública `/privacidade/` (`preview/site/privacidade.html`), que é a que vale; o rascunho abaixo está desatualizado e fica só de histórico.
-
-A loja exige uma **URL pública** (o repositório é privado, então hospede o texto abaixo numa página pública, como um site seu, GitHub Pages ou um gist público, e cole o endereço).
+> **Substituído** pela página pública perpetualminer.com/privacidade/ (repositório `perpetualminer-site`), a que vale; o rascunho abaixo está desatualizado e fica só de histórico.
 
 ```
 Política de Privacidade — PerpetualMiner
