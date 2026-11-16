@@ -71,8 +71,7 @@
   "limite-de-linhas": {
     "background.js": 7,
     "painel.css": 2163,
-    "painel.js": 894,
-    "veio/componentes.css": 32
+    "painel.js": 894
   },
   "sem-comentario-novo": {}
 }

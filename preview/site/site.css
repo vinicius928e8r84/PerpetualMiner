@@ -1,4 +1,3 @@
-/* As páginas públicas do app (sobre e privacidade): só a Veio, sem fonte nem script de fora. */
 body {
   margin: 0;
   background: var(--veio-bg);
