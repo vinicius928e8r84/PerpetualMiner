@@ -1,8 +1,5 @@
 'use strict';
 
-// O caminho feliz de hoje, exercitado pelo seam: cada página-fixture e cada
-// fake mostra que funciona do jeito que a pessoa usa a extensão.
-
 const { test, expect } = require('../fixtures');
 
 const LEGENDA = 'The quiet harbor woke before the gulls did.';

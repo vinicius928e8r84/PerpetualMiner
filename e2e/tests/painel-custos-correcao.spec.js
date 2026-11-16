@@ -1,10 +1,5 @@
 'use strict';
 
-// A correção das frases da Criação na aba Custos (#169, história 114): o que a IA gastou corrigindo o que a pessoa escreveu aparece
-// numa linha à parte (“Correção das frases”), na faixa de resumo e no detalhe do Envio, e entra no total. Sem correção no Envio,
-// a linha não existe. A Conexão é o fake da fronteira HTTP (fakes/anki.js); a linha de Custos tem a forma do contrato
-// (`exemplos-da-correcao.json`, onde o complemento real a confere).
-
 const { test, expect } = require('../fixtures');
 const { estadoFinal } = require('../estado-final');
 

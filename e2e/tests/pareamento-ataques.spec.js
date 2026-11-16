@@ -1,9 +1,5 @@
 'use strict';
 
-// O pareamento (#192) diante de quem não é a Conexão e de quem insiste: o impostor na porta (que não prova, ou que responde 401 `pairing_required` a quem já está
-// pareado), os códigos gastos em sequência (o teto do review: três esgotados bloqueiam o seguinte) e a Conexão de antes do pareamento. A Conexão é o fake da fronteira
-// HTTP; o impostor é uma rota registrada depois dela. Os fluxos de parear estão em pareamento.spec.js.
-
 const { test, expect } = require('../fixtures');
 const { estadoFinal, estadoFinalEm } = require('../estado-final');
 const { abrirPainel } = require('../apoio-do-envio');
@@ -15,7 +11,6 @@ test.describe('quem não é a Conexão', () => {
   test.use({ pareada: true });
   test.beforeEach(({ conexaoDoTeste }) => test.skip(Boolean(conexaoDoTeste), 'o impostor ocupa a porta no lugar do fake'));
 
-  /** Um impostor na 8766: responde a saúde como a Conexão e o resto com `resposta(caminho)`, sem prova, e anota o que recebe. */
   async function impostorNaPorta(context, fakes, resposta = () => ({ status: 200, corpo: {} })) {
     const vistos = [];
     await context.route(fakes.anki.padrao, async route => {
@@ -55,11 +50,10 @@ test.describe('quem não é a Conexão', () => {
     await expect(faixa(page)).toContainText(NAO_CONFIRMOU);
     await expect(faixa(page)).not.toContainText('Conecte este navegador ao Anki');
     await expect(ponto(page)).toHaveAttribute('data-estado', 'nao_confirmada');
-    // Quem já está pareado nunca é levado ao código por um 401 sem prova: nem o campo, nem o Conectar.
     await expect(campo(page)).toHaveCount(0);
     await expect(conectar(page)).toHaveCount(0);
     await estadoFinalEm('o que o impostor da porta recebeu', () => [...new Set(vistos.map(v => v.caminho))].sort(), ['/health', '/pareamento/conferir']);
-    expect((await credencialGuardada(extensao)).cliente).toBe(antes);   // e a credencial não se apaga por um 401 sem prova
+    expect((await credencialGuardada(extensao)).cliente).toBe(antes);
   });
 });
 
@@ -83,7 +77,7 @@ test.describe('quem pede código sem parar', () => {
 
     await expect(faixa(page)).toContainText(NAO_CONFIRMOU);
     await expect(campo(page)).toHaveCount(0);
-    expect(await codigoNoAnki(fakes, conexaoDoTeste)).toBeNull();   // nenhum diálogo novo
+    expect(await codigoNoAnki(fakes, conexaoDoTeste)).toBeNull();
     if (!conexaoDoTeste) expect(fakes.anki.pareamento.codigosMostrados()).toHaveLength(3);
     await estadoFinalEm('os navegadores que a Conexão tem pareados', () => quantosPareados(fakes, conexaoDoTeste), 0);
   });
@@ -101,7 +95,7 @@ test.describe('uma Conexão de antes do pareamento', () => {
     await expect(page.locator('#painel-conexao-versao')).toContainText('A Conexão com o Anki está desatualizada');
     await expect(faixa(page)).toHaveCount(0);
     await expect(ponto(page)).toHaveAttribute('data-estado', 'nao_confirmada');
-    await expect(page.locator('#painel-conexao-versao').getByRole('button')).toHaveCount(0);   // nem o Atualizar agora: nenhum pedido sem assinatura sai (L9)
+    await expect(page.locator('#painel-conexao-versao').getByRole('button')).toHaveCount(0);
     await estadoFinalEm('os pedidos que a Conexão antiga recebeu', () => [...new Set(fakes.anki.requisicoes.map(r => r.caminho))], ['/health']);
   });
 });

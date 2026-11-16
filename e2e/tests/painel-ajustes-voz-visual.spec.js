@@ -1,11 +1,5 @@
 'use strict';
 
-// Referência visual da voz e do sotaque do áudio (#174), no Avançado dos Ajustes de envio: os dois sotaques do Google, a voz de
-// reserva e o Ouvir ao lado de cada seletor. O protótipo aprovado é o P9 do #107 (fora do repositório, na resolução do #107); o dono
-// compara estas telas com ele. Todas são PROPOSTAS (`test.fixme`, sem PNG na árvore) até a aprovação dele (CODING_STANDARDS regra 10).
-// Aprovando: tirar o `fixme` e `cd e2e && npx playwright test painel-ajustes-voz-visual --update-snapshots`, e a entrada no livro
-// `e2e/aprovados-visuais.json`.
-
 const { test, expect } = require('../fixtures');
 
 const AGORA = new Date('2026-09-18T12:00:00');

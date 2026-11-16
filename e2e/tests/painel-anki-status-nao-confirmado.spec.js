@@ -1,9 +1,5 @@
 'use strict';
 
-// Conexão com o Anki (#208): ler o arquivo do Anki não prova que ele está fechado. Quem diz “Anki fechado” confirma com
-// `GET /anki/status`; uma resposta que não confirma (erro, sem a contagem, contagem que não é número, não é um objeto) deixa o
-// estado desconhecido, e a tela não afirma o fechado. O que fica gravado diz o mesmo (`ankiFechado: false`).
-
 const { test, expect } = require('../fixtures');
 const DEN = 'PerpetualMiner::Inglês';
 

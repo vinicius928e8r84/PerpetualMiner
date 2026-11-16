@@ -1,27 +1,6 @@
 'use strict';
 
-// Referência visual da Conexão com o Anki (#33, #35): os estados da conexão e as
-// abas Custos e Ajustes de envio na arrumação C do protótipo
-// (docs/design/painel/anki/prototipo-anki.html?variant=C). O dono revisa estas
-// telas com o protótipo; aprovadas, uma mudança visual falha
-// o teste até alguém olhar a referência:
-//
-//   cd e2e && npx playwright test painel-anki-visual --update-snapshots
-
 const { test, expect, comOSistema, SISTEMAS } = require('../fixtures');
-
-// #145: a primeira conexão ganhou os passos do arquivo (sem terminal). As telas abaixo marcadas `test.fixme` são PROPOSTAS: o dono
-// ainda não aprovou o novo visual (CODING_STANDARDS regra 10), então as imagens novas não estão na árvore; as antigas, no commit 59d3d04. Aprovando: tirar o `fixme` e
-// `npx playwright test painel-anki-visual --update-snapshots -g "nunca conectada( no tema| na janela|, (con|na p|dois)|: o D)"`
-//
-// #160: card Teto do mês em Custos; as 8 telas de Custos abaixo são `test.fixme` até o dono aprovar.
-//
-// #147: as telas do passo 4 (Abrir o Anki sozinho, ONB-17) também são `test.fixme`.
-// Aprovando: sem o `fixme`, `npx playwright test painel-anki-visual --update-snapshots -g "passo 4"`.
-//
-// #146: a lista passou a ter 4 passos (Ter o Anki, ONB-18, é o 1º; o de baixar ganhou a animação do aviso, ONB-19). As telas do #146 (card do passo 1, a animação do aviso e os quadros parados) foram
-// aprovadas pelo dono (#236); Não tenho no Mac ganhou o desenho do #238 e espera o dono. As outras “nunca conectada”
-// (tema claro, conectando, Pronto, Detalhes, dois minutos, janela estreita) seguem propostas do #145.
 
 const AGORA = new Date('2026-09-18T12:00:00');
 
@@ -51,7 +30,6 @@ const ENVIOS = [
 
 const custos = page => page.locator('#anki-custos');
 const listaDeEnvios = page => page.getByRole('listbox', { name: 'Envios recentes' });
-// A sidebar é a do shell, que tem a própria referência: aqui só a ilha da área.
 const ilha = page => page.locator('.shell-conteudo');
 
 test.beforeEach(({ fakes }) => {
@@ -99,8 +77,6 @@ test('conectando: a faixa neutra e o esqueleto', async ({ page, extensao, fakes 
   await expect(ilha(page)).toHaveScreenshot('anki-conectando.png', { animations: 'disabled' });
 });
 
-// A primeira conexão (ONB-16, desenho B), comparada pelo dono com o protótipo travado
-// (`prototipo-primeira-conexao.html?variant=B`). Substitui `anki-nunca-conectada`.
 test('nunca conectada: a F1 e o card do passo 1 (Ter o Anki), com a lista, a pergunta e os dois quadros', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
   await abrirAnki(page, extensao, { jaConectou: false });
@@ -131,7 +107,6 @@ test.fixme('nunca conectada, conectando depois de Tentar de novo: Reiniciar o An
 
 test.fixme('nunca conectada, na primeira resposta: o momento Pronto, com as abas ainda de fora', async ({ page, extensao, fakes, relogioParado }) => {
   fakes.anki.desligar();
-  // O relógio da página é do teste: o Pronto fica na tela até ele andar. Com o passo 4 (#147) já dito “Agora não”, o Pronto vem logo.
   await relogioParado({ em: AGORA });
   await extensao.gravarStorage({ pm_anki_ja_conectou: false, pm_abridor: { agoraNao: true } });
   await page.setViewportSize({ width: 1280, height: 1100 });
@@ -163,7 +138,6 @@ test('nunca conectada: a animação do aviso do Anki no passo de baixar o arquiv
   await expect(page.locator('#anki-primeira-vez')).toBeVisible();
   await page.locator('#anki-primeira-vez').getByRole('button', { name: 'Pôr a Conexão no Anki' }).click();
 
-  // A animação fica parada na foto (animations: 'disabled'): o primeiro quadro é o que se vê.
   await expect(ilha(page)).toHaveScreenshot('anki-primeira-conexao-animacao.png', { animations: 'disabled' });
 });
 
@@ -189,7 +163,6 @@ test.fixme('nunca conectada: o Detalhes “O arquivo não abriu?” aberto, com 
 
 test.fixme('nunca conectada, dois minutos sem resposta: Reiniciar o Anki com o checklist e Baixar de novo', async ({ page, extensao, fakes, relogioParado }) => {
   fakes.anki.desligar();
-  // O relógio da página é do teste: os 2 minutos passam quando ele anda.
   const relogio = await relogioParado({ em: AGORA });
   await extensao.gravarStorage({ pm_anki_ja_conectou: false });
   await page.setViewportSize({ width: 1280, height: 1100 });
@@ -211,7 +184,6 @@ test.fixme('nunca conectada na janela estreita: a lista em cima do card', async 
   await expect(page).toHaveScreenshot('anki-primeira-conexao-estreita.png', { fullPage: false });
 });
 
-// O passo 4, Abrir o Anki sozinho (#147, ONB-17): logo depois de a Conexão responder pela primeira vez.
 async function abrirOPasso4(page, extensao, fakes, { largura = 1280, tema } = {}) {
   fakes.anki.desligar();
   await abrirAnki(page, extensao, { jaConectou: false, largura, gravado: tema ? { pm_tema: tema } : {} });
@@ -312,9 +284,6 @@ test.fixme('o tema claro', async ({ page, extensao }) => {
   await expect(ilha(page)).toHaveScreenshot('anki-claro.png');
 });
 
-// Os cards por idioma da variante A do protótipo (docs/design/painel/anki/prototipo-ajustes-envio.html). #174: o Avançado passou a se chamar
-// “voz e sotaque do áudio”: estas telas voltam a ser propostas (`test.fixme`, sem PNG) até o dono aprovar (`painel-ajustes-voz-visual.spec.js`).
-
 const AJUSTES = {
   ankiBridgePresets: {
     en: { deckName: 'Inglês::Mineradas', imageSource: '1', ttsWordTld: 'com', ttsPhraseTld: 'co.uk' },
@@ -327,7 +296,6 @@ const campoDoBaralho = page => formularioDeAjustes(page).getByRole('textbox', { 
 const escolhaDeBaralho = page => formularioDeAjustes(page).getByRole('combobox', { name: 'Baralho' });
 const cabecaDoCard = (page, idioma) => page.locator('#ajustes-cards').getByRole('button', { name: idioma, exact: true });
 
-/** Com a lista de baralhos do Anki (a escolha), ou sem ela (o campo de texto). */
 async function abrirAjustes(page, extensao, fakes, { comLista = true, ...opcoes } = {}) {
   if (comLista) fakes.anki.definirBaralhosDoAnki(BARALHOS_DO_ANKI);
   await abrirAnki(page, extensao, { hash: '#anki/ajustes', ...opcoes, gravado: { ...AJUSTES, ...opcoes.gravado } });
@@ -368,7 +336,6 @@ test.fixme('Ajustes de envio com a Conexão desligada: a F1 e a nota BRG-33', as
 test.fixme('Ajustes de envio: a aba desatualizada não salva e avisa', async ({ page, extensao, fakes }) => {
   await abrirAjustes(page, extensao, fakes, { comLista: false });
   await campoDoBaralho(page).fill('Da primeira aba');
-  // Outra aba salvou o inglês no meio.
   await extensao.gravarStorage({ ankiBridgePresets: { ...AJUSTES.ankiBridgePresets, en: { ...AJUSTES.ankiBridgePresets.en, deckName: 'Da segunda aba', versao: 1 } } });
   await page.getByRole('button', { name: 'Salvar ajustes' }).click();
   await expect(page.locator('#ajustes-aviso').getByRole('alert')).toBeVisible();

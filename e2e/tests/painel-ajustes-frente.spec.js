@@ -1,12 +1,5 @@
 'use strict';
 
-// Conexão com o Anki · a frente do Cartão nos Ajustes de envio (#166, Estilo do cartão › Frente): cada idioma tem a sua, Frase com áudio (o padrão),
-// Ouvir primeiro, Lacuna ou Criação (#168). Salvar ajustes guarda a escolha e pede à Conexão `POST /anki/card-front`, que só reescreve o modelo de Cartão do tipo de
-// nota do idioma: nenhuma nota nova, nenhum custo. A frente Imagem primeiro não entra.
-//
-// A Conexão com o Anki é falsificada na fronteira HTTP (e2e/fakes/anki.js, o contrato `exemplos-da-frente.json`); o teste confere o que a pessoa vê,
-// o que ficou gravado (`ankiBridgePresets`, a frente que a Conexão guardou) e o que atravessou o HTTP.
-
 const { test, expect } = require('../fixtures');
 const { estadoFinal, estadoFinalEm } = require('../estado-final');
 const { AGORA } = require('../apoio-do-envio');
@@ -21,7 +14,6 @@ const AJUSTES = {
 const formulario = (page, idioma) => page.getByRole('form', { name: idioma ? `Ajustes de envio · ${idioma}` : /^Ajustes de envio · / });
 const frente = (page, idioma) => formulario(page, idioma).getByRole('radiogroup', { name: 'Frente' });
 const opcao = (page, nome, idioma) => frente(page, idioma).getByRole('radio', { name: nome });
-// O radio do controle segmentado é invisível: a pessoa clica no rótulo.
 const escolher = (page, nome, idioma) => frente(page, idioma).locator('label', { hasText: nome }).click();
 const salvar = (page, idioma) => formulario(page, idioma).getByRole('button', { name: 'Salvar ajustes' });
 const situacao = (page, idioma) => formulario(page, idioma).getByRole('status');
@@ -35,11 +27,10 @@ async function abrirAjustes(page, extensao, { gravado = {} } = {}) {
   await page.clock.setFixedTime(AGORA);
   await page.goto(extensao.url('painel.html#anki/ajustes'));
   await expect(formulario(page)).toBeVisible();
-  // A prévia do estilo vem da Conexão (um pedido assinado, que sai um pouco depois do formulário): o teste que a desliga espera por ela antes.
   await expect(formulario(page).locator('.previa iframe')).toBeVisible();
 }
 
-// Exceção de teste: sem-estado-guardado — só mostra a frente padrão e o texto dela; nada é gravado nem pedido.
+// Exceção de teste: sem-estado-guardado
 test('sem nada gravado, o inglês está na Frase com áudio e as seis frentes se escolhem; Imagem primeiro não existe', async ({ page, extensao, fakes }) => {
   await abrirAjustes(page, extensao);
 
@@ -131,7 +122,7 @@ test('a Produção só se escolhe no nível Iniciante: nos outros fica desabilit
   await estadoFinal(extensao, { [CHAVE]: { en: { nivel: 'avancado', versao: 1 }, ru: { versao: 0 } } });
 });
 
-// Exceção de teste: sem-estado-guardado — só abre a aba do russo e mostra o que já estava gravado; nada é salvo nem pedido.
+// Exceção de teste: sem-estado-guardado
 test('a Produção já salva num nível sem tradução continua escolhida e desabilitada, sem quebrar a tela', async ({ page, extensao }) => {
   await abrirAjustes(page, extensao, { gravado: { [CHAVE]: { ...AJUSTES, ru: { ...AJUSTES.ru, nivel: 'intermediario', frente: 'producao', versao: 3 } } } });
   await cabeca(page, 'Russo').click();
@@ -208,9 +199,6 @@ test.describe('quando a Conexão não troca a frente', () => {
 
   test('com o Anki sem perfil aberto a tela diz que o Anki não está pronto e nada muda na Conexão', async ({ page, extensao, fakes }) => {
     await abrirAjustes(page, extensao, { gravado: { [CHAVE]: AJUSTES } });
-    // A lista dos Baralhos é lida duas vezes ao abrir (ao entrar na área e quando a Conexão fica ligada); o Anki só fica sem coleção depois das duas.
-    // A segunda leitura puxa as dos custos e do vocabulário (`/anki/stats/decks`, `/anki/vocabulary` dos dois idiomas): sem coleção o fake não
-    // tem exemplo para elas e lança, e o teste cai (2 em 25 repetições, no merge da PR 441; o pedido chega depois do segundo `/anki/decks`).
     await expect.poll(() => fakes.anki.requisicoes.filter(r => r.caminho === '/anki/decks').length).toBe(2);
     await expect.poll(() => fakes.anki.requisicoes.filter(r => r.caminho === '/anki/stats/decks').length).toBe(1);
     await expect.poll(() => fakes.anki.requisicoes.filter(r => r.caminho === '/anki/vocabulary').length).toBe(2);

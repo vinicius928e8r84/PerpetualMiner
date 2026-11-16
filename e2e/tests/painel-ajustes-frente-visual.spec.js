@@ -1,11 +1,5 @@
 'use strict';
 
-// Referência visual da Frente do Cartão (#166, #167, #168), nos Ajustes de envio › Estilo do cartão: Frase com áudio, Ouvir primeiro, Lacuna, Produção, Ditado e Criação (com a nota do celular), cada uma com o
-// texto dela, e o aviso de quando a Conexão não trocou a frente. Não há protótipo desta seção: ela reusa o controle segmentado do Estilo do cartão
-// (#162) e as notas do campo Imagens (o protótipo aprovado dos Ajustes de envio, `docs/design/painel/anki/prototipo-ajustes-envio.html`), e o dono
-// compara estas telas com ele. Todas são PROPOSTAS (`test.fixme`, sem PNG na árvore) até a aprovação dele (CODING_STANDARDS regra 10). Aprovando:
-// tirar o `fixme` e `cd e2e && npx playwright test painel-ajustes-frente-visual --update-snapshots`, e a entrada no livro `e2e/aprovados-visuais.json`.
-
 const { test, expect } = require('../fixtures');
 
 const AGORA = new Date('2026-09-18T12:00:00');

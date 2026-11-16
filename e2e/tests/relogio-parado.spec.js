@@ -1,18 +1,12 @@
 'use strict';
 
-// A prova da fixture `relogioParado` (#209): com 1.700 ms de atraso antes da pausa, as preparações antigas
-// falham e a fixture passa. O atraso é o do #183 (1.701 ms entre os comandos): uma página que embrulha o
-// `install` e o demora, como um runner sob carga demoraria o comando seguinte.
-
 const { test, expect } = require('../fixtures');
 const { montarRelogio } = require('../relogio-parado');
 
 const ATRASO_MS = 1_700;
 const AGORA = new Date('2026-09-18T12:00:00');
-// O destaque de 1,4 s do card Conta & sync (edc5a109): o timer que corria antes da assertion.
 const DESTAQUE_MS = 1_400;
 
-/** A página como ela fica sob carga: o `install` volta só ATRASO_MS depois, e o comando seguinte chega tarde. */
 const sobAtraso = page => ({
   clock: new Proxy(page.clock, {
     get: (relogio, comando) => async (...argumentos) => {
@@ -23,7 +17,6 @@ const sobAtraso = page => ({
   }),
 });
 
-/** Marca, na página, o timer de 1,4 s do destaque; devolve se ele já disparou. */
 async function armarODestaque(page, paginas) {
   await page.goto(paginas.url('sem-video.html'));
   await page.evaluate(ms => {
@@ -74,7 +67,6 @@ test('a margem da fixture é maior que o prazo do teste, inclusive com test.slow
   const relogio = await relogioParado({ page, em: AGORA });
 
   await page.goto('about:blank');
-  // A página nasceu `margem` antes do instante parado: o instante é o pedido, e o prazo cabe inteiro antes dele.
   expect(relogio.margem).toBeGreaterThan(prazo);
   expect(await page.evaluate(() => Date.now())).toBe(AGORA.getTime());
 });
