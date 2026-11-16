@@ -7,7 +7,7 @@ Parte do catálogo de [`README.md`](README.md) (§ 3): estas linhas são do mesm
 | ID | Estado | Categoria | Hoje | Cópia aprovada | Nota |
 |---|---|---|---|---|---|
 | FOT-01 | Título + subtítulo | status | Transcrição de Livro Físico | Minerar de uma foto — Tire uma foto da página com os trechos marcados e escolha quais frases minerar. | V9. |
-| FOT-02 | Área de envio vazia | vazio | Arraste fotos aqui · ou clique para selecionar · múltiplas imagens suportadas · JPG, PNG, HEIC, WEBP | Arraste fotos de páginas marcadas — ou clique para escolher · JPG, PNG, HEIC ou WEBP |  |
+| FOT-02 | Área de envio vazia | vazio | Arraste fotos aqui · ou clique para selecionar · múltiplas imagens suportadas · JPG, PNG, HEIC, WEBP | Arraste fotos de páginas marcadas · JPG, PNG, HEIC ou WEBP |  |
 | FOT-03 | Aviso na prévia | status | Confira se as marcações estão visíveis na foto | Confira se as marcações aparecem na foto |  |
 | FOT-04 | Arquivo que não é foto | erro | Nenhum arquivo de imagem. Use JPG, PNG, WEBP ou HEIC. | Esse arquivo não é uma foto. Use JPG, PNG, HEIC ou WEBP. |  |
 | FOT-05 | Sem chave do Gemini | erro | Insira sua Gemini API Key nas configurações à esquerda. | Falta a chave do Gemini — Para ler fotos, adicione sua chave do Gemini em Configurações. | Botão “Abrir Configurações”, que abre `#configuracoes/chave` com o campo focado. A página não tem mais campo de chave. |
