@@ -1,4 +1,4 @@
-const { detectarIdioma, Atalhos, Overlay, textoDaVoz, IDIOMAS, MineracaoDoDia, Mineracao } = PerpetualMiner;
+const { detectarIdioma, contarLetras, Atalhos, Overlay, textoDaVoz, IDIOMAS, MineracaoDoDia, Mineracao } = PerpetualMiner;
 
 const AUTO_MINER_POLL_MS = 700;
 const SUBTITLE_UI_TEXT = [
@@ -555,7 +555,7 @@ function textoPareceLegenda(texto) {
     const clean = normalizarTextoAutoMiner(texto);
     if (!clean || clean.length < 2 || clean.length > 220) return false;
     if (/^[\d\s:.,!?()[\]{}'"-]+$/.test(clean)) return false;
-    if ((clean.match(/[A-Za-z\u0400-\u04FF]/g) || []).length < 2) return false;
+    if (contarLetras(clean) < 2) return false;
     if (/[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af]/.test(clean)) return false;
     const lower = clean.toLowerCase();
     if (SUBTITLE_UI_TEXT.some(part => lower === part)) return false;

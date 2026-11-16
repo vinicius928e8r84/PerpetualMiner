@@ -8,10 +8,7 @@
     "lib/sincronizacao.js": 2,
     "painel.js": 8
   },
-  "idioma-solto": {
-    "background.js": 2,
-    "content.js": 1
-  },
+  "idioma-solto": {},
   "teste-le-codigo": {},
   "e2e-funcao-interna": {},
   "testes-no-portao": {
