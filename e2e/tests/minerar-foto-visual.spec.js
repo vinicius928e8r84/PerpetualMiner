@@ -1,19 +1,5 @@
 'use strict';
 
-// Referência visual de Minerar de uma foto · Fotos × frases (#36), com
-// Cancelar, Recomeçar e “Tentar de novo” numa foto (#37).
-//
-// O dono revisa estas telas lado a lado com o protótipo travado
-// (docs/design/foto/prototipo-bookreader.html?variant=C). Depois de aprovadas,
-// elas são a referência: uma mudança visual faz o teste falhar até alguém
-// olhar e atualizar:
-//
-//   cd e2e && npx playwright test minerar-foto-visual --update-snapshots
-//
-// A foto é sempre a mesma página marcada (pages/pagina-marcada.png), e o
-// Gemini falso devolve as frases do protótipo. O toast some sozinho, então
-// fica mascarado.
-
 const fs = require('fs');
 const path = require('path');
 const { test, expect } = require('../fixtures');
@@ -164,11 +150,8 @@ test('nenhuma marcação encontrada', async ({ page, extensao, fakes }) => {
 test('janela estreita: a fila sobe para cima das frases', async ({ page, extensao, fakes }) => {
   await abrir(page, extensao, { largura: 720 });
   await comDuasFotosLidas(page, fakes);
-  // A janela, não a página inteira: “Minerar N frases” é uma barra presa ao pé
-  // da janela, e num print de página inteira ela cairia no meio da lista.
   const naJanela = { mask: [page.locator('.veio-toasts')] };
   await expect(page).toHaveScreenshot('foto-estreita.png', naJanela);
-  // No fim da lista, a barra fica logo depois da última frase.
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
   await expect(page).toHaveScreenshot('foto-estreita-fim.png', naJanela);
 });

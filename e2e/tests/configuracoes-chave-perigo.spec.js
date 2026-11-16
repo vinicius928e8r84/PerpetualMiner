@@ -18,7 +18,6 @@ function frasesDeExemplo(n) {
   }));
 }
 
-/** Abre o painel e falha o teste se algum confirm()/alert() do navegador aparecer. */
 async function abrirPainel(page, extensao, endereco) {
   page.on('dialog', dialogo => {
     throw new Error(`o painel abriu um diálogo nativo: ${dialogo.message()}`);
@@ -46,7 +45,6 @@ test('chave salva: “Chave salva”, a chave mascarada e Trocar chave; Cancelar
   await expect(campoDaChave(page)).toHaveCount(0);
 
   await chave.getByRole('button', { name: 'Trocar chave' }).click();
-  // Trocar abre o campo vazio, com o foco nele: a chave antiga nunca vai para a tela.
   await expect(campoDaChave(page)).toBeFocused();
   await expect(campoDaChave(page)).toHaveValue('');
   await expect(campoDaChave(page)).toHaveAttribute('placeholder', 'Cole a chave (começa com AIza)');
@@ -70,7 +68,6 @@ test('trocar a chave com Enter grava a nova, mostra o toast CFG-16 e o card volt
   await expect(toast(page)).toHaveText('Chave do Gemini salva');
   await expect(campoDaChave(page)).toHaveCount(0);
   await expect(card(page, 'chave').locator('.cfg-corpo').getByText('AIza••••••••fG9h')).toBeVisible();
-  // A mesma chave de sempre, sem os espaços da colagem: é ela que o Minerar de uma foto lê.
   expect((await extensao.lerStorage('geminiApiKey')).geminiApiKey).toBe(OUTRA_CHAVE);
 
   await card(page, 'chave').getByRole('button', { name: 'Chave do Gemini', exact: true }).click();
@@ -86,10 +83,8 @@ test('sem chave: o campo fica aberto; salvar vazio é recusado em danger e salva
   await expect(chave.getByText('Sem a chave, Minerar de uma foto não consegue ler as fotos.')).toBeVisible();
   const salvar = chave.getByRole('button', { name: 'Salvar chave' });
   await expect(salvar).toHaveClass(/veio-botao--primario/);
-  // Sem chave não há o que cancelar.
   await expect(chave.getByRole('button', { name: 'Cancelar' })).toHaveCount(0);
 
-  // Salvar vazio (ou só espaços) não grava: borda danger e o aviso embaixo.
   await campoDaChave(page).fill('   ');
   await salvar.click();
   await expect(campoDaChave(page)).toHaveAttribute('aria-invalid', 'true');
@@ -102,12 +97,10 @@ test('sem chave: o campo fica aberto; salvar vazio é recusado em danger e salva
     document.body.append(amostra);
     return getComputedStyle(amostra).color;
   });
-  // A borda muda com transição: a cor é conferida depois que ela termina.
   await expect.poll(() => campoDaChave(page).evaluate(el => getComputedStyle(el).borderColor)).toBe(corDoPerigo);
   await expect(toast(page)).toHaveCount(0);
   expect((await extensao.lerStorage({ geminiApiKey: '' })).geminiApiKey).toBe('');
 
-  // Voltar a digitar tira o erro.
   await campoDaChave(page).fill(CHAVE_DO_GEMINI);
   await expect(campoDaChave(page)).not.toHaveAttribute('aria-invalid', 'true');
   await expect(chave.getByText('Cole a chave antes de salvar')).toBeHidden();
@@ -181,7 +174,6 @@ test('sem conta: confirmar no modal apaga o histórico, mostra CFG-18 e zera o t
   await expect(page.locator('#shell-total')).toHaveText('0');
   await expect.poll(() => extensao.frases()).toEqual([]);
 
-  // Sem frases, a entrada fica indisponível com CFG-20.
   await expect(card(page, 'perigo').getByRole('button', { name: 'Nenhuma frase para apagar' })).toBeDisabled();
   await expect(card(page, 'perigo').getByText('Nenhuma frase no histórico')).toBeVisible();
   await expect(resumo(page, 'perigo')).toHaveText('Nenhuma frase');
@@ -204,7 +196,6 @@ test('sem frases, a entrada fica indisponível com “Nenhuma frase para apagar�
 });
 
 test('com conta: o alcance é todos os computadores, e confirmar apaga também a nuvem', async ({ page, extensao, fakes, relogioParado }) => {
-  // Segura o toast transitório enquanto lê o estado persistido sob carga.
   await relogioParado();
   const frases = frasesDeExemplo(2);
   await extensao.semearSessao({ uid: 'uid-perigo' });
@@ -221,7 +212,6 @@ test('com conta: o alcance é todos os computadores, e confirmar apaga também a
   await expect(modal(page).getByText('Elas somem deste computador e de todos os outros conectados à sua conta. Não dá para desfazer.')).toBeVisible();
   await modal(page).getByRole('button', { name: 'Apagar 2 frases' }).click();
 
-  // O toast só vem quando a nuvem já está vazia.
   await expect(toast(page)).toHaveText('Todas as frases foram apagadas');
   expect(fakes.google.frasesDe('uid-perigo')).toEqual([]);
   await expect(page.locator('#shell-total')).toHaveText('0');
@@ -229,7 +219,6 @@ test('com conta: o alcance é todos os computadores, e confirmar apaga também a
 });
 
 test('com conta e a chave da OpenAI, Apagar tudo diz que a chave também sai e a tira dos três lugares', async ({ page, extensao, fakes }) => {
-  // #154: a chave acompanha a conta, então Apagar tudo a tira da nuvem, da extensão e da Conexão (chave de mentira).
   const chave = 'sk-proj-chave-de-exemplo-9f3a';
   const frases = frasesDeExemplo(2);
   await extensao.semearSessao({ uid: 'uid-perigo' });
@@ -260,7 +249,7 @@ test('sem a chave da OpenAI, o modal do Apagar tudo não fala dela', async ({ pa
 
   await expect(modal(page)).toContainText('Elas somem deste computador.');
   await expect(modal(page)).not.toContainText('chave');
-  // Exceção de teste: sem-estado-guardado — o teste só abre o modal e não confirma: nada é apagado nem gravado.
+  // Exceção de teste: sem-estado-guardado
 });
 
 test('com conta, enquanto a nuvem não responde, a Zona de perigo não finge que não há frases', async ({ page, extensao, fakes }) => {
@@ -276,8 +265,6 @@ test('com conta, enquanto a nuvem não responde, a Zona de perigo não finge que
 });
 
 test('com conta e a nuvem fora do ar, as frases apagadas não voltam quando ela volta', async ({ page, extensao, fakes }) => {
-  // Antes, apagar tudo lia a nuvem para saber o que apagar: com ela fora do ar,
-  // nada ficava marcado como apagado e o sync seguinte trazia tudo de volta.
   const frases = frasesDeExemplo(2);
   await extensao.semearSessao({ uid: 'uid-fora' });
   await extensao.gravarStorage({ frases });
@@ -288,8 +275,6 @@ test('com conta e a nuvem fora do ar, as frases apagadas não voltam quando ela 
   fakes.google.ficarForaDoAr();
   await card(page, 'perigo').getByRole('button', { name: 'Apagar todas as 2 frases' }).click();
   await modal(page).getByRole('button', { name: 'Apagar 2 frases' }).click();
-  // A falha aparece no chip; nenhum toast diz que tudo foi apagado (Q4). Conta na
-  // hora, sem esperar: o toast antigo nascia junto com o total em 0 e sumia depois.
   const toastsDeApagado = () => toastCom(page, 'Todas as frases foram apagadas').count();
   await expect(page.locator('#shell-total')).toHaveText('0');
   expect(await toastsDeApagado()).toBe(0);
@@ -305,8 +290,6 @@ test('com conta e a nuvem fora do ar, as frases apagadas não voltam quando ela 
 });
 
 test('com conta e a nuvem fora do ar, o que outro computador gravou antes também não volta; o que veio depois fica', async ({ page, extensao, fakes }) => {
-  // Antes, só as frases deste computador ficavam marcadas: uma frase que outro
-  // computador pôs na nuvem depois do último sync daqui voltava quando ela voltava.
   const frases = frasesDeExemplo(2);
   await extensao.semearSessao({ uid: 'uid-outro' });
   await extensao.gravarStorage({ frases });
@@ -333,7 +316,6 @@ test('com conta e a nuvem fora do ar, o que outro computador gravou antes també
     await page.screenshot({ path: path.join(process.env.TEST_EVIDENCE_DIR, 'apagar-tudo-offline.png'), fullPage: true, animations: 'disabled' });
   }
 
-  // Minerada em qualquer computador depois de apagar tudo: essa fica.
   const depois = { id: Date.now() + 1_000, texto: 'Mined after the wipe.', data: HOJE, streaming: 'netflix', idioma: 'Inglês' };
   fakes.google.ficarForaDoAr(false);
   fakes.google.gravarFrases('uid-outro', [depois]);
@@ -342,7 +324,6 @@ test('com conta e a nuvem fora do ar, o que outro computador gravou antes també
 
   await expect.poll(() => fakes.google.frasesDe('uid-outro').map(f => String(f.id))).toEqual([String(depois.id)]);
   await expect(page.locator('#shell-total')).toHaveText('1');
-  // Nenhuma das apagadas volta a este computador (a nova fica na nuvem e na tela).
   expect((await extensao.frases()).filter(f => String(f.id) !== String(depois.id))).toEqual([]);
   expect(await extensao.lerStorage('pm_apagar_tudo')).toEqual({});
   expect(fakes.google.apagadasDe('uid-outro').sort()).toEqual([...frases.map(f => String(f.id)), String(doOutroComputador.id)].sort());
@@ -366,18 +347,15 @@ test('com conta e a nuvem fora do ar, o que outro computador gravou antes també
 
 test('com movimento reduzido, o flash dos cards novos e o ponto da chave ficam parados', async ({ page, extensao, relogioParado }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  // O flash de 1,4 s não é uma barreira de carregamento: pausa antes da navegação.
   await relogioParado();
   await extensao.gravarStorage({ geminiApiKey: CHAVE_DO_GEMINI, frases: frasesDeExemplo(2) });
   await abrirPainel(page, extensao, '#configuracoes/perigo');
 
-  // A borda do destaque aparece, mas não anima; o ponto de “Chave salva” não pisca.
   await expect(card(page, 'perigo')).toHaveClass(/shell-card--destaque/);
   expect(await card(page, 'perigo').evaluate(el => getComputedStyle(el).animationName)).toBe('none');
   await card(page, 'chave').getByRole('button', { name: 'Chave do Gemini', exact: true }).click();
   expect(await card(page, 'chave').locator('.cfg-ponto').evaluate(el => getComputedStyle(el).animationName)).toBe('none');
 
-  // O modal abre e fecha igual, sem animação.
   await card(page, 'perigo').getByRole('button', { name: 'Apagar todas as 2 frases' }).click();
   await expect(modal(page)).toBeVisible();
   expect(await modal(page).evaluate(el => getComputedStyle(el).animationName)).toBe('none');
@@ -392,7 +370,6 @@ test('pelo teclado: Trocar chave, digitar e Enter; abrir o modal com Enter e con
   expect(await trocar.evaluate(el => getComputedStyle(el).outlineStyle)).toBe('solid');
   await page.keyboard.press('Enter');
   await page.keyboard.type(OUTRA_CHAVE);
-  // O campo Veio mostra o foco com o anel ouro (box-shadow), não com outline.
   expect(await campoDaChave(page).evaluate(el => getComputedStyle(el).boxShadow)).not.toBe('none');
   await page.keyboard.press('Enter');
   await expect(toast(page)).toHaveText('Chave do Gemini salva');

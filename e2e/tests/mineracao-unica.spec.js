@@ -1,9 +1,5 @@
 'use strict';
 
-// Minerar uma Frase por um caminho só: o menu de contexto e o atalho de seleção
-// montam a mesma Fonte e o mesmo Contexto, e a pessoa só lê o que o service
-// worker confirmou.
-
 const { test, expect } = require('../fixtures');
 const { fotografar, registrarEstado } = require('../evidencias-mineracao');
 
@@ -22,10 +18,6 @@ const minerarPeloMenu = (extensao, { selecao, pageUrl, titulo }) => extensao.ser
   { selecao, pageUrl, titulo },
 );
 
-/**
- * Abre o painel e confere a linha de Contexto da frase como a pessoa a vê: o
- * selo da Fonte e o Título (sem o Título, a linha não tem a origem).
- */
 async function conferirContextoNaTela(page, extensao, texto, { selo, origem }) {
   if (page.url() !== extensao.url('painel.html#frases')) await page.goto(extensao.url('painel.html#frases'));
   const contexto = page.locator('.veio-frase').filter({ hasText: texto }).locator('.veio-frase__contexto');

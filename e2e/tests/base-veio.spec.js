@@ -1,9 +1,5 @@
 'use strict';
 
-// Base Veio: os ícones da toolbar, o arquivo único de tokens, as fontes
-// empacotadas e o cursor ouro. Os testes afirmam o que a pessoa vê nas páginas
-// reais da extensão desempacotada.
-
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
@@ -18,7 +14,6 @@ const FRASE_RUSSA = 'Тихая гавань проснулась раньше �
 
 const digest = bytes => crypto.createHash('sha256').update(Buffer.from(bytes)).digest('hex');
 
-/** Lê um recurso da extensão pelo service worker e devolve os bytes. */
 const lerRecurso = (extensao, caminho) =>
   extensao.serviceWorker.evaluate(async url => {
     const resposta = await fetch(url);
@@ -83,7 +78,6 @@ test('a marca das páginas é a da Veio, e o icon.svg legado saiu', async ({ pag
 
   for (const pagina of PAGINAS_DA_EXTENSAO) {
     await page.goto(extensao.url(pagina));
-    // O painel tem duas: a da sidebar e a da Boas-vindas, que fica escondida fora dela.
     const marca = page.locator('img.veio-marca').filter({ visible: true });
     await expect(marca).toBeVisible();
     await expect(marca).toHaveJSProperty('complete', true);
@@ -142,8 +136,6 @@ for (const pagina of PAGINAS_DA_EXTENSAO) {
     expect(russo.carregada).toBe(true);
     expect(Math.abs(russo.larguraDaPagina - russo.larguraDoSistema)).toBeGreaterThan(1);
 
-    // A mesma frase em latim, para a fonte da página não ser Manrope só no
-    // cirílico (ou vice-versa).
     const latim = await comoAPaginaRenderiza(page, 'A frase fica no histórico');
     expect(Math.abs(latim.larguraDaPagina - latim.larguraDoSistema)).toBeGreaterThan(1);
   });
@@ -201,8 +193,6 @@ for (const pagina of PAGINAS_DA_EXTENSAO) {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto(extensao.url(pagina));
 
-    // Um spinner como os das telas legadas, que só aparece depois que a
-    // página começa a trabalhar: ele também tem de ficar parado.
     await page.evaluate(() => {
       const estilo = document.createElement('style');
       estilo.textContent = '@keyframes girar-teste { to { transform: rotate(360deg); } }';
@@ -213,8 +203,6 @@ for (const pagina of PAGINAS_DA_EXTENSAO) {
       document.body.appendChild(spinner);
     });
 
-    // Tudo o que anima termina logo; o que ainda roda depois disso pulsa,
-    // pisca ou gira na frente da pessoa.
     const aindaEmMovimento = await page.evaluate(async () => {
       const descrever = animacao => {
         const alvo = animacao.effect && animacao.effect.target;
@@ -223,10 +211,6 @@ for (const pagina of PAGINAS_DA_EXTENSAO) {
       const terminou = animacao => animacao.finished.then(() => true, () => true);
       const prazo = new Promise(resolve => setTimeout(resolve, 300));
       await Promise.race([Promise.all(document.getAnimations().map(terminou)), prazo]);
-      // Com movimento reduzido, a base encurta toda animação para 1 ms (e zera
-      // a transição). Uma que começa bem na hora da leitura ainda aparece
-      // rodando, mas não se vê: só conta o que dura mais que isso, como o
-      // spinner infinito lá de cima.
       const seMexeNaTela = animacao => animacao.effect.getComputedTiming().activeDuration > 1;
       return document.getAnimations()
         .filter(animacao => animacao.playState === 'running' && seMexeNaTela(animacao))
@@ -252,11 +236,7 @@ for (const pagina of PAGINAS_DA_EXTENSAO) {
   test(`em ${pagina}, todo controle alcançado pelo Tab mostra onde o foco está`, async ({ page, extensao }) => {
     await page.goto(extensao.url(pagina));
 
-    // O que desenha foco: o anel da Veio ou o foco próprio de uma superfície
-    // (borda, sombra, fundo). Um controle focado que não muda nada disso
-    // deixa a pessoa sem saber onde o teclado está.
     await page.evaluate(() => {
-      // Lido depois que as transições de foco terminam, como a pessoa vê.
       window.desenhoDoFoco = async no => {
         await Promise.all(no.getAnimations().map(animacao => animacao.finished.catch(() => {})));
         const estilo = getComputedStyle(no);
@@ -267,7 +247,6 @@ for (const pagina of PAGINAS_DA_EXTENSAO) {
       };
     });
 
-    // Percorre a página pelo teclado e guarda como cada controle aparece focado.
     const focados = [];
     for (let ordem = 0; ordem < 60; ordem += 1) {
       await page.keyboard.press('Tab');
@@ -284,7 +263,6 @@ for (const pagina of PAGINAS_DA_EXTENSAO) {
       focados.push(focado);
     }
 
-    // Sem foco nenhum, o mesmo controle tem de parecer diferente.
     const desfocados = await page.evaluate(() => {
       document.activeElement.blur();
       return Promise.all([...document.querySelectorAll('[data-foco-de-teste]')]

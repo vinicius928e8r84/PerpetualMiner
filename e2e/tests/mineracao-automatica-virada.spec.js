@@ -19,7 +19,6 @@ const ALARME_VIRADA_DO_DIA = 'pm-virada-do-dia';
 const botaoFlutuante = page => page.getByRole('button', { name: /^Minerar legenda/ });
 const contador = page => page.locator('perpetualminer-overlay .pm-contador');
 
-/** Um dia no formato do contador diário (AAAA-MM-DD, hora local). */
 function diaDe(momento) {
   return [
     momento.getFullYear(),
@@ -44,7 +43,6 @@ async function congelarRelogioDoServiceWorker(extensao, momento) {
 }
 
 async function tocarVideoComLegenda(page, texto) {
-  // A mineração automática só olha a legenda de um vídeo que está tocando.
   await page.evaluate(async texto => {
     document.querySelector('#legenda').textContent = texto;
     const tela = document.createElement('canvas');
@@ -59,8 +57,6 @@ test('ontem no limite, o alarme da virada do dia: a aba aberta volta a minerar',
   await extensao.gravarStorage({
     pm_auto_miner_settings: { en: { enabled: false, dailyLimit: 20 }, ru: { enabled: true, dailyLimit: 3 } },
     pm_auto_miner_daily: { date: diaDe(new Date()), en: { count: 0 }, ru: { count: 3 } },
-    // O vocabulário do Anki em cache, sem nenhuma palavra conhecida: a frase russa
-    // tem um item novo só, então a mineração automática a aceita.
     pm_auto_keyword_vocab_ru: {
       cacheVersion: 2, deckName: DRU, createdAt: Date.now(),
       words: [], terms: [], wordInfo: {}, termInfo: {},
@@ -69,7 +65,6 @@ test('ontem no limite, o alarme da virada do dia: a aba aberta volta a minerar',
   await page.goto(paginas.url('player.html'));
   await expect(botaoFlutuante(page)).toBeVisible();
 
-  // A aba está no limite do dia: o contador diz isso e nada é minerado.
   await tocarVideoComLegenda(page, FRASE_RUSSA);
   await expect(contador(page)).toHaveText('3/3');
   await expect(botaoFlutuante(page)).toHaveAccessibleDescription('Mineração automática · Russo: limite de hoje atingido');
@@ -79,7 +74,6 @@ test('ontem no limite, o alarme da virada do dia: a aba aberta volta a minerar',
   await fotografar(page.locator('.player'), 'virada-aba-antes.png');
   await registrarEstado(extensao, 'virada-antes.json');
 
-  // O dia vira: o que está guardado é de ontem, e o alarme da meia-noite dispara.
   const ontem = new Date(Date.now() - 24 * 60 * 60 * 1000);
   await extensao.gravarStorage({
     pm_auto_miner_daily: { date: diaDe(ontem), en: { count: 0 }, ru: { count: 3 } },
@@ -87,7 +81,6 @@ test('ontem no limite, o alarme da virada do dia: a aba aberta volta a minerar',
   await extensao.serviceWorker.evaluate(
     nome => chrome.alarms.create(nome, { when: Date.now() + 100 }), ALARME_VIRADA_DO_DIA);
 
-  // A aba, sem recarregar, minera a frase que estava na tela e conta uma de hoje.
   await expect.poll(async () => (await extensao.frases()).map(frase => frase.texto)).toEqual([FRASE_RUSSA]);
   await expect(contador(page)).toHaveText('1/3');
   await expect(botaoFlutuante(page)).toHaveAccessibleDescription('Mineração automática · Russo: 1 de 3 hoje');

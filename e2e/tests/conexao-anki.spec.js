@@ -1,19 +1,8 @@
 'use strict';
 
-// O ciclo de vida da Conexão com o Anki (lib/conexao-anki.js), visto de quem o
-// acompanha: o ponto do painel, a faixa F1, a nota do popup e o fato gravado
-// “já respondeu neste computador” (`pm_anki_ja_conectou`). No popup, o que muda com
-// a Conexão é o “— esperando o Anki” do idioma ligado que nunca foi lido (BRG-37).
-//
-// Três situações (Conectando, Ligada, Desligada) e uma porta que aceita e não
-// responde, que conta como desligada em 3 s. Os testes afirmam o que a pessoa
-// vê e o que fica gravado, nunca funções internas.
-
 const { test, expect } = require('../fixtures');
 const path = require('path');
 
-// Quando solicitado, guarda a tela real do painel e do popup como evidência da
-// transição, sem fazer dos pixels um requisito frágil da suíte regular.
 const fotografar = async (page, nome) => {
   if (process.env.PM_EVIDENCE_DIR) {
     await page.screenshot({ path: path.join(process.env.PM_EVIDENCE_DIR, nome), fullPage: true });
@@ -24,7 +13,6 @@ const pontoDaConexao = page => page.locator('.shell-ponto');
 const faixaF1 = page => page.getByText('A Conexão com o Anki está desligada. Ligue-a neste computador e tente de novo.');
 const esperaDoPopup = page => page.locator('.popup-azulejo__espera:visible');
 
-/** O inglês ligado e nenhuma leitura do vocabulário: o popup, com a Conexão desligada, espera o Anki. */
 const ligarOIngles = extensao => extensao.gravarStorage({
   pm_auto_miner_settings: { en: { enabled: true, dailyLimit: 20 }, ru: { enabled: false, dailyLimit: 20 } },
 });
@@ -131,7 +119,7 @@ test('popup: uma porta muda conta como desligada em 3 s e o azulejo passa a espe
 });
 
 test('popup: confere só ao abrir, não a cada 15 s; ao reabrir percebe que a Conexão caiu', async ({ page, extensao, fakes }) => {
-  test.setTimeout(45_000); // É preciso atravessar o intervalo de 15 s do painel.
+  test.setTimeout(45_000);
   await ligarOIngles(extensao);
   await page.setViewportSize({ width: 340, height: 600 });
   const numeroDeConferencias = () => fakes.anki.requisicoes.filter(r => r.caminho === '/health').length;
@@ -161,7 +149,6 @@ test('popup: quem confere grava o fato; o painel aberto depois já sabe que a Co
   await page.goto(extensao.url('popup.html'));
   await expect.poll(() => lerJaConectou(extensao)).toBe(true);
 
-  // Com a Conexão desligada agora, o painel mostra as abas (não o card da primeira vez).
   fakes.anki.desligar();
   await page.goto(extensao.url('painel.html#anki/custos'));
   await expect(pontoDaConexao(page)).toHaveAttribute('data-estado', 'desligada');

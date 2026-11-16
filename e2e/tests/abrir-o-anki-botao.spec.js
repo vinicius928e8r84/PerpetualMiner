@@ -1,10 +1,5 @@
 'use strict';
 
-// O botão Abrir o Anki (#150, histórias 97 a 100): o selo do popup, o selo e o “— esperando o Anki” de Baralhos e
-// termos e de Vocabulário. Só o clique chama o abridor da Conexão (o host de mentira do fixture, e2e/fakes/abridor.js);
-// quando o Anki responde, o selo e o botão saem e os dados vêm da Conexão. O aviso do Chrome que pede a permissão é
-// nativo e o Playwright não o alcança (como em abrir-o-anki-sozinho.spec.js): a permissão dada vem do fixture.
-
 const { test, expect } = require('../fixtures');
 const DEN = 'PerpetualMiner::Inglês';
 const { estadoFinal, estadoFinalEm } = require('../estado-final');
@@ -12,7 +7,6 @@ const contrato = require('../../complemento/contrato/exemplos.json');
 const { leituraDoVocabulario: leitura } = require('../leitura-do-vocabulario');
 
 const AGORA = new Date('2026-09-18T12:00:00');
-/** As mensagens `abrir` que o abridor recebeu (o passo Abrir o Anki sozinho também manda `conferir`, que nada abre). */
 const aberturas = fakes => fakes.abridor.pedidos().filter(p => p.mensagem.acao === 'abrir');
 const ABRIR = { mensagem: { acao: 'abrir' }, origem: `${contrato.origemDaExtensao}/` };
 
@@ -30,7 +24,6 @@ test.beforeEach(({ fakes }) => {
   fakes.anki.definirVocabulario('en', VOCABULARIO_EN);
 });
 
-/** Lê os dados com o Anki aberto e fecha o Anki duas horas depois: o painel mostra a última leitura. */
 async function fecharOAnkiDepoisDeLer(page, extensao, fakes) {
   await extensao.gravarStorage({ pm_anki_ja_conectou: true });
   await page.clock.setFixedTime(AGORA);

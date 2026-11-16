@@ -1,11 +1,5 @@
 'use strict';
 
-// Configurações › Conexão com o Anki: a linha “Perfil do Anki ▾” (#149, histórias 19, 20, 21 e 24).
-//
-// O perfil fixo mora na Conexão (o fake guarda a lista, o marcado e o aberto, do contrato em
-// `complemento/contrato/exemplos-do-perfil.json`): os testes afirmam o que a pessoa vê e o que a Conexão ficou com.
-// Com um perfil só nada sobre perfis aparece; o marcado que o Anki já não tem dá um aviso em vermelho.
-
 const { test, expect } = require('../fixtures');
 
 const linha = page => page.locator('#cfg-anki-perfil');
@@ -22,7 +16,6 @@ const pedidosDeEscolha = fakes => fakes.anki.requisicoes.filter(r => r.metodo ==
 test('com um perfil só o card não diz nada sobre perfis', async ({ page, extensao, fakes }) => {
   await abrirCard(page, extensao);
   await expect(page.getByRole('switch', { name: 'Abrir o Anki com o computador' })).toBeEnabled();
-  // A lista já foi pedida à Conexão: sem a linha, sem a nota, sem aviso.
   await expect.poll(() => fakes.anki.requisicoes.some(r => r.caminho === '/anki/profiles')).toBe(true);
 
   await expect(page.locator('#cfg-anki-corpo')).not.toContainText('Perfil do Anki');
@@ -51,7 +44,6 @@ test('escolher outro perfil pede à Conexão e a Conexão fica com ele', async (
   expect(pedidosDeEscolha(fakes)).toEqual([{ profile: 'Beto' }]);
   await expect(escolha(page)).toHaveValue('Beto');
   await expect(aviso(page)).toHaveCount(0);
-  // Escolher o perfil marcado não abre nem fecha nada no Anki: o aberto continua o que era.
   expect(fakes.anki.perfilAberto()).toBe('Ana');
 });
 
@@ -83,7 +75,6 @@ test('quando a Conexão não troca o perfil a tela diz e continua com o marcado 
 });
 
 test.describe('quando a resposta da escolha do perfil não chega', () => {
-  /** O próximo `POST /anki/profile` perde a resposta (a conexão cai): com `aplicada` a Conexão chegou a marcar o perfil antes, sem `aplicada` não marcou. */
   async function perderAResposta(context, fakes, { aplicada }) {
     await context.route('**/anki/profile', async route => {
       await context.unroute('**/anki/profile');

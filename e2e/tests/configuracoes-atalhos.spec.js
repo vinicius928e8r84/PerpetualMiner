@@ -59,7 +59,6 @@ test('aberto, o card mostra a descrição e as duas linhas com o padrão: Alt+S 
   await expect(gravar(page, 'Minerar legenda')).toBeVisible();
   await expect(gravar(page, 'Minerar seleção')).toBeVisible();
 
-  // Com tudo no padrão, não há o que restaurar.
   await expect(restaurar(page)).toHaveCount(0);
 });
 
@@ -71,7 +70,6 @@ test('um atalho gravado em inglês aparece em PT-BR na linha', async ({ page, ex
 });
 
 test('gravar Ctrl+Shift+K para Minerar legenda: no player, Ctrl+Shift+K minera e Alt+S não', async ({ page, context, paginas, extensao }) => {
-  // O player já está aberto: o content script segue o atalho novo sem recarregar.
   const player = await context.newPage();
   await player.goto(paginas.url('player.html'));
   await expect(player.getByRole('button', { name: /^Minerar legenda/ })).toBeVisible();
@@ -85,7 +83,6 @@ test('gravar Ctrl+Shift+K para Minerar legenda: no player, Ctrl+Shift+K minera e
   expect((await atalhosGravados(extensao)).pm_atalho_legenda).toMatchObject({
     type: 'keyboard', code: 'KeyK', ctrlKey: true, shiftKey: true, altKey: false,
   });
-  // O resumo da linha fechada acompanha.
   await page.getByRole('button', { name: 'Atalhos', exact: true }).click();
   await expect(cardDeAtalhos(page).locator('.cfg-resumo > span')).toHaveText(['Legenda Ctrl+Shift+K', 'Seleção Sem atalho']);
 
@@ -106,7 +103,6 @@ test('gravando: a tecla vira a pílula ouro, o botão vira Cancelar e o da outra
   await expect(cancelar(page, 'Minerar legenda')).toBeVisible();
   await expect(gravar(page, 'Minerar seleção')).toBeDisabled();
 
-  // Cancelar volta a linha como estava, sem gravar nada.
   await cancelar(page, 'Minerar legenda').click();
   await expect(tecla(page, 'Minerar legenda')).toHaveText('Alt+S');
   await expect(gravar(page, 'Minerar seleção')).toBeEnabled();
@@ -131,7 +127,6 @@ test('uma tecla sem Ctrl, Alt nem Shift não grava, nem com Meta: a gravação c
   await abrirAtalhos(page, extensao);
   await gravar(page, 'Minerar legenda').click();
 
-  // Um “K” sozinho tomaria a letra de todo campo de texto de toda página.
   await page.keyboard.press('KeyK');
   await page.keyboard.press('F2');
   await page.keyboard.press('Meta+KeyK');
@@ -147,7 +142,6 @@ test('sair do card cancela a gravação: a tecla digitada lá fora não vira ata
   await irParaArea(page, 'frases');
   await page.keyboard.press('Alt+KeyE');
 
-  // Fechando o card.
   await abrirAtalhos(page, extensao);
   await gravar(page, 'Minerar seleção').click();
   await page.getByRole('button', { name: 'Atalhos', exact: true }).click();
@@ -173,7 +167,6 @@ test('clique esquerdo e direito não gravam: a gravação continua', async ({ pa
 });
 
 test('gravar o botão voltar do mouse funciona e não navega enquanto grava', async ({ page, extensao }) => {
-  // Há para onde voltar: sem a gravação, o botão voltar levaria a #frases.
   await page.goto(extensao.url('painel.html#frases'));
   await abrirAtalhos(page, extensao);
 
@@ -217,7 +210,6 @@ test('um atalho repetido é recusado com aviso, e nada muda até sair uma combin
 
   const aviso = linha(page, 'Minerar seleção').getByText('Esse atalho já é do Minerar legenda. Grave outro.');
   await expect(aviso).toBeVisible();
-  // O aviso é danger e a gravação continua.
   const corDoPerigo = await page.evaluate(() => {
     const amostra = document.createElement('span');
     amostra.style.color = 'var(--veio-danger)';
@@ -266,11 +258,9 @@ test('Restaurar atalhos padrão só aparece fora do padrão e grava {legenda: Al
   const gravados = await atalhosGravados(extensao);
   expect(gravados.pm_atalho).toBeNull();
   expect(gravados.pm_atalho_legenda).toMatchObject(ALT_S);
-  // Sem confirmação, sem modal e sem toast.
   expect(await page.evaluate(() => window.__confirmacoes)).toBe(0);
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.locator('.veio-toast')).toHaveCount(0);
-  // O foco não se perde com o botão que sumiu.
   await expect(gravar(page, 'Minerar legenda')).toBeFocused();
 });
 
@@ -300,7 +290,6 @@ test('pelo teclado: Tab chega ao Gravar atalho, Enter grava e o foco aparece', a
 test('o leitor de tela ouve a gravação, o aviso de repetido e o nome da ação de cada botão', async ({ page, extensao }) => {
   await abrirAtalhos(page, extensao);
 
-  // Cada Gravar atalho diz de qual ação é.
   await expect(gravar(page, 'Minerar legenda')).toHaveAccessibleDescription('Minerar legenda');
   // A região que anuncia já está na linha antes de gravar, vazia: o leitor de
   // tela só lê o que muda numa região que já existe.
@@ -348,7 +337,6 @@ test('com o botão voltar gravado para a legenda, minerar não leva a página de
   await extensao.gravarStorage({
     pm_atalho_legenda: { type: 'mouse', button: 3, code: null, altKey: true, ctrlKey: false, shiftKey: false },
   });
-  // Há para onde voltar: sem a extensão, o botão voltar sairia do player.
   await page.goto(paginas.url('sem-video.html'));
   await page.goto(paginas.url('player.html'));
   await expect(page.getByRole('button', { name: /^Minerar legenda/ })).toBeVisible();

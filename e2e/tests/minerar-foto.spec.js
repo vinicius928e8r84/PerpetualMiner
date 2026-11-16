@@ -1,11 +1,5 @@
 'use strict';
 
-// Minerar de uma foto · Página Fotos × frases (#36), o layout C travado em
-// docs/design/foto/. A página lê a foto pelo Gemini (falsificado na fronteira
-// HTTP) e mina pelo service worker de verdade: os testes olham o que a pessoa
-// vê na tela e o que fica gravado em `frases`. Cancelar, Recomeçar e
-// “Tentar de novo” numa foto são do #37.
-
 const { test, expect } = require('../fixtures');
 const { fotografar, registrarEstado } = require('../evidencias-mineracao');
 
@@ -41,7 +35,6 @@ const colunaDasFrases = page => page.locator('#foto-estado');
 const frase = (page, texto) => page.getByRole('checkbox', { name: texto, exact: true });
 const gravadasDoLivro = async extensao => (await extensao.frases()).filter(f => f.streaming === 'livro');
 
-/** Lê uma foto só: ela para na prévia, e “Ler marcações” lê. */
 async function lerUmaFoto(page, nome = 'pagina.png') {
   await enviarFotos(page, foto(nome));
   await page.getByRole('button', { name: 'Ler marcações' }).click();
@@ -91,7 +84,6 @@ test('várias fotos pulam a prévia e são lidas em sequência, com o status de 
   await expect(fotoNaFila(page, 'b.png')).toContainText('Lendo…');
   await expect(fotoNaFila(page, 'c.png')).toContainText('Na fila');
   await expect(page.getByText('1 de 3 lidas')).toBeVisible();
-  // As frases da foto já lida aparecem enquanto a próxima é lida.
   await expect(frase(page, FRASES_DA_PAGINA_1[0])).toBeVisible();
 
   soltarASegunda();
@@ -146,7 +138,6 @@ test('“Selecionar todas” marca e desmarca, fica misto com parte, e o botão 
   await expect(todas).toHaveJSProperty('indeterminate', true);
   await expect(botaoMinerar(page)).toHaveText('Minerar 2 frases');
 
-  // Misto: o clique marca todas; marcado: o clique desmarca todas.
   await todas.click();
   await expect(todas).toBeChecked();
   await expect(botaoMinerar(page)).toHaveText('Minerar 3 frases');
@@ -231,7 +222,6 @@ test('minerar e clicar de novo não grava nada duas vezes; as mineradas ficam �
   await expect(botaoMinerar(page)).toBeDisabled();
   await botaoMinerar(page).click({ force: true });
 
-  // Chega outra foto: o botão volta, mas só com as frases novas.
   await enviarFotos(page, foto('b.png'));
   await expect(fotoNaFila(page, 'b.png')).toContainText('2 frases');
   await expect(botaoMinerar(page)).toHaveText('Minerar 2 frases');
@@ -250,7 +240,6 @@ test('o Gemini sem marcações diz “Sem marcações” e ensina a marcar', asy
   await expect(fotoNaFila(page, 'pagina.png')).toContainText('Sem marcações');
   await expect(page.getByText('Nenhuma marcação encontrada nesta foto', { exact: true })).toBeVisible();
   await expect(page.getByText('Marque as frases com /barras/, _sublinhado_ ou caneta e confira se aparecem na foto.', { exact: true })).toBeVisible();
-  // A legenda das marcações fica só no pé da fila, não se repete no vazio.
   await expect(page.getByText('entre barras')).toHaveCount(1);
   await expect(colunaDasFrases(page).getByText('entre barras')).toHaveCount(0);
   await expect(page.getByRole('alert')).toHaveCount(0);
@@ -265,7 +254,6 @@ test('o Gemini com pedidos demais: a foto falha com o motivo, sem culpar as marc
   const cartao = fotoNaFila(page, 'pagina.png');
   await expect(cartao).toContainText('Falhou');
   await expect(cartao).toContainText('O Gemini está recebendo pedidos demais; espere um minuto e tente de novo.');
-  // Sem nenhuma frase, a coluna das frases é o estado da falha, e não há um aviso repetindo o mesmo.
   const coluna = colunaDasFrases(page);
   await expect(coluna.getByText('Não deu para ler a foto', { exact: true })).toBeVisible();
   await expect(coluna).toContainText('O Gemini está recebendo pedidos demais; espere um minuto e tente de novo.');
@@ -435,7 +423,6 @@ test('4 fotos, Cancelar depois da 2ª: as fotos 3 e 4 ficam “Cancelada” e as
   await expect(aviso).toHaveAttribute('role', 'status');
   await expect(botaoMinerar(page)).toHaveText('Minerar 5 frases');
 
-  // A resposta que chega depois de cancelar não entra, e a 4ª foto nem vai ao Gemini.
   await soltarATerceira();
   fakes.gemini.responderFrases(['A new page arrived after the cancel.']);
   await enviarFotos(page, foto('e.png'));
@@ -460,14 +447,11 @@ test('lendo a 1ª foto de várias, a coluna diz “Lendo a foto 1 de 3…”, e 
 
   for (const nome of ['a.png', 'b.png', 'c.png']) await expect(fotoNaFila(page, nome)).toContainText('Cancelada');
   const coluna = colunaDasFrases(page);
-  // Nada foi lido: a coluna não promete frases que não existem.
   await expect(coluna.getByText('Leitura cancelada', { exact: true })).toBeVisible();
   await expect(coluna.getByText('Nenhuma foto chegou a ser lida.', { exact: true })).toBeVisible();
   await expect(page.getByText(/frases das fotos já lidas/)).toHaveCount(0);
-  // Sem frases, a própria coluna é o aviso: ele não se repete no topo.
   await expect(page.locator('#foto-avisos .veio-aviso')).toHaveCount(0);
   await expect(coluna.getByRole('button', { name: 'Recomeçar' })).toBeVisible();
-  // O foco não se perde quando o Cancelar some.
   await expect(page.locator('body')).not.toBeFocused();
 
   await soltar();
@@ -490,7 +474,6 @@ test('Recomeçar com a leitura em andamento: nenhuma frase chega depois (sem ite
   await expect(page.getByRole('button', { name: 'Escolher' })).toBeFocused();
   await expect(page.getByLabel('Livro')).toHaveValue('Atomic Habits');
 
-  // A 2ª foto responde depois de Recomeçar: nada dela aparece.
   await soltarASegunda();
   fakes.gemini.responderFrases(FRASES_DA_PAGINA_3);
   await lerUmaFoto(page, 'nova.png');
@@ -523,7 +506,6 @@ test('Recomeçar com frases não mineradas pede confirmação no modal; Cancelar
   await expect(fotoNaFila(page, 'a.png')).toContainText('3 frases');
   await expect(botaoMinerar(page)).toHaveText('Minerar 3 frases');
 
-  // Esc também fecha sem descartar.
   await botaoRecomecar(page).click();
   await page.keyboard.press('Escape');
   await expect(modal).toHaveCount(0);
@@ -540,7 +522,6 @@ test('Recomeçar conta só as frases ainda não mineradas, e sem nenhuma pendent
 
   await enviarFotos(page, foto('b.png'));
   await expect(fotoNaFila(page, 'b.png')).toContainText('2 frases');
-  // Uma desmarcada ainda se perde: conta também.
   await frase(page, FRASES_DA_PAGINA_2[0]).uncheck();
   await botaoRecomecar(page).click();
   await expect(dialogo(page).getByRole('heading')).toHaveText('Descartar 2 frases não mineradas?');
@@ -558,7 +539,6 @@ test('Recomeçar conta só as frases ainda não mineradas, e sem nenhuma pendent
   await expect(filaDeFotos(page).getByRole('listitem')).toHaveCount(0);
   await expect(page.locator('#foto-lista')).toBeHidden();
   await expect(page.getByText('Arraste fotos de páginas marcadas')).toBeVisible();
-  // O que foi minerado continua gravado.
   expect(await gravadasDoLivro(extensao)).toHaveLength(5);
 });
 
@@ -591,7 +571,6 @@ test('“Tentar de novo” numa foto que falhou lê só aquela foto', async ({ p
   await enviarFotos(page, foto('a.png'), foto('b.png'), foto('c.png'));
   await expect(fotoNaFila(page, 'c.png')).toContainText('Sem marcações');
   await expect(fotoNaFila(page, 'b.png')).toContainText('Falhou');
-  // Só a foto que falhou tem “Tentar de novo”.
   await expect(filaDeFotos(page).getByRole('button', { name: 'Tentar de novo' })).toHaveCount(1);
   expect(fakes.gemini.chamadas).toHaveLength(3);
 
@@ -603,7 +582,6 @@ test('“Tentar de novo” numa foto que falhou lê só aquela foto', async ({ p
   await expect(fotoNaFila(page, 'a.png')).toContainText('3 frases');
   await expect(fotoNaFila(page, 'c.png')).toContainText('Sem marcações');
   expect(fakes.gemini.chamadas).toHaveLength(4);
-  // A foto que falhou não falha mais: o aviso sai.
   await expect(page.locator('#foto-avisos .veio-aviso')).toHaveCount(0);
   await expect(page.getByText('Foto 2', { exact: true })).toBeVisible();
   await expect(botaoMinerar(page)).toHaveText('Minerar 5 frases');
@@ -681,7 +659,6 @@ test('o que a página anuncia de formatos é o que ela aceita: HEIC entra e vai 
   await expect(page.getByText('JPG, PNG, HEIC ou WEBP')).toBeVisible();
   const aceita = await page.locator('#foto-arquivo').getAttribute('accept');
   for (const formato of ['.jpg', '.jpeg', '.png', '.heic', '.webp']) expect(aceita).toContain(formato);
-  // Só o que a página anuncia: nada de formato a mais.
   expect(aceita).not.toMatch(/heif/);
 
   // O Chrome no Windows entrega o HEIC sem tipo: a página reconhece pela extensão.
@@ -768,13 +745,11 @@ test('os controles têm nome, e o teclado chega à escolha de fotos e ao Livro',
   await page.keyboard.press('Tab');
   await expect(page.getByRole('button', { name: 'Escolher' })).toBeFocused();
 
-  // O status de cada foto muda sozinho: a fila avisa o leitor de tela.
   await expect(filaDeFotos(page)).toHaveAttribute('aria-live', 'polite');
 
   await lerUmaFoto(page);
   await expect(page.getByRole('checkbox', { name: 'Selecionar todas' })).toBeVisible();
   await expect(page.getByRole('textbox', { name: 'Texto da frase' })).toHaveCount(3);
-  // Cada frase é um marco do teclado: o checkbox (com o nome da frase) e o texto editável.
   await frase(page, FRASES_DA_PAGINA_1[0]).focus();
   await page.keyboard.press('Space');
   await expect(frase(page, FRASES_DA_PAGINA_1[0])).not.toBeChecked();
