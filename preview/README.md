@@ -7,7 +7,7 @@ pull request sai uma URL própria, comentada pelo bot do Vercel no PR.
 |---|---|
 | `montar.mjs` | Monta `preview/dist` a partir do repo: as telas da extensão, a vitrine da Base Veio e os protótipos de `docs/design`. Node puro, sem dependência. |
 | `chrome-simulado.js` | O `chrome.*` de mentira que as cópias das telas carregam no preview, com dados de exemplo. |
-| `site/` | As páginas públicas do app: `sobre.html` (a página inicial, em `/sobre/`), `privacidade.html` (a política de privacidade, em `/privacidade/` e `/privacy/`) e `site.css`. HTML estático da Veio, sem script nem fonte de fora. É o que a tela de consentimento OAuth do Google pede como "página inicial" e "link da política de privacidade". Mudou o que a extensão ou a Conexão fazem com os dados? Mude `privacidade.html` e a data de "Última atualização" na mesma PR. |
+| `site/` | A página pública do app: `sobre.html` (a página inicial, em `/sobre/`) e `site.css`. HTML estático da Veio, sem script nem fonte de fora. É o que a tela de consentimento OAuth do Google pede como "página inicial"; o "link da política de privacidade" é o de `perpetualminer.com/privacidade/`, que mora em `vinicius928e8r84/perpetualminer-site`. Mudou o que a extensão ou a Conexão fazem com os dados? Abra a PR da política naquele repositório e ponha o link na linha `Política:` do corpo da PR daqui (ou `sem mudança: <motivo>`); o passo "Política do site" de `.github/workflows/regras.yml` cobra quando a PR muda um sinal de dados. |
 | `dist/` | A saída. Não vai para o Git. |
 
 ## Rodar local

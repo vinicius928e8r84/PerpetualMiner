@@ -26,7 +26,6 @@ const PASTAS_DE_APOIO = ['conexao'];
 
 const PAGINAS_PUBLICAS = [
   { arquivo: 'sobre.html', enderecos: ['sobre'] },
-  { arquivo: 'privacidade.html', enderecos: ['privacidade', 'privacy'] },
 ];
 
 const existe = async alvo => fs.access(alvo).then(() => true, () => false);
@@ -123,7 +122,6 @@ ${temVeio ? '    <img class="veio-marca" src="/veio/icones/icone.svg" width="40"
   <h2>O app</h2>
   <ul>
 ${linha('/sobre/', 'PerpetualMiner: página inicial do app', 'o que é e o que faz')}
-${linha('/privacidade/', 'Política de privacidade', 'também em /privacy')}
   </ul>
 
   <h2>Telas da extensão</h2>

@@ -23,6 +23,10 @@
 3. `python3 -m unittest complemento.test_pacote` confere que o `package` do arquivo, o do manifesto e o código do painel são o mesmo número e que o `mod` é de uma hora real;
    o e2e `painel-anki-primeira-conexao` confere o código no Detalhes “O arquivo não abriu?”.
 
+## Antes de subir uma versão
+
+- **Política:** toda PR desta versão com link em `Política:` tem a política no ar em perpetualminer.com/privacidade/, e a aba Práticas de privacidade da loja diz o mesmo.
+
 ## A atualização em silêncio (#177) e o risco 6
 
 A Conexão sabe se atualizar sozinha pelo AnkiWeb (`complemento/atualizacao.py`): consulta pelo próprio id ao abrir o Anki e a cada 6 h, instala sem perguntar e se marca

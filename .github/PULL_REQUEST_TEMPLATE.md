@@ -10,11 +10,13 @@
 
 **Atenção:**
 
+**Política:**
+
 <!--
 O check "Registro da PR" (.github/workflows/registro-da-pr.yml, scripts/ci/registro-da-pr.js) confere, no head exato da PR:
 
-1. O corpo segue o modelo do /pr: as seções Summary, Evidence e Merge Danger, as linhas "Door:" e "Blast Radius:"
-   preenchidas, e a linha "Atenção:" só com BAIXA, MÉDIA ou ALTA (o porquê vai na linha de baixo).
+1. O corpo segue o modelo do /pr: as seções Summary, Evidence e Merge Danger, as linhas "Door:", "Blast Radius:"
+   e "Política:" preenchidas, e a linha "Atenção:" só com BAIXA, MÉDIA ou ALTA (o porquê vai na linha de baixo).
 
 2. Um comentário (ou revisão) da PR, de quem pode escrever no repositório, é o registro do /code-review deste head:
 
@@ -49,6 +51,18 @@ O check "Registro da PR" (.github/workflows/registro-da-pr.yml, scripts/ci/regis
    Uma PR sem issue diz, sozinha na linha:
 
    Sem issue
+
+5. A linha "Política:" diz o que a PR faz com a política de privacidade, que mora em vinicius928e8r84/perpetualminer-site.
+   O check "Política do site" (scripts/ci/politica-do-site.js) exige, quando a PR muda um sinal de dados (as permissões, os
+   hosts ou os sites dos scripts de conteúdo do manifest.json; um endereço de fora que entrou ou saiu; uso novo de
+   chrome.storage.sync, chrome.identity, chrome.cookies, chrome.history ou chrome.webRequest; ou um arquivo de regra ou de
+   dados da lista do script), um destes valores, no corpo e não em comentário:
+
+   Política: https://github.com/vinicius928e8r84/perpetualminer-site/pull/<N>
+   Política: sem mudança: <motivo>
+
+   Nas outras PRs basta "Política: sem mudança" (ou com o motivo). A PR da política não precisa estar mesclada, mas a
+   política tem de estar no ar antes de a versão ir para a loja ou para o AnkiWeb (docs/publicar-chrome-web-store.md).
 
 O SHA é o inteiro, de 40 caracteres (`git rev-parse HEAD`). Um commit novo muda o head: revise e prove de novo.
 O que está em comentário de HTML, em bloco de código ou em citação (`>`) não conta.
