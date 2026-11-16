@@ -444,17 +444,6 @@ test('Sync parcial conta as frases deste computador, não as que outros computad
   await expect(conta(page).getByText('8 de 10 frases sincronizadas · 2 ficaram só neste computador')).toBeVisible();
 });
 
-test('Sincronizado há 2 min (CFG-02): o tempo avança sozinho, na forma curta', async ({ page, extensao, relogioParado }) => {
-  const relogio = await relogioParado();
-  await extensao.semearSessao({ displayName: 'Ana Souza' });
-  await abrirPainel(page, extensao);
-  await expect(estadoDoChip(page)).toHaveText('Sincronizado agora');
-
-  await relogio.avancar('02:30');
-  await expect(estadoDoChip(page)).toHaveText('Sincronizado há 2 min');
-  await expect(resumo(page, 'conta')).toHaveText('Ana Souza · Sincronizado há 2 min');
-});
-
 test('Nuvem recusou (CFG-04): o Sair da conta vira botão normal, e o Detalhes traz a mensagem do Firestore', async ({ page, extensao, fakes }) => {
   await extensao.semearSessao({ displayName: 'Ana Souza' });
   fakes.google.recusarAcesso();

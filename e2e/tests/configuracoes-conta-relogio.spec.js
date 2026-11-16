@@ -7,7 +7,7 @@ const sincronizacoesDaChave = fakes => fakes.anki.requisicoes.filter(r => r.cami
 
 // Exceção de teste: sem-estado-guardado
 test('voltar à aba do painel não recomeça o “Sincronizado há N min”', async ({ page, extensao, fakes, relogioParado }) => {
-  const relogio = await relogioParado();
+  const relogio = await relogioParado({ em: new Date('2026-09-18T12:00:00') });
   await extensao.semearSessao({ displayName: 'Ana Souza' });
   await page.goto(extensao.url('painel.html#configuracoes'));
   await expect(estadoDoChip(page)).toHaveText('Sincronizado agora');
@@ -25,4 +25,15 @@ test('voltar à aba do painel não recomeça o “Sincronizado há N min”', as
 
   await relogio.avancar('01:00');
   await expect(estadoDoChip(page)).toHaveText('Sincronizado há 3 min');
+});
+
+test('Sincronizado há 2 min (CFG-02): o tempo avança sozinho, na forma curta', async ({ page, extensao, relogioParado }) => {
+  const relogio = await relogioParado({ em: new Date('2026-09-18T12:00:00') });
+  await extensao.semearSessao({ displayName: 'Ana Souza' });
+  await page.goto(extensao.url('painel.html#configuracoes'));
+  await expect(estadoDoChip(page)).toHaveText('Sincronizado agora');
+
+  await relogio.avancar('02:30');
+  await expect(estadoDoChip(page)).toHaveText('Sincronizado há 2 min');
+  await expect(page.locator('#cfg-conta .cfg-resumo')).toHaveText('Ana Souza · Sincronizado há 2 min');
 });
