@@ -1,27 +1,5 @@
 name: Testes
 
-# O portão de cada PR: os testes de Node, os das ferramentas, os do motor,
-# os do complemento do Anki (Python 3.9, o do Anki do Mac, e 3.13) e a suíte e2e inteira
-# (a extensão desempacotada no Chromium). Quem trabalha roda só os specs da
-# área que mudou; a suíte inteira roda aqui. Ver docs/testes.md.
-#
-# Por padrão, os runners usam ubuntu-24.04 (não ubuntu-latest); CI_RUNS_ON pode selecionar
-# outros labels em JSON (o runner próprio também precisa de Ubuntu 24.04): o Python 3.9 do complemento
-# e o Chromium do Playwright dependem dele, e a mudança para o 26.04 será uma decisão à parte,
-# tomada de propósito (e a chave do cache do Playwright abaixo já leva a versão do sistema).
-#
-# Cada job chama só `node scripts/testar.mjs <grupo>`, o mesmo comando que se roda aqui: o que cada
-# grupo roda está em scripts/testes.json, e a regra `testes-no-portao` (node scripts/regras/verificar.js)
-# falha quando um teste fica sem grupo, um grupo sem job aqui ou um teste roda por fora do executor.
-#
-# Para gastar menos minutos sem perder proteção: uma nova execução na mesma PR cancela a
-# anterior; e numa PR que mexe só em documentação as fatias e2e terminam sem rodar nada (os
-# passos são pulados, não os jobs, para o nome e o resultado de cada fatia continuarem
-# aparecendo; cada fatia decide isso no primeiro passo, scripts/ci/classificar.sh). O push
-# na main faz o mesmo: roda os jobs rápidos e as fatias e2e terminam sem rodar (a PR já passou
-# por elas; isso basta quando a main estiver protegida para só entrar atualizada, AMB-02 b).
-# Todos os jobs começam juntos: a e2e não espera os testes rápidos nem os do complemento, que
-# seguravam a fase mais longa por 4,8 minutos para poupar minutos de job que não custam nada.
 on:
   pull_request:
   push:
@@ -30,14 +8,11 @@ on:
 permissions:
   contents: read
 
-# Só a PR cancela a execução anterior (ela é substituída pela do próximo commit). Cada push
-# na main tem a sua, para nenhum commit dela ficar sem os testes rápidos e os do complemento.
 concurrency:
   group: testes-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # Os grupos rápidos e pequenos num job só (cada um custava 1 minuto cobrado por 6 a 18 s de trabalho).
   rapidos:
     name: Testes rápidos
     runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
@@ -76,8 +51,6 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
-      # O complemento usa só a biblioteca padrão: nada a instalar, só o pwsh, que roda o .ps1 do Conserto
-      # (test_conserto_arvore_windows.py). A imagem do GitHub já o traz; o runner próprio (CI_RUNS_ON) pode não ter.
       - name: Instalar o pwsh (se faltar)
         run: |
           if ! command -v pwsh >/dev/null; then
@@ -87,9 +60,6 @@ jobs:
             sudo apt-get install -y powershell
           fi
           pwsh -NoProfile -Command '$PSVersionTable.PSVersion.ToString()'
-      # EXIGIR_PWSH=1: sem o pwsh os testes do .ps1 falham em vez de serem pulados.
-      # PM_VERSAO_BASE: numa PR que não mexe na versão, o hash e o .ankiaddon só são conferidos na main e no commit de
-      # versão (complemento/versao_no_merge.py; complemento/empacotar.py `versao_vem_no_merge`).
       - run: node scripts/testar.mjs complemento
         env:
           PYTHON: python
@@ -104,7 +74,6 @@ jobs:
     # Uma fatia leva uns 5 minutos num runner livre; 40 deixa passar um runner carregado e ainda impede que uma travada gaste 45.
     timeout-minutes: 40
     env:
-      # Na dúvida a fatia roda; o passo "Classificar a mudança" troca por false (PR só de documentação, push na main).
       RODAR: 'true'
     strategy:
       fail-fast: false
@@ -115,7 +84,6 @@ jobs:
         with:
           # O commit de merge da PR e os dois pais: HEAD^1 é a ponta da branch-alvo.
           fetch-depth: 2
-      # O Node só é preciso na PR; no push na main as fatias terminam depois do primeiro passo.
       - uses: actions/setup-node@v5
         if: github.event_name == 'pull_request'
         with:
@@ -138,20 +106,16 @@ jobs:
         if: env.RODAR == 'true'
         timeout-minutes: 5
         working-directory: e2e
-      # A DejaVu é a única fonte que o Chromium dos testes enxerga (e2e/fontconfig).
       - if: env.RODAR == 'true'
         run: sudo apt-get install -y --no-install-recommends fonts-dejavu-core
       # Os specs desta fatia: scripts/ci/fatias-e2e.json, montadas pela duração de cada spec (o --shard do Playwright
       # divide pelo número de testes, e uma fatia levava 9 minutos enquanto outra levava 3).
       - if: env.RODAR == 'true'
         run: xvfb-run --auto-servernum node scripts/testar.mjs e2e -- --workers=1 $(node scripts/ci/fatias-e2e.js ${{ matrix.fatia }})
-      # Quem falhou e passou na repetição (retries em e2e/playwright.config.js) aparece
-      # como aviso e no resumo do job, para a repetição não esconder a instabilidade.
       - name: Testes instáveis
         id: instaveis
         if: ${{ !cancelled() && env.RODAR == 'true' }}
         run: node scripts/ci/instaveis.js e2e/test-results/relatorio.json
-      # Também quando só oscilou: a imagem de diferença da primeira tentativa explica a oscilação.
       - uses: actions/upload-artifact@v6
         if: ${{ (failure() || steps.instaveis.outputs.achou == 'true') && env.RODAR == 'true' }}
         with:
@@ -159,9 +123,6 @@ jobs:
           path: e2e/test-results
           retention-days: 7
 
-  # A extensão diante da Conexão de verdade (PM_CONEXAO=real, e2e/conexao-real.js): só o spec conexao-real,
-  # com o complemento do repositório no lugar do fake de JavaScript. Um job à parte, pequeno; não é um dos
-  # checks que a proteção da main exige (scripts/ci/checks-obrigatorios.json).
   e2e-conexao-real:
     name: e2e com a Conexão real
     runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
@@ -192,7 +153,6 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-ubuntu-24.04-${{ hashFiles('e2e/package-lock.json') }}
-      # Sem --with-deps, como na fatia e2e acima.
       - run: npx playwright install chromium
         if: env.RODAR == 'true'
         timeout-minutes: 5

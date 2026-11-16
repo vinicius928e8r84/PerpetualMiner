@@ -1,5 +1,3 @@
-// As receitas `drive.sh <run-id> <spec> -g "<título>"` do mapa de features (features/*.md) apontam para um spec e um
-// título que existem; uma receita quebrada é o mapa mentindo. Rode: node .agents/skills/verify-perpetualminer/scripts/test_receitas.js
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -7,7 +5,6 @@ const path = require('node:path');
 
 const RAIZ = path.resolve(__dirname, '..', '..', '..', '..');
 
-/** Cada receita do texto: o spec (expressão sobre o caminho, como o Playwright lê) e o `-g` se houver. */
 function receitasDoTexto(texto) {
   const receitas = [];
   for (const m of texto.matchAll(/drive\.sh (\S+) ([\w.<>-]+)( -g "([^"]*)")?/g)) {
@@ -17,14 +14,12 @@ function receitasDoTexto(texto) {
   return receitas;
 }
 
-/** Os títulos dos testes de um spec; o `-g` casa com o título do teste. */
 function titulosDoSpec(codigo) {
   const titulos = [];
   for (const m of codigo.matchAll(/\btest(?:\.\w+)*\(\s*(['"`])((?:\\.|(?!\1)[^\\])*)\1/g)) titulos.push(m[2].replace(/\\(.)/g, '$1'));
   return titulos;
 }
 
-/** As receitas de `raiz` que não levam a lugar nenhum, cada uma com a razão. */
 function receitasQuebradas(raiz) {
   const pastaDoMapa = path.join(raiz, '.agents', 'skills', 'verify-perpetualminer', 'features');
   const pastaDosSpecs = path.join(raiz, 'e2e', 'tests');
@@ -43,12 +38,10 @@ function receitasQuebradas(raiz) {
   return quebradas;
 }
 
-// O que uma receita é, e o que ela não é.
 assert.deepEqual(receitasDoTexto('Run `drive.sh a x.spec -g "um|dois"` e `drive.sh b y.spec`; `drive.sh <run-id> <spec>`, `drive.sh c zz-scratch-c.spec`'),
   [{ spec: 'x.spec', titulo: 'um|dois' }, { spec: 'y.spec', titulo: undefined }]);
 assert.deepEqual(titulosDoSpec("test('um \\'a\\'', async () => {});\ntest.fixme(\"dois\", () => {});\ntest(\n  `três`, () => {});"), ["um 'a'", 'dois', 'três']);
 
-// Uma receita quebrada é acusada, e uma boa não.
 const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'receitas-'));
 try {
   fs.mkdirSync(path.join(pasta, 'e2e', 'tests'), { recursive: true });
@@ -65,7 +58,6 @@ try {
   fs.rmSync(pasta, { recursive: true, force: true });
 }
 
-// As receitas deste repositório (e que o leitor as vê: sem isso, um leitor que não lê nada passaria).
 assert.ok(receitasDoTexto(fs.readFileSync(path.join(RAIZ, '.agents/skills/verify-perpetualminer/features/anki.md'), 'utf8')).length > 10);
 assert.deepEqual(receitasQuebradas(RAIZ), [], 'receitas do mapa de features que não levam a um teste');
 console.log('ok test_receitas');

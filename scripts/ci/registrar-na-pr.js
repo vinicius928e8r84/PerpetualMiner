@@ -1,13 +1,6 @@
 #!/usr/bin/env node
 'use strict';
 
-// Publica na PR o que o check "Registro da PR" (registro-da-pr.js) confere, com o head lido do GitHub na hora em vez de
-// copiado à mão: o registro do /code-review (um comentário) e a seção "Prova real" (no corpo). Antes de publicar, passa
-// o texto pela mesma função do check, e recusa o que o check recusaria. Os erros reais que isto barra: o registro de um
-// commit que já não é o head (a PR ganhou um commit depois da revisão), o registro publicado sem o check rodar de novo
-// (um comentário não dispara o workflow) e a PR de atenção ALTA que recebe a revisão e continua sem a prova.
-// Uso: AJUDA, logo abaixo (`node scripts/ci/registrar-na-pr.js --help`).
-
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const { FRASE, SECAO_DA_PROVA, conferir, faltaDaProva, faltaDaRevisao, lerDoGitHub, linhasQueValem } = require('./registro-da-pr.js');
@@ -59,19 +52,15 @@ function lerArgumentos(argv) {
   return opcoes;
 }
 
-/** O comentário que é o registro do /code-review: as quatro linhas que o check lê e, depois, a nota. */
 const registroDaRevisao = ({ veredito, head, autor, revisor }, nota) => [
   'Registro do /code-review', '', `Veredito: ${veredito}`, `Head: ${head}`, `Autor: ${autor}`, `Revisor: ${revisor}`,
   ...(nota ? ['', nota.trim()] : []),
 ].join('\n');
 
-/** A seção da prova deste head, como o check a lê. */
 const secaoDaProva = (head, nota) => [`## ${SECAO_DA_PROVA}`, '', FRASE, `Head: ${head}`, ...(nota ? ['', nota.trim()] : [])].join('\n');
 
-/** O corpo com a `secao` no lugar da seção da prova que já existe (até o próximo título do mesmo nível ou acima), senão no fim. */
 function corpoComAProva(corpo, secao) {
   const linhas = String(corpo || '').split(/\r?\n/);
-  // O modelo da PR traz o formato dentro de um comentário de HTML, e um bloco de código pode citar o título: não são a seção.
   const visiveis = linhas.join('\n').replace(/<!--[^]*?(?:-->|$)/g, trecho => trecho.replace(/[^\n]/g, ' ')).split('\n');
   let cerca = null;
   let inicio = -1;
@@ -89,7 +78,6 @@ function corpoComAProva(corpo, secao) {
   return [...linhas.slice(0, inicio), secao, '', ...linhas.slice(fim)].join('\n');
 }
 
-/** Por que o commit informado não é o head da PR, ou null. */
 function faltaDoHeadInformado(informado, head, oQue) {
   if (informado === head) return null;
   if (!SHA_INTEIRO.test(informado)) return `--head pede o SHA inteiro, de 40 caracteres (\`git rev-parse HEAD\`); veio "${informado}"`;
@@ -97,10 +85,6 @@ function faltaDoHeadInformado(informado, head, oQue) {
     + `${oQue === 'a revisão' ? 'Revise' : 'Prove'} o head novo (\`git diff ${informado.slice(0, 8)}..${head.slice(0, 8)}\` mostra o que mudou).`;
 }
 
-/**
- * O que fazer com o pedido, sem falar com o GitHub: { recusa } quando nada pode ser publicado, senão
- * { comentario } ou { corpo, secao } a publicar e { depois }, o que o check diria com isso publicado.
- */
 function planejar(opcoes, pr, nota) {
   const { head } = pr;
   if (opcoes.comando === 'conferir') return { depois: conferir({ ...pr, head }) };
@@ -140,10 +124,6 @@ async function execucaoDoCheck(pedir, head) {
   return execucoes.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))[0] || null;
 }
 
-/**
- * O que dizer quando o check não tem execução no head: o check obrigatório fica esperando, e nem o comentário nem
- * o `gh run rerun` criam uma. Foi o caso das PRs abertas antes de o workflow chegar à main (#438 e #441).
- */
 const semExecucao = ({ numero, repo }) => '  O check "Registro da PR" não tem execução neste head, e um comentário não cria uma. Se a PR acabou de receber '
   + 'um commit ou uma edição, espere um minuto e confira de novo. Senão (a PR é de antes de o check existir na main), feche e reabra a PR: o head não muda, '
   + `e a revisão e a prova continuam valendo: gh pr close ${numero} -R ${repo} && gh pr reopen ${numero} -R ${repo}`;

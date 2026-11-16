@@ -1,15 +1,4 @@
 #!/usr/bin/env bash
-# Cria o venv `.venv` na raiz do repositório e instala nele as dependências do
-# engine, para rodar os testes Python no Linux e no macOS.
-#
-# Idempotente: rodar de novo só confere o venv e reinstala o que faltar.
-# Não usa sudo e não altera o Python do sistema: as dependências ficam só no venv
-# (o pip mantém o cache dele fora do repositório, em ~/.cache/pip). Em hosts Debian/Ubuntu
-# sem o pacote python3-venv, `python3 -m venv` cria o venv sem pip; nesse caso o
-# pip entra pelo get-pip.py oficial, dentro do próprio venv.
-#
-# Uso: scripts/preparar-python.sh
-# Depois: .venv/bin/python -m unittest discover -s engine -p "test_*.py"
 
 set -eu
 

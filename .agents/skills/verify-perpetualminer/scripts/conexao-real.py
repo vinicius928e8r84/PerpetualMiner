@@ -9,9 +9,9 @@ from complemento import servidor, configuracao, pasta_de_dados, registro
 from complemento.test_openai_de_mentira import OpenAIDeMentira, FirestoreDeMentira
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria
 pasta = tempfile.mkdtemp(prefix='conexao-real-')
-dados = pasta_de_dados.preparar(pasta)          # without it the key folder is missing and every save is a 500
-logger = registro.criar(dados.logs)             # the product's logger: <pasta>/logs/complemento.log, the file a "no key in the log" proof must read
-with OpenAIDeMentira('aceita') as openai, FirestoreDeMentira() as firestore:   # the fakes answer only inside `with`
+dados = pasta_de_dados.preparar(pasta)
+logger = registro.criar(dados.logs)
+with OpenAIDeMentira('aceita') as openai, FirestoreDeMentira() as firestore:
     c = servidor.Conexao(porta=0, origens_aceitas=configuracao.ORIGENS_ACEITAS, versao=configuracao.VERSAO,
                          perfil_aberto=lambda: 'Usuário 1', logger=logger,
                          dados=dados, openai_base=openai.base, firestore_base=firestore.base,

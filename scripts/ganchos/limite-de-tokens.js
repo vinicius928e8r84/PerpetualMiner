@@ -1,25 +1,6 @@
 #!/usr/bin/env node
 'use strict';
 
-// O gancho pre-commit do tamanho dos arquivos: um arquivo preparado (staged) com mais de
-// 20.000 bytes (5.000 tokens, a 4 bytes por token) barra o commit, para o agente dividir antes de
-// o arquivo virar grande demais para ler de uma vez. Lê o conteúdo do índice, não da cópia de trabalho.
-//
-// Fica de fora (limite-de-tokens.json › ignorar): trava de pacotes, saída gerada, binários, código
-// de terceiros e arquivos com a marca das ferramentas de geração (`@generated`, `DO NOT EDIT`). Os
-// que já passavam do limite quando o gancho entrou estão em linha-de-base-de-tamanho.json: podem
-// ser editados, não podem crescer. A base lida é a do índice, e ela só desce em relação à do HEAD
-// (entrada nova ou maior barra o commit); o teto de cada um é o menor entre a base e o tamanho no
-// HEAD. Sem o arquivo da base o gancho é estrito (tudo acima do limite barra). A configuração
-// (limite-de-tokens.json) também vale pelo índice e só aperta em relação ao HEAD
-// (configuracao-do-indice.js). Como usar e instalar: LEIA-ME.md.
-//
-//   node scripts/ganchos/limite-de-tokens.js                          confere o que está preparado (o gancho)
-//   node scripts/ganchos/limite-de-tokens.js --atualizar-linha-de-base  baixa as entradas que encolheram
-//   node scripts/ganchos/limite-de-tokens.js --gerar-linha-de-base      cria a linha de base (só se ainda não existe)
-//   node scripts/ganchos/limite-de-tokens.js --base <ref>               a mesma conferência no CI: o que a branch (HEAD)
-//                                                                       mudou desde <ref>, com <ref> no lugar do HEAD do gancho
-
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -49,14 +30,9 @@ function ehBinario(inicio) {
 
 function temCabecalhoDeGerado(inicio, config) {
   const cabecalho = inicio.toString('utf8').split('\n').slice(0, config.linhasDoCabecalho).join('\n');
-  return config.marcasDeGerado.some(marca => cabecalho.includes(marca)); // texto exato, maiúsculas e minúsculas contam
+  return config.marcasDeGerado.some(marca => cabecalho.includes(marca));
 }
 
-/**
- * Decide o que fazer com um arquivo preparado. `arquivo` = { caminho, tamanho (bytes do índice),
- * inicio() } e `inicio()` só é chamado acima do limite. `linhaDeBase` = { caminho: bytes }.
- * Estados: ok, ignorado, linha-de-base (grande, mas sem crescer), cresceu e excede (os dois barram).
- */
 function avaliar(arquivo, config, linhaDeBase) {
   const { caminho, tamanho } = arquivo;
   const limite = config.limiteDeBytes;
@@ -72,12 +48,6 @@ function avaliar(arquivo, config, linhaDeBase) {
   return tamanho <= naBase ? resultado('linha-de-base', { naBase }) : resultado('cresceu', { naBase });
 }
 
-// --- A linha de base ---
-
-/**
- * A linha de base de uma versão do git (`:caminho` = índice, `HEAD:caminho`); `null` se o arquivo não existe nela.
- * Arquivo que existe e está inválido lança ErroDeEntrada (barra o commit).
- */
 function lerLinhaDeBase(raiz, config, versao) {
   let texto;
   try {
@@ -88,7 +58,6 @@ function lerLinhaDeBase(raiz, config, versao) {
   return lerLinhaDeBaseDoTexto(texto, `${config.linhaDeBase} (${versao === '' ? 'no índice' : `em ${versao}`})`);
 }
 
-/** A base do último commit; se ela está inválida lá, vale como ausente, para o commit que a conserta poder passar. */
 function lerLinhaDeBaseDoHead(raiz, config, ref = 'HEAD') {
   try {
     return lerLinhaDeBase(raiz, config, ref);
@@ -98,7 +67,6 @@ function lerLinhaDeBaseDoHead(raiz, config, ref = 'HEAD') {
   }
 }
 
-/** O tamanho de cada caminho no HEAD (só os que existem lá). */
 function tamanhosNoHead(raiz, caminhos, ref = 'HEAD') {
   const validos = caminhos.filter(c => !c.includes('\n'));
   if (!validos.length) return {};
@@ -108,7 +76,6 @@ function tamanhosNoHead(raiz, caminhos, ref = 'HEAD') {
   return tamanhos;
 }
 
-/** O teto de cada um da base: o menor entre a base e o tamanho no HEAD, e só para quem já passava do limite lá. */
 function limitarPeloHead(linhaDeBase, noHead, limite = LIMITE_DE_BYTES) {
   const teto = {};
   for (const [caminho, valor] of Object.entries(linhaDeBase)) {
@@ -117,10 +84,6 @@ function limitarPeloHead(linhaDeBase, noHead, limite = LIMITE_DE_BYTES) {
   return teto;
 }
 
-/**
- * As entradas da base preparada que a afrouxam: arquivo que a do HEAD não tinha, ou com tamanho maior.
- * Sem base no HEAD (a primeira), só vale o arquivo que o HEAD já tinha acima do limite, até o tamanho dele.
- */
 function afrouxamentos(preparada, baseDoHead, noHead, limite = LIMITE_DE_BYTES) {
   const achados = [];
   for (const [caminho, valor] of Object.entries(preparada)) {
@@ -132,7 +95,6 @@ function afrouxamentos(preparada, baseDoHead, noHead, limite = LIMITE_DE_BYTES) 
   return achados;
 }
 
-/** Só desce: mantém as entradas que ainda passam do limite com o menor tamanho; não acrescenta nem sobe. */
 function atualizarLinhaDeBase(linhaDeBase, tamanhosAtuais, limite = LIMITE_DE_BYTES) {
   const nova = {};
   for (const caminho of Object.keys(linhaDeBase).sort()) {
@@ -155,8 +117,6 @@ function gravarLinhaDeBase(raiz, config, arquivos) {
   fs.writeFileSync(destino, `${JSON.stringify({ descricao: DESCRICAO_DA_LINHA_DE_BASE, arquivos: ordenados }, null, 2)}\n`);
 }
 
-// --- O git ---
-
 const git = (raiz, args, opcoes = {}) => execFileSync('git', args, { cwd: raiz, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, ...opcoes });
 
 function tamanhosDosBlobs(raiz, oids) {
@@ -167,10 +127,6 @@ function tamanhosDosBlobs(raiz, oids) {
 
 const lerBlob = (raiz, oid) => git(raiz, ['cat-file', 'blob', oid], { encoding: 'buffer' });
 
-/**
- * Os arquivos preparados (adicionados, copiados, modificados, renomeados), com o tamanho do blob do índice.
- * Com `desde`, os que o HEAD mudou desde esse commit (o CI), com o tamanho do blob do HEAD.
- */
 function arquivosPreparados(raiz, desde = null) {
   const saida = git(raiz, desde
     ? ['diff', '--raw', '-z', '--no-abbrev', '--no-renames', '--diff-filter=ACMRT', desde, 'HEAD']
@@ -186,7 +142,6 @@ function arquivosPreparados(raiz, desde = null) {
   return achados.map((a, i) => ({ caminho: a.caminho, tamanho: tamanhos[i], inicio: () => lerBlob(raiz, a.oid) }));
 }
 
-/** Os arquivos do índice inteiro { caminho: bytes }, para gerar e atualizar a linha de base. */
 function tamanhosDoIndice(raiz) {
   const entradas = git(raiz, ['ls-files', '--stage', '-z']).split('\0').filter(Boolean).map(linha => {
     const [meta, caminho] = linha.split('\t');
@@ -197,17 +152,10 @@ function tamanhosDoIndice(raiz) {
   return entradas.map((e, i) => ({ caminho: e.caminho, tamanho: tamanhos[i], inicio: () => lerBlob(raiz, e.oid) }));
 }
 
-// --- A linha de comando ---
-
-/**
- * `comparacao` = { nova, velha, desde, titulo }: no gancho, a versão nova é o índice ('') e a velha o HEAD;
- * no CI (--base), a nova é o HEAD da branch, a velha a ponta de <ref> e `desde` o merge-base, de onde se lê o que mudou.
- */
 const NO_GANCHO = { nova: '', velha: 'HEAD', desde: null, titulo: 'Commit barrado' };
 
 function conferirPreparados(raiz, config, problemasDaConfiguracao, comparacao = NO_GANCHO) {
   const preparados = arquivosPreparados(raiz, comparacao.desde);
-  // A base vale pela versão nova (o que será commitado), limitada pela velha: nunca pela cópia de trabalho.
   const baseDoIndice = lerLinhaDeBase(raiz, config, comparacao.nova) || {};
   const baseDoHead = lerLinhaDeBaseDoHead(raiz, config, comparacao.velha);
   const consultar = baseDoHead
@@ -258,7 +206,6 @@ function atualizarLinhaDeBaseDoIndice(raiz, config, doIndice) {
   return 0;
 }
 
-/** O CI: a mesma conferência do gancho sobre o que a branch mudou desde `ref`. Uma `ref` que não existe é erro, não verde. */
 function conferirContraBase(raiz, ref) {
   if (/^0+$/.test(ref)) { // o primeiro push de um ramo: sem base, como em scripts/regras/verificar.js
     process.stdout.write('aviso: sem base de comparação (primeiro push); o limite de tamanho não foi conferido\n');
@@ -286,9 +233,6 @@ function principal(argumentos) {
 }
 
 if (require.main === module) {
-  // Com --base (o CI), a pane do ambiente reprova em vez de passar: um verde sem conferência não serve.
-  // Entrada inválida (configuração ou linha de base) barra o commit; uma pane do ambiente ou do próprio
-  // gancho não pode travar o commit de ninguém: avisa e deixa passar.
   try {
     process.exit(principal(process.argv.slice(2)));
   } catch (erro) {

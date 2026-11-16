@@ -1,14 +1,5 @@
 name: Noturna
 
-# A suíte e2e inteira na main, toda noite. O push na main só roda os testes rápidos e os do complemento
-# (a e2e já passou na PR, workflow Testes); aqui a main inteira é provada de novo, e é esta execução, na
-# main, que semeia o cache do Chromium para as PRs (a chave leva o hash do package-lock.json). Quando ela
-# fica vermelha abre-se uma issue só (rótulo `noturna`), que ganha um comentário a cada noite vermelha e
-# fecha sozinha na primeira noite verde (scripts/ci/issue-da-noturna.js).
-#
-# São 9 fatias: as 8 da e2e e a e2e com a Conexão real, as mesmas do workflow Testes. Rodar à mão:
-# `gh workflow run noturna.yml` (Actions › Noturna › Run workflow). Mexer neste arquivo ou no script da
-# issue numa PR também roda as fatias nela (sem abrir issue), para a alteração ser provada antes de mesclada.
 on:
   schedule:
     - cron: '17 5 * * *'
@@ -50,10 +41,8 @@ jobs:
       - run: npx playwright install chromium
         timeout-minutes: 5
         working-directory: e2e
-      # A DejaVu é a única fonte que o Chromium dos testes enxerga (e2e/fontconfig).
       - run: sudo apt-get install -y --no-install-recommends fonts-dejavu-core
       - run: xvfb-run --auto-servernum node scripts/testar.mjs e2e -- --workers=1 --shard=${{ matrix.fatia }}/8
-      # Quem falhou e passou na repetição aparece como aviso e no resumo do job.
       - name: Testes instáveis
         id: instaveis
         if: ${{ !cancelled() }}
@@ -94,8 +83,6 @@ jobs:
           PM_CONEXAO: real
           PYTHON: python
 
-  # Vermelha: abre a issue da noturna (ou comenta na que já está aberta). Verde: comenta e fecha a aberta.
-  # Um job cortado pelo timeout-minutes termina cancelled e conta como vermelha; cancelar a execução à mão (cancelled()) ou pular não mexe em nada. Só a main escreve issue: numa PR, ou num disparo manual de outra branch, não.
   avisar:
     name: Issue da noturna
     needs: [e2e, e2e-conexao-real]

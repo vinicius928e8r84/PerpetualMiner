@@ -1,8 +1,5 @@
 'use strict';
 
-// O gancho pre-push (scripts/ganchos/pre-push) num clone de verdade deste repositório, empurrando para um remoto vazio:
-// o mesmo verificador de regras e a mesma autoria que o workflow Regras confere, antes de o push sair.
-
 const assert = require('assert');
 const { execFileSync, spawnSync } = require('child_process');
 const fs = require('fs');
@@ -31,7 +28,6 @@ const empurrar = (...args) => spawnSync('git', ['push', ...args], { cwd: trabalh
 const saida = r => r.stdout + r.stderr;
 const noRemoto = branch => spawnSync('git', ['rev-parse', '--verify', '--quiet', `refs/heads/${branch}`], { cwd: remoto }).status === 0;
 
-// O remoto tem a main = o commit deste repositório; o gancho sob teste é o desta pasta, aplicado ao clone (as regras e a autoria são as do clone).
 git(pasta, 'clone', '-q', '--bare', RAIZ, remoto);
 git(remoto, 'update-ref', 'refs/heads/main', git(RAIZ, 'rev-parse', 'HEAD'));
 git(pasta, 'clone', '-q', remoto, trabalho);
@@ -40,7 +36,6 @@ git(trabalho, 'config', 'core.hooksPath', path.join(__dirname));
 git(trabalho, 'config', 'user.name', 'n');
 git(trabalho, 'config', 'user.email', EMAIL_DO_DONO);
 
-// Uma branch certa sobe, e o gancho diz contra o que conferiu.
 git(trabalho, 'checkout', '-q', '-b', 'certa');
 commitar('docs/pre-push-certa.md', 'texto\n');
 let r = empurrar('origin', 'certa');
@@ -48,7 +43,6 @@ assert.strictEqual(r.status, 0, saida(r));
 assert(noRemoto('certa'), 'a branch chegou ao remoto');
 assert(/pre-push: refs\/heads\/certa contra origin\/main/.test(saida(r)) && /autoria ok/.test(saida(r)), saida(r));
 
-// Um commit com o e-mail de outra pessoa: barrado, e o remoto não recebe a branch.
 git(trabalho, 'checkout', '-q', '-b', 'autoria-errada', 'main');
 commitar('docs/pre-push-autoria.md', 'texto\n', 'agente@exemplo.com');
 r = empurrar('origin', 'autoria-errada');
@@ -56,7 +50,6 @@ assert.notStrictEqual(r.status, 0, 'a autoria errada barra');
 assert(/sem a autoria do dono/.test(saida(r)) && /muda docs\/pre-push-autoria\.md/.test(saida(r)) && /Push barrado/.test(saida(r)), saida(r));
 assert(!noRemoto('autoria-errada'), 'nada chegou ao remoto');
 
-// Autor e committer do dono, e um co-autor de outro e-mail na mensagem (#425): barrado igual, e a mensagem nomeia o co-autor.
 git(trabalho, 'checkout', '-q', '-b', 'com-coautor', 'main');
 escrever('docs/pre-push-coautor.md', 'texto\n');
 git(trabalho, 'add', '-A');
@@ -66,7 +59,6 @@ assert.notStrictEqual(r.status, 0, `o co-autor de outro e-mail barra: ${saida(r)
 assert(/sem a autoria do dono/.test(saida(r)) && /co-autor Agente <agente@exemplo\.com>/.test(saida(r)) && /Push barrado/.test(saida(r)), saida(r));
 assert(!noRemoto('com-coautor'), 'nada chegou ao remoto');
 
-// Uma regra de revisão: um teste que nenhum grupo roda (testes-no-portao) barra o push, e --no-verify pula.
 git(trabalho, 'checkout', '-q', '-b', 'regra-quebrada', 'main');
 commitar('test_sem_grupo.js', "'use strict';\n");
 r = empurrar('origin', 'regra-quebrada');
@@ -77,14 +69,12 @@ r = empurrar('--no-verify', 'origin', 'regra-quebrada');
 assert.strictEqual(r.status, 0, saida(r));
 assert(noRemoto('regra-quebrada'), '--no-verify pula o gancho');
 
-// Empurrar uma branch que não é a aberta: as regras (que leem a cópia de trabalho) são puladas com aviso, a autoria vale.
 git(trabalho, 'checkout', '-q', '-b', 'outra', 'main');
 r = empurrar('origin', 'autoria-errada:outra-destino');
 assert.notStrictEqual(r.status, 0, 'a autoria vale para qualquer branch');
 assert(/não é o HEAD; as regras de revisão foram puladas/.test(saida(r)) && /sem a autoria do dono/.test(saida(r)), saida(r));
 assert(!noRemoto('outra-destino'));
 
-// Apagar uma branch e empurrar uma tag não confere nada.
 r = empurrar('origin', '--delete', 'certa');
 assert.strictEqual(r.status, 0, saida(r));
 assert(!/pre-push:/.test(saida(r)) && !noRemoto('certa'), saida(r));
@@ -109,7 +99,6 @@ assert(!/pre-push:/.test(saida(r)), saida(r));
   assert(noRemoto('certa-crlf') && /regras ok/.test(saida(r)) && /autoria ok/.test(saida(r)), saida(r));
 }
 
-// Sem origin/main para comparar: avisa e deixa passar (como o pre-commit quando falta o ambiente).
 git(trabalho, 'checkout', '-q', '-b', 'sem-base', 'main');
 commitar('docs/pre-push-sem-base.md', 'texto\n');
 git(trabalho, 'update-ref', '-d', 'refs/remotes/origin/main');

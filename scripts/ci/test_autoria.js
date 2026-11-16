@@ -1,8 +1,5 @@
 'use strict';
 
-// A autoria dos commits (scripts/ci/autoria.js), que o workflow Regras confere em todo PR e o gancho pre-push antes de o
-// push sair: autor, committer e co-autores de cada commit, a mensagem do erro e o comando de conserto que ela dá.
-
 const assert = require('assert');
 const { execFileSync, spawnSync } = require('child_process');
 const fs = require('fs');
@@ -20,7 +17,6 @@ assert.deepStrictEqual(commitsForaDaRegra([linha('a6', EMAIL_DO_DONO, EMAIL_DO_D
 assert.match(mensagem(commitsForaDaRegra([linha('abcdef0123', 'agente@exemplo.com', EMAIL_DO_DONO, 'um assunto')]), 'origin/main'),
   /abcdef0 um assunto[^]*git rebase --rebase-merges --exec 'git commit --amend --no-edit --reset-author' origin\/main/, 'a mensagem dá o comando');
 
-// O co-autor (#425): uma linha `Co-authored-by:` com outro e-mail também tira o commit do dono, com autor e committer certos.
 const comMensagem = (sha, mensagemDoCommit) => `${linha(sha, EMAIL_DO_DONO, EMAIL_DO_DONO, 'um assunto')}\x1f${mensagemDoCommit}`;
 const DO_AGENTE = 'Co-Authored-By: Claude <noreply@anthropic.com>';
 assert.deepStrictEqual(commitsForaDaRegra([comMensagem('b1', 'um assunto\n\ncorpo\n')]), [], 'mensagem sem co-autor');
@@ -40,12 +36,10 @@ assert.deepStrictEqual(coautoresDeFora('assunto\nCo-authored-by: Um <um@exemplo.
 assert.deepStrictEqual(coautoresDeFora(`a\n\nCo-authored-by: <${EMAIL_DO_DONO}>\n <um@exemplo.com>\nCo-authored-by: Dois\n\t<dois@exemplo.com>\n \nfim\n`),
   [`<${EMAIL_DO_DONO}> <um@exemplo.com>`, 'Dois <dois@exemplo.com>'], 'a linha de continuação (começa com espaço ou tabulação) entra no valor, como no git');
 {
-  // Uma linha de co-autor com 300 mil espaços no meio é lida num instante (aparada por expressão regular, levava minutos).
   const inicio = Date.now();
   assert.deepStrictEqual(coautoresDeFora(`a\n\nCo-authored-by: Um${' '.repeat(300000)}x <um@exemplo.com> \t\r\n`), [`Um${' '.repeat(300000)}x <um@exemplo.com>`]);
   assert(Date.now() - inicio < 5000, `a linha longa levou ${Date.now() - inicio} ms`);
 }
-// O filtro do conserto tira o que a conferência acusa, com as linhas de continuação, e mais nada.
 {
   const comTudo = `Co-authored-by: Assunto <a@exemplo.com>\n\ncorpo\r\n#1\nCo-authored-by em prosa\n  Co-authored-by: recuado <r@exemplo.com>\n\n`
     + `Co-Authored-By: Um <um@exemplo.com>\nCo-authored-by: n <${EMAIL_DO_DONO}>\nco-authored-by : Dois\n <dois@exemplo.com>\n\tmais\nfim\u2028Co-authored-by: Tres <t@exemplo.com>\n`;
@@ -54,7 +48,6 @@ assert.deepStrictEqual(coautoresDeFora(`a\n\nCo-authored-by: <${EMAIL_DO_DONO}>\
     + `Co-authored-by: n <${EMAIL_DO_DONO}>\nfim\u2028Co-authored-by: Tres <t@exemplo.com>\n`, 'saem só os co-autores de fora; o assunto, o corpo, a prosa e o do dono ficam');
   assert.deepStrictEqual(coautoresDeFora(comTudo), ['Um <um@exemplo.com>', 'Dois <dois@exemplo.com> mais'], 'os que a conferência acusa nessa mensagem');
   assert.deepStrictEqual(coautoresDeFora(limpa), [], 'depois do filtro a conferência não acusa nada');
-  // Pela linha de comando, como o conserto chama: os bytes que não são da linha tirada saem como entraram (aqui, um latin1 que não é UTF-8).
   const bytes = Buffer.concat([Buffer.from('assunto\n\nsa\xfade\n', 'latin1'), Buffer.from('Co-Authored-By: Zé <ze@exemplo.com>\n continua\nação\n', 'utf8')]);
   const filtro = spawnSync('node', [path.join(__dirname, 'sem-coautor.js')], { input: bytes });
   assert.strictEqual(filtro.status, 0, String(filtro.stderr));
@@ -69,7 +62,6 @@ assert.deepStrictEqual(coautoresDeFora('Tira o Co-authored-by: Claude <noreply@a
     'com co-autor, o comando também tira as linhas dele');
 }
 
-// Sobre um repositório de verdade, pelo mesmo comando que o workflow roda.
 {
   const repoDeAutoria = fs.mkdtempSync(path.join(os.tmpdir(), 'autoria-'));
   const gitA = (autor, ...args) => execFileSync('git', args, {
@@ -97,7 +89,6 @@ assert.deepStrictEqual(coautoresDeFora('Tira o Co-authored-by: Claude <noreply@a
       GIT_CONFIG_KEY_0: 'user.email', GIT_CONFIG_VALUE_0: EMAIL_DO_DONO, GIT_CONFIG_KEY_1: 'user.name', GIT_CONFIG_VALUE_1: 'n' },
   });
   assert.strictEqual(rodarAutoria().status, 0, 'o comando da mensagem refaz a autoria');
-  // Com um merge no meio: o comando refaz a autoria dos dois lados e do próprio merge.
   gitA(EMAIL_DO_DONO, 'checkout', '-q', '-b', 'lateral', 'main');
   commitar('agente@exemplo.com', 'lateral do agente', 'lateral.txt');
   gitA(EMAIL_DO_DONO, 'checkout', '-q', 'ramo');
@@ -127,8 +118,6 @@ assert.deepStrictEqual(coautoresDeFora('Tira o Co-authored-by: Claude <noreply@a
   const assinado = rodarAutoria();
   assert.strictEqual(assinado.status, 0, `a linha da assinatura não entra na conta: ${assinado.stdout}`);
 
-  // Autor e committer do dono e co-autores de outro e-mail na mensagem (um deles em duas linhas): barra, e o comando que a mensagem dá tira só essas linhas.
-  // (Os co-autores são de exemplo.com porque um gancho commit-msg da máquina pode tirar o trailer de um agente conhecido antes de o commit existir.)
   fs.writeFileSync(path.join(repoDeAutoria, 'coautor.txt'), 'x\n');
   gitA(EMAIL_DO_DONO, 'add', '-A');
   gitA(EMAIL_DO_DONO, 'commit', '-q', '-m', 'com co-autor', '-m', 'O corpo fica.\n#425 também fica.\nCo-authored-by em prosa também fica.',
@@ -146,12 +135,10 @@ assert.deepStrictEqual(coautoresDeFora('Tira o Co-authored-by: Claude <noreply@a
     env: { ...process.env, GIT_CONFIG_COUNT: '2',
       GIT_CONFIG_KEY_0: 'user.email', GIT_CONFIG_VALUE_0: EMAIL_DO_DONO, GIT_CONFIG_KEY_1: 'user.name', GIT_CONFIG_VALUE_1: 'n' },
   });
-  // Numa base que ainda não tem o scripts/ci/sem-coautor.js, o conserto para no primeiro commit e nenhuma mensagem muda.
   const pontaBarrada = gitA(EMAIL_DO_DONO, 'rev-parse', 'HEAD');
   assert.notStrictEqual(rodarConserto().status, 0, 'sem o filtro na base, o rebase para');
   gitA(EMAIL_DO_DONO, 'rebase', '--abort');
   assert.strictEqual(gitA(EMAIL_DO_DONO, 'rev-parse', 'HEAD'), pontaBarrada, 'e a branch fica como estava');
-  // Com a base em dia (a main traz a conferência e o filtro), o comando conserta.
   gitA(EMAIL_DO_DONO, 'checkout', '-q', 'main');
   fs.mkdirSync(path.join(repoDeAutoria, 'scripts', 'ci'), { recursive: true });
   for (const arquivo of ['autoria.js', 'sem-coautor.js']) fs.copyFileSync(path.join(__dirname, arquivo), path.join(repoDeAutoria, 'scripts', 'ci', arquivo));
@@ -167,13 +154,11 @@ assert.deepStrictEqual(coautoresDeFora('Tira o Co-authored-by: Claude <noreply@a
   assert.strictEqual(gitA(EMAIL_DO_DONO, 'log', '-1', '--no-show-signature', '--format=%s', 'HEAD~1').trim(), 'Co-authored-by: No assunto <assunto@exemplo.com>',
     'o assunto de um commit nunca é tirado');
   assert(gitA(EMAIL_DO_DONO, 'log', '--merges', '--no-show-signature', '--format=%H', 'main..HEAD').trim(), 'o merge continua no histórico');
-  // As mensagens somadas passam de 1 MB (o teto de saída padrão do Node): a conferência lê tudo e responde.
   fs.writeFileSync(path.join(repoDeAutoria, 'longa.txt'), `mensagem longa\n\n${`${'x'.repeat(100000)}\n`.repeat(12)}`);
   gitA(EMAIL_DO_DONO, 'commit', '-q', '--allow-empty', '-F', 'longa.txt');
   const comLonga = rodarAutoria();
   assert.strictEqual(comLonga.status, 0, `mensagens de mais de 1 MB não derrubam a conferência: ${comLonga.stderr.slice(0, 300)}`);
 
-  // Uma ponta que o clone não tem (checkout raso): uma mensagem que manda conferir o fetch-depth, não o stack do Node.
   const semPonta = spawnSync('node', [path.join(__dirname, 'autoria.js'), 'origin/main', 'HEAD'], { cwd: repoDeAutoria, encoding: 'utf8' });
   assert.strictEqual(semPonta.status, 2, 'ponta ausente é erro de uso');
   assert(/origin\/main/.test(semPonta.stdout) && /fetch-depth/.test(semPonta.stdout), 'a mensagem nomeia a ponta e o fetch-depth');
@@ -181,7 +166,6 @@ assert.deepStrictEqual(coautoresDeFora('Tira o Co-authored-by: Claude <noreply@a
   fs.rmSync(repoDeAutoria, { recursive: true, force: true });
 }
 
-// O passo de autoria roda mesmo quando um passo anterior falha, para o erro dela aparecer na mesma rodada.
 {
   const regrasYml = fs.readFileSync(path.join(__dirname, '..', '..', '.github', 'workflows', 'regras.yml'), 'utf8');
   const passo = regrasYml.split('- name: Autoria dos commits')[1].split('run:')[0];

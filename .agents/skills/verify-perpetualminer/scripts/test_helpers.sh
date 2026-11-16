@@ -1,16 +1,11 @@
 #!/usr/bin/env bash
-# Tests for drive.sh / cleanup.sh safety: what they refuse, what they never kill or delete, and re-runnability.
-# No browser, no Playwright: every case is refused (or acts) before Playwright would start.
-# Usage: test_helpers.sh            (tests the scripts next to it)
-#        PM_SCRIPTS_DIR=<dir> test_helpers.sh   (tests another copy, e.g. an older revision, to see it fail)
 set -u
 AQUI="$(cd "$(dirname "$0")" && pwd)"
 SCRIPTS="${PM_SCRIPTS_DIR:-$AQUI}"
 TMP="$(mktemp -d)"
-export PM_VERIFY_ROOT="$TMP/root" PM_HEAVY_RUN=env   # env: a no-op prefix, so an old drive.sh never waits for a heavy slot
+export PM_VERIFY_ROOT="$TMP/root" PM_HEAVY_RUN=env
 mkdir -p "$PM_VERIFY_ROOT"
 falhas=0; extras=(); outro=""; outro_id=""
-# A stand-in for npx: the real drive.sh runs it instead of Playwright. It ignores TERM, like a stuck browser would.
 mkdir -p "$TMP/bin"
 cat > "$TMP/bin/npx" <<'STUB'
 #!/usr/bin/env bash

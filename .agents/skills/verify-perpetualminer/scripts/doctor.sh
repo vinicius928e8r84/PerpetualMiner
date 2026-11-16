@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# Read-only: is this checkout ready to be driven through the e2e harness?
-# Changes nothing, starts nothing. Exit 0 = worth driving; exit 1 = a line says what is missing.
-# Usage: .agents/skills/verify-perpetualminer/scripts/doctor.sh
 set -u
 RAIZ="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
 E2E="$RAIZ/e2e"
@@ -29,17 +26,13 @@ else
   nok "Playwright's Chromium is not downloaded: cd e2e && npm run setup (on Linux also: sudo npx playwright install-deps chromium)"
 fi
 
-# The fixture loads the repo root as the unpacked extension; a root without its manifest cannot load.
 [ -f "$RAIZ/manifest.json" ] && [ -f "$RAIZ/background.js" ] && ok 'extension root loads (manifest.json + background.js)' || nok 'manifest.json or background.js missing at the repo root'
 
-# The suite must be collectable; a syntax error in a spec or fixture shows here, without opening a browser.
 if [ -d "$E2E/node_modules/@playwright/test" ]; then
   n="$(cd "$E2E" && npx --no-install playwright test --list 2>/dev/null | grep -c '›')"
   [ "$n" -gt 0 ] && ok "$n tests collected" || nok 'playwright test --list collected nothing: run it by hand to see the error'
 fi
 
-# The Anki fake lives in the browser's routing, not on the port, so a real Conexão on 8766 does not
-# interfere. Report it so nobody mistakes a live Conexão for the fake.
 if (exec 3<>/dev/tcp/127.0.0.1/8766) 2>/dev/null; then
   printf 'note  something listens on 127.0.0.1:8766 (a real Conexão?). The e2e fake answers inside Chromium and never reaches it.\n'
 else
