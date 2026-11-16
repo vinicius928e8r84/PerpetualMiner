@@ -17,7 +17,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import item_de_login  # noqa: E402
+from complemento import item_de_login
 
 ANKI_DO_MAC = ["/usr/bin/open", "/Applications/Anki.app"]
 ANKI_DO_WINDOWS = r"C:\Users\Maria\AppData\Local\Programs\Anki\anki.exe"

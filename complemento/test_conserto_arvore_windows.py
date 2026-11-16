@@ -20,8 +20,8 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import abridor, conserto_do_anki  # noqa: E402
-from complemento.test_abridor import ANKI_DO_WINDOWS, RegistroDeMentira  # noqa: E402
+from complemento import abridor, conserto_do_anki
+from complemento.test_abridor import ANKI_DO_WINDOWS, RegistroDeMentira
 
 LAUNCHER = r"C:\Users\Maria\AppData\Local\Programs\Anki\anki.exe"
 REDIRECIONADOR = r"C:\Users\Maria\AppData\Local\AnkiProgramFiles\.venv\Scripts\pythonw.exe"
@@ -33,8 +33,6 @@ LINHA_DO_LAUNCHER = '"%s" -b "C:\\pm283\\anki-base" -l pt_BR -p Teste-A' % LAUNC
 PWSH = shutil.which("pwsh")
 EXIGIR_PWSH = os.environ.get("EXIGIR_PWSH") == "1"
 
-# O prefácio do mundo de mentira. `$mundo` é a tabela (pid, ppid, caminho, linha de comando, criação, se ouve a porta, se
-# sai junto com o filho); cada cmdlet que lê ou sinaliza processo lê ou muda a tabela.
 PREFACIO = r"""
 $ErrorActionPreference = 'Stop'
 $global:mundo = [System.Collections.ArrayList]@($mundoJson | ConvertFrom-Json)
@@ -136,7 +134,6 @@ class AnkiDoLauncherNoWindows(unittest.TestCase):
 
     def reparar(self, mundo, executavel=REDIRECIONADOR):
         """O `Consertar` de um Anki que não responde (a espera é zero). Devolve a situação, os sinais e as aberturas."""
-        # O `__init__.py` do complemento tem de existir para o Consertar passar do `sumiu`.
         with tempfile.TemporaryDirectory() as complemento:
             shutil.copyfile(os.devnull, os.path.join(complemento, "__init__.py"))
             chamadas = "$complemento = '%s'\nConsertar" % complemento
@@ -149,7 +146,7 @@ class AnkiDoLauncherNoWindows(unittest.TestCase):
         self.assertEqual(resposta, {"situacao": "reiniciado"})
         self.assertEqual(feito["sinais"], [1648])
         self.assertEqual(len(feito["aberturas"]), 1)
-        self.assertIn(25340, feito["vivos"])   # o launcher não é do Anki que o script reconhece: não é sinalizado
+        self.assertIn(25340, feito["vivos"])
 
     def test_o_filho_cuja_linha_de_comando_e_identica_a_do_pai_inclusive_o_programa_tambem_e_reconhecido(self):
         mundo = anki_do_launcher()
@@ -166,7 +163,6 @@ class AnkiDoLauncherNoWindows(unittest.TestCase):
         mundo = [
             processo(25340, 4000, LAUNCHER, LINHA_DO_LAUNCHER),
             processo(25384, 25340, REDIRECIONADOR, LINHA_DO_AQT % REDIRECIONADOR, sai_com_o_filho=True),
-            # outro Python, fora da árvore do Anki, com a linha do aqt.run(), é quem ouve a porta
             processo(777, 600, CPYTHON, LINHA_DO_AQT % CPYTHON, ouve=True),
             processo(600, 500, r"C:\Windows\explorer.exe", "explorer.exe"),
         ]
@@ -185,7 +181,6 @@ class AnkiDoLauncherNoWindows(unittest.TestCase):
         self.assertIn(301, feito["vivos"])
 
     def test_o_python_vizinho_do_redirecionador_que_ouve_a_porta_sem_ser_o_anki_e_recusado(self):
-        # sem Anki na porta: o vizinho (mesmo programa, outro código) ouve; o filho dele não é o aqt.run()
         mundo = anki_do_launcher(porta_no_filho=False) + [
             processo(300, 4001, REDIRECIONADOR, OUTRA_LINHA % REDIRECIONADOR, sai_com_o_filho=True),
             processo(301, 300, CPYTHON, OUTRA_LINHA % CPYTHON, ouve=True),
@@ -213,7 +208,7 @@ class AnkiDoLauncherNoWindows(unittest.TestCase):
 
     def test_o_pai_que_e_um_pid_reusado_criado_depois_do_filho_nao_vale(self):
         mundo = anki_do_launcher()
-        mundo[1]["criado"] = "2026-10-29T10:05:00"   # o "pai" nasceu depois do filho: o pid do pai verdadeiro foi reusado
+        mundo[1]["criado"] = "2026-10-29T10:05:00"
         resposta, feito = self.reparar(mundo)
         self.assertEqual(resposta, {"situacao": "falhou", "motivo": "conexao_fora"})
         self.assertEqual(feito["sinais"], [])

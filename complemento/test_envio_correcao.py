@@ -13,11 +13,11 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import tipo_de_nota  # noqa: E402
-from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
-from complemento.test_chatgpt_de_mentira import MARCA  # noqa: E402
-from complemento.test_envio import ID, OUTRO_ID, EnvioNoTeste, pedido  # noqa: E402
-from complemento.test_login_do_chatgpt import entrar_e_voltar  # noqa: E402
+from complemento import tipo_de_nota
+from complemento.test_colecao_em_memoria import ColecaoEmMemoria
+from complemento.test_chatgpt_de_mentira import MARCA
+from complemento.test_envio import ID, OUTRO_ID, EnvioNoTeste, pedido
+from complemento.test_login_do_chatgpt import entrar_e_voltar
 
 INGLES = "PerpetualMiner::Inglês"
 NOVA = "run : They keep running"
@@ -133,7 +133,7 @@ class OVersoDaCriacaoQueJaExistiaGanhaAFrase(unittest.TestCase):
                 colecao = colecao_com_a_criacao()
                 tipo_de_nota.trocar_a_frente(colecao, "en", "lacuna" if como == "outra frente" else "criacao")
                 if como == "outro modelo":
-                    colecao._cartoes_dos_tipos.pop("PerpetualMiner Inglês")  # um tipo da pessoa, sem o modelo da Conexão
+                    colecao._cartoes_dos_tipos.pop("PerpetualMiner Inglês")
                 antes = colecao.modelos_do_tipo_de_nota("PerpetualMiner Inglês")
                 with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta, colecao=colecao) as conexao:
                     fim = enviar(conexao)
@@ -167,7 +167,7 @@ class OCustoDaCorrecaoFicaAParte(unittest.TestCase):
             custos, chats, correcoes = custos_do_envio(conexao), list(conexao.openai.chats), list(conexao.openai.correcoes)
             respostas = len(conexao.openai.respostas)
         self.assertEqual(chats, [])
-        self.assertEqual(respostas, 2)  # o texto do Cartão e a correção
+        self.assertEqual(respostas, 2)
         self.assertEqual(len(correcoes), 1)
         self.assertEqual(correcoes[0][0][:13], "Bearer acesso")
         self.assertEqual(custos["correctionUsd"], 0.0)

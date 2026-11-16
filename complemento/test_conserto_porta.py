@@ -13,7 +13,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento.test_conserto import PID, Mundo  # noqa: E402
+from complemento.test_conserto import PID, Mundo
 
 
 @unittest.skipIf(os.name == "nt", "o script do Mac roda num sh")
@@ -57,7 +57,6 @@ class NoMacComAPorta(unittest.TestCase):
         self.assertEqual([p for p in self.mundo.passos() if p.startswith("kill ")], ["kill -KILL %d" % PID])
 
     def test_anki_que_some_entre_a_ultima_conferencia_e_a_do_dono_da_porta_e_dado_como_fechou_e_nao_como_conexao_fora(self):
-        # Com espera 0 o consertar lê o ps: 1) no começo, 2) no laço, 3) depois dele, 4) para achar quem ouve a porta.
         self.mundo.anki_some_na_chamada_do_ps(4)
         self.assertEqual(self.mundo.consertar(espera_s=0), {"situacao": "fechou"})
         self.assertNotIn("kill", " ".join(self.mundo.passos()))

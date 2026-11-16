@@ -12,9 +12,9 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import tipo_de_nota  # noqa: E402
-from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
-from complemento.test_contrato_da_criacao import SO_O_DEFAULT  # noqa: E402
+from complemento import tipo_de_nota
+from complemento.test_colecao_em_memoria import ColecaoEmMemoria
+from complemento.test_contrato_da_criacao import SO_O_DEFAULT
 
 CATALOGO = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "docs", "design", "voz", "catalogo-textos.json")
 INGLES = "PerpetualMiner Inglês"
@@ -40,7 +40,7 @@ class FrenteCriacao(unittest.TestCase):
         verso = cartao()["verso"]
         for esperado in ("Você escreveu", "✓ usou a palavra", "Exemplo", "She <b>gave up</b> smoking", 'id="perpetualminer-texto"', 'id="perpetualminer-usou" hidden'):
             self.assertIn(esperado, verso)
-        self.assertNotIn("<textarea", verso)  # o campo de escrever é da frente; o verso não o repete
+        self.assertNotIn("<textarea", verso)
 
     def test_a_palavra_a_raiz_e_a_frase_gravada_chegam_ao_script_como_texto(self):
         verso = cartao("ru", {"Frase": "Она приходила", "Palavra": "<b>приходила</b>", "Raiz": "ход", "Frase escrita": "Он приходит &amp; уходит"})["verso"]

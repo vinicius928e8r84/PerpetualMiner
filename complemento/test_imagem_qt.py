@@ -18,12 +18,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 try:
     from PyQt6 import QtCore, QtGui
-except ImportError:  # o Qt é do Anki; sem ele nada aqui roda
+except ImportError:
     QtCore = QtGui = None
 
-from complemento import imagem_qt  # noqa: E402
-from complemento.motor import image_utils  # noqa: E402
-from complemento.motor.image_utils import UnsupportedImageFormatError  # noqa: E402
+from complemento import imagem_qt
+from complemento.motor import image_utils
+from complemento.motor.image_utils import UnsupportedImageFormatError
 
 
 def aqt_do_pyqt6():
