@@ -24,7 +24,6 @@ const CADASTRO = JSON.stringify({
   },
   fora: [],
 }, null, 2);
-// A forma do job do testes.yml que quebrava: um passo com bloco `|` antes do passo que chama o grupo.
 const WORKFLOW = [
   'on:', '  pull_request:', 'jobs:',
   '  node:', '    steps:', '      - run: node scripts/testar.mjs node',
@@ -53,7 +52,6 @@ nenhum(achados(repositorio(comCRLF(WORKFLOW)), 'scripts/testes.json'), 'com CRLF
 nenhum(achados(repositorio(comCRLF(WORKFLOW), comCRLF(CADASTRO)), 'scripts/testes.json'), 'com CRLF no workflow e no cadastro');
 nenhum(achados(repositorio(comCRLF(WORKFLOW), comCRLF(CADASTRO)), '.github/workflows/testes.yml'), 'o workflow com CRLF não é acusado');
 
-// O CRLF não afrouxa a regra: o que ela acusa com LF, acusa igual, na mesma linha.
 const SO_ECHO = WORKFLOW.replace('- run: node scripts/testar.mjs complemento', '- run: echo node scripts/testar.mjs complemento');
 for (const arquivo of ['scripts/testes.json', '.github/workflows/testes.yml']) {
   const esperado = achados(repositorio(SO_ECHO), arquivo);
@@ -62,7 +60,6 @@ for (const arquivo of ['scripts/testes.json', '.github/workflows/testes.yml']) {
   total++;
 }
 
-// Os workflows de verdade deste repositório: com CRLF, os mesmos comandos, nas mesmas linhas, com o mesmo veredito.
 const pasta = path.join(RAIZ, '.github', 'workflows');
 const workflows = fs.readdirSync(pasta).filter(nome => /\.ya?ml$/.test(nome));
 assert(workflows.includes('testes.yml'), 'o testes.yml está entre os workflows lidos');

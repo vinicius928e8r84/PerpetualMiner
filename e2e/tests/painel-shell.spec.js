@@ -4,7 +4,6 @@ const { test, expect } = require('../fixtures');
 
 const HOJE = new Date().toLocaleDateString('pt-BR');
 
-/** `n` frases em inglês, a mais nova primeiro, alternando a Fonte. */
 function frasesDeExemplo(n, fontes = ['netflix', 'youtube']) {
   return Array.from({ length: n }, (_, i) => ({
     id: 1_700_000_000_000 + (n - i),
@@ -25,7 +24,6 @@ const itemDaNav = (page, nome) => page.locator('.shell-lateral').getByRole('link
 const tituloDaArea = page => page.getByRole('heading', { level: 1 });
 const chip = page => page.locator('#shell-chip');
 
-/** Sem conta, o chip diz “Sem conta” no lugar do nome e “Só neste computador” no do estado. */
 async function esperarChipSemConta(page) {
   await expect(page.locator('#shell-chip-nome')).toHaveText('Sem conta');
   await expect(page.locator('#shell-chip-estado')).toHaveText('Só neste computador');
@@ -83,7 +81,6 @@ test('as abas da Conexão com o Anki trocam o endereço, na ordem Custos · Bara
   await expect(page).toHaveURL(/#anki\/vocabulario$/);
   await expect(page.locator('[data-aba="vocabulario"]')).toBeVisible();
 
-  // Voltar à área pela sidebar volta para a última aba aberta.
   await itemDaNav(page, 'Frases').click();
   await itemDaNav(page, 'Conexão com o Anki').click();
   await expect(page).toHaveURL(/#anki\/vocabulario$/);
@@ -228,21 +225,17 @@ test('enquanto a Conexão não responde, o ponto diz “Conectando ao Anki…”
 
 test('com a Conexão desligada, a área dela mostra a faixa F1; “Tentar de novo” com ela ligada tira a faixa', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
-  // Um computador onde a Conexão já respondeu: sem isso, as abas dão lugar ao card
-  // da primeira vez (ONB-16, painel-anki.spec.js).
   await extensao.gravarStorage({ pm_anki_ja_conectou: true });
   await abrirPainel(page, extensao, '#anki/custos');
 
   await expect(faixaF1(page)).toBeVisible();
   await expect(page.getByRole('radio', { name: 'Custos' })).toBeChecked();
 
-  // Em Frases a faixa não aparece: ela é da área da Conexão.
   await itemDaNav(page, 'Frases').click();
   await expect(faixaF1(page)).toBeHidden();
   await itemDaNav(page, 'Conexão com o Anki').click();
   await expect(faixaF1(page)).toBeVisible();
 
-  // Ainda desligada: tentar de novo mantém a faixa.
   await page.getByRole('button', { name: 'Tentar de novo' }).click();
   await expect(pontoDaConexao(page)).toHaveAttribute('data-estado', 'desligada');
   await expect(faixaF1(page)).toBeVisible();
@@ -265,7 +258,6 @@ test('abaixo de ~1000 px a sidebar vira trilho, com o ponto do Anki e o avatar v
   await expect(pontoDaConexao(page)).toBeVisible();
   await expect(chip(page).locator('.shell-avatar')).toBeVisible();
 
-  // Os rótulos somem da tela, mas continuam sendo o nome de cada item.
   const rotulo = await itemDaNav(page, 'Frases').locator('.shell-rotulo').boundingBox();
   expect(rotulo.width).toBeLessThanOrEqual(1);
   await expect(itemDaNav(page, 'Configurações')).toHaveAttribute('title', 'Configurações');
@@ -284,7 +276,6 @@ test('uma Fonte com marcação no nome aparece literal no filtro, e a sidebar n�
 
   await filtroDeFonte(page).selectOption({ label: fonteHostil });
   await expect(page.getByText('A quiet morning.')).toBeVisible();
-  // No selo de Fonte do cartão, o nome também entra como texto.
   await expect(cartao(page, 'A quiet morning.').locator('.veio-selo')).toHaveText(fonteHostil);
 
   await expect(page.locator('.shell-lateral')).not.toContainText('fonte');
@@ -339,7 +330,6 @@ test('dentro do shell, Enviar ao Anki cria o envio, e o acompanhamento continua 
 test('Configurações hospeda Entrar com Google e Apagar tudo', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: frasesDeExemplo(2) });
   await abrirPainel(page, extensao, '#configuracoes');
-  // Os cards começam fechados (resumo primeiro): abre-se Conta & sync e Zona de perigo.
   await page.getByRole('button', { name: 'Conta & sync', exact: true }).click();
   await page.getByRole('button', { name: 'Zona de perigo', exact: true }).click();
 

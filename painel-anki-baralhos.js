@@ -4,7 +4,6 @@
   const CHAVE_BARALHOS = 'pm_anki_baralhos';
   const CHAVE_VOCABULARIO = 'pm_anki_vocabulario';
   const FONTE_ARQUIVO = raiz.VocabularioDaMineracao.FONTE_ARQUIVO;
-  // Os itens do vocabulário que a lista desenha.
   const MOSTRAR_NO_MAXIMO = 200;
 
   const IDIOMAS_DOS_AZULEJOS = [
@@ -23,7 +22,6 @@
     ['mature', 'BRG-35.maduros'],
     ['mixed', 'BRG-35.mistos'],
   ];
-  // O `status` de um item na tela: o texto e o tom do selo.
   const STATUS_DO_ITEM = {
     mature: { texto: 'BRG-35.maduro', selo: 'veio-selo--ok' },
     recent: { texto: 'BRG-35.recente', selo: 'veio-selo--info' },
@@ -31,13 +29,11 @@
     new: { texto: 'BRG-35.novo', selo: '' },
     seen: { texto: 'BRG-35.visto', selo: '' },
   };
-  // O `type` de um item na tela: na lista e no detalhe.
   const TIPO_DO_ITEM = {
     word: { lista: 'BRG-35.palavra', detalhe: 'BRG-35.tipoPalavra' },
     term: { lista: 'BRG-35.termo', detalhe: 'BRG-35.tipoTermo' },
   };
   const tipoDoItem = item => TIPO_DO_ITEM[item.type] || TIPO_DO_ITEM.word;
-  // As três séries de maturidade, na ordem e com a cor (dataviz do Veio).
   const MATURIDADE = [
     { chave: 'maduros', rotulo: 'BRG-34.maduros' },
     { chave: 'recentes', rotulo: 'BRG-34.recentes' },
@@ -51,20 +47,20 @@
   const porId = id => document.getElementById(id);
 
   const estado = {
-    nomes: null,            // { en, ru }: os baralhos dos Ajustes de envio
+    nomes: null,
     baralhos: {
-      dados: null,          // a última leitura de GET /anki/stats/decks
+      dados: null,
       quando: 0,
-      dadosDe: 0,           // o momento dos dados (lib/vocabulario-da-mineracao.js): o de `quando`, ou o de antes de o Anki fechar
-      ankiFechado: false,   // a Conexão leu o arquivo e confirmou que o Anki está fechado
-      nomes: null,          // os baralhos (`{ en, ru }`) a que esta leitura se refere
+      dadosDe: 0,
+      ankiFechado: false,
+      nomes: null,
       carregando: false,
-      erro: null,           // a causa técnica, para o Detalhes
-      leitura: 0,           // só a leitura mais recente desenha
+      erro: null,
+      leitura: 0,
       idioma: 'en',
     },
     vocabulario: {
-      dados: null,          // { en: { deckName, itens }, ru: { … } }
+      dados: null,
       quando: 0,
       dadosDe: 0,
       ankiFechado: false,
@@ -76,7 +72,7 @@
       tipo: 'all',
       status: 'all',
       busca: '',
-      escolhido: null,      // a chave do item no detalhe
+      escolhido: null,
     },
   };
 
@@ -97,7 +93,6 @@
     desenhar();
   }
 
-  /** O painel.js informa os baralhos dos Ajustes de envio ao abrir e a cada Salvar ajustes; um baralho novo é lido de novo, sem abrir o Anki. */
   function usarBaralhos(nomes) {
     const antes = estado.nomes;
     estado.nomes = { en: nomes.en, ru: nomes.ru };
@@ -105,7 +100,7 @@
     if ((!antes || mudou) && Shell.areaAtual() === 'anki') lerTudo({ deNovo: mudou });
   }
 
-  let anterior = CONEXAO.CONECTANDO;   // a situação da notificação anterior: ligar é decidido contra ela
+  let anterior = CONEXAO.CONECTANDO;
 
   function aoMudarAConexao(situacao) {
     const antes = anterior;
@@ -120,17 +115,12 @@
     return ConexaoAnki.situacao() === CONEXAO.DESLIGADA;
   }
 
-  /** Lê as duas abas, cada uma por si; sem a Conexão (ou sem os baralhos) não há de onde. */
   function lerTudo(opcoes = {}) {
     if (ConexaoAnki.situacao() !== CONEXAO.LIGADA || !estado.nomes) return;
     lerBaralhos(opcoes);
     lerVocabulario();
   }
 
-  /**
-   * POST /anki/stats/decks com os dois baralhos numa leitura só. `deNovo` passa
-   * por cima do cache da Conexão; `abrirOAnki` a deixa abrir o Anki (BRG-24): só um clique pede isso.
-   */
   async function lerBaralhos({ deNovo = false, abrirOAnki = false } = {}) {
     const baralhos = estado.baralhos;
     const leitura = ++baralhos.leitura;
@@ -160,7 +150,6 @@
     desenhar();
   }
 
-  /** O vocabulário inteiro do baralho de cada idioma; os filtros são aplicados aqui. */
   async function lerVocabulario() {
     const vocabulario = estado.vocabulario;
     const leitura = ++vocabulario.leitura;
@@ -173,7 +162,6 @@
       const deckName = estado.nomes[idioma];
       const resposta = await pedirJson(raiz.PedidoAoAnki.vocabulario(deckName, idioma));
       const itens = Array.isArray(resposta.words) ? resposta.words : [];
-      // A API entrega até 10.000 itens; o total do idioma é o `totalWords` dele.
       return { deckName: resposta.deckName || deckName, itens, total: numero(resposta.totalWords ?? itens.length), source: resposta.source };
     };
     let dados = null;
@@ -198,14 +186,12 @@
     desenhar();
   }
 
-  /** O `dadosDe` e o `ankiFechado` de uma leitura nova da aba; a idade vem só da leitura anterior dos mesmos baralhos. */
   function marcaDaLeitura(aba, nomes, source, quando) {
     const mesmosBaralhos = aba.nomes?.en === nomes.en && aba.nomes?.ru === nomes.ru;
     const anterior = mesmosBaralhos ? { dadosDe: aba.dadosDe, createdAt: aba.quando } : null;
     return VocabularioDaMineracao.marcaDaLeitura(anterior, source, ENDERECO_DA_CONEXAO, quando);
   }
 
-  /** Envia um pedido de `PedidoAoAnki` à Conexão (o que lê o Anki da pessoa é POST: contrato/LEIA-ME.md); um HTTP de erro vira a causa, com o `detail` que ela mandar. */
   async function pedirJson(pedido) {
     const resposta = await raiz.PedidoAoAnki.pedir(ENDERECO_DA_CONEXAO, pedido);
     if (!resposta.ok) {
@@ -220,31 +206,26 @@
     desenharVocabulario();
   }
 
-  /** O que a aba mostra agora: a mesma regra nas duas abas. */
   function vista({ dados, carregando, erro }) {
     if (desligada() && dados) return 'antiga';
-    if (ConexaoAnki.ultimaResposta() === null || ConexaoAnki.apresentada() !== ConexaoAnki.situacao()) return 'esqueleto';   // espera a prova (#192)
+    if (ConexaoAnki.ultimaResposta() === null || ConexaoAnki.apresentada() !== ConexaoAnki.situacao()) return 'esqueleto';
     if (desligada()) return 'nada';
     if (carregando || (!dados && !erro)) return 'carregando';
     if (erro) return 'erro';
     return 'dados';
   }
 
-  /** Troca os filhos só quando mudam: um aviso que continua na tela guarda o foco e o Detalhes aberto. */
   function mostrar(lugar, nos) {
     const iguais = lugar.children.length === nos.length && nos.every((no, i) => lugar.children[i] === no);
     if (!iguais) lugar.replaceChildren(...nos);
   }
 
-  /** O momento dos dados de uma leitura gravada; as de antes de `dadosDe` valem o momento em que foram lidas. */
   const momentoDosDados = leitura => leitura.dadosDe || leitura.quando;
 
-  /** O selo BRG-12; o Anki fechado ganha o Abrir o Anki (BRG-38), que só o clique chama. */
   function seloAntigo(quando, motivo = 'anki') {
     return elemento('div', 'anki-antigo', seloDoDadoAntigo(quando, motivo), ...(motivo === 'anki' ? [raiz.AbrirOAnki.montarBotao()] : []));
   }
 
-  // Cada lugar da tela guarda o último nó que desenhou e com o quê: sem mudar, o mesmo nó volta e o foco e o Detalhes ficam.
   const desenhados = new Map();
 
   function oMesmo(lugar, chave, fabricar) {
@@ -289,7 +270,6 @@
     }
   }
 
-  /** BRG-37: o Anki fechado e nenhuma leitura guardada; o primeiro Anki aberto traz os dados. */
   function esperandoOAnki() {
     return elemento('div', 'veio-vazio',
       elemento('p', 'veio-vazio__titulo', textoDaVoz('BRG-37.esperando')),
@@ -303,12 +283,10 @@
     return elemento('p', 'anki-nota anki-nota--com-ponto', ponto, textoDaVoz('BRG-13'));
   }
 
-  /** A Conexão mandou o que tinha guardado, porque o Anki não respondeu agora. */
   function seloDoCache(dados) {
     return seloAntigo(dados.generatedAt || estado.baralhos.quando, 'atualizacao');
   }
 
-  /** BRG-11: persistente, com Tentar de novo e a causa em Detalhes. */
   function erroDosBaralhos() {
     return Veio.montarAviso({
       texto: textoDaVoz('BRG-11.aviso'),
@@ -323,7 +301,6 @@
     return Object.fromEntries(IDIOMAS_DOS_AZULEJOS.map(({ idioma }) => [idioma, decks.find(deck => deck.lang === idioma)]));
   }
 
-  /** O nome do baralho: o que a Conexão leu, ou o dos Ajustes de envio. */
   function nomeDoBaralho(idioma, deck) {
     return deck?.deckName || estado.nomes?.[idioma] || '';
   }
@@ -377,7 +354,6 @@
     return elemento('span', 'anki-com-marca', marca, texto);
   }
 
-  /** O anel: maduros · recentes · novos, e no meio a parte madura de todos os cartões. */
   function anelDeMaturidade(series) {
     const SVG = 'http://www.w3.org/2000/svg';
     const raio = 52;
@@ -443,7 +419,6 @@
     desenhar();
   }
 
-  /** Limpar busca (o vazio BRG-21): volta a busca e os filtros, e o foco vai para a busca. */
   function limparTudo() {
     filtrar({ busca: '', tipo: 'all', status: 'all' });
     porId('anki-vocabulario-busca').focus();
@@ -464,7 +439,6 @@
     const vocabulario = estado.vocabulario;
     const qual = vista(vocabulario);
     const comDados = qual === 'dados' || qual === 'antiga';
-    // A chave do selo é a idade dita, não o momento: “há 2 h” vira “há 4 h”.
     const idade = haQuanto(momentoDosDados(vocabulario));
     mostrar(porId('anki-vocabulario-topo'),
       qual === 'antiga' || (qual === 'dados' && vocabulario.ankiFechado)
@@ -508,7 +482,6 @@
     if (foco) corpo.querySelector(`[data-foco="${CSS.escape(foco)}"]`)?.focus();
   }
 
-  /** BRG-20: persistente, com Tentar de novo e a causa em Detalhes. */
   function erroDoVocabulario() {
     return Veio.montarAviso({
       texto: textoDaVoz('BRG-20.aviso'),
@@ -518,7 +491,6 @@
     });
   }
 
-  /** O vazio BRG-21; Limpar busca só quando há busca ou filtro a limpar. */
   function vazioDaBusca() {
     const { busca, tipo, status } = estado.vocabulario;
     const vazio = elemento('div', 'veio-vazio',
@@ -582,7 +554,6 @@
     porId('anki-vocabulario-corpo').querySelector(`[data-foco="${CSS.escape(`item:${chave}`)}"]`)?.focus();
   }
 
-  /** ↑ ↓ Home End andam pela lista e escolhem o item, como num listbox. */
   function andarNaLista(evento, itens) {
     const indice = itens.findIndex(item => chaveDoItem(item) === estado.vocabulario.escolhido);
     const destino = {
@@ -625,7 +596,6 @@
     return detalhe;
   }
 
-  /** Os azulejos Inglês · Russo de uma aba; o escolhido fica em `recorte.idioma`. */
   function montarAzulejos(id, recorte) {
     porId(id).replaceChildren(...IDIOMAS_DOS_AZULEJOS.map(({ idioma }) => {
       const azulejo = botao(null, 'veio-azulejo anki-azulejo', () => {

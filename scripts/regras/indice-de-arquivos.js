@@ -1,14 +1,5 @@
 'use strict';
 
-// As tabelas de docs/arquivos/ são o índice de quem faz o quê (lidas sob demanda, não em toda sessão): um arquivo novo
-// sem linha ali, ou uma linha que aponta para um arquivo que já não existe, deixa o agente seguinte
-// sem mapa (as omissões do #183 e do #187). Esta regra acusa:
-//   - um arquivo da raiz, de lib/, veio/ ou do topo de scripts/ que as tabelas não citam
-//     (o caminho inteiro, ou só o nome quando o arquivo é da raiz da
-//     pasta citada na linha: `popup.html/js/css` vale para os três);
-//   - uma linha de tabela cuja primeira coluna cita um caminho que não existe.
-// Teste de arquivo (test_*), Markdown e arquivo oculto não precisam de linha.
-
 const fs = require('fs');
 const path = require('path');
 
@@ -28,7 +19,6 @@ const noEscopo = arquivo => NO_ESCOPO.test(arquivo)
 
 const seAplica = arquivo => ehDoIndice(arquivo) || noEscopo(arquivo);
 
-/** `popup.html/js/css` vira popup.html, popup.js e popup.css; o resto fica como está. */
 function expandir(item) {
   const m = /^(.*?[^/.]\.)([a-z0-9]+(?:\/[a-z0-9]+)+)$/i.exec(item);
   return m ? m[2].split('/').map(extensao => m[1] + extensao) : [item];
@@ -38,7 +28,6 @@ const itensDe = texto => [...texto.matchAll(/`([^`]+)`/g)]
   .flatMap(m => m[1].split(/[\s,]+/).filter(Boolean))
   .flatMap(expandir);
 
-/** As linhas de tabela de um índice: { linha, primeiraColuna, texto }. */
 function linhasDaTabela(fonte) {
   const saida = [];
   fonte.split('\n').forEach((texto, i) => {

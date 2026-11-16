@@ -1,17 +1,5 @@
 'use strict';
 
-// O `chrome.*` que a extensão espera, simulado para o preview do navegador.
-//
-// As páginas da extensão (popup, painel, foto) só rodam dentro do Chrome, com
-// as APIs da extensão. Fora dele elas quebram na primeira chamada e a pessoa
-// não vê nada. Este arquivo põe no lugar um `chrome` de mentira, com dados de
-// exemplo já semeados, para o preview mostrar as telas cheias — o visual de
-// verdade, com conteúdo plausível.
-//
-// Ele é injetado apenas nas cópias que vão para o preview; a extensão de
-// verdade nunca o carrega. Nada aqui fala com a rede: o que some ao recarregar
-// a página, some mesmo.
-
 (function () {
   if (window.chrome && chrome.storage && chrome.storage.local) return;
 
@@ -66,19 +54,14 @@
     pm_migrated: true,
     pm_auto_miner_state_view: { ...ESTADO_AUTO_MINER, updatedAt: Date.now() },
     pm_auto_miner_settings: ESTADO_AUTO_MINER.settings,
-    // Sem sessão de conta: logado, o painel iria buscar as frases no Firestore
-    // e ficaria em "Carregando…" para sempre. Deslogado, ele lê as locais daqui.
     geminiApiKey: '',
     ankiBridgePresets: [],
-    // A configuração começada na instalação e ainda não em Tudo pronto: o popup
-    // e Frases mostram o lembrete “Configuração pela metade” (ONB-14, ONB-15).
     pm_boas_vindas: { agoraNao: [], concluida: false },
   };
 
   /** Copia o valor, como o storage do Chrome faz ao devolver o que guardou. */
   const copiar = valor => (valor === undefined ? undefined : JSON.parse(JSON.stringify(valor)));
 
-  /** As chaves pedidas, no formato que `chrome.storage.get` aceita. */
   function resolver(pedido) {
     if (pedido === null || pedido === undefined) {
       return Object.fromEntries(Object.keys(dados).map(chave => [chave, copiar(dados[chave])]));
@@ -167,7 +150,6 @@
       },
     },
     windows: { update: (_id, _info, callback) => talvezPromessa(undefined, callback) },
-    // A permissão opcional do abridor (Abrir o Anki sozinho): o preview nunca a tem, e o aviso do Chrome não existe.
     permissions: {
       contains: (_permissoes, callback) => talvezPromessa(false, callback),
       request: (_permissoes, callback) => talvezPromessa(false, callback),

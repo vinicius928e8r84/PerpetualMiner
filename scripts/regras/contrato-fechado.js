@@ -1,13 +1,5 @@
 'use strict';
 
-// O que a extensão pede à Conexão com o Anki tem de ter exemplo no contrato
-// (complemento/contrato/exemplos.json), que o complemento e o fake do e2e leem. Foi o #190: Atualizar
-// pedia os dois Baralhos e o contrato só tinha o de Inglês. Todo pedido à Conexão nasce de um construtor
-// de `PerpetualMiner.PedidoAoAnki` (lib/pedido-ao-anki.js); `e2e/variantes-do-pedido-ao-anki.js` lista os pedidos para o teste do
-// contrato (`node test_contrato_fechado.js`) conferir um exemplo de cada um. Esta regra acusa o `fetch`
-// direto a uma rota da Conexão: ou a rota tem exemplo e o pedido deve passar pelo construtor, ou a rota
-// ainda não está no contrato e entra nele antes de a extensão pedi-la.
-
 const fs = require('fs');
 const path = require('path');
 const { ehJsDaExtensao, fechamento, linhaDe, semComentariosJs } = require('./comum');
@@ -22,10 +14,8 @@ const conserto = 'Peça pela `PerpetualMiner.PedidoAoAnki.pedir(endereco, Pedido
 const ARQUIVO_DO_CONSTRUTOR = 'lib/pedido-ao-anki.js';
 const seAplica = arquivo => ehJsDaExtensao(arquivo) && arquivo !== ARQUIVO_DO_CONSTRUTOR;
 
-// Onde um `fetch` aponta para a Conexão: o endereço dela, por nome ou por extenso.
 const ENDERECO = /(?:\bENDERECO\w*|\bendereco\b|127\.0\.0\.1:8766|localhost:8766)\}?(?=\/|\$\{)/g;
 
-// O caminho que começa em `de` (a barra): até uma aspa, a crase, o `?` ou um espaço; `${…}` é uma peça só e vira `:id`.
 function caminhoDe(codigo, de) {
   let caminho = '';
   for (let i = de; i < codigo.length; i++) {
@@ -42,11 +32,9 @@ function caminhoDe(codigo, de) {
 }
 
 const contratos = new Map();
-/** As rotas que o contrato tem como pedido da extensão: `Set` de `MÉTODO /caminho`. */
 function rotasDoContrato(raiz) {
   if (!contratos.has(raiz)) {
     const pasta = path.join(raiz, 'complemento', 'contrato');
-    // `exemplos.json` e os `exemplos-*.json` ao lado dele (complemento/contrato/carregar.js).
     const [base, carregador] = ['exemplos.json', 'carregar.js'].map(nome => path.join(pasta, nome));
     const exemplos = !fs.existsSync(base) ? [] : fs.existsSync(carregador) ? require(carregador).carregar(pasta).exemplos : JSON.parse(fs.readFileSync(base, 'utf8')).exemplos;
     contratos.set(raiz, new Set(exemplos.filter(e => e.daExtensao === true).map(e => `${e.pedido.metodo} ${e.pedido.caminho}`)));

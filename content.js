@@ -1,5 +1,3 @@
-// A base compartilhada (catálogo da Voz e detecção de idioma) é carregada antes
-// deste arquivo, pelo manifest: a busca no catálogo é `PerpetualMiner.textoDaVoz`.
 const { detectarIdioma, Atalhos, Overlay, textoDaVoz, IDIOMAS, MineracaoDoDia, Mineracao } = PerpetualMiner;
 
 const AUTO_MINER_POLL_MS = 700;
@@ -13,16 +11,11 @@ const SUBTITLE_UI_TEXT = [
     'следующая серия', 'сезоны и серии', 'субтитры',
 ];
 
-// “Minerar legenda” (padrão Alt+S) e “Minerar seleção” (padrão sem atalho), como
-// estão gravados em Configurações › Atalhos (lib/atalhos.js). Um atalho novo vale
-// na hora, sem recarregar a página.
-
 let _atalhos = { ...Atalhos.ATALHOS_PADRAO };
 let _autoMinerState = null;
 let _autoMinerLastText = '';
 let _autoMinerLastSentText = '';
 let _autoMinerStableSince = 0;
-/** O idioma da legenda na tela (ou da última captura), `'en'`/`'ru'`: o do contador do botão. */
 let _idiomaDaLegenda = null;
 
 Atalhos.acompanharAtalhos(atalhos => {
@@ -74,9 +67,6 @@ function _tomarOBotao(e) {
   Atalhos.guardarSolturaDoBotao(e.button);
 }
 
-// Teclado — os dois atalhos deixam a digitação em paz: num campo de texto, a
-// tecla é da pessoa, não da extensão. Sem nada selecionado numa página sem
-// vídeo, não há o que minerar (MIN-10); com um vídeo, o atalho não diz nada.
 document.addEventListener('keydown', (e) => {
   if (!Atalhos.correspondeAoAtalho(_atalhos.selecao, e)) return;
   if (Atalhos.digitandoNumCampo(e)) return;
@@ -91,8 +81,6 @@ document.addEventListener('keydown', (e) => {
   _ativarCaptura(texto, e);
 }, true);
 
-// Só a pessoa minera: quem pede uma captura passa o evento que a disparou, e um
-// evento sintético (disparado pela página) não conta.
 function _ativarCaptura(texto, evento) {
   if (!evento?.isTrusted) return;
   minerarCaptura({
@@ -107,14 +95,6 @@ function _ativarCaptura(texto, evento) {
   });
 }
 
-// A pílula espera o service worker: só diz “minerada” depois que a frase foi
-// gravada, e só diz “copiada” depois que o clipboard aceitou.
-
-/**
- * Grava a captura (a legenda também vai para o clipboard) e diz na pílula só o
- * que aconteceu: MIN-01 gravou e copiou, MIN-02 gravou sem copiar, MIN-05 a
- * seleção gravada; MIN-03 se não gravou.
- */
 async function minerarCaptura(captura, { copia = false } = {}) {
   const [copiou, resposta] = await Promise.all([copia && copiar(captura.texto), Mineracao.gravar(captura)]);
   if (!resposta?.ok) {
@@ -129,19 +109,15 @@ async function minerarCaptura(captura, { copia = false } = {}) {
     titulo,
     frase: captura.texto,
     ...palavraDe(resposta.frase),
-    // A meta: o idioma da legenda (`EN`); a Fonte da seleção, “Web” (PAI-29).
     meta: copia ? siglaDoIdioma(captura.idioma) : textoDaVoz('PAI-29.web'),
-    // A marca vai sobre o texto se ele ainda estiver lá quando a resposta chega.
     lugar: captura.lugar,
   });
 }
 
-/** O idioma da captura como a pílula o mostra: `EN`, `RU`. */
 function siglaDoIdioma(idioma) {
   return codigoDoIdioma(idioma).toUpperCase();
 }
 
-/** Uma falha na pílula, com o título e a dica do catálogo: MIN-03, e MIN-04/MIN-10 quando não há o que minerar. */
 function mostrarFalha(id) {
   Overlay.mostrar({ tipo: 'erro', icone: 'alerta', titulo: textoDaVoz(`${id}.titulo`), dica: textoDaVoz(`${id}.dica`) });
 }
@@ -155,7 +131,6 @@ async function dizerSeNaoHaVideo() {
   mostrarFalha('MIN-10');
 }
 
-/** Se algum outro frame da aba tem vídeo, perguntado pelo service worker (TEM_VIDEO_NESTE_FRAME). */
 function haVideoEmOutroFrame() {
   if (window === window.top && window.frames.length === 0) return Promise.resolve(false);
   return new Promise(resolve => {
@@ -169,17 +144,14 @@ function haVideoEmOutroFrame() {
   });
 }
 
-/** O site, como a Frase grava a origem de uma legenda (`netflix`, `youtube`…). */
 function origemDaPagina() {
   return window.location.hostname.replace('www.', '').split('.')[0];
 }
 
-/** O código de idioma que o service worker usa na mineração automática. */
 function codigoDoIdioma(idioma) {
   return idioma === IDIOMAS.RUSSO ? 'ru' : 'en';
 }
 
-/** O inverso de `codigoDoIdioma`: `'ru'` → Russo, o resto Inglês. */
 function idiomaDoCodigo(lang) {
   return lang === 'ru' ? IDIOMAS.RUSSO : IDIOMAS.INGLES;
 }
@@ -206,11 +178,6 @@ async function copiar(texto) {
   }
 }
 
-/**
- * A Palavra da frase gravada, como o overlay a mostra: as palavras do primeiro
- * grupo (`palavra@índice`, grupos separados por `|`) e se ela foi detectada
- * (`auto:`) ou escolhida (`palavra:`).
- */
 function palavraDe(frase) {
   const palavras = [];
   for (const chave of frase?.keywords || []) {
@@ -237,9 +204,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
 });
 
-// O service worker pergunta, a pedido de outro frame, se este tem vídeo. Só quem
-// tem um player visível responde (um vídeo de anúncio escondido não conta): sem
-// resposta de nenhum frame, a página não tem vídeo.
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message?.type !== 'TEM_VIDEO_NESTE_FRAME' || sender.id !== chrome.runtime.id) return;
     const video = obterVideoAtivo();
@@ -274,7 +238,6 @@ function containerDoPlayer(video) {
 }
 
 function processarAutoMinerLegenda() {
-    // Sem idioma ligado nada é lido.
     if (!MineracaoDoDia.idiomasLigados(_autoMinerState).length) return;
     const legenda = lerLegenda();
     const texto = legenda?.texto || '';
@@ -311,7 +274,6 @@ function processarAutoMinerLegenda() {
     });
 }
 
-/** O contador do botão segue o idioma da legenda na tela, lido a cada volta da mineração automática. */
 function acompanharIdiomaDaLegenda(texto) {
     if (!texto) return;
     const lang = codigoDoIdioma(detectarIdioma(texto));
@@ -329,12 +291,7 @@ function autoMinerAtivoNaPagina(legenda = '') {
     return MineracaoDoDia.podeMinerarAgora(_autoMinerState, lang);
 }
 
-/**
- * A legenda na tela e os elementos de onde ela foi lida (`{ texto, elementos }`),
- * ou null. Os elementos dão o lugar da marca: a linha e o grifo vão sobre eles.
- */
 function lerLegenda() {
-    // Sem vídeo, “caption” e “subtitle” são legendas de imagem, não de fala.
     if (!obterVideoAtivo()) return null;
     const host = window.location.hostname;
     if (host.includes('primevideo') || host.includes('amazon')) return minerarAmazon();
@@ -381,17 +338,10 @@ function lerLegenda() {
     return minerarLegendaVisual();
 }
 
-/** Uma legenda lida: o texto e os elementos dele, ou null sem texto. */
 function legendaDe(texto, elementos) {
     return texto ? { texto, elementos } : null;
 }
 
-/**
- * Onde a legenda capturada está agora: uma faixa sobre os elementos dela, só
- * enquanto eles ainda dizem o mesmo texto. Trocou (ou saiu da tela), null — e o
- * feedback vai para a pílula. Isso também cobre o fallback heurístico: um
- * elemento cujo texto não bate com o salvo nunca ganha a linha.
- */
 function lugarDaLegenda({ texto, elementos }) {
     const capturado = normalizarTextoAutoMiner(texto);
     return () => {
@@ -422,9 +372,6 @@ function normalizarTextoAutoMiner(texto) {
     return String(texto || '').replace(/\s+/g, ' ').trim();
 }
 
-// O contador no canto do botão: o do idioma da captura (`n/limite`), não a soma
-// do badge da toolbar. No limite, contorno; com a mineração automática
-// desligada para esse idioma, some. O leitor de tela o ouve como MIN-11.
 function atualizarAutoMinerBadge() {
     const lang = idiomaDoContador();
     const settings = lang && _autoMinerState?.settings?.[lang];
@@ -448,29 +395,18 @@ function atualizarAutoMinerBadge() {
     });
 }
 
-/**
- * O idioma do contador: o da legenda na tela (ou da última captura). Antes de
- * haver legenda, o único idioma ligado; com os dois ligados, nenhum ainda.
- */
 function idiomaDoContador() {
     if (_idiomaDaLegenda) return _idiomaDaLegenda;
     const ligados = MineracaoDoDia.idiomasLigados(_autoMinerState);
     return ligados.length === 1 ? ligados[0] : null;
 }
 
-/**
- * A resposta de uma legenda avaliada. O diagnóstico (`pm_auto_miner_last_event`)
- * é gravado só pelo service worker, que tem a avaliação inteira; aqui só o que a
- * página mostra: o contador e o motivo no console.
- */
 function registrarAutoMinerEvento(response, texto) {
     if (response?.action !== 'skip') return;
     atualizarAutoMinerBadge();
     console.debug('[PerpetualMiner Auto]', response.reason || response.evaluation?.reason || '', texto);
 }
 
-// MIN-06: a mesma marca, mais apagada, ou a pílula se a legenda já trocou. A
-// mineração automática não tira da tela uma falha que acabou de aparecer.
 function mostrarNotificacaoAutoMiner(texto, idioma, response, lugar) {
     if (!Overlay.temBotao() || Overlay.mostrandoFalha()) return;
     const lang = codigoDoIdioma(idioma);
@@ -481,19 +417,14 @@ function mostrarNotificacaoAutoMiner(texto, idioma, response, lugar) {
         tipo: 'sucesso',
         icone: 'automatica',
         titulo: textoDaVoz('MIN-06'),
-        // A meta, como no protótipo: o idioma e o contador do dia (`RU 5/20`).
         meta: `${siglaDoIdioma(idioma)} ${n}/${limite}`,
         frase: texto,
-        // A Palavra gravada com a frase; o russo é gravado sem ela, e então vale o
-        // item novo (i+1) que fez a mineração automática aceitar a frase.
         ...palavraDe(response.frase?.keywords?.length ? response.frase : { keywords: response.evaluation?.keywords }),
         lugar,
         apagada: true,
     });
 }
 
-// Como em _ativarCaptura: só um evento da pessoa minera a legenda. Sem vídeo na
-// página não há legenda (MIN-10), por mais que um texto pareça uma.
 function minerarLegenda(evento) {
     if (!evento?.isTrusted) return;
     if (!obterVideoAtivo()) {
@@ -531,7 +462,6 @@ function obterVideoAtivo() {
     return ranked[0]?.video || videos[0] || null;
 }
 
-/** Um vídeo do tamanho de um player, dentro da janela (não um de anúncio escondido ou de 1 px). */
 function videoVisivel(video) {
     const rect = video.getBoundingClientRect();
     return rect.width >= 120 && rect.height >= 80 && rect.bottom > 0 && rect.right > 0
@@ -770,14 +700,12 @@ function extrairContexto() {
     return { fonte: 'web', titulo: document.title.trim(), detalhe: '' };
 }
 
-// Converte texto de episódio para S##E## ou retorna o texto curto como está
 function formatarEpisodio(texto) {
     if (!texto) return '';
     const m = texto.match(
         /(?:S|Season|Temporada|T)\s*(\d{1,2})\s*[:\-,\s]\s*(?:E|Ep\.?\s*|Epis[oó]dio\s*)(\d{1,2})/i
     ) || texto.match(/(\d{1,2})[xX](\d{1,2})/);
     if (m) return `S${String(m[1]).padStart(2, '0')}E${String(m[2]).padStart(2, '0')}`;
-    // Já está no formato correto?
     if (/^S\d{2}E\d{2}$/i.test(texto)) return texto.toUpperCase();
     return texto.length <= 25 ? texto : '';
 }

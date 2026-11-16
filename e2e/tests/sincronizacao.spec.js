@@ -1,7 +1,5 @@
 'use strict';
 
-// A sessão pelo que a pessoa faz: a mineração no popup e Sair da conta no
-// painel. Só a rede do Google/Firestore é falsificada, pelo fixture.
 const fs = require('fs');
 const path = require('path');
 const { test, expect } = require('../fixtures');

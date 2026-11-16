@@ -1,9 +1,5 @@
 'use strict';
 
-// Editar o texto de uma frase (PAI-33) revê o que dependia do texto antigo: a Palavra que saiu dele sai da frase, a
-// que ficou ganha a posição nova, e o idioma é o do texto novo. Antes a Palavra e o idioma de antes ficavam gravados,
-// e a frase ia ao Anki com uma Palavra que ela não tinha mais.
-
 const { test, expect } = require('../fixtures');
 const { AGORA, frase, abrirPainel, cartao, marcarEEnviar, enviosCriados } = require('../apoio-do-envio');
 
@@ -12,7 +8,6 @@ test.beforeEach(({ fakes }) => {
 });
 
 const ID = 1_700_000_000_007;
-// “She hit the sack early.”: `sack` é o 7º pedaço (as palavras e o que há entre elas contam).
 const COM_PALAVRA = frase(ID, 'She hit the sack early.', { keywords: ['sack@6'], autoKeyword: false });
 const chip = (page, texto) => cartao(page, texto).locator('.veio-chip-palavra');
 const guardada = async extensao => (await extensao.frases()).find(f => f.id === ID);

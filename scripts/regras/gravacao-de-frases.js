@@ -1,13 +1,5 @@
 'use strict';
 
-// Quem regrava `frases` fora da fila de gravação do service
-// worker pode escrever por cima de uma frase salva no meio do caminho
-// (CODING_STANDARDS.md regra 7; docs/arquitetura.md § Write Serialization). Foi o assunto
-// de quatro rodadas de revisão na B1 (#116), do lote que descartava chaves em
-// 58ef837, e a B2 (#126) levou quatro escritas novas para fora da fila em
-// lib/sincronizacao.js. Cada lugar novo que grava essa chave fora da fila
-// é acusado aqui.
-
 const { ehJsDaExtensao, fechamento, linhaDe, semComentariosJs } = require('./comum');
 
 const id = 'gravacao-de-frases';
@@ -21,7 +13,6 @@ const CHAVES = /(?:^|[{,\s])(?:frases|['"]frases['"])\s*(?::|,|\})/;
 
 const seAplica = ehJsDaExtensao;
 
-// Os trechos que rodam dentro da fila: o argumento de cada `naFilaDeGravacao(…)`.
 function trechosNaFila(codigo) {
   const trechos = [];
   for (const m of codigo.matchAll(/\bnaFilaDeGravacao\s*\(/g)) {
@@ -36,7 +27,6 @@ function verificar(arquivo, fonte) {
   const codigo = semComentariosJs(fonte);
   const naFila = trechosNaFila(codigo);
   const achados = [];
-  // `.set({ … })`, `chromeSet({ … })` e `.remove('frases')`/`.remove(['frases'])`.
   for (const m of codigo.matchAll(/(?:\.set|\bchromeSet|\.remove)\s*\(/g)) {
     const abre = m.index + m[0].length - 1;
     const fecha = fechamento(codigo, abre);

@@ -1,9 +1,5 @@
 'use strict';
 
-// Cor, tamanho de letra, raio e duração só como token da Veio (CODING_STANDARDS.md
-// regra 2). A revisão pediu "token, não px solto" em 0510e37, d2ab0da, b1a3664,
-// 8d13cc7 e 1378e3f; esta regra acusa o literal antes da revisão.
-
 const { ehJsDaExtensao, linhaDe, semComentariosCss, semComentariosHtml, semComentariosJs } = require('./comum');
 
 const id = 'tokens-veio';
@@ -13,9 +9,6 @@ const conserto = 'Use um token `var(--veio-…)` de veio/tokens.css (cores: --ve
   + 'Um valor que ainda não existe vira token novo em veio/tokens.css, registrado no veio/README.md. '
   + 'As únicas exceções são as de veio/README.md § Como usar (CODING_STANDARDS.md regra 2).';
 
-// As páginas do repositório que usam a Veio: as da extensão, a vitrine e as
-// imagens da loja. As páginas falsas de e2e/pages imitam sites de terceiros e
-// os protótipos de docs/ têm o seu próprio CSS: ficam de fora.
 function seAplica(arquivo) {
   if (arquivo === 'veio/tokens.css') return false;
   if (/^[^/]+\.(css|html)$/.test(arquivo) || /^veio\/.+\.css$/.test(arquivo)) return true;
@@ -46,20 +39,15 @@ const PROPRIEDADE_DE_COR = /^(?:color|background(?:-color|-image)?|border(?:-(?:
 const PROPRIEDADE_DE_RAIO = /^border(?:-(?:top|bottom|start|end)-(?:left|right|start|end))?-radius$/;
 const PROPRIEDADE_DE_TEMPO = /^(?:transition|animation)(?:-duration|-delay)?$/;
 
-// O valor sem os nomes dos tokens: `var(--x)` some, e de `var(--x, 12px)` fica só o
-// reserva, que é literal e conta como qualquer outro.
 function semVar(valor) {
   return valor
     .replace(/var\(\s*--[\w-]+\s*\)/g, 'var()')
     .replace(/var\(\s*--[\w-]+\s*,/g, '(');
 }
 
-/** O que há de errado com `propriedade: valor`, ou null. */
 function literal(propriedade, valorBruto) {
   const p = propriedade.trim().toLowerCase();
   const valor = semVar(valorBruto).replace(/url\([^)]*\)/g, 'url()');
-  // Uma propriedade customizada fora de veio/tokens.css é um token paralelo: a cor
-  // literal nela conta. Tamanhos e espaçamentos em variáveis locais não são regra.
   if (p.startsWith('--')) return COR.test(valor) ? `cor literal na variável \`${p}\`` : null;
   if (PROPRIEDADE_DE_COR.test(p) && COR.test(valor)) return `cor literal em \`${p}\``;
   if (p === 'font-size' && /(?:^|[\s(])\d*\.?\d+(?:px|rem|pt)\b/.test(valor)) return 'tamanho de letra literal';
@@ -69,8 +57,6 @@ function literal(propriedade, valorBruto) {
   return null;
 }
 
-// As declarações de um trecho de CSS. Só o miolo dos blocos (ou de um style="")
-// tem declarações: fora deles, `a:hover` também pareceria uma.
 function achadosNoCss(css, deslocamento, original) {
   const achados = [];
   const blocos = deslocamento.atributo
@@ -87,8 +73,6 @@ function achadosNoCss(css, deslocamento, original) {
   return achados;
 }
 
-// Os mesmos literais escritos pelo JavaScript: objetos de estilo
-// (`fontSize: '13px'`), `elemento.style.color = '#fff'` e cores soltas.
 const ESTILO_NO_JS = /\b(fontSize|borderRadius|transition|animation(?:Duration|Delay)?|color|background(?:Color)?|borderColor|outlineColor|boxShadow)\s*(?::|=(?!=))\s*(['"`])([^'"`]*)\2/g;
 const PARA_CSS = nome => nome.replace(/[A-Z]/g, letra => `-${letra.toLowerCase()}`);
 

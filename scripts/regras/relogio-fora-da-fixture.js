@@ -24,16 +24,12 @@ const conserto = 'Peça a fixture `relogioParado` (e2e/fixtures.js) antes de nav
 
 const seAplica = arquivo => /^e2e\/.+\.js$/.test(arquivo) && arquivo !== DONO;
 
-// O que mexe no relógio sem ser a montagem: avançar e fixar o instante numa página que o apoio já tem.
 const AVANCO = new Set(['runFor', 'setFixedTime', 'fastForward', 'setSystemTime', 'resume']);
 const MONTAGEM = new Set(['install', 'pauseAt']);
 
-// `clock` aberto de uma página ou contexto: `.clock`, `?.clock` ou `['clock']`; e o `clock.install` solto, de um apelido já feito.
 const ACESSO = /(?:\?\.|\.)\s*clock\b|\[\s*(['"`])clock\1\s*\]/g;
 const SOLTO = /\bclock\s*\.\s*(install|pauseAt)\b/g;
-// O que vem logo depois do acesso: `.nome`, `?.nome` ou `['nome']`.
 const SEGUINTE = /\s*(?:\??\.\s*(\w+)|\[\s*(['"`])(\w+)\2\s*\])/y;
-// `const { clock } = page`, `{ clock: relogio } = context`, `{ clock: { install } } = page`.
 const DESESTRUTURA = /\{[^{}]*\bclock\b[^{}]*(?:\{[^{}]*\}[^{}]*)*\}\s*=(?![=>])/g;
 const MONTAR_RELOGIO = /\bmontarRelogio\b/g;
 
@@ -55,7 +51,6 @@ function verificar(arquivo, fonte) {
     }
   }
   for (const m of codigo.matchAll(SOLTO)) {
-    // O `.clock.install` já acusado acima não conta duas vezes.
     if (/(?:\?\.|\.)\s*$/.test(codigo.slice(0, m.index))) continue;
     acusa(m.index, `\`clock.${m[1]}\` fora de ${DONO}: o relógio é montado só pela fixture \`relogioParado\``);
   }

@@ -1,25 +1,10 @@
 'use strict';
 
-// A galeria de componentes da vitrine.
-//
-// Ela é montada uma vez por tema, pela mesma função, para as duas colunas
-// nunca divergirem: o que muda entre elas é só o `data-tema` do ancestral.
-//
-// A cópia das amostras vem do catálogo da Voz por ID, em CATALOGO_DA_VITRINE:
-// o teste percorre essa lista e confere que cada texto na tela é o que
-// `textoDaVoz(id, valores)` devolve. O que é rótulo da própria vitrine ("Botões",
-// "desabilitado", "Abrir o modal") fica marcado com `data-vitrine-chrome`, porque
-// é andaime da página de referência e não cópia de uma tela do produto.
-//
-// Os nomes de Fonte (Netflix, YouTube, Web, PDF, Livro, Manual) são valores do
-// glossary.md, não estados do catálogo.
-
 (function (raiz) {
   const { textoDaVoz, Veio } = raiz;
   const { iconeVeio, abrirModal, mostrarToastDeSucesso, montarAviso, escreverFrase,
     escreverFraseClicavel, andarEntrePalavras, montarChipDaPalavra, refletirSelecao } = Veio;
 
-  /** Todo texto de produto que a galeria mostra, por ID do catálogo da Voz. */
   const CATALOGO_DA_VITRINE = [
     ['BRG-31.emParte', { n: 3, total: 4 }],
     ['POP-09'], ['ADD-01.botao'], ['PAI-12.cancelar'], ['PAI-13.confirmar', { n: 12 }],
@@ -41,7 +26,6 @@
     ['PAI-11.hoje'],
   ];
 
-  /** As Fontes do glossário, com o ícone de cada uma. */
   const FONTES = [
     ['netflix', 'Netflix'], ['youtube', 'YouTube'], ['web', 'Web'],
     ['pdf', 'PDF'], ['livro', 'Livro'], ['manual', 'Manual'],
@@ -50,7 +34,6 @@
   const FRASE_EM_INGLES = 'I’m not saying it’s your fault, I’m saying it’s your responsibility.';
   const FRASE_EM_RUSSO = 'Мы с тобой одной крови — ты и я.';
 
-  /** Um elemento com atributos e filhos, sem passar por innerHTML. */
   function el(tag, atributos = {}, ...filhos) {
     const no = document.createElement(tag);
     for (const [nome, valor] of Object.entries(atributos)) {
@@ -64,39 +47,27 @@
     return no;
   }
 
-  /** Um id que não colide com o da outra coluna de tema. */
   let proximoId = 0;
   const idUnico = prefixo => `${prefixo}-${(proximoId += 1)}`;
 
-  /**
-   * O que a linha de um estado pede de cada amostra.
-   *
-   * O nome do estado é lido uma vez aqui, e não redecodificado dentro de cada
-   * grupo. `classeDeFoco` é a amostra de foco parado da vitrine — o anel real
-   * é o que `tokens.css` desenha em `:focus-visible`.
-   */
   const estadoDaAmostra = estado => ({
     desabilitado: estado === 'desabilitado',
     erro: estado === 'erro',
     classeDeFoco: estado === 'foco' ? 'amostra-de-foco-parado' : '',
   });
 
-  /** Um rótulo da própria vitrine, que não é cópia de nenhuma tela. */
   const rotulo = (tag, classe, texto) =>
     el(tag, { class: classe, texto, 'data-vitrine-chrome': true });
 
-  /** Um grupo da galeria: o nome do componente e as linhas de estado. */
   const grupo = (nome, ...linhas) =>
     el('section', { class: 'grupo', 'data-grupo': nome },
       rotulo('h4', 'grupo__nome', nome), ...linhas);
 
-  /** Uma linha de amostras, com o estado que ela mostra. */
   const linha = (estado, ...amostras) =>
     el('div', { class: 'linha-de-estado', 'data-estado': estado },
       rotulo('i', 'linha-de-estado__nome', estado),
       el('div', { class: 'amostras' }, ...amostras));
 
-  /** Um controle que a vitrine só usa para demonstrar um componente vivo. */
   const gatilho = (texto, aoUsar) =>
     el('button', {
       type: 'button', class: 'veio-botao veio-botao--secundario',
@@ -203,7 +174,6 @@
       type: 'checkbox', class: `veio-checkbox ${foco}`.trim(), disabled: desabilitado,
       'aria-label': textoDaVoz('PAI-06', { n: 3 }),
     });
-    // 3 de 12 selecionadas: o cabeçalho da lista fica no estado misto.
     refletirSelecao(misto, 3, 12);
 
     return [
@@ -257,7 +227,6 @@
     return el('div', { class: 'veio-segmentado', role: 'radiogroup', 'aria-label': textoDaVoz('ADD-01.botao') }, ...opcoes);
   }
 
-  /** O anel do lembrete da configuração: vazio, pela metade e cheio, com o texto ao lado. */
   function aneis() {
     return [0, 2, 6].map(n => el('span', { class: 'anel' },
       Veio.montarAnelDeProgresso(n, 6),
@@ -277,7 +246,6 @@
     ];
   }
 
-  /** O modal desta coluna: aberto pelo botão de perigo em contorno. */
   function modal(temaDaColuna) {
     const cancelar = el('button', {
       type: 'button', class: 'veio-botao veio-botao--fantasma',
@@ -314,7 +282,6 @@
     return el('div', { class: 'amostras' }, entrada, scrim);
   }
 
-  /** O toast aparece dentro da coluna, para usar o tema dela. */
   function toast(coluna) {
     return gatilho('Mostrar o toast', () =>
       mostrarToastDeSucesso(textoDaVoz('PAI-14', { n: 12 }), { dentroDe: coluna }));
@@ -333,7 +300,6 @@
     return lugar;
   }
 
-  /** O aviso que só informa (FOT-21): neutro, com a abertura em negrito. */
   function avisoInformativo() {
     const lugar = el('div', { class: 'lugar-do-aviso' });
     const montar = () => lugar.append(montarAviso({
@@ -348,7 +314,6 @@
     return lugar;
   }
 
-  /** O vazio: o título em destaque, o texto que ensina (se houver) e a ação. */
   function vazio({ titulo, texto, acao, variante, icone }) {
     return el('div', { class: 'veio-vazio' },
       iconeVeio(icone),
@@ -372,8 +337,6 @@
   ];
 
   function esqueleto() {
-    // POP-01: espera curta é silêncio deliberado — só o esqueleto no lugar
-    // da lista, sem nenhum texto.
     return el('div', { class: 'esqueleto-em-pilha', 'aria-hidden': 'true' },
       el('div', { class: 'veio-esqueleto', style: 'width:72%' }),
       el('div', { class: 'veio-esqueleto', style: 'width:94%' }),
@@ -417,10 +380,6 @@
       }));
   }
 
-  /**
-   * A frase em que a pessoa escolhe a Palavra clicando, no cartão de dentro de
-   * uma ilha (`--na-ilha`), com uma palavra escolhida e as setas vivas.
-   */
   function fraseClicavel() {
     const corpo = el('div', { class: 'veio-frase__texto', lang: 'en' });
     const trechos = FRASE_EM_INGLES.match(/[\p{L}’']+|[^\p{L}’']+/gu).map(texto =>
@@ -439,7 +398,6 @@
     return ilha;
   }
 
-  /** Monta a galeria inteira dentro de `destino`, na coluna do tema `tema`. */
   function montarComponentes(destino, tema) {
     destino.append(
       grupo('Botões',

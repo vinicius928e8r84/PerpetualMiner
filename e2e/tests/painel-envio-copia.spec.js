@@ -7,25 +7,15 @@ test.beforeEach(({ fakes }) => {
   fakes.anki.usarRelogio(() => AGORA);
 });
 
-// ─── A cópia das telas do Envio com a Conexão dentro do Anki (#142) ──────────
-
-/**
- * Os textos à vista em `seletor` que não saem do catálogo da Voz, e os que chamam a Conexão de “complemento”. Um texto
- * sai do catálogo quando casa com um modelo dele (um valor de contagem só casa com um número), ou cada parte dele separada
- * por “ · ” casa; os nomes de `IDIOMAS` e o “Detalhes” do componente base também valem. O que está dentro do Detalhes é
- * a causa técnica (V3), não cópia: fica de fora.
- */
 const COPIA_FORA_DO_CATALOGO = seletor => {
   const { CATALOGO_DA_VOZ, IDIOMAS } = PerpetualMiner;
   const modelos = [];
   const juntar = entrada => (typeof entrada === 'string' ? [entrada] : Object.values(entrada).flatMap(juntar));
   const escapar = texto => texto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const textos = Object.values(CATALOGO_DA_VOZ).flatMap(juntar);
-  // Os valores que são números: os que escolhem singular ou plural em algum modelo, e os de contagem e posição.
   const numeros = new Set(['total', 'atual', 'inicio', 'fim', 'limite', 'pct', 'segundos',
     ...textos.flatMap(t => [...t.matchAll(/\{([^{}|]+)\|/g)].map(m => m[1]))]);
   for (const modelo of textos) {
-    // `{n|frase|frases}` é uma das duas palavras; `{n}`, um número; outro `{valor}`, qualquer coisa.
     let fixo = '';
     const padrao = modelo.split(/(\{[^{}]*\})/).map(pedaco => {
       if (!/^\{.*\}$/.test(pedaco)) {
@@ -37,7 +27,6 @@ const COPIA_FORA_DO_CATALOGO = seletor => {
       if (formas.length) return `(?:${formas.map(escapar).join('|')})`;
       return numeros.has(nome) ? '\\d[\\d.,]*' : '.+?';
     }).join('');
-    // Um modelo só de valores (“{nome} · {estado}”) casaria com qualquer texto: não prova nada.
     if (/\p{L}/u.test(fixo)) modelos.push(new RegExp(`^${padrao}$`, 'u'));
   }
   const doCatalogo = texto => modelos.some(m => m.test(texto));
@@ -60,30 +49,26 @@ const COPIA_FORA_DO_CATALOGO = seletor => {
 };
 
 async function copiaDoCatalogo(page, seletor) {
-  // Exceção de teste: catálogo (docs/testes.md): os modelos de texto vêm do próprio catálogo da Voz.
+  // Exceção de teste: catálogo (docs/testes.md):
   await expect.poll(() => page.evaluate(COPIA_FORA_DO_CATALOGO, seletor)).toEqual({ fora: [], complemento: [] });
 }
 
 test('as telas do Envio com a Conexão dentro do Anki só dizem o que o catálogo da Voz tem, e chamam-na de Conexão com o Anki', async ({ page, extensao, fakes }) => {
   await extensao.gravarStorage({ frases: [...INGLESAS, RUSSA] });
-  // Uma Conexão de antes do Envio (≤ 0.2.0) não tem a rota: o russo não começa, com o 404 em Detalhes.
   fakes.anki.recusarEnvios('ru', { status: 404, erro: 'not_found' });
   await abrirPainel(page, extensao);
   await marcarEEnviar(page, [SACK.texto, ARM.texto, RUSSA.texto]);
   const [ingles] = await enviosCriados(fakes, 1);
 
-  // A coleção fechada ou sincronizando: a Conexão espera o Anki.
   fakes.anki.moverEnvio(ingles.jobId, { stage: 'wait_anki' });
   await expect(envio(page, 'Envio em inglês · 2 frases')).toContainText('Esperando o Anki');
   await expect(envio(page, 'Envio em russo · 1 frase')).toContainText('A Conexão com o Anki respondeu com erro.');
   await copiaDoCatalogo(page, '#modal-envio');
 
-  // Um Cartão que não entrou (o código novo vai ao Detalhes) e o Tentar de novo.
   fakes.anki.concluirEnvio(ingles.jobId, { falhas: [ARM.id] });
   await expect(envio(page, 'Envio em inglês · 2 frases').getByRole('button', { name: 'Tentar de novo' })).toBeVisible();
   await copiaDoCatalogo(page, '#modal-envio');
 
-  // O russo vai depois de a Conexão ser atualizada, e o resumo abre com o que não entrou.
   fakes.anki.aceitarEnvios('ru');
   await envio(page, 'Envio em russo · 1 frase').getByRole('button', { name: 'Tentar de novo' }).click();
   await expect.poll(() => fakes.anki.enviosEm('ru').length).toBe(1);
@@ -92,14 +77,12 @@ test('as telas do Envio com a Conexão dentro do Anki só dizem o que o catálog
   await expect(resumo(page)).toHaveAccessibleName('Envio concluído em parte');
   await copiaDoCatalogo(page, '#modal-resumo');
 
-  // O que ficou guardado: os dois Envios, cada um com o seu id na Conexão.
   const { pm_envio: guardado } = await extensao.lerStorage('pm_envio');
   expect(guardado.envios.map(e => [e.lang, e.jobId])).toEqual([['en', ingles.jobId], ['ru', russo.jobId]]);
   expect(fakes.anki.enviosEm('ru')).toHaveLength(1);
 });
 
 test('a espera pelo Anki só diz o que fazer depois de 5 minutos, sem fazer o Envio falhar (#246)', async ({ page, extensao, fakes }) => {
-  // A página lê AGORA (abrirPainel); o Envio espera desde 4 e depois desde 6 minutos antes.
   const haMinutos = n => new Date(AGORA.getTime() - n * 60 * 1000);
   await extensao.gravarStorage({ frases: INGLESAS });
   await abrirPainel(page, extensao);
@@ -112,7 +95,6 @@ test('a espera pelo Anki só diz o que fazer depois de 5 minutos, sem fazer o En
   await expect(cartao).toContainText('Esperando o Anki');
   await expect(cartao).not.toContainText(orientacao);
 
-  // Quatro minutos esperando viram seis, e o Envio segue na mesma etapa.
   fakes.anki.moverEnvio(ingles.jobId, { stage: 'wait_anki', atualizadoEm: haMinutos(6) });
   await expect(cartao).toContainText(orientacao);
   await expect(cartao).toContainText('Esperando o Anki');

@@ -1,14 +1,5 @@
 'use strict';
 
-// Referência visual de Conectar este navegador ao Anki (#192, BRG-52): o aviso com Conectar, o card do código, o código errado, o código que venceu e a porta
-// que não se confirmou, e o aviso no tema claro. Não há protótipo: o desenho segue os avisos do alto do Painel (como a versão da Conexão, BRG-50, e o teto do
-// mês) e o card do teto (o campo e o botão numa linha). É PROPOSTA para o dono comparar e aprovar (CODING_STANDARDS regra 10): as imagens não estão na árvore.
-// Aprovando: tirar o `fixme`, rodar
-//
-//   cd e2e && npx playwright test pareamento-visual --update-snapshots
-//
-// e anotar a aprovação em e2e/aprovados-visuais.json.
-
 const { test, expect } = require('../fixtures');
 const { AGORA, abrirPainel } = require('../apoio-do-envio');
 

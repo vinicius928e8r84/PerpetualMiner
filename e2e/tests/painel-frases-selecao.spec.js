@@ -9,7 +9,6 @@ function frase(id, texto, extras = {}) {
   return { id, texto, data: HOJE, streaming: 'netflix', idioma: 'Inglês', ...extras };
 }
 
-/** `n` frases de hoje, a mais nova primeiro. */
 function frasesDeExemplo(n, extras = {}) {
   return Array.from({ length: n }, (_, i) =>
     frase(1_700_000_000_000 + (n - i), `Sentence number ${n - i} about the harbour.`, extras));
@@ -46,7 +45,6 @@ test('sem seleção, só “Selecionar página”; ao marcar, a barra mostra a c
   await abrirFrases(page, extensao);
 
   await expect(selecionarPagina(page)).toBeVisible();
-  // O rótulo está escrito à vista, não só no nome do checkbox (PAI-31).
   const rotulo = page.locator('#frases-selecao').getByText('Selecionar página', { exact: true });
   // (O “só para o leitor de tela” conta como visível para o Playwright: 1×1 px.)
   expect((await rotulo.boundingBox()).width).toBeGreaterThan(40);
@@ -54,13 +52,11 @@ test('sem seleção, só “Selecionar página”; ao marcar, a barra mostra a c
 
   await marcar(page, 'Sentence number 2 ').check();
   await expect(barra(page)).toBeVisible();
-  // Na barra, o checkbox fica só com o nome para o leitor de tela.
   expect(await rotulo.boundingBox()).toMatchObject({ width: 1, height: 1 });
   await expect(barra(page)).toContainText('1 selecionada');
   for (const nome of ['Desmarcar todas', 'Editar contexto', 'Exportar .txt', 'Apagar', 'Enviar ao Anki']) {
     await expect(naBarra(page, nome)).toBeVisible();
   }
-  // A página inteira não está marcada: a oferta de todas ainda não aparece.
   await expect(barra(page).getByRole('button', { name: /Selecionar todas/ })).toHaveCount(0);
 
   await marcar(page, 'Sentence number 3 ').check();
@@ -139,20 +135,17 @@ test('a Fonte, o toggle de ocultar, Limpar filtros e Limpar busca também limpam
   await filtro(page, 'Fonte').selectOption({ label: 'YouTube' });
   await expect(marcadas(page)).toHaveCount(0);
 
-  // O toggle é o que mais esconde frase selecionada: a exportada sai da lista.
   await filtro(page, 'Fonte').selectOption({ label: 'Todas as fontes' });
   await marcar(page, 'Already exported').check();
   await page.locator('.veio-toggle').getByText('Ocultar enviadas e exportadas').click();
   await expect(barra(page)).toBeHidden();
   await expect(marcadas(page)).toHaveCount(0);
 
-  // Limpar filtros, do vazio PAI-03.
   await filtro(page, 'Idioma').selectOption({ label: 'Russo' });
   await expect(lista(page).locator('.veio-vazio')).toBeVisible();
   await page.getByRole('button', { name: 'Limpar filtros' }).click();
   await marcar(page, 'harbour').check();
   await busca(page).fill('zebra');
-  // O “Limpar busca” do vazio PAI-04, não o × dentro do campo.
   await lista(page).getByRole('button', { name: 'Limpar busca' }).click();
   await expect(marcadas(page)).toHaveCount(0);
 });
@@ -163,7 +156,6 @@ test('a barra gruda no topo da ilha ao rolar', async ({ page, extensao }) => {
   await abrirFrases(page, extensao);
 
   await marcar(page, 'Sentence number 10 ').check();
-  // A linha de seleção inteira vira a barra: é ela que gruda.
   const linhaDaBarra = page.locator('#frases-selecao');
   await paginas(page).scrollIntoViewIfNeeded();
   await expect(cartao(page, 'Sentence number 10 ')).not.toBeInViewport();
@@ -193,7 +185,6 @@ test('Exportar .txt baixa as escolhidas e as marca Exportada, nunca Enviada ao A
   await expect(exportada).not.toContainText('Enviada ao Anki');
   await expect(cartao(page, 'Sentence number 2 ').locator('.veio-frase__contexto')).not.toContainText('Exportada');
 
-  // O que fica gravado não diz Enviada ao Anki: o `exported` é o do Envio.
   const gravadas = await extensao.frases();
   const porTexto = texto => gravadas.find(f => f.texto.startsWith(texto));
   expect(porTexto('Sentence number 3 ').status).toBeUndefined();
@@ -239,7 +230,6 @@ test('Apagar 1 frase pede confirmação (PAI-12); Cancelar mantém, confirmar ti
   await acao(page, 'Sentence number 2 ', 'Apagar frase').click();
   await expect(modal(page)).toBeVisible();
   await expect(modal(page).getByRole('heading')).toHaveText('Apagar esta frase?');
-  // Sem conta, o corpo não fala dos outros computadores.
   await expect(modal(page)).toContainText('Não dá para desfazer.');
   await expect(modal(page)).not.toContainText('outros computadores');
   await expect(modal(page).getByRole('button', { name: 'Cancelar' })).toBeFocused();
@@ -316,14 +306,12 @@ test('se a nuvem falha ao apagar, fica o aviso PAI-15 com Tentar de novo, que ap
   await expect(aviso.getByText('Detalhes')).toBeVisible();
   await expect(cartoes(page)).toHaveText([/Sentence number 2 /]);
   await expect(page.locator('#shell-chip')).toContainText('Sem sincronizar');
-  // Continua depois de um tempo: é persistente, não um toast.
   await page.waitForTimeout(3000);
   await expect(aviso).toBeVisible();
 
   fakes.google.ficarForaDoAr(false);
   await aviso.getByRole('button', { name: 'Tentar de novo' }).click();
   await expect(aviso).toBeHidden();
-  // A nuvem respondeu: o chip da conta deixa de dizer que este computador está sem sincronizar.
   await expect(page.locator('#shell-chip')).toContainText('Sincronizado');
   await expect.poll(() => fakes.google.frasesDe('uid-falha').map(f => f.texto)).toEqual(['Sentence number 2 about the harbour.']);
 });
@@ -454,7 +442,6 @@ test('Copiar frase põe o texto no clipboard e diz “Frase copiada”', async (
 });
 
 test('se o copiar não vai, fica o aviso “Não deu para copiar”, com a causa em Detalhes', async ({ page, extensao }) => {
-  // O clipboard recusado é o caso real: a permissão negada faz o write falhar.
   await page.addInitScript(() => {
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
@@ -488,7 +475,6 @@ test('as ações do cartão aparecem ao focar pelo teclado, e os controles da ba
     expect(contorno, await controle.evaluate(el => el.outerHTML.slice(0, 80))).toBe(true);
   };
 
-  // O foco pelo teclado (não o do mouse) é o que precisa aparecer.
   await page.keyboard.press('Tab');
   const apagar = acao(page, 'Sentence number 2 ', 'Apagar frase');
   await focoAparece(apagar);

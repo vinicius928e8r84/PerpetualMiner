@@ -1,14 +1,9 @@
 'use strict';
 
-// O que as regras de scripts/regras/ compartilham: quais arquivos olhar, como
-// tirar os comentários antes de procurar um padrão e em que linha está um
-// trecho. Cada regra fica no seu arquivo; verificar.js as roda.
-
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-/** Os arquivos do repositório (versionados e novos ainda não ignorados), com `/`. */
 function arquivosDoRepositorio(raiz) {
   const saida = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '-z'], {
     cwd: raiz, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024,
@@ -29,8 +24,6 @@ function linhaDe(texto, indice) {
   return linha;
 }
 
-// Troca cada caractere de um comentário por espaço, mantendo as quebras de linha,
-// para os índices e as linhas continuarem os mesmos do arquivo original.
 function apagar(trecho) {
   return trecho.replace(/[^\n]/g, ' ');
 }
@@ -42,8 +35,6 @@ function fimDaString(texto, i) {
   return Math.min(j, texto.length - 1);
 }
 
-// O JavaScript separado em código (comentários apagados) e os trechos de
-// comentário ([início, fim)); strings, templates e regex ficam no código.
 function separarJs(fonte) {
   let codigo = '';
   const comentarios = [];
@@ -98,12 +89,10 @@ function separarJs(fonte) {
   return { codigo, comentarios };
 }
 
-/** JavaScript sem comentários; strings, templates e regex ficam como estão. */
 function semComentariosJs(fonte) {
   return separarJs(fonte).codigo;
 }
 
-// Os trechos de comentário ([início, fim)) do CSS: `/* */` fora de string.
 function comentariosCss(fonte) {
   const comentarios = [];
   let i = 0;
@@ -120,7 +109,6 @@ function comentariosCss(fonte) {
   return comentarios;
 }
 
-// O texto com os trechos apagados (mesmas linhas e índices).
 function semTrechos(fonte, trechos) {
   let saida = '';
   let ondeEstou = 0;
@@ -131,15 +119,12 @@ function semTrechos(fonte, trechos) {
   return saida + fonte.slice(ondeEstou);
 }
 
-/** CSS sem comentários, com as mesmas linhas; um `/*` dentro de uma string fica. */
 function semComentariosCss(fonte) {
   return semTrechos(fonte, comentariosCss(fonte));
 }
 
 const mover = (trechos, deslocamento) => trechos.map(([de, ate]) => [de + deslocamento, ate + deslocamento]);
 
-// Os comentários do HTML: `<!-- -->` no texto (não dentro de um atributo entre
-// aspas) e os comentários de CSS e de JavaScript dos blocos <style> e <script>.
 function comentariosHtml(fonte) {
   const comentarios = [];
   let i = 0;
@@ -171,12 +156,10 @@ function comentariosHtml(fonte) {
   return comentarios;
 }
 
-/** HTML sem comentários (também os do <style> e do <script>), com as mesmas linhas. */
 function semComentariosHtml(fonte) {
   return semTrechos(fonte, comentariosHtml(fonte));
 }
 
-// Os comentários de Python: `#` fora de string, de uma linha ou de três aspas.
 function comentariosPy(fonte) {
   const comentarios = [];
   let i = 0;
@@ -335,11 +318,6 @@ function trechosDeComentario(arquivo, fonte) {
   return [];
 }
 
-/**
- * O texto dos comentários de verdade de cada linha (Map linha → texto). Só ali
- * vale uma exceção ou a marca de uma exceção de teste: uma string que contém
- * as mesmas palavras não conta.
- */
 function comentariosPorLinha(arquivo, fonte) {
   const comentarios = trechosDeComentario(arquivo, fonte);
   const porLinha = new Map();

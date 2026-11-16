@@ -5,7 +5,6 @@
   const CHAVE_QUATRO_CASAS = 'pm_anki_quatro_casas';
   const CHAVE_IDS = 'pm_anki_ids_dos_envios';
 
-  // Os idiomas da API e o código de cada azulejo (BRG-28).
   const IDIOMAS_DOS_AZULEJOS = [
     { idioma: 'all', codigo: 'BRG-28.codigoTodos' },
     { idioma: 'en', codigo: 'BRG-28.codigoEn' },
@@ -13,14 +12,12 @@
   ];
   const CODIGO_DO_IDIOMA = Object.fromEntries(IDIOMAS_DOS_AZULEJOS.map(({ idioma, codigo }) => [idioma, codigo]));
   const NOME_DO_IDIOMA = { en: 'INGLES', ru: 'RUSSO' };
-  // O `status` da API na tela: o tom do ponto, o selo e se o envio se retoma. O que falta aqui anda.
   const STATUS_DO_ENVIO = {
     completed: { tom: 'ok', selo: 'veio-selo--ok', retomavel: false },
     partial: { tom: 'parte', selo: 'veio-selo--parte', retomavel: true },
     failed: { tom: 'erro', selo: 'veio-selo--erro', retomavel: true },
   };
   const ANDANDO = { tom: 'andando', selo: 'veio-selo--info', retomavel: false };
-  // As 4 origens das imagens, na ordem e com a cor da série.
   const ORIGENS = [
     { chave: 'real', rotulo: 'BRG-09.fotoReal', serie: 'real' },
     { chave: 'generated', rotulo: 'BRG-09.geradaPorIa', serie: 'gerada' },
@@ -36,22 +33,22 @@
   const porId = id => document.getElementById(id);
 
   const estado = {
-    periodo: 'mes',         // 'hoje' | 'mes' | 'tudo' | 'datas' (De/Até escolhidos)
+    periodo: 'mes',
     de: '',
     ate: '',
     idioma: 'all',
-    dados: null,            // a última leitura: { quando, periodo, de, ate, envios }
+    dados: null,
     carregando: false,
-    erro: null,             // a causa técnica da leitura que falhou, para o Detalhes
-    escolhido: null,        // o jobId do envio no detalhe
+    erro: null,
+    escolhido: null,
     quatroCasas: false,
     ids: false,
-    leitura: 0,             // só a leitura mais recente desenha
-    falhasAoRetomar: new Map(),  // jobId → a causa técnica, para o Detalhes
-    apagados: new Set(),    // jobId que a Conexão recusou retomar (Frases apagadas)
+    leitura: 0,
+    falhasAoRetomar: new Map(),
+    apagados: new Set(),
     diagnosticoFalhou: false,
   };
-  const ouvintesDoAtualizar = [];   // quem mais responde ao ↻ Atualizar (aoAtualizar)
+  const ouvintesDoAtualizar = [];
 
   async function iniciar() {
     PrimeiraConexao.montar();
@@ -105,10 +102,8 @@
   }
 
   const situacaoDaConexao = () => ConexaoAnki.situacao();
-  /** Já respondeu aqui, e provada (#192): a porta que só responde a saúde não conta. */
   const jaRespondeu = () => ConexaoAnki.ultimaResposta() !== null && ConexaoAnki.apresentada() === situacaoDaConexao();
 
-  // A situação da última notificação: ler os custos é decidido contra ela.
   let anterior = CONEXAO.CONECTANDO;
 
   function aoMudarAConexao(situacao) {
@@ -118,19 +113,16 @@
     desenhar();
   }
 
-  /** Confere a Conexão e, ligada, lê os custos (Tentar de novo, BRG-04). */
   async function atualizar() {
     const situacao = await ConexaoAnki.conferir();
     if (situacao === CONEXAO.LIGADA) ler();
     return situacao;
   }
 
-  /** ↻ Atualizar (BRG-24): confere a Conexão e, só com ela ligada, lê os custos e pede às outras abas os dados delas. */
   async function atualizarTudo() {
     if (await atualizar() === CONEXAO.LIGADA) for (const ouvinte of ouvintesDoAtualizar) ouvinte();
   }
 
-  /** `ouvinte` roda a cada ↻ Atualizar com a Conexão ligada. */
   function aoAtualizar(ouvinte) {
     ouvintesDoAtualizar.push(ouvinte);
   }
@@ -193,7 +185,6 @@
     return situacaoDaConexao() === CONEXAO.DESLIGADA;
   }
 
-  /** Com a Conexão desligada, o botão fica `aria-disabled` (continua no Tab) e a dica irmã diz por quê. */
   function marcarIndisponivel(botao, idDaDica) {
     if (desligada()) {
       botao.setAttribute('aria-disabled', 'true');
@@ -216,10 +207,7 @@
   function desenharCustos() {
     const vista = vistaDosCustos();
     const comDados = vista === 'dados' || vista === 'antiga';
-    // O último dado vale para o período lido: os controles mostram esse.
     const periodo = vista === 'antiga' ? estado.dados : estado;
-    // Sem a Conexão, outro período não teria de onde vir: os controles ficam
-    // parados no do último dado até ela voltar.
     for (const radio of document.querySelectorAll('input[name="periodo-custos"]')) {
       radio.checked = radio.value === periodo.periodo;
       radio.disabled = vista === 'antiga';
@@ -254,16 +242,10 @@
     if (foco) corpo.querySelector(`[data-foco="${CSS.escape(foco)}"]`)?.focus();
   }
 
-  /** Custos: o selo BRG-12 (o último dado, de quando) e a causa em Detalhes: por padrão, a Conexão que não respondeu. */
   function partesDoSeloAntigo(quando, causa = `GET ${ENDERECO_DA_CONEXAO}/health · sem resposta`) {
     return [seloDoDadoAntigo(quando), Veio.montarDetalhes(causa)];
   }
 
-  /**
-   * Só o selo BRG-12, sem o Detalhes: Baralhos e termos e Vocabulário. O motivo
-   * é o Anki fechado (sem resposta); `'atualizacao'` é a Conexão que responde
-   * com o último dado que tinha, porque não deu para atualizar.
-   */
   function seloDoDadoAntigo(quando, motivo = 'anki') {
     return elemento('span', 'anki-selo-antigo', textoDaVoz(`BRG-12.${motivo}`, { quando: haQuanto(quando) }));
   }
@@ -287,7 +269,6 @@
     return linha;
   }
 
-  /** O erro de leitura: o total indisponível e o aviso BRG-04. Desligada, a F1 do shell já diz o porquê: aqui só o total. */
   function erroDosCustos() {
     const total = elemento('dl', 'anki-numero anki-numero--indisponivel',
       elemento('dt', null, textoDaVoz('BRG-29.total')),
@@ -317,7 +298,6 @@
     return valor.toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas });
   }
 
-  /** US$ com 2 casas (V7); com a chave, 4. Um valor positivo menor que a menor casa nunca sai zerado: “< US$ 0,01”. */
   function dinheiro(valor, { quatroCasas = estado.quatroCasas } = {}) {
     if (!Number.isFinite(valor)) return textoDaVoz('BRG-03.indisponivel');
     const casas = quatroCasas ? 4 : 2;
@@ -326,12 +306,10 @@
     return textoDaVoz('BRG-03.valor', { valor: formatar(valor, casas) });
   }
 
-  /** A parte do total, em %, com uma casa (o número, para a largura da barra). */
   function fracao(parte, total) {
     return total ? Math.round((parte / total) * 1000) / 10 : 0;
   }
 
-  /** A mesma parte como a tela diz: “75,9%”, “0%”. */
   function porcento(parte, total) {
     const pct = fracao(parte, total);
     return `${formatar(pct, pct % 1 ? 1 : 0)}%`;
@@ -345,7 +323,6 @@
     return textoDaVoz('ENV-08.titulo', { idioma: nomeDoIdioma(envio.lang).toLowerCase(), n: numero(envio.requestedCards) });
   }
 
-  /** Os envios do período, mais novos primeiro, no idioma do azulejo escolhido. */
   function enviosDoIdioma(idioma = estado.idioma) {
     return [...estado.dados.envios]
       .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
@@ -452,7 +429,6 @@
     porId('anki-custos-corpo').querySelector(`[data-foco="${CSS.escape(`envio:${jobId}`)}"]`)?.focus();
   }
 
-  /** ↑ ↓ Home End andam pela lista e escolhem o envio, como num listbox. */
   function andarNaLista(evento, envios) {
     const indice = envios.findIndex(envio => envio.jobId === estado.escolhido);
     const destino = {
@@ -495,7 +471,6 @@
     detalhe.querySelector('h3').id = idDoTitulo;
     detalhe.setAttribute('aria-labelledby', idDoTitulo);
 
-    // Com as Frases apagadas na Conexão nada se retoma.
     const apagado = envio.lastError === 'frases_apagadas' || estado.apagados.has(envio.jobId);
     const retomavel = statusDoEnvio(envio).retomavel && !apagado;
     if (apagado) detalhe.append(elemento('p', 'anki-motivo', textoDaVoz('ENV-24.apagado')));
@@ -555,7 +530,6 @@
       })));
   }
 
-  /** Continuar envio (botão pequeno); com a Conexão desligada, aria-disabled com a dica. */
   function continuarEnvio(envio) {
     const acao = botao(textoDaVoz('ENV-13.continuar'), 'veio-botao veio-botao--contorno veio-botao--compacto',
       () => retomar(envio.jobId, acao));
@@ -607,7 +581,6 @@
     falha.textContent = textoDaVoz('BRG-23.falha');
   }
 
-  /** O pacote de diagnóstico do envio, como arquivo. O download é o retorno: sem toast. */
   async function baixarDiagnostico(jobId) {
     try {
       const resposta = await PedidoAoAnki.pedir(ENDERECO_DA_CONEXAO, PedidoAoAnki.pacoteDeDiagnostico(jobId));
@@ -646,7 +619,6 @@
   raiz.Anki = {
     aoAtualizar,
     atualizar: atualizarTudo,
-    // Os pedaços que Baralhos e termos e o Vocabulário também desenham.
     pecas: { esqueleto, linhaDeEspera, seloDoDadoAntigo },
   };
   document.addEventListener('DOMContentLoaded', iniciar);

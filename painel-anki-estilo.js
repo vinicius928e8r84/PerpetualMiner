@@ -1,14 +1,9 @@
 'use strict';
 
-// O estilo do Cartão (#162, BRG-42): o nível de cada idioma, um controle segmentado Iniciante · Intermediário · Avançado (os dois idiomas têm os três níveis, o russo
-// desde o #163). Sob o escolhido fica o texto dele (o do quiz de nível, com o idioma) e a prévia do Cartão desse nível (#164, `painel-anki-previa.js`), que muda com a
-// escolha, antes de salvar. Dois lugares montam este campo: `painel-ajustes.js` (Ajustes de envio, que grava o rascunho em Salvar ajustes) e o passo do nível da
-// Boas-vindas (que grava ao escolher, por `aoEscolher`).
-
 (function (raiz) {
   const { textoDaVoz, AjustesDeEnvio, IDIOMAS, ConexaoAnki } = raiz;
   const { NIVEIS, FRENTES, frenteDisponivel } = AjustesDeEnvio;
-  const AO_MUDAR_O_NIVEL = new WeakMap();   // rascunho → quem mostra a frente dele: a frente depende do nível (a Produção só no Iniciante)
+  const AO_MUDAR_O_NIVEL = new WeakMap();
   const NOME_DO_IDIOMA = { en: IDIOMAS.INGLES, ru: IDIOMAS.RUSSO };
   const VOZ_DO_NIVEL = {
     iniciante: ['BRG-42.iniciante', 'BRG-42.textoIniciante'],
@@ -32,16 +27,10 @@
     return no;
   }
 
-  /** O texto do nível escolhido (o do quiz de nível, com o idioma em minúsculas), no nó que descreve o controle. */
   function preencher(lang, nivel, texto) {
     texto.textContent = textoDaVoz(VOZ_DO_NIVEL[nivel][1], { idioma: NOME_DO_IDIOMA[lang].toLowerCase() });
   }
 
-  /**
-   * O campo Estilo do cartão do idioma `lang`; escolher um nível muda `rascunho.nivel` (e só isso: quem grava é quem montou o campo) e chama `aoEscolher(nivel)`.
-   * `prefixo` separa os ids de quem monta (Ajustes de envio e a Boas-vindas vivem na mesma página). Em Ajustes de envio o campo traz também “Usar um tipo que já tenho”
-   * (#165, `painel-anki-tipo-proprio.js`), que muda `rascunho.tipoProprio`; a Boas-vindas só pergunta o nível.
-   */
   function campo(lang, rascunho, { prefixo = 'ajustes', aoEscolher, tipoProprio = prefixo === 'ajustes' } = {}) {
     const id = `${prefixo}-estilo-${lang}`;
     const rotulo = elemento('span', 'ajustes-campo__rotulo', textoDaVoz('BRG-42.titulo'));
@@ -51,7 +40,7 @@
     preencher(lang, rascunho.nivel, texto);
     const previa = raiz.PreviaDoCartao.montar({ prefixo, lang });
     previa.mostrar(rascunho.nivel);
-    previa.no.hidden = Boolean(rascunho.tipoProprio);   // com um tipo que a pessoa já tem, a prévia é a dele
+    previa.no.hidden = Boolean(rascunho.tipoProprio);
     const proprio = !tipoProprio ? null : raiz.TipoProprioDoCartao.montar({
       lang, rascunho, nivelAtual: () => rascunho.nivel,
       aoMudar: () => {
@@ -82,7 +71,6 @@
     return elemento('div', 'ajustes-campo', rotulo, grupo, texto, previa.no, ...(proprio ? [proprio.no] : []));
   }
 
-  /** O campo Frente do idioma `lang`: escolher uma frente muda `rascunho.frente`; quem a troca no Anki é o Salvar ajustes (`painel-ajustes.js`). */
   function campoDaFrente(lang, rascunho) {
     const id = `ajustes-frente-${lang}`;
     const rotulo = elemento('span', 'ajustes-campo__rotulo', textoDaVoz('BRG-44.titulo'));
@@ -90,7 +78,7 @@
     const texto = elemento('span', 'ajustes-campo__ajuda', textoDaVoz(VOZ_DA_FRENTE[rascunho.frente][1]));
     texto.id = `${id}-texto`;
     const nota = elemento('span', 'ajustes-campo__ajuda', textoDaVoz('BRG-44.nota', { idioma: NOME_DO_IDIOMA[lang].toLowerCase() }));
-    const notaDaCriacao = elemento('span', 'ajustes-campo__ajuda', textoDaVoz('BRG-44.notaCriacao')); // o risco 7: no celular só o “✓ usou a palavra” funciona
+    const notaDaCriacao = elemento('span', 'ajustes-campo__ajuda', textoDaVoz('BRG-44.notaCriacao'));
     notaDaCriacao.id = `${id}-nota-criacao`;
     notaDaCriacao.hidden = rascunho.frente !== 'criacao';
     const grupo = elemento('div', 'veio-segmentado', ...FRENTES.map(frente => {
@@ -107,7 +95,6 @@
       return elemento('label', 'veio-segmentado__opcao', radio, elemento('span', '', textoDaVoz(VOZ_DA_FRENTE[frente][0])));
     }));
     const radios = [...grupo.querySelectorAll('input')];
-    // Sem a frente no nível escolhido o botão fica desabilitado; a que já estava escolhida volta à Frase com áudio, e uma já salva que o nível não comporta só aparece marcada.
     const ajustarAoNivel = (voltar) => {
       for (const radio of radios) radio.disabled = !frenteDisponivel(radio.value, rascunho.nivel);
       const marcado = radios.find(radio => radio.checked);
@@ -125,11 +112,10 @@
     grupo.setAttribute('aria-describedby', texto.id);
     const bloco = elemento('div', 'ajustes-campo', rotulo, grupo, texto, notaDaCriacao, nota);
     bloco.id = `${id}-bloco`;
-    bloco.hidden = Boolean(rascunho.tipoProprio);   // o tipo que a pessoa já tem fica com a frente que ela já tem (#165)
+    bloco.hidden = Boolean(rascunho.tipoProprio);
     return bloco;
   }
 
-  /** Pede à Conexão que ponha a frente no modelo de Cartão do idioma; devolve null (trocou) ou o ID da Voz que diz por que não trocou. */
   async function trocarAFrente(lang, frente) {
     let resposta;
     try {
@@ -143,20 +129,16 @@
     return dados.error === 'note_type_changed' ? 'BRG-44.tipoMexido' : 'BRG-44.falhou';
   }
 
-  /** Antes de salvar: se a frente mudou, pede a troca à Conexão. Devolve a `frente` a gravar (a nova, se a Conexão a trocou; senão a gravada, que é a que o Anki tem) e a `falha` (o ID da Voz, ou null). */
   async function trocarSeMudou(lang, escolhida, gravada) {
     const falha = escolhida === gravada ? null : await trocarAFrente(lang, escolhida);
     return { frente: falha ? gravada : escolhida, falha };
   }
 
-  /** O aviso de uma frente que não trocou (o resto foi salvo), com o Tentar de novo; `motivo` é o ID que `trocarAFrente` devolveu. */
   function avisoDaFrente(lang, motivo, aoTentarDeNovo) {
     const idioma = NOME_DO_IDIOMA[lang].toLowerCase();
     return { texto: textoDaVoz('BRG-44.naoMudou', { motivo: textoDaVoz(motivo, { idioma }) }), acao: { rotulo: textoDaVoz('BRG-44.tentarDeNovo'), aoUsar: aoTentarDeNovo } };
   }
 
-
-  /** “Mais estilos em Ajustes de envio”: o onboarding só pergunta o nível, e o resto do estilo mora lá (#138). */
   function maisEstilosEmAjustes() {
     const link = elemento('a', 'veio-botao veio-botao--link', textoDaVoz('BRG-43.maisEstilos'));
     link.href = '#anki/ajustes';

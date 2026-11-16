@@ -1,13 +1,5 @@
 'use strict';
 
-// Um teste e2e confere o que a pessoa vê e o que fica gravado, nunca uma função
-// interna (CODING_STANDARDS.md regra 8; docs/testes.md). As três exceções
-// levam um comentário que as nomeia, e a revisão cobrou esse comentário ou a
-// conferência pela tela na C1 (#129, S1 e S2), em d2ab0da ("nenhum lê mais
-// constante interna") e no #185 (um teste que só chama uma função do fake).
-// Esta regra acusa o `evaluate` que chama o código da extensão sem dizer qual
-// exceção usa.
-
 const fs = require('fs');
 const path = require('path');
 const { comentariosPorLinha, ehJsDaExtensao, fechamento, linhaDe, semComentariosJs } = require('./comum');
@@ -23,7 +15,6 @@ const conserto = 'Confira pela tela (locators) e pelo que ficou gravado (`extens
 
 const seAplica = arquivo => /^e2e\/tests\/.+\.spec\.js$/.test(arquivo);
 
-// As funções globais do código da extensão (as `function` do primeiro nível).
 const globaisPorRaiz = new Map();
 function funcoesDaExtensao(raiz) {
   if (globaisPorRaiz.has(raiz)) return globaisPorRaiz.get(raiz);
@@ -43,19 +34,13 @@ function funcoesDaExtensao(raiz) {
 
 const MARCA = new RegExp(`Exceção de teste:\\s*(${EXCECOES.join('|')})\\b`);
 
-// O comentário que nomeia a exceção vale se estiver no próprio evaluate ou nas
-// linhas de comentário logo acima da instrução que o contém. Só comentário de
-// verdade conta: uma string com as mesmas palavras não nomeia exceção nenhuma.
-// Subindo, uma linha de código é o começo da mesma instrução (um `const x = await`)
-// só se não terminar uma instrução ou um bloco: a instrução anterior, já fechada
-// com `;`, não empresta o seu comentário.
 function anotado(comentarios, codigo, primeira, ultima) {
   const marcada = linha => MARCA.test(comentarios.get(linha) || '');
   for (let linha = primeira; linha <= ultima; linha++) if (marcada(linha)) return true;
   for (let linha = primeira - 1, vistas = 0; linha >= 1 && vistas < 12; linha--, vistas++) {
     if (marcada(linha)) return true;
     const instrucao = (codigo[linha - 1] || '').trim();
-    if (instrucao === '') continue; // linha em branco ou só de comentário
+    if (instrucao === '') continue;
     if (/[;{}]$/.test(instrucao)) break;
   }
   return false;
