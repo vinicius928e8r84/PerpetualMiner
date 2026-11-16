@@ -40,14 +40,13 @@ from .limite_do_plano import LIMITE_DO_PLANO, LimiteDoPlano, espera_pelo_plano
 from .login_do_chatgpt import RECUSOU, SAIU
 from .modelo_dos_cartoes import PARADO, credencial
 from .palavras_do_cartao import com_as_palavras_fixas, esquecer, fixar_na_entrada, quantos_cartoes
-from .motor_do_envio import configuracao_do_motor, motor_do_complemento  # noqa: F401
+from .motor_do_envio import configuracao_do_motor, motor_do_complemento
 from .paradas_do_envio import Apagado, Interrompido  # noqa: F401  (`envio.Interrompido`)
 from .tipo_do_envio import TipoDoEnvio
-from .pedido_do_envio import ETIQUETA_DE_TESTE, id_que_serve_de_caminho, id_valido, ids_unicos, impressao, validar_pedido, visao_do_pedido  # noqa: F401
+from .pedido_do_envio import ETIQUETA_DE_TESTE, id_que_serve_de_caminho, id_valido, ids_unicos, impressao, validar_pedido, visao_do_pedido
 
-# O estado gravado de cada Envio é uma máquina de estados (`estado_do_envio.py`); `Fila.mudar` é o portão dela.
 from . import estado_do_envio
-from .estado_do_envio import APAGADO, COMPLETED, FAILED, FIM, PARTIAL, QUEUED, RUNNING, STATUS, TRANSICOES, situacao  # noqa: F401
+from .estado_do_envio import APAGADO, COMPLETED, FAILED, FIM, PARTIAL, QUEUED, RUNNING, STATUS, TRANSICOES, situacao
 
 PENDENTE, TEXTO, ADICIONADO, DUPLICADO, FALHOU = "pending", "text", "added", "duplicate", "failed"
 NO_ANKI = (ADICIONADO, DUPLICADO)
@@ -56,9 +55,7 @@ SEM_CHAVE = "openai_key_missing"
 SEM_TIPO_DE_NOTA = "note_type_missing"
 FALHA_AO_GRAVAR = "anki_write_failed"
 CARTOES_FALHARAM = "cards_failed"
-# Chave recusada, conta sem crédito ou plano que não serve: os próximos falhariam igual (o limite de uso espera: `limite_do_plano.py`).
 PARA_O_ENVIO = ("openai_key_rejected", "openai_no_credit", SAIU, "chatgpt_not_eligible", RECUSOU)
-# Passageiros: tenta de novo depois de cada espera.
 PASSAGEIROS = ("openai_rate_limited", "openai_unreachable", "generation_error", "empty_response")
 
 
@@ -93,9 +90,8 @@ class Fila(EnviosDosCustos):
         self.logger = logger
         self.tranca = threading.RLock()
         self.mudou = threading.Event()
-        self.despertador = threading.Event()  # acorda a espera do plano
+        self.despertador = threading.Event()
 
-    # -- caminhos --
     def _arquivo_da_fila(self):
         return os.path.join(self.dados.fila, "fila.json")
 
@@ -114,7 +110,6 @@ class Fila(EnviosDosCustos):
     def pasta_dos_custos(self, job_id):
         return os.path.join(self.dados.custos, job_id)
 
-    # -- leitura --
     def ordem(self):
         with self.tranca:
             return _ler_json(self._arquivo_da_fila(), {"jobs": []}).get("jobs", [])
@@ -143,7 +138,6 @@ class Fila(EnviosDosCustos):
         pedido = self.pedido(job_id) or {}
         return next((e.get("line") for e in pedido.get("entries", []) if e.get("phraseId") == phrase_id), None)
 
-    # -- escrita --
     def _gravar_estado(self, job_id, estado):
         estado["updatedAt"] = agora_local()
         _gravar_json(self._arquivo_do_estado(job_id), estado)
@@ -198,18 +192,16 @@ class Fila(EnviosDosCustos):
         with self.tranca:
             existente = self.pedido(job_id)
             if existente is not None:
-                # Compara a impressão gravada no criar, nunca o pedido, que o fim do Envio e o Apagar tudo reescrevem.
                 if existente.get("corpoSha256") != marca:
                     return 409, {"error": "job_conflict"}
                 estado = self.estado_ou_refazer(job_id)
                 if self.item_da_fila(job_id) is None:
-                    self._entrar_na_fila(existente)  # o criar parou antes da confirmação: o mesmo corpo o termina
+                    self._entrar_na_fila(existente)
                     self.mudou.set()
                 return 201, {"jobId": job_id, "status": estado["status"]}
             criado_em = agora_local()
             gravado = dict(pedido, createdAt=criado_em, corpoSha256=marca)
             gravado["entries"] = com_as_palavras_fixas(self.motor, pedido)
-            # O pedido, depois o estado e por último a entrada na fila: é a confirmação.
             _gravar_json(self._arquivo_do_pedido(job_id), gravado)
             _gravar_json(self._arquivo_do_estado(job_id), self._estado_do_pedido(gravado))
             self._entrar_na_fila(gravado)
@@ -228,7 +220,7 @@ class Fila(EnviosDosCustos):
                 return 409, {"error": "job_wiped"}
             if estado["status"] not in FIM:
                 if espera_pelo_plano(estado):
-                    self.despertador.set()  # Tentar de novo no limite: pede já
+                    self.despertador.set()
                 return 200, {"jobId": job_id, "status": estado["status"]}
 
             def mudanca(estado):
@@ -256,7 +248,7 @@ class Fila(EnviosDosCustos):
         """A Conexão subiu: um estado `running` volta a `queued` e o Envio continua de onde parou; um id da fila sem estado
         tem o estado refeito do pedido, e sem pedido sai da fila (o log diz por quê). Um pedido fora da fila **não** entra nela."""
         with self.tranca:
-            apagar_os_provisorios(self.dados, avisar_do_que_ficou(self.logger))  # os `.novo` da morte
+            apagar_os_provisorios(self.dados, avisar_do_que_ficou(self.logger))
             ordem = self.ordem()
             ficam = []
             for item in ordem:
@@ -302,7 +294,7 @@ class Fila(EnviosDosCustos):
         """`POST /jobs/apagar-frases` (o Apagar tudo, CFG-17): de todo pedido da pasta, tenha ou não entrada na fila, somem as linhas
         das Frases e os textos gerados; um Envio na fila ou rodando vai a `failed` com `wiped`. Ficam os `phraseId`, o estado de
         cada Cartão e os custos. Repetido, não grava nada. Cada passo grava só o que falta, então morrer no meio e pedir de novo termina."""
-        self.despertador.set()  # o Envio que espera o plano vê as Frases apagadas
+        self.despertador.set()
         with self.tranca:
             apagar_os_provisorios(self.dados)
             for nome in sorted(os.listdir(self.dados.fila)) if os.path.isdir(self.dados.fila) else []:
@@ -364,7 +356,6 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, CorrecaoDaCriacao, LimiteDoPlano, 
         self.espera_do_anki = espera_do_anki
         self.esperas_da_openai = tuple(esperas_da_openai)
 
-    # -- ajudas --
     def _dormir(self, segundos):
         if self.parar.wait(segundos):
             raise Interrompido()
@@ -409,7 +400,7 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, CorrecaoDaCriacao, LimiteDoPlano, 
         try:
             if self.colecao.entrar_no_perfil_fixo():
                 self.logger.info("Envio %s: o Anki estava sem perfil aberto; a Conexão abriu o perfil marcado", job_id)
-        except Exception as erro:  # o Envio só continua esperando
+        except Exception as erro:
             self.logger.warning("Envio %s: não deu para abrir o perfil marcado (%s)", job_id, type(erro).__name__)
 
     def _cartao(self, job_id, cartao_id, **mudanca):
@@ -418,7 +409,7 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, CorrecaoDaCriacao, LimiteDoPlano, 
     def _terminar(self, job_id, pedido, erro=None):
         def mudanca(estado):
             if estado.get("wiped"):
-                return  # o Apagar tudo já pôs o Envio em `failed`: nada o desfaz
+                return
             status, no_anki, falharam, duplicadas = resolver(pedido, estado)
             if erro:
                 status = PARTIAL if no_anki else FAILED
@@ -431,7 +422,6 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, CorrecaoDaCriacao, LimiteDoPlano, 
         estado = self.fila.mudar(job_id, mudanca)
         self.logger.info("Envio %s: %s (%s)", job_id, estado["status"], estado["lastError"] or "sem erro")
 
-    # -- o Envio --
     def fazer(self, job_id):
         self.plano = {}
         pedido = self.fila.pedido(job_id)
@@ -459,7 +449,7 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, CorrecaoDaCriacao, LimiteDoPlano, 
                 return
             cartao = estado["cards"][cartao_id]
             if cartao["status"] in NO_ANKI:
-                self.fila.cartao_chegou(job_id, cartao_id)  # a morte pode ter vindo entre `added` e o fim dele; repetir não regrava
+                self.fila.cartao_chegou(job_id, cartao_id)
                 continue
             feitos = sum(1 for c in estado["cards"].values() if c["status"] in NO_ANKI)
             self._etapa(job_id, "generate_cards", progress={"done": feitos, "total": total})
@@ -480,21 +470,21 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, CorrecaoDaCriacao, LimiteDoPlano, 
         arquivo = self.fila.arquivo_do_texto(job_id, cartao_id)
         if not os.path.exists(arquivo):
             if parada:
-                return None  # a chave parou o Envio: sem texto pago, o Cartão fica como está
+                return None
             linha = self.fila.linha_do_cartao(job_id, cartao["phraseId"])
             if linha is None:
                 self._cartao(job_id, cartao_id, status=FALHOU, error=FRASE_APAGADA)
                 return None
             while True:
                 pela_chave = self.fila.estado(job_id).get("usingKey", False)
-                paga = credencial(self.chatgpt, self.cofre, self.plano, self.modelos, pela_chave)  # o plano, a chave, ou parado
+                paga = credencial(self.chatgpt, self.cofre, self.plano, self.modelos, pela_chave)
                 if paga.quem == PARADO:
                     return paga.motivo if paga.motivo in PARA_O_ENVIO + (SEM_CHAVE,) else self._cartao(job_id, cartao_id, status=FALHOU, error=paga.motivo)
                 falha = self._gerar_o_texto(job_id, pedido, dict(config, **paga.config), cartao_id, cartao["phraseId"], linha)
                 paga = None
                 if self.fila.estado(job_id).get("wiped"):
                     with self.fila.tranca:
-                        _apagar(arquivo)  # o Apagar tudo veio no meio do pedido: o texto que chegou depois sai
+                        _apagar(arquivo)
                     return None
                 if falha != LIMITE_DO_PLANO:
                     break
@@ -507,7 +497,7 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, CorrecaoDaCriacao, LimiteDoPlano, 
             self._cartao(job_id, cartao_id, status=TEXTO, error=None)
         try:
             self._gravar_a_nota(job_id, pedido, config, cartao_id, guid, arquivo)
-        except ParaOEnvio as parada:  # o plano não deixou escolher a imagem (#156): o texto fica pago; Tentar de novo termina o Cartão
+        except ParaOEnvio as parada:
             self._cartao(job_id, cartao_id, status=FALHOU, error=parada.codigo)
             return parada.codigo
         return None
@@ -517,8 +507,8 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, CorrecaoDaCriacao, LimiteDoPlano, 
         entrada = self.motor.parser.parse_line(config["estilo"]["entrada"], linha)
         if entrada is None:
             return "invalid_card"
-        fixar_na_entrada(pedido, phrase_id, entrada)  # a Palavra é a do criar; o parser de agora só lê a frase e o contexto
-        nome = lambda trabalho, posicao: id_do_cartao(phrase_id, posicao)  # noqa: E731
+        fixar_na_entrada(pedido, phrase_id, entrada)
+        nome = lambda trabalho, posicao: id_do_cartao(phrase_id, posicao)
         falhas = {}
         for espera in (None,) + self.esperas_da_openai:
             if espera is not None:
@@ -540,7 +530,7 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, CorrecaoDaCriacao, LimiteDoPlano, 
             arquivos, da_frase, da_palavra, palavra = self._o_audio(job_id, pedido, config, cartao_id, guid, conteudo)
         except voz.ErroDaVoz as erro:
             return self._cartao(job_id, cartao_id, status=FALHOU, error=erro.codigo)
-        imagem, da_imagem = self._a_imagem(job_id, pedido, config, cartao_id, guid, conteudo)  # só a imagem falha: o Cartão vai sem
+        imagem, da_imagem = self._a_imagem(job_id, pedido, config, cartao_id, guid, conteudo)
         arquivos.update(imagem)
         if self.fila.estado(job_id).get("wiped"):
             raise Apagado()

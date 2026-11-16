@@ -28,7 +28,4 @@ REFRESH_INUTILIZAVEL = frozenset([
     "refresh_token_reused", "invalid_client",
 ])
 
-# “Models and inference”: a lista de modelos da conta (`models`, com `slug` e `visibility: list`) pelo mesmo token, e o texto por
-# `POST /v1/responses` (`openai_http.responder`, do motor), os dois no `OPENAI_BASE` de `configuracao.py`. O link de Gerenciar uso
-# (“Accounts and sessions” § Tracking usage) é da tela: `painel-ia-chatgpt.js`.
 MODELOS = "/v1/models"

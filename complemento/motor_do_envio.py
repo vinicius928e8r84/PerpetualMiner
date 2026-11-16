@@ -34,7 +34,7 @@ def configuracao_do_motor(motor, fila, pedido, chave):
     config["lang"] = pedido["lang"]
     config["anki"]["deck_name"] = pedido["deckName"]
     pasta_do_motor = os.path.dirname(os.path.abspath(motor.config_loader.__file__))
-    estilo = motor.estilos.estilo(pedido["lang"], pedido.get("nivel"))  # sem nível no pedido, o padrão (o Iniciante)
+    estilo = motor.estilos.estilo(pedido["lang"], pedido.get("nivel"))
     estilo["prompt"] = prompt_do_dono(fila, os.path.join(pasta_do_motor, estilo["prompt"]))
     config["estilo"] = estilo
     config["anki"]["note_type"] = motor.estilos.idioma(pedido["lang"])["tipo_de_nota"]

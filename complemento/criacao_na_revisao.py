@@ -19,8 +19,8 @@ def gancho(colecao):
             try:
                 colecao.gravar_frase_escrita(cartao.note().guid, mensagem[len(MENSAGEM_DA_CRIACAO):])
             except ColecaoIndisponivel:
-                pass  # o Anki sincronizando ou noutro perfil: a frase fica só na página (o “✓ usou a palavra” não precisa do campo)
-            except Exception:  # o gancho nunca derruba a revisão da pessoa
+                pass
+            except Exception:
                 pass
         return True, None
 

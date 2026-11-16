@@ -72,7 +72,7 @@ class AnkiWebDoAnki:
         for handler in list(logging.getLogger(NOME_DO_LOGGER).handlers):
             arquivo = getattr(handler, "baseFilename", None)
             if arquivo and os.path.abspath(arquivo).startswith(raiz):
-                filtro = lambda registro: False  # noqa: E731
+                filtro = lambda registro: False
                 handler.addFilter(filtro)
                 handler.close()
                 mudos.append((handler, filtro))

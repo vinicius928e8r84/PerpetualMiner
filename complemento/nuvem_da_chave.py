@@ -47,7 +47,6 @@ class NuvemDaChave:
             return None
         try:
             campos = dados['fields']
-            # Só leitura do legado: não escreve mais apagada/marcas separadas.
             chave = '' if campos.get('apagada', {}).get('booleanValue') else campos.get('chave', {}).get('stringValue', '')
             em = int(campos.get('em', {}).get('integerValue', 0))
             if not isinstance(chave, str) or (chave and not re.fullmatch(r'[A-Za-z0-9._\-]{8,256}', chave)) or em < 0:

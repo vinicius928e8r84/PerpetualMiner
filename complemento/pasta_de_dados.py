@@ -18,6 +18,5 @@ def preparar(pasta_do_complemento):
     pastas = {nome: os.path.join(raiz, nome) for nome in ("fila", "estado", "custos", "logs", "chaves")}
     for pasta in list(pastas.values()) + [os.path.join(raiz, "prompts")]:
         os.makedirs(pasta, exist_ok=True)
-    # O cofre das chaves é só do dono, mesmo com a umask aberta e mesmo numa pasta que já existia aberta.
     os.chmod(pastas["chaves"], 0o700)
     return PastaDeDados(raiz=raiz, **pastas)

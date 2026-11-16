@@ -82,8 +82,8 @@ def resumir(lidos, dia_do_envio, de, ate):
     custos, imagens, dos_registros = _custos_zerados(), _imagens_zeradas(), _imagens_zeradas()
     geradas_nos_registros = geradas_no_pipeline = 0.0
     no_pipeline = contados = 0
-    do_plano, na_chave = set(), 0.0  # os Cartões que o plano fez (#159) e o que a chave teria cobrado por eles
-    corrigiu, correcao = False, 0.0  # a correção das frases da Criação (#169)
+    do_plano, na_chave = set(), 0.0
+    corrigiu, correcao = False, 0.0
     for registro in lidos:
         if not _no_periodo(dia(registro.get("date") or registro.get("createdAt")) or dia_do_envio, de, ate):
             continue
@@ -164,7 +164,6 @@ def ficha_do_envio(item, pedido, estado):
         "lang": pedido.get("lang") or item.get("lang") or "unknown", "deckName": pedido.get("deckName", ""), "imageSource": pedido.get("imageSource", ""),
         "status": status, "stage": estado.get("stage") or status,
         "requestedCards": pedidas, "successfulCards": enviadas, "failedCards": falharam, "lastError": estado.get("lastError"),
-        # Só ids (#372): depois da retenção a extensão ainda marca estas Frases como enviadas, sem reenviar e pagar de novo.
         "successfulPhraseIds": sorted(set(estado.get("successfulPhraseIds") or [])),
         "duplicatePhraseIds": sorted(set(estado.get("duplicatePhraseIds") or [])),
     }

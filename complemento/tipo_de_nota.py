@@ -12,18 +12,14 @@ import os
 from .baralhos import TipoDeNotaAlterado
 from .motor import estilos
 
-# As frentes do Cartão (#166): cada uma é o modelo de Cartão do tipo de nota do idioma. O tipo tem **um** modelo só (um Cartão por Frase) e trocar a
-# frente (`trocar_a_frente`) reescreve o modelo, sem tocar nas notas. O id é o que a extensão manda; o nome é o que o Anki mostra do modelo.
 FRENTE_PADRAO = "frase_com_audio"
 NOMES_DAS_FRENTES = {
     FRENTE_PADRAO: "Frase com áudio", "ouvir_primeiro": "Ouvir primeiro", "lacuna": "Lacuna", "producao": "Produção", "ditado": "Ditado", "criacao": "Criação"}
 FRENTES = tuple(NOMES_DAS_FRENTES)
 NOME_DO_MODELO = NOMES_DAS_FRENTES[FRENTE_PADRAO]
-# O que a frente Criação (#168) diz no Cartão: a cópia aprovada de BRG-44 (`docs/design/voz/catalogo-nivel.md`); `test_criacao_do_cartao.py` a confere.
 TEXTOS_DA_CRIACAO = {"pedido": "Escreva uma frase sua com esta palavra", "escreveu": "Você escreveu", "exemplo": "Exemplo", "usou": "✓ usou a palavra",
                      "antes": "Da última vez você escreveu"}
 PASTA = os.path.dirname(os.path.abspath(__file__))
-# O que o gancho da revisão (`criacao_na_revisao.py`) escuta: o script do modelo manda a frase escrita com esta mensagem.
 MENSAGEM_DA_CRIACAO = "perpetualminer:criacao:"
 CSS = """.card { font-family: arial, sans-serif; font-size: 22px; text-align: center; color: #1f2937; background-color: #ffffff; }
 .nightMode .card { color: #e5e7eb; background-color: #1f2937; }
@@ -49,7 +45,7 @@ CSS_DA_CRIACAO = """.pedido { font-size: 18px; margin: 14px 0 6px; }
 .rotulo { color: #6b7280; font-size: 14px; text-transform: uppercase; letter-spacing: 0.04em; }
 .usou { color: #15803d; font-size: 16px; margin-top: 4px; }
 .nightMode .usou { color: #4ade80; }
-"""  # só na frente Criação: as outras ficam com o estilo de sempre
+"""
 
 
 def _parte(classe, *campos, audio=()):
@@ -158,11 +154,11 @@ def definicao(lang, nivel=None, frente=FRENTE_PADRAO, sem=()):
     na_frente, comeco_do_verso = _frente(frente, nomes)
     frente_no_verso = comeco_do_verso + "\n<hr id=answer>"
     marca = _campo_do_verso_sem_a_frase(idioma, lang)
-    if marca and frente == FRENTE_PADRAO:  # os níveis que não repetem a Frase deixam esse campo cheio, e o verso deles não tem a frente; nas outras frentes a Frase ainda não foi vista
+    if marca and frente == FRENTE_PADRAO:
         frente_no_verso = "{{^%s}}%s{{/%s}}" % (marca, frente_no_verso, marca)
-    partes = [parte for parte in (idioma.get("ordem_do_verso") or estilos.estilo(lang)["verso"]) if nomes[parte] not in sem]  # um idioma sem a ordem tem o verso do nível padrão
+    partes = [parte for parte in (idioma.get("ordem_do_verso") or estilos.estilo(lang)["verso"]) if nomes[parte] not in sem]
     verso = frente_no_verso + "\n" + _verso(idioma, partes)
-    escritos = ("frase", "audio_da_frase", "audio_da_palavra", "fonte") + tuple(estilo["verso"]) + tuple(estilo.get("guarda", []))  # o que o Envio sempre grava (a lacuna e a dica só às vezes): o tipo da pessoa tem de ter
+    escritos = ("frase", "audio_da_frase", "audio_da_palavra", "fonte") + tuple(estilo["verso"]) + tuple(estilo.get("guarda", []))
     return {
         "nome": idioma["tipo_de_nota"], "campos": list(nomes.values()), "campos_do_cartao": [nomes[chave] for chave in escritos],
         "opcionais": {nomes[chave]: nomes[onde] for chave, onde in idioma.get("opcionais", {}).items()},
@@ -183,7 +179,7 @@ def trocar_a_frente(colecao, lang, frente):
     tipo = definicao(lang, frente=frente)
     existente = colecao.tipo_de_nota(tipo["nome"])
     faltam = set(tipo["opcionais"]) - set(existente or tipo["campos"])
-    if faltam:  # um tipo de antes de um campo opcional: o verso novo não cita o campo que ele não tem
+    if faltam:
         tipo = definicao(lang, frente=frente, sem=faltam)
     if colecao.criar_tipo_de_nota(tipo):
         return True
@@ -199,7 +195,7 @@ def atualizar_a_criacao(colecao, lang):
         return False
     try:
         return trocar_a_frente(colecao, lang, "criacao")
-    except TipoDeNotaAlterado:  # mexido entre a leitura e a gravação
+    except TipoDeNotaAlterado:
         return False
 
 

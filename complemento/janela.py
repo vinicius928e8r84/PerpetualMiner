@@ -14,9 +14,7 @@ from collections import namedtuple
 
 from . import envio, texto_da_janela
 
-# Quantos Envios, do mais recente para trás, o item olha a cada passo (a fila não tem limpeza: #151).
 ENVIOS_LIDOS = 20
-# De quanto em quanto tempo o item confere o Envio, em segundos.
 INTERVALO_S = 1.5
 
 Estado = namedtuple("Estado", "conexao versao perfil envio ultimo_erro navegadores")
@@ -47,7 +45,7 @@ class _Lido:
         cartoes = estado.get("cards") or {}
         self.total = len(cartoes)
         self.status = estado.get("status", envio.QUEUED)
-        contagem = lambda *status: sum(1 for c in cartoes.values() if c.get("status") in status)  # noqa: E731
+        contagem = lambda *status: sum(1 for c in cartoes.values() if c.get("status") in status)
         self.adicionados, self.duplicados = contagem(envio.ADICIONADO), contagem(envio.DUPLICADO)
         self.feitos = self.adicionados + self.duplicados
         self.ativo = self.status in (envio.QUEUED, envio.RUNNING)
@@ -94,7 +92,6 @@ class Janela:
         self._versao = versao
         self._logger = logger
         self._ultimo_erro_registrado = None
-        # A memória dos avisos: o que já foi anunciado, para cada Envio ganhar um aviso de começo e um de fim por vez que anda.
         self._primeiro_passo = True
         self._base = set()
         self._ativos_vistos = set()
@@ -179,7 +176,7 @@ class Janela:
         avisos = []
         if self._primeiro_passo:
             self._primeiro_passo = False
-            self._base = {e.job_id for e in envios if not e.ativo}  # o que terminou antes de o Anki abrir não ganha aviso
+            self._base = {e.job_id for e in envios if not e.ativo}
         for lido in envios:
             if lido.ativo:
                 self._base.discard(lido.job_id)

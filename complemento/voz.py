@@ -31,12 +31,11 @@ CABECALHOS = {
     "Content-Type": "application/x-www-form-urlencoded;charset=utf-8",
 }
 
-RECUSADA = "tts_rejected"  # o Google recusou o pedido (um 4xx, como o 400 do risco 11)
-FORA_DO_AR = "tts_unreachable"  # nem a resposta chegou, ou o Google está sobrecarregado (429, 5xx): vale tentar de novo
-SEM_AUDIO = "tts_empty"  # a resposta veio boa, mas sem áudio
+RECUSADA = "tts_rejected"
+FORA_DO_AR = "tts_unreachable"
+SEM_AUDIO = "tts_empty"
 PASSAGEIROS = (FORA_DO_AR,)
 
-# O sotaque entra no endereço (`translate.google.<sotaque>`): só `com`, `ru`, `co.uk`, `com.au`… servem, nunca outro domínio.
 _SOTAQUE = re.compile(r"^(?:com?\.)?[a-z]{2,3}$")
 # Daqui até `pedacos`, o texto como o gTTS 2.5 o prepara e o quebra (`gtts/tts.py`, `tokenizer/`), para o áudio sair igual.
 _ABREVIACOES = ("dr", "jr", "mr", "mrs", "ms", "msgr", "prof", "sr", "st")

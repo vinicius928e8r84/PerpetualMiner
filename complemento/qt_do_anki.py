@@ -26,7 +26,7 @@ class QtDoAnki:
         self._aberta = None
         self._mostrar = None
         self._relogio = None
-        self._codigo = None   # o diálogo do código do pareamento (#192): um só por vez
+        self._codigo = None
 
     def item_do_menu(self, mw, texto, ao_clicar):
         from aqt.qt import QAction, qconnect
@@ -44,7 +44,7 @@ class QtDoAnki:
         from aqt.utils import tooltip
 
         # O tooltip do Anki lê texto rico, e o nome do Baralho vem da extensão: `<` e `&` nunca viram marcação.
-        tooltip(html.escape(texto, quote=False), period=max(4000, 80 * len(texto)))  # some sozinho; o tempo acompanha o tamanho do texto
+        tooltip(html.escape(texto, quote=False), period=max(4000, 80 * len(texto)))
 
     def _na_thread_principal(self, mw, funcao, o_que):
         """Quem chama é a thread do servidor: o Qt só se mexe na principal. Um erro vai ao registro, nunca ao Anki."""
@@ -60,7 +60,6 @@ class QtDoAnki:
 
     def _desenhar_o_codigo(self, mw, texto, rotulo_de_cancelar, ao_cancelar):
         if self._codigo is not None:
-            # O mesmo diálogo, de novo: quem pede o código sem parar não rouba o foco da pessoa a cada pedido.
             dialogo = self._codigo["dialogo"]
             self._codigo["texto"].setText(texto)
             self._codigo["ao_cancelar"] = ao_cancelar
@@ -131,12 +130,12 @@ class QtDoAnki:
         dialogo.setMinimumWidth(420)
         layout = QVBoxLayout(dialogo)
         formulario = QFormLayout()
-        formulario.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)  # o campo ocupa a largura da janela e o texto quebra nela
+        formulario.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
         layout.addLayout(formulario)
 
         def linha(rotulo):
             valor = QLabel("")
-            valor.setTextFormat(Qt.TextFormat.PlainText)  # o nome de um Baralho nunca vira marcação
+            valor.setTextFormat(Qt.TextFormat.PlainText)
             valor.setWordWrap(True)
             valor.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
             formulario.addRow(texto_da_janela.texto(rotulo), valor)
@@ -163,7 +162,7 @@ class QtDoAnki:
 
         def mostrar():
             if not dialogo.isVisible():
-                return  # fechada, a janela não lê a Conexão
+                return
             estado = ler_estado()
             conexao.setText(estado.conexao)
             versao.setText(estado.versao)
@@ -178,7 +177,7 @@ class QtDoAnki:
                 baralho.setText(texto_da_janela.texto("ANK-02.baralho", baralho=atual.baralho))
             erro.setText(estado.ultimo_erro or texto_da_janela.texto("ANK-02.semErro"))
             medida = (conexao.text(), versao.text(), perfil.text(), envio.text(), erro.text(), baralho.text(), atual is not None)
-            if medida != ultima_medida[0]:  # só quando o texto muda: medir a cada ciclo desfaz o tamanho que a pessoa deu à janela
+            if medida != ultima_medida[0]:
                 ultima_medida[0] = medida
                 largura = dialogo.width()
                 layout.activate()  # sem refazer o layout, o adjustSize() mede o texto anterior e a janela corta por um ciclo
@@ -186,13 +185,13 @@ class QtDoAnki:
                 if largura > dialogo.width():  # o adjustSize() volta à largura do texto: a que a pessoa deu à janela fica
                     dialogo.resize(largura, max(dialogo.minimumSizeHint().height(), layout.totalHeightForWidth(largura)))
             if desconectar_botao is not None:
-                desconectar_botao.setEnabled(estado.navegadores > 0)  # C8: sem navegador conectado não há o que desconectar
+                desconectar_botao.setEnabled(estado.navegadores > 0)
 
         mostrar_protegido = janela.protegido(mostrar, self._logger, "atualizar a janela")
         relogio = QTimer(dialogo)
         relogio.setInterval(int(janela.INTERVALO_S * 1000))
         qconnect(relogio.timeout, mostrar_protegido)
-        qconnect(dialogo.finished, relogio.stop)  # fechada, a janela não lê a Conexão a cada ciclo
+        qconnect(dialogo.finished, relogio.stop)
         relogio.start()
         dialogo.show()
         mostrar_protegido()

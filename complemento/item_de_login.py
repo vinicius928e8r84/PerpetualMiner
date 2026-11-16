@@ -22,7 +22,6 @@ import struct
 import tempfile
 
 ROTULO_DO_MAC = "com.perpetualminer.abrir-o-anki"
-# Um nome só dele: desligar nunca pode apagar o atalho do Anki que a própria pessoa pôs na pasta.
 NOME_DO_ATALHO = "Anki (PerpetualMiner).lnk"
 
 
@@ -76,7 +75,6 @@ class ItemDeLogin:
 
     def _gravar(self, conteudo):
         os.makedirs(self.pasta, exist_ok=True)
-        # Escreve ao lado e troca de uma vez: um item pela metade, no login, abriria nada ou algo errado.
         descritor, provisorio = tempfile.mkstemp(dir=self.pasta, suffix=".tmp")
         try:
             with os.fdopen(descritor, "wb") as arquivo:
@@ -141,8 +139,6 @@ def _apagar(caminho):
 def _plist_do_mac(comando):
     return plistlib.dumps({"Label": ROTULO_DO_MAC, "ProgramArguments": list(comando), "RunAtLoad": True})
 
-
-# ─── O atalho do Windows (MS-SHLLINK) ──────────────────────────────────────────
 
 _CLSID_DO_ATALHO = bytes.fromhex("0114020000000000c000000000000046")
 _TEM_LISTA_DO_ALVO = 0x01
@@ -225,7 +221,6 @@ def _texto_do_atalho(texto):
     return struct.pack("<H", len(codificado) // 2) + codificado
 
 
-# O nome do item e como o escrever, por sistema.
 _FORMATOS = {
     "mac": (ROTULO_DO_MAC + ".plist", _plist_do_mac),
     "windows": (NOME_DO_ATALHO, _atalho_do_windows),

@@ -26,9 +26,9 @@ from .passagem_do_windows import PassagemFalhou, SistemaDoWindows
 from .configuracao import ENDERECO, PORTA
 
 ARQUIVO_DA_MARCA = "passagem.json"
-INTERVALO_S = 0.25  # curto: a Conexão de hoje liga o Envio seguinte logo que um termina, e o que ela ligou nesse meio-tempo passa também
+INTERVALO_S = 0.25
 ESPERA_DA_PORTA_S = 10.0
-OUTRAS_VEZES = 5  # quantas vezes a fila de hoje é relida, até uma leitura sem Envio novo
+OUTRAS_VEZES = 5
 
 
 def achar_a_antiga(porta=PORTA, espera=1.0):
@@ -88,14 +88,14 @@ class Passagem:
     def _marcar_o_perfil(self, antiga, conexao):
         perfil = copias.perfil_de_hoje(antiga)
         if perfil is None or perfil not in conexao.colecao.perfis():
-            return None  # o Anki não tem esse perfil: marcar um que some faria o Envio esperar para sempre
+            return None
         conexao.perfil_fixo.marcar(perfil)
         conexao.ao_mudar_o_perfil()
         return perfil
 
     def _passar_a_fila(self, antiga, conexao):
         total = {"historico": 0, "fila": 0, "recusados": []}
-        for _ in range(OUTRAS_VEZES):  # o que a Conexão de hoje ligou ou recebeu enquanto se copiava passa também
+        for _ in range(OUTRAS_VEZES):
             feito = copias.passar_a_fila(antiga, conexao.fila)
             novos = feito["historico"] + feito["fila"]
             total["historico"] += feito["historico"]

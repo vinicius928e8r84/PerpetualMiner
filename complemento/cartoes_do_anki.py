@@ -9,7 +9,7 @@ from . import tipo_de_nota
 from .baralhos import TipoDeNotaAlterado, TipoDeNotaAusente
 from .motor import estilos
 
-LIMITE_DA_FRASE_ESCRITA = 2000  # caracteres: a frase de uma pessoa estudando, e o que o gancho da revisão aceita de uma página
+LIMITE_DA_FRASE_ESCRITA = 2000
 
 
 def campos_do_tipo(modelo):
@@ -25,7 +25,7 @@ def renderizado(colecao, tipo_de_nota, campos):
     nota = colecao.new_note(modelo)
     tem = campos_do_tipo(modelo)
     for nome, valor in campos.items():
-        if nome in tem:  # um tipo de nota com o nome do nosso e sem algum campo mostra o que ele tem: a prévia nunca falha por isso
+        if nome in tem:
             nota[nome] = valor
     saida = nota.ephemeral_card(0).render_output()
     return {"frente": saida.question_text, "verso": saida.answer_text, "css": saida.css}
