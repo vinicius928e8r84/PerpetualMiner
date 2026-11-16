@@ -23,6 +23,12 @@ const QUEM_REGISTRA = ['OWNER', 'MEMBER', 'COLLABORATOR'];
 const MODELO = '.github/PULL_REQUEST_TEMPLATE.md';
 const PUBLICADOR = 'scripts/ci/registrar-na-pr.js';
 
+const urlDaIssue = repositorio => new RegExp(`^https://github\\.com/${repositorio ? repositorio.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : '[\\w.-]+/[\\w.-]+'}/issues/\\d+$`, 'i');
+const TEXTO_PURO = /^(?! {4}|\t)[^`]*$/;
+const LINHA_DE_FECHAMENTO = /^(closes|refs)\s+(\S.*)$/i;
+const SEM_ISSUE = 'Sem issue';
+const PROVA_QUE_FALTA = 'Prova que falta';
+
 const SHA_INTEIRO = /^[0-9a-f]{40}$/;
 const TITULO = /^ {0,3}(#{1,6})\s+(.*?)\s*#*\s*$/;
 const CERCA = /^ {0,3}(`{3,}|~{3,})/;
@@ -46,7 +52,7 @@ function linhasQueValem(markdown) {
     else if (abre && abre[1][0] === cerca[0] && abre[1].length >= cerca.length && linha.trim() === abre[1]) cerca = null;
     else if (!cerca && !CITACAO.test(linha)) {
       const titulo = TITULO.exec(linha);
-      saida.push({ texto: semMarcacao(titulo ? titulo[2] : linha), nivel: titulo ? titulo[1].length : 0 });
+      saida.push({ texto: semMarcacao(titulo ? titulo[2] : linha), nivel: titulo ? titulo[1].length : 0, puro: TEXTO_PURO.test(linha) });
     }
   }
   return saida;
@@ -104,6 +110,20 @@ function faltaDaRevisao(registros, head) {
   return null;
 }
 
+function faltasDaIssue(linhas, repositorio) {
+  const textos = linhas.map(linha => linha.texto);
+  const puros = linhas.filter(linha => linha.puro).map(linha => linha.texto);
+  const url = urlDaIssue(repositorio);
+  const citadas = puros.map(texto => LINHA_DE_FECHAMENTO.exec(texto)).filter(Boolean);
+  const semUrl = citadas.filter(([, , alvo]) => !url.test(alvo));
+  const refs = citadas.filter(([, palavra, alvo]) => /^refs$/i.test(palavra) && url.test(alvo));
+  const faltas = semUrl.map(([linha]) => `a linha "${linha}" não tem a URL completa da issue (https://github.com/${repositorio || '<dono>/<repo>'}/issues/<N>; o número solto e a issue de outro repositório não valem)`);
+  if (refs.length && !valoresDe(textos, PROVA_QUE_FALTA).length) faltas.push(`"Refs" sem a linha "${PROVA_QUE_FALTA}: <texto>" (a issue fica aberta e o corpo diz a prova que falta)`);
+  const diz = citadas.length || puros.some(texto => igual(texto, SEM_ISSUE));
+  if (!diz) faltas.push(`o corpo não diz a issue: uma linha "Closes <URL completa da issue>" por issue, "Refs <URL>" com "${PROVA_QUE_FALTA}: <texto>", ou "${SEM_ISSUE}" sozinho na linha`);
+  return faltas;
+}
+
 /** Por que a prova real não vale para o head, ou null. */
 function faltaDaProva(linhas, head) {
   const prova = secao(linhas, SECAO_DA_PROVA);
@@ -117,7 +137,7 @@ function faltaDaProva(linhas, head) {
  * { ok, mensagem }: se a PR pode passar, e o que o check mostra. `registros` são os comentários e as revisões da PR,
  * do mais antigo ao mais recente.
  */
-function conferir({ corpo, rotulos, registros, head }) {
+function conferir({ corpo, rotulos, registros, head, repositorio }) {
   const linhas = linhasQueValem(corpo);
   const textos = linhas.map(linha => linha.texto);
   const foraDoModelo = [
@@ -129,6 +149,7 @@ function conferir({ corpo, rotulos, registros, head }) {
   const faltas = [
     foraDoModelo.length && `o corpo não segue o modelo do /pr: falta ${foraDoModelo.join(', ')}`,
     semAtencao,
+    ...faltasDaIssue(linhas, repositorio),
     faltaDaRevisao(registros, head),
     alta && faltaDaProva(linhas, head),
   ].filter(Boolean);
@@ -166,7 +187,7 @@ async function lerDoGitHub(env) {
     .filter(registro => QUEM_REGISTRA.includes(registro.author_association))
     .map(registro => ({ corpo: registro.body || '', quando: registro.submitted_at || registro.created_at || '' }))
     .sort((a, b) => a.quando.localeCompare(b.quando)).map(registro => registro.corpo);
-  return { corpo: pr.body, rotulos: pr.labels.map(rotulo => rotulo.name), registros, head: pr.head.sha };
+  return { corpo: pr.body, rotulos: pr.labels.map(rotulo => rotulo.name), registros, head: pr.head.sha, repositorio: env.GITHUB_REPOSITORY };
 }
 
 async function main(env) {

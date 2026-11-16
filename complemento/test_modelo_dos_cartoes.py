@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from complemento.test_envio import CHAVE, ID, OUTRO_ID, EnvioNoTeste, pedido  # noqa: E402
 from complemento.test_login_do_chatgpt import entrar_e_voltar  # noqa: E402
 from complemento.test_modelos_de_mentira import LISTA_NOSSA  # noqa: E402
-from complemento.test_servidor import ler_o_contrato  # noqa: E402
+from complemento.test_harness import ler_o_contrato  # noqa: E402
 
 FRASE = "gave up : She gave up smoking"
 AUTOMATICO = {"escolha": "automatico", "trocou": None}

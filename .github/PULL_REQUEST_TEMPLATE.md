@@ -36,6 +36,20 @@ O check "Registro da PR" (.github/workflows/registro-da-pr.yml, scripts/ci/regis
 
    `node scripts/ci/registrar-na-pr.js prova` escreve a seção com o head lido no GitHub.
 
+4. O corpo diz a issue da PR, em linhas sozinhas:
+
+   Closes <URL completa da issue>
+
+   Uma linha por issue; a issue fecha sozinha no merge. Só vale a URL completa (https://github.com/<dono>/<repo>/issues/<N>):
+   o número solto (#N) não fecha nada. Com a prova real pendente (R10), a issue fica aberta e o corpo diz o que falta:
+
+   Refs <URL completa da issue>
+   Prova que falta: <o que falta provar>
+
+   Uma PR sem issue diz, sozinha na linha:
+
+   Sem issue
+
 O SHA é o inteiro, de 40 caracteres (`git rev-parse HEAD`). Um commit novo muda o head: revise e prove de novo.
 O que está em comentário de HTML, em bloco de código ou em citação (`>`) não conta.
 O check confere o artefato e o SHA, não que a revisão ou a prova aconteceram.
