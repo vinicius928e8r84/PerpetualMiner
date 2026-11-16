@@ -1,10 +1,5 @@
 'use strict';
 
-// “Usar um tipo que já tenho” (#165, BRG-45): em Ajustes de envio › Estilo do cartão, a pessoa escolhe um tipo de nota do Anki dela e diz em que campo vai cada parte do
-// Cartão (várias partes podem ir num campo só); a prévia mostra o Cartão como o Anki o desenha naquele tipo. Continuar confirma o mapeamento no rascunho do idioma
-// (`rascunho.tipoProprio`, que Salvar ajustes grava), e fica desligado sem um campo para a Frase e outro, diferente, para a resposta. A Conexão só grava notas nesse
-// tipo: não o muda, e a frente é a que ele já tem (`EstiloDoCartao.campoDaFrente` some). Os tipos vêm de `POST /anki/note-types`; o desenho, da prévia (`painel-anki-previa.js`).
-
 (function (raiz) {
   const { textoDaVoz, Veio, ConexaoAnki, PedidoAoAnki, AjustesDeEnvio } = raiz;
   const { PARTES_DO_TIPO_PROPRIO: PARTES, PARTES_OBRIGATORIAS: OBRIGATORIAS } = AjustesDeEnvio;
@@ -19,7 +14,6 @@
     return no;
   }
 
-  /** Os tipos de nota da pessoa: `{ estado: 'pronta', tipos }` ou `{ estado: 'semConexao' | 'antiga' | 'falhou' }`; nunca levanta. */
   async function lerOsTipos() {
     let resposta;
     try {
@@ -33,22 +27,16 @@
     return Array.isArray(dados?.noteTypes) ? { estado: 'pronta', tipos: dados.noteTypes } : { estado: 'falhou' };
   }
 
-  /** O mapa que o tipo sugere ao ser escolhido: a Frase no primeiro campo e a resposta no segundo (o que um “Básico” pede); a pessoa muda. */
   function mapaSugerido(tipo) {
     const [frase, resposta] = tipo.fields;
     return { ...(frase && { frase }), ...(resposta && { resposta }) };
   }
 
-  /** O que o mapa ainda não cumpre: `faltaCampo` (o tipo não tem campos para a Frase e a resposta separadas), `escolhaOsCampos` ou null (serve). */
   function problemaDoMapa(tipo, mapa) {
     if (tipo.fields.length < OBRIGATORIAS.length) return 'faltaCampo';
     return OBRIGATORIAS.every(parte => mapa[parte]) && mapa.frase !== mapa.resposta ? null : 'escolhaOsCampos';
   }
 
-  /**
-   * O bloco de um idioma. `rascunho.tipoProprio` é o confirmado (`{ nome, mapa }`); `nivelAtual()` o nível do rascunho, para a prévia. Devolve `{ no, mostrarNivel }`:
-   * `aoMudar` roda quando Continuar ou “Usar o estilo pronto” muda o rascunho.
-   */
   function montar({ lang, rascunho, nivelAtual, aoMudar }) {
     const id = `ajustes-proprio-${lang}`;
     const estado = { aberto: Boolean(rascunho.tipoProprio), leitura: null, nome: rascunho.tipoProprio?.nome ?? null, mapa: { ...rascunho.tipoProprio?.mapa } };
@@ -85,7 +73,6 @@
       desenhar();
     }
 
-    /** O rascunho mudou: quem monta o campo é avisado e o formulário, que ouve `change`, vê que há o que salvar. */
     function mudou() {
       aoMudar();
       no.dispatchEvent(new Event('change', { bubbles: true }));
@@ -184,7 +171,6 @@
       return blocos;
     }
 
-    /** A prévia só pede de novo o que mudou (o nível, o tipo ou o mapa): refazer o painel por outro motivo não a pisca. */
     function previaNoTipo() {
       const pedido = { nivel: nivelAtual(), tipoProprio: { nome: estado.nome, mapa: { ...estado.mapa } } };
       const chave = JSON.stringify(pedido);
@@ -208,7 +194,6 @@
       if (foco && painel.contains(document.getElementById(foco))) document.getElementById(foco).focus();
     }
 
-    /** O nível do rascunho mudou: a prévia no tipo da pessoa o acompanha. */
     function mostrarNivel() {
       if (estado.aberto && tipoEscolhido() && !problemaDoMapa(tipoEscolhido(), estado.mapa)) desenhar();
     }

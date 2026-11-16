@@ -4,24 +4,15 @@
   const { textoDaVoz, Atalhos, Veio } = raiz;
   const { ACOES } = Atalhos;
 
-  /** O nome de cada ação (CFG-11) e o que ela faz (CFG-34), pela mesma parte do catálogo. */
   const PARTE_DO_CATALOGO = { [ACOES.LEGENDA]: 'minerarLegenda', [ACOES.SELECAO]: 'minerarSelecao' };
 
-  /**
-   * Monta o gravador dentro de `corpo`: as duas linhas e o Restaurar. É o mesmo
-   * em Configurações › Atalhos e no passo 2 da Boas-vindas; os dois leem e
-   * gravam o mesmo storage (lib/atalhos.js), então mostram sempre o mesmo, e a
-   * recusa do repetido é a mesma. `prefixo` separa os ids das duas cópias;
-   * `lugar` é o que some quando a pessoa sai dali (o corpo do card, a tela do
-   * passo), o que cancela a gravação.
-   */
   function montarGravadorDeAtalhos(corpo, { prefixo, lugar = corpo }) {
     const estado = {
       atalhos: { ...Atalhos.ATALHOS_PADRAO },
-      gravando: null,        // a ação sendo gravada, ou null
-      aviso: null,           // { acao, texto } do atalho repetido
+      gravando: null,
+      aviso: null,
     };
-    const linhas = new Map();    // ação → { tecla, botao, anuncio, aviso }
+    const linhas = new Map();
     let restaurar = null;
 
     corpo.append(...Object.values(ACOES).map(montarLinha), montarRestaurar());
@@ -29,9 +20,6 @@
       estado.atalhos = atalhos;
       desenhar();
     });
-    // Sair do lugar do gravador (fechar o card, ir a outra área, outro endereço
-    // ou outro passo da Boas-vindas) cancela a gravação: senão a primeira tecla
-    // digitada lá fora viraria o atalho.
     const pararAoSair = () => { if (estado.gravando) pararDeGravar(); };
     window.addEventListener('hashchange', pararAoSair);
     new MutationObserver(() => { if (lugar.hidden) pararAoSair(); })
@@ -102,7 +90,6 @@
       return pilula;
     }
 
-    /** A tecla nova pisca uma vez (com movimento reduzido, fica parada). */
     function piscarATecla(acao) {
       const kbd = linhas.get(acao).tecla.querySelector('kbd');
       kbd?.classList.add('cfg-atalho__tecla--nova');
@@ -143,8 +130,6 @@
       if (!novo) return;
       evento.preventDefault();
       evento.stopImmediatePropagation();
-      // Voltar e avançar não navegam: nem o que acabou de gravar, nem os apertados
-      // enquanto grava (guardarTodasAsSolturas, abaixo).
       if (novo.type === 'mouse') Atalhos.guardarSolturaDoBotao(novo.button);
 
       const outra = acao === ACOES.LEGENDA ? ACOES.SELECAO : ACOES.LEGENDA;
@@ -165,7 +150,6 @@
     function restaurarOPadrao() {
       estado.atalhos = { ...Atalhos.ATALHOS_PADRAO };
       desenhar();
-      // O botão sumiu com o padrão: o foco vai para o começo do card, não se perde.
       linhas.get(ACOES.LEGENDA).botao.focus();
       Atalhos.restaurarAtalhosPadrao();
     }

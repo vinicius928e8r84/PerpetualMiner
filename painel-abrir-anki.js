@@ -5,44 +5,39 @@
   const { SITUACAO } = ConexaoAnki;
   const porId = id => document.getElementById(id);
 
-  /** O que a Conexão responde quando recusa de propósito: o item não foi mexido. Qualquer outra falha deixa o resultado incerto. */
   const RECUSAS = new Set(['anki_not_found', 'login_item_failed', 'login_item_unsupported', 'invalid_request']);
 
   const estado = {
     situacao: SITUACAO.CONECTANDO,
-    ligado: null,        // o último estado que a Conexão confirmou
-    confirmado: false,   // `ligado` é o estado de agora: a última leitura ou escrita da Conexão deu certo
-    semResposta: null,   // por que não se confirma: 'antiga' (não tem esta rota) ou 'falhou'; null enquanto não se sabe
-    gravando: false,     // um pedido de ligar ou desligar no ar
-    falha: null,         // { ligar, erro, incerta }: o que não mudou e a causa; `incerta`: a resposta não chegou, o item pode ter mudado
-    leitura: 0,          // só a leitura mais recente vale
+    ligado: null,
+    confirmado: false,
+    semResposta: null,
+    gravando: false,
+    falha: null,
+    leitura: 0,
   };
-  // O perfil fixo (#149): a lista que a Conexão leu do Anki, o marcado e o que a última escolha disse.
   const perfis = {
-    lista: null,         // os perfis do Anki; null enquanto a Conexão não os disse
+    lista: null,
     marcado: null,
-    escolhendo: false,   // um pedido de escolha no ar
-    falha: null,         // { nome, erro }: a escolha que a Conexão não confirmou e o erro; a leitura seguinte decide se vale
-    leitura: 0,          // só a leitura mais recente vale
+    escolhendo: false,
+    falha: null,
+    leitura: 0,
   };
-  let partes = null;     // o conteúdo do card, montado uma vez e atualizado no lugar
+  let partes = null;
 
   function iniciar() {
     desenhar();
     ConexaoAnki.acompanhar(situacao => {
       const voltou = situacao === SITUACAO.LIGADA && estado.situacao !== SITUACAO.LIGADA;
       estado.situacao = situacao;
-      // Sem a Conexão não se sabe o que o item é agora: o que estava confirmado deixa de valer.
       if (situacao !== SITUACAO.LIGADA) estado.confirmado = false;
       if (voltou) { ler(); lerOsPerfis(); }
       else if (situacao === SITUACAO.LIGADA && !estado.confirmado && estado.semResposta === 'falhou' && !estado.gravando) ler();
       desenhar();
     });
-    // O item pode mudar fora daqui (a pessoa o tira dos Itens de Início): ao entrar na área, lê de novo.
     Shell.aoEntrarNaArea('configuracoes', () => { if (estado.situacao === SITUACAO.LIGADA) { ler(); lerOsPerfis(); } });
   }
 
-  /** Envia o `pedido` (de `PedidoAoAnki`); devolve o `ligado` da resposta, ou levanta o erro (com o `codigo` e o `status`, se a Conexão respondeu). */
   async function pedir(pedido) {
     const resposta = await raiz.PedidoAoAnki.pedir(ConexaoAnki.ENDERECO, pedido, { signal: AbortSignal.timeout(ConexaoAnki.TEMPO_DA_RESPOSTA) });
     const dados = await resposta.json().catch(() => null);
@@ -52,12 +47,10 @@
         status: resposta.status,
       });
     }
-    // Uma resposta sem um `ligado` verdadeiro ou falso não diz nada: nunca vira “desligado”.
     if (typeof dados?.ligado !== 'boolean') throw Object.assign(new Error('Resposta sem “ligado”'), { status: resposta.status });
     return dados.ligado;
   }
 
-  /** Lê o item de verdade. Uma leitura que já foi ultrapassada (outra começou, ou uma escrita) não decide nada. */
   async function ler() {
     const leitura = ++estado.leitura;
     let ligado = null;
@@ -78,7 +71,6 @@
     desenhar();
   }
 
-  /** O que a leitura confirmou decide o aviso: o que deu certo não fica como falha, e o que era incerto passa a ser sabido. */
   function reconciliarOAviso() {
     const { falha } = estado;
     if (!falha) return;
@@ -99,7 +91,6 @@
     }
     estado.gravando = false;
     if (erro) {
-      // Sem a resposta (ou com uma que não se entende) não se sabe o que ficou: a tela confere em vez de supor.
       estado.falha = { ligar, erro, incerta: !RECUSAS.has(erro.codigo) };
       estado.confirmado = false;
     }
@@ -108,7 +99,6 @@
     partes.interruptor.focus();
   }
 
-  /** Pede à Conexão e devolve o JSON da resposta; levanta o erro (com o `status`) se ela não respondeu 2xx. */
   async function pedirOPerfil(pedido) {
     const resposta = await raiz.PedidoAoAnki.pedir(ConexaoAnki.ENDERECO, pedido, { signal: AbortSignal.timeout(ConexaoAnki.TEMPO_DA_RESPOSTA) });
     const dados = await resposta.json().catch(() => null);
@@ -116,7 +106,6 @@
     return dados;
   }
 
-  /** Lê os perfis do Anki e o marcado. Sem resposta que se entenda (uma Conexão sem a rota, o Anki ocupado) a tela não diz nada de perfis. */
   async function lerOsPerfis() {
     const leitura = ++perfis.leitura;
     let dados = null;
@@ -129,12 +118,10 @@
     const entendida = Array.isArray(dados?.profiles) && dados.profiles.every(nome => typeof nome === 'string');
     perfis.lista = entendida ? dados.profiles : null;
     perfis.marcado = entendida && typeof dados.marked === 'string' ? dados.marked : null;
-    // Uma resposta perdida pode ter vindo depois de a Conexão marcar: o que a leitura confirmou desfaz a falha que não aconteceu.
     if (perfis.falha && perfis.marcado === perfis.falha.nome) perfis.falha = null;
     desenhar();
   }
 
-  /** Marca outro perfil. A tela mostra o que a Conexão ficou com (relido no fim), nunca o que a pessoa pediu. */
   async function escolherOPerfil(nome) {
     perfis.escolhendo = true;
     perfis.falha = null;
@@ -149,7 +136,6 @@
     await lerOsPerfis();
   }
 
-  /** Só com 2 ou mais perfis, ou com o marcado que o Anki já não tem (a pessoa precisa escolher outro). */
   function oMarcadoSumiu() {
     return perfis.lista !== null && perfis.marcado !== null && !perfis.lista.includes(perfis.marcado);
   }
@@ -158,7 +144,6 @@
     return estado.situacao === SITUACAO.LIGADA && perfis.lista !== null && (perfis.lista.length >= 2 || oMarcadoSumiu());
   }
 
-  /** A linha “Perfil do Anki ▾” (CFG-43): o aviso em vermelho do marcado que sumiu, o que o Anki não escolheu, e a lista. */
   function montarALinhaDoPerfil() {
     const nome = elemento('label', 'cfg-nome', textoDaVoz('CFG-43.rotulo'));
     nome.htmlFor = 'cfg-anki-perfil-escolha';
@@ -185,7 +170,7 @@
       elemento('div', 'cfg-quem', nome, elemento('span', 'cfg-nota', textoDaVoz('CFG-43.nota'))),
       elemento('div', 'cfg-acoes', elemento('span', 'veio-select', lista)));
     linha.id = 'cfg-anki-perfil';
-    return [...avisos, linha]; // filhos diretos do corpo do card, que já os espaça
+    return [...avisos, linha];
   }
 
   function montar() {
@@ -227,13 +212,11 @@
     desenharOPerfil();
   }
 
-  /** A linha fechada: o que o item faz agora; sem a Conexão, que não se sabe. */
   function desenharOResumo(sabe) {
     const texto = !sabe ? 'CFG-37.indisponivel' : estado.ligado ? 'CFG-37.ligado' : 'CFG-37.desligado';
     porId('cfg-anki-resumo').replaceChildren(elemento('span', null, textoDaVoz(texto)));
   }
 
-  /** A linha do perfil é refeita só quando muda o que ela mostra, para a lista aberta não piscar a cada conferência da Conexão. */
   function desenharOPerfil() {
     const aparece = aLinhaDoPerfilAparece();
     const assinatura = JSON.stringify(aparece ? [perfis.lista, perfis.marcado, perfis.escolhendo, perfis.falha?.erro.message ?? null] : null);
@@ -246,7 +229,6 @@
     if (tinhaFoco) document.getElementById('cfg-anki-perfil-escolha')?.focus();
   }
 
-  /** O aviso fica o mesmo nó enquanto a falha é a mesma: o Detalhes aberto e o foco sobrevivem às outras leituras. */
   function desenharOAviso() {
     const { falha } = estado;
     if (falha === partes.avisoDe) return;

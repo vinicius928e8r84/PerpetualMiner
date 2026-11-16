@@ -10,7 +10,6 @@
 (function (raiz) {
   const { textoDaVoz } = raiz;
 
-  // Cada parte do custo e o campo de `costs` de onde ela vem (`POST /analytics/jobs`).
   const PARTES = {
     cartoes: 'cardUsd', geradas: 'imageGenerationUsd', escolha: 'imageJudgeUsd', triagem: 'imageGuardUsd', outros: 'otherUsd', correcao: 'correctionUsd',
   };
@@ -20,7 +19,6 @@
     return Number.isFinite(n) ? n : 0;
   }
 
-  /** As partes do custo de um envio; o total é a soma delas. */
   function partes(envio) {
     const custos = envio.costs || {};
     const p = Object.fromEntries(Object.entries(PARTES).map(([parte, campo]) => [parte, numero(custos[campo])]));
@@ -28,7 +26,6 @@
     return p;
   }
 
-  /** Os envios somados: as partes e o total, os Cartões, os envios concluídos e as imagens por `origens` (`chave` de cada uma em `images`). */
   function somar(envios, origens) {
     const soma = { ...Object.fromEntries(Object.keys(PARTES).map(parte => [parte, 0])), total: 0, economia: 0,
       pedidas: 0, enviadas: 0, concluidos: 0, n: envios.length, imagens: 0 };
@@ -55,7 +52,6 @@
     return no;
   }
 
-  /** O card, ou null quando nenhum Envio do período teve Cartão feito pelo plano. */
   function cartao(envios, dinheiro) {
     const feitos = envios.reduce((soma, envio) => soma + numero(envio.plan?.cards), 0);
     if (!feitos) return null;

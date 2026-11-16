@@ -1,10 +1,8 @@
 'use strict';
 
 (function (raiz) {
-  /** “Sincronizado há N min” avança sozinho. */
   const INTERVALO_DO_RELOGIO = 30000;
 
-  // Os nomes das situações. O painel.js usa estes, e não uma string solta.
   const SITUACOES = Object.freeze({
     SINCRONIZANDO: 'sincronizando',
     PRIMEIRA_SUBIDA: 'primeiraSubida',
@@ -21,11 +19,6 @@
   const { iconeVeio, montarAviso, montarDetalhes } = raiz.Veio;
   const porId = id => document.getElementById(id);
 
-  /**
-   * O que cada situação mostra. `chip` é o estado curto (chip e resumo);
-   * `status`, a linha sob o nome no card; `aviso`, o erro com a ação ao lado;
-   * `sair`, como aparece o Sair da conta ('fantasma', 'secundario' ou nenhum).
-   */
   const COMO_APARECE = {
     [SITUACOES.SINCRONIZANDO]: {
       ponto: 'sincronizando',
@@ -37,7 +30,6 @@
       chip: ({ n }) => textoDaVoz('CFG-09.andamento', { n }),
       sair: 'fantasma',
     },
-    // A primeira subida não chegou à nuvem: nenhuma frase subiu.
     [SITUACOES.PRIMEIRA_SUBIDA_FALHOU]: {
       erro: true,
       chip: () => textoDaVoz('SHL-05.semSincronizar'),
@@ -74,7 +66,6 @@
       erro: true,
       chip: () => textoDaVoz('SHL-05.semSincronizar'),
       status: () => textoDaVoz('CFG-04'),
-      // A saída é o que resolve: o Sair da conta deixa de ser fantasma.
       sair: 'secundario',
     },
     [SITUACOES.EXPIROU]: {
@@ -86,12 +77,11 @@
   };
 
   const estado = {
-    conta: null,          // { displayName, email, photoURL } | null
-    sincronizacao: null,  // { situacao, n, total, detalhes, sincronizadoEm } | null
-    falhaNoLogin: null,   // a causa técnica, para o Detalhes | null
+    conta: null,
+    sincronizacao: null,
+    falhaNoLogin: null,
   };
   const pedidos = { entrar() {}, sair() {}, tentarDeNovo() {} };
-  // Onde o corpo do card é desenhado, além de Configurações.
   const outrosLugares = [];
 
   function mostrarConta(usuario) {
@@ -103,15 +93,12 @@
 
   function mostrarSincronizacao(situacao, dados = {}) {
     if (!COMO_APARECE[situacao]) throw new Error(`Situação de sincronização desconhecida: ${situacao}`);
-    // O relógio de “Sincronizado há N min” só recomeça quando o painel volta a ficar em dia: mostrar de novo o
-    // mesmo estado (a chave da OpenAI conferida ao voltar à aba) não é uma sincronização nova.
     const jaEmDiaDesde = estado.sincronizacao?.situacao === SITUACOES.SINCRONIZADO ? estado.sincronizacao.sincronizadoEm : null;
     estado.sincronizacao = { ...dados, situacao };
     if (situacao === SITUACOES.SINCRONIZADO) estado.sincronizacao.sincronizadoEm = jaEmDiaDesde ?? Date.now();
     desenhar();
   }
 
-  /** O login que falhou (CFG-07); `null` apaga o erro. Cancelar não é falha. */
   function mostrarFalhaNoLogin(detalhes) {
     estado.falhaNoLogin = detalhes || null;
     desenhar();
@@ -121,11 +108,6 @@
     Object.assign(pedidos, novos);
   }
 
-  /**
-   * Desenha o corpo do card Conta & sync também em `lugar`, e o mantém igual
-   * ao de Configurações dali em diante: o mesmo Entrar com Google, o mesmo
-   * estado da sincronização.
-   */
   function montarCartao(lugar) {
     outrosLugares.push(lugar);
     desenharCorpo(lugar);
@@ -139,7 +121,6 @@
 
   function nomeVisivel() {
     const { conta } = estado;
-    // Sem nome no perfil, a conta é “Conta Google” (CFG-10), nunca o e-mail.
     return conta.displayName || textoDaVoz('CFG-10');
   }
 
@@ -174,8 +155,6 @@
     desenharAvatar(porId('shell-avatar'));
     situacao.classList.remove('shell-chip__estado--erro');
 
-    // Sem conta, as duas linhas de quem tem conta: “Sem conta” no lugar do nome e
-    // “Só neste computador” no do estado. A frase inteira fica no tooltip.
     if (!estado.conta) {
       nome.textContent = textoDaVoz('SHL-05.semContaNome');
       situacao.textContent = textoDaVoz('SHL-05.semContaEstado');
@@ -191,7 +170,6 @@
     situacao.classList.toggle('shell-chip__estado--erro', Boolean(situacaoAtual()?.erro));
   }
 
-  /** A linha fechada: ponto + “Nome · estado do chip”; sem conta, só neste computador. */
   function desenharResumo() {
     const resumo = porId('cfg-conta-resumo');
     if (!estado.conta) {
@@ -207,18 +185,12 @@
     for (const corpo of [porId('cfg-conta-corpo'), ...outrosLugares]) desenharCorpo(corpo);
   }
 
-  /**
-   * Refaz o corpo do card. O botão que tinha o foco (o Entrar com Google que
-   * acabou de entrar) sai com o corpo velho: o foco vai para o primeiro botão
-   * do novo, em vez de cair no fim da página.
-   */
   function desenharCorpo(corpo) {
     const tinhaOFoco = corpo.contains(document.activeElement);
     corpo.replaceChildren(...(estado.conta ? cardComConta() : cardSemConta()));
     if (tinhaOFoco) corpo.querySelector('button')?.focus();
   }
 
-  /** Sem conta (CFG-06) e, se o login falhou, o erro dele (CFG-07). */
   function cardSemConta() {
     const avatar = elemento('span', 'shell-avatar cfg-avatar');
     desenharAvatar(avatar);
@@ -259,7 +231,6 @@
         elemento('b', 'cfg-nome', nomeVisivel()), status)),
       acoes,
     );
-    // A nota só acompanha o Sair da conta quando o sync está em dia.
     if (!situacao?.erro) principal.append(elemento('p', 'cfg-nota cfg-nota--linha', textoDaVoz('CFG-26')));
 
     const partes = [principal];
@@ -277,7 +248,6 @@
     return partes;
   }
 
-  /** O ponto do estado e o texto; em `danger` quando é problema. */
   function linhaDeStatus(texto) {
     const situacao = situacaoAtual();
     const status = elemento('span', 'cfg-status');
@@ -292,11 +262,6 @@
     return status;
   }
 
-  /**
-   * A foto, a inicial do nome ou, sem conta, o círculo tracejado com “?”. O
-   * avatar é desenho (aria-hidden), então o “?” não é cópia: quem diz que não há
-   * conta é o texto ao lado.
-   */
   function desenharAvatar(avatar) {
     avatar.replaceChildren();
     avatar.classList.toggle('shell-avatar--vazio', !estado.conta);
