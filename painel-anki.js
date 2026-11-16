@@ -88,7 +88,7 @@
         ler();
       });
     }
-    porId('btn-bridge-analytics-refresh-main').addEventListener('click', atualizarTudo);
+    porId('btn-anki-atualizar').addEventListener('click', atualizarTudo);
     porId('anki-quatro-casas').addEventListener('change', evento => {
       estado.quatroCasas = evento.target.checked;
       chrome.storage.local.set({ [CHAVE_QUATRO_CASAS]: estado.quatroCasas });
