@@ -1,9 +1,5 @@
 'use strict';
 
-// Fake do Firestore (REST) e dos endpoints de conta do Google/Firebase.
-// Guarda os documentos em memória, por caminho relativo a `.../documents/`,
-// no mesmo formato de campos que a API REST usa.
-
 const { responderJson } = require('./http');
 
 const RAIZ_DOS_DOCUMENTOS = 'projects/perpetualminer-4c219/databases/(default)/documents';
@@ -13,16 +9,14 @@ const URL_DOS_DOCUMENTOS = `https://firestore.googleapis.com/v1/${RAIZ_DOS_DOCUM
 const LIMITE_DA_URL = 16 * 1024;
 
 function criarFakeGoogle() {
-  const documentos = new Map();   // 'usuarios/uid/frases/123' → fields
+  const documentos = new Map();
   const requisicoes = [];
   let recusarEscritas = false;
-  // A leitura da coleção de frases: 'normal', 'segurar' (nunca responde: a
-  // lista fica carregando) ou 'recusar' (a nuvem falha ao carregar).
   let leituraDasFrases = 'normal';
-  let foraDoAr = false;          // todo pedido ao Firestore: 503
-  let acessoRecusado = false;    // todo pedido ao Firestore: 403 PERMISSION_DENIED
-  let sessaoExpirada = false;    // a renovação do token é recusada
-  let quemEstaLogado = 'uid-teste';   // a conta que o token do teste representa, para as regras do ranking
+  let foraDoAr = false;
+  let acessoRecusado = false;
+  let sessaoExpirada = false;
+  let quemEstaLogado = 'uid-teste';
   let modoDoLogin = 'entrar';
   let perfil = { email: 'pessoa@teste.dev', name: 'Pessoa de Teste', picture: '' };
 
@@ -113,7 +107,6 @@ function criarFakeGoogle() {
     return responderJson(route, 400, { error: { message: `não suportado: ${metodo} ${caminho}` } });
   }
 
-  // O ranking do grupo (#172): as regras de `docs/seguranca/ranking-do-grupo.rules`, em memória. Quem lê só enxerga quem topou; quem grava só grava o próprio documento.
   const recusa = route => responderJson(route, 403, { error: { code: 403, status: 'PERMISSION_DENIED', message: 'Missing or insufficient permissions.' } });
   const CAMPOS_DO_RANKING = ['uid', 'idioma', 'nome', 'foto', 'nivel', 'melhorSequencia', 'nota', 'acertos', 'perguntas', 'grupos', 'topou', 'em'];
 
@@ -157,7 +150,6 @@ function criarFakeGoogle() {
       documentos.delete(caminho);
       return responderJson(route, 200, {});
     }
-    // Ler um documento solto: só o de quem topou.
     if (metodo === 'GET' && documentos.has(caminho) && camposParaObjeto(documentos.get(caminho)).topou === true) {
       return responderJson(route, 200, { name: nomeDoCaminho(caminho), fields: documentos.get(caminho) });
     }
@@ -188,7 +180,6 @@ function criarFakeGoogle() {
     padrao: /^https:\/\/(firestore|securetoken|identitytoolkit|www)\.googleapis\.com\//,
     tratar,
     requisicoes,
-    /** O seam REST que o complemento (não mais o navegador) usa para a chave. */
     async pedidoDaConexao(metodo, uid, token, fields) {
       let resposta;
       const url = `${URL_DOS_DOCUMENTOS}/usuarios/${encodeURIComponent(uid)}/segredos/openai`;
@@ -216,22 +207,15 @@ function criarFakeGoogle() {
       const campos = documentos.get(`usuarios/${uid}/segredos/openai`);
       return campos ? camposParaObjeto(campos) : null;
     },
-    /** A chave (ou o tombstone, com `apagada: true`) que outro computador da conta já deixou na nuvem. */
     gravarChaveDaOpenAI(uid, documento) {
       documentos.set(`usuarios/${uid}/segredos/openai`, objetoParaCampos(documento));
     },
     recusarEscritas(valor = true) { recusarEscritas = valor; },
-    /** A leitura das frases da conta nunca responde. */
     segurarLeituras() { leituraDasFrases = 'segurar'; },
-    /** A leitura das frases da conta falha com 503. */
     recusarLeituras() { leituraDasFrases = 'recusar'; },
-    /** O Firestore fora do ar: todo pedido responde 503. */
     ficarForaDoAr(valor = true) { foraDoAr = valor; },
-    /** As regras do Firestore recusam a conta: todo pedido responde 403. */
     recusarAcesso(valor = true) { acessoRecusado = valor; },
-    /** O refresh token não vale mais: renovar a sessão falha. */
     expirarSessao(valor = true) { sessaoExpirada = valor; },
-    /** Frases que já estão na nuvem da conta `uid`. */
     gravarFrases(uid, frases) {
       for (const frase of frases) documentos.set(`usuarios/${uid}/frases/${frase.id}`, objetoParaCampos(frase));
     },
@@ -241,15 +225,11 @@ function criarFakeGoogle() {
         .filter(([doc]) => doc.startsWith(`ranking/${idioma}_`))
         .map(([, fields]) => camposParaObjeto(fields));
     },
-    /** Quem já topou aparecer no ranking, gravado por outra conta. */
     gravarNoRanking(registros) {
       for (const registro of registros) documentos.set(`ranking/${registro.idioma}_${registro.uid}`, objetoParaCampos(registro));
     },
-    /** Qual conta o token do teste representa para as regras do ranking (padrão: a do login do fake, `uid-teste`). */
     autenticarComo(uid) { quemEstaLogado = uid; },
-    /** O que a próxima janela de login faz: 'entrar', 'janela' ou 'falhar'. */
     proximoLogin(modo) { modoDoLogin = modo; },
-    /** O perfil que o Google devolve no login (nome, e-mail, foto). */
     usarPerfil(novo) { perfil = { ...perfil, ...novo }; },
     responderLogin,
   };

@@ -1,8 +1,5 @@
 'use strict';
 
-// O que as specs do pareamento (#192: pareamento.spec.js, pareamento-ataques.spec.js) repetem: a faixa do Painel, o código que o Anki mostra, quantos navegadores a
-// Conexão tem pareados e o que a extensão guardou. No modo `PM_CONEXAO=real` o código e a contagem vêm do complemento de verdade (`conexaoDoTeste`).
-
 const { expect } = require('@playwright/test');
 
 const faixa = page => page.locator('#painel-pareamento');
@@ -12,12 +9,10 @@ const confirmar = page => faixa(page).getByRole('button', { name: 'Confirmar' })
 const toasts = page => page.locator('.veio-toast');
 const ponto = page => page.locator('.shell-ponto');
 
-/** O código que o Anki mostra agora: na janela de mentira do fake, ou na do complemento real. */
 const codigoNoAnki = async (fakes, conexaoDoTeste) => (conexaoDoTeste ? (await conexaoDoTeste.enviar({ pareamento: 'codigo' })).codigo : fakes.anki.pareamento.codigoNoAnki());
 const quantosPareados = async (fakes, conexaoDoTeste) => (conexaoDoTeste ? (await conexaoDoTeste.enviar({ pareamento: 'navegadores' })).navegadores : fakes.anki.pareamento.pareados().size);
 const desconectarNoAnki = async (fakes, conexaoDoTeste) => (conexaoDoTeste ? conexaoDoTeste.enviar({ pareamento: 'desconectar' }) : fakes.anki.pareamento.desconectar());
 
-/** O que a extensão guardou do pareamento no IndexedDB do service worker: o navegador e se a chave deixa ler os bytes. */
 const credencialGuardada = extensao => extensao.serviceWorker.evaluate(() => new Promise((resolver, rejeitar) => {
   const abertura = indexedDB.open('pm-pareamento', 1);
   abertura.onerror = () => rejeitar(abertura.error);
