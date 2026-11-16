@@ -87,7 +87,7 @@ function criarFakeAnki() {
   const { rotas: rotasDosServicos, api: apiDosServicos } = criarRotasDosServicos({ estado, chatgpt, voz, respostaDoContrato });
   const { rotas: rotasDaLeitura, api: apiDaLeitura } = criarRotasDaLeitura({ estado, contrato, respostaDoContrato });
 
-  const rotaPersonalizada = rotaSe(({ req, url }) => estado.rotas.has(`${req.method()} ${url.pathname}`), async ({ req, url, route }) => {
+  const rotaPersonalizada = rotaSe(({ req, url }) => Boolean(estado.rotas.get(`${req.method()} ${url.pathname}`)), async ({ req, url, route }) => {
     const { status = 200, json = {} } = await estado.rotas.get(`${req.method()} ${url.pathname}`)(req, url);
     return responderJson(route, status, json);
   });
