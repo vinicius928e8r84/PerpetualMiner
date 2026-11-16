@@ -4,6 +4,7 @@ const assert = require('assert');
 
 globalThis.PerpetualMiner = {};
 require('./lib/sincronizacao.js');
+require('./lib/ajustes-de-envio.js');
 require('./lib/quiz-de-nivel.js');
 require('./lib/ranking.js');
 const { Ranking, Sincronizacao } = globalThis.PerpetualMiner;
