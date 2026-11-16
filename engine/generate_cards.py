@@ -158,10 +158,13 @@ def _validate_keyword(card_text: str, expected: str) -> bool:
     if not found.startswith(exp):
         return False
 
+    front = _extract_front_text(card_text)
+    if _front_has_content_after_the_phrase(front):
+        return False
+
     if len(exp.split()) < 2:
         return True
 
-    front = _extract_front_text(card_text)
     if not front:
         return False
     highlighted = [
@@ -169,6 +172,10 @@ def _validate_keyword(card_text: str, expected: str) -> bool:
         for item in re.findall(r"\*([^*\n]+)\*", front)
     ]
     return exp in highlighted
+
+
+def _front_has_content_after_the_phrase(front: str) -> bool:
+    return bool(re.search(r"<br\s*/?>|^\s*(?:target|express[ãa]o[- ]alvo)\s*:", front, re.IGNORECASE | re.MULTILINE))
 
 
 def _front_keeps_the_phrase(card_text: str, phrase: str) -> bool:
