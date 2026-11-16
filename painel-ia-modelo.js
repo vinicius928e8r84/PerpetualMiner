@@ -1,19 +1,12 @@
 'use strict';
 
-// O Avançado do card IA dos cartões (#157, docs/design/modelo-dos-cartoes.md): o “Modelo dos cartões”, um seletor com a lista da conta
-// (Automático por padrão), o aviso âmbar antes da saída de um modelo (Trocar agora · Escolher outro) e a linha verde que conta o que o
-// Envio trocou sozinho. Quem guarda a escolha, lista a conta e troca no dia é a Conexão com o Anki (`/ia/modelo/estado|escolher`):
-// aqui só se lê e se escolhe, e nada fica no navegador. `painel-ia.js` pede o nó de cada lugar do card (`avancado(lugar)`), que esta
-// página redesenha no lugar quando o estado muda. Sem a lista (a Conexão desligada ou antiga), nada se afirma: o Avançado não aparece.
-
 (function (raiz) {
   const { textoDaVoz } = raiz;
   const { montarAviso } = raiz.Veio;
 
   const AUTOMATICO = 'automatico';
-  // modelo: o que a Conexão disse (null: não se sabe); erro: a Conexão respondeu que a lista da conta não veio; aberto: a pessoa abriu ou fechou o Avançado.
   const estado = { modelo: null, erro: false, aberto: null };
-  const lugares = new Map(); // lugar do card → { no, assinatura }: o nó deste Avançado e o que ele mostra, redesenhado no lugar
+  const lugares = new Map();
   let rodada = 0;
 
   async function pedir(pedido) {
@@ -23,7 +16,6 @@
     } catch { return null; }
   }
 
-  /** Relê o estado na Conexão; uma resposta que chega depois de outra mais nova não vale. */
   async function reler() {
     const minha = ++rodada;
     const resposta = await pedir(raiz.PedidoAoAnki.estadoDoModelo());
@@ -62,7 +54,6 @@
     return campo;
   }
 
-  /** O aviso âmbar: o texto leva a data; Trocar agora é escolher o Automático e Escolher outro leva ao seletor. */
   function avisoDaSaida(campo, { modelo, saida }) {
     const aviso = montarAviso({
       tom: 'info', icone: 'alerta', fechavel: false,
@@ -93,7 +84,6 @@
     return [elemento('p', 'cfg-nota', textoDaVoz('CFG-44.erro')), botao(textoDaVoz('CFG-35.erroTentarDeNovo'), reler)];
   }
 
-  /** Desenha o Avançado deste lugar, só se o que se sabe mudou: aberto sozinho quando há o que dizer (o aviso ou a troca), a menos que a pessoa o tenha fechado. */
   function desenhar(lugar) {
     const registro = lugares.get(lugar);
     const assinatura = JSON.stringify([estado.erro, estado.modelo]);
@@ -112,7 +102,6 @@
     for (const lugar of lugares.keys()) desenhar(lugar);
   }
 
-  /** O nó do Avançado de `lugar` (o card da IA): o mesmo a cada desenho do card, que só o põe de volta no lugar. */
   function avancado(lugar) {
     if (!lugares.has(lugar)) {
       lugares.set(lugar, { no: elemento('div', 'ia-modelo'), assinatura: null });
@@ -122,7 +111,6 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    // A Conexão que liga relê o modelo (uma vez: a lista vem da OpenAI, e cada saúde não a pergunta); a que desliga deixa o card sem afirmar nada (C8).
     let antes = null;
     raiz.ConexaoAnki.acompanhar(situacao => {
       const ligou = situacao === raiz.ConexaoAnki.SITUACAO.LIGADA && antes !== situacao;
@@ -134,9 +122,7 @@
         desenharTudo();
       }
     });
-    // Abrir o card relê: um Envio pode ter trocado o modelo desde a última vez.
     raiz.Shell.aoAbrirASecao('ia', reler);
-    // Outra chave guardada, ou a apagada: quem paga e a lista mudam.
     chrome.storage.onChanged.addListener((mudancas, area) => {
       if (area === 'local' && raiz.ChaveDaOpenAI.MARCA in mudancas) reler();
     });

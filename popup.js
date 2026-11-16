@@ -1,8 +1,5 @@
 'use strict';
 
-// O popup “Cockpit” (docs/design/popup/, variante A). A base compartilhada é
-// carregada antes pelo popup.html: o catálogo da Voz, os componentes da Veio,
-// o detector de idioma, os atalhos gravados e o Contexto da frase.
 const { IDIOMAS, textoDaVoz, Atalhos, minerarFraseManual, Configuracao, ConexaoAnki, AbrirOAnki, MineracaoAutomatica, MineracaoDoDia, AjustesDeEnvio, VocabularioDaMineracao } = PerpetualMiner;
 const { iconeVeio, escreverFrase, montarTeclas, montarAnelDeProgresso } = PerpetualMiner.Veio;
 const { fonteDaFrase, nomeDaFonte, rotuloDoDia, diaEHora } = PerpetualMiner.Contexto;
@@ -10,22 +7,20 @@ const { fonteDaFrase, nomeDaFonte, rotuloDoDia, diaEHora } = PerpetualMiner.Cont
 const QUANTAS_ULTIMAS = 5;
 const ENDERECO_DOS_ATALHOS = '#configuracoes/atalhos';
 
-// Os dois idiomas da Mineração automática, na ordem dos azulejos.
 const IDIOMAS_DA_MINERACAO = [
   { chave: 'en', idioma: IDIOMAS.INGLES },
   { chave: 'ru', idioma: IDIOMAS.RUSSO },
 ];
 
-// O atalho entra no meio da cópia como tecla (kbd), não como texto solto.
 const MARCA_DO_ATALHO = '\u0000';
 
-let frases = null;                    // null enquanto a primeira leitura não volta (POP-01)
-let idsJaMostrados = null;            // o que a lista já mostrou, para realçar a frase que chega
-const idsChegando = new Set();        // as que ainda estão no realce: um redesenho não o apaga
+let frases = null;
+let idsJaMostrados = null;
+const idsChegando = new Set();
 let atalhoDeLegenda = Atalhos.ATALHOS_PADRAO.legenda;
-let mineracaoAutomatica = null;       // { settings, daily } do service worker
-let leiturasDoVocabulario = null;     // { en, ru }: a última leitura de cada Baralho, ou null (nenhuma); null até ler
-let configuracao = null;              // o retrato da configuração (lib/configuracao.js)
+let mineracaoAutomatica = null;
+let leiturasDoVocabulario = null;
+let configuracao = null;
 let minerando = false;
 
 const porId = id => document.getElementById(id);
@@ -69,7 +64,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (mudouOVocabulario || AjustesDeEnvio.CHAVE in mudancas) lerAIdadeDoVocabulario();
   });
 
-  // O selo e o esperando só aparecem com a Conexão desligada; o Configuracao a acompanha por conta própria.
   ConexaoAnki.acompanhar(refletirOVocabularioDoAnkiFechado);
   ConexaoAnki.iniciar();
   lerAIdadeDoVocabulario();
@@ -91,11 +85,6 @@ function escreverCopiaFixa() {
   porId('minerar-rapida').textContent = textoDaVoz('POP-04');
 }
 
-/**
- * Foca a aba do Painel que já está aberta, ou abre uma. Com `endereco`, a aba
- * vai para aquele endereço (#frases, #configuracoes/atalhos); sem ele, fica
- * onde a pessoa a deixou.
- */
 function abrirPainel(endereco = '') {
   const painel = chrome.runtime.getURL('painel.html');
   chrome.tabs.query({ url: painel }, abas => {
@@ -109,7 +98,6 @@ function abrirPainel(endereco = '') {
   });
 }
 
-/** Pede o estado ao service worker, com o esqueleto (POP-01) enquanto ele não responde. */
 function pedirEstadoDaAutomatica() {
   const azulejos = porId('azulejos');
   azulejos.setAttribute('aria-busy', 'true');
@@ -120,13 +108,11 @@ function pedirEstadoDaAutomatica() {
     return esqueleto;
   }));
 
-  // Um estado publicado enquanto isso (`MineracaoDoDia.CHAVES.estadoPublicado`) é mais novo que esta resposta.
   MineracaoAutomatica.lerEstado().then(
     estado => { if (!mineracaoAutomatica) mostrarMineracaoAutomatica(estado); },
     () => { if (!mineracaoAutomatica) mostrarFalhaDaAutomatica('POP-16.leitura'); });
 }
 
-/** POP-16 sob os azulejos (ou no lugar deles, se o estado nunca chegou): uma linha sem botão nem Detalhes, que sai no próximo estado publicado. */
 function mostrarFalhaDaAutomatica(id) {
   const azulejos = porId('azulejos');
   azulejos.removeAttribute('aria-busy');
@@ -145,8 +131,6 @@ function mostrarMineracaoAutomatica(estado) {
 
   trocarAzulejos(azulejos, IDIOMAS_DA_MINERACAO.map(({ chave, idioma }) => {
     const numeros = numerosDoIdioma(chave);
-    // Redesenhar tiraria o foco (e o que está sendo digitado) do campo de limite:
-    // esse azulejo muda no lugar, a não ser que o campo dê lugar a POP-08.
     if (foco.noCampo && foco.chave === chave && !numeros.atingiuOLimite) {
       const atual = azulejos.querySelector(`.popup-azulejo[data-idioma="${chave}"]`);
       preencherAzulejo(atual, numeros);
@@ -159,7 +143,6 @@ function mostrarMineracaoAutomatica(estado) {
   refletirOVocabularioDoAnkiFechado();
 }
 
-/** O azulejo e o controle com o foco, para devolvê-lo depois de redesenhar. */
 function ondeEstaOFoco() {
   const ativo = document.activeElement;
   return {
@@ -168,7 +151,6 @@ function ondeEstaOFoco() {
   };
 }
 
-/** Deixa em `azulejos` só os `novos`, em ordem, sem tirar do DOM o que já está lá (perderia o foco). */
 function trocarAzulejos(azulejos, novos) {
   for (const velho of [...azulejos.children]) if (!novos.includes(velho)) velho.remove();
   novos.forEach((azulejo, i) => {
@@ -176,7 +158,6 @@ function trocarAzulejos(azulejos, novos) {
   });
 }
 
-/** O foco que estava num azulejo redesenhado volta ao mesmo controle; sem o campo (agora POP-08), ao toggle. */
 function devolverOFoco(azulejos, foco) {
   if (!foco.chave || azulejos.contains(document.activeElement)) return;
   const azulejo = azulejos.querySelector(`.popup-azulejo[data-idioma="${foco.chave}"]`);
@@ -185,16 +166,12 @@ function devolverOFoco(azulejos, foco) {
   alvo?.focus();
 }
 
-// O popup mostra o retrato do service worker sem reinterpretar `daily.date`
-// pelo relógio da página. A virada chega pela publicação de
-// `agendarViradaDoDia` em background.js.
 function contagemPublicada(registro) {
   return registro?.count || 0;
 }
 
 function numerosDoIdioma(chave) {
   const ajustes = mineracaoAutomatica.settings?.[chave] || {};
-  // O service worker devolve o limite normalizado por `MineracaoDoDia`.
   const limite = ajustes.dailyLimit;
   const n = contagemPublicada(mineracaoAutomatica.daily?.[chave]);
   const ligado = Boolean(ajustes.enabled);
@@ -223,22 +200,18 @@ function montarAzulejo(chave, idioma, numeros) {
   medidor.setAttribute('aria-hidden', 'true');
   medidor.append(criar('i'));
 
-  // POP-07: na tela, “7/20” como no protótipo; o leitor de tela ouve “7 de 20 hoje”.
   const contador = criar('p', 'popup-azulejo__contador');
   const visto = criar('span');
   visto.setAttribute('aria-hidden', 'true');
   visto.append(criar('b'), criar('small'));
   contador.append(visto, criar('span', 'veio-so-leitor'));
 
-  // BRG-37: sem nenhuma leitura do vocabulário, a Mineração automática espera o Anki abrir uma vez.
   const espera = criar('p', 'popup-azulejo__espera');
   espera.hidden = true;
   espera.append(criar('b', null, textoDaVoz('BRG-37.esperando')), criar('span', null, textoDaVoz('BRG-37.comeca')));
 
   azulejo.append(topo, contador, medidor, espera);
 
-  // No limite, o campo dá lugar a POP-08: a mineração do dia acabou. O toggle
-  // o tem como descrição, para o leitor de tela dizê-lo quando o foco chega ali.
   const { limite } = numeros;
   if (numeros.atingiuOLimite) {
     const noLimite = criar('p', 'popup-azulejo__no-limite', textoDaVoz('POP-08'));
@@ -253,7 +226,6 @@ function montarAzulejo(chave, idioma, numeros) {
   return azulejo;
 }
 
-/** O que muda com o dia: ligado, o contador POP-07 e o medidor. O campo de limite fica como está. */
 function preencherAzulejo(azulejo, { ligado, limite, n }) {
   azulejo.classList.toggle('veio-azulejo--escolhido', ligado);
   azulejo.querySelector('input[type="checkbox"]').checked = ligado;
@@ -282,31 +254,20 @@ function montarLimite(chave, idiomaNaFrase, limite) {
   return linha;
 }
 
-/** Grava só o que mudou num idioma; a promessa termina depois de os azulejos mostrarem o resultado. */
 function salvarMineracaoAutomatica(mudanca) {
   return MineracaoAutomatica.salvarAjustes(mudanca).then(mostrarMineracaoAutomatica, () => {
-    // Nada foi gravado: os azulejos voltam ao que está gravado, e POP-16 diz para tentar de novo.
     mostrarMineracaoAutomatica(mineracaoAutomatica);
     mostrarFalhaDaAutomatica('POP-16.gravacao');
   });
 }
 
-/** Lê a última leitura do vocabulário de cada Baralho (quando são os dados e se vieram do arquivo), e mostra o que isso muda. */
 function lerAIdadeDoVocabulario() {
   VocabularioDaMineracao.lerLeituras().then(leituras => {
     leiturasDoVocabulario = leituras;
     refletirOVocabularioDoAnkiFechado();
-  }, () => {
-    // Sem poder ler o storage o popup não sabe a idade: não mostra o selo nem o esperando.
-  });
+  }, () => {});
 }
 
-/**
- * Com o Anki fechado, a Mineração automática segue pela última leitura do vocabulário, e o popup diz a idade dos
- * dados (POP-17): a mais antiga entre os idiomas ligados. O Anki está fechado para um idioma quando a Conexão não
- * responde, ou leu o arquivo do Anki e confirmou que não há processo dele (o Windows de hoje). O idioma ligado que
- * nunca foi lido espera o Anki abrir uma vez (BRG-37). O Abrir o Anki (BRG-38) só abre num clique.
- */
 function refletirOVocabularioDoAnkiFechado() {
   const selo = porId('selo-vocabulario');
   AbrirOAnki.montarSeJaConectou(selo, 'veio-botao veio-botao--link');
@@ -314,7 +275,6 @@ function refletirOVocabularioDoAnkiFechado() {
   const desligada = ConexaoAnki.situacao() === ConexaoAnki.SITUACAO.DESLIGADA;
   const ligados = IDIOMAS_DA_MINERACAO.filter(({ chave }) => mineracaoAutomatica?.settings?.[chave]?.enabled);
   const lidos = leituras ? ligados.map(({ chave }) => leituras[chave]).filter(Boolean) : [];
-  // O selo aparece se algum idioma ligado está sem o Anki; a idade é a da leitura mais antiga de todos eles.
   const semOAnki = lidos.some(leitura => desligada || leitura.ankiFechado);
 
   selo.hidden = !semOAnki;
@@ -326,7 +286,6 @@ function refletirOVocabularioDoAnkiFechado() {
   }
 }
 
-/** O cartão ONB-14, enquanto a Boas-vindas não chegou a Tudo pronto e o lembrete não foi ocultado (em Frases). O cartão é o botão, e só o conteúdo dele é refeito: o foco fica nele. */
 function desenharLembrete() {
   const cartao = porId('lembrete');
   cartao.hidden = !configuracao.lembrete;
@@ -344,7 +303,6 @@ function prepararMineracaoRapida() {
     refletirCampo();
     limparErro();
   });
-  // Enter minera; Shift+Enter quebra a linha.
   campo.addEventListener('keydown', evento => {
     if (evento.key !== 'Enter' || evento.shiftKey || evento.isComposing) return;
     evento.preventDefault();
@@ -369,7 +327,6 @@ function minerarFraseRapida() {
 
   minerarFraseManual(texto).then(frase => {
     minerando = false;
-    // POP-05: sem texto. O campo limpa e a frase aparece no topo das últimas.
     campo.value = '';
     limparErro();
     refletirCampo();
@@ -379,7 +336,6 @@ function minerarFraseRapida() {
     }
   }, () => {
     minerando = false;
-    // POP-06: o texto fica no campo, para tentar de novo.
     mostrarErro();
     refletirCampo();
   });
@@ -390,7 +346,6 @@ function mostrarErro() {
   porId('frase-rapida').setAttribute('aria-invalid', 'true');
 }
 
-/** Uma falha em linha, como no protótipo: o ícone de alerta e a frase que diz o que fazer. */
 function linhaDeFalha(texto) {
   const linha = criar('p', 'popup-falha');
   linha.append(iconeVeio('alerta'), texto);
@@ -406,7 +361,6 @@ function desenharUltimas() {
   const lugar = porId('ultimas');
 
   if (!frases) {
-    // POP-01: espera curta, sem texto, só esqueleto.
     const lista = criar('ol', 'popup-ultimas');
     lista.setAttribute('aria-busy', 'true');
     for (let i = 0; i < QUANTAS_ULTIMAS; i++) {
@@ -432,8 +386,6 @@ function desenharUltimas() {
   const lista = criar('ol', 'popup-ultimas');
   for (const f of ultimas) {
     const linha = montarUltima(f);
-    // A frase que acabou de chegar (mineração rápida, legenda, automática)
-    // pisca uma vez; na primeira leitura, nada pisca.
     if (idsJaMostrados && !idsJaMostrados.has(f.id)) idsChegando.add(f.id);
     if (idsChegando.has(f.id)) {
       linha.classList.add('popup-ultima--nova');
@@ -457,7 +409,6 @@ function montarUltima(f) {
   return linha;
 }
 
-/** A Palavra grifada: o primeiro grupo de `keywords` (`palavra@índice`, `|` entre grupos). */
 function palavraDaFrase(f) {
   const grupo = [];
   for (const item of f.keywords || []) {
@@ -467,7 +418,6 @@ function palavraDaFrase(f) {
   return grupo.join(' ');
 }
 
-/** O Contexto numa linha: Fonte · Título · Detalhe · dia. */
 function linhaDoContexto(f) {
   const fonte = fonteDaFrase(f);
   return [fonte && nomeDaFonte(fonte), f.contexto?.titulo, f.contexto?.detalhe, rotuloDoDia(f.data)]
@@ -475,10 +425,6 @@ function linhaDoContexto(f) {
     .join(' · ');
 }
 
-/**
- * POP-02: a picareta, o título e o texto que ensina o atalho gravado; sem
- * atalho, o texto pede um, com Definir atalho (GLB-02).
- */
 function montarVazio() {
   const vazio = criar('div', 'veio-vazio popup-vazio');
   const texto = criar('p', 'veio-vazio__texto');
@@ -492,7 +438,6 @@ function montarVazio() {
   return vazio;
 }
 
-/** POP-11: o atalho de legenda gravado e Mudar atalho; sem atalho, “Sem atalho” e Definir atalho. */
 function desenharRodape() {
   const rodape = porId('rodape');
   if (!atalhoDeLegenda) {
@@ -504,13 +449,11 @@ function desenharRodape() {
   rodape.replaceChildren(frase, botaoDosAtalhos(textoDaVoz('POP-11.mudar')));
 }
 
-/** A cópia `id` com o atalho de legenda no lugar de `{atalho}`, como tecla. */
 function copiaComATecla(id) {
   const [antes, depois] = textoDaVoz(id, { atalho: MARCA_DO_ATALHO }).split(MARCA_DO_ATALHO);
   return [antes, teclaDaLegenda(), depois];
 }
 
-/** O atalho de legenda com uma tecla por kbd (Alt + S), ou o kbd tracejado “Sem atalho”. */
 function teclaDaLegenda() {
   return montarTeclas(Atalhos.rotuloDoAtalho(atalhoDeLegenda), { seVazia: textoDaVoz('GLB-02.semAtalho') });
 }
@@ -522,7 +465,6 @@ function botaoDosAtalhos(rotulo, variante = 'veio-botao--fantasma') {
   return botao;
 }
 
-/** O esqueleto sem texto (POP-01): uma linha inteira e uma curta. */
 function linhasDeEsqueleto() {
   return [criar('div', 'veio-esqueleto'), criar('div', 'veio-esqueleto popup-esqueleto-curto')];
 }

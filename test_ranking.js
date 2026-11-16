@@ -1,9 +1,5 @@
 'use strict';
 
-// O ranking do grupo (#172, `lib/ranking.js`), sem tela e sem rede: o registro de quem topou (o que o ranking mostra e o que os recortes de depois pedem),
-// a nota, o “melhor que X%” e os pedidos REST ao Firestore (o que viaja, e que quem não topou não grava nada). Roda sem navegador: `node test_ranking.js`.
-// O que a pessoa vê e o que fica na coleção falsa são do e2e (`boas-vindas-quiz-ranking.spec.js`).
-
 const assert = require('assert');
 
 globalThis.PerpetualMiner = {};
@@ -12,7 +8,6 @@ require('./lib/quiz-de-nivel.js');
 require('./lib/ranking.js');
 const { Ranking, Sincronizacao } = globalThis.PerpetualMiner;
 
-// A ordem dos níveis na nota é a do quiz, e só dele: o ranking carregado com outra lista ordena por ela (nenhuma cópia própria).
 const comOutrosNiveis = { PerpetualMiner: { Sincronizacao, QuizDeNivel: { NIVEIS: { A: 'basico', B: 'fluente' } } } };
 require('vm').runInNewContext(require('fs').readFileSync('./lib/ranking.js', 'utf8'), comOutrosNiveis);
 assert.strictEqual(comOutrosNiveis.PerpetualMiner.Ranking.nota({ nivel: 'fluente', acertos: 0, perguntas: 3 }), 1000);

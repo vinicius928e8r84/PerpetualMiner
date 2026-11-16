@@ -1,4 +1,3 @@
-/* A prévia do Cartão (#164, painel-anki-previa.js): o Cartão de exemplo do estilo, num quadro isolado. O quadro tem o fundo do Cartão do Anki (claro). */
 .previa {
   display: flex;
   flex-direction: column;
@@ -38,7 +37,6 @@
   border-radius: var(--veio-raio-card);
 }
 
-/* O passo do nível da Boas-vindas (#164, painel-boas-vindas-nivel.js): um campo de Estilo do cartão por idioma ligado. */
 .bv-niveis {
   display: flex;
   flex-direction: column;
@@ -58,7 +56,6 @@
   font-weight: var(--veio-peso-titulo);
 }
 
-/* “Usar um tipo que já tenho” (#165, painel-anki-tipo-proprio.js): o tipo de nota, uma linha por parte do Cartão e a prévia no tipo. */
 .ajustes-proprio {
   display: flex;
   flex-direction: column;
@@ -74,7 +71,6 @@
   min-width: 0;
 }
 
-/* O passo do primeiro Envio da Boas-vindas (#173, painel-boas-vindas-envio.js): “Enviando…”, o Cartão enviado com o Baralho e a prévia, ou a falha. */
 .bv-envio {
   display: flex;
   flex-direction: column;

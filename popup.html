@@ -8,13 +8,6 @@
   <link rel="stylesheet" href="veio/componentes.css">
   <link rel="stylesheet" href="popup.css">
 </head>
-<!--
-  Popup “Cockpit” (docs/design/popup/, variante A): uma pilha de 340 px, de cima
-  para baixo — marca, o lembrete da configuração (só enquanto ela está pela
-  metade), Abrir painel, Mineração automática, mineração rápida, as
-  5 últimas só leitura e o rodapé com o atalho de legenda. Toda a cópia vem do
-  catálogo da Voz, escrita por popup.js; aqui só mora a estrutura.
--->
 <body>
 
   <header class="popup-cabecalho">
@@ -24,7 +17,6 @@
 
   <main class="popup-corpo">
 
-    <!-- O lembrete “Configuração pela metade” (ONB-14): o cartão inteiro é o botão. -->
     <button type="button" class="popup-lembrete" id="lembrete" hidden>
       <span class="popup-lembrete__anel" id="lembrete-anel"></span>
       <span class="popup-lembrete__texto"><b id="lembrete-titulo"></b><span id="lembrete-corpo"></span></span>
@@ -56,7 +48,6 @@
 
   <footer class="popup-rodape" id="rodape"></footer>
 
-  <!-- A ponte do abridor, recarregada a cada conversa com ele (lib/abridor.js). -->
   <iframe id="abridor-ponte" src="abridor.html" hidden></iframe>
 
   <script src="lib/voz/catalogo.js"></script>

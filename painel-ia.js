@@ -5,24 +5,21 @@
   const { mostrarToastDeSucesso, montarAviso, abrirConfirmacao } = raiz.Veio;
   const porId = id => document.getElementById(id);
 
-  // Onde a pessoa resolve o que a OpenAI pede (links, não cópia).
   const ONDE_CRIAR_A_CHAVE = 'https://platform.openai.com/api-keys';
   const ONDE_ADICIONAR_CREDITO = 'https://platform.openai.com/settings/organization/billing/overview';
   const ONDE_VERIFICAR_A_ORGANIZACAO = 'https://platform.openai.com/settings/organization/general';
 
-  /** O que cobre o que a tela não sabe: só o fim da chave aparece, atrás da máscara do painel (a do resumo do Gemini). */
   const MASCARA_DA_CHAVE = '••••••••';
 
   const estado = {
-    ultimos4: null,    // null até a primeira leitura do storage; '' sem chave
-    copia: null,       // a Conexão tem a cópia da chave? true · false · null (não se sabe: ela não respondeu)
-    focarAoLer: false, // o endereço pediu o foco antes de o storage responder
+    ultimos4: null,
+    copia: null,
+    focarAoLer: false,
     uid: '',
     contaDaChave: '',
-    comConta: false,   // há uma conta Google: a chave vai junto com ela (#154)
+    comConta: false,
   };
 
-  /** Onde o card é desenhado: { corpo, prefixo, trocando, conferindo, erro, digitado }. `digitado` é o que a pessoa colou no campo. */
   const lugares = [];
   let configuracoes = null;
   let conexaoLigada = false;
@@ -30,8 +27,6 @@
 
   function iniciar() {
     configuracoes = montar(porId('cfg-ia-corpo'), { prefixo: 'cfg' });
-    // Antes do primeiro desenho, recupera a verdade do cofre e da Conexão,
-    // inclusive uma conferência da página anterior cuja resposta se perdeu.
     leituraInicial = ChaveDaOpenAI.conferirACopia().catch(() => null);
     leituraInicial.then(tem => {
       estado.copia = conexaoLigada ? tem : null;
@@ -45,10 +40,6 @@
         if (estado.focarAoLer) focarOCampoSeVazio();
       });
     });
-    // Outra página (ou o outro lugar do card) guardou a chave: aparece aqui sem recarregar. No meio de uma
-    // troca ou de uma conferência o que a pessoa faz não é derrubado.
-    // A chave que chega de outro computador da conta (ou o apagamento dele) chega assim também, e a cópia da
-    // Conexão a acompanha.
     chrome.storage.onChanged.addListener((mudancas, area) => {
       if (area !== 'local') return;
       if ('pm_user_info' in mudancas) {
@@ -65,7 +56,6 @@
       for (const lugar of lugares) if (!lugar.trocando && !lugar.conferindo) desenhar(lugar);
       if (conexaoLigada) conferirACopia();
     });
-    // Cada saúde concluída relê o dono, inclusive uma aceitação tardia de outra página.
     ConexaoAnki.acompanhar(situacao => {
       if (situacao === ConexaoAnki.SITUACAO.CONECTANDO) return;
       const ligada = situacao === ConexaoAnki.SITUACAO.LIGADA;
@@ -73,7 +63,6 @@
       if (ligada) {
         conferirACopia();
       } else {
-        // Sem resposta da Conexão o card não afirma nada sobre a cópia (C8): o que ficou na tela era de antes.
         rodada += 1;
         mudarACopia(null);
       }
@@ -81,7 +70,6 @@
     raiz.Shell.aoAbrirASecao('ia', focarOCampoSeVazio);
   }
 
-  /** Desenha o card em `corpo`; `prefixo` separa os ids de cada lugar. */
   function montar(corpo, { prefixo }) {
     const lugar = { corpo, prefixo, trocando: false, conferindo: false, erro: null, digitado: '' };
     lugares.push(lugar);
@@ -99,7 +87,6 @@
     if (!estado.ultimos4 || configuracoes.trocando) porId(idDe(configuracoes, 'campo'))?.focus();
   }
 
-  /** A resposta de uma conferência da cópia que a Conexão desligou no meio do caminho já não vale. */
   let rodada = 0;
 
   async function conferirACopia() {
@@ -115,7 +102,6 @@
     for (const lugar of lugares) if (!lugar.trocando && !lugar.conferindo) desenhar(lugar);
   }
 
-  /** A linha fechada: a chave mascarada em mono; sem chave, o ponto `danger` e “Sem chave”. */
   function desenharResumo() {
     const resumo = porId('cfg-ia-resumo');
     if (!estado.ultimos4) {
@@ -134,12 +120,11 @@
     const colunaDaChave = estado.ultimos4 && !lugar.trocando
       ? chaveSalva(lugar)
       : campoDaChave(lugar);
-    // A coluna do ChatGPT e a faixa do erro dela são de `painel-ia-chatgpt.js` (#155), que as redesenha no lugar.
     const colunas = elemento('div', 'ia-colunas', colunaDaChave, raiz.ColunaDoChatGPT.coluna(lugar));
     const partes = [colunas];
     if (lugar.erro) partes.push(faixaDoErro(lugar));
     partes.push(raiz.ColunaDoChatGPT.faixa(lugar), elemento('p', 'cfg-nota ia-imagem', textoDaVoz('CFG-35.imagem')),
-      raiz.ModeloDosCartoes.avancado(lugar)); // o Avançado: o modelo dos cartões (#157), de `painel-ia-modelo.js`
+      raiz.ModeloDosCartoes.avancado(lugar));
     lugar.corpo.classList.add('ia-cartao');
     lugar.corpo.replaceChildren(...partes);
   }
@@ -153,7 +138,6 @@
     return coluna;
   }
 
-  /** Ponto verde, “Chave conferida”, a chave mascarada e Trocar chave; embaixo, onde ela mora. */
   function chaveSalva(lugar) {
     const ponto = elemento('span', 'cfg-ponto');
     ponto.dataset.estado = 'ok';
@@ -161,12 +145,11 @@
     const trocar = botao('contorno', textoDaVoz('CFG-35.chaveTrocar'), () => {
       lugar.trocando = true;
       lugar.erro = null;
-      lugar.digitado = '';   // a chave colada em outro momento nunca volta à tela: o campo abre vazio
+      lugar.digitado = '';
       desenhar(lugar);
       porId(idDe(lugar, 'campo')).focus();
     });
     trocar.id = idDe(lugar, 'trocar');
-    // Perigo em contorno: só abre a confirmação (CODING_STANDARDS, regra 3).
     const apagar = botao('perigo', textoDaVoz('CFG-35.chaveApagar'), () => confirmarApagar(lugar));
     apagar.id = idDe(lugar, 'apagar');
 
@@ -179,7 +162,6 @@
     return colunaDaChave(lugar, linha, ...notasDaChave(lugar, true));
   }
 
-  /** O campo, Conferir e salvar e (trocando) Cancelar. */
   function campoDaChave(lugar) {
     const campo = elemento('input', 'veio-campo cfg-chave-campo');
     campo.id = idDe(lugar, 'campo');
@@ -207,7 +189,6 @@
       textoDaVoz(lugar.conferindo ? 'CFG-35.chaveConferindo' : 'CFG-35.chaveConferir'));
     conferir.type = 'submit';
     conferir.id = idDe(lugar, 'conferir');
-    // O botão fica no Tab e no foco, mas não repete o pedido enquanto a conferência anda.
     if (lugar.conferindo) conferir.setAttribute('aria-disabled', 'true');
     const acoes = elemento('div', 'cfg-acoes', conferir);
     if (lugar.trocando) {
@@ -222,7 +203,6 @@
       acoes.append(cancelar);
     }
 
-    // Um formulário: o Enter no campo confere, como o botão.
     const formulario = elemento('form', 'cfg-chave-form',
       elemento('div', 'cfg-chave-entrada', campo, vazia), acoes);
     formulario.noValidate = true;
@@ -235,7 +215,6 @@
     return colunaDaChave(lugar, formulario, ...notasDaChave(lugar, false));
   }
 
-  /** Onde a chave mora (e, salva, se a Conexão já tem a cópia) e a sugestão do projeto próprio. */
   function notasDaChave(lugar, salva) {
     const notas = [];
     if (salva) {
@@ -257,7 +236,6 @@
     return notas;
   }
 
-  /** A faixa do erro, abaixo das colunas, com a entrada a que pertence, o que fazer e o Detalhes. */
   function faixaDoErro(lugar) {
     const { motivo, detalhes } = lugar.erro;
     const abrir = url => () => window.open(url, '_blank', 'noopener,noreferrer');
@@ -285,7 +263,6 @@
     return aviso;
   }
 
-  /** Liga ou desliga o erro de conferir vazio: borda danger (aria-invalid) e o aviso embaixo, ligado ao campo. */
   function marcarVazia(campo, aviso, vazia) {
     aviso.hidden = !vazia;
     if (vazia) {
@@ -308,10 +285,9 @@
     await enviarAChave(lugar, chave);
   }
 
-  /** Entrega a chave à Conexão e mostra o que veio: a chave conferida ou a faixa do erro. */
   async function enviarAChave(lugar, chave) {
     rodada += 1;
-    mudarACopia(null); // a confirmação anterior não descreve a mutação em voo
+    mudarACopia(null);
     lugar.conferindo = true;
     lugar.erro = null;
     lugar.digitado = chave;
@@ -321,17 +297,12 @@
     try {
       resultado = await ChaveDaOpenAI.confirmar(chave);
     } catch (erro) {
-      // O cache pode ter falhado depois da aceitação. Não declara que o dono
-      // perdeu a chave, nem repete mensagem que pudesse conter um segredo.
       resultado = { ok: false, motivo: erro?.codigo === 'outdated_connection' ? 'conexao_antiga' : 'conexao_com_erro',
         detalhes: erro?.codigo || erro?.name || 'storage_error' };
     }
     lugar.conferindo = false;
     if (resultado.ok) {
       lugar.trocando = false;
-      // Conferida a chave, nenhum rascunho dela fica na tela: nem o daqui, nem o do outro lugar do card.
-      // O outro lugar, mesmo no meio de uma troca (com a chave colada ou uma faixa de erro), volta ao resumo:
-      // o que ele tinha a tentar de novo já não existe, e um Tentar de novo sem chave não mandaria nada.
       for (const outro of lugares) {
         outro.digitado = '';
         if (outro !== lugar && !outro.conferindo) {
@@ -347,13 +318,11 @@
       mostrarToastDeSucesso(textoDaVoz('CFG-35.chaveToast'));
       return;
     }
-    // O campo volta com o que a pessoa colou, para ela corrigir ou tentar de novo.
     lugar.erro = { motivo: resultado.motivo, detalhes: resultado.detalhes };
     desenhar(lugar);
     porId(idDe(lugar, 'campo'))?.focus();
   }
 
-  /** Apagar chave: a confirmação Veio, com Cancelar no foco inicial; o corpo diz de onde ela sai. */
   function confirmarApagar(lugar) {
     abrirConfirmacao({
       id: idDe(lugar, 'apagar-modal'),
@@ -365,7 +334,6 @@
     });
   }
 
-  /** Apaga no dono e desenha sua leitura posterior, não um estado vazio inventado pela tela. */
   async function apagarAChave(lugar) {
     rodada += 1;
     mudarACopia(null);
@@ -373,7 +341,6 @@
     try {
       dono = await ChaveDaOpenAI.apagar();
     } catch (erro) {
-      // Incerto: pode ter apagado no dono e falhado apenas a escrita do cache.
       lugar.erro = { motivo: erro?.codigo === 'outdated_connection' ? 'conexao_antiga'
         : erro?.codigo === 'other_account_owner' ? 'outra_conta' : 'apagar_local',
         detalhes: erro?.codigo || erro?.name || 'storage_error' };
@@ -394,12 +361,10 @@
     mostrarToastDeSucesso(textoDaVoz('CFG-35.apagarToast'));
   }
 
-  /** Tentar de novo: manda a chave que a pessoa tinha colado (ainda no campo). */
   function reenviar(lugar) {
     if (lugar.digitado.trim()) enviarAChave(lugar, lugar.digitado.trim());
   }
 
-  /** Trocar chave, no erro de chave recusada: limpa o campo para colar outra. */
   function trocarDeNovo(lugar) {
     lugar.erro = null;
     lugar.digitado = '';

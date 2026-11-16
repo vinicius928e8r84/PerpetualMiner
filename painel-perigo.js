@@ -5,9 +5,8 @@
   const { abrirConfirmacao, montarAviso } = raiz.Veio;
   const porId = id => document.getElementById(id);
 
-  const estado = { n: null, comConta: false, temChave: false, contaDaChave: '', uid: '' };   // n: null até o painel.js contar
+  const estado = { n: null, comConta: false, temChave: false, contaDaChave: '', uid: '' };
 
-  // A chave da OpenAI só pelos 4 últimos caracteres (`pm_chave_openai`): basta saber se há uma.
   chrome.storage.local.get({ [ChaveDaOpenAI.MARCA]: null, pm_user_info: null }, dados => {
     estado.temChave = Boolean(dados[ChaveDaOpenAI.MARCA]?.ultimos4);
     estado.contaDaChave = dados[ChaveDaOpenAI.MARCA]?.conta || '';
@@ -21,7 +20,6 @@
     }
     if ('pm_user_info' in mudancas) estado.uid = mudancas.pm_user_info.newValue?.uid || '';
   });
-  // A recusa do Apagar tudo com a Conexão fora do ar: a faixa sai quando ela volta a responder ou na próxima tentativa.
   let avisoDaRecusa = null;
   const tirarARecusa = () => {
     avisoDaRecusa?.remove();
@@ -31,7 +29,7 @@
     if (situacao === ConexaoAnki.SITUACAO.LIGADA) tirarARecusa();
   });
   let apagarTudo = () => {};
-  let partes = null;   // o conteúdo do card, montado uma vez e atualizado no lugar
+  let partes = null;
 
   function mostrarTotal(n) {
     estado.n = n;
@@ -47,10 +45,6 @@
     apagarTudo = apagar;
   }
 
-  /**
-   * A entrada é sempre o mesmo botão: o modal devolve o foco a ele quando fecha,
-   * então ele não pode ser trocado por outro enquanto isso.
-   */
   function montar() {
     const alcance = elemento('span', 'cfg-nota');
     const entrada = botao('veio-botao--perigo');
@@ -82,12 +76,6 @@
     else partes.entrada.textContent = textoDaVoz('CFG-24.todas', { n });
   }
 
-  /**
-   * Com a Conexão sem responder, o Apagar tudo não a alcançaria: um Envio dela seguiria sozinho quando o Anki abrisse, gastando a chave
-   * com as Frases apagadas. Nada é apagado e nada fica marcado; a faixa pede para abrir o Anki, e quem não tem a Conexão fica recusado
-   * até ela responder (a seleção na lista de Frases ainda apaga). Confere a Conexão agora, não a de 15 s atrás; o Tentar de novo da
-   * faixa repete a conferência (a confirmação já foi dada).
-   */
   async function apagarSeAConexaoResponde() {
     tirarARecusa();
     if (await ConexaoAnki.conferir() !== ConexaoAnki.SITUACAO.DESLIGADA) return apagarTudo();
@@ -100,7 +88,6 @@
     porId('cfg-perigo-corpo').append(avisoDaRecusa);
   }
 
-  /** “Apagar todas as 1.284 frases?”, com Cancelar (foco inicial) e o perigo preenchido. */
   function confirmarApagarTudo() {
     const { n, comConta } = estado;
     if (!estado.n) return;

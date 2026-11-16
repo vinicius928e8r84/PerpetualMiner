@@ -1,10 +1,5 @@
 'use strict';
 
-// O pareamento visto da extensão (#192): `lib/pareamento.js` e o `pedir` assinado de `lib/pedido-ao-anki.js`, carregados como as páginas os carregam, diante de uma Conexão de
-// mentira que faz o que `complemento/pareamento.py` faz (a mesma conta, as mesmas recusas: e2e/fakes/pareamento.js; o apoio é e2e/pagina-de-mentira-do-pareamento.js).
-// Aqui, o caminho feliz e o que a pessoa vê de si mesma: a mesma conta nos dois lados, parear, a resposta perdida, a sessão que muda e o pedido sempre assinado.
-// O impostor, a prova falsa, a Conexão antiga e o Desconectar estão em `test_pareamento_do_anki_ataques.js`.
-
 const assert = require('assert');
 const { webcrypto } = require('crypto');
 
@@ -13,7 +8,6 @@ const contrato = require('./complemento/contrato/carregar');
 const { ENDERECO, comoValores, criarConexao, resposta, carregarAPagina, lerJson, igual, parear, parearComChaveGuardada } = require('./e2e/pagina-de-mentira-do-pareamento');
 
 async function main() {
-  // A mesma conta nos dois lados: o vetor do contrato (o mesmo que complemento/test_pareamento.py confere em Python).
   {
     const vetor = contrato.vetorDeAssinatura;
     const chave = await webcrypto.subtle.importKey('raw', Buffer.from(vetor.segredo, 'base64'), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
@@ -28,7 +22,6 @@ async function main() {
   }
 
 
-  // Sem pareamento nada privado sai: a resposta é um 401 na hora, e a Conexão só viu o que o pareamento pede.
   {
     const conexao = criarConexao({ navegadores: [] });
     const pagina = carregarAPagina(conexao);
@@ -42,7 +35,6 @@ async function main() {
   }
 
 
-  // Parear: o código errado diz as tentativas; o certo guarda o segredo como CryptoKey não extraível, e o pedido seguinte sai assinado e volta provado.
   {
     const conexao = criarConexao({ navegadores: [] });
     const pagina = carregarAPagina(conexao);
@@ -61,13 +53,11 @@ async function main() {
     const privado = conexao.vistos.at(-1);
     assert.ok(privado.cabecalhos['x-perpetualminer-assinatura'] && privado.cabecalhos['x-perpetualminer-nonce'], 'o pedido privado vai assinado');
     assert.strictEqual(pagina.Pareamento.estado(), 'pareada');
-    // O segredo passou pela rede uma vez só, na resposta do `concluir`.
     const vezesQueOSegredoSaiu = conexao.vistos.filter(v => JSON.stringify(v).includes(conexao.pareamento.pareados().values().next().value)).length;
     assert.strictEqual(vezesQueOSegredoSaiu, 0, 'a extensão nunca manda o segredo');
   }
 
 
-  // A resposta do `concluir` se perde: tentar de novo com o mesmo código dá o mesmo segredo, sem outro navegador.
   {
     const conexao = criarConexao({ navegadores: [] });
     const pagina = carregarAPagina(conexao);
@@ -86,7 +76,6 @@ async function main() {
   }
 
 
-  // O código venceu ou foi gasto: a tela recebe `venceu` (e o `cliente` seguinte é outro).
   {
     const conexao = criarConexao({ navegadores: [] });
     const pagina = carregarAPagina(conexao);
@@ -96,17 +85,16 @@ async function main() {
   }
 
 
-  // A Conexão subiu entre o `conferir` e o pedido (outra sessão): o pedido volta `session_expired`, o `conferir` é refeito e o pedido segue, uma vez.
   {
     const conexao = criarConexao();
     const pagina = carregarAPagina(conexao);
     await parearComChaveGuardada(pagina);
     const antiga = criarConexao();
-    const nova = criarConexao();   // outra subida: outra sessão, mesmos navegadores
+    const nova = criarConexao();
     let provouNaAntiga = false;
     conexao.fetch = (url, opcoes) => {
       const ehConferir = new URL(url).pathname === '/pareamento/conferir';
-      if (ehConferir && !provouNaAntiga) {   // só o primeiro `conferir` chegou à subida de antes
+      if (ehConferir && !provouNaAntiga) {
         provouNaAntiga = true;
         return antiga.fetch(url, opcoes);
       }
@@ -118,7 +106,6 @@ async function main() {
   }
 
 
-  // Nenhuma sessão é reaproveitada: cada pedido assinado, de leitura ou não, prova a Conexão de novo antes de sair (L8 fora do desenho).
   {
     const conexao = criarConexao();
     const pagina = carregarAPagina(conexao);
@@ -132,7 +119,6 @@ async function main() {
   }
 
 
-  // Outra aba (ou o service worker) lê a mesma credencial do IndexedDB e prova a Conexão por conta própria.
   {
     const conexao = criarConexao({ navegadores: [] });
     const paginaA = carregarAPagina(conexao);
@@ -143,7 +129,6 @@ async function main() {
   }
 
 
-  // Todo pedido que a extensão sabe fazer sai assinado, menos a saúde e o pareamento: os construtores de `PedidoAoAnki` não têm como esquecer.
   {
     const conexao = criarConexao();
     const pagina = carregarAPagina(conexao);
