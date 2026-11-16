@@ -13,11 +13,11 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import servidor  # noqa: E402
-from test_harness import ConexaoNoTeste, RESPONDIDOS, ler_o_contrato  # noqa: E402
-from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
-from complemento.test_matriz_de_rotas import MATRIZ  # noqa: E402
-from test_harness import tearDownModule  # noqa: E402,F401
+from complemento import servidor
+from test_harness import ConexaoNoTeste, RESPONDIDOS, ler_o_contrato
+from complemento.test_colecao_em_memoria import ColecaoEmMemoria
+from complemento.test_matriz_de_rotas import MATRIZ
+from test_harness import tearDownModule
 
 
 class QuebradaAoLer(ColecaoEmMemoria):

@@ -16,9 +16,9 @@ from datetime import date
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento.test_envio import ID, OUTRO_ID, EnvioNoTeste, chats, pedido  # noqa: E402
-from complemento.test_envio_retomada import TRES_FRASES  # noqa: E402
-from complemento.test_harness import ConexaoNoTeste, ler_o_contrato, semear_a_fila  # noqa: E402
+from complemento.test_envio import ID, OUTRO_ID, EnvioNoTeste, chats, pedido
+from complemento.test_envio_retomada import TRES_FRASES
+from complemento.test_harness import ConexaoNoTeste, ler_o_contrato, semear_a_fila
 
 DUAS_FRASES = ("give up : She gave up smoking", "keep running : They keep running")
 NO_TETO = {"reason": "monthly_cap"}
@@ -75,7 +75,7 @@ class OTetoDoMesVemLigado(unittest.TestCase):
             resposta = teto_de(conexao)
             arquivos = os.listdir(pasta)
         self.assertEqual(resposta, (200, {"limitUsd": 10.0, "spentUsd": 0.0, "month": "2026-10"}))
-        self.assertNotIn("teto-do-mes.json", arquivos)  # o padrão não é gravado: só o que a pessoa escolhe
+        self.assertNotIn("teto-do-mes.json", arquivos)
 
     def test_o_gasto_e_o_da_chave_no_mes_e_o_mes_anterior_nao_conta(self):
         gastos = fila_com_gasto(registro("2026-10-12", "tokens", 8.3), registro("2026-09-30", "tokens", 5.0))
@@ -143,7 +143,7 @@ class NoTetoOEnvioPausaAntesDoProximoCartao(unittest.TestCase):
             ainda = conexao.estado(ID)
         self.assertEqual((pausado["status"], pausado["lastError"], ainda["waiting"]), ("running", None, NO_TETO))
         self.assertEqual(sorted(c["status"] for c in ainda["cards"].values()), ["added", "pending"])
-        self.assertEqual((pedidos, notas), (1, 1))  # o primeiro Cartão foi feito; o segundo nem foi pedido
+        self.assertEqual((pedidos, notas), (1, 1))
 
     def test_abaixo_do_teto_o_envio_segue_sem_esperar(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTetoDoMes(pasta) as conexao:
@@ -199,7 +199,7 @@ class NoTetoOEnvioPausaAntesDoProximoCartao(unittest.TestCase):
                 depois = teto_de(conexao)[1]
         self.assertEqual((antes["spentUsd"], antes["month"]), (10.0, "2026-10"))
         self.assertEqual((fim["status"], "waiting" in fim), ("completed", False))
-        self.assertEqual((depois["month"], depois["limitUsd"]), ("2026-11", 10.0))  # o teto fica; a conta do mês é que recomeça
+        self.assertEqual((depois["month"], depois["limitUsd"]), ("2026-11", 10.0))
 
     def test_o_apagar_tudo_encerra_o_envio_pausado_pelo_teto(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTetoDoMes(pasta, teto=0.04, espera_do_teto=300) as conexao:
@@ -221,7 +221,7 @@ class NoTetoOEnvioPausaAntesDoProximoCartao(unittest.TestCase):
             with EnvioNoTetoDoMes(pasta, teto=0.04) as conexao:
                 pausado = conexao.esperar(ID, esperando_o_teto)
                 pedidos = len(chats(conexao.openai))
-        self.assertEqual((pausado["status"], pedidos), ("running", 0))  # o gasto do mês ficou nos custos: a segunda Conexão nem pede o texto
+        self.assertEqual((pausado["status"], pedidos), ("running", 0))
 
 
 if __name__ == "__main__":

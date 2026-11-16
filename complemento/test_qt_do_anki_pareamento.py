@@ -14,7 +14,7 @@ from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import janela, qt_do_anki  # noqa: E402
+from complemento import janela, qt_do_anki
 
 
 class Sinal:
@@ -151,7 +151,7 @@ class ODialogoDoCodigo(unittest.TestCase):
             qt.mostrar_codigo(mw, "Código para conectar o PerpetualMiner: K7M-4PX. Vale por 5 minutos", "Cancelar", lambda: None)
         dialogo = aqt.dialogos[0]
         self.assertEqual((len(aqt.dialogos), dialogo.titulo, dialogo.visivel), (1, "PerpetualMiner", True))
-        self.assertEqual((dialogo.mostradas, dialogo.trazidas, dialogo.ativadas), (1, 1, 1))   # o pedido repetido, com o diálogo à vista, não o traz de novo
+        self.assertEqual((dialogo.mostradas, dialogo.trazidas, dialogo.ativadas), (1, 1, 1))
         self.assertEqual([r.texto for r in aqt.rotulos], ["Código para conectar o PerpetualMiner: K7M-4PX. Vale por 5 minutos"])
         self.assertEqual([b.texto for b in aqt.botoes], ["Cancelar"])
 

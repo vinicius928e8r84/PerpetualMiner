@@ -7,8 +7,8 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import baralhos, cartoes_do_anki  # noqa: E402
-from complemento.motor import estilos  # noqa: E402
+from complemento import baralhos, cartoes_do_anki
+from complemento.motor import estilos
 
 
 class ModelosEmMemoria:
@@ -21,7 +21,7 @@ class ModelosEmMemoria:
         self._exigir_gravavel()
         if nome not in self._tipos:
             raise baralhos.TipoDeNotaAusente(nome)
-        if nome not in self._cartoes_dos_tipos:  # um tipo da pessoa, sem o modelo da Conexão
+        if nome not in self._cartoes_dos_tipos:
             raise baralhos.TipoDeNotaAlterado(nome)
         novo = dict(modelo, css=css)
         mudou = self._cartoes_dos_tipos[nome] != novo
@@ -61,7 +61,7 @@ class ModelosEmMemoria:
         for guid, nota in sorted(self._notas.items(), key=lambda item: item[1].get("id", 0)):
             escrita = nota["campos"].get(campos["frase_escrita"], "")
             if nota["tipo_de_nota"] == idioma["tipo_de_nota"] and cartoes_do_anki.a_frase_como_texto(escrita) and escrita != nota["campos"].get(campos["escrito_antes"], ""):
-                texto = lambda chave: cartoes_do_anki.a_frase_como_texto(nota["campos"].get(campos[chave]))  # noqa: E731
+                texto = lambda chave: cartoes_do_anki.a_frase_como_texto(nota["campos"].get(campos[chave]))
                 achadas.append({"guid": guid, "escrita": texto("frase_escrita"), "frase": texto("frase"), "palavra": texto("palavra")})
                 if len(achadas) >= limite:
                     break

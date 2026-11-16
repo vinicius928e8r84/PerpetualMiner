@@ -13,10 +13,10 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento.test_envio import CHAVE, ID, EnvioNoTeste, chats, pedido  # noqa: E402
-from complemento.test_envio_audio import FRASE, RUSSO, sons, so_o_audio  # noqa: E402
-from complemento.test_openai_de_mentira import audio_da_openai  # noqa: E402
-from complemento.test_voz_de_mentira import audio_de_mentira  # noqa: E402
+from complemento.test_envio import CHAVE, ID, EnvioNoTeste, chats, pedido
+from complemento.test_envio_audio import FRASE, RUSSO, sons, so_o_audio
+from complemento.test_openai_de_mentira import audio_da_openai
+from complemento.test_voz_de_mentira import audio_de_mentira
 
 CARTAO = "1760000000000-0"
 
@@ -38,7 +38,6 @@ def audios_da_nota(conexao):
 
 class QuandoOGoogleFalha(unittest.TestCase):
     def test_o_400_do_google_na_palavra_cai_para_a_voz_da_openai_pela_chave_e_o_cartao_entra_com_os_dois_audios(self):
-        # O risco 11: a voz da Palavra por translate.google.com deu 400 no Mac do dono.
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
             conexao.voz.recusar("com", 400)
             conexao.criar(pedido(ID, FRASE))
@@ -75,7 +74,7 @@ class QuandoOGoogleFalha(unittest.TestCase):
             da_palavra = audios_da_nota(conexao)[1]
             pedidos_ao_google = [p for p in conexao.voz.pedidos if p[0] == "com"]
         self.assertEqual(estado["status"], "completed")
-        self.assertEqual(len(pedidos_ao_google), 3)  # o pedido e as duas esperas, antes da reserva
+        self.assertEqual(len(pedidos_ao_google), 3)
         self.assertEqual(da_palavra, audio_da_openai("alloy", "gave up"))
 
     def test_a_resposta_sem_audio_do_google_tambem_cai_para_a_reserva(self):

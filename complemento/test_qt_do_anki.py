@@ -11,7 +11,7 @@ from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import configuracao, janela, qt_do_anki, registro  # noqa: E402
+from complemento import configuracao, janela, qt_do_anki, registro
 
 
 class _Qualquer:
@@ -37,7 +37,7 @@ class AqtDeMentira:
                 self.finished = Sinal()
                 self.visivel, self.mostradas, self.trazidas, self.ativadas = False, 0, 0, 0
                 self.largura, self.redimensionamentos = 420, []
-                self.ajustes = []  # os textos dos rótulos no momento em que a janela pediu o tamanho certo
+                self.ajustes = []
                 aqui.dialogos.append(self)
 
             def show(self):
@@ -54,7 +54,7 @@ class AqtDeMentira:
             def adjustSize(self):
                 aqui.eventos.append("adjustSize")
                 self.ajustes.append([rotulo.texto for rotulo in aqui.rotulos])
-                self.largura = 420  # o Qt volta ao tamanho que o texto pede
+                self.largura = 420
 
             def width(self):
                 return self.largura
@@ -176,7 +176,7 @@ class AFronteiraComOQtDoAnki(unittest.TestCase):
         self.assertIsNotNone(aqt.formularios[0].politica)
         self.assertEqual(aqt.eventos, ["activate", "adjustSize"])
         textos = aqt.dialogos[0].ajustes[0]
-        self.assertEqual([t for t in textos if not t], [""])  # só o rótulo do Baralho, sem Envio, fica vazio
+        self.assertEqual([t for t in textos if not t], [""])
 
     def test_a_janela_so_pede_o_tamanho_quando_o_texto_muda_para_nao_desfazer_o_que_a_pessoa_redimensionou(self):
         with AqtDeMentira() as aqt:
@@ -198,7 +198,7 @@ class AFronteiraComOQtDoAnki(unittest.TestCase):
             atual = [base]
             qt.abrir_janela(object(), lambda: atual[0])
             dialogo = aqt.dialogos[0]
-            dialogo.largura = 700  # a pessoa alargou a janela
+            dialogo.largura = 700
             atual[0] = base._replace(ultimo_erro="falhou")
             aqt.relogios[0].timeout.ligados[0]()
         self.assertEqual(dialogo.width(), 700)

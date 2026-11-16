@@ -13,10 +13,10 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento.test_envio import CHAVE, EnvioNoTeste  # noqa: E402
-from complemento.test_openai_de_mentira import audio_da_openai  # noqa: E402
-from complemento.test_harness import ConexaoNoTeste  # noqa: E402
-from complemento.test_voz_de_mentira import dito  # noqa: E402
+from complemento.test_envio import CHAVE, EnvioNoTeste
+from complemento.test_openai_de_mentira import audio_da_openai
+from complemento.test_harness import ConexaoNoTeste
+from complemento.test_voz_de_mentira import dito
 
 
 def ouvir(conexao, **corpo):

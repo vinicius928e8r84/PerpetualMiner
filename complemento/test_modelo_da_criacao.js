@@ -1,9 +1,5 @@
 'use strict';
 
-// O script do modelo de Cartão da frente Criação (#168), `complemento/modelo_da_criacao.js`, rodando como roda dentro do Anki: numa página de mentira com o
-// que o modelo põe na frente e no verso (os campos escondidos, o lugar do texto e o “✓ usou a palavra”). Confere o que a pessoa vê, sem IA.
-// Roda sem navegador: `node complemento/test_modelo_da_criacao.js`.
-
 const assert = require('assert');
 const fs = require('fs');
 const vm = require('vm');
@@ -19,7 +15,6 @@ function elemento(textoInicial = '') {
   };
 }
 
-/** Uma página de Cartão: `elementos` por id, o que a página guarda de uma tela para a outra (`guardado`, compartilhável) e o `pycmd` (ou nenhum, como no AnkiDroid). */
 function pagina({ elementos, guardado = new Map(), comPycmd = true, semStorage = false }) {
   const mensagens = [];
   const janela = {};
@@ -44,7 +39,6 @@ function versoDeUmCartao({ palavra, raiz = '', gravada = '', ...resto }) {
   };
 }
 
-/** A pessoa escreve `frase` na frente e vê o verso: devolve o verso. */
 function escreverEVer(frase, cartao, { comPycmd = true } = {}) {
   const guardado = new Map();
   const campo = elemento();
@@ -57,7 +51,6 @@ function escreverEVer(frase, cartao, { comPycmd = true } = {}) {
 const INGLES = { palavra: 'give up' };
 const usou = (frase, cartao) => escreverEVer(frase, cartao).verso.usouAPalavra;
 
-// -- ✓ usou a palavra, no inglês: a Palavra ou o radical dela --
 assert.strictEqual(usou('I want to give up sugar.', INGLES), true, 'a Palavra como está');
 assert.strictEqual(usou('She gives up easily.', INGLES), true, 'a Palavra flexionada (give → gives)');
 assert.strictEqual(usou('GIVE UP now!', INGLES), true, 'maiúsculas e pontuação não contam');
@@ -70,7 +63,6 @@ assert.strictEqual(usou('Never give in.', INGLES), false, 'só uma das palavras 
 assert.strictEqual(usou('She runs every morning.', { palavra: 'running' }), true, 'a consoante dobrada não atrapalha o radical');
 assert.strictEqual(usou('The studies were long.', { palavra: 'studied' }), true, 'studied → studies');
 
-// -- ✓ usou a palavra, no russo: o radical vem dos campos da morfologia (Raiz) --
 const RUSSO = { palavra: 'приходила', raiz: 'ход' };
 assert.strictEqual(usou('Он всегда приходит рано.', RUSSO), true, 'outra forma da mesma raiz');
 assert.strictEqual(usou('Она ушла вчера.', RUSSO), false, 'sem a raiz');
@@ -79,7 +71,6 @@ assert.strictEqual(usou('Она пришла вчера.', { palavra: 'прих�
 assert.strictEqual(usou('Приходи́ла вчера.', { palavra: 'приходила' }), true, 'o sinal de tônica não atrapalha');
 assert.strictEqual(usou('Ёлка стоит.', { palavra: 'елка' }), true, 'ё vale e');
 
-// -- o verso --
 {
   const { verso } = escreverEVer('I will never give up.', INGLES);
   assert.deepStrictEqual(verso, { voceEscreveu: 'I will never give up.', usouAPalavra: true }, 'o verso mostra o que foi escrito, com o ✓');
@@ -98,7 +89,6 @@ assert.deepStrictEqual(
   'sem o que a página guardou, vale a frase que a Conexão gravou no campo');
 assert.deepStrictEqual(escreverEVer('I give up.', INGLES, { comPycmd: false }).verso, { voceEscreveu: 'I give up.', usouAPalavra: true }, 'sem pycmd (AnkiDroid), o ✓ funciona');
 
-// -- a frente --
 {
   const { frente } = escreverEVer('I give up.', INGLES);
   assert.deepStrictEqual(frente.mensagens, ['perpetualminer:criacao:I give up.'], 'a frase vai à Conexão com a mensagem da Criação, uma vez');
