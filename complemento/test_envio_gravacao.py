@@ -13,7 +13,7 @@ from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import envio, gravacao_de_json  # noqa: E402
+from complemento import envio, gravacao_de_json
 
 THREADS = 4
 
@@ -28,14 +28,14 @@ class DuasGravacoesDoMesmoArquivo(unittest.TestCase):
             def dump_que_espera_as_outras(dados, arquivo, **opcoes):
                 dump(dados, arquivo, **opcoes)
                 arquivo.flush()
-                todas_escreveram.wait()  # todas já escreveram o provisório antes de qualquer uma renomear
+                todas_escreveram.wait()
 
             erros = []
 
             def gravar(numero):
                 try:
                     gravacao_de_json.gravar_json(caminho, {"quem": numero})
-                except BaseException as erro:  # noqa: BLE001
+                except BaseException as erro:
                     erros.append(erro)
 
             with mock.patch.object(gravacao_de_json.json, "dump", dump_que_espera_as_outras):

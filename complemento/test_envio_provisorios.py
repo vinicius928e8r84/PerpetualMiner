@@ -11,7 +11,7 @@ from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento.test_envio import ID, LINHA, PALAVRA, EnvioNoTeste, pedido  # noqa: E402
+from complemento.test_envio import ID, LINHA, PALAVRA, EnvioNoTeste, pedido
 
 
 def os_novos(pasta):
@@ -20,8 +20,6 @@ def os_novos(pasta):
 
 class OProvisorioDaMorteSaiNaSubida(unittest.TestCase):
     def test_o_provisorio_novo_que_a_morte_deixou_sai_na_subida_e_a_frase_nao_sobra_depois_do_envio_concluido(self):
-        # A Conexão morreu entre escrever o provisório e renomeá-lo (#318: o nome é único por gravação, então nenhuma gravação
-        # seguinte o reescreve): sem a limpeza na subida, a Frase ficaria em `fila/` para sempre, mesmo com o Envio concluído.
         with tempfile.TemporaryDirectory() as pasta:
             with EnvioNoTeste(pasta, trabalhando=False) as conexao:
                 conexao.criar(pedido(ID, LINHA))

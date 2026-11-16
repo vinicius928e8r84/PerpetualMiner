@@ -15,10 +15,10 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import tipo_de_nota  # noqa: E402
-from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
-from complemento.test_contrato_da_criacao import SO_O_DEFAULT  # noqa: E402
-from complemento.test_envio import ID, OUTRO_ID, EnvioNoTeste, pedido  # noqa: E402
+from complemento import tipo_de_nota
+from complemento.test_colecao_em_memoria import ColecaoEmMemoria
+from complemento.test_contrato_da_criacao import SO_O_DEFAULT
+from complemento.test_envio import ID, OUTRO_ID, EnvioNoTeste, pedido
 
 FRASE = "gave up : She gave up smoking [Context: Série - The Office - S01E01]"
 INGLES = "PerpetualMiner Inglês"
@@ -113,7 +113,7 @@ class TrocarAFrenteSoEditaOModelo(unittest.TestCase):
     def test_abrir_o_perfil_nao_regrava_o_tipo_da_pessoa_que_nao_tem_so_o_nosso_modelo(self):
         colecao = ColecaoEmMemoria(SO_O_DEFAULT)
         tipo_de_nota.preparar(colecao)
-        colecao._cartoes_dos_tipos.pop(INGLES)  # um tipo da pessoa, sem o modelo da Conexão
+        colecao._cartoes_dos_tipos.pop(INGLES)
         antes = colecao.modelos_do_tipo_de_nota(INGLES)
         tipo_de_nota.preparar(colecao)
         self.assertEqual(colecao.modelos_do_tipo_de_nota(INGLES), antes)

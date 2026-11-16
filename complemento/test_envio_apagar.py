@@ -13,8 +13,8 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
-from complemento.test_envio import (  # noqa: E402
+from complemento.test_colecao_em_memoria import ColecaoEmMemoria
+from complemento.test_envio import (
     FIM, ID, INGLES, LINHA, EnvioNoTeste, apagar_as_frases, chats, pedido,
 )
 
@@ -29,7 +29,7 @@ class AConexaoQueSobeEsperaAExtensao(unittest.TestCase):
         with EnvioNoTeste(pasta, colecao=colecao) as conexao:
             conexao.criar(pedido(ID, LINHA))
             conexao.esperar(ID, lambda estado: estado["stage"] == "wait_anki")
-        colecao.abrir()  # o Anki reabre: é o que sobe a Conexão de novo
+        colecao.abrir()
 
     def estado_no_disco(self, pasta):
         with open(os.path.join(pasta, "estado", ID + ".json"), encoding="utf-8") as arquivo:

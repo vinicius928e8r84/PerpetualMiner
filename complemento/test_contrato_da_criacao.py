@@ -10,21 +10,21 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import baralhos, tipo_de_nota  # noqa: E402
-from complemento.test_contrato_da_correcao import ContratoDaCorrecao  # noqa: E402
-from complemento.test_contrato_do_gancho_da_criacao import ContratoDoGanchoDaCriacao  # noqa: E402
+from complemento import baralhos, tipo_de_nota
+from complemento.test_contrato_da_correcao import ContratoDaCorrecao
+from complemento.test_contrato_do_gancho_da_criacao import ContratoDoGanchoDaCriacao
 
 # O que os níveis, a morfologia do russo, as frentes e a Criação vão usar (#138, “o nome exato dos campos é da construção”):
 # mudar os campos depois força uma sincronização completa no Anki, então todos nascem juntos.
 CAMPOS_DOS_DOIS = [
     "Frase", "Áudio da frase", "Palavra", "Áudio da palavra", "Pronúncia", "Tradução literal", "Tradução natural", "Contexto da cena",
     "Fonte", "Imagem",
-    "Definição", "Outro exemplo",  # o Intermediário e o Avançado
-    "Dica", "Frase com lacuna",  # a frente Lacuna
-    "Frase escrita", "Escrito antes", "Correção",  # a frente Criação e a correção do próximo Envio
+    "Definição", "Outro exemplo",
+    "Dica", "Frase com lacuna",
+    "Frase escrita", "Escrito antes", "Correção",
 ]
-CAMPOS_SO_DO_INGLES = ["Significado simples", "Gatilho"]  # o Cartão de inglês de hoje, que o Avançado continua
-CAMPOS_SO_DO_RUSSO = ["Sílaba forte", "Morfologia", "Explicação das cores", "Mesma raiz", "Raiz", "Significado simples"]  # a morfologia do russo
+CAMPOS_SO_DO_INGLES = ["Significado simples", "Gatilho"]
+CAMPOS_SO_DO_RUSSO = ["Sílaba forte", "Morfologia", "Explicação das cores", "Mesma raiz", "Raiz", "Significado simples"]
 ANKI_EM_INGLES = {"baralhos": [{"nome": "Default"}], "tiposDeNota": {"Basic": ["Front", "Back"]}}
 SO_O_DEFAULT = {"baralhos": [{"nome": "Default"}]}
 
@@ -66,7 +66,7 @@ class ContratoDaCriacao(ContratoDaCorrecao, ContratoDoGanchoDaCriacao):
         resultado = self.preparar(colecao)
         self.assertEqual(sorted(colecao.nomes_dos_baralhos()), ["CIMV", "Default", "RUSSIAN"])
         self.assertEqual(resultado["baralhos"], [])
-        self.assertEqual(resultado["tipos"], {"en": True, "ru": True})  # o tipo de nota nasce para quem já tem baralho também
+        self.assertEqual(resultado["tipos"], {"en": True, "ru": True})
 
     def test_um_baralho_de_outro_nome_que_a_pessoa_ja_tem_basta_para_nao_criar_os_nossos(self):
         colecao = self.adaptador({"baralhos": [{"nome": "Default"}, {"nome": "Meu inglês"}]})
@@ -103,7 +103,7 @@ class ContratoDaCriacao(ContratoDaCorrecao, ContratoDoGanchoDaCriacao):
         self.assertEqual(colecao.modelos_do_tipo_de_nota("PerpetualMiner Inglês"), tipo_de_nota.definicao("en", frente="criacao")["modelos"])
         self.assertEqual(colecao.tipo_de_nota("PerpetualMiner Inglês"), campos)
         self.assertEqual(resultado, {"tipos": {"en": False, "ru": False}, "baralhos": []})
-        self.assertFalse(tipo_de_nota.atualizar_a_criacao(colecao, "en"))  # repetir não muda nada
+        self.assertFalse(tipo_de_nota.atualizar_a_criacao(colecao, "en"))
 
     def test_um_tipo_que_a_pessoa_trocou_de_frente_fica_como_esta_ao_abrir_o_perfil(self):
         colecao = self.com_a_criacao_de_antes()
@@ -135,12 +135,12 @@ class ContratoDaCriacao(ContratoDaCorrecao, ContratoDoGanchoDaCriacao):
         colecao = self.adaptador({"baralhos": [{"nome": "Default"}, {"nome": "Inglês", "notas": [{"frente": "She <b>gave up</b> smoking", "verso": "x"}]}]})
         self.preparar(colecao)
         frentes = ("Frase", "Frente", "Front")
-        gravar = lambda guid, frase: colecao.gravar_cartao(  # noqa: E731
+        gravar = lambda guid, frase: colecao.gravar_cartao(
             "Inglês", "PerpetualMiner Inglês", {"Frase": frase}, [], guid, frentes, frase.casefold().replace("<b>", "").replace("</b>", ""),
             lambda valor: valor.casefold().replace("<b>", "").replace("</b>", ""))
-        self.assertEqual(gravar("g1", "She <b>gave up</b> smoking"), "duplicate")  # o do dono, no Básico
+        self.assertEqual(gravar("g1", "She <b>gave up</b> smoking"), "duplicate")
         self.assertEqual(gravar("g2", "They keep running"), "added")
-        self.assertEqual(gravar("g3", "They keep <b>running</b>"), "duplicate")  # o novo, no tipo próprio
+        self.assertEqual(gravar("g3", "They keep <b>running</b>"), "duplicate")
         self.assertEqual(len(colecao.cartoes_do_baralho("Inglês")), 2)
 
     def test_o_cartao_novo_do_tipo_proprio_chega_a_leitura_do_vocabulario_como_frente_e_palavra(self):
@@ -150,8 +150,6 @@ class ContratoDaCriacao(ContratoDaCorrecao, ContratoDoGanchoDaCriacao):
             "PerpetualMiner::Inglês", "PerpetualMiner Inglês", {"Frase": "She <b>gave up</b> smoking", "Palavra": "gave up – /ɡeɪv ʌp/"}, [], "g1")
         resposta = baralhos.vocabulario(colecao, "PerpetualMiner::Inglês", "en")
         self.assertEqual([palavra["word"] for palavra in resposta["words"] if palavra["type"] == "term"], ["gave up"])
-
-    # -- a troca da frente (#166): só o modelo de Cartão do tipo de nota --
 
     def com_notas_gravadas(self):
         """Uma coleção preparada, com um Cartão do inglês já gravado (o que a troca de frente não pode tocar)."""
@@ -253,7 +251,7 @@ class ContratoDaCriacao(ContratoDaCorrecao, ContratoDoGanchoDaCriacao):
 
     def test_no_russo_o_verso_sem_a_frase_so_vale_na_frente_frase_com_audio_porque_nas_outras_a_frase_ainda_nao_foi_vista(self):
         colecao = self.com_notas_gravadas()
-        verso = lambda: colecao.modelos_do_tipo_de_nota("PerpetualMiner Russo")[0]["verso"]  # noqa: E731
+        verso = lambda: colecao.modelos_do_tipo_de_nota("PerpetualMiner Russo")[0]["verso"]
         self.assertIn("{{^Sílaba forte}}{{FrontSide}}", verso())
         for frente in ("ouvir_primeiro", "lacuna"):
             tipo_de_nota.trocar_a_frente(colecao, "ru", frente)

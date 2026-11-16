@@ -14,7 +14,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento.test_conserto import META_DESATIVADO, PID, CONSERTAR, Mundo  # noqa: E402,F401
+from complemento.test_conserto import META_DESATIVADO, PID, CONSERTAR, Mundo
 
 
 @unittest.skipIf(os.name == "nt", "o script do Mac roda num sh")
@@ -38,7 +38,7 @@ class NoMacComMeta(unittest.TestCase):
     def test_anki_que_a_pessoa_fecha_antes_do_term_continua_fechado_e_o_meta_json_nao_e_tocado(self):
         self.mundo.meta_com(META_DESATIVADO)
         antes = self.mundo.meta_atual()
-        self.mundo.anki_some_na_chamada_do_ps(2)   # a 1ª é a do consertar, a 2ª a de quem acha os processos a fechar
+        self.mundo.anki_some_na_chamada_do_ps(2)
         self.assertEqual(self.mundo.consertar(), {"situacao": "fechou"})
         self.assertEqual(self.mundo.meta_atual(), antes)
         self.assertEqual(self.mundo.passos(), [])

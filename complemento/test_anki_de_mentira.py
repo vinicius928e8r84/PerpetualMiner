@@ -42,7 +42,7 @@ class ThreadPrincipalDeMentira:
         self.thread = threading.Thread(target=self._rodar, name="principal-do-anki", daemon=True)
         self.thread.start()
         self.parada = False
-        self.livre = threading.Event()  # limpo: a thread principal está ocupada e as tarefas esperam a vez
+        self.livre = threading.Event()
         self.livre.set()
 
     def _rodar(self):
@@ -116,12 +116,12 @@ class ColecaoDoAnkiDeMentira:
                     self._sqlite.execute(
                         "insert into cards (nid, did, odid, type, ivl) values (?, ?, 0, ?, ?)", (proxima, indice, cartao["tipo"], cartao["intervalo"])
                     )
-        tipos = descricao.get("tiposDeNota") or {"Básico": ["Frente", "Verso"]}  # os tipos de nota que a coleção tem (o “Básico” se não dito)
+        tipos = descricao.get("tiposDeNota") or {"Básico": ["Frente", "Verso"]}
         self._nomes_dos_modelos = {nome: tuple(campos) for nome, campos in tipos.items()}
         for nomes in self._nomes_dos_modelos.values():
             self._modelos.setdefault(nomes, len(self._modelos) + 1)
-        self.atualizacoes_de_tipo = []  # os tipos de nota que o complemento regravou (`models.update_dict`)
-        self.tipos_criados = {}  # os tipos de nota que o complemento criou (`models.add_dict`): nome → o dicionário que ele montou
+        self.atualizacoes_de_tipo = []
+        self.tipos_criados = {}
         self.decks = types.SimpleNamespace(all_names_and_ids=self._conferido(lambda: list(self._baralhos)), id=self._conferido(self._id_do_baralho))
         self.models = types.SimpleNamespace(
             get=self._conferido(self._modelo), by_name=self._conferido(self._modelo_por_nome), new=self._conferido(self._novo_tipo),
@@ -134,7 +134,7 @@ class ColecaoDoAnkiDeMentira:
         self.get_note = self._conferido(self._nota_gravada)
         self.update_note = self._conferido(self._regravar)
         self.arquivos_de_midia = {}
-        self._pasta_da_midia = tempfile.TemporaryDirectory()  # a pasta de mídia da coleção (`media.dir()`), de arquivos de verdade
+        self._pasta_da_midia = tempfile.TemporaryDirectory()
         self.media = types.SimpleNamespace(
             write_data=self._conferido(self._guardar_a_midia), dir=lambda: self._pasta_da_midia.name)
 
@@ -167,7 +167,7 @@ class ColecaoDoAnkiDeMentira:
         nomes = self._nomes_dos_modelos.get(nome)
         if nomes is None:
             return None
-        guardado = copy.deepcopy(self.tipos_criados.get(nome, {}))  # uma cópia, como o dicionário do Anki: só `update_dict` grava
+        guardado = copy.deepcopy(self.tipos_criados.get(nome, {}))
         return dict(self._modelo(self._modelos[nomes]), name=nome, id=self._modelos[nomes], nomes=nomes, tmpls=guardado.get("tmpls", []), css=guardado.get("css", ""))
 
     @staticmethod
@@ -184,7 +184,7 @@ class ColecaoDoAnkiDeMentira:
         nomes = tuple(campo["name"] for campo in tipo["flds"])
         for modelo in tipo["tmpls"]:
             for citado in re.findall(r"\{\{[#^/]?([^{}]+)\}\}", modelo["qfmt"] + modelo["afmt"]):
-                citado = citado.rpartition(":")[2]  # `text:Palavra`: o filtro vem antes do campo
+                citado = citado.rpartition(":")[2]
                 if citado not in nomes and citado != "FrontSide":
                     raise ValueError("o modelo %r cita o campo %r, que o tipo não tem" % (modelo["name"], citado))
 
@@ -248,12 +248,12 @@ class AnkiComColecaoDeMentira(AnkiDeMentira):
         self.pm.load = self._carregar_o_perfil
         self.descricao = descricao
         self.state = "profileManager"
-        self.profileDiag = object()  # a janela de perfis
-        self.janela_modal = None  # um diálogo modal aberto (o “Excluir” da janela de perfis, por exemplo)
+        self.profileDiag = object()
+        self.janela_modal = None
         self.janela_ativa = self.profileDiag
         self.app = types.SimpleNamespace(activeModalWidget=lambda: self.janela_modal, activeWindow=lambda: self.janela_modal or self.janela_ativa)
-        self.fechamentos_adiados = None  # com uma lista, o `unloadProfile` só guarda o que fazer depois (a sincronização ao fechar demora)
-        self.passos = []  # o que a Conexão pediu ao Anki, na ordem: o teste confere o caminho que ela fez
+        self.fechamentos_adiados = None
+        self.passos = []
         if descricao is not None:
             self.abrir(aberto or perfis[0])
 

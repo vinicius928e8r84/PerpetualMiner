@@ -15,10 +15,10 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import baralhos  # noqa: E402
-from complemento.test_colecao_em_memoria import ColecaoEmMemoria  # noqa: E402
-from complemento.test_conserto import PID, Mundo  # noqa: E402
-from complemento.test_harness import ConexaoNoTeste  # noqa: E402
+from complemento import baralhos
+from complemento.test_colecao_em_memoria import ColecaoEmMemoria
+from complemento.test_conserto import PID, Mundo
+from complemento.test_harness import ConexaoNoTeste
 
 CURL_DE_VERDADE = "/usr/bin/curl"
 
