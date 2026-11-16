@@ -88,5 +88,13 @@ async function comNuvem(fazer) {
     await assert.rejects(nuvem.listar('en'), erro => erro.motivo === Sincronizacao.MOTIVO.RECUSADO);
   });
 
+  await comNuvem(async (nuvem, pedidos, resposta) => {
+    resposta.proxima = { status: 401, corpo: { error: { message: 'expired' } } };
+    await assert.rejects(nuvem.listar('en'), erro => erro.motivo === Sincronizacao.MOTIVO.EXPIROU && erro.message === 'expired');
+    resposta.proxima = { status: 500 };
+    await assert.rejects(nuvem.listar('en'), erro => !erro.motivo && erro.status === 500 && erro.message === 'HTTP 500');
+    assert(pedidos.every(p => p.url.startsWith(Sincronizacao.URL_DOS_DOCUMENTOS)), 'os pedidos vão à raiz dos documentos da sincronização');
+  });
+
   console.log('ok: ranking');
 })().catch(erro => { console.error(erro); process.exit(1); });
