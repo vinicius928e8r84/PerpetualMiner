@@ -39,6 +39,11 @@ jobs:
         run: .agents/skills/verify-perpetualminer/scripts/mapa-de-features.sh "origin/${{ github.base_ref }}"
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
+      - name: Política do site
+        if: github.event_name == 'pull_request'
+        run: node scripts/ci/politica-do-site.js "origin/${{ github.base_ref }}"
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
       - name: Autoria dos commits
         if: ${{ !cancelled() && github.event_name == 'pull_request' }}
         run: node scripts/ci/autoria.js "origin/$BASE" "$HEAD"

@@ -1,7 +1,7 @@
 'use strict';
 
 const SECOES_DO_MODELO = ['Summary', 'Evidence', 'Merge Danger'];
-const CAMPOS_DO_MODELO = ['Door', 'Blast Radius'];
+const CAMPOS_DO_MODELO = ['Door', 'Blast Radius', 'Política'];
 const ATENCOES = ['BAIXA', 'MÉDIA', 'ALTA'];
 const ROTULO_DE_RISCO_ALTO = 'risco:alto';
 const SECAO_DA_PROVA = 'Prova real';
