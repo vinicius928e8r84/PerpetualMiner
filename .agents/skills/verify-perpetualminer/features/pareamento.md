@@ -23,7 +23,7 @@ Preconditions: `doctor.sh` green. The fixture `extensao` pairs the test browser 
 
 - **The flows.** `drive.sh pareamento pareamento.spec` (add `PM_CONEXAO=real PYTHON=python3.9` for the real server): Conectar → code → conectado, wrong and dead codes, cancel in the Anki, two Chrome profiles, Desconectar, the impostor on the port, the old Conexão. Observable: `#painel-pareamento`, `fakes.anki.pareamento.pareados()`, the IndexedDB `pm-pareamento` (non-extractable key), `extensao.lerStorage()` (no secret).
 - **The impostor.** `pareamento.spec.js › quem não é a Conexão`: a route registered after the fake answers `/health` and everything else with `200 {}`; it only ever sees `/health` and `/pareamento/conferir`, never the key typed in the AI card.
-- **Every route refuses the unsigned.** `python3.9 complemento/test_pareamento_porteiro.py` (each route of `ROTAS`, unsigned, wrong signature, old session) and the matrix of `test_servidor.py`.
+- **Every route refuses the unsigned.** `python3.9 complemento/test_pareamento_porteiro.py` (each route of `ROTAS`, unsigned, wrong signature, old session) and the matrix of `test_matriz_de_rotas.py` (run by `test_servidor_estados.py`).
 - **The protocol, both languages.** `node test_pareamento_do_anki.js` (the extension's `pedir` against a Conexão that does what the add-on does) and `complemento/test_pareamento.py` (the shared HMAC vector, the code, the 5 attempts, the 5 minutes).
 
 ## Gotchas

@@ -1,4 +1,4 @@
-"""O navegador pareado dos testes: o segredo, a assinatura de cada pedido e a janela do Anki de mentira (apoio de `test_servidor.py` e de `test_pareamento.py`).
+"""O navegador pareado dos testes: o segredo, a assinatura de cada pedido e a janela do Anki de mentira (apoio do harness `test_harness.py` e de `test_pareamento.py`).
 
 Os testes pedem à Conexão como a extensão pede: com a assinatura de um navegador que já se pareou (`CLIENTE`, `SEGREDO` em
 `user_files/pareamento.json`). O pedido de quem não se pareou, ou que assina errado, é o que `test_pareamento.py` confere.

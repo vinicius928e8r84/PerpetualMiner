@@ -1,6 +1,6 @@
 """A pasta de dados que a Conexão deixa com Envios já feitos, para os testes semearem antes de ela subir.
 
-Não é um teste: é o que os testes do Envio e dos exemplos do contrato põem na pasta (`test_servidor.semear_a_fila` o reexporta).
+Não é um teste: é o que os testes do Envio e dos exemplos do contrato põem na pasta (`test_harness.semear_a_fila` o reexporta).
 """
 
 import json
