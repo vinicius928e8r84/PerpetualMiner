@@ -15,7 +15,6 @@ function idsDaSpecDaVoz() {
   return [...catalogo.matchAll(/^\| ([A-Z]{3}-\d{2}) \|/gm)].map(m => m[1]);
 }
 
-/** Percorre o catálogo e pede cada texto, com 2 em todo valor de modelo. */
 const PEDIR_TODOS_OS_TEXTOS = () => {
   const { CATALOGO_DA_VOZ, textoDaVoz } = PerpetualMiner;
   const pedidos = [];
@@ -38,20 +37,17 @@ test('todo ID do catálogo tem texto, e um ID que não existe falha na hora', as
 
   const pedidos = await page.evaluate(PEDIR_TODOS_OS_TEXTOS);
 
-  // O módulo tem exatamente os estados que a spec da Voz lista — nem um a menos
-  // (uma tela ficaria sem texto), nem um inventado.
   const naSpec = idsDaSpecDaVoz();
   const noModulo = [...new Set(pedidos.map(p => p.id.split('.')[0]))];
   expect(naSpec.length).toBeGreaterThan(0);
   expect(noModulo.sort()).toEqual([...naSpec].sort());
 
-  // Nada volta com um modelo por preencher, e só o silêncio deliberado volta vazio.
   for (const { id, modelo, resultado } of pedidos) {
     expect(resultado, `${id} deixou um modelo sem valor`).not.toMatch(/[{}]/);
     if (modelo !== '') expect(resultado, `${id} veio vazio`).not.toBe('');
   }
 
-  // Exceção de teste: catálogo (docs/testes.md).
+  // Exceção de teste: catálogo (docs/testes.md)
   const erro = await page.evaluate(() => {
     try {
       PerpetualMiner.textoDaVoz('POP-99');
@@ -82,8 +78,6 @@ test('os números do catálogo saem no formato PT-BR', async ({ page, extensao }
   });
 });
 
-// #99, #237: na tela, o complemento do Anki se chama “Conexão com o Anki”; “complemento” não aparece, e o menu do
-// próprio Anki é citado pelo nome que ele mostra em pt-BR (Ferramentas › Extensões › Obter extensões).
 test('nenhum texto do catálogo chama a Conexão com o Anki de complemento', async ({ page, extensao }) => {
   await page.goto(extensao.url('painel.html'));
 
@@ -92,7 +86,6 @@ test('nenhum texto do catálogo chama a Conexão com o Anki de complemento', asy
 
   const comComplemento = pedidos.filter(({ modelo }) => /complemento/i.test(modelo));
   expect(comComplemento.map(({ id, modelo }) => `${id}: ${modelo}`)).toEqual([]);
-  // A conferência alcança o catálogo: as entradas com o menu do Anki estão lá.
   expect(pedidos.filter(({ modelo }) => modelo.includes('Ferramentas › Extensões')).length).toBeGreaterThan(0);
 });
 
@@ -150,12 +143,10 @@ test('o mesmo texto minerado pelo menu, pelo popup e pela foto grava o mesmo idi
     { title: 'Artigo de exemplo', url: 'https://exemplo.dev/artigo' },
   ), FRASE_RUSSA);
 
-  // 2. Popup: a mineração rápida.
   await page.goto(extensao.url('popup.html'));
   await page.getByRole('textbox', { name: 'Cole ou escreva uma frase' }).fill(FRASE_RUSSA);
   await page.getByRole('button', { name: 'Minerar', exact: true }).click();
 
-  // 3. Minerar de uma foto.
   await extensao.gravarStorage({ geminiApiKey: 'chave-de-teste' });
   fakes.gemini.responderFrases([FRASE_RUSSA]);
   await page.goto(extensao.url('bookreader.html'));

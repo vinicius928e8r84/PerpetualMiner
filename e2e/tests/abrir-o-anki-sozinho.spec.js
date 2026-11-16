@@ -32,7 +32,6 @@ const AGORA = new Date('2026-09-18T12:00:00');
 
 const SEM_PERMISSAO = 'Sem essa permissão, quando o Anki estiver fechado o Envio pede que você o abra.';
 
-/** A área Conexão com o Anki nunca conectada, e então a Conexão responde (a pessoa reiniciou o Anki). */
 async function conectarPelaPrimeiraVez(page, extensao, fakes) {
   fakes.anki.desligar();
   await page.goto(extensao.url('painel.html#anki/custos'));
@@ -43,7 +42,6 @@ async function conectarPelaPrimeiraVez(page, extensao, fakes) {
 }
 
 test('ligada, o card passa ao passo 4, Abrir o Anki sozinho, sem pedir nada ao Chrome nem ao abridor', async ({ page, extensao, fakes }) => {
-  // A extensão chega da loja sem a permissão: ela é opcional.
   expect(await extensao.permissaoDoAbridor()).toBe(false);
   await conectarPelaPrimeiraVez(page, extensao, fakes);
 
@@ -53,17 +51,13 @@ test('ligada, o card passa ao passo 4, Abrir o Anki sozinho, sem pedir nada ao C
   await expect(card(page)).toContainText('Como ligar · Passo 4 de 4');
   await expect(tituloDoPasso(page)).toHaveText('Abrir o Anki sozinho');
   await expect(card(page)).toContainText('Com a sua permissão, a extensão abre o Anki quando um Envio precisar dele. O Chrome vai pedir para ela se comunicar com o abridor que a Conexão com o Anki deixou neste computador. Agora ela só confere se acha o Anki: nada abre nem fecha.');
-  // O que a Conexão disse de si continua na tela, e o passo tem as duas saídas.
   await expect(statusDaConexao(page)).toHaveText(/^Achei o Anki · Usuário 1 · versão \d/);
   await expect(permitir(page)).toBeVisible();
   await expect(agoraNao(page)).toBeVisible();
-  // A região viva do status já está no DOM, sem texto e sem `hidden`: o que o abridor disser só troca o texto dela.
   await expect(statusDoAbridor(page)).toHaveAttribute('aria-live', 'polite');
   await expect(statusDoAbridor(page)).toBeEmpty();
   await expect(statusDoAbridor(page)).not.toHaveAttribute('hidden', /.*/);
-  // Um destaque só: no card ONB-16, o do passo é Permitir.
   await expect(page.locator('.veio-botao--primario:visible')).toHaveText(['Permitir abrir o Anki']);
-  // O card fica: o Pronto espera a resposta deste passo.
   await expect(pronto(page)).toHaveCount(0);
   await expect(abas(page)).toBeHidden();
   await fotografar(page, 'abridor-passo-3.png');
@@ -96,7 +90,6 @@ test('a Conexão cai no passo 4: as abas voltam, a pergunta fica guardada e volt
   await expect(permitir(page)).toBeVisible();
   fakes.anki.desligar();
   await tentarDaF1(page).evaluate(botao => botao.click());
-  // Sem a Conexão o passo 4 não tem o que perguntar: o card sai, e Custos e Ajustes de envio (que não dependem do Anki) ficam ao alcance.
   await expect(abas(page)).toBeVisible();
   await expect(page.locator('#anki-primeira-vez')).toBeHidden();
   await fotografar(page, 'abridor-pendente-apos-queda.png');
@@ -106,7 +99,6 @@ test('a Conexão cai no passo 4: as abas voltam, a pergunta fica guardada e volt
   await expect(page.locator('#anki-primeira-vez')).toBeHidden();
   await estadoFinal(extensao, { pm_anki_ja_conectou: true, pm_anki_abridor_pendente: true });
 
-  // A Conexão volta: a pergunta também, com as duas saídas.
   fakes.anki.ligar();
   await tentarDaF1(page).click();
   await expect(page.locator('#anki-primeira-vez-titulo')).toHaveText('Abrir o Anki sozinho');
@@ -118,7 +110,6 @@ test('a Conexão cai no passo 4: as abas voltam, a pergunta fica guardada e volt
   await estadoFinal(extensao, { pm_anki_abridor_pendente: false, pm_abridor: { agoraNao: true } });
 });
 
-// O beco de antes (T3): o card “Abrir o Anki sozinho” no passo “Reiniciar o Anki”, sem as abas, sem Permitir e sem Agora não, até o Anki abrir.
 test('quem já conectou, não respondeu ao passo 4 e está com o Anki fechado tem as abas: Ajustes de envio abre, e nada do card fica na frente', async ({ page, extensao, fakes }) => {
   await extensao.gravarStorage({ pm_anki_ja_conectou: true, pm_anki_abridor_pendente: true });
   fakes.anki.desligar();
@@ -130,12 +121,10 @@ test('quem já conectou, não respondeu ao passo 4 e está com o Anki fechado te
   await expect(page.locator('#anki-primeira-vez')).toBeHidden();
   await abas(page).getByText('Custos', { exact: true }).click();
   await expect(page.locator('#anki-custos')).toBeVisible();
-  // A pergunta não se perde: segue guardada para quando a Conexão responder.
   await estadoFinal(extensao, { pm_anki_ja_conectou: true, pm_anki_abridor_pendente: true });
 });
 
 test('quem já conectou e disse Agora não, com a Conexão desligada: o passo 4 da Boas-vindas abre em Reiniciar o Anki, com Tentar de novo', async ({ page, extensao, fakes }) => {
-  // O abridor já está resolvido (Agora não): o passo dele não teria nada a fazer com a Conexão desligada.
   fakes.anki.desligar();
   await extensao.gravarStorage({ pm_anki_ja_conectou: true, pm_abridor: { agoraNao: true } });
   await page.goto(extensao.url('painel.html#boas-vindas/anki'));
@@ -151,7 +140,6 @@ test('Permitir pede a permissão ao Chrome: o passo espera a resposta do aviso d
 
   await permitir(page).click();
 
-  // O aviso do Chrome está aberto (exceção de teste, no topo do arquivo): a tela diz o que fazer e espera.
   await expect(statusDoAbridor(page)).toHaveText('Responda ao aviso do Chrome.');
   await expect(permitir(page)).toHaveAttribute('aria-disabled', 'true');
   await expect(lista(page).getByRole('button', { name: /feito$/ })).toHaveCount(3);
@@ -161,7 +149,6 @@ test('Permitir pede a permissão ao Chrome: o passo espera a resposta do aviso d
 });
 
 test('Agora não guarda a escolha, marca o passo “agora não” e o Pronto devolve as abas', async ({ page, extensao, fakes, relogioParado }) => {
-  // O Pronto (1,8 s) fica na tela até o teste andar com o relógio.
   const relogio = await relogioParado({ em: AGORA });
   await conectarPelaPrimeiraVez(page, extensao, fakes);
 
@@ -201,7 +188,6 @@ test.describe('com a permissão que o Chrome guardou depois de Permitir', () => 
   test.use({ permissaoDoAbridor: true });
 
   test('o passo confere o abridor sozinho: achou o Anki, o passo vira ✓ e o Pronto devolve as abas', async ({ page, extensao, fakes, relogioParado }) => {
-    // O Pronto (1,8 s) fica na tela até o teste andar com o relógio.
     const relogio = await relogioParado({ em: AGORA });
     await conectarPelaPrimeiraVez(page, extensao, fakes);
 
@@ -213,7 +199,6 @@ test.describe('com a permissão que o Chrome guardou depois de Permitir', () => 
     await relogio.avancar(1_800);
     await expect(abas(page)).toBeVisible();
 
-    // Uma conversa só, com a origem da extensão, e só para conferir: nada abriu.
     expect(fakes.abridor.pedidos()).toEqual([CONFERIR]);
     await estadoFinalEm('a permissão nativeMessaging no Chrome', () => extensao.permissaoDoAbridor(), true);
     await estadoFinal(extensao, { pm_abridor: null, pm_anki_abridor_pendente: false });
@@ -225,7 +210,6 @@ test.describe('com a permissão que o Chrome guardou depois de Permitir', () => 
 
     const aviso = card(page).getByRole('alert');
     await expect(aviso).toBeVisible();
-    // O aviso é quem diz o problema: o status segue na árvore, mas sem texto, para o leitor não ler duas vezes.
     await expect(statusDoAbridor(page)).toBeEmpty();
     await expect(aviso.locator('.veio-aviso__texto')).toHaveText('O abridor não achou o Anki neste computador. Feche o Anki e abra-o de novo: ao abrir, a Conexão com o Anki refaz o abridor.');
     await aviso.getByText('Detalhes', { exact: true }).click();
@@ -237,7 +221,6 @@ test.describe('com a permissão que o Chrome guardou depois de Permitir', () => 
     await expect(pronto(page)).toHaveCount(0);
     await fotografar(page, 'abridor-nao-achou.png');
 
-    // A pessoa fechou e abriu o Anki: a Conexão refez o abridor, que agora acha o Anki.
     fakes.abridor.definir('achei');
     await tentarDoAbridor(page).click();
 
@@ -283,7 +266,6 @@ test.describe('com a permissão que o Chrome guardou depois de Permitir', () => 
 
   test('a permissão dada vence um Agora não antigo: o passo confere e o Agora não sai do que ficou guardado', async ({ page, extensao, fakes, relogioParado }) => {
     await extensao.gravarStorage({ pm_abridor: { agoraNao: true } });
-    // O Pronto (1,8 s) fica na tela até o teste andar com o relógio.
     await relogioParado({ em: AGORA });
     await conectarPelaPrimeiraVez(page, extensao, fakes);
 
@@ -307,13 +289,11 @@ test('no passo 4 da Boas-vindas, o mesmo passo: ligada, Abrir o Anki sozinho, e 
   await cardDaBoasVindas(page).locator('#bv4-tentar').click();
 
   await expect(page.locator('#bv4-passo-titulo')).toHaveText('Abrir o Anki sozinho');
-  // Na Boas-vindas, o destaque é o Continuar dela: Permitir é contorno.
   await expect(page.locator('.veio-botao--primario:visible')).toHaveText(['Continuar']);
   await cardDaBoasVindas(page).getByRole('button', { name: 'Agora não', exact: true }).first().click();
 
   await expect(page.locator('#bv4-abridor-status')).toHaveText(SEM_PERMISSAO);
   await expect(passosDaBoasVindas(page).getByRole('button', { name: /^Abrir o Anki sozinho/ })).toHaveAccessibleName(/agora não$/);
-  // O passo 4 da Boas-vindas continua feito pela Conexão ligada.
   await expect(page.getByRole('navigation', { name: 'Passos da configuração' }).getByRole('button', { name: /^Ligar a Conexão com o Anki/ }))
     .toHaveAccessibleName(/feito$/);
   expect(fakes.abridor.pedidos()).toEqual([]);

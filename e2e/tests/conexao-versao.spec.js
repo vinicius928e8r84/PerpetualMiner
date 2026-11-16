@@ -1,11 +1,5 @@
 'use strict';
 
-// A versão da Conexão com o Anki no alto do Painel (#177, BRG-50). A Conexão se atualiza sozinha pelo AnkiWeb; a extensão lê a versão
-// e a atualização na saúde e só fala em três casos: velha demais (Atualizar agora), falhou (Tentar de novo) e atualizada (discreto).
-// A Conexão é o fake da fronteira HTTP (`fakes.anki`, que responde pelos exemplos de `complemento/contrato/exemplos-da-atualizacao.json`);
-// `fakes.anki.atualizacao.definir({ versao, versaoNova })` põe as versões que o teste quer. Reiniciar o Anki é o clique que fecha o Anki e o
-// abridor de mentira (`fakes.abridor`) o abre de novo: o fake cala por alguns segundos e volta na versão nova.
-
 const { test, expect } = require('../fixtures');
 const { estadoFinal, estadoFinalEm } = require('../estado-final');
 const { abrirPainel } = require('../apoio-do-envio');
@@ -89,23 +83,20 @@ test.describe('com a permissão do abridor', () => {
     test.setTimeout(90_000);
     fakes.anki.atualizacao.definir({ versao: '0.3.9', versaoNova: '0.4.5' });
     fakes.anki.definirAtualizacao({ atualizacao: 'instalada', ankiweb: 'com_versao_nova' });
-    fakes.abridor.definir('achei_sem_abrir');   // o abridor acha o Anki e não consegue abri-lo
+    fakes.abridor.definir('achei_sem_abrir');
     await abrirPainel(page, extensao);
     await aviso(page).getByRole('button', { name: 'Reiniciar o Anki' }).click();
     await expect(aviso(page)).toContainText('Reiniciando o Anki…');
-    // O Anki fechou e não volta: a porta fica muda (o fake, sozinho, religaria em 4 s como se o abridor o tivesse aberto).
     await expect.poll(() => fakes.anki.atualizacao.reinicios()).toBe(1);
     fakes.anki.silenciar();
 
-    // A Conexão calou, e é o reinício que a calou: o aviso é dele do clique até o desfecho.
     await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'desligada', { timeout: 15_000 });
     await expect(aviso(page)).toContainText('Reiniciando o Anki…');
     await expect(aviso(page)).toContainText('Não deu para reiniciar o Anki. Feche e abra de novo.', { timeout: 30_000 });
     await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'desligada');
-    await expect(aviso(page).getByRole('button')).toHaveCount(0);   // sem a Conexão não há a quem pedir o reinício
+    await expect(aviso(page).getByRole('button')).toHaveCount(0);
     expect(aberturas(fakes)).toHaveLength(1);
 
-    // A pessoa abre o Anki à mão: a Conexão volta na versão nova e o erro sai.
     fakes.anki.voltarAFalar();
     await expect(aviso(page)).toContainText('Conexão atualizada · 0.4.5', { timeout: 30_000 });
     await expect(aviso(page)).not.toContainText('Não deu');

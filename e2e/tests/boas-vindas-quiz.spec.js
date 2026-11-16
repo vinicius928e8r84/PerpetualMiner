@@ -1,11 +1,5 @@
 'use strict';
 
-// Boas-vindas · o quiz de nível (#170, ONB-21 e ONB-22), no passo do nível: a pessoa que não sabe o nível abre “Não sei meu nível, quero descobrir” de um idioma,
-// responde às 2 perguntas sobre o que já faz e a de 3 a 6 de 4 alternativas, e vê o nível sugerido com a prévia do Cartão. Cada teste percorre um caminho da regra dos dois
-// portões (#134) e confere o nível que ficou guardado nos Ajustes de envio (`ankiBridgePresets`). A Conexão com o Anki é falsificada na fronteira HTTP
-// (e2e/fakes/anki.js): a fala vem de `POST /voz/falar` e a prévia de `POST /anki/card-preview`. O relógio fica parado (`relogioParado`): a próxima pergunta entra
-// quando o teste anda 1 s. Aqui, a regra dos dois portões e o russo; o ritmo, o resultado e o áudio estão em `boas-vindas-quiz-ritmo.spec.js`. Sem a festa (#171); o ranking é de `boas-vindas-quiz-ranking.spec.js` (#172).
-
 const { test, expect } = require('../fixtures');
 const { estadoFinal } = require('../estado-final');
 const {

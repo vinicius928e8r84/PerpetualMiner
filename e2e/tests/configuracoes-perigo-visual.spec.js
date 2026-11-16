@@ -1,9 +1,5 @@
 'use strict';
 
-// Referência visual do Apagar tudo recusado (CFG-17.conexaoNaoResponde, #142 / #259): a Conexão com o Anki não responde, então nada é
-// apagado e a faixa da Zona de perigo pede para abrir o Anki, com Tentar de novo e Detalhes. O dono aprovou a tela como está, na
-// janela larga e na estreita (e2e/aprovados-visuais.json).
-
 const { test, expect } = require('../fixtures');
 const { semearComoNoPrototipo, abrirConfiguracoes } = require('../apoio-das-configuracoes');
 

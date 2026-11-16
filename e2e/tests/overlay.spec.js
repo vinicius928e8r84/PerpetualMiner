@@ -1,9 +1,5 @@
 'use strict';
 
-// O overlay na página (#40): um componente Veio em Shadow DOM — o botão
-// flutuante e a pílula de feedback, que espera o service worker e só diz o
-// confirmado. A marca sobre o texto (#41) está em overlay-marca.spec.js.
-
 const fs = require('fs');
 const DRU = 'PerpetualMiner::Russo';
 const path = require('path');
@@ -13,8 +9,6 @@ const { leituraDoVocabulario } = require('../leitura-do-vocabulario');
 const LEGENDA = 'The quiet harbor woke before the gulls did.';
 const TRECHO = 'Every lantern along the pier flickered in the salt wind.';
 
-// A cópia da Voz. MIN-02 e MIN-05 são o começo de MIN-01, então elas se leem
-// pelo título exato; MIN-04 e MIN-10 têm o mesmo título e se leem pela dica.
 const MIN_01 = 'Frase minerada e copiada';
 const MIN_02 = 'Frase minerada';
 const MIN_03 = 'Não deu para minerar';
@@ -75,10 +69,6 @@ const voltarGravacoes = extensao => extensao.serviceWorker.evaluate(() => {
 
 const textosGravados = async extensao => (await extensao.frases()).map(f => f.texto);
 
-/**
- * O `--veio-text` do tema escuro, lido de veio/tokens.css: a cor mora lá, e um
- * valor repetido aqui passaria a mentir no dia em que o token mudasse.
- */
 function textoDoEscuro() {
   const css = fs.readFileSync(path.join(__dirname, '..', '..', 'veio', 'tokens.css'), 'utf8');
   const inicioDoClaro = css.indexOf('[data-tema="claro"]');
@@ -89,9 +79,7 @@ function textoDoEscuro() {
   return `rgb(${parseInt(r, 16)}, ${parseInt(g, 16)}, ${parseInt(b, 16)})`;
 }
 
-/** A meta da pílula: o idioma da captura, em mono. */
 const metaDaPilula = (page, sigla) => feedback(page).getByText(sigla, { exact: true });
-/** O título da pílula, pelo texto exato. */
 const tituloDaPilula = (page, titulo) => feedback(page).getByText(titulo, { exact: true });
 
 test('o botão flutuante é o azulejo Veio num círculo de 46 px, meio apagado parado e inteiro com o mouse', async ({ page, paginas }) => {
@@ -114,19 +102,16 @@ test('com o mouse por cima, o botão mostra a etiqueta do protótipo: o nome e o
   const botao = botaoFlutuante(page);
   const etiqueta = page.locator('perpetualminer-overlay .pm-dica');
 
-  // Parado, nada por cima do vídeo.
   await expect(etiqueta).toBeHidden();
 
   await botao.hover();
   await expect(etiqueta).toBeVisible();
   await expect(etiqueta).toHaveText('Minerar legendaAlt+S');
   await expect(etiqueta.locator('kbd')).toHaveText('Alt+S');
-  // A etiqueta fica à esquerda do botão, na altura dele.
   const [caixaDoBotao, caixaDaEtiqueta] = [await botao.boundingBox(), await etiqueta.boundingBox()];
   expect(caixaDaEtiqueta.x + caixaDaEtiqueta.width).toBeLessThanOrEqual(caixaDoBotao.x);
   expect(Math.abs((caixaDaEtiqueta.y + caixaDaEtiqueta.height / 2) - (caixaDoBotao.y + caixaDoBotao.height / 2))).toBeLessThan(2);
 
-  // O atalho gravado entra sem recarregar; sem atalho, só o nome.
   await extensao.gravarStorage({ pm_atalho_legenda: { type: 'keyboard', code: 'KeyK', altKey: false, ctrlKey: true, shiftKey: true } });
   await expect(etiqueta.locator('kbd')).toHaveText('Ctrl+Shift+K');
   await extensao.gravarStorage({ pm_atalho_legenda: null });
@@ -151,7 +136,6 @@ test('a etiqueta traz o contador do dia, sem o idioma (MIN-11), e aparece també
   await expect(etiqueta).toBeVisible();
   await expect(etiqueta).toContainText('Mineração automática: 8 de 15 hoje');
   await expect(etiqueta).not.toContainText('Inglês');
-  // O leitor de tela continua ouvindo o idioma, pela descrição do botão.
   await expect(botaoFlutuante(page)).toHaveAccessibleDescription('Mineração automática · Inglês: 8 de 15 hoje');
 });
 
@@ -195,17 +179,14 @@ test('Alt+S minera e copia: a pílula diz MIN-01 com a frase e some sozinha em ~
 
   await expect(feedback(page)).toContainText(MIN_01);
   await expect(feedback(page)).toContainText(LEGENDA);
-  // A meta: o idioma da captura, em mono, no fim da pílula.
   await expect(metaDaPilula(page, 'EN')).toBeVisible();
   expect(await metaDaPilula(page, 'EN').evaluate(no => getComputedStyle(no).fontFamily)).toMatch(/^"?PerpetualMiner JetBrains Mono/);
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(LEGENDA);
   expect(await textosGravados(extensao)).toEqual([LEGENDA]);
 
-  // Sucesso some sozinho: ainda está lá aos 2,5 s e já saiu antes dos 5 s.
   await page.waitForTimeout(2500);
   await expect(page.getByText(MIN_01)).toBeVisible();
   await expect(page.getByText(MIN_01)).toBeHidden({ timeout: 2500 });
-  // Sem × num sucesso.
   await expect(page.getByRole('button', { name: 'Fechar' })).toHaveCount(0);
 });
 
@@ -223,9 +204,6 @@ test('enquanto o service worker não responde, a pílula não afirma nada; quand
   await expect(feedback(page)).toContainText(MIN_01);
   expect(await textosGravados(extensao)).toEqual([LEGENDA]);
 });
-
-// A Palavra na marca e na pílula, e a seleção (numa página comum e num campo),
-// estão em overlay-marca.spec.js.
 
 test('o atalho de seleção sem nada selecionado numa página sem vídeo diz MIN-10 e não grava nada', async ({ page, paginas, extensao }) => {
   await extensao.gravarStorage({ pm_atalho: SELECAO_EM_ALT_E });
@@ -343,7 +321,6 @@ test('bug de #9: com o clipboard negado no frame de cima, a frase fica no histó
 
   await page.keyboard.press('Alt+KeyS');
 
-  // O que importa é ter minerado: a pílula de sucesso, só sem “e copiada”.
   await expect(tituloDaPilula(page, MIN_02)).toBeVisible();
   await expect(page.getByText(MIN_01)).toHaveCount(0);
   await page.waitForTimeout(1000);
@@ -360,13 +337,11 @@ test('o service worker falha ao gravar: MIN-03 com a dica, nada gravado, e a pí
   await expect(feedback(page)).toContainText(MIN_03);
   await expect(feedback(page)).toContainText(MIN_03_DICA);
   await expect(page.getByText(MIN_01)).toHaveCount(0);
-  // Sem × e sem Tentar de novo: a falha some sozinha, como o sucesso.
   await expect(page.getByRole('button', { name: 'Fechar' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Tentar de novo' })).toHaveCount(0);
   await expect(page.getByText(MIN_03)).toBeHidden({ timeout: 5000 });
   expect(await extensao.frases()).toEqual([]);
 
-  // Com o armazenamento de volta, o próximo Alt+S grava.
   await voltarGravacoes(extensao);
   await page.keyboard.press('Alt+KeyS');
   await expect(feedback(page)).toContainText(MIN_01);
@@ -387,7 +362,6 @@ test('a falha fecha com Esc e quando a próxima captura a substitui', async ({ p
   await expect(page.getByText(MIN_03)).toBeVisible();
   await voltarGravacoes(extensao);
   await page.keyboard.press('Alt+KeyS');
-  // Uma instância por vez: o sucesso toma o lugar da falha.
   await expect(feedback(page)).toContainText(MIN_01);
   await expect(page.getByText(MIN_03)).toHaveCount(0);
   await expect(feedback(page)).toHaveCount(1);
@@ -420,8 +394,6 @@ test('nada do overlay entra no DOM do site fora do host, e os estilos não vazam
   await expect(feedback(page)).toContainText(MIN_01);
   await expect.poll(() => textosGravados(extensao)).toEqual([LEGENDA]);
 
-  // O site: nenhuma folha de estilo nova, nenhum nó novo além do host, e os
-  // elementos dele pintados como antes.
   expect(await page.evaluate(() => ({
     folhas: document.styleSheets.length,
     adotadas: document.adoptedStyleSheets.length,
@@ -430,7 +402,6 @@ test('nada do overlay entra no DOM do site fora do host, e os estilos não vazam
   }))).toEqual({ folhas: 1, adotadas: 0, hosts: ['perpetualminer-overlay'], doOverlayNoDom: 0 });
   expect(await estiloDoSite()).toBe(antes);
 
-  // O overlay: as regras do site não o alcançam — ele usa os tokens escuros e a fonte da Veio.
   const botao = botaoFlutuante(page);
   const estiloDoBotao = await botao.evaluate(no => {
     const e = getComputedStyle(no);
@@ -446,8 +417,6 @@ test('nada do overlay entra no DOM do site fora do host, e os estilos não vazam
   expect(estiloDoTitulo.fonte).toMatch(/^["']?PerpetualMiner Manrope/);
   expect(estiloDoTitulo.cor).toBe(textoDoEscuro());
   expect(estiloDoTitulo.espacamento).toBe('normal');
-  // A Manrope empacotada é a que desenha: a mesma linha na fonte de reserva tem
-  // outra largura. As duas cópias ficam do tamanho do texto, sem caixa que as estique.
   await expect.poll(() => titulo.evaluate(no => {
     const largura = fonte => {
       const copia = no.cloneNode(true);
@@ -530,8 +499,6 @@ test('a mineração automática minera uma linha: MIN-06 na pílula, com o idiom
   await extensao.gravarStorage({
     pm_auto_miner_settings: { en: { enabled: false, dailyLimit: 20 }, ru: { enabled: true, dailyLimit: 20 } },
     pm_auto_miner_daily: { date: hoje(), en: { count: 0 }, ru: { count: 4 } },
-    // O vocabulário do Anki em cache, sem nenhuma palavra conhecida: a frase russa
-    // tem um item novo só, então a mineração automática a aceita.
     pm_auto_keyword_vocab_ru: {
       cacheVersion: 2, deckName: DRU, createdAt: Date.now(),
       words: [], terms: [], wordInfo: {}, termInfo: {},
@@ -543,9 +510,7 @@ test('a mineração automática minera uma linha: MIN-06 na pílula, com o idiom
 
   await expect(tituloDaPilula(page, MIN_06)).toBeVisible();
   await expect(feedback(page)).toContainText(FRASE_RUSSA);
-  // A meta, como no protótipo: o idioma e o contador do dia.
   await expect(metaDaPilula(page, 'RU 5/20')).toBeVisible();
-  // O título longo não passa por cima da meta: o texto dele acaba antes de ela começar.
   const fimDoTitulo = await tituloDaPilula(page, MIN_06).evaluate(no => {
     const trecho = document.createRange();
     trecho.selectNodeContents(no);
@@ -553,11 +518,9 @@ test('a mineração automática minera uma linha: MIN-06 na pílula, com o idiom
   });
   expect(fimDoTitulo).toBeLessThanOrEqual((await metaDaPilula(page, 'RU 5/20').boundingBox()).x);
   expect(await textosGravados(extensao)).toEqual([FRASE_RUSSA]);
-  // Sucesso: some sozinho.
   await expect(tituloDaPilula(page, MIN_06)).toBeHidden({ timeout: 5000 });
 });
 
-/** Põe `frase` na legenda e faz o vídeo tocar: a mineração automática só olha a legenda de um vídeo que está tocando. */
 async function tocarALegenda(page, frase) {
   await page.evaluate(async texto => {
     document.querySelector('#legenda').textContent = texto;
@@ -571,7 +534,6 @@ async function tocarALegenda(page, frase) {
 
 const DOIS_DIAS = 2 * 24 * 3600_000;
 
-/** O ajuste e o vocabulário (vazio, do Baralho padrão) de uma mineração automática em russo, lido há `idadeMs`. */
 const mineracaoEmRussoComVocabulario = idadeMs => ({
   pm_auto_miner_settings: { en: { enabled: false, dailyLimit: 20 }, ru: { enabled: true, dailyLimit: 20 } },
   pm_auto_miner_daily: { date: hoje(), en: { count: 0 }, ru: { count: 0 } },
@@ -587,7 +549,6 @@ test('com a Conexão desligada, a mineração automática minera pela última le
 
   await expect(tituloDaPilula(page, MIN_06)).toBeVisible();
   expect(await textosGravados(extensao)).toEqual([FRASE_RUSSA]);
-  // A leitura guardada segue como estava: com a Conexão muda não há outra para pôr no lugar.
   const { pm_auto_keyword_vocab_ru: leitura } = await extensao.lerStorage('pm_auto_keyword_vocab_ru');
   expect(leitura.createdAt).toBeLessThan(Date.now() - DOIS_DIAS + 60_000);
 });
@@ -601,7 +562,7 @@ test('com a Conexão desligada e a última leitura de outro Baralho, a mineraç�
 
   await tocarALegenda(page, FRASE_RUSSA);
 
-  await expect.poll(() => fakes.anki.pareamento.tentativas()).toContain('/pareamento/conferir'); // #192
+  await expect.poll(() => fakes.anki.pareamento.tentativas()).toContain('/pareamento/conferir');
   await page.waitForTimeout(1000);
   await expect(tituloDaPilula(page, MIN_06)).toBeHidden();
   expect(await textosGravados(extensao)).toEqual([]);
@@ -636,7 +597,6 @@ test('com a Conexão respondendo mas o Anki fechado, a mineração automática m
   const pedidosDoVocabulario = fakes.anki.requisicoes.filter(r => r.caminho === '/anki/vocabulary');
   expect(pedidosDoVocabulario).toHaveLength(1);
   expect(pedidosDoVocabulario[0].dados).not.toHaveProperty('launch');
-  // A leitura é de agora, mas os dados são os da última vez que o Anki respondeu.
   const { pm_auto_keyword_vocab_ru: leitura } = await extensao.lerStorage('pm_auto_keyword_vocab_ru');
   expect(leitura.createdAt).toBeGreaterThan(leituraDeAntes + 3600_000);
   expect(leitura.source).toBe('collection.anki2');
@@ -667,7 +627,6 @@ test('com a Conexão respondendo, a leitura de menos de 15 min não pergunta nad
   expect(fakes.anki.requisicoes.filter(r => r.caminho === '/anki/vocabulary')).toHaveLength(0);
 });
 
-/** O dia de hoje como a mineração automática o grava (AAAA-MM-DD, hora local). */
 function hoje() {
   const agora = new Date();
   return [agora.getFullYear(), String(agora.getMonth() + 1).padStart(2, '0'), String(agora.getDate()).padStart(2, '0')].join('-');

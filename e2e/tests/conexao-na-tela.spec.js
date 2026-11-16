@@ -1,17 +1,8 @@
 'use strict';
 
-// Como a Conexão com o Anki aparece, decidido uma vez (lib/conexao-na-tela.js):
-// o mesmo texto (BRG-01/BRG-02) e o mesmo ponto para a mesma situação, o
-// Tentar de novo indisponível (`aria-disabled`, nunca `disabled`: o foco fica
-// nele e apertar de novo não pergunta de novo) e o foco que não cai no <body>
-// quando a Conexão liga. Três superfícies usam essa decisão: a F1 do shell, o
-// card da primeira conexão (ONB-16) e o passo 4 da Boas-vindas. A Conexão é o
-// fake da fronteira HTTP (fakes/anki.js); os testes afirmam o que a pessoa vê.
-
 const { test, expect } = require('../fixtures');
 const path = require('path');
 
-// Evidência opcional da extensão real, sem tornar pixels um requisito da suíte.
 const fotografar = async (page, nome) => {
   if (process.env.PM_EVIDENCE_DIR) {
     await page.evaluate(() => document.fonts.ready);
@@ -28,7 +19,6 @@ const TEXTO = {
   desligada: 'Conexão com o Anki: desligada',
   ligada: 'Conexão com o Anki: ligada',
 };
-// Ligada, os passos da Conexão dizem o que a Conexão respondeu (o perfil e a versão do contrato).
 const ACHEI = /^Achei o Anki · .+ · versão .+$/;
 
 const pedidosDeHealth = fakes => fakes.anki.requisicoes.filter(r => r.caminho === '/health');
@@ -42,13 +32,10 @@ const statusDoCard = page => page.locator('#apv-status');
 const pontoDoCard = page => page.locator('#apv-ponto');
 const cardDaBoasVindas = page => page.locator('.bv-card');
 const statusDoPasso4 = page => cardDaBoasVindas(page).getByRole('status');
-// O ponto da Conexão (o passo 3, Abrir o Anki sozinho, tem o ponto do abridor ao lado).
 const pontoDoPasso4 = page => cardDaBoasVindas(page).locator('#bv4-ponto');
 const tentarDoPasso4 = page => cardDaBoasVindas(page).getByRole('button', { name: 'Tentar de novo', exact: true });
-// O passo 4 abre no passo de pôr a Conexão, que espera sem dizer “desligada”: o status da Conexão está no de reiniciar.
 const irParaReiniciar = page => cardDaBoasVindas(page).getByRole('button', { name: 'Reiniciar o Anki', exact: true }).click();
 
-/** Segura o /health: a Conexão fica Conectando até `liberar()`, que responde com `status`. */
 function segurarOHealth(fakes, status = 503) {
   let liberar;
   const segurada = new Promise(r => { liberar = r; });
@@ -65,7 +52,6 @@ test.describe('a mesma situação, a mesma tela', () => {
     await expect(sidebar(page)).toHaveText(TEXTO.desligada);
     await expect(pontoDaSidebar(page)).toHaveAttribute('data-estado', 'desligada');
 
-    // O passo 3 do card é o que mostra a Conexão desligada; o 1º nem a linha da Conexão tem, e o 2º espera.
     await page.getByRole('navigation', { name: 'Como ligar' }).getByRole('button', { name: 'Reiniciar o Anki' }).click();
     await expect(statusDoCard(page)).toHaveText(TEXTO.desligada);
     await expect(pontoDoCard(page)).toHaveAttribute('data-estado', 'desligada');
@@ -100,7 +86,6 @@ test.describe('a mesma situação, a mesma tela', () => {
     await outraAba.goto(extensao.url('painel.html#boas-vindas/anki'));
     await expect(statusDoPasso4(outraAba)).toHaveText(TEXTO.conectando);
     await expect(pontoDoPasso4(outraAba)).toHaveAttribute('data-estado', 'conectando');
-    // Sem escolha da pessoa, o passo volta ao primeiro quando a Conexão não responde: ela fixa o de reiniciar.
     await irParaReiniciar(outraAba);
     liberarDeNovo();
     await expect(statusDoPasso4(outraAba)).toHaveText(TEXTO.desligada);
@@ -109,7 +94,6 @@ test.describe('a mesma situação, a mesma tela', () => {
 
   test('ONB-16: tentar de novo durante o Pronto anuncia Conectando sem desfazer o marco', async ({ page, extensao, fakes, relogioParado }) => {
     fakes.anki.desligar();
-    // A pessoa já disse “Agora não” ao passo 3 (Abrir o Anki sozinho, #147): o Pronto vem logo que a Conexão responde.
     await extensao.gravarStorage({ pm_abridor: { agoraNao: true } });
     const relogio = await relogioParado({ em: new Date('2026-09-18T12:00:00') });
     await page.goto(extensao.url('painel.html#anki/custos'));
@@ -142,7 +126,6 @@ test.describe('a mesma situação, a mesma tela', () => {
     await relogio.avancar(1_800);
     await expect(cardDaPrimeiraConexao(page)).toBeHidden();
     await expect(page.getByRole('radiogroup', { name: 'Seções da Conexão com o Anki' })).toBeVisible();
-    // A primeira resposta ligada ficou gravada, e a falha de depois não a desfaz.
     await expect.poll(async () => (await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou).toBe(true);
   });
 });

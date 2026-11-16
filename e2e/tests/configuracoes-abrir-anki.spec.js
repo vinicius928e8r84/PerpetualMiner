@@ -1,16 +1,8 @@
 'use strict';
 
-// Configurações › Conexão com o Anki: o interruptor “Abrir o Anki com o computador” (#153, história 101).
-//
-// Vem desligado. Ligado, a Conexão escreve o item de login; desligado, ela o apaga. O item mora na
-// Conexão (o fake guarda a situação dele, do contrato em `complemento/contrato/exemplos.json`), então os
-// testes afirmam o que a pessoa vê e o que a Conexão ficou com: o interruptor nunca anda sozinho à frente
-// da resposta dela. O que o Mac e o Windows fazem com o item é do ensaio do dono.
-
 const { test, expect } = require('../fixtures');
 
 const interruptor = page => page.getByRole('switch', { name: 'Abrir o Anki com o computador' });
-/** O interruptor é desenhado pela base Veio (o input fica escondido): quem recebe o clique é o trilho. */
 const trilho = page => page.locator('#cfg-anki-corpo .veio-toggle');
 const resumo = page => page.locator('#cfg-anki-resumo');
 const nota = page => page.locator('#cfg-anki-nota');
@@ -32,7 +24,6 @@ test('o interruptor vem desligado e a linha fechada diz que o Anki não abre com
   await page.getByRole('button', { name: 'Conexão com o Anki' }).click();
   await expect(interruptor(page)).not.toBeChecked();
   await expect(nota(page)).toContainText('O Anki abre quando você liga o computador');
-  // Ler o estado não escreve nada: só a pessoa muda o interruptor.
   expect(pedidosDeLigarOuDesligar(fakes)).toEqual([]);
   expect(fakes.anki.itemInstalado()).toBe(false);
 });
@@ -100,7 +91,7 @@ test('enquanto a Conexão escreve o item o interruptor espera, mostrando o que e
   const segurando = new Promise(resolve => { responder = resolve; });
   fakes.anki.responder('POST', '/abrir-com-o-computador', async () => {
     await segurando;
-    fakes.anki.definirItemDeLogin('ligado');   // a Conexão escreve o item e então responde
+    fakes.anki.definirItemDeLogin('ligado');
     return { json: { ok: true, ligado: true } };
   });
   await abrirCard(page, extensao);
@@ -138,7 +129,6 @@ test.describe('com a Conexão desligada', () => {
     await abrirCard(page, extensao);
     await expect(interruptor(page)).toBeDisabled();
 
-    // O Tentar de novo é da faixa da área Conexão com o Anki; a Conexão volta e a pessoa retorna ao card.
     await page.getByRole('link', { name: 'Conexão com o Anki' }).click();
     fakes.anki.ligar();
     await page.locator('#shell-tentar-de-novo').click();
@@ -188,7 +178,7 @@ test.describe('com uma Conexão que não sabe responder', () => {
       await expect(interruptor(page)).toBeDisabled();
       await expect(interruptor(page)).not.toBeChecked();
       await expect(resumo(page)).toHaveText('Indisponível agora');
-      expect(fakes.anki.itemInstalado()).toBe(true);   // o item está lá, e a tela não afirma o contrário
+      expect(fakes.anki.itemInstalado()).toBe(true);
     });
   }
 
@@ -332,8 +322,8 @@ test.describe('quando a resposta de ligar não chega', () => {
     let soltar;
     const segurando = new Promise(resolve => { soltar = resolve; });
     fakes.anki.responder('POST', '/abrir-com-o-computador', async () => {
-      fakes.anki.definirItemDeLogin('ligado');   // escreveu o item
-      await segurando;                            // e a resposta não vem a tempo
+      fakes.anki.definirItemDeLogin('ligado');
+      await segurando;
       return { json: { ok: true, ligado: true } };
     });
     await abrirCard(page, extensao);
