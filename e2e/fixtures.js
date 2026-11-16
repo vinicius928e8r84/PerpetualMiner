@@ -41,17 +41,8 @@ const TIPOS_MIME = {
   '.svg': 'image/svg+xml',
 };
 
-/** As pastas da extensão que a vitrine carrega direto, como a extensão carrega. */
 const PASTAS_DA_EXTENSAO = ['veio', 'lib'];
 
-/**
- * O arquivo que responde por um caminho, ou null.
- *
- * As páginas-fixture e a vitrine vêm pelo nome; `/veio/…` e `/lib/…` saem da
- * própria extensão, para a vitrine carregar os mesmos tokens, as mesmas
- * fontes empacotadas, os mesmos componentes e o mesmo catálogo da Voz que as
- * páginas da extensão carregam.
- */
 function arquivoDoPedido(caminhoPedido) {
   const limpo = path.posix.normalize(decodeURIComponent(caminhoPedido));
 
@@ -83,12 +74,6 @@ async function esperarAbaDaInstalacao(context, id) {
   throw new Error('A instalação não abriu a aba da Boas-vindas');
 }
 
-/**
- * Abre um perfil novo do Chromium com a extensão carregada e a rede falsificada. O primeiro perfil do
- * teste (`context`) e o segundo (`segundoPerfil`) abrem por aqui, então os dois têm o mesmo: `HEADED`, o
- * login do Google no servidor local, o abridor falso registrado, a permissão do abridor e as rotas dos fakes.
- * A pasta do perfil nasce antes e some se qualquer passo da abertura falha, em vez de ficar no disco.
- */
 async function abrirPerfil({ fakes, paginas, servidorDoLogin, pastaDaExtensao, permissaoDoAbridor, conexaoDoTeste }) {
   servidorDoLogin.atender(fakes.google.responderLogin);
   servidorDoLogin.atenderChatGPT(fakes.chatgpt.responderAutorizacao);
@@ -96,7 +81,6 @@ async function abrirPerfil({ fakes, paginas, servidorDoLogin, pastaDaExtensao, p
   let context = null;
   let copiaComAPermissao = null;
   try {
-    // O abridor que a Conexão com o Anki registraria no computador (o de mentira).
     fakes.abridor.registrarNoPerfil(perfil);
     if (permissaoDoAbridor && process.platform !== 'linux') {
       // Mac/Windows: o `Secure Preferences` do Chromium reseta o que não tem a assinatura (MAC); a cópia traz
@@ -131,7 +115,6 @@ async function abrirPerfil({ fakes, paginas, servidorDoLogin, pastaDaExtensao, p
     await context.route(url => /^https?:$/.test(url.protocol) && !origensLocais.includes(url.origin),
       route => route.abort('blockedbyclient'));
     for (const fake of Object.values(fakes)) if (fake.padrao) await context.route(fake.padrao, fake.tratar);
-    // `PM_CONEXAO=real`: a 8766 vai para o complemento de verdade, não para `fakes.anki.tratar`.
     if (conexaoDoTeste) await context.route(fakes.anki.padrao, conexaoReal.rotaParaAConexaoReal(conexaoDoTeste));
   } catch (erro) {
     await context?.close().catch(() => {});
@@ -149,7 +132,6 @@ async function abrirPerfil({ fakes, paginas, servidorDoLogin, pastaDaExtensao, p
   };
 }
 
-/** Cópia da extensão com `nativeMessaging` já no manifest: ver `abrirPerfil`. */
 function copiarComAPermissaoDoAbridor(pastaDaExtensao) {
   const { arquivosDoPacote } = require('../scripts/arquivos-do-pacote');
   const copia = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-ext-'));
@@ -169,16 +151,10 @@ async function apagarPmBoasVindas(sw) {
   await sw.evaluate(() => chrome.storage.local.remove('pm_boas_vindas'));
 }
 
-/**
- * O que um teste tem da extensão de um perfil já aberto: o service worker, o storage, a sessão semeada.
- * A instalação deixa a aba da Boas-vindas (fechada, salvo `manterAbaDaInstalacao`) e a configuração
- * começada (removida, salvo `lembreteDaConfiguracao`); veja as opções do fixture. `navegador` (`primeiro` ou `segundo`): o
- * navegador de teste com que a extensão já nasce pareada.
- */
 async function prepararExtensao(context, { manterAbaDaInstalacao, lembreteDaConfiguracao, navegador }) {
   const sw = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker');
   const id = new URL(sw.url()).host;
-  if (navegador) await parearNoServiceWorker(sw, navegador);   // a credencial do pareamento (#192), como o `concluir` a guardaria
+  if (navegador) await parearNoServiceWorker(sw, navegador);
 
   const abaDaInstalacao = await esperarAbaDaInstalacao(context, id);
   if (!manterAbaDaInstalacao) await abaDaInstalacao.close();
@@ -211,12 +187,8 @@ async function prepararExtensao(context, { manterAbaDaInstalacao, lembreteDaConf
     lerSessao: () => sessaoDiretoNoIndexedDB(null),
     gravarSessao: sessaoDiretoNoIndexedDB,
     gravarStorage,
-    /** Se a extensão tem a permissão do abridor (`nativeMessaging`), como o Chrome a guarda. */
     permissaoDoAbridor: () => sw.evaluate(() => chrome.permissions.contains({ permissions: ['nativeMessaging'] })),
-    /** O histórico de frases como está gravado (mais nova primeiro). */
     frases: async () => (await lerStorage({ frases: [] })).frases,
-    /** Semeia uma sessão da conta no armazenamento, sem passar pelo login real. */
-    /** `expirada` grava um token já vencido: o painel precisa renová-lo antes de ir à nuvem. */
     semearSessao: async ({ uid = 'uid-teste', email = 'pessoa@teste.dev', displayName = 'Pessoa de Teste', expirada = false } = {}) => {
       await sessaoDiretoNoIndexedDB({ uid, idToken: 'token-teste', refreshToken: 'refresh-teste',
         expiresAt: expirada ? Date.now() - 60 * 1000 : Date.now() + 60 * 60 * 1000 });
@@ -226,8 +198,6 @@ async function prepararExtensao(context, { manterAbaDaInstalacao, lembreteDaConf
 }
 
 const test = base.extend({
-  // Servidor das páginas-fixture (player falso, página com texto, página sem
-  // vídeo), da vitrine da Base Veio e dos arquivos de `veio/`.
   paginas: [async ({}, use) => {
     const servidor = http.createServer((req, res) => {
       const arquivo = arquivoDoPedido(new URL(req.url, 'http://x').pathname);
@@ -242,7 +212,6 @@ const test = base.extend({
     await new Promise(resolve => servidor.listen(0, '127.0.0.1', resolve));
     const porta = servidor.address().port;
     const origem = `http://127.0.0.1:${porta}`;
-    // O mesmo servidor sob outro nome é outra origem, para o player em iframe de outra origem.
     const origemCruzada = `http://localhost:${porta}`;
     await use({
       origem,
@@ -253,8 +222,6 @@ const test = base.extend({
     await new Promise(resolve => servidor.close(resolve));
   }, { scope: 'worker' }],
 
-  // A página de login do Google, um servidor por worker; cada teste diz, pelo
-  // fake do Google, o que a janela de login faz.
   servidorDoLogin: [async ({}, use) => {
     const servidor = await subirServidorDoLogin();
     await use(servidor);
@@ -265,12 +232,10 @@ const test = base.extend({
     const anki = criarFakeAnki(), google = criarFakeGoogle();
     const abridor = criarFakeAbridor();
     anki.sincronizarCom(google);
-    // `chatgpt`: a página de autorização do auth.openai.com, ligada ao login que o fake da Conexão guarda (#155).
     await use({ anki, gemini: criarFakeGemini(), google, abridor, chatgpt: anki.chatgpt });
     abridor.limpar();
   },
 
-  // Com `PM_CONEXAO=real`, a Conexão de verdade deste teste (conexao-real.js); sem a variável, null e nenhum Python roda.
   conexaoDoTeste: async ({}, use) => {
     const conexao = conexaoReal.modoReal() ? await conexaoReal.subir() : null;
     await use(conexao);
@@ -282,8 +247,6 @@ const test = base.extend({
   // Sem esta opção, a extensão chega como da loja: sem a permissão, e o pedido dela espera o aviso.
   permissaoDoAbridor: [false, { option: true }],
 
-  // A pasta que o Chromium carrega como extensão: a raiz do repositório, salvo num
-  // teste que precisa mexer nos arquivos (a atualização automática usa uma cópia).
   pastaDaExtensao: async ({}, use) => {
     await use(RAIZ_DA_EXTENSAO);
   },
@@ -294,35 +257,19 @@ const test = base.extend({
     await perfil.fechar();
   },
 
-  // A página do teste passa pela `extensao`, que fecha a aba da instalação, e
-  // volta para a frente: um teste que nem pede a `extensao` (o overlay no
-  // player) começaria atrás da Boas-vindas, com a página em segundo plano.
   page: async ({ page, extensao }, use) => {
     await page.bringToFront();
     await use(page);
   },
 
-  // A extensão chega instalada agora, então o Chrome já abriu a aba da
-  // Boas-vindas (onInstalled, `install`). Ela é fechada antes do teste, que
-  // começa como sempre começou; quem testa a Boas-vindas da instalação pede
-  // `test.use({ manterAbaDaInstalacao: true })` e a recebe em `extensao.abaDaInstalacao`.
   manterAbaDaInstalacao: [false, { option: true }],
 
-  // A instalação também deixa a configuração começada (`pm_boas_vindas`), o que
-  // põe o lembrete “Configuração pela metade” no popup e em Frases. O teste
-  // começa como quem já passou por ela, sem o lembrete; quem testa o lembrete
-  // pede `test.use({ lembreteDaConfiguracao: true })`.
   lembreteDaConfiguracao: [false, { option: true }],
 
-  // O relógio parado (#209): `await relogioParado({ em })` antes de navegar. Para o relógio da página do teste (ou de
-  // `page`, a de outro perfil) em `em`, agora sem ele, com a margem maior que o prazo do teste, e devolve
-  // `{ instante, avancar }`: o tempo só anda por `relogio.avancar(ms)`. A montagem fica em e2e/relogio-parado.js.
   relogioParado: async ({ page }, use, testInfo) => {
     await use(({ page: alvo = page, em } = {}) => pararRelogio(alvo, { em, prazoDoTeste: testInfo.timeout }));
   },
 
-  // A extensão já nasce pareada com a Conexão (#192): a credencial no IndexedDB e o navegador conhecido da Conexão (o fake, ou o complemento real).
-  // Quem testa o pareamento pede `test.use({ pareada: false })`: nem a extensão nem a Conexão conhecem nenhum navegador, e a pessoa começa de onde começa.
   pareada: [true, { option: true }],
 
   extensao: async ({ context, fakes, conexaoDoTeste, manterAbaDaInstalacao, lembreteDaConfiguracao, pareada }, use) => {
@@ -339,7 +286,7 @@ const test = base.extend({
   // `extensao` é o mesmo objeto que o teste já tem (semearSessao, lerStorage, …), mas do segundo perfil.
   segundoPerfil: async ({ extensao, fakes, paginas, servidorDoLogin, pastaDaExtensao, permissaoDoAbridor, conexaoDoTeste, manterAbaDaInstalacao, lembreteDaConfiguracao, pareada }, use) => {
     const perfil = await abrirPerfil({ fakes, paginas, servidorDoLogin, pastaDaExtensao, permissaoDoAbridor, conexaoDoTeste });
-    if (pareada) fakes.anki.pareamento.parear('segundo');   // cada perfil do Chrome tem o seu segredo
+    if (pareada) fakes.anki.pareamento.parear('segundo');
     try {
       await use({ context: perfil.context, extensao: await prepararExtensao(perfil.context, { manterAbaDaInstalacao, lembreteDaConfiguracao, navegador: pareada ? 'segundo' : null }) });
     } finally {
@@ -348,17 +295,12 @@ const test = base.extend({
   },
 });
 
-/** Os sistemas que o passo Ter o Anki (#146) distingue para escolher o instalador do Anki. */
 const SISTEMAS = Object.freeze({
   MAC: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
   WINDOWS: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
   LINUX: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
 });
 
-/**
- * O Chromium do teste como o de um sistema (`SISTEMAS.MAC` · `SISTEMAS.WINDOWS`): o `userAgent` e o
- * `userAgentData.platform` passam a ser os dele. Chame antes do `goto` da página que os lê.
- */
 async function comOSistema(page, sistema) {
   await page.addInitScript(sistema => {
     Object.defineProperty(navigator, 'userAgent', { value: sistema });
@@ -368,10 +310,8 @@ async function comOSistema(page, sistema) {
   }, sistema);
 }
 
-/** O botão flutuante de minerar a legenda, sobre o player. */
 const botaoFlutuante = page => page.getByRole('button', { name: /^Minerar legenda/ });
 
-/** Põe o vídeo da página para tocar: a mineração automática só olha a legenda de um vídeo que está tocando. */
 async function tocarVideo(page) {
   await page.evaluate(async () => {
     const tela = document.createElement('canvas');

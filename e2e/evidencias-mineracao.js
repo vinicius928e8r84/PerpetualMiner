@@ -1,8 +1,5 @@
 'use strict';
 
-// Evidência opcional dos testes da mineração: a superfície real e o contrato
-// persistido. PM_EVIDENCE_DIR aponta para a pasta de evidências da execução;
-// sem ela, os testes não criam arquivos.
 const fs = require('fs');
 const path = require('path');
 

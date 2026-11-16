@@ -1,9 +1,5 @@
 'use strict';
 
-// O apoio dos testes do quiz de nível (#170): a certa de cada pergunta (o gabarito, pela frase que a tela mostra ou que a Conexão foi mandada falar), os caminhos pela
-// tela (abrir o quiz, responder como o roteiro manda, percorrer até o resultado) e os pedidos que o fake da Conexão guardou. Usado por `boas-vindas-quiz.spec.js`
-// (a regra dos dois portões e o russo) e `boas-vindas-quiz-ritmo.spec.js` (o ritmo, o resultado e o áudio).
-
 const { expect } = require('@playwright/test');
 
 const CHAVE = 'ankiBridgePresets';
@@ -13,7 +9,6 @@ const SO_O_INGLES = { en: { enabled: true, dailyLimit: 20 }, ru: { enabled: fals
 const OS_DOIS = { en: { enabled: true, dailyLimit: 20 }, ru: { enabled: true, dailyLimit: 20 } };
 const PAUSA_DA_RESPOSTA_MS = 1000;
 
-// A certa de cada pergunta, pela frase que a tela mostra (legenda e verso) ou que a Conexão foi mandada falar (escuta).
 const CERTA = {
   'I would have called you earlier, but my phone died.': 'Eu teria ligado mais cedo, mas meu celular descarregou.',
   "She didn't get the job, even though she was the most qualified candidate.": 'Ela não conseguiu o emprego, apesar de ser a candidata mais qualificada.',
@@ -49,17 +44,13 @@ async function abrirOQuiz(page, extensao, relogioParado, { automatica = SO_O_ING
   return relogio;
 }
 
-/** As duas perguntas sobre o que a pessoa já faz, respondidas como quem aponta o `nivel` (iniciante ou intermediario). */
 async function responderAParte1(page, idioma, nivel) {
   for (const resposta of PERFIL[nivel]) await quiz(page, idioma).getByRole('button', { name: resposta, exact: true }).click();
 }
 
-/** O que a pessoa está lendo ou ouvindo na pergunta da vez: a frase da tela, ou a última que a Conexão foi mandada falar. */
 async function fraseDaPergunta(page, idioma, fakes) {
   const cabeca = (await pergunta(page, idioma).textContent()).trim();
   if (cabeca !== 'Ouça e escolha o que foi dito') return (await quiz(page, idioma).locator('.quiz__frase').textContent()).trim();
-  // A última fala pedida é a desta pergunta quando a certa dela está entre as alternativas da tela: um pedido assinado (#192) chega um pouco depois do que
-  // a pergunta anterior deixou, e a frase da anterior ainda ficaria como a última.
   await expect.poll(async () => {
     const certa = CERTA[dizeres(fakes).at(-1)?.texto];
     return Boolean(certa) && await quiz(page, idioma).locator('.quiz__opcao').getByText(certa, { exact: true }).count() > 0;
@@ -67,10 +58,6 @@ async function fraseDaPergunta(page, idioma, fakes) {
   return dizeres(fakes).at(-1).texto;
 }
 
-/**
- * Responde a pergunta da vez como o roteiro manda: 'certo', 'errado' (a primeira alternativa que não é a certa) ou 'nao sei'. Confere que a certa fica
- * marcada, deixa a pessoa ver por 1 s e a pergunta seguinte entra sozinha. Devolve o tipo da pergunta (o título dela).
- */
 async function responder(page, idioma, fakes, relogio, jeito) {
   const tipo = (await pergunta(page, idioma).textContent()).trim();
   const certa = CERTA[await fraseDaPergunta(page, idioma, fakes)];
@@ -84,7 +71,6 @@ async function responder(page, idioma, fakes, relogio, jeito) {
   return tipo;
 }
 
-/** Percorre a parte 2 até o resultado: `roteiro` diz como responder cada pergunta, na ordem; devolve os tipos perguntados. */
 async function percorrer(page, idioma, fakes, relogio, roteiro) {
   const tipos = [];
   for (const jeito of roteiro) tipos.push(await responder(page, idioma, fakes, relogio, jeito));

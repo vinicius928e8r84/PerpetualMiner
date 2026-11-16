@@ -17,12 +17,7 @@ const FRASE_DO_CONTRATO = 'Could you tell me where the nearest pharmacy is?';
 function criarFakeVoz() {
   const estado = { situacao: 'aceita' };
 
-  /**
-   * A resposta do contrato ao Ouvir. O exemplo diz um idioma e um sotaque, e a pessoa escolhe qualquer um dos de Ajustes de
-   * envio: a escolha é a mesma pelo provedor, então o pedido vai ao contrato como o do inglês, que é o que ele escreve.
-   */
   function naConexao(corpo, respostaDoContrato, caminho = '/voz/ouvir') {
-    // A fala do quiz (#170, `/voz/falar`) também vai ao contrato como o exemplo, que diz uma frase e um sotaque: a frase que a pessoa ouve é a do teste.
     const doContrato = caminho === '/voz/falar' ? { lang: 'en', sotaque: 'co.uk', texto: FRASE_DO_CONTRATO }
       : { lang: 'en', provedor: corpo.provedor, ...(corpo.provedor === 'google' && { sotaque: 'co.uk' }) };
     const { status, json } = respostaDoContrato('POST', caminho, doContrato);
@@ -31,7 +26,6 @@ function criarFakeVoz() {
 
   return {
     naConexao,
-    /** O contexto `voz` dos exemplos: como o Google e a OpenAI respondem a quem pede uma voz. */
     definir(situacao) { estado.situacao = situacao; },
     situacao() { return estado.situacao; },
   };
