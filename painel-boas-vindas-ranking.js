@@ -1,11 +1,5 @@
 'use strict';
 
-// O ranking do grupo na tela (#172, ONB-24): sob o resultado do quiz de nível, para quem tem conta Google. Mostra “Você foi melhor que X% de quem fez o quiz”, a caixa “Aparecer no
-// ranking do grupo”, a lista de quem topou e “Chamar um amigo”. Os dados e o Firestore são de `lib/ranking.js`.
-//
-// Nada da pessoa sai sem ela marcar a caixa, que começa desmarcada: marcar grava o registro dela, desmarcar o apaga, e a caixa só muda de estado quando a nuvem confirma
-// (a lista é relida depois de cada escolha). Sem conta, só o aviso, e nada é pedido à nuvem. O que vem dos outros (nome, foto) entra na tela como texto e como imagem https.
-
 (function (raiz) {
   const { textoDaVoz, Ranking, Sincronizacao } = raiz;
   const VOZ_DO_NIVEL = { iniciante: 'BRG-42.iniciante', intermediario: 'BRG-42.intermediario', avancado: 'BRG-42.avancado' };
@@ -25,7 +19,6 @@
     return no;
   }
 
-  /** A conta Google da extensão e o ranking na nuvem dela; null sem conta (a sessão guardada tem de ser a da conta mostrada). */
   async function abrirAConta() {
     const { pm_user_info: perfil } = await chrome.storage.local.get({ pm_user_info: null });
     const credenciais = await Sincronizacao.lerCredenciais();
@@ -34,10 +27,6 @@
     return { perfil, nuvem: Ranking.nuvem({ sessao }) };
   }
 
-  /**
-   * O ranking de `lang` para o `resultado` do quiz (`{ nivel, acertos, perguntas, melhorSequencia }`); `idioma` é o nome em minúsculas (inglês, russo).
-   * Devolve `{ no, iniciar }`: `iniciar()` lê a conta e a lista.
-   */
   function montar({ lang, idioma, resultado }) {
     const palco = elemento('div', 'ranking__palco');
     const no = elemento('section', 'ranking', elemento('h5', 'ranking__titulo', textoDaVoz('ONB-24.titulo')), palco);

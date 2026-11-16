@@ -6,11 +6,10 @@
   const porId = id => document.getElementById(id);
 
   const estado = {
-    chave: null,         // null até a primeira leitura do storage
-    focarAoLer: false,   // o endereço pediu o foco antes de a chave ser lida
+    chave: null,
+    focarAoLer: false,
   };
 
-  /** Onde o card é desenhado: { corpo, prefixo, trocando }. */
   const lugares = [];
   let configuracoes = null;
 
@@ -21,10 +20,6 @@
       lugares.forEach(desenhar);
       if (estado.focarAoLer) focarOCampoSeVazia();
     });
-    // Salvar em outro lugar (o Minerar de uma foto, o outro card) aparece aqui
-    // sem recarregar. No meio de uma troca a chave nova é guardada sem
-    // redesenhar, para não derrubar o que a pessoa está digitando; Cancelar já
-    // mostra a chave nova.
     chrome.storage.onChanged.addListener((mudancas, area) => {
       if (area !== 'local' || !('geminiApiKey' in mudancas)) return;
       const nova = mudancas.geminiApiKey.newValue || '';
@@ -35,7 +30,6 @@
     raiz.Shell.aoAbrirASecao('chave', focarOCampoSeVazia);
   }
 
-  /** Desenha o card em `corpo`; `prefixo` separa os ids de cada lugar. */
   function montar(corpo, { prefixo }) {
     const lugar = { corpo, prefixo, trocando: false };
     lugares.push(lugar);
@@ -58,7 +52,6 @@
     else lugar.corpo.replaceChildren(...campoDaChave(lugar));
   }
 
-  /** Ponto verde, “Chave salva”, a chave mascarada e Trocar chave. */
   function chaveSalva(lugar) {
     const ponto = elemento('span', 'cfg-ponto');
     ponto.dataset.estado = 'ok';
@@ -77,7 +70,6 @@
       elemento('div', 'cfg-acoes', trocar));
   }
 
-  /** O campo, Salvar chave e (trocando) Cancelar; vazia, a nota embaixo. */
   function campoDaChave(lugar) {
     const campo = elemento('input', 'veio-campo cfg-chave-campo');
     campo.id = idDe(lugar, 'campo');
@@ -104,7 +96,6 @@
       }));
     }
 
-    // Um formulário: o Enter no campo salva, como o botão.
     const formulario = elemento('form', 'cfg-chave-form',
       elemento('div', 'cfg-chave-entrada', campo, erro), acoes);
     formulario.noValidate = true;
@@ -118,7 +109,6 @@
     return partes;
   }
 
-  /** Liga ou desliga o erro de salvar vazio: borda danger (aria-invalid) e o aviso embaixo, ligado ao campo. */
   function marcarVazia(campo, aviso, vazia) {
     aviso.hidden = !vazia;
     if (vazia) {
@@ -140,7 +130,6 @@
     chrome.storage.local.set({ geminiApiKey: chave }, () => {
       estado.chave = chave;
       lugar.trocando = false;
-      // Este volta ao resumo; o outro lugar também, se não estiver no meio de uma troca.
       for (const outro of lugares) if (!outro.trocando) desenhar(outro);
       porId(idDe(lugar, 'trocar')).focus();
       mostrarToastDeSucesso(textoDaVoz('CFG-16.salva'));

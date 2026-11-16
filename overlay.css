@@ -15,7 +15,6 @@
   line-height: 1.4;
   color: var(--veio-text);
   -webkit-font-smoothing: antialiased;
-  /* O mouse é do site: só a pílula (e o botão dela) o pega. */
   pointer-events: none;
 }
 
@@ -92,7 +91,6 @@
   max-width: 240px;
 }
 
-/* O título nunca é cortado nem passa por cima da meta: se não couber, quebra a linha. */
 .pm-titulo {
   display: block;
   font-size: var(--veio-tam-apoio);
@@ -100,7 +98,6 @@
   line-height: 1.3;
 }
 
-/* A 2ª linha: a frase com a Palavra grifada, ou a dica de uma falha. */
 .pm-frase {
   display: block;
   overflow: hidden;
@@ -111,7 +108,6 @@
   text-overflow: ellipsis;
 }
 
-/* A meta, em mono no fim da pílula: `EN`, `Web`, `RU 5/20`. */
 .pm-meta {
   flex: none;
   font-family: var(--veio-fonte-mono);
@@ -153,10 +149,6 @@
   outline-offset: 3px;
 }
 
-/* A etiqueta do protótipo: à esquerda do botão, com o mouse ou o foco do
-   teclado. O nome e o atalho gravado num kbd; embaixo, com a mineração
-   automática ligada, o contador em palavras. Some com a pílula aberta, que já
-   ocupa esse lugar. */
 .pm-dica {
   position: absolute;
   top: 50%;
@@ -210,9 +202,6 @@
   border-radius: 50%;
 }
 
-/* Sem player (seleção numa página comum, página sem vídeo): o azulejo é só a
-   marca na ponta da pílula, que surge e some por inteiro. Numa falha, nem a
-   marca, como no protótipo. */
 .pm-pilula--livre .pm-botao {
   cursor: default;
   pointer-events: none;
@@ -222,9 +211,6 @@
   display: none;
 }
 
-/* Fechada, a pílula livre some por inteiro e não pega o clique do site no
-   canto: só o azulejo tinha o que mostrar. (A pílula em si fica na árvore,
-   porque a região de status dela leva o chip da marca, que não pega clique.) */
 .pm-pilula--livre:not(.pm-pilula--aberta) {
   pointer-events: none;
 }
@@ -233,8 +219,6 @@
   opacity: 0;
 }
 
-/* O contador da mineração automática: pílula ouro mono no canto do botão;
-   no limite, só o contorno. */
 .pm-contador {
   position: absolute;
   top: -7px;
@@ -281,13 +265,11 @@
   animation: pm-linha-entra var(--veio-transicao) ease-out;
 }
 
-/* A mesma faixa da Palavra na identidade (.veio-palavra), agora sobre o site. */
 .pm-grifo {
   background: var(--veio-kw-bg);
   animation: pm-surge var(--veio-transicao) ease-out;
 }
 
-/* A marca que acompanha o texto (rolagem, redimensionamento) não anima de novo. */
 .pm-marca--parada .pm-linha,
 .pm-marca--parada .pm-grifo {
   animation: none;
@@ -303,7 +285,6 @@
   to { opacity: 1; }
 }
 
-/* O chip: ícone · título · auto:/palavra: · meta, numa pílula acima do texto. */
 .pm-chip {
   display: inline-flex;
   align-items: center;
@@ -336,7 +317,6 @@
   font-size: var(--veio-tam-legenda);
 }
 
-/* O chip da Palavra (o componente da Base Veio), no desenho do protótipo: mono, em ouro. */
 .pm-chip .veio-chip-palavra {
   gap: 4px;
   padding: 1px 7px;
@@ -352,7 +332,6 @@
   color: inherit;
 }
 
-/* A mineração automática: a mesma marca, mais apagada. */
 .pm--apagada .pm-linha {
   opacity: .6;
   box-shadow: none;

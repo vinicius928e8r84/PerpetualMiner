@@ -1,9 +1,6 @@
-# Python
 __pycache__/
 *.py[cod]
 
-
-# Engine (Automatic Anki) — segredos e dados gerados/pessoais
 engine/.env
 engine/.mcp.json
 engine/.tgllm-session.json
@@ -12,28 +9,21 @@ engine/log/
 engine/mining.txt
 engine/prompts.txt
 engine/loopany-test.txt
-# mantém: engine/.env.example e engine/prompts/ (templates)
 
-# OS
 Thumbs.db
 .DS_Store
 preview/dist/
 .vercel
 .env*.local
 
-# Claude Code — worktrees locais (as skills em .claude/skills/ são versionadas)
 .claude/worktrees/
 dist/
 
-# Complemento do Anki: dados que o Anki guarda ao rodar o complemento
 complemento/user_files/
 
-# Venv Python (scripts/preparar-python.sh)
 .venv/
 
-# Saída do Playwright rodado na raiz (e2e/.gitignore cobre só e2e/test-results)
 test-results/
 
-# Scratch de agentes: páginas de protótipo (Lavish) e mapa do Wayfinder
 .lavish/
 .wayfinder/

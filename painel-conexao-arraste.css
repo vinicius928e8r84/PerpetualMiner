@@ -1,4 +1,3 @@
-/* O desenho de arrastar o Anki para Aplicativos, no passo do Mac (ONB-25, #238): o mesmo jeito da animação do aviso, dois quadros que se alternam sozinhos (o Anki ao lado da pasta e o Anki dentro dela); com movimento reduzido, parados. */
 .pc-arraste {
   margin: 0;
 }
@@ -30,14 +29,12 @@
   }
 }
 
-/* Numa janela estreita os dois quadros não cabem lado a lado: empilham. */
 @media (prefers-reduced-motion: reduce) and (max-width: 560px) {
   .pc-arraste__quadros {
     flex-direction: column;
   }
 }
 
-/* A janela do instalador no desenho: o Anki, a seta e a pasta Aplicativos. */
 .pc-arraste__janela {
   display: flex;
   align-items: center;
@@ -74,7 +71,6 @@
   background: var(--veio-accent);
 }
 
-/* O lugar de onde o Anki saiu: o contorno, sem o ícone. */
 .pc-arraste__icone--vago {
   border: 1px dashed var(--veio-border);
   background: transparent;
@@ -93,13 +89,11 @@
   background: var(--veio-accent);
 }
 
-/* O quadro de onde o Anki chegou: a pasta com a marca de foco da Base. */
 .pc-arraste__quadro--solto .pc-arraste__pasta {
   outline: 2px solid var(--veio-accent);
   outline-offset: 2px;
 }
 
-/* A seta da arrastada, desenhada com bordas: uma haste e a ponta. */
 .pc-arraste__seta {
   position: relative;
   width: 28px;

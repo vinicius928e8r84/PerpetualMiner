@@ -1,11 +1,8 @@
 'use strict';
 
-// A base compartilhada (lib/).
 importScripts('lib/voz/catalogo.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/mineracao.js', 'lib/ajustes-de-envio.js', 'lib/mineracao-do-dia.js', 'lib/vocabulario-da-mineracao.js', 'lib/pedido-ao-anki.js', 'lib/pareamento.js', 'lib/envio-gravado.js', 'lib/apagar-frases-pendente.js', 'lib/sincronizacao.js');
 const { textoDaVoz, detectarIdioma, IDIOMAS, MineracaoDoDia, Mineracao, VocabularioDaMineracao, Sincronizacao } = PerpetualMiner;
 
-// During an upgrade, close the old readable area before migrating bearer tokens.
-// A failed migration leaves it restricted rather than exposing the credentials.
 if (chrome.storage.local.setAccessLevel) {
   chrome.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' })
     .then(() => Sincronizacao.lerCredenciais())
@@ -13,7 +10,6 @@ if (chrome.storage.local.setAccessLevel) {
     .catch(() => console.warn('[Auth] session migration failed'));
 }
 
-// Em pasta descompactada, recarrega a extensão quando os arquivos mudam.
 importScripts('lib/arquivos-da-extensao.js', 'lib/auto-recarregar.js');
 PerpetualMiner.AutoRecarregar.iniciar();
 
@@ -21,7 +17,6 @@ const ENDERECO = 'http://127.0.0.1:8766';
 const AUTO_MINER_SETTINGS_KEY = MineracaoDoDia.CHAVES.ajustes;
 const AUTO_MINER_DAILY_KEY = MineracaoDoDia.CHAVES.diario;
 const AUTO_MINER_LAST_EVENT_KEY = MineracaoDoDia.CHAVES.ultimoEvento;
-// Com uma leitura guardada para cair de volta, a Conexão muda não segura a Mineração automática por mais que isto.
 const AUTO_KEYWORD_RENEW_TIMEOUT_MS = 8000;
 const AUTO_KEYWORD_MIN_SCORE = 70;
 const AUTO_KEYWORD_MAX_EN_GROUPS = 2;
@@ -109,22 +104,10 @@ function registrarMenuDeContexto() {
 
 chrome.runtime.onInstalled.addListener(aoInstalar);
 
-/**
- * O menu de contexto é criado como sempre; só a instalação (não a atualização)
- * abre a Boas-vindas numa aba (item 8 da lista fechada, ONB-01) e deixa a
- * configuração começada em `pm_boas_vindas`, que põe o lembrete “Configuração
- * pela metade” no popup e em Frases até ela chegar a Tudo pronto (item 9,
- * lib/configuracao.js). Quem atualiza nunca passou pela Boas-vindas: sem a
- * chave, não vê lembrete.
- *
- * Também tira `pm_pending_sync`, a lista que versões antigas gravavam a cada
- * frase e que nunca foi lida para reenviar nada.
- */
 async function aoInstalar(detalhes) {
   registrarMenuDeContexto();
   await chrome.storage.local.remove('pm_pending_sync').catch(() => {});
   if (detalhes?.reason === 'install') {
-    // A aba abre mesmo com o disco recusando: sem a chave, só falta o lembrete.
     await chrome.storage.local.set({ pm_boas_vindas: { agoraNao: [], concluida: false } }).catch(() => {});
     chrome.tabs.create({ url: chrome.runtime.getURL('painel.html#boas-vindas') });
   }
@@ -158,9 +141,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
-  // Um frame sem vídeo pergunta se outro frame da aba tem um (um player num iframe
-  // de outra origem), antes de dizer que a página não tem vídeo (MIN-10). Só um
-  // frame com vídeo responde; sem resposta, não há.
   if (request.type === 'HA_VIDEO_EM_OUTRO_FRAME') {
     if (sender.id !== chrome.runtime.id || sender.tab?.id == null) return;
     chrome.tabs.sendMessage(sender.tab.id, { type: 'TEM_VIDEO_NESTE_FRAME' })
@@ -170,10 +150,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.type === 'SALVAR_HISTORICO') {
-    // O Minerar frases do painel manda `palavras` quando a linha já trazia a
-    // Palavra (um .txt exportado daqui, mesmo sem nenhuma): ela volta como está,
-    // sem a detecção automática. Ele também manda `semNuvem`, porque sobe as
-    // frases de uma vez no fim e precisa saber se a nuvem falhou (ADD-06).
     const palavras = Array.isArray(request.palavras) ? request.palavras.map(String) : null;
     salvarFrase(
       request.texto,
@@ -213,9 +189,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-// Toda leitura-modificação-escrita de `frases` passa por esta
-// fila. Sem ela, gravações concorrentes (ex.: várias frases de uma foto) leem
-// o mesmo histórico e cada escrita apaga as frases gravadas pelas outras.
 let filaDeGravacao = Promise.resolve();
 
 function naFilaDeGravacao(tarefa) {
@@ -224,8 +197,6 @@ function naFilaDeGravacao(tarefa) {
   return resultado;
 }
 
-// Id maior que todos os do histórico: frases gravadas no mesmo milissegundo
-// (ou logo depois de o service worker reiniciar) nunca repetem id.
 function proximoIdDeFrase(historico) {
   const maiorId = historico.reduce((maior, frase) => Math.max(maior, Number(frase.id) || 0), 0);
   return Math.max(Date.now(), maiorId + 1);
@@ -237,7 +208,7 @@ async function salvarFrase(texto, origem, contexto = null, idioma = 'Inglês', e
     texto,
     data:      new Date().toLocaleDateString('pt-BR'),
     streaming: origem,
-    id:        0,           // definido na fila de gravação
+    id:        0,
     idioma,
     ...(contexto && { contexto }),
     ...extras,
@@ -250,22 +221,16 @@ async function salvarFrase(texto, origem, contexto = null, idioma = 'Inglês', e
     novaFrase.autoKeyword = true;
   }
 
-  // Grava a frase no local antes de tentar a nuvem. Uma falha na nuvem (inclusive
-  // na renovação do token) não perde nada: quem sobe o que ficou só no local é o
-  // `carregar` de lib/sincronizacao.js, que compara o histórico com a nuvem.
   await naFilaDeGravacao(async () => {
     const data = await chromeGet({ frases: [] });
     novaFrase.id = proximoIdDeFrase(data.frases);
     await chromeSet({ frases: [novaFrase, ...data.frases] });
   });
 
-  // Se o usuário estiver logado, sincroniza com o Firestore em background
   if (comNuvem) sincronizarComFirestore(novaFrase);
   return novaFrase;
 }
 
-// A nuvem da conta conectada (a sessão renova o token pelo refresh token do
-// Firebase se expirou), ou null sem conta. O REST do Firestore é de lib/sincronizacao.js.
 async function nuvemDaConta() {
   const { pm_user_info: perfil } = await chromeGet({ pm_user_info: null });
   if (!perfil) return null;
@@ -284,7 +249,6 @@ async function sincronizarComFirestore(frase) {
     if (!nuvem) return;
     await nuvem.gravarFrase(frase);
   } catch (err) {
-    // Offline ou erro de rede: a frase já está no local, e o próximo carregamento do painel a sobe.
     console.warn('[Firestore] Sync falhou:', err?.message);
   }
 }
@@ -616,13 +580,9 @@ async function getAutoKeywordVocabulary(lang = 'en') {
   const deckName = await getAutoKeywordDeckName(normalizedLang);
   const cacheKey = VocabularioDaMineracao.chaveDoIdioma(normalizedLang);
   const cached = await chromeGet({ [cacheKey]: null });
-  // A última leitura daquele Baralho não tem prazo: com ela em dia, nem pergunta à Conexão;
-  // vencida, tenta renovar e, se a Conexão não responde, é ela que continua valendo.
   const ultimaLeitura = VocabularioDaMineracao.doBaralho(cached[cacheKey], deckName);
   if (ultimaLeitura && VocabularioDaMineracao.estaEmDia(ultimaLeitura)) return autoVocabularyFromCache(ultimaLeitura);
 
-  // Só o Baralho dos Ajustes de envio: se ele não responde, o fallback ao padrão leria outro Baralho (talvez inexistente,
-  // vocabulário vazio) e o gravaria com o rótulo do Baralho gravado. A pessoa sem Baralho gravado já tem o padrão aqui.
   let data = null;
   try {
     const resp = await PerpetualMiner.PedidoAoAnki.pedir(ENDERECO, PerpetualMiner.PedidoAoAnki.vocabulario(deckName, normalizedLang), {
@@ -849,13 +809,6 @@ function autoMinerTextKey(value) {
   return normalizeAutoMinerText(value).toLowerCase();
 }
 
-// O contador da mineração automática de hoje, somando só os idiomas ligados
-// (MIN-09). Sem badge com os dois desligados: um contador parado em 0 diria que
-// a mineração automática está funcionando e não minerou nada.
-//
-// Quem manda no badge é o armazenamento, não quem escreveu nele. Para a
-// passagem do tempo, que não gera `storage.onChanged`, veja `agendarViradaDoDia`.
-
 // As cores do badge são as únicas cores escritas fora de `veio/tokens.css`:
 // `chrome.action` não lê CSS. São cópias de `--veio-accent` e `--veio-accent-ink`,
 // e a exceção está registrada em `veio/README.md`, junto com a do `icone.svg`.
@@ -863,12 +816,6 @@ const BADGE_COR_DE_FUNDO = '#F5B83D';
 const BADGE_COR_DO_TEXTO = '#1A1204';
 const ALARME_VIRADA_DO_DIA = 'pm-virada-do-dia';
 
-/**
- * O badge da mineração automática, ou null quando não há badge nenhum.
- *
- * @param {{settings: object, daily: object}} state
- * @returns {{texto: string, titulo: string} | null}
- */
 function badgeDaMineracaoAutomatica(state) {
   const ligados = MineracaoDoDia.idiomasLigados(state);
   if (!ligados.length) return null;
@@ -909,8 +856,6 @@ async function atualizarBadgeDaToolbar() {
   await chrome.action.setTitle({ title: badge ? badge.titulo : chrome.runtime.getManifest().name });
   if (!badge) return;
 
-  // O par de cores anda junto: o texto escuro sobre o ouro é o contraste de
-  // 10,4:1 da spec. `minimum_chrome_version` no manifesto garante as duas.
   await chrome.action.setBadgeBackgroundColor({ color: BADGE_COR_DE_FUNDO });
   await chrome.action.setBadgeTextColor({ color: BADGE_COR_DO_TEXTO });
 }
@@ -955,20 +900,10 @@ ouvirChrome(chrome.storage.onChanged, (changes, area) => {
   if (AUTO_MINER_SETTINGS_KEY in changes || AUTO_MINER_DAILY_KEY in changes) atualizarBadgeDaToolbar();
 });
 
-// O service worker acorda e dorme o tempo todo (também na partida do Chrome): ao acordar, o badge pode ser o de ontem.
 agendarViradaDoDia();
 atualizarBadgeDaToolbar();
-// O Apagar tudo que a Conexão não confirmou (a marca em `pm_envio`) é pedido de novo a cada 30 s.
 PerpetualMiner.ApagarFrasesPendente.ligar({ chrome, ouvirChrome, endereco: ENDERECO });
 
-/**
- * Centraliza a publicação espontânea do estado pelos canais de `MineracaoDoDia`.
- * As respostas aos pedidos de leitura e de ajuste continuam diretas ao solicitante.
- *
- * Depois de confirmar a gravação do contador, publicar antes do diagnóstico:
- * uma falha ao gravar o último evento não pode reter o estado já confirmado.
- * Regressão: `e2e/tests/mineracao-automatica-publicacao.spec.js`.
- */
 function publicarEstadoDaAutomatica(state) {
   chrome.storage.local.set({ [MineracaoDoDia.CHAVES.estadoPublicado]: { settings: state.settings, daily: state.daily, updatedAt: Date.now() } });
   const listarAbas = metodoDoChrome(chrome.tabs, 'query');
@@ -980,9 +915,7 @@ function publicarEstadoDaAutomatica(state) {
         chrome.tabs.sendMessage(tab.id, { type: MineracaoDoDia.MENSAGEM_ESTADO_MUDOU, state }, () => {
           void chrome.runtime.lastError;
         });
-      } catch {
-        // Aba sem content script ou indisponivel.
-      }
+      } catch {}
     }
   });
 }
@@ -996,8 +929,6 @@ function chromeGet(defaults) {
   return new Promise(resolve => chrome.storage.local.get(defaults, resolve));
 }
 
-// Uma gravação recusada (cota, armazenamento indisponível) rejeita: quem espera
-// por ela — o overlay, pela resposta de SALVAR_HISTORICO — precisa saber.
 function chromeSet(values) {
   return new Promise((resolve, reject) => chrome.storage.local.set(values, () => {
     const erro = chrome.runtime.lastError;

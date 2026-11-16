@@ -7,7 +7,6 @@
   const ABERTURA = 'abertura';
   const PRONTO = 'pronto';
 
-  /** O que cada passo tem nesta página: o valor do resumo, quando feito, e a tela dele. A ordem, o “opcional” e o feito são de `Configuracao.PASSOS`. */
   const DESTA_PAGINA = {
     minerar: {
       valor: e => textoDaVoz('PAI-05', { n: e.totalDeFrases }),
@@ -30,7 +29,6 @@
       montar: montarPassoDaIA,
     },
     automatica: {
-      // Os idiomas ligados, separados pelo “·” da Voz (V5).
       valor: e => [e.automatica.en && IDIOMAS.INGLES, e.automatica.ru && IDIOMAS.RUSSO]
         .filter(Boolean).join(' · '),
       montar: montarPasso6,
@@ -47,7 +45,6 @@
       valor: () => textoDaVoz('ONB-13.enviado'),
       montar: () => {
         passoDoEnvio = PassoDoPrimeiroEnvio.montar({
-          // A linha do Envio é a de Frases (painel.js), que lê a Palavra de `keywords`; a lista de Frases só o enche depois de carregar.
           linhaDaFrase: frase => { keywords[frase.id] ??= frase.keywords; return linhaParaOAnki(frase); },
           aoTrocarAChave: () => irPara('ia'),
           aoConcluir: () => irPara(PRONTO),
@@ -60,7 +57,6 @@
   const TELAS = [ABERTURA, ...PASSOS.map(p => p.id), PRONTO];
   const passoDa = tela => PASSOS.find(p => p.id === tela);
 
-  /** A situação de um passo e a palavra dela no catálogo (ONB-13). */
   const { SITUACAO } = Configuracao;
   const TEXTO_DA_SITUACAO = {
     [SITUACAO.FEITO]: 'ONB-13.feito',
@@ -71,48 +67,44 @@
   const estado = {
     tela: ABERTURA,
     atalhos: { ...Atalhos.ATALHOS_PADRAO },
-    configuracao: null,    // o retrato de Configuracao, depois da primeira leitura
-    automatica: null,      // o estado da mineração automática, do service worker
+    configuracao: null,
+    automatica: null,
   };
 
-  /** Os idiomas da mineração automática, como no popup. */
   const IDIOMAS_DA_MINERACAO = [
     { chave: 'en', idioma: IDIOMAS.INGLES },
     { chave: 'ru', idioma: IDIOMAS.RUSSO },
   ];
 
   const porId = id => document.getElementById(id);
-  const itensDaLista = new Map();   // tela → { botao, marca, situacao }
-  const telas = new Map();          // tela → o corpo dela no card
-  let passoDeMinerar = null;        // o passo 1 (painel-boas-vindas-minerar.js)
-  let rodapeDesenhadoPara = null;   // a tela (e o Agora não) do rodapé na tela agora
-  let passo4 = null;                // os passos da Conexão do passo 4 (painel-conexao-passos.js)
-  let passo6 = null;                // as do passo 6: a nota, as linhas dos idiomas, a falha
-  let ondeConseguirAChave = null;   // o “Onde conseguir a chave” (ONB-11) do passo do Gemini, só sem chave
-  let passoDoNivel = null;          // o passo do nível (painel-boas-vindas-nivel.js)
-  let passoDoEnvio = null;          // o passo do primeiro Envio (painel-boas-vindas-envio.js)
+  const itensDaLista = new Map();
+  const telas = new Map();
+  let passoDeMinerar = null;
+  let rodapeDesenhadoPara = null;
+  let passo4 = null;
+  let passo6 = null;
+  let ondeConseguirAChave = null;
+  let passoDoNivel = null;
+  let passoDoEnvio = null;
 
   function iniciarBoasVindas() {
     montarLista();
     montarTelas();
-    // A Conexão chega à Configuracao pelo ConexaoAnki, sem depender de outra página do painel.
     Configuracao.acompanhar(retrato => {
       estado.configuracao = retrato;
       desenhar();
     });
-    // O atalho de legenda do passo 1 (o de seleção vem no retrato).
     Atalhos.acompanharAtalhos(atalhos => {
       estado.atalhos = atalhos;
       desenhar();
     });
     ConexaoAnki.acompanhar(desenharPasso6);
-    AjustesDeEnvio.acompanhar(() => desenhar());   // o nível salvo, aqui ou em outra aba, é o do campo de cada idioma
+    AjustesDeEnvio.acompanhar(() => desenhar());
     lerMineracaoAutomatica();
     window.addEventListener('hashchange', () => mostrarTelaDoEndereco({ focar: true }));
     mostrarTelaDoEndereco({ focar: false });
   }
 
-  /** A tela que o endereço pede; fora de #boas-vindas, nada muda. */
   function mostrarTelaDoEndereco({ focar }) {
     const [area, parte] = location.hash.replace(/^#/, '').split('/');
     if (area !== 'boas-vindas') return;
@@ -126,7 +118,6 @@
     location.hash = tela === ABERTURA ? '#boas-vindas' : `#boas-vindas/${tela}`;
   }
 
-  /** Até a primeira leitura do que está gravado, todo passo falta. */
   const situacaoDo = passo => (estado.configuracao ? estado.configuracao.situacaoDo(passo.id) : SITUACAO.FALTA);
 
   const tituloDaTela = tela => (tela === PRONTO ? textoDaVoz('ONB-12.titulo') : textoDaVoz(`ONB-03.${tela}`));
@@ -158,12 +149,10 @@
       const passo = passoDa(tela);
       const agora = passo ? situacaoDo(passo) : null;
       desenharMarca(marca, agora, atual);
-      // O nome do item diz a situação ao leitor de tela: “…, feito”.
       situacao.textContent = agora && agora !== SITUACAO.FALTA ? `, ${textoDaVoz(TEXTO_DA_SITUACAO[agora])}` : '';
     }
   }
 
-  /** A marca de um passo: o número (ou o tracejado) sai do CSS, pelo `data-numero`; o texto do item é o título do passo. */
   function montarMarca(numero) {
     const marca = elemento('span', 'bv-marca');
     marca.setAttribute('aria-hidden', 'true');
@@ -202,19 +191,16 @@
   function montarPasso2() {
     const controle = elemento('div', 'bv-controle bv-controle--atalhos');
     const tela = elemento('div', null, elemento('p', 'bv-texto', textoDaVoz('ONB-06')), controle);
-    // Sair do passo (a tela some) cancela a gravação, como fechar o card em Configurações.
     raiz.GravadorDeAtalhos.montar(controle, { prefixo: 'bv', lugar: tela });
     return tela;
   }
 
-  /** O corpo do card Conta & sync, o mesmo de Configurações (painel-conta.js). */
   function montarPasso3() {
     const cartao = elemento('div', 'cfg-corpo bv-cartao');
     Conta.montarCartao(cartao);
     return elemento('div', null, elemento('p', 'bv-texto', textoDaVoz('ONB-07')), elemento('div', 'bv-controle', cartao));
   }
 
-  /** Os passos de pôr a Conexão no Anki: o componente do card ONB-16 (painel-conexao-passos.js), sem Voltar · Continuar próprios. Ligada, o foco vai ao título. */
   function montarPasso4() {
     const lugar = elemento('div', 'bv-controle');
     passo4 = PassosDaConexao.montar(lugar, {
@@ -223,7 +209,6 @@
     return elemento('div', null, elemento('p', 'bv-texto', textoDaVoz('ONB-08.corpo')), lugar);
   }
 
-  /** Os switches EN/RU do popup, cada um com o limite por dia, e a nota ONB-10 com a Conexão desligada (dá para ligar mesmo assim). O estado é o do service worker. */
   function montarPasso6() {
     const nota = elemento('p', 'bv-nota bv-nota--conexao', elemento('span', 'bv-ponto'), textoDaVoz('ONB-10'));
     nota.firstChild.dataset.estado = CONEXAO.DESLIGADA;
@@ -274,21 +259,17 @@
   }
 
   function lerMineracaoAutomatica() {
-    // Um estado publicado enquanto isso é mais novo que esta resposta.
     MineracaoAutomatica.lerEstado().then(
       novo => { if (!estado.automatica) mostrarMineracaoAutomatica(novo); },
       () => { if (!estado.automatica) mostrarFalhaDaAutomatica('POP-16.leitura'); });
-    // O que o popup (ou a própria mineração) muda aparece aqui sem recarregar.
     chrome.storage.onChanged.addListener((mudancas, area) => {
       const publicado = area === 'local' && mudancas[MineracaoDoDia.CHAVES.estadoPublicado]?.newValue;
       if (publicado) mostrarMineracaoAutomatica(publicado);
     });
   }
 
-  /** Grava só o que mudou num idioma; a promessa termina com os controles no que ficou gravado. */
   function salvarMineracaoAutomatica(mudanca) {
     return MineracaoAutomatica.salvarAjustes(mudanca).then(mostrarMineracaoAutomatica, () => {
-      // Nada foi gravado: os controles voltam ao que está gravado, e POP-16 pede para tentar de novo.
       if (estado.automatica) mostrarMineracaoAutomatica(estado.automatica);
       mostrarFalhaDaAutomatica('POP-16.gravacao');
     });
@@ -305,13 +286,10 @@
       caixa.disabled = false;
       campo.disabled = false;
       caixa.checked = Boolean(ajustes.enabled);
-      // O que está sendo digitado no campo fica: ele grava ao sair ou com Enter.
       if (document.activeElement !== campo) campo.value = String(ajustes.dailyLimit);
     }
-    // Um idioma ligado marca o passo pelo storage (lib/configuracao.js).
   }
 
-  /** A nota ONB-10 enquanto a última resposta da Conexão foi “desligada”. */
   function desenharPasso6() {
     passo6.nota.hidden = ConexaoAnki.ultimaResposta() !== CONEXAO.DESLIGADA;
   }
@@ -321,7 +299,6 @@
     passo6.falha.replaceChildren(elemento('p', 'bv-falha', Veio.iconeVeio('alerta'), textoDaVoz(id)));
   }
 
-  /** O card Chave do Gemini de Configurações (painel-chave.js) e, sem chave, onde consegui-la. */
   function montarPassoDaChave() {
     const cartao = elemento('div', 'cfg-corpo bv-cartao');
     raiz.ChaveDoGemini.montar(cartao, { prefixo: 'bv' });
@@ -345,7 +322,6 @@
       const situacao = situacaoDo(passo);
       const marca = montarMarca(String(i + 1));
       desenharMarca(marca, situacao, false);
-      // Feito mostra o valor (“Alt+Q”); o leitor de tela ouve “feito: Alt+Q”.
       const lado = situacao === SITUACAO.FEITO
         ? elemento('span', 'bv-resumo__lado', elemento('span', 'veio-so-leitor', `${textoDaVoz(TEXTO_DA_SITUACAO[situacao])}: `), passo.valor(estado.configuracao.estado))
         : elemento('span', 'bv-resumo__lado', textoDaVoz(TEXTO_DA_SITUACAO[situacao]));
@@ -362,13 +338,10 @@
     for (const [nome, corpo] of telas) corpo.hidden = nome !== tela;
 
     desenharLista();
-    // À vista é a tela aberta numa página que está na tela: o shell esconde a Boas-vindas em outras áreas.
     passo4.mostrar(tela === 'anki' && !porId('boas-vindas').hidden);
     passoDeMinerar.desenhar(estado.atalhos);
     passoDoNivel.desenhar(estado.configuracao?.estado);
-    // Ao chegar ao último passo o Envio começa sozinho; sair dele para a leitura.
     passoDoEnvio.desenhar(estado.configuracao, tela === 'envio' && !porId('boas-vindas').hidden);
-    // Até a primeira leitura não se sabe se há chave: o Onde conseguir a chave espera, para não piscar.
     ondeConseguirAChave.hidden = !estado.configuracao || Boolean(estado.configuracao.estado.chave);
     desenharResumo();
     desenharRodape(tela, passo);
@@ -382,7 +355,6 @@
   }
 
   function desenharRodape(tela, passo) {
-    // Refeito só quando muda o que ele mostra: o foco do botão não se perde num redesenho.
     const comAgoraNao = Boolean(passo?.opcional && situacaoDo(passo) !== SITUACAO.FEITO);
     const desenhoDoRodape = `${tela}|${comAgoraNao}`;
     if (desenhoDoRodape === rodapeDesenhadoPara) return;
@@ -416,7 +388,6 @@
         irPara(seguinte);
       }));
     }
-    // O último passo termina em Concluir, dentro do card, quando o Cartão chega ao Anki.
     if (tela !== 'envio') botoes.push(botaoDoRodape('ONB-04.continuar', 'primario', () => irPara(seguinte)));
     rodape.replaceChildren(...botoes);
   }

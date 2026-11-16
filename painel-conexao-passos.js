@@ -1,20 +1,5 @@
 'use strict';
 
-//   montar(lugar, { prefixo, navegacao, aoSairOBotao, aoResolverOAbridor })
-//     `prefixo`        dá os ids (`<prefixo>-passo-titulo`, `-status`, `-tentar`, `-abridor-status`…)
-//     `navegacao`      Voltar · Continuar no card (padrão true; a Boas-vindas tem os seus)
-//     `empilhado`      a lista acima do card, para quando o componente mora dentro de outro card
-//     `aoSairOBotao`   o elemento que acolhe o foco quando o Tentar de novo sai com ele
-//     `aoResolverOAbridor`  chamado quando o passo 4 se resolve (achou o Anki, ou “Agora não”)
-//   devolve { desenhar({ pronto }), mostrar(visivel), focarTitulo(), abridorResolvido() }
-//     `desenhar`  redesenha pelo estado da Conexão. O anfitrião chama com `pronto` quando
-//                 mostra o momento Pronto (todos os passos resolvidos, sem botões);
-//     `mostrar`   o anfitrião diz se o componente está à vista de verdade (a área ou a tela
-//                 aberta, não só montada em um lugar escondido): é daí que contam os 2 minutos;
-//     `abridorResolvido`  o passo 4 já está resolvido (o card ONB-16 só vai ao Pronto depois dele).
-//
-// O código do AnkiWeb: `PerpetualMiner.AnkiWeb.codigo` (lib/ankiweb.js, #176).
-
 (function (raiz) {
   const PASSOS = [
     { id: 'anki', titulo: 'ONB-18.titulo', texto: 'ONB-18.texto' },
@@ -37,9 +22,7 @@
     windows: 'ONB-18.depoisNoWindows',
     outro: 'ONB-18.depois',
   });
-  // A resposta da pessoa à pergunta “Você já tem o Anki?”, que fica só na tela.
   const RESPOSTA = Object.freeze({ JA_TENHO: 'ja', NAO_TENHO: 'nao' });
-  /** Sem resposta depois disto, o checklist e “Baixar de novo”. */
   const SEM_RESPOSTA_MS = 2 * 60 * 1000;
   const INTERVALO_DO_TIQUE = 1000;
   const ITENS_DO_CHECKLIST = ['ONB-16.confira1', 'ONB-16.confira2', 'ONB-16.confira3'];
@@ -48,10 +31,6 @@
   const { SITUACAO: CONEXAO } = ConexaoAnki;
   const { SITUACAO } = Configuracao;
 
-  /**
-   * O que fazer depois de baixar o Anki, pelo sistema da pessoa (o `userAgentData` do Chromium, ou o
-   * user agent): o ID da cópia. Fora do Mac e do Windows, a frase geral.
-   */
   function depoisDoDownloadDestaPessoa() {
     const plataforma = navigator.userAgentData?.platform ?? navigator.userAgent;
     if (/mac/i.test(plataforma)) return DEPOIS_DO_DOWNLOAD.mac;
@@ -59,10 +38,8 @@
     return DEPOIS_DO_DOWNLOAD.outro;
   }
 
-  // A conversa com o abridor é a máquina `ConversaComOAbridor` (painel-anki-primeira-conexao-estado.js): aqui se mandam os eventos
-  // (o que o Chrome e o abridor disseram, os cliques) e se faz o que a fase nova pede. Uma só para os dois lugares da página.
   const { FASE, EVENTO } = ConversaComOAbridor;
-  let abridor = ConversaComOAbridor.inicial();   // { fase, detalhe, agoraNao, recusada }
+  let abridor = ConversaComOAbridor.inicial();
   const ouvintesDoAbridor = new Set();
   let abridorIniciado = false;
 
@@ -73,25 +50,20 @@
     ouvintesDoAbridor.forEach(ouvinte => ouvinte());
     if (abridor.fase === antes.fase) return;
     if (abridor.fase === FASE.LENDO) {
-      // C8: “Procurando o Anki…” só quando a conversa sai de verdade; até o Chrome dizer da permissão, o bloco espera.
       Abridor.temPermissao().catch(() => false).then(tem => despacharAoAbridor(EVENTO.PERMISSAO, { tem }));
     } else if (abridor.fase === FASE.PROCURANDO) {
       Abridor.conferirOAnki().then(async ({ resultado, detalhe }) => {
-        // Com a permissão dada, um “Agora não” antigo deixa de valer.
         if (resultado !== Abridor.RESULTADO.SEM_PERMISSAO && abridor.agoraNao) await Abridor.guardarAgoraNao(false);
         despacharAoAbridor(EVENTO.CONFERIU, { resultado, detalhe });
       });
     }
   }
 
-  /** O passo 4 está resolvido: o abridor achou o Anki, ou a pessoa disse “Agora não”. */
   const abridorResolvido = () => ConversaComOAbridor.resolvido(abridor);
 
-  /** Lê o “Agora não” guardado e o acompanha (outra aba, ou o outro lugar desta página, pode mudá-lo). */
   function iniciarOAbridor() {
     if (abridorIniciado) return;
     abridorIniciado = true;
-    // Sem a leitura, o passo fica como se nada tivesse sido dito: a pessoa ainda pode responder.
     Abridor.lerAgoraNao().then(valor => despacharAoAbridor(EVENTO.AGORA_NAO, { valor }), () => {});
     chrome.storage.onChanged.addListener((mudancas, area) => {
       if (area === 'local' && 'pm_abridor' in mudancas) despacharAoAbridor(EVENTO.AGORA_NAO, { valor: mudancas.pm_abridor.newValue?.agoraNao === true });
@@ -118,7 +90,6 @@
     return no;
   }
 
-  /** “Achei o Anki · Usuário 1 · versão 0.1.0”: cada parte só entra se a Conexão a disse. */
   function textoDeAchei() {
     const { perfil, versao } = ConexaoAnki.saude() ?? {};
     return [
@@ -128,7 +99,6 @@
     ].filter(Boolean).join(' · ');
   }
 
-  // O ponto da linha do abridor, por fase: verde achou, vermelho não achou, piscando enquanto espera.
   const PONTO_DA_FASE = Object.freeze({
     [FASE.PEDINDO]: CONEXAO.CONECTANDO,
     [FASE.PROCURANDO]: CONEXAO.CONECTANDO,
@@ -148,15 +118,15 @@
     iniciarOAbridor();
     const id = parte => `${prefixo}-${parte}`;
     const estado = {
-      ultimaSituacao: null, // a situação da Conexão no último desenho (o passo 4 abre quando ela liga)
-      ligou: false,         // a Conexão respondeu ligada nesta página (a guardada vem de `jaConectou`)
+      ultimaSituacao: null,
+      ligou: false,
       resolvido: abridorResolvido(),
-      escolha: null,        // o passo que a pessoa abriu; sem ele, o primeiro que falta
-      pronto: false,        // o anfitrião mostra o momento Pronto
+      escolha: null,
+      pronto: false,
       visivel: false,
-      conferindo: ConexaoAnki.conferindo(),   // uma conferência do /health está no ar
-      esperandoDesde: null, // quando a espera da Conexão começou (ms); null: ainda não
-      semResposta: false,   // o checklist está na tela (fica até a Conexão responder)
+      conferindo: ConexaoAnki.conferindo(),
+      esperandoDesde: null,
+      semResposta: false,
     };
     const marcas = [];
 
@@ -182,7 +152,6 @@
     const texto = elemento('p', 'bv-texto');
 
     const destaque = navegacao ? 'veio-botao--primario' : 'veio-botao--contorno';
-    /** Um link com cara de botão: o do arquivo da Conexão e o da página do Anki. */
     const botaoDeLink = (rotulo, endereco, classe = `veio-botao ${destaque}`) => {
       const link = elemento('a', classe, rotulo);
       link.href = endereco;
@@ -197,8 +166,6 @@
     const baixar = botaoDoArquivo(textoDaVoz('ONB-16.baixar'));
     baixar.addEventListener('click', () => { if (estado.esperandoDesde === null) estado.esperandoDesde = Date.now(); });
 
-    // A animação do aviso (ONB-19, #146): o que o próprio Anki pergunta ao abrir o arquivo, e de
-    // onde clicar. Os quadros são um desenho (aria-hidden); a legenda é o que o leitor de tela lê.
     const dialogoDoAnki = comOClique => {
       const quadro = elemento('div', `pc-animacao__quadro${comOClique ? ' pc-animacao__quadro--clique' : ''}`);
       quadro.setAttribute('aria-hidden', 'true');
@@ -218,10 +185,8 @@
     const detalhes = Veio.montarDetalhes(
       codigo === null ? textoDaVoz('ONB-16.codigoEmBreve') : textoDaVoz('ONB-16.codigoDoAnkiWeb', { codigo }),
       document, textoDaVoz('ONB-16.arquivoNaoAbriu'));
-    // A animação vem antes do botão: a pessoa vê o que o Anki vai perguntar antes de baixar o arquivo.
     const doArquivo = elemento('div', 'pc-arquivo', aAnimacao, baixar, detalhes);
 
-    // O passo Ter o Anki (#146): a pergunta, as duas respostas e o que a escolha mostra.
     const perguntaDoAnki = elemento('p', 'pc-anki__pergunta', textoDaVoz('ONB-18.pergunta'));
     const botaoDeResposta = (rotulo, parte) => {
       const botao = elemento('button', 'veio-botao veio-botao--contorno veio-botao--compacto', textoDaVoz(rotulo));
@@ -233,14 +198,12 @@
     const naoTenho = botaoDeResposta('ONB-18.naoTenho', 'anki-nao-tenho');
     const respostasDoAnki = elemento('div', 'pc-anki__respostas', jaTenho, naoTenho);
 
-    // A página do Anki abre numa aba nova: o painel (e o passo em que a pessoa está) fica onde está.
     const baixarOAnki = botaoDeLink(textoDaVoz('ONB-18.baixar'), PAGINA_DO_ANKI);
     baixarOAnki.id = id('anki-baixar');
     baixarOAnki.target = '_blank';
     baixarOAnki.rel = 'noopener';
     const depoisDoDownload = elemento('p', 'pc-anki__depois', textoDaVoz(depoisDoDownloadDestaPessoa()));
     const doDownloadDoAnki = elemento('div', 'pc-anki__download', baixarOAnki, depoisDoDownload);
-    // No Mac, o desenho de arrastar (ONB-25, #238) vem entre o link e a frase.
     if (depoisDoDownloadDestaPessoa() === DEPOIS_DO_DOWNLOAD.mac) depoisDoDownload.before(raiz.DesenhoDoArraste.montar());
 
     const resultadoDoAnki = elemento('p', 'pc-anki__resultado');
@@ -249,34 +212,27 @@
     const blocoDoAnki = elemento('div', 'pc-anki', perguntaDoAnki, respostasDoAnki, doDownloadDoAnki, resultadoDoAnki);
     doDownloadDoAnki.hidden = true;
 
-    // A resposta do passo Ter o Anki, só na tela: `escolha` é `null` ou uma `RESPOSTA`; `doAbridor` é o ID
-    // do que “Já tenho” mostrou por último. Quem marca o passo é a Conexão respondendo (a escolha volta à pergunta).
     const anki = { escolha: null, doAbridor: null };
     const definirResposta = (escolha, doAbridor = null) => Object.assign(anki, { escolha, doAbridor });
 
-    /** O abridor abre o Anki agora? */
     async function oAbridorAbreOAnki() {
       const { resultado } = await Abridor.abrirOAnki().catch(() => ({ resultado: null }));
       return resultado === Abridor.RESULTADO.ABRIU;
     }
 
-    // Uma conversa por vez: cada `abrir` é um Anki aberto.
     let conversandoComOAbridor = false;
 
-    /** “Já tenho”: com a permissão dada, o abridor abre o Anki; sem ela (ou sem ele), o caminho manual. */
     async function responderJaTenho() {
       if (conversandoComOAbridor && anki.escolha === RESPOSTA.JA_TENHO) return;
       definirResposta(RESPOSTA.JA_TENHO);
       desenhar();
       if (conversandoComOAbridor) return;
       conversandoComOAbridor = true;
-      // Com a conversa no ar, a tela diz que o Anki abre até a resposta.
       if (await Abridor.temPermissao().catch(() => false) && anki.escolha === RESPOSTA.JA_TENHO) {
         definirResposta(RESPOSTA.JA_TENHO, 'ONB-18.abrindo');
         desenhar();
       }
       const abriu = await oAbridorAbreOAnki().finally(() => { conversandoComOAbridor = false; });
-      // A pessoa mudou de resposta (ou a Conexão respondeu) enquanto ele falava.
       if (anki.escolha !== RESPOSTA.JA_TENHO) return;
       definirResposta(RESPOSTA.JA_TENHO, abriu ? 'ONB-18.abrindo' : 'ONB-18.manual');
       desenhar();
@@ -302,13 +258,11 @@
     tentar.id = id('tentar');
     tentar.type = 'button';
     ConexaoNaTela.ligarTentarDeNovo(tentar, () => {
-      // Só o botão do passo fixa o passo 2: o Tentar de novo da F1 não é escolha da pessoa.
       estado.escolha = PASSO_DO_TENTAR;
       ConexaoAnki.tentarDeNovo();
     });
     const conexao = elemento('div', 'bv-conexao', status, tentar);
 
-    // O abridor (passo 4): a linha do que ele disse, as ações e, quando ele não respondeu, o Detalhes.
     const pontoDoAbridor = elemento('span', 'bv-ponto');
     pontoDoAbridor.setAttribute('aria-hidden', 'true');
     const textoDoAbridor = elemento('span');
@@ -323,7 +277,7 @@
       return botao;
     };
     const permitir = botaoDoAbridor('permitir', destaque, textoDaVoz('ONB-17.permitir'), pedirAPermissao);
-    let tentarOAbridor = null; // A ação vive no aviso da Base, só enquanto houver erro.
+    let tentarOAbridor = null;
     const agoraNao = botaoDoAbridor('agora-nao', 'veio-botao--contorno', textoDaVoz('ONB-04.agoraNao'), dizerAgoraNao);
     const acoesDoAbridor = elemento('div', 'pc-abridor__acoes', permitir, agoraNao);
     let avisoDoAbridor = null;
@@ -354,19 +308,12 @@
 
     const indice = passoId => PASSOS.findIndex(p => p.id === passoId);
 
-    /**
-     * O passo aberto: o que a pessoa escolheu ou, sem escolha, o primeiro que falta: o de reiniciar
-     * enquanto confere, e o do abridor com a Conexão ligada.
-     */
     function passoAberto() {
       if (estado.pronto) return PASSOS[PASSOS.length - 1].id;
       if (estado.escolha !== null) return estado.escolha;
       const situacao = ConexaoAnki.situacao();
       if (situacao === CONEXAO.LIGADA) return PASSO_DO_ABRIDOR;
       if (situacao === CONEXAO.CONECTANDO) return PASSO_DO_TENTAR;
-      // Desligada: quem nunca conectou começa no primeiro passo; quem já viu a Conexão ligar (nesta
-      // página, ou neste computador: `jaConectou`) volta a Reiniciar o Anki, o primeiro que falta de novo,
-      // com a linha da Conexão e o Tentar de novo. O passo do abridor não tem o que fazer sem ela.
       return estado.ligou || ConexaoAnki.jaConectou() ? PASSO_DO_TENTAR : PASSOS[0].id;
     }
     const indiceAberto = () => indice(passoAberto());
@@ -374,11 +321,9 @@
     function abrirPasso(passoId) {
       estado.escolha = passoId;
       desenhar();
-      // O foco vai ao título, para o leitor ler o passo novo; o botão apertado pode ter saído.
       titulo.focus();
     }
 
-    /** Conta os 2 minutos e diz se o checklist está na tela (ele sai quando a Conexão responde). */
     function desenharAEspera() {
       const ligada = ConexaoAnki.situacao() === CONEXAO.LIGADA;
       if (ligada) {
@@ -397,12 +342,9 @@
       const passoDoCard = PASSOS[pronto ? indice(PASSO_DO_ABRIDOR) : aberto];
       const situacao = ConexaoAnki.situacao();
       const conectando = situacao === CONEXAO.CONECTANDO;
-      // No passo de reiniciar, uma conferência no ar sobre uma Conexão desligada é “Conectando”, sem
-      // clique nenhum; o último resultado só volta quando a resposta chega. Ligada, ela segue ligada.
       const exibida = estado.conferindo && situacao === CONEXAO.DESLIGADA && passoDoCard.id === PASSO_DO_TENTAR
         ? CONEXAO.CONECTANDO : situacao;
       const conectou = pronto || situacao === CONEXAO.LIGADA;
-      // Os três primeiros passos são a Conexão; o quarto, o abridor (ou o “Agora não” dele).
       const situacaoDoPasso = passo => {
         if (passo.id !== PASSO_DO_ABRIDOR) return conectou ? SITUACAO.FEITO : '';
         if (abridor.fase === FASE.ACHOU) return SITUACAO.FEITO;
@@ -417,11 +359,9 @@
         marca.dataset.situacao = doPasso;
         marca.classList.toggle('bv-marca--atual', i === aberto);
         marca.replaceChildren(...(doPasso === SITUACAO.FEITO ? [Veio.iconeVeio('certo')] : []));
-        // O nome do item diz a situação ao leitor de tela: “…, feito”, “…, agora não”.
         leitor.textContent = doPasso ? `, ${textoDaVoz(LEITOR[doPasso])}` : '';
       });
 
-      // O momento Pronto troca o card inteiro: a Conexão respondeu e as abas voltam em seguida.
       sobretitulo.textContent = pronto ? textoDaVoz('ONB-16.pronto')
         : `${textoDaVoz('ONB-16.passos')} · ${textoDaVoz('ONB-03.passo', { n: aberto + 1, total: PASSOS.length })}`;
       titulo.textContent = pronto ? ConexaoNaTela.texto(CONEXAO.LIGADA) : textoDaVoz(passoDoCard.titulo);
@@ -429,13 +369,8 @@
       doArquivo.hidden = pronto || passoDoCard.id !== PASSO_DO_ARQUIVO;
       desenharOAnki(passoDoCard, pronto);
 
-      // No passo Ter o Anki, a linha da Conexão não tem o que fazer: o Tentar de novo mora no
-      // passo de reiniciar, e o que a pessoa está respondendo é se tem o Anki.
       conexao.hidden = passoDoCard.id === PASSO_DO_ANKI;
 
-      // O status é uma região que anuncia a mudança: o ponto e o texto trocam, ela fica. No passo do
-      // arquivo, enquanto a Conexão não respondeu, ele espera (o Anki não é lido antes dela: nunca
-      // diz “não encontrado”).
       const esperando = !pronto && passoDoCard.id === PASSO_DO_ARQUIVO && situacao === CONEXAO.DESLIGADA;
       status.classList.toggle('pc-status--espera', esperando);
       const mostrada = pronto && !conectando ? CONEXAO.LIGADA : exibida;
@@ -462,7 +397,6 @@
       regiao.classList.toggle('veio-so-leitor', !texto);
     }
 
-    /** O bloco do passo Ter o Anki: a pergunta, a escolha e o que ela mostrou por último. */
     function desenharOAnki(passoDoCard, pronto) {
       blocoDoAnki.hidden = pronto || passoDoCard.id !== PASSO_DO_ANKI;
       if (blocoDoAnki.hidden) return;
@@ -472,13 +406,11 @@
       falar(resultadoDoAnki, anki.doAbridor && textoDaVoz(anki.doAbridor));
     }
 
-    /** O bloco do abridor: só no passo 4, com a Conexão ligada (ela deixa o abridor no computador). */
     function desenharOAbridor(passoDoCard, pronto, situacao) {
       const { fase } = abridor;
       blocoDoAbridor.hidden = passoDoCard.id !== PASSO_DO_ABRIDOR || fase === FASE.ANTES || fase === FASE.LENDO
         || (!pronto && situacao !== CONEXAO.LIGADA);
 
-      // C8: sem a permissão (“Agora não” ou recusa do Chrome), a linha diz o que acontece sem ela.
       const semPermissao = fase === FASE.PEDIR && (abridor.agoraNao || abridor.recusada);
       const textoAgora = TEXTO_DA_FASE[fase] ?? (semPermissao ? 'ONB-17.semPermissao' : null);
       const problema = fase === FASE.NAO_ACHOU || fase === FASE.SEM_ABRIDOR;
@@ -492,10 +424,8 @@
       if (tentarOAbridor) tentarOAbridor.hidden = pronto || !botoes.tentar;
       agoraNao.hidden = pronto || !botoes.agoraNao;
       acoesDoAbridor.hidden = permitir.hidden && agoraNao.hidden;
-      // O botão apertado saiu (Agora não, Permitir): o foco não cai no fim da página.
       if (comFoco?.hidden && !blocoDoAbridor.hidden) (aoSairOBotao?.() ?? titulo).focus();
 
-      // O erro é um aviso persistente da Base; desenhos iguais preservam o foco e o Detalhes aberto.
       const causa = problema && !pronto
         ? (fase === FASE.NAO_ACHOU ? '{"achou":false}' : abridor.detalhe) : '';
       if (avisoDoAbridor?.dataset.causa !== causa) {
@@ -516,8 +446,6 @@
     }
 
     ConexaoAnki.acompanhar(situacao => {
-      // A Conexão acabou de ligar: o card vai ao passo do abridor, a menos que ele já esteja
-      // resolvido. O passo Ter o Anki fez o dele (o Anki está aí): a pergunta volta ao começo.
       if (situacao === CONEXAO.LIGADA && estado.ultimaSituacao !== CONEXAO.LIGADA) {
         estado.ligou = true;
         if (!abridorResolvido()) estado.escolha = null;
@@ -533,12 +461,10 @@
       if (resolvido && !estado.resolvido) aoResolverOAbridor?.();
       estado.resolvido = resolvido;
     });
-    // A conferência que sai se vê na hora; a que volta chega logo em seguida pela situação.
     ConexaoAnki.aoConferir(conferindo => {
       estado.conferindo = conferindo;
       if (conferindo) desenhar();
     });
-    // O relógio só reescreve o que muda com o tempo (o checklist): o status é uma região viva e não se refaz à toa.
     setInterval(() => { if (estado.visivel) desenharAEspera(); }, INTERVALO_DO_TIQUE);
 
     return {

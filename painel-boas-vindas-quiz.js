@@ -1,12 +1,5 @@
 'use strict';
 
-// O quiz de nível na tela (#170, ONB-21 e ONB-22): o que a pessoa vê no passo do nível da Boas-vindas ao abrir “Não sei meu nível, quero descobrir” de um idioma.
-// A regra e as perguntas são de `lib/quiz-de-nivel.js`; aqui ficam a tela, o áudio e o resultado. Um quiz por idioma ligado, no russo com o alfabeto antes de tudo.
-//
-// O ritmo é o da spec (#137): a pessoa responde, vê a certa por ~1 s e a próxima pergunta entra sozinha, sem relógio; o áudio da pergunta toca sozinho. O
-// áudio é a voz do Google do Cartão, pedida à Conexão (`POST /voz/falar`, no sotaque da Frase dos Ajustes de envio). Errar ou “Não sei” só mostram a certa.
-// A festa a cada acerto e a Revelação do nível são de `painel-boas-vindas-festa.js` (#171). No fim vem o nível sugerido com a prévia do Cartão, e sob o resumo o ranking do grupo (#172, `painel-boas-vindas-ranking.js`): “Usar este estilo” ou trocar o nível ali (`EstiloDoCartao`).
-
 (function (raiz) {
   const { textoDaVoz, IDIOMAS } = raiz;
   const PAUSA_DA_RESPOSTA_MS = 1000;
@@ -14,7 +7,7 @@
   const VOZ_DO_TIPO = { escuta: 'ONB-21.escuta', legenda: 'ONB-21.legenda', verso: 'ONB-21.verso' };
   const VOZ_DO_AUDIO = { semConexao: 'ONB-21.audioSemConexao', antiga: 'ONB-21.audioAntiga', falhou: 'ONB-21.semAudio' };
 
-  const lidos = new Map();   // `${idioma}/${sotaque}/${texto}` → a leitura (a promessa de `{ audio }` ou `{ erro }`): o mesmo texto não é pedido duas vezes
+  const lidos = new Map();
 
   function elemento(tag, classe, ...filhos) {
     const no = document.createElement(tag);
@@ -30,7 +23,6 @@
     return no;
   }
 
-  /** Pede à Conexão que diga o texto; devolve `{ audio }` (base64) ou `{ erro }` (o ID da Voz que diz por que não veio), nunca levanta. Só a leitura boa fica guardada. */
   function ler(lang, texto) {
     const sotaque = raiz.AjustesDeEnvio.atual()[lang].ttsPhraseTld;
     const chave = `${lang}/${sotaque}/${texto}`;
@@ -55,10 +47,6 @@
     return typeof dados?.audio === 'string' && dados.audio ? { audio: dados.audio } : { erro: VOZ_DO_AUDIO.falhou };
   }
 
-  /**
-   * O quiz de `lang`. `aoUsar(nivel)` grava o nível escolhido no resultado e devolve uma promessa de `true` (gravou) ou `false` (quem o chama já avisou); `aoSair()`
-   * fecha o quiz. Devolve `{ no, iniciar, parar }`: `iniciar()` começa (no russo, pelo alfabeto) e `parar()` desliga o relógio e o áudio.
-   */
   function montar({ lang, aoUsar, aoSair }) {
     const Quiz = raiz.QuizDeNivel;
     const idioma = NOME_DO_IDIOMA[lang].toLowerCase();
@@ -67,7 +55,6 @@
     const progresso = elemento('span', 'quiz__progresso');
     const sequencia = elemento('span', 'quiz__sequencia');
     const placar = elemento('span', 'quiz__placar');
-    // O botão de som fica sempre à vista, em toda tela do quiz; tocá-lo liga ou desliga os sons e não toca nenhum.
     const som = botao(textoDaVoz('ONB-21.som'), 'veio-botao--link quiz__som', () => som.setAttribute('aria-pressed', String(estado.som.alternar())));
     som.setAttribute('aria-pressed', 'true');
     const sair = botao(textoDaVoz('ONB-21.sair'), 'veio-botao--link', () => { parar(); aoSair(); });
@@ -85,7 +72,6 @@
       estado.ranking?.parar();
     }
 
-    /** Põe a pergunta na tela: o título dela recebe o foco, para o leitor de tela dizer a pergunta nova. */
     function mostrar(titulo, ...filhos) {
       const cabeca = elemento('h4', 'quiz__pergunta', titulo);
       cabeca.tabIndex = -1;
@@ -104,8 +90,6 @@
       placar.textContent = textoDaVoz('ONB-21.pontos', { n: estado.placar });
     }
 
-    // O alfabeto (só o russo)
-
     function mostrarOAlfabeto() {
       progresso.textContent = '';
       sequencia.textContent = '';
@@ -113,8 +97,6 @@
         botao(textoDaVoz('ONB-21.jaLeio'), 'veio-botao--secundario quiz__opcao', () => mostrarOPerfil(0)),
         botao(textoDaVoz('ONB-21.aindaNao'), 'veio-botao--secundario quiz__opcao', () => mostrarOResultado({ nivel: Quiz.NIVEIS.INICIANTE, semAlfabeto: true }))));
     }
-
-    // A parte 1: o que a pessoa já faz
 
     function mostrarOPerfil(indice) {
       progresso.textContent = '';
@@ -128,8 +110,6 @@
           mostrarAPergunta();
         }))));
     }
-
-    // A parte 2: o quiz de 4 alternativas
 
     async function tocar(texto, aviso) {
       const vez = ++estado.vez;
@@ -192,11 +172,8 @@
       if (pergunta.tipo === 'escuta') tocar(pergunta.texto, aviso);
     }
 
-    // O resultado: o nível sugerido com a prévia do Cartão
-
     function mostrarOResultado({ nivel, semAlfabeto = false, acertos, perguntas, melhorSequencia, escuta }) {
       parar();
-      // O ranking é de quem fez o quiz: quem disse “Ainda não” no alfabeto não respondeu nada, e não entra.
       estado.ranking = semAlfabeto ? null : raiz.RankingNaTela.montar({ lang, idioma, resultado: { nivel, acertos, perguntas, melhorSequencia } });
       progresso.textContent = '';
       sequencia.textContent = '';
@@ -208,7 +185,6 @@
         const gravou = await aoUsar(rascunho.nivel);
         if (!gravou) usar.disabled = false;
       });
-      // A Revelação (#171): só depois de responder ao quiz; “Ainda não” no alfabeto não tem o que revelar. O resto do resultado entra depois da última porta.
       const revelacao = semAlfabeto ? null : raiz.FestaNaTela.revelacao({ nivel, som: estado.som, quiz: no });
       const corpo = [
         elemento('p', 'quiz__resumo', resumo),
