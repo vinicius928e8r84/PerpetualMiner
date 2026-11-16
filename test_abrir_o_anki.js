@@ -1,11 +1,5 @@
 'use strict';
 
-// Abrir o Anki a pedido da pessoa (lib/abrir-o-anki.js, #150): o que o clique pede ao Chrome e ao abridor, e
-// quanto ele espera o Anki responder. A seam é a mesma de test_abridor.js: `chrome.permissions` e
-// `chrome.runtime.sendNativeMessage` são funções do teste; as respostas do abridor saem do contrato
-// (complemento/contrato/exemplos.json › abridor). O que o e2e não alcança e mora aqui: a ordem do pedido da
-// permissão (o Chrome só pede dentro do clique) e o prazo de espera, que no e2e levaria minutos.
-
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
@@ -20,10 +14,6 @@ const exemploDoAbridor = (acao, anki) => contrato.abridor.exemplos
 
 const exemploDoConserto = contexto => contrato.conserto.exemplos.find(e => e.contexto.conserto === contexto).resposta;
 
-/**
- * As libs como a página as carrega. `permissao` é o que o Chrome faz com o pedido (true: já dada ou dada agora;
- * false: recusada); `situacoes` é o que cada conferência do /health da Conexão responde, em ordem (a última se repete).
- */
 function carregar({ permissao = true, jaTem = permissao, responder = () => exemploDoAbridor('abrir', 'no_lugar'), situacoes = ['ligada'], relogio = {}, globais = {}, extras = {}, arquivos = ['lib/abridor.js', 'lib/abrir-o-anki.js'] }) {
   const chamadas = [];
   const enviadas = [];
@@ -62,7 +52,6 @@ function carregar({ permissao = true, jaTem = permissao, responder = () => exemp
   return { Abridor: contexto.PerpetualMiner.Abridor, AbrirOAnki: contexto.PerpetualMiner.AbrirOAnki, EnvioComOAnkiFechado: contexto.PerpetualMiner.EnvioComOAnkiFechado, chamadas, enviadas, conferencias: () => conferencias };
 }
 
-/** Um relógio de mentira: `setTimeout` guarda o timer e `avancar(ms)` roda os que vencem, deixando as promessas andarem entre eles. */
 function relogioFalso() {
   let agora = 0;
   const timers = [];
@@ -86,7 +75,6 @@ function relogioFalso() {
   };
 }
 
-/** A faixa do Envio (painel-envio-anki-fechado.js) com a página de mentira: o aviso de agora, o botão e as Frases enviadas. */
 function carregarFaixa({ responder } = {}) {
   const relogio = relogioFalso();
   let aviso = null;
@@ -171,7 +159,6 @@ async function main() {
   }
 
   {
-    // O prazo de 2 min da faixa recomeça quando a pessoa aperta Abrir o Anki sozinho e o Anki abre.
     const { relogio, faixa, aoLigar, aviso, clicarNoBotao, ligar } = carregarFaixa();
     faixa.pedir(['a']);
     await relogio.deixarAndar();
@@ -199,7 +186,6 @@ async function main() {
   }
 
   {
-    // O Anki que a pessoa fechou na espera do consertar: a faixa pede que ela o abra e não manda abrir por conta própria.
     const { relogio, faixa, aoLigar, aviso, clicarNoBotao, enviadas } = carregarFaixa({ responder: () => exemploDoConserto('anki_fechou_na_espera') });
     faixa.pedir(['a']);
     await relogio.deixarAndar();
@@ -210,7 +196,6 @@ async function main() {
     assert.deepStrictEqual(aoLigar, []);
   }
 
-  // O consertar sem clique (#152): o abridor conserta primeiro e só abre o Anki que está fechado.
   {
     const esperadas = ['consertar', 'abrir'];
     const ordem = ({ enviadas }) => enviadas.map(e => e.mensagem.acao);
@@ -245,7 +230,6 @@ async function main() {
       assert.ok(fim.passos.length >= 1 && fim.quando, `${conserto}: o diagnóstico sabe o que se passou`);
     }
     {
-      // O Anki que a pessoa fechou DURANTE a espera do consertar não é o fechado de antes: a extensão não manda abrir.
       const { AbrirOAnki, enviadas } = comAConexao('anki_fechou_na_espera', ['desligada']);
       const fim = await comoValores(AbrirOAnki.abrirOuConsertar({}));
       assert.strictEqual(fim.desfecho, 'fechou', 'a pessoa fechou o Anki durante a espera: o desfecho diz isso');
@@ -264,7 +248,6 @@ async function main() {
       assert.strictEqual(AbrirOAnki.falaDoDesfecho({ ...fim, motivo: 'nao_fechou' }).texto, 'BRG-39.falhou');
     }
     {
-      // O Anki aberto pela extensão e fechado pela pessoa antes do segundo consertar: continua fechado, sem terceiro abrir.
       const relogio = relogioFalso();
       const respostas = [exemploDoConserto('anki_fechado'), exemploDoConserto('anki_fechou_na_espera')];
       const { AbrirOAnki, enviadas } = carregar({
@@ -277,7 +260,6 @@ async function main() {
       assert.deepStrictEqual(ordem({ enviadas }), ['consertar', 'abrir', 'consertar'], 'só um abrir por pedido');
     }
     {
-      // O Anki abriu, a Conexão continua muda (desativada): o abridor vê o Anki aberto, liga e reinicia, uma vez só.
       const relogio = relogioFalso();
       let situacao = 'desligada';
       const respostas = [exemploDoConserto('anki_fechado'), exemploDoConserto('complemento_desativado')];
@@ -297,7 +279,6 @@ async function main() {
       assert.deepStrictEqual(ordem({ enviadas }), ['consertar', 'abrir', 'consertar']);
     }
     {
-      // O Anki que a pessoa fechou durante a espera continua fechado: o segundo consertar o encontra fechado e nada o abre de novo.
       const relogio = relogioFalso();
       const { AbrirOAnki, enviadas } = carregar({
         relogio, responder: porMensagem('anki_fechado'), situacoes: ['desligada'], extras: { ConexaoAnki: { jaConectou: () => true } },
@@ -308,7 +289,6 @@ async function main() {
       assert.deepStrictEqual(ordem({ enviadas }), ['consertar', 'abrir', 'consertar'], 'só um abrir por pedido');
     }
     {
-      // Um abridor de antes do consertar (acao_desconhecida) abre como antes.
       const { AbrirOAnki, enviadas } = carregar({
         responder: m => (m.acao === 'consertar' ? { erro: 'acao_desconhecida' } : exemploDoAbridor('abrir', 'no_lugar')),
         extras: { ConexaoAnki: { jaConectou: () => true } },
@@ -317,7 +297,6 @@ async function main() {
       assert.deepStrictEqual(ordem({ enviadas }), esperadas);
     }
     {
-      // O host que o Chrome não acha mais: quem já conectou perdeu a Conexão do Anki; quem nunca conectou não tem o que reinstalar.
       for (const [jaConectou, desfecho] of [[true, 'sumiu'], [false, 'nao_abriu']]) {
         const { AbrirOAnki } = carregar({
           responder: () => { throw new Error('Specified native messaging host not found.'); },
@@ -327,7 +306,6 @@ async function main() {
       }
     }
     {
-      // “Conferindo…” só aparece se o consertar demora (a espera de 30 s do abridor).
       const relogio = relogioFalso();
       const fases = [];
       let responder;

@@ -1,11 +1,5 @@
 'use strict';
 
-// O contrato da Conexão com o Anki (complemento/contrato/exemplos.json) tem um exemplo de cada pedido que a
-// extensão faz de verdade. Os pedidos não são copiados aqui: saem de `PerpetualMiner.PedidoAoAnki`
-// (lib/pedido-ao-anki.js), o único que monta um pedido, e `VariantesDoPedidoAoAnki.variantes` (e2e/variantes-do-pedido-ao-anki.js) lista todos. Foi o #190: Atualizar
-// pedia os dois Baralhos, o contrato só tinha o de Inglês, e o complemento aceitava o que o fake recusava.
-// Do lado do complemento, `complemento/test_servidor.py` exige um exemplo para cada resposta que o servidor real dá.
-
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
@@ -15,10 +9,8 @@ const { isDeepStrictEqual } = require('util');
 const { criarFakeAnki, exemploDaExtensao } = require('./e2e/fakes/anki');
 const contrato = require('./complemento/contrato/carregar');
 
-// A lib como o service worker e as páginas a carregam: um script comum, com `fetch` à mão para ver o que sai.
 const enviados = [];
 const comoValores = valor => JSON.parse(JSON.stringify(valor)); // os objetos do `vm` têm outro protótipo
-// Uma resposta com a prova no cabeçalho e o corpo vazio: o que `pedir` devolve é conferido pelo `test_pareamento_do_anki.js`; aqui só o que sai.
 const respostaDeMentira = { ok: true, status: 200, statusText: '', headers: new Map([['X-P', 'prova']]), arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)) };
 const contexto = vm.createContext({
   fetch: (url, opcoes) => { enviados.push({ url, ...opcoes }); return Promise.resolve(respostaDeMentira); },
@@ -28,25 +20,19 @@ contexto.globalThis = contexto;
 vm.runInContext(fs.readFileSync(path.join(__dirname, 'lib', 'pedido-ao-anki.js'), 'utf8'), contexto);
 vm.runInContext(fs.readFileSync(path.join(__dirname, 'e2e', 'variantes-do-pedido-ao-anki.js'), 'utf8'), contexto);
 const { PedidoAoAnki, VariantesDoPedidoAoAnki } = contexto.PerpetualMiner;
-// O pareamento que `pedir` usa nos pedidos privados (#192), no lugar do de verdade: assina com um cabeçalho de mentira e envia o que o construtor montou
-// (a assinatura e a prova de verdade são do `test_pareamento_do_anki.js`).
 contexto.PerpetualMiner.PareamentoComOAnki = {
   pedirAssinado: async (endereco, pedido, opcoes, enviar) => enviar(endereco, pedido, pedido.corpo === undefined ? undefined : JSON.stringify(pedido.corpo), opcoes, { 'X-Assinatura': 'a' }),
 };
 
-// Os dois Baralhos dos Ajustes de envio, um por idioma, como a tela de Baralhos e termos os pede.
-// A chave que o exemplo do contrato entrega (o fake compara o corpo inteiro).
 const CHAVE_DE_EXEMPLO = contrato.exemplos.find(e => e.pedido.caminho === '/ia/openai/chave').pedido.corpo.chave;
 const BARALHOS = [{ deckName: 'Inglês', lang: 'en' }, { deckName: 'Alemão', lang: 'ru' }];
-// O corpo de um Envio que o exemplo de criar entrega; o `jobId` dele é o que os outros pedidos do Envio levam.
 const ENVIO_DE_EXEMPLO = contrato.exemplos.find(e => e.daExtensao && e.pedido.caminho === '/jobs').pedido.corpo;
 
 const CHAVE_DO_OUVIR = contrato.exemplos.find(e => e.pedido.corpo?.provedor === 'openai' && e.resposta.status === 200).contexto.chaveNaConexao;
 
-// Um pedido é o mesmo para o contrato quando só o nome do Baralho muda: o resto do corpo (quantos Baralhos, `refresh`, `launch`) conta.
 const formaDoCorpo = corpo => JSON.parse(JSON.stringify(corpo ?? null), function (chave, valor) {
   return chave === 'deckName' || chave === 'deck' ? '<baralho>' : chave === 'chave' ? '<chave>' : chave === 'profile' ? '<perfil>' : chave === 'guid' ? '<guid>'
-    : ['cliente', 'desafio', 'codigo', 'nome'].includes(chave) && typeof valor === 'string' ? `<${chave}>` : valor;   // o pareamento (#192): quem, o desafio e o código mudam a cada vez
+    : ['cliente', 'desafio', 'codigo', 'nome'].includes(chave) && typeof valor === 'string' ? `<${chave}>` : valor;
 });
 const exemplosDa = pedido => contrato.exemplos.filter(e => exemploDaExtensao(e)
   && e.pedido.metodo === pedido.metodo && e.pedido.caminho === pedido.caminho
@@ -59,11 +45,9 @@ async function main() {
 
   const variantes = VariantesDoPedidoAoAnki.variantes(BARALHOS, CHAVE_DE_EXEMPLO, ENVIO_DE_EXEMPLO);
   assert.ok(variantes.length >= 7, 'os construtores montam os pedidos de saúde, Baralhos, números (3 leituras) e vocabulário');
-  // O pareamento (#192): começar, concluir e conferir são pedidos que a extensão faz, e cada um tem o seu exemplo.
   for (const caminho of ['/pareamento/comecar', '/pareamento/concluir', '/pareamento/conferir']) {
     assert.ok(variantes.some(({ pedido }) => pedido.caminho === caminho), `as variantes não listam o pedido ${caminho} do pareamento`);
   }
-  // O perfil fixo (#149): a lista, escolher outro e abrir o marcado são pedidos que a extensão faz, e cada um tem o seu exemplo.
   for (const caminho of ['/anki/profiles', '/anki/profile', '/anki/profile/open']) {
     assert.ok(variantes.some(({ pedido }) => pedido.caminho === caminho), `PedidoAoAnki.variantes não lista o pedido ${caminho} do perfil fixo`);
   }
@@ -77,25 +61,23 @@ async function main() {
       + '(complemento/contrato/exemplos.json) não tem um exemplo desse pedido (daExtensao: true). Escreva o exemplo, '
       + 'com a resposta do complemento; os testes do complemento e o fake do e2e leem o mesmo arquivo.');
 
-    if (pedido.caminho.startsWith('/pareamento/')) continue;   // o fake do pareamento responde por estado, não pelo exemplo: `test_fake_anki.js` confere cada um
-    // O fake responde o mesmo pedido, com o corpo exato, como o complemento responde: pelo exemplo.
+    if (pedido.caminho.startsWith('/pareamento/')) continue;
     const fake = criarFakeAnki();
     fake.abrirColecao('inglês com subbaralho');
     if (pedido.caminho.startsWith('/anki/profile')) fake.definirPerfis(['Ana', 'Beto'], { marcado: 'Ana', aberto: 'Ana' });
-    if (pedido.corpo?.provedor === 'openai') fake.guardarChaveNaConexao(CHAVE_DO_OUVIR); // a voz da OpenAI é pela chave (o contexto do exemplo)
-    if (pedido.caminho.startsWith('/atualizacao/')) fake.definirAtualizacao({ ankiweb: exemplos[0].contexto.ankiweb }); // como o AnkiWeb responde (o contexto do exemplo)
+    if (pedido.corpo?.provedor === 'openai') fake.guardarChaveNaConexao(CHAVE_DO_OUVIR);
+    if (pedido.caminho.startsWith('/atualizacao/')) fake.definirAtualizacao({ ankiweb: exemplos[0].contexto.ankiweb });
     const { status } = fake.respostaDoContrato(pedido.metodo, pedido.caminho, pedido.corpo);
     assert.strictEqual(status, exemplos[0].resposta.status, `o fake respondeu "${nome}" diferente do exemplo "${exemplos[0].nome}"`);
   }
 
-  // `pedir` envia exatamente o que o construtor montou, e só isso.
   enviados.length = 0;
   const atualizar = PedidoAoAnki.estatisticas(BARALHOS, { deNovo: true, abrirOAnki: true });
   await PedidoAoAnki.pedir('http://127.0.0.1:8766', atualizar, { signal: 'sinal' });
   assert.deepStrictEqual(comoValores(enviados.map(({ url, method, headers, body, signal }) => ({ url, method, headers, body, signal }))), [{
     url: 'http://127.0.0.1:8766/anki/stats/decks',
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Assinatura': 'a' },   // o pedido privado vai assinado (#192)
+    headers: { 'Content-Type': 'application/json', 'X-Assinatura': 'a' },
     body: '{"decks":[{"deckName":"Inglês","lang":"en"},{"deckName":"Alemão","lang":"ru"}],"refresh":true,"launch":true}',
     signal: 'sinal',
   }]);
@@ -103,13 +85,10 @@ async function main() {
   await PedidoAoAnki.pedir('http://127.0.0.1:8766', PedidoAoAnki.saude());
   assert.deepStrictEqual(comoValores(enviados), [{ url: 'http://127.0.0.1:8766/health', method: 'GET' }], 'o GET da saúde vai sem corpo nem cabeçalho');
 
-  // Um pedido montado à mão, ou uma leitura que o contrato não tem, não sai.
   assert.throws(() => PedidoAoAnki.pedir('http://127.0.0.1:8766', { metodo: 'POST', caminho: '/anki/stats/decks', corpo: { decks: [] } }),
     /não saiu de PedidoAoAnki/);
   assert.throws(() => PedidoAoAnki.estatisticas(BARALHOS, { deNovo: false, abrirOAnki: true }), /leitura dos números sem exemplo no contrato/);
 
-  // O abridor (#147) não é HTTP, é Native Messaging, mas o contrato é o mesmo: cada mensagem que a extensão
-  // manda nasce de `PerpetualMiner.Abridor` (lib/abridor.js), e o contrato tem um exemplo `daExtensao` de cada.
   const doAbridor = vm.createContext({});
   doAbridor.globalThis = doAbridor;
   vm.runInContext(fs.readFileSync(path.join(__dirname, 'lib', 'abridor.js'), 'utf8'), doAbridor);

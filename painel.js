@@ -1,39 +1,24 @@
 'use strict';
 
-// A base compartilhada (catálogo da Voz e detecção de idioma) é carregada antes
-// deste arquivo, pelo painel.html: a busca no catálogo é `PerpetualMiner.textoDaVoz`.
 const { ehRussa, detectarIdioma, IDIOMAS, textoDaVoz, Atalhos, AjustesDeEnvio, Mineracao } = PerpetualMiner;
-// O nome da Fonte e o dia da frase, os mesmos do popup (lib/contexto.js).
 const { fonteDaFrase, nomeDaFonte, rotuloDoDia } = PerpetualMiner.Contexto;
-// A lista de Frases é montada com os componentes da Base Veio (veio/componentes.js).
 const {
   iconeVeio, montarChipDaPalavra, escreverFraseClicavel, andarEntrePalavras, focarPalavra, refletirSelecao, montarTecla,
 } = PerpetualMiner.Veio;
-// O shell (painel-shell.js) é dono da sidebar: o total e o ponto da Conexão com o
-// Anki. A conta (painel-conta.js) desenha o chip e o card Conta & sync, e a Zona
-// de perigo (painel-perigo.js), o Apagar tudo. Este arquivo conta aos três o que
-// muda.
 const Shell = PerpetualMiner.Shell;
 const Conta = PerpetualMiner.Conta;
 const Perigo = PerpetualMiner.Perigo;
 const Envio = PerpetualMiner.Envio;
 const { SITUACOES } = Conta;
-// A sincronização com a nuvem: o codec, a sessão, o merge e os tombstones (lib/sincronizacao.js).
 const { Sincronizacao, ChaveDaOpenAI } = PerpetualMiner;
 const { mostrarToastDeSucesso, abrirModal, montarAviso } = PerpetualMiner.Veio;
 
 const POR_PAGINA = 10;
 
-// O atalho de legenda gravado em Configurações › Atalhos (lib/atalhos.js), que
-// o vazio de Frases (PAI-02) ensina. Começa no padrão até a leitura voltar.
 let atalhoDeLegenda = Atalhos.ATALHOS_PADRAO.legenda;
 
-// O desenho de vídeo da Base Veio, que lá se chama `netflix`: todo serviço de
-// vídeo usa ele no selo de Fonte.
 const ICONE_DE_VIDEO = 'netflix';
 
-// O ícone do selo de cada Fonte. Uma Fonte fora da lista (o nome do site) usa o
-// da Web.
 const ICONES_DE_FONTE = {
   netflix: ICONE_DE_VIDEO, primevideo: ICONE_DE_VIDEO, max: ICONE_DE_VIDEO, disneyplus: ICONE_DE_VIDEO,
   starplus: ICONE_DE_VIDEO, kinopoisk: ICONE_DE_VIDEO, youtube: 'youtube',
@@ -46,12 +31,9 @@ const GOOGLE_USERINFO   = 'https://www.googleapis.com/oauth2/v1/userinfo?alt=jso
 const FIREBASE_API_KEY  = Sincronizacao.CHAVE_DA_API;
 const FB_SIGNIN_URL     = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=${FIREBASE_API_KEY}`;
 
-// A Fonte de uma frase minerada sem Fonte: colada (Colar) ou vinda de uma
-// linha simples de um .txt (Arquivo .txt).
 const FONTE_MANUAL    = 'manual';
 const FONTE_IMPORTADO = 'importado';
 
-// Enviada ao Anki fica gravada com o nome de antes do glossário (ver foiEnviadaAoAnki).
 const STATUS_ENVIADA_AO_ANKI = 'exported';
 
 let todasFrases        = [];
@@ -60,37 +42,26 @@ let paginaAtual        = 1;
 let filtroFonte         = 'all';
 let filtroIdioma       = 'all';
 let esconderEnviadasEExportadas = false;
-let ordemAtual         = 'novas'; // 'novas' | 'antigas'
+let ordemAtual         = 'novas';
 let buscaAtual         = '';
-// Até a primeira leitura terminar, a lista mostra os cartões-esqueleto (PAI-01).
 let listaCarregada     = false;
 
-// usuarioLogado: { uid, email, displayName, photoURL } | null
 let usuarioLogado = null;
 let sessao         = null;
 let nuvem          = null;
 let sincronizacao  = novaSincronizacao();
 
-// { [phraseId]: string[] }
 const keywords    = {};
-// Set<number>
 const selecionadas = new Set();
 
-// A frase com o texto aberto para edição no lugar, e o rascunho: o cartão é
-// redesenhado sempre que a lista muda, e a edição tem de sobreviver a isso.
-let edicaoDeTexto      = null; // { id, rascunho }
-// As frases apagadas daqui que continuam na nuvem porque o DELETE falhou (PAI-15).
+let edicaoDeTexto      = null;
 const idsAindaNaNuvem  = new Set();
-// O modal aberto, para o × e o Cancelar fecharem o que está na tela, e o que
-// cada um está esperando: os ids a apagar e os ids cujo Contexto está aberto.
 let modalAberto        = null;
-let pedidoDeApagar     = null; // { ids }
-let edicaoDeContexto   = null; // { ids }
+let pedidoDeApagar     = null;
+let edicaoDeContexto   = null;
 
 document.addEventListener('DOMContentLoaded', () => {
   setupListeners();
-  // Baralhos e termos e o Vocabulário leem os baralhos dos Ajustes de envio (painel-anki-baralhos.js),
-  // ao abrir e a cada Salvar ajustes, nesta aba ou em outra.
   AjustesDeEnvio.acompanhar(ajustes => {
     PerpetualMiner.Baralhos.usarBaralhos({ en: ajustes.en.deckName, ru: ajustes.ru.deckName });
   });
@@ -104,7 +75,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function inicializarAuth() {
-  // Tenta restaurar sessão anterior salva no storage
   const data = await chromeGet({ pm_user_info: null });
   const credenciais = await Sincronizacao.lerCredenciais();
   if (data.pm_user_info && credenciais?.uid === data.pm_user_info.uid) {
@@ -152,12 +122,10 @@ async function loginGoogle() {
     const accessToken = params.get('access_token');
     if (!idToken) throw new Error('id_token não encontrado na resposta do Google');
 
-    // Busca nome, email e foto via userinfo (usa o access_token que também chegou)
     const resp = await fetch(GOOGLE_USERINFO, { headers: { Authorization: `Bearer ${accessToken}` } });
     if (!resp.ok) throw new Error('Falha ao obter dados do usuário Google');
     const info = await resp.json();
 
-    // Troca o Google id_token por um Firebase ID token + refresh token
     const fbResp = await fetch(FB_SIGNIN_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -174,7 +142,6 @@ async function loginGoogle() {
     }
     const fbData = await fbResp.json();
 
-    // Persiste sessão no storage e na memória
     usuarioLogado = {
       uid:          fbData.localId,
       email:        info.email,
@@ -196,7 +163,6 @@ async function loginGoogle() {
     atualizarUIAuth(usuarioLogado);
     sincronizarAChave();
 
-    // 4. Migração única na primeira vez, depois só carrega
     const { pm_migrated = '' } = await chromeGet({ pm_migrated: '' });
     if (pm_migrated !== usuarioLogado.uid) {
       await migrarParaFirestore();
@@ -205,7 +171,6 @@ async function loginGoogle() {
       await carregarFrasesFirestore();
     }
   } catch (err) {
-    // Fechar a janela do Google é desistir, não erro: nada aparece (CFG-07).
     if (loginFoiCancelado(err)) return;
     console.error('[Login] falhou:', err);
     Conta.mostrarFalhaNoLogin(err.message || String(err));
@@ -227,15 +192,10 @@ async function logout() {
   carregarFrasesLocal();
 }
 
-// Configurações › Conta & sync e o chip da sidebar mostram quem entrou; a Zona
-// de perigo, se o Apagar tudo alcança a nuvem.
 function atualizarUIAuth(user) {
   Conta.mostrarConta(user);
   Perigo.mostrarConta(Boolean(user));
 }
-
-// A sessão, o REST do Firestore e a sincronização são de lib/sincronizacao.js;
-// aqui só se liga a conta a elas.
 
 function novaSincronizacao() {
   return Sincronizacao.criarSincronizacao({
@@ -254,16 +214,10 @@ function conectarNuvem(credenciais) {
   sincronizacao = novaSincronizacao();
 }
 
-// A Conexão é o único dono. A extensão pede a replicação com UID/token transitórios
-// e relê o resumo público; não lê uma chave do Firestore nem entrega outro segredo
-// confirmado por um cofre paralelo. Roda ao abrir, entrar, voltar e mudar a chave.
-
 let sincronizandoAChave = Promise.resolve();
 let erroDaChave = null;
 let estadoDasFrases = { situacao: SITUACOES.SINCRONIZADO, dados: {} };
 
-// A chave e as frases têm resultados separados. Uma tentativa só da chave
-// não pode apagar do card a falha/pendência que as frases ainda têm.
 function mostrarEstadoDoSync() {
   const { situacao, dados } = estadoDasFrases;
   const situacaoDaChave = erroDaChave ? situacaoDoErro(erroDaChave, SITUACOES.CHAVE_PENDENTE) : null;
@@ -298,7 +252,6 @@ function sincronizarAChave() {
       if (nuvem === estaNuvem) { erroDaChave = null; mostrarEstadoDoSync(); }
     } catch (err) {
       if (nuvem !== estaNuvem) return;
-      // A mensagem da API pode repetir o corpo secreto: só códigos chegam ao Detalhes.
       erroDaChave = Object.assign(new Error(`OpenAI sync · ${err?.status || err?.motivo || 'sem resposta'}`), { motivo: err?.motivo, codigo: err?.codigo });
       mostrarEstadoDoSync();
     }
@@ -315,12 +268,6 @@ function desconectarNuvem() {
   sincronizacao = novaSincronizacao();
 }
 
-// Um problema de sync aparece só no card Conta & sync e no chip (Q4 da spec de
-// Configurações), nunca num toast. A classificação é da Sincronizacao; aqui o
-// motivo da falha vira a situação que a Conta mostra.
-
-// `semSincronizar` é o que a falha genérica mostra: depois de uma primeira
-// subida que não chegou à nuvem, é a falha dela (CFG-09).
 function situacaoDoErro(err, semSincronizar = SITUACOES.SEM_SINCRONIZAR) {
   if (err?.motivo === Sincronizacao.MOTIVO.EXPIROU) return SITUACOES.EXPIROU;
   if (err?.motivo === Sincronizacao.MOTIVO.RECUSADO) return SITUACOES.RECUSADO;
@@ -339,8 +286,6 @@ async function migrarParaFirestore() {
       await nuvem.gravarFrases(frases);
       mostrarToastDeSucesso(textoDaVoz('CFG-09.sucesso', { n: frases.length }));
     } catch (err) {
-      // O carregamento abaixo tenta de novo, frase a frase. Se nenhuma subir, o
-      // card e o chip mostram a falha da primeira subida (CFG-09), sem toast.
       console.error('[Firestore] migração falhou:', err);
       await carregarFrasesFirestore({ primeiraSubidaFalhou: true });
       return;
@@ -361,7 +306,6 @@ async function carregarFrasesFirestore({ primeiraSubidaFalhou = false } = {}) {
   mostrarEstadoDasFrases(SITUACOES.SINCRONIZANDO);
   await sincronizarAChave();
   try {
-    // Passa o estado vivo, não um snapshot anterior à rede (ver o contrato de carregar).
     const { frases, desteComputador, falhaNasOrfas } = await sincronizacao.carregar({ atuais: () => todasFrases });
     todasFrases = frases;
     if (falhaNasOrfas) {
@@ -378,10 +322,6 @@ async function carregarFrasesFirestore({ primeiraSubidaFalhou = false } = {}) {
   }
 }
 
-// Frases deste computador que não subiram: “8 de 10 sincronizadas” (CFG-05)
-// quando parte chegou, ou a falha inteira quando nada chegou ou a nuvem recusou.
-// A conta é das frases deste computador (`desteComputador`), não da coleção
-// inteira na nuvem, que também tem as dos outros computadores da conta.
 function mostrarSyncIncompleto({ quantas, causas }, desteComputador, semSincronizar) {
   const detalhes = [...new Set(causas.map(c => c?.message || String(c)))].join('\n');
   const situacao = situacaoDoErro(causas[0], semSincronizar);
@@ -403,8 +343,6 @@ function finalizarCarregamento() {
   comecarEnvio();
 }
 
-// O total aparece no item Frases da sidebar e na Zona de perigo de
-// Configurações, que diz o alcance do Apagar tudo e o deixa indisponível sem frases.
 function atualizarTotal() {
   const n = todasFrases.length;
   Shell.mostrarTotalDeFrases(n);
@@ -429,8 +367,6 @@ function setupStorageSyncListener() {
   });
 }
 
-// Wrappers chamados pelas ações do painel
-// campos opcional: ['keywords'], ['texto'], etc. — passa direto para a nuvem.
 function salvarFraseFirestore(frase, campos = null) {
   if (!nuvem) return;
   nuvem.gravarFrase(frase, campos).catch(err => {
@@ -438,12 +374,6 @@ function salvarFraseFirestore(frase, campos = null) {
     mostrarFalhaNaNuvem(err);
   });
 }
-
-// Sem seleção, a linha mostra só “Selecionar página” (PAI-31). Com seleção, ela
-// vira a barra contextual (PAI-32): × Desmarcar todas, a contagem (PAI-06), o
-// “Selecionar todas as N frases” quando a página inteira está marcada, e as
-// ações. A barra gruda no topo da ilha ao rolar (CSS). Trocar filtro ou busca
-// limpa a seleção, para nenhuma ação cair em frase que não está à vista.
 
 function atualizarContadorSelecao() {
   const linha = document.getElementById('frases-selecao');
@@ -454,7 +384,6 @@ function atualizarContadorSelecao() {
   linha.hidden = !listaCarregada || (idsPag.length === 0 && n === 0);
   refletirSelecao(document.getElementById('sel-pagina'), naPagina, idsPag.length);
   linha.classList.toggle('frases-selecao--barra', n > 0);
-  // Na barra, o checkbox perde o rótulo à vista: o nome continua para o leitor de tela.
   document.getElementById('sel-pagina-rotulo').classList.toggle('veio-so-leitor', n > 0);
   document.getElementById('frases-barra').hidden = n === 0;
   if (n === 0) return;
@@ -471,7 +400,6 @@ function idsPaginaAtual() {
   return frasesVisiveis.slice(inicio, inicio + POR_PAGINA).map(f => f.id);
 }
 
-/** “Selecionar página”: marca a página inteira; com ela inteira marcada, desmarca. */
 function selecionarPagina() {
   const ids = idsPaginaAtual();
   const todasMarcadas = ids.every(id => selecionadas.has(id));
@@ -481,7 +409,6 @@ function selecionarPagina() {
   atualizarContadorSelecao();
 }
 
-/** “Selecionar todas as N frases”: as dos filtros atuais, em todas as páginas. */
 function selecionarTodasVisiveis() {
   frasesVisiveis.forEach(f => selecionadas.add(f.id));
   idsPaginaAtual().forEach(refletirSelecaoNoCartao);
@@ -496,7 +423,6 @@ function desmarcarTodas() {
   document.getElementById('sel-pagina').focus();
 }
 
-/** Os ids selecionados, na ordem da lista. */
 function idsSelecionados() {
   return todasFrases.filter(f => selecionadas.has(f.id)).map(f => f.id);
 }
@@ -504,7 +430,6 @@ function idsSelecionados() {
 function setupListeners() {
   Perigo.aoApagarTudo(apagarTudo);
   ChaveDaOpenAI.aoMudar(() => { if (nuvem) carregarFrasesFirestore(); });
-  // Um painel que ficou aberto noutra aba recebe a chave mudada noutro computador quando a pessoa volta a ele.
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') sincronizarAChave();
   });
@@ -562,15 +487,10 @@ function setupListeners() {
 
 }
 
-// Uma linha que quebra: Fonte · idioma · ordem em selects, a busca no texto e
-// no Título (lista fechada, item 1) e o toggle “Ocultar enviadas e exportadas”.
-
-/** As Fontes do histórico, cada uma uma vez, na ordem em que aparecem. */
 function fontesDoHistorico() {
   return [...new Set(todasFrases.map(fonteDaFrase).filter(Boolean))];
 }
 
-/** O select de Fonte, com as Fontes do histórico. O nome entra como texto. */
 function construirFiltroDeFonte() {
   const select = document.getElementById('filtro-fonte');
   const fontes = fontesDoHistorico();
@@ -594,8 +514,6 @@ function configurarFiltros() {
   construirFiltroDeFonte();
   busca.placeholder = textoDaVoz('PAI-23');
 
-  // Um filtro ou a busca trocam as frases à vista: a seleção é limpa, para
-  // nenhuma ação cair numa frase escondida. A ordem só reordena, então fica.
   const aoMudar = (aplicar, { limpaSelecao = true } = {}) => () => {
     aplicar();
     if (limpaSelecao) selecionadas.clear();
@@ -613,7 +531,6 @@ function mostrarLimparBusca() {
   document.getElementById('btn-limpar-busca').hidden = !buscaAtual;
 }
 
-/** Fonte, idioma ou o toggle ligados. A ordem não esconde frase, então não conta. */
 function filtrosLigados() {
   return filtroFonte !== 'all' || filtroIdioma !== 'all' || esconderEnviadasEExportadas;
 }
@@ -639,7 +556,6 @@ function limparBusca() {
   busca.focus();
 }
 
-/** Um filtro ou a busca mudou: a lista refaz e volta para a primeira página. */
 function voltarAPrimeiraPagina() {
   paginaAtual = 1;
   aplicarFiltro();
@@ -675,9 +591,6 @@ function irPagina(p) {
   renderizar();
 }
 
-// Um cartão por frase (o `.veio-frase` da Base Veio), sob o cabeçalho do seu
-// dia. Todo texto de frase e de Contexto entra como texto, nunca como HTML.
-
 function renderizar() {
   if (!listaCarregada) return;
   const lista  = document.getElementById('frases-lista');
@@ -698,8 +611,6 @@ function renderizar() {
     return;
   }
 
-  // Redesenhar (um filtro, uma frase nova, a Palavra gravada) não pode tirar o
-  // foco de quem está no teclado.
   const foco = chaveDoFoco(document.activeElement);
   const nos = [];
   let diaAnterior = null;
@@ -714,7 +625,6 @@ function renderizar() {
   atualizarContadorSelecao();
 }
 
-/** “1–10 de 1.284” (PAI-07) e « ‹ 1 de 129 › ». Sem frases, a paginação some. */
 function renderizarPaginacao(inicio, fim, total, totPag) {
   document.getElementById('frases-paginas').hidden = total === 0;
   if (total === 0) return;
@@ -728,17 +638,12 @@ function renderizarPaginacao(inicio, fim, total, totPag) {
   document.getElementById('btn-last').disabled  = paginaAtual >= totPag;
 }
 
-/**
- * O vazio da lista: primeiro uso (PAI-02), busca sem resultado (PAI-04) ou
- * filtros que esconderam tudo (PAI-03).
- */
 function montarVazio() {
   const vazio = criar('div', 'veio-vazio');
   const acoes = criar('div', 'frases-vazio__acoes');
 
   if (todasFrases.length === 0) {
     const texto = criar('p', 'veio-vazio__texto');
-    // O atalho entra no meio da frase como tecla (kbd), não como texto solto.
     const MARCA = '\u0000';
     const [antes, depois] = textoDaVoz('PAI-02.texto', { atalho: MARCA }).split(MARCA);
     texto.append(antes, ...atalhoDoVazio(), depois);
@@ -757,10 +662,6 @@ function montarVazio() {
   return vazio;
 }
 
-/**
- * O atalho de legenda gravado, em `kbd`. Sem atalho gravado (GLB-02), o `kbd`
- * tracejado “Sem atalho” e a ação Definir atalho, que leva a Configurações › Atalhos.
- */
 function atalhoDoVazio() {
   const tecla = montarTecla(Atalhos.rotuloDoAtalho(atalhoDeLegenda), { seVazia: textoDaVoz('GLB-02.semAtalho') });
   if (atalhoDeLegenda) return [tecla];
@@ -803,10 +704,6 @@ function montarCartao(f) {
   return cartao;
 }
 
-/**
- * A frase com cada palavra clicável (`escreverFraseClicavel` da Base Veio):
- * clicar grifa ou desgrifa a Palavra.
- */
 function escreverPalavras(no, f) {
   const ativas = new Set((keywords[f.id] || []).filter(w => w !== '|'));
   escreverFraseClicavel(no, Mineracao.tokenizar(f.texto || '').map((tok, idx) => tok.isWord
@@ -819,7 +716,6 @@ function escreverPalavras(no, f) {
     : { texto: tok.text }));
 }
 
-/** O chip `palavra:`/`auto:` com × (remove) e + (outro grupo). */
 function montarLinhaDoChip(f) {
   const kws = keywords[f.id] || [];
   if (!kws.length) return null;
@@ -840,7 +736,6 @@ function montarLinhaDoChip(f) {
   return linha;
 }
 
-/** A linha de Contexto: selo de Fonte, Título · Detalhe e o estado (PAI-08). */
 function montarContexto(f) {
   const linha = criar('div', 'veio-frase__contexto');
   const fonte = fonteDaFrase(f);
@@ -851,23 +746,15 @@ function montarContexto(f) {
   }
   const origem = [f.contexto?.titulo, f.contexto?.detalhe].filter(Boolean).join(' · ');
   if (origem) linha.append(criar('span', 'frase-origem', origem));
-  // Enviada ao Anki vale mais que Exportada: a frase que foi para o Anki e
-  // depois para um .txt continua dizendo que está no Anki.
   if (foiEnviadaAoAnki(f))  linha.append(criar('span', 'veio-selo veio-selo--ok', textoDaVoz('PAI-08.enviada')));
   else if (f.exportadaTxt)  linha.append(criar('span', 'veio-selo veio-selo--info', textoDaVoz('PAI-08.exportada')));
   return linha;
 }
 
-/**
- * Enviada ao Anki: a frase entrou num Envio concluído. O nome gravado é o
- * `status: 'exported'` de antes do glossário; o Exportar .txt grava só o
- * `exportadaTxt` e nunca este.
- */
 function foiEnviadaAoAnki(f) {
   return f.status === STATUS_ENVIADA_AO_ANKI;
 }
 
-// As 4 ações só-ícone do cartão (PAI-30), que aparecem no hover e no foco.
 function montarAcoesDoCartao(f) {
   const acoes = criar('div', 'veio-frase__acoes');
   acoes.append(
@@ -907,7 +794,6 @@ function refletirSelecaoNoCartao(id) {
   cartao.querySelector('.frase-check').checked = selecionadas.has(id);
 }
 
-/** Redesenha um cartão só, sem tirar o foco de quem está nele. */
 function atualizarCartao(id) {
   const antigo = cartaoNaLista(id);
   const frase = todasFrases.find(f => f.id === id);
@@ -938,7 +824,6 @@ function escolherPalavra(palavra) {
   toggleWord(Number(palavra.dataset.id), Number(palavra.dataset.idx), palavra.dataset.word);
 }
 
-/** Setas andam entre as palavras da frase; Enter e Espaço escolhem. */
 function aoTeclarNaFrase(e) {
   const palavra = e.target.closest('.veio-palavra-clicavel');
   if (!palavra || andarEntrePalavras(e)) return;
@@ -973,7 +858,6 @@ function toggleWord(id, wordIdx, wordClean) {
   if (selected.size === 0) {
     newLastSeg = [];
   } else {
-    // Reconstrói em ordem de aparição na frase
     const tokens = Mineracao.tokenizar(frase.texto);
     newLastSeg = tokens
       .map((t, i) => (t.isWord && selected.has(`${t.clean}@${i}`)) ? `${t.clean}@${i}` : null)
@@ -998,9 +882,6 @@ function addSeparator(id) {
   keywords[id] = [...all, '|'];
   gravarPalavras(id);
 }
-
-// O texto do cartão vira um campo: Enter salva, Esc cancela, com os botões
-// Cancelar e Salvar texto. Sem toast: a mudança já está na tela (PAI-16).
 
 function editarTextoFrase(id) {
   const frase = todasFrases.find(f => f.id === id);
@@ -1051,7 +932,6 @@ function aoTeclarNaEdicaoDeTexto(e) {
   }
 }
 
-/** Fecha a edição; com `salvar`, grava o rascunho se ele mudou e não está vazio. */
 function terminarEdicaoDeTexto(salvar) {
   if (!edicaoDeTexto) return;
   const { id, rascunho } = edicaoDeTexto;
@@ -1066,7 +946,6 @@ function terminarEdicaoDeTexto(salvar) {
 function salvarTextoFrase(id, novoTexto) {
   const idx = todasFrases.findIndex(f => f.id === id);
   if (idx < 0) return;
-  // A Palavra que saiu do texto sai da frase, a que ficou ganha a posição nova, e o idioma é o do texto novo.
   const palavras = Mineracao.palavrasQueFicam(keywords[id], novoTexto);
   if (palavras.length) keywords[id] = palavras;
   else delete keywords[id];
@@ -1076,9 +955,6 @@ function salvarTextoFrase(id, novoTexto) {
   aplicarFiltro();
 }
 
-// O sucesso é toast; a falha pede atenção, então vira aviso persistente na
-// área, ao lado do PAI-15 do apagar.
-
 async function copiarFrase(id) {
   const frase = todasFrases.find(f => String(f.id) === String(id));
   if (!frase) return;
@@ -1086,17 +962,14 @@ async function copiarFrase(id) {
     await navigator.clipboard.writeText(frase.texto);
     mostrarToastDeSucesso(textoDaVoz('PAI-17.sucesso'));
   } catch (err) {
-    // Falha pede atenção, então não é toast: é o aviso, com a causa em Detalhes.
     mostrarAvisoNaArea('copiar', { texto: textoDaVoz('PAI-17.falha'), erro: err });
   }
 }
 
-/** Um aviso persistente por chave na área de Frases, com a causa em Detalhes. */
 function mostrarAvisoNaArea(chave, { erro, ...opcoes }) {
   tirarAvisoDaArea(chave);
   const aviso = montarAviso({
     ...opcoes,
-    // Sem erro, sem “Detalhes”: a causa técnica fica em outro lugar (ADD-06: o card da conta).
     ...(erro ? { detalhes: String(erro.message || erro) } : {}),
     rotuloDeFechar: textoDaVoz('PAI-34'),
   });
@@ -1108,16 +981,6 @@ function tirarAvisoDaArea(chave) {
   document.querySelector(`#frases-avisos [data-aviso="${chave}"]`)?.remove();
 }
 
-// Um só modal para 1 frase (a ação do cartão) e para a seleção (a barra). O
-// corpo fala dos outros computadores só com a conta conectada. Para 1 frase
-// não há toast (o cartão some); para a seleção, “12 frases apagadas”. Se a
-// nuvem falha, fica o aviso persistente PAI-15 com Tentar de novo.
-
-/**
- * O modal do apagar, um só para a frase do cartão e para a seleção. Quem manda
- * no texto é a contagem, não de onde veio: uma frase é “Apagar esta frase?”
- * (PAI-12) e some da tela sem toast; várias são PAI-13, com o toast PAI-14.
- */
 function pedirParaApagar(ids) {
   if (ids.length === 0) return;
   const umaFrase = ids.length === 1;
@@ -1147,7 +1010,6 @@ async function apagarFrases(ids, { toast = ids.length > 1 } = {}) {
   await new Promise(resolve => chrome.storage.local.set({ frases: todasFrases }, resolve));
   atualizarTotal();
   aplicarFiltro();
-  // Uma frase só não precisa de toast: o cartão sumindo já é a resposta (PAI-16).
   if (toast) mostrarToastDeSucesso(textoDaVoz('PAI-14', { n: ids.length }));
   await apagarDaNuvem(ids);
 }
@@ -1156,19 +1018,15 @@ async function apagarDaNuvem(ids) {
   const erro = await sincronizacao.apagar(ids);
   if (!erro) return;
   ids.forEach(id => idsAindaNaNuvem.add(id));
-  // O aviso PAI-15 conta o que ficou na nuvem; o card e o chip da conta contam
-  // que este computador está sem sincronizar, como em qualquer falha de nuvem.
   mostrarAvisoAindaNaNuvem(erro);
   mostrarFalhaNaNuvem(erro);
 }
 
-/** O aviso PAI-15: um só, que junta todas as frases que ficaram na nuvem. */
 function mostrarAvisoAindaNaNuvem(erro) {
   mostrarAvisoNaArea('ainda-na-nuvem', {
     texto: textoDaVoz('PAI-15.aviso'),
     acao: { rotulo: textoDaVoz('PAI-15.tentarDeNovo'), aoUsar: tentarApagarDaNuvemDeNovo },
     erro,
-    // Fechar só tira o aviso: o tombstone continua, e o próximo carregamento tenta de novo.
     aoFechar: () => idsAindaNaNuvem.clear(),
   });
 }
@@ -1183,7 +1041,6 @@ async function tentarApagarDaNuvemDeNovo() {
   }
   idsAindaNaNuvem.clear();
   tirarAvisoDaArea('ainda-na-nuvem');
-  // A nuvem respondeu: o card e o chip da conta deixam de dizer “sem sincronizar”.
   mostrarSincronizado();
 }
 
@@ -1211,16 +1068,13 @@ async function apagarChaveNoApagarTudo() {
   }
 }
 
-// Roda depois que a pessoa confirma no modal da Zona de perigo (painel-perigo.js).
 function apagarTudo() {
   const ids = todasFrases.map(f => String(f.id));
   todasFrases = [];
   Object.keys(keywords).forEach(k => delete keywords[k]);
   selecionadas.clear();
   atualizarContadorSelecao();
-  // A chave da OpenAI também sai (#154): daqui, da Conexão e, com conta, da nuvem, mesmo que ainda não tenha chegado aqui.
   const chaveApagada = apagarChaveNoApagarTudo();
-  // As Frases também saem do que o painel guarda do Envio (`pm_envio.corpo`) e da Conexão (#248); sem resposta dela, o painel pede de novo depois.
   Envio.apagarTudo();
   const naNuvem = sincronizacao.apagarTudo(ids).then(({ ok, erro }) => {
     if (!ok) {
@@ -1233,15 +1087,11 @@ function apagarTudo() {
     atualizarTotal();
     paginaAtual = 1;
     aplicarFiltro();
-    // CFG-18 só quando as frases sumiram de todo lugar que a Zona de perigo
-    // prometeu. Uma falha na nuvem aparece no card Conta & sync e no chip (Q4).
     const [frasesApagadas, apagouChave] = await Promise.all([naNuvem, chaveApagada]);
     if (frasesApagadas && apagouChave) mostrarToastDeSucesso(textoDaVoz('CFG-18'));
   });
 }
 
-// Baixa as selecionadas e as marca Exportada (`exportadaTxt`). Nunca grava o
-// `status: 'exported'` do Envio: exportar não põe a frase no Anki (#9).
 function exportarTxt() {
   if (selecionadas.size === 0) return;
   const linhas = todasFrases
@@ -1278,10 +1128,6 @@ function exportarTxt() {
   mostrarToastDeSucesso(textoDaVoz('PAI-19', { n: linhas.length }));
 }
 
-// O Envio mora em painel-envio.js; daqui saem só as frases e o que se faz com
-// elas. Ele começa depois da primeira leitura do histórico, porque o resumo de
-// um envio que terminou com o painel fechado pode abrir na hora e gravar nelas.
-
 function comecarEnvio() {
   Envio.usar({
     selecionadas: () => todasFrases.filter(f => selecionadas.has(f.id)),
@@ -1295,7 +1141,6 @@ function comecarEnvio() {
   });
 }
 
-/** Enviada ao Anki (ENV-12): sem toast, e a seleção fica como está (#9). */
 async function marcarComoEnviadas(ids) {
   const marcar = new Set(ids.map(Number));
   const marcadas = [];
@@ -1311,11 +1156,6 @@ async function marcarComoEnviadas(ids) {
   aplicarFiltro();
 }
 
-
-// Um modal para 1 frase (a ação do cartão, ou a seleção de uma só) e para N (a
-// barra). Com 1, os campos trazem o Contexto dela e salvar não dá toast. Com N,
-// os campos vêm em branco, campo em branco fica como está, e o toast diz
-// quantas frases mudaram.
 
 function configurarModaisDeFrases() {
   for (const botao of document.querySelectorAll('[data-fechar-modal]')) {
@@ -1346,7 +1186,6 @@ function abrirEditarContexto(ids) {
   document.getElementById('modal-fonte').focus();
 }
 
-/** Abre o modal e guarda como fechá-lo, para o × e o Cancelar acharem o dono. */
 function abrirModalDeFrases(id, aoFechar) {
   modalAberto = abrirModal(document.getElementById(id), {
     aoFechar: () => { modalAberto = null; aoFechar(); },
@@ -1366,8 +1205,6 @@ function salvarContexto() {
   else                  salvarContextoDeVarias(ids, contexto);
 }
 
-// A seleção fica de pé depois de salvar: quem acabou de arrumar o Contexto de
-// 12 frases quase sempre vai exportar ou enviar as mesmas 12 em seguida.
 function salvarContextoDeVarias(ids, { fonte, titulo, detalhe }) {
   const alvo = new Set(ids);
   const editadas = [];
@@ -1407,22 +1244,8 @@ function salvarContextoDeUmaFrase(id, { fonte, titulo, detalhe }) {
   salvarFraseFirestore(todasFrases[idx]);
 }
 
-// [Minerar frases ▾] no cabeçalho abre o menu Colar · Arquivo .txt · Foto.
-// Colar e Arquivo .txt abrem o mesmo modal, já na aba certa; Foto abre Minerar
-// de uma foto numa aba nova.
-//
-// Cada frase é gravada pelo service worker (`SALVAR_HISTORICO`), uma por vez,
-// na fila de gravação dele: o progresso “Minerando 3 de 12…” anda só quando a
-// gravação daquela frase volta confirmada, e a lista a mostra pelo
-// `chrome.storage.onChanged`. Com a conta, as frases sobem para a nuvem juntas
-// no fim; se a nuvem falha, fica o aviso persistente ADD-06 com Tentar de
-// novo, e o card e o chip da conta dizem que o computador está sem sincronizar.
-
-// Uma mineração por vez: o duplo clique em “Minerar N frases” não grava duas vezes (#9).
 let mineracaoEmCurso = false;
-// O modal de Minerar frases aberto, para o fim da mineração fechar só ele.
 let modalDeMinerar = null;
-// As frases mineradas aqui que não chegaram à nuvem (ADD-06).
 const idsMineradosForaDaNuvem = new Set();
 
 function configurarMinerarFrases() {
@@ -1441,7 +1264,6 @@ function configurarMinerarFrases() {
   menu.addEventListener('click', (e) => {
     const item = e.target.closest('[data-minerar]');
     if (!item) return;
-    // O foco volta ao botão antes: é para ele que o modal devolve o foco ao fechar.
     fecharMenuDeMinerar();
     escolherModoDeMinerar(item.dataset.minerar);
   });
@@ -1491,7 +1313,6 @@ function menuDeMinerarAberto() {
   return !document.getElementById('menu-minerar').hidden;
 }
 
-/** Abre o menu com o foco no item `indice` (-1 é o último). */
 function abrirMenuDeMinerar(indice) {
   document.getElementById('menu-minerar').hidden = false;
   document.getElementById('btn-minerar-frases').setAttribute('aria-expanded', 'true');
@@ -1505,7 +1326,6 @@ function fecharMenuDeMinerar({ devolverFoco = true } = {}) {
   if (devolverFoco) botao.focus();
 }
 
-/** Setas andam pelos modos (e dão a volta), Home/End vão às pontas, Esc e Tab fecham. */
 function aoTeclarNoMenuDeMinerar(e) {
   const itens = itensDoMenuDeMinerar();
   const atual = itens.indexOf(document.activeElement);
@@ -1533,7 +1353,6 @@ function abrirMinerarDeUmaFoto() {
   chrome.tabs.create({ url: chrome.runtime.getURL('bookreader.html') });
 }
 
-/** Abre o modal limpo, na aba `colar` ou `arquivo`. */
 function abrirMinerarFrases(aba) {
   if (mineracaoEmCurso) return;
   document.getElementById('minerar-frases').value = '';
@@ -1563,7 +1382,6 @@ function focarAbaDeMinerar(aba) {
   document.getElementById(aba === 'colar' ? 'minerar-frases' : 'btn-minerar-escolher').focus();
 }
 
-/** O progresso (ADD-04) toma o lugar das abas e dos campos até a última frase. */
 function mostrarProgressoDeMinerar(feitas, total) {
   document.getElementById('minerar-edicao').hidden    = true;
   document.getElementById('minerar-progresso').hidden = false;
@@ -1574,7 +1392,6 @@ function mostrarProgressoDeMinerar(feitas, total) {
   barra.firstElementChild.style.width = `${total ? (feitas / total) * 100 : 0}%`;
 }
 
-/** As linhas com texto, sem as em branco: uma frase por linha, no Colar e no .txt. */
 function linhasDoTexto(texto) {
   return texto.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
 }
@@ -1583,7 +1400,6 @@ function linhasColadas() {
   return linhasDoTexto(document.getElementById('minerar-frases').value);
 }
 
-/** A contagem ao vivo (“3 frases”) e o botão “Minerar 3 frases”. */
 function atualizarContagemDeColar() {
   const n = linhasColadas().length;
   document.getElementById('minerar-contagem').textContent = textoDaVoz('PAI-05', { n });
@@ -1592,7 +1408,6 @@ function atualizarContagemDeColar() {
     : textoDaVoz('ADD-01.botao');
 }
 
-/** O erro do campo (ADD-03), dito por `aria-invalid` e ligado ao campo. `null` tira. */
 function mostrarErroDeColar(mensagem) {
   const campo = document.getElementById('minerar-frases');
   const erro  = document.getElementById('minerar-frases-erro');
@@ -1602,7 +1417,6 @@ function mostrarErroDeColar(mensagem) {
   else          campo.removeAttribute('aria-invalid');
 }
 
-/** Roda `minerar` se nenhuma outra mineração está em curso; senão, não faz nada. */
 async function umaMineracaoPorVez(minerar) {
   if (mineracaoEmCurso) return;
   mineracaoEmCurso = true;
@@ -1627,7 +1441,6 @@ async function minerarColadasAgora() {
   concluirMineracao(resultado, n => textoDaVoz('ADD-05', { n }));
 }
 
-/** O nome do arquivo escolhido na área (ou o convite, sem arquivo), e limpa o resultado anterior. */
 function mostrarArquivoEscolhido(nome) {
   document.getElementById('minerar-arquivo-nome').textContent = nome || textoDaVoz('ADD-12.arquivo');
   document.getElementById('btn-minerar-escolher').textContent =
@@ -1636,7 +1449,6 @@ function mostrarArquivoEscolhido(nome) {
   mostrarFimDoArquivo({});
 }
 
-/** O fim que fica no modal: um erro (ADD-07, ADD-08) ou o nada novo (ADD-09), que troca Cancelar por Fechar. */
 function mostrarFimDoArquivo({ erro, resultado }) {
   const noErro      = document.getElementById('minerar-arquivo-erro');
   const noResultado = document.getElementById('minerar-arquivo-resultado');
@@ -1647,12 +1459,7 @@ function mostrarFimDoArquivo({ erro, resultado }) {
   if (resultado) document.getElementById('btn-minerar-arquivo-sair').textContent = textoDaVoz('ADD-12.fechar');
 }
 
-/**
- * Importa ao escolher. Frases que já estão no histórico (ou repetidas no próprio
- * arquivo) ficam de fora; uma linha exportada daqui volta com o Contexto e a Palavra.
- */
 function importarArquivoTxt(arquivo) {
-  // Desde a escolha: enquanto o arquivo é lido, o Colar não começa outra (#9).
   return umaMineracaoPorVez(() => importarArquivoTxtAgora(arquivo));
 }
 
@@ -1680,7 +1487,6 @@ async function importarArquivoTxtAgora(arquivo) {
   }
 
   if (novas.length === 0) {
-    // Só a parte que aconteceu: nunca “0 linhas não puderam ser lidas”.
     const parte = !invalidas ? 'soRepetidas' : !duplicadas ? 'soIlegiveis' : 'ambas';
     mostrarFimDoArquivo({ resultado: textoDaVoz(`ADD-09.${parte}`, { duplicadas, invalidas }) });
     return;
@@ -1692,7 +1498,6 @@ async function importarArquivoTxtAgora(arquivo) {
     : textoDaVoz('ADD-05', { n })));
 }
 
-/** O texto do arquivo em UTF-8. Um binário (UTF-8 inválido ou com NUL) é ilegível (ADD-07). */
 async function lerArquivoDeTexto(arquivo) {
   const bytes = new Uint8Array(await arquivo.arrayBuffer());
   const texto = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
@@ -1704,11 +1509,6 @@ function chaveDeRepetida(texto) {
   return texto.replace(/\s+/g, ' ').trim().toLowerCase();
 }
 
-/**
- * Grava as frases uma por vez pelo service worker e anda o progresso a cada
- * gravação confirmada. Cada uma é `{ texto, contexto, palavras? }`: `palavras`
- * (mesmo vazia) diz que a Palavra já veio com a linha, sem a detecção automática.
- */
 async function minerarEmSequencia(frases) {
   const mineradas = [];
   let erroLocal = null;
@@ -1723,17 +1523,10 @@ async function minerarEmSequencia(frases) {
   } catch (err) {
     erroLocal = err;
   }
-  // A mineração só termina quando a nuvem também respondeu: até lá, outro
-  // clique não começa uma segunda.
   const erroNaNuvem = await sincronizacao.subirFrases(mineradas);
   return { mineradas, erroLocal, erroNaNuvem };
 }
 
-/**
- * O fim: o toast de sucesso, ou o aviso ADD-06 quando a nuvem falhou. Uma
- * gravação que falhou neste computador fica como aviso GLB-01, com o que já
- * entrou contado no resto.
- */
 function concluirMineracao({ mineradas, erroLocal, erroNaNuvem }, textoDoSucesso) {
   modalDeMinerar?.fechar();
   if (erroLocal) mostrarAvisoNaArea('minerar', { texto: textoDaVoz('GLB-01'), erro: erroLocal });
@@ -1745,17 +1538,11 @@ function concluirMineracao({ mineradas, erroLocal, erroNaNuvem }, textoDoSucesso
   if (!erroLocal && mineradas.length > 0) mostrarToastDeSucesso(textoDoSucesso(mineradas.length));
 }
 
-/**
- * O aviso ADD-06: um só, que junta todas as frases mineradas que não subiram.
- * O card e o chip da conta dizem junto que este computador está sem sincronizar.
- */
 function mostrarAvisoForaDaNuvem(erro) {
   mostrarFalhaNaNuvem(erro);
   mostrarAvisoNaArea('fora-da-nuvem', {
     texto: textoDaVoz('ADD-06.aviso', { n: idsMineradosForaDaNuvem.size }),
     acao: { rotulo: textoDaVoz('ADD-06.tentarDeNovo'), aoUsar: tentarSubirDeNovo },
-    // Sem “Detalhes” aqui (decisão do dono): a causa já vai para o card Conta & sync.
-    // Fechar só tira o aviso: elas seguem só no computador, e o próximo carregamento tenta de novo.
     aoFechar: () => idsMineradosForaDaNuvem.clear(),
   });
 }
@@ -1769,16 +1556,9 @@ async function tentarSubirDeNovo() {
   }
   idsMineradosForaDaNuvem.clear();
   tirarAvisoDaArea('fora-da-nuvem');
-  // A nuvem respondeu: o card e o chip da conta deixam de dizer “sem sincronizar”.
   mostrarSincronizado();
 }
 
-// “palavra : texto [Contexto: fonte - título - detalhe]”, uma frase por linha.
-// A Palavra sai sem a posição (`word@3` → `word`), com os grupos separados por
-// “ | ”. Uma frase sem Palavra cujo texto tem “ : ” sai com o prefixo vazio
-// (“: texto”), para o “ : ” do texto não ser lido como o fim da Palavra (#9).
-
-/** A Palavra como vai no .txt (“cold feet | wedding”), ou '' sem Palavra. */
 function palavrasDoTxt(frase) {
   const kws = keywords[frase.id] || [];
   if (kws.length === 0) return '';
@@ -1786,26 +1566,16 @@ function palavrasDoTxt(frase) {
     .replace(/\s+\|\s+/g, ' | ').replace(/\s*\|\s*$/, '').trim();
 }
 
-/**
- * A linha da frase no .txt, para voltar inteira na leitura (`lerLinhaDoTxt`).
- * Um grupo da Palavra que já não está no texto (o texto foi editado depois)
- * fica de fora: lido de volta, ele sairia colado no começo do texto.
- */
 function linhaDoTxt(frase) {
   const texto = frase.texto.replace(/\s+/g, ' ').trim();
   const palavra = palavrasDoTxt(frase).split(' | ')
     .filter(grupo => Mineracao.palavrasNoTexto(grupo, texto))
     .join(' | ');
-  // Um “ : ” no texto, ou um “ :” no fim dele, seria lido como o fim da Palavra.
   const precisaDoPrefixoVazio = `${texto} `.includes(' : ') || texto.startsWith(':');
   const prefixo = palavra ? `${palavra} : ` : (precisaDoPrefixoVazio ? ': ' : '');
   return `${prefixo}${texto} ${contextoDaLinha(frase)}`;
 }
 
-/**
- * A linha que o parser do motor lê, que não conhece o prefixo
- * vazio: a Palavra como está, sem as duas regras do .txt.
- */
 function linhaParaOAnki(frase) {
   const texto = frase.texto.replace(/\s+/g, ' ').trim();
   const palavra = palavrasDoTxt(frase);
@@ -1819,16 +1589,6 @@ function contextoDaLinha(frase) {
   return `[Contexto: ${fonte} - ${titulo} - ${detalhe}]`;
 }
 
-/**
- * Lê uma linha do .txt: `{ texto, contexto, palavras? }`, ou `null` quando não
- * sobra texto. Uma linha no formato exportado (com “[Contexto: …]”) traz
- * `palavras`, mesmo vazia; uma linha simples fica sem, e ganha a Palavra
- * detectada como uma frase colada.
- *
- * O prefixo antes do primeiro “ : ” só é a Palavra se cada palavra dele estiver
- * no texto depois: é o que separa “harbour : The harbour : a quiet place.” de
- * “Note : this matters.” num .txt exportado antes do prefixo vazio existir.
- */
 function lerLinhaDoTxt(linha) {
   let resto = linha.trim();
   let contexto = null;
@@ -1848,7 +1608,6 @@ function lerLinhaDoTxt(linha) {
     if (separador >= 0) {
       const prefixo = resto.slice(0, separador).trim();
       const depois  = resto.slice(separador + 3).trim();
-      // “palavra : [Contexto: …]”: a Palavra sem frase não é uma linha que dê para ler.
       if (ctx && !depois) return null;
       const achadas = Mineracao.palavrasNoTexto(prefixo, depois);
       if (achadas) { texto = depois; palavras = achadas; }
@@ -1860,17 +1619,10 @@ function lerLinhaDoTxt(linha) {
   return {
     texto,
     contexto: { fonte, titulo: contexto?.titulo || '', detalhe: contexto?.detalhe || '' },
-    // Uma linha exportada daqui já diz a Palavra, mesmo sem nenhuma; uma
-    // linha simples só diz quando o prefixo casou com o texto.
     ...(ctx || palavras ? { palavras: palavras || [] } : {}),
   };
 }
 
-/**
- * “fonte - título - detalhe”, com “Desconhecido” no lugar do vazio. Um Título
- * com “ - ” (“Dark - Season 1”) fica inteiro: a Fonte é a primeira parte e o
- * Detalhe, a última.
- */
 function lerContextoDoTxt(texto) {
   const partes = texto.split(' - ').map(p => p.trim());
   const limpo = p => (p && !/^Desconhecido$/i.test(p) ? p : '');

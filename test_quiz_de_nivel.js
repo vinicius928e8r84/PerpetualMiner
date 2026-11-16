@@ -1,8 +1,5 @@
 'use strict';
 
-// A regra do quiz de nível (#170, `lib/quiz-de-nivel.js`), sem tela: por qual portão a parte 2 começa, quantas perguntas entram, o nível que cada caminho dá
-// e a sequência de acertos. Roda sem navegador: `node test_quiz_de_nivel.js`. O que a pessoa vê e o nível que fica guardado são do e2e (`boas-vindas-quiz.spec.js`).
-
 const assert = require('assert');
 
 globalThis.PerpetualMiner = {};
@@ -10,7 +7,6 @@ require('./lib/quiz-de-nivel.js');
 const { QuizDeNivel } = globalThis.PerpetualMiner;
 const { TIPOS, NAO_SEI, NIVEIS } = QuizDeNivel;
 
-/** Roda o quiz respondendo cada pergunta como o roteiro manda (`'certo'`, `'errado'` ou `'nao_sei'`, por tipo e ordem); devolve os tipos perguntados e o resultado. */
 function rodar(lang, inicial, roteiro) {
   const quiz = QuizDeNivel.iniciar(lang, inicial);
   const vistos = [];

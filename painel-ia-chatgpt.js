@@ -1,12 +1,5 @@
 'use strict';
 
-// A coluna Conta do ChatGPT do card IA dos cartões (#155, docs/design/login-do-chatgpt.md), a do mesmo tamanho que a da chave.
-// O login e os tokens são da Conexão com o Anki: esta coluna só pede (`PedidoAoAnki`), abre a URL de autorização numa aba e lê o
-// estado `{ conectada, entrando, falha, acabou }`, que ela nunca guarda no navegador. Enquanto a pessoa entra no ChatGPT, relê a cada 2 s.
-// O login é uma coisa de cada vez: sem login, entrando, conectada ou acabou (a Conexão recusou a renovação; o Envio para e não gasta a
-// chave sozinho). Do acabou a pessoa sai por escolha: Continuar com o ChatGPT entra de novo; Usar a chave tira o login acabado da Conexão.
-// `painel-ia.js` desenha o card e pede aqui a coluna (`coluna(lugar)`) e a faixa do erro dela (`faixa(lugar)`), em cada lugar do card.
-
 (function (raiz) {
   const { textoDaVoz } = raiz;
   const { mostrarToastDeSucesso, montarAviso } = raiz.Veio;
@@ -14,15 +7,13 @@
   // Gerenciar uso: a página de uso do ChatGPT, onde a pessoa vê o uso e desconecta o app (doc do Sign in with ChatGPT,
   // “Accounts and sessions” § Tracking usage; os endereços do login estão em complemento/chatgpt_oficial.py).
   const GERENCIAR_USO = 'https://chatgpt.com/settings/usage';
-  // A extensão só abre a autorização do servidor de login oficial, venha o que vier de quem responde na porta da Conexão.
   const AUTORIZAR = 'https://auth.openai.com/api/accounts/authorize?';
   const RELER_A_CADA_MS = 2000;
   // O aviso da primeira vez com o plano (as diretrizes da OpenAI o pedem, P2 do #101): dado uma vez neste computador, no storage da extensão.
   const AVISADO = 'pm_plano_do_chatgpt_avisado';
 
-  // login: o que a Conexão disse (null: não se sabe); cancelado: a pessoa desistiu de esperar a aba (a próxima tentativa troca a da Conexão).
   const estado = { login: null, pedindo: false, erro: null, cancelado: false };
-  const lugares = new Map(); // lugar do card → { coluna, faixa }: os nós desta coluna, redesenhados no lugar
+  const lugares = new Map();
   let releitura = null;
   let avisando = false;
 
@@ -42,17 +33,15 @@
     const login = resposta?.status === 200 && typeof resposta.json?.conectada === 'boolean' ? resposta.json : null;
     const pagava = quemPaga(estado.login);
     estado.login = login;
-    if (pagava !== quemPaga(login)) raiz.ModeloDosCartoes.reler(); // quem paga e a lista de modelos mudam com o login
+    if (pagava !== quemPaga(login)) raiz.ModeloDosCartoes.reler();
     if (login?.conectada) avisarDoPlano();
     if (entrando()) releitura = setTimeout(ler, RELER_A_CADA_MS);
     desenharTudo();
   }
 
   const entrando = () => Boolean(estado.login?.entrando) && !estado.cancelado;
-  /** Quem paga o Envio, pelo que a Conexão disse do login: o plano; ninguém (o login acabou); ou a chave. */
   const quemPaga = login => (login?.conectada ? 'plano' : login?.acabou ? 'parado' : 'chave');
 
-  /** O modal “Você está usando o seu plano do ChatGPT”, na primeira vez que o plano aparece em uso: Entendi, Esc e o clique fora o dão por visto. */
   function avisarDoPlano() {
     if (avisando) return;
     avisando = true;
@@ -108,7 +97,6 @@
     desenharTudo();
   }
 
-  /** O erro de agora: o de um pedido desta página; o login que acabou (fala antes da tentativa falha: é ele que traz as duas saídas); ou a falha da última tentativa que a Conexão conta. */
   function erroDeAgora() {
     const { login } = estado;
     if (estado.erro || !login || login.entrando || login.conectada) return estado.erro;
@@ -116,13 +104,11 @@
     return motivo ? { motivo, detalhes: [login.acabou, login.falha].filter(Boolean).join(' · ') } : null;
   }
 
-  /** Usar a chave: com o login acabado, a pessoa o deixa (a Conexão o apaga, sem toast de saída: ela não saiu, escolheu a chave); o foco vai ao campo da chave. */
   async function usarAChave(lugar) {
     if (estado.login?.acabou) await sair({ calado: true });
     document.getElementById(`${lugar.prefixo}-ia-campo`)?.focus();
   }
 
-  /** “Usando o plano do ChatGPT · Gerenciar uso”: a coluna do login e a linha do modelo dos cartões (`painel-ia-modelo.js`) dizem quem paga com esta. */
   function linhaDoPlano() {
     const ponto = elemento('span', 'cfg-ponto');
     ponto.dataset.estado = 'ok';
@@ -156,7 +142,6 @@
     const { login } = estado;
     if (login?.conectada) {
       partes.push(linhaDoPlano(), elemento('div', 'cfg-acoes', botao('contorno', textoDaVoz('CFG-35.chatgptSair'), sair)));
-      // Com o plano e sem chave, o cartão não leva imagem gerada (#156): a coluna diz o que a pessoa perde.
       if (!raiz.CartaoDaIA.temChave()) partes.push(elemento('p', 'cfg-nota', textoDaVoz('CFG-35.semChave')));
     } else if (entrando()) {
       const esperando = botao('secundario', textoDaVoz('CFG-35.chatgptEsperando'), entrar);
@@ -178,7 +163,6 @@
     daFaixa.replaceChildren(...(erro ? [faixaDoErro(lugar, erro)] : []));
   }
 
-  /** A faixa do erro, abaixo das colunas como a da chave, aberta por “Conta do ChatGPT:”, com o que fazer e o Detalhes. */
   function faixaDoErro(lugar, { motivo, detalhes }) {
     const tentar = { rotulo: textoDaVoz('CFG-35.erroTentarDeNovo'), aoUsar: entrar };
     const aChave = { rotulo: textoDaVoz('CFG-35.erroChatgptUsarChave'), aoUsar: () => usarAChave(lugar) };
@@ -214,7 +198,6 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    // A Conexão que liga relê o login; a que desliga deixa a coluna sem afirmar nada dele (C8).
     raiz.ConexaoAnki.acompanhar(situacao => {
       if (situacao === raiz.ConexaoAnki.SITUACAO.LIGADA) ler();
       else if (situacao !== raiz.ConexaoAnki.SITUACAO.CONECTANDO && estado.login) {
@@ -222,9 +205,7 @@
         desenharTudo();
       }
     });
-    // A pessoa volta da aba do ChatGPT: relê na hora, sem esperar a próxima volta.
     window.addEventListener('focus', () => { if (entrando()) ler(); });
-    // A pessoa chega ao card vinda de outra área (o Envio que parou a traz aqui): o login pode ter acabado desde a última leitura.
     window.addEventListener('hashchange', () => {
       if (/^#(configuracoes|boas-vindas)\/ia\b/.test(location.hash) && raiz.ConexaoAnki.situacao() === raiz.ConexaoAnki.SITUACAO.LIGADA) ler();
     });
