@@ -1,7 +1,7 @@
 'use strict';
 
 importScripts('lib/voz/catalogo.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/mineracao.js', 'lib/ajustes-de-envio.js', 'lib/mineracao-do-dia.js', 'lib/vocabulario-da-mineracao.js', 'lib/pedido-ao-anki.js', 'lib/pareamento.js', 'lib/envio-gravado.js', 'lib/apagar-frases-pendente.js', 'lib/sincronizacao.js');
-const { textoDaVoz, detectarIdioma, idiomaDe, IDIOMAS, MineracaoDoDia, Mineracao, VocabularioDaMineracao, Sincronizacao } = PerpetualMiner;
+const { textoDaVoz, detectarIdioma, contarLetras, idiomaDe, IDIOMAS, MineracaoDoDia, Mineracao, VocabularioDaMineracao, Sincronizacao } = PerpetualMiner;
 
 if (chrome.storage.local.setAccessLevel) {
   chrome.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' })
@@ -562,7 +562,7 @@ function isAutoKeywordRussianWord(word) {
   return Boolean(
     word
     && word.length >= 2
-    && /[\u0400-\u04FF]/.test(word)
+    && detectarIdioma(word) === IDIOMAS.RUSSO
     && !/\d/.test(word)
     && !AUTO_KEYWORD_STOP_WORDS_RU.has(word)
   );
@@ -734,7 +734,7 @@ function isAutoMinerCleanText(texto) {
   const clean = normalizeAutoMinerText(texto);
   if (clean.length < 4) return false;
   if (/^[\d\s:.,!?-]+$/.test(clean)) return false;
-  if ((clean.match(/[A-Za-z\u0400-\u04FF]/g) || []).length < 2) return false;
+  if (contarLetras(clean) < 2) return false;
   const lower = clean.toLowerCase();
   return ![
     'skip intro', 'skip recap', 'next episode', 'prime video', 'audio', 'subtitles',
