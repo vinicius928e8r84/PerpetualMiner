@@ -203,6 +203,8 @@ async function run() {
   const capped = await englishKeywords('Weaning children required gruel around the clock.');
   assert.strictEqual(capped.filter(item => item === '|').length, 1, 'normal English auto keyword is capped at two groups');
 
+  assert.strictEqual(typeof loadBackground().autoTokenizar, 'undefined', 'the service worker tokenizes with Mineracao.tokenizar, not its own copy');
+
   await baralhoGravadoQueNaoRespondeNaoViraVocabularioVazio();
   await russianAutoMinerStorage();
   await russianManualSaveDoesNotAutoKeyword();
