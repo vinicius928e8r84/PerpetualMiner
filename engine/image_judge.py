@@ -189,7 +189,7 @@ def rank_candidates(
                     {"provedor": provedores.OPENAI, "via": "plano", "segredo": plano["token"], "modelo": plano["modelo"], "base": openai_base},
                     _SYSTEM, content, tempo=provedores.TEMPO_DA_IMAGEM, json=True, repeticoes=provedores.REPETICOES_DA_IMAGEM)
             except provedores.ErroDoProvedor as exc:
-                if not (api_key and provedores.passageira(exc.codigo, exc.status)):  # a plan that cannot go on (limit, account) stops the Envio
+                if not (api_key and provedores.passageira(exc.codigo, exc.status)):
                     raise
                 LOGGER.warning("image_judge plan judge failed (%s): the key judge decides keyword=%s", exc.codigo, label or keyword)
                 plano = None
@@ -212,7 +212,7 @@ def rank_candidates(
             len(valid_index_map),
         )
         return _invalid_image_format_fallback(mode, valid_index_map)
-    if not plano:  # the plan is not paid per call
+    if not plano:
         _record_cost(log_dir, model, usage, f"[image_judge] {label or keyword}")
 
     try:

@@ -28,11 +28,9 @@ _TAG_RE = re.compile(r"<[^>]+>")
 _MARCA = "\x00"
 _LACUNA = '<b class="lacuna">[\u2026]</b>'
 
-# The four pieces of a Russian word, in the order a word is written, and the colour of each: the same at every level.
 PEDACOS = ("prefix", "root", "suffix", "ending")
 COR_DO_PEDACO = {"prefix": "#a855f7", "root": "#22c55e", "suffix": "#f59e0b", "ending": "#ef4444"}
 NOME_DO_PEDACO = {"prefix": "Prefix", "root": "Root", "suffix": "Suffix", "ending": "Ending"}
-# The word a Russian card with morphology is about: the model chooses it among the words of the Phrase and says it on its own line.
 ROTULO_DA_PALAVRA = "Word"
 _ACENTO = "\u0301"
 _LINHA_DO_PEDACO_RE = re.compile(r"^(prefix|root|suffix|ending)\s*:\s*(.+)$", re.IGNORECASE)
@@ -166,13 +164,13 @@ def campos_da_nota(
     alinhamentos = _extract_alignments(content) if estilo["cores"] else []
 
     valores: Dict[str, str] = {"frase": _build_front(content, None, lang=lang, cores=estilo["cores"])}
-    para_comparar = valores["frase"]  # a cor parte as palavras: a busca de duplicatas compara a Frase sem ela
+    para_comparar = valores["frase"]
     palavras = morfologia_do_texto(content) if estilo.get("morfologia") else []
     if palavras:
         valores["morfologia"] = "<br>".join("%s = %s" % (p, " + ".join(parte for _, parte in pedacos)) for p, pedacos in palavras)
         valores["explicacao_das_cores"] = _explicacao_das_cores(content)
     do_cartao = _valor_do_rotulo(content, ROTULO_DA_PALAVRA) if estilo.get("morfologia") or "silaba_forte" in estilo["verso"] else ""
-    palavra_chave = do_cartao or (_palavra_do_verso(content) if estilo["entrada"] == "palavras" else "") or palavra or ""  # o verso pode não mostrá-la (a Sílaba forte a mostra)
+    palavra_chave = do_cartao or (_palavra_do_verso(content) if estilo["entrada"] == "palavras" else "") or palavra or ""
     for parte in estilo["verso"] + estilo.get("guarda", []):
         if parte == "palavra":
             valores[parte] = palavra_chave
@@ -186,10 +184,10 @@ def campos_da_nota(
                 valor = _apply_chunk_colors(valor, [para for _, para in alinhamentos], ignore_case=True)
             valores[parte] = _md_to_html(valor)
     lacuna = _frase_com_lacuna(valores["frase"], palavra or palavra_chave)
-    if lacuna:  # a frente Lacuna (#166): a Frase sem a Palavra e uma dica do verso; o resto da Frase fica no campo da Frase
+    if lacuna:
         valores["lacuna"] = lacuna
         valores["dica"] = next((valores[parte] for parte in estilos.partes_da_dica() if valores.get(parte)), "")
-    if estilo.get("destaque"):  # a palavra-chave na Frase e no Outro exemplo; com a morfologia, também as cores dos pedaços das palavras
+    if estilo.get("destaque"):
         for chave in ("frase", "outro_exemplo"):
             if valores.get(chave):
                 valores[chave] = _pintar(valores[chave], palavras, palavra_chave)

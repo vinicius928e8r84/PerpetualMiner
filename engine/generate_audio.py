@@ -62,11 +62,8 @@ def phrase_from_card_text(content: str) -> Optional[str]:
         return None
     phrase = match.group(1).strip()
     phrase = re.sub(r"🔊.*", "", phrase).strip()
-    # Strip "[Phrase with ...]" or "[Phrase with ... :]" GPT artefacts
     phrase = re.sub(r'\[Phrase with[^\]]*\]\s*:?\s*', '', phrase, flags=re.IGNORECASE).strip()
-    # Strip any remaining bracket metadata
     phrase = re.sub(r'\[.*?\]', '', phrase).strip()
-    # Strip all markdown asterisks
     phrase = re.sub(r'\*+', '', phrase).strip()
     return phrase or None
 

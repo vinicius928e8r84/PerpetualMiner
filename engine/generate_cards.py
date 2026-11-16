@@ -253,7 +253,7 @@ def run(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     api_key = config["openai_api_key"]
-    plan = config.get("plano_do_chatgpt")  # {token, modelo}: the text goes through the ChatGPT plan instead of the key
+    plan = config.get("plano_do_chatgpt")
     log_dir = config["paths"]["log_dir"]
     lang = config.get("lang", "en")
     model = provedores.modelo_do_texto(config)
@@ -266,7 +266,7 @@ def run(
             if only_stems is None or (named or job.filename_stem) in only_stems:
                 all_jobs.append((job, named))
 
-    estilo = config.get("estilo")  # the add-on's style (`estilos.estilo`, with the path of its prompt): how a line reads and which prompt writes the card
+    estilo = config.get("estilo")
     whole_phrase = estilo["entrada"] == "frase" if estilo else lang == "ru"
     system_prompt = (
         Path(estilo["prompt"]).read_text(encoding="utf-8").strip() if estilo else load_prompt(config, "ru_card" if whole_phrase else "en_card"))
@@ -276,8 +276,6 @@ def run(
     def call(message: str, label: str, stem: str) -> Optional[str]:
         try:
             if plan:
-                # The ChatGPT plan (#155): the Responses API with the plan's model and token. No USD cost per card; the usage is logged
-                # with what the key would have charged (#159).
                 text, usage = provedores.texto(provedores.credencial_do_texto(config, openai_base), system_prompt, message)
                 cost_tracker.record_plan_tokens(log_dir, plan["modelo"], model, usage["entrada"], usage["saida"], label)
                 return text or None
@@ -318,7 +316,6 @@ def run(
             continue
 
         clean_phrase = _strip_inline_context(job.entry.phrase)
-        # A keyword the phrase has verbatim leaves the phrase whole; an inflected one is the model's to adapt (#254).
         keeps_phrase = whole_phrase or job.is_generated or job.keyword.casefold() not in clean_phrase.casefold()
 
         def card_ok(text: str) -> bool:

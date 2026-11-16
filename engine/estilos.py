@@ -73,7 +73,7 @@ class Estilos:
         return tuple(self.dados["frente_de_antes"])
 
 
-_PADRAO = Estilos(DADOS)  # os testes de um idioma novo trocam este (`mock.patch.object(estilos, "_PADRAO", Estilos(outros))`)
+_PADRAO = Estilos(DADOS)
 NIVEL_PADRAO = _PADRAO.NIVEL_PADRAO
 
 

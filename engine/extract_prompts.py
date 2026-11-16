@@ -86,7 +86,6 @@ def run(entries, config: dict) -> int:
     output_dir = Path(config["paths"]["output_dir"])
     prompts_file = Path(config["paths"]["prompts_file"])
 
-    # Compare case-insensitively because generate_cards.py normalizes stems.
     all_jobs = []
     for entry in entries:
         all_jobs.extend(get_card_jobs(entry))

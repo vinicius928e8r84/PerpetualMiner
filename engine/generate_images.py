@@ -29,7 +29,7 @@ else:
     import provedores
     from config_loader import load_config
 
-LOGGER = logging.getLogger("perpetualminer.motor")  # inside the Anki add-on nothing goes to stdout
+LOGGER = logging.getLogger("perpetualminer.motor")
 
 FAILURES_LOG = "image_generation_failures.jsonl"
 
@@ -54,7 +54,7 @@ def _log_failure(config: dict, stem: str, exc: Exception) -> str:
             "keyword": stem,
             "model": model,
             "reason": reason,
-            "error": f"{type(exc).__name__}: {exc}",  # an ErroDaOpenAI says only its code and status, never OpenAI's text
+            "error": f"{type(exc).__name__}: {exc}",
         }
         with (log_dir / FAILURES_LOG).open("a", encoding="utf-8") as f:
             f.write(json.dumps(entry, ensure_ascii=False) + "\n")

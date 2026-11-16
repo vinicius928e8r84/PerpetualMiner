@@ -15,7 +15,7 @@ PASTA = Path(__file__).parent
 CONFIG_PATH = PASTA / "config.json"
 ENV_PATH = PASTA / ".env"
 NOME_DA_CHAVE = "OPENAI_API_KEY"
-ENDERECOS_SO_DO_CODIGO = ("openai_base", "openverse_base")  # the key goes where these say
+ENDERECOS_SO_DO_CODIGO = ("openai_base", "openverse_base")
 
 
 def base_config() -> dict:
