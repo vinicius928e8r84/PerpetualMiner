@@ -42,7 +42,10 @@ jobs:
         timeout-minutes: 5
         working-directory: e2e
       - run: sudo apt-get install -y --no-install-recommends fonts-dejavu-core
-      - run: xvfb-run --auto-servernum node scripts/testar.mjs e2e -- --workers=1 --shard=${{ matrix.fatia }}/8
+      - name: e2e da fatia (teto de 7 minutos)
+        run: xvfb-run --auto-servernum node scripts/testar.mjs e2e -- --workers=1 $(node scripts/ci/fatias-e2e.js ${{ matrix.fatia }})
+        env:
+          PM_TETO_S: '420'
       - name: Testes instáveis
         id: instaveis
         if: ${{ !cancelled() }}
@@ -83,9 +86,41 @@ jobs:
           PM_CONEXAO: real
           PYTHON: python
 
+  complemento:
+    name: Noturna complemento (Python ${{ matrix.python }})
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.9', '3.13']
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Instalar o pwsh (se faltar)
+        run: |
+          if ! command -v pwsh >/dev/null; then
+            wget -q "https://packages.microsoft.com/config/ubuntu/$(. /etc/os-release && echo "$VERSION_ID")/packages-microsoft-prod.deb"
+            sudo dpkg -i packages-microsoft-prod.deb
+            sudo apt-get update
+            sudo apt-get install -y powershell
+          fi
+          pwsh -NoProfile -Command '$PSVersionTable.PSVersion.ToString()'
+      - name: Testes do complemento (teto de 6 minutos)
+        run: node scripts/testar.mjs complemento
+        env:
+          PM_TETO_S: '360'
+          PYTHON: python
+          EXIGIR_PWSH: '1'
+
   avisar:
     name: Issue da noturna
-    needs: [e2e, e2e-conexao-real]
+    needs: [e2e, e2e-conexao-real, complemento]
     if: ${{ !cancelled() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
     runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
     timeout-minutes: 5
@@ -97,10 +132,11 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 24
-      - run: node scripts/ci/issue-da-noturna.js "$URL_DA_EXECUCAO" "$FATIAS" "$CONEXAO_REAL"
+      - run: node scripts/ci/issue-da-noturna.js "$URL_DA_EXECUCAO" "$FATIAS" "$CONEXAO_REAL" "$COMPLEMENTO"
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           URL_DA_EXECUCAO: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           FATIAS: ${{ needs.e2e.result }}
           CONEXAO_REAL: ${{ needs.e2e-conexao-real.result }}
+          COMPLEMENTO: ${{ needs.complemento.result }}
