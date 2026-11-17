@@ -13,6 +13,31 @@ from .configuracao import NOME_DO_LOGGER
 
 
 class _ArquivoDeLog(logging.handlers.RotatingFileHandler):
+    """O arquivo só fica aberto durante a gravação de um registro.
+
+    No Windows um arquivo aberto não se renomeia nem se apaga: com o log aberto em `user_files`, o “Remover” do
+    Anki (#502) e o backup de `user_files` da atualização (#501) falham e deixam a Conexão pela metade.
+    """
+
+    def emit(self, record):
+        try:
+            super().emit(record)
+        finally:
+            self.soltar_o_arquivo()
+
+    def soltar_o_arquivo(self):
+        """Fecha o arquivo sem tirar o handler do logger: o próximo registro o abre de novo."""
+        self.acquire()
+        try:
+            fluxo, self.stream = self.stream, None
+            if fluxo is not None:
+                try:
+                    fluxo.close()
+                except OSError:
+                    pass
+        finally:
+            self.release()
+
     def handleError(self, record):
         # O padrão imprime o erro no stderr, que é justo o que não pode acontecer.
         pass
@@ -30,6 +55,7 @@ def criar(pasta_dos_logs):
         )
     except OSError:
         return silencioso()
+    arquivo.soltar_o_arquivo()
     arquivo.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
     logger = logging.getLogger(NOME_DO_LOGGER)
     for antigo in list(logger.handlers):
