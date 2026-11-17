@@ -63,6 +63,22 @@ test('a chave recusada: o resumo diz o motivo e oferece Trocar a chave, além do
   await estadoFinal(extensao, { pm_envio: null, frases: INGLESAS });
 });
 
+test('a frase sem Palavra marcada: a linha vai sem Palavra, e o resumo diz que falta marcar a Palavra e como marcá-la', async ({ page, extensao, fakes }) => {
+  await abrirPainel(page, extensao);
+  await marcar(page, ARM.texto).check();
+  await enviarAoAnki(page).click();
+  const [job] = await enviosCriados(fakes, 1);
+  expect(job.entries.map(e => e.line)).toEqual([`${ARM.texto} [Contexto: netflix - Desconhecido - Desconhecido]`]);
+  fakes.anki.concluirEnvio(job.jobId, { falhas: [ARM.id], erro: 'keyword_missing' });
+
+  await expect(resumo(page)).toBeVisible({ timeout: 10_000 });
+  await expect(baralho(page, 'Inglês')).toContainText('1 não entrou');
+  await expect(baralho(page, 'Inglês')).toContainText('Falta marcar a Palavra. Clique na palavra da frase que o cartão vai ensinar e envie de novo.');
+  await resumo(page).getByRole('button', { name: 'Pronto' }).click();
+  await expect(resumo(page)).toBeHidden();
+  await estadoFinal(extensao, { pm_envio: null, frases: INGLESAS });
+});
+
 test('a chave recusada num Envio, com outro ainda andando: o cartão dele diz o motivo e leva a Trocar a chave', async ({ page, extensao, fakes }) => {
   await extensao.gravarStorage({ frases: [...INGLESAS, { id: 1_700_000_000_002, texto: 'Я улыбаюсь каждое утро.', data: '18/09/2026', streaming: 'netflix', idioma: 'Russo' }] });
   await abrirPainel(page, extensao);

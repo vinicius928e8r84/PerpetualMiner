@@ -103,13 +103,14 @@ const { SituacaoDoEnvio, FaseDaRemessa } = globalThis.PerpetualMiner;
   assert.deepStrictEqual(linha('chatgpt_usage_limit'), ['ONB-23.motivoOutro', 'ENV-20.limite', AJUDA.GERENCIAR_USO, true]);
   assert.deepStrictEqual(linha('note_type_missing'), ['ONB-23.motivoTipoDeNota', 'ONB-23.motivoTipoDeNota', AJUDA.TENTAR, false]);
   assert.deepStrictEqual(linha('anki_write_failed'), ['ONB-23.motivoAnki', 'ONB-23.motivoAnki', AJUDA.TENTAR, false]);
+  assert.deepStrictEqual(linha('keyword_missing'), ['ONB-23.motivoSemPalavra', 'ONB-23.motivoSemPalavra', AJUDA.TENTAR, false]);
   for (const codigo of ['cards_failed', 'novidade', 'toString', null, undefined]) {
     assert.deepStrictEqual(linha(codigo), ['ONB-23.motivoOutro', null, AJUDA.TENTAR, true], String(codigo));
   }
   require('./lib/voz/catalogo.js');
   require('./lib/voz/catalogo-nivel.js');
   require('./lib/voz/texto.js');
-  const codigos = ['openai_key_missing', 'openai_key_rejected', 'openai_no_credit', 'openai_rate_limited', 'chatgpt_signed_out', 'chatgpt_not_eligible', 'chatgpt_usage_limit', 'note_type_missing', 'anki_write_failed', null];
+  const codigos = ['openai_key_missing', 'openai_key_rejected', 'openai_no_credit', 'openai_rate_limited', 'chatgpt_signed_out', 'chatgpt_not_eligible', 'chatgpt_usage_limit', 'note_type_missing', 'anki_write_failed', 'keyword_missing', null];
   for (const codigo of codigos) {
     for (const id of [doCodigo(codigo).fala, doCodigo(codigo).noPainel].filter(Boolean)) assert.ok(globalThis.PerpetualMiner.textoDaVoz(id), id);
   }

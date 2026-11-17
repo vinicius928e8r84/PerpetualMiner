@@ -78,6 +78,7 @@
     chatgpt_usage_limit: motivo('motivoOutro', AJUDA.GERENCIAR_USO, { noPainel: 'ENV-20.limite' }),
     note_type_missing: motivo('motivoTipoDeNota', AJUDA.TENTAR),
     anki_write_failed: motivo('motivoAnki', AJUDA.TENTAR),
+    keyword_missing: motivo('motivoSemPalavra', AJUDA.TENTAR),
   });
   const doCodigo = codigo => (Object.hasOwn(MOTIVOS, codigo ?? '') ? MOTIVOS[codigo] : SEM_MOTIVO);
 

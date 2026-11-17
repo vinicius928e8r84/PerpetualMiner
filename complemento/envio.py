@@ -54,7 +54,6 @@ NO_ANKI = (ADICIONADO, DUPLICADO)
 SEM_CHAVE = "openai_key_missing"
 SEM_TIPO_DE_NOTA = "note_type_missing"
 FALHA_AO_GRAVAR = "anki_write_failed"
-CARTOES_FALHARAM = "cards_failed"
 PARA_O_ENVIO = ("openai_key_rejected", "openai_no_credit", SAIU, "chatgpt_not_eligible", RECUSOU)
 PASSAGEIROS = ("openai_rate_limited", "openai_unreachable", "generation_error", "empty_response")
 
@@ -416,7 +415,7 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, CorrecaoDaCriacao, LimiteDoPlano, 
             primeiro = next((c["error"] for c in estado["cards"].values() if c["status"] == FALHOU and c["error"]), None)
             estado_do_envio.terminar(
                 estado, status, successfulPhraseIds=no_anki, failedPhraseIds=falharam, duplicatePhraseIds=duplicadas,
-                lastError=None if status == COMPLETED else (erro or primeiro or CARTOES_FALHARAM),
+                lastError=None if status == COMPLETED else (erro or primeiro or estado_do_envio.sem_cartao(pedido, falharam)),
             )
 
         estado = self.fila.mudar(job_id, mudanca)
