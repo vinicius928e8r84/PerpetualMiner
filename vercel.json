@@ -4,7 +4,5 @@
   "outputDirectory": "preview/dist",
   "installCommand": "echo sem dependencias",
   "framework": null,
-  "git": {
-    "deploymentEnabled": false
-  }
+  "ignoreCommand": "sh preview/ignorar-build.sh"
 }
