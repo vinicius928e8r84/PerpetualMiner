@@ -94,6 +94,17 @@ class EnglishPromptGistContractTests(unittest.TestCase):
                     normalized_prompt,
                 )
 
+    def test_english_prompts_keep_the_mined_phrase_when_the_keyword_is_inflected_in_it(self):
+        for name in ("en_card", "en_iniciante", "en_intermediario", "en_avancado"):
+            with self.subTest(prompt=name):
+                normalized_prompt = " ".join((ROOT / "prompts" / f"{name}.txt").read_text(encoding="utf-8").split())
+
+                self.assertIn(
+                    "keep the phrase exactly as mined and highlight the form it has, as one span (*turned down*)",
+                    normalized_prompt,
+                )
+                self.assertIn("Never rewrite the phrase to the base form", normalized_prompt)
+
     def test_russian_prompt_prioritizes_context_and_high_impact_free_queries(self):
         prompt = RU_PROMPT.read_text(encoding="utf-8")
         normalized_prompt = " ".join(prompt.split())
