@@ -1,7 +1,7 @@
 'use strict';
 
 const assert = require('assert');
-const { execFileSync } = require('child_process');
+const { execFileSync, spawnSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const zlib = require('zlib');
@@ -11,7 +11,7 @@ const { PASTAS_QUE_NAO_SAO_RUNTIME } = require('./scripts/arquivos-do-pacote.js'
 
 const saida = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-pacote-'));
 const versao = JSON.parse(fs.readFileSync('manifest.json', 'utf8')).version;
-const texto = execFileSync('node', ['scripts/empacotar-extensao.mjs', '--saida', saida], { encoding: 'utf8' });
+const texto = execFileSync('node', ['scripts/empacotar-extensao.mjs', '--saida', saida], { encoding: 'utf8', env: { ...process.env, PM_COMMIT_VERDE: 'ignorar' } });
 const arquivos = texto.split('\n').filter(l => l.startsWith('  ')).map(l => l.trim());
 
 for (const esperado of ['manifest.json', 'background.js', 'lib/auto-recarregar.js', 'lib/arquivos-da-extensao.js', 'painel.html', 'veio/tokens.css']) {
@@ -20,6 +20,23 @@ for (const esperado of ['manifest.json', 'background.js', 'lib/auto-recarregar.j
 for (const arquivo of arquivos) {
   assert(!PASTAS_QUE_NAO_SAO_RUNTIME.includes(arquivo.split('/')[0]), `não devia entrar: ${arquivo}`);
   assert(!/^test_.*\.js$/.test(arquivo), `teste no pacote: ${arquivo}`);
+}
+
+{
+  const gitDeOutroCommit = path.join(saida, 'outro-repo');
+  execFileSync('git', ['init', '-q', gitDeOutroCommit]);
+  execFileSync('git', ['-C', gitDeOutroCommit, '-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '--allow-empty', '-m', 'sem tag']);
+  const com = modo => spawnSync('node', ['scripts/empacotar-extensao.mjs', '--saida', path.join(saida, modo)], {
+    encoding: 'utf8', env: { ...process.env, GIT_DIR: path.join(gitDeOutroCommit, '.git'), PM_COMMIT_VERDE: modo },
+  });
+  const exigido = com('exigir');
+  assert.strictEqual(exigido.status, 1, 'empacotar recusa um commit sem tag de verde quando a regra exige');
+  assert(/sem registro de verde/.test(exigido.stderr), exigido.stderr);
+  assert(!fs.existsSync(path.join(saida, 'exigir')), 'a recusa vem antes de escrever o pacote');
+  const avisado = com('avisar');
+  assert.strictEqual(avisado.status, 0, 'por padrão só avisa: ' + avisado.stderr);
+  assert(/sem registro de verde/.test(avisado.stderr), 'o aviso aparece');
+  assert(fs.existsSync(path.join(saida, 'avisar', `perpetualminer-${versao}.zip`)), 'o pacote sai com o aviso');
 }
 
 const zip = fs.readFileSync(path.join(saida, `perpetualminer-${versao}.zip`));

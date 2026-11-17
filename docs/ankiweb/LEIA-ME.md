@@ -20,6 +20,7 @@
 2. No repositório, troque o `package` de `complemento/manifest.json` e o `codigo` de `lib/ankiweb.js` (`{ codigo: '<número>' }`) por esse número,
    e refaça o arquivo: `python3 complemento/empacotar.py conexao/perpetualminer.ankiaddon` com `SOURCE_DATE_EPOCH=<hora do upload, em segundos>`
    (o `mod` do arquivo é a hora do upload; o Anki compara com ela para oferecer atualização). Suba esse arquivo de novo em “Update”, se o AnkiWeb pedir.
+   O script avisa se o HEAD não é um commit verde (tag `verde/*`, ver `docs/commit-verde.md`); com `PM_COMMIT_VERDE=exigir` ele recusa.
 3. `python3 -m unittest complemento.test_pacote` confere que o `package` do arquivo, o do manifesto e o código do painel são o mesmo número e que o `mod` é de uma hora real;
    o e2e `painel-anki-primeira-conexao` confere o código no Detalhes “O arquivo não abriu?”.
 

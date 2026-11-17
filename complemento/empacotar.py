@@ -12,6 +12,9 @@ testes, os exemplos do contrato, `user_files`, o cache, o LEIA-ME e o `versoes.j
 O motor de texto vem de `engine/` (`ARQUIVOS_DO_MOTOR`) e entra como a pasta `motor/` do pacote, ao lado do
 `motor/__init__.py` deste repositório (ver `motor/__init__.py`).
 
+Rodado como programa, o script confere que o HEAD é um commit verde, marcado pela suíte completa na main
+(`scripts/ci/commit-verde.js`, `docs/commit-verde.md`): sem a tag ele avisa, e com `PM_COMMIT_VERDE=exigir` recusa.
+
 A extensão entrega este arquivo num link de download (`conexao/perpetualminer.ankiaddon`, no pacote da loja).
 A versão e este arquivo são dados na hora do merge por `python3 complemento/versao_no_merge.py`, num commit só;
 `test_pacote.py` falha na main (e no commit de versão) enquanto o arquivo estiver para trás do código.
@@ -185,5 +188,23 @@ def empacotar(destino, mod=None):
     return destino
 
 
+def conferir_commit_verde(raiz=RAIZ):
+    """Confere, com `scripts/ci/commit-verde.js`, que o HEAD tem a tag de commit verde (`PM_COMMIT_VERDE=exigir` recusa, `ignorar` pula).
+    Devolve `False` só quando a conferência recusa; sem o `node` ou sem o script (uma cópia da pasta, sem o repositório) ela deixa passar, e com `exigir` recusa."""
+    modo = os.environ.get("PM_COMMIT_VERDE")
+    script = os.path.join(RAIZ, "scripts", "ci", "commit-verde.js")
+    if modo == "ignorar" or (not os.path.isfile(script) and modo != "exigir"):
+        return True
+    try:
+        saiu = subprocess.run(["node", script, "conferir", "--raiz", raiz], capture_output=True, text=True)
+    except OSError:
+        print("commit sem registro de verde: não achei o node para conferir", file=sys.stderr)
+        return modo != "exigir"
+    print((saiu.stdout + saiu.stderr).strip(), file=sys.stderr)
+    return saiu.returncode == 0
+
+
 if __name__ == "__main__":
+    if not conferir_commit_verde():
+        sys.exit(1)
     print(empacotar(sys.argv[1] if len(sys.argv) > 1 else os.path.join(PASTA, "..", "dist", "perpetualminer.ankiaddon")))

@@ -1,0 +1,39 @@
+name: Commit verde
+
+on:
+  workflow_run:
+    workflows: [Noturna]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: SHA inteiro de um commit da main cuja suíte completa já passou
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: commit-verde-${{ github.event.workflow_run.head_sha || inputs.sha }}
+  cancel-in-progress: false
+
+jobs:
+  marcar:
+    name: Marcar commit verde
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event != 'pull_request' && github.event.workflow_run.head_repository.full_name == github.repository) }}
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      checks: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - run: node scripts/ci/commit-verde.js marcar "$SHA" --esperar 20 --ignorar "Marcar commit verde"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          SHA: ${{ github.event.workflow_run.head_sha || inputs.sha }}
