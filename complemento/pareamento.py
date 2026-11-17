@@ -7,7 +7,7 @@ resposta volta assinada (`desenho em docs/design/pareamento-da-conexao.md`). Só
     segredo S          `user_files/pareamento.json`, até 5 navegadores, só do dono (0600), gravado de uma vez
     revogados          o Desconectar navegadores guarda ali (até 20) os segredos que revogou: eles não assinam mais nada, só provam ao `conferir` que
                        a Conexão desconectou aquele navegador (`401 pairing_revoked` com a prova da revogação), e só essa resposta provada faz a extensão
-                       esquecer a credencial e voltar a pedir o código; um 401 sem prova (um impostor também o responde) não faz nada disso
+                       esquecer a credencial; um 401 sem prova (um impostor também o responde) não a apaga, e o `pairing_required` só oferece o Conectar (#496)
     código C           só na memória, 5 minutos, 5 tentativas; nunca em arquivo, log nem resposta HTTP
     sessão             nasce a cada subida da Conexão, só na memória: um pedido assinado numa subida não vale na outra
     nonce de cada pedido   não se repete dentro da sessão
