@@ -45,6 +45,26 @@ test.describe('com a permissão do abridor', () => {
     await estadoFinal(extensao, { pm_envio: { envios: [{ ids: [SACK.id], jobId: job.jobId }] } });
   });
 
+  test('Enviar logo depois de o Anki fechar, antes de o painel perceber, chama o abridor no primeiro clique', async ({ page, extensao, fakes }) => {
+    await extensao.gravarStorage({ frases: INGLESAS, pm_anki_ja_conectou: true });
+    await abrirPainel(page, extensao);
+    await marcar(page, SACK.texto).check();
+    fakes.anki.desligar();
+
+    await enviarAoAnki(page).click();
+
+    await expect(faixa(page)).toHaveText('Abrindo o Anki para enviar…');
+    await expect.poll(() => aberturas(fakes)).toEqual([ABRIR]);
+    await expect(progresso(page)).not.toContainText('Não começou');
+
+    fakes.anki.ligar();
+    await expect(faixa(page)).toBeHidden({ timeout: 10_000 });
+    const [job] = await enviosCriados(fakes, 1);
+    expect(job.entries.map(e => e.phraseId)).toEqual([SACK.id]);
+    expect(aberturas(fakes)).toEqual([ABRIR]);
+    await estadoFinal(extensao, { pm_envio: { envios: [{ ids: [SACK.id], jobId: job.jobId }] } });
+  });
+
   test('Tentar de novo num Envio que não começou, com o Anki já fechado, chama o abridor e reenvia o mesmo pedido', async ({ page, extensao, fakes }) => {
     await extensao.gravarStorage({ frases: INGLESAS, pm_anki_ja_conectou: true });
     fakes.anki.recusarEnvios('en', { rede: true });

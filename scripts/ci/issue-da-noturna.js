@@ -39,7 +39,7 @@ function principal([url, fatias, conexaoReal]) {
     }
     gh('label', 'create', ROTULO, '--description', 'Suíte noturna da main vermelha', '--color', 'B60205', '--force');
     gh('issue', 'create', '--title', TITULO, '--label', ROTULO,
-      '--body', `A suíte inteira da main ficou vermelha esta noite. Esta issue fica aberta até a primeira noite verde, que a fecha.\n\n${relato(url, fatias, conexaoReal)}`);
+      '--body', `A suíte inteira da main ficou vermelha (roda a cada push na main e toda noite). Esta issue fica aberta até a primeira execução verde, que a fecha.\n\n${relato(url, fatias, conexaoReal)}`);
     console.log('issue aberta');
     return;
   }
