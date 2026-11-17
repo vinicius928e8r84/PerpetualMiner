@@ -96,5 +96,19 @@ const valor = (args, opcao) => args[args.indexOf(opcao) + 1];
   assert(/gh/.test(r.saida), 'a mensagem fala do gh');
 }
 
+{
+  const r = rodar({ fatias: 'failure', conexaoReal: 'success' });
+  const corpo = valor(r.escritas[0], '--body');
+  assert(!/esta noite/i.test(corpo), 'a suíte também roda a cada push na main: o corpo não fala só de noite');
+  assert(/primeira execução verde/.test(corpo), 'a issue fecha na primeira execução verde, de qualquer gatilho');
+}
+
+{
+  const fluxo = fs.readFileSync(path.join(__dirname, '..', '..', '.github', 'workflows', 'noturna.yml'), 'utf8');
+  assert(/^on:[\s\S]*?^ {2}push:\n {4}branches: \[main\]$/m.test(fluxo), 'a suíte inteira roda no push para a main');
+  assert(/^ {2}group: noturna-\$\{\{ github\.event_name \}\}-\$\{\{ github\.ref \}\}$/m.test(fluxo), 'o grupo separa o push do cron: um push não cancela a noturna agendada');
+  assert(/^ {2}cancel-in-progress: \$\{\{ github\.event_name == 'pull_request' \|\| github\.event_name == 'push' \}\}$/m.test(fluxo), 'só a execução mais nova do push segue');
+}
+
 fs.rmSync(pasta, { recursive: true, force: true });
 console.log('issue da noturna ok');
