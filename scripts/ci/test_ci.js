@@ -120,6 +120,10 @@ assert.strictEqual(saidaDoPasso({ suites: [] }), 'achou=false\n', 'sem nenhum, n
 {
   const RAIZ = path.resolve(__dirname, '..', '..');
   assert.deepStrictEqual(checksQueFaltam(RAIZ), [], 'todo check obrigatório sai de um workflow (ou a lista e a proteção da main mudam juntas)');
+  const lista = JSON.parse(fs.readFileSync(path.join(RAIZ, ARQUIVO_DA_LISTA), 'utf8')).checks;
+  assert.strictEqual(new Set(lista).size, lista.length, 'a lista não repete nome');
+  assert.strictEqual(lista.length, 13, 'a proteção da main exige 13 checks: a lista tem os 13');
+  assert(lista.includes('Registro da PR'), 'o Registro da PR é obrigatório na proteção da main e está na lista');
   assert(checksDosWorkflows(RAIZ).has('e2e (8/8)') && checksDosWorkflows(RAIZ).has('Testes do complemento (Python 3.13)'), 'a matriz é expandida');
 
   const copia = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-checks-'));
@@ -138,6 +142,9 @@ assert.strictEqual(saidaDoPasso({ suites: [] }), 'achou=false\n', 'sem nenhum, n
   reescrever('regras.yml', 'name: Regras de revisão', 'name: Regras');
   assert.deepStrictEqual(checksQueFaltam(copia), ['Regras de revisão'], 'um job renomeado deixa o merge esperando um check que não existe');
   reescrever('regras.yml', '    name: Regras\n', '    name: Regras de revisão\n');
+  reescrever('registro-da-pr.yml', '    name: Registro da PR\n', '    name: Registro\n');
+  assert.deepStrictEqual(checksQueFaltam(copia), ['Registro da PR'], 'o Registro da PR renomeado deixa o merge esperando');
+  reescrever('registro-da-pr.yml', '    name: Registro\n', '    name: Registro da PR\n');
   reescrever('testes.yml', 'name: e2e (${{ matrix.fatia }}/8)', 'name: e2e ${{ matrix.fatia }}');
   assert.strictEqual(checksQueFaltam(copia).length, 8, 'a matriz renomeada perde as oito fatias');
   reescrever('testes.yml', 'name: e2e ${{ matrix.fatia }}', 'name: e2e (${{ matrix.fatia }}/8)');
