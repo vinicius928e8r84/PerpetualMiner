@@ -345,6 +345,22 @@ class PeloAnkiDeMentira(unittest.TestCase):
         self.assertIn("depois", texto)
         self.assertNotIn("durante o download", texto)
 
+    def test_o_log_nao_fica_aberto_entre_um_registro_e_outro_para_o_backup_do_proprio_anki(self):
+        from complemento import registro
+
+        logs = os.path.join(self.complemento, "user_files", "logs")
+        os.makedirs(logs)
+        logger = registro.criar(logs)
+        self.addCleanup(lambda: [logger.removeHandler(h) or h.close() for h in list(logger.handlers)])
+        logger.info("primeira")
+        abertos = [h for h in logger.handlers if getattr(h, "stream", None) is not None]
+        self.assertEqual(abertos, [])
+        logger.info("segunda")
+        with open(os.path.join(logs, "complemento.log"), encoding="utf-8") as lido:
+            texto = lido.read()
+        self.assertIn("primeira", texto)
+        self.assertIn("segunda", texto)
+
     def test_o_log_volta_a_gravar_mesmo_quando_a_instalacao_levanta(self):
         from complemento import registro
 

@@ -17,6 +17,20 @@ class _ArquivoDeLog(logging.handlers.RotatingFileHandler):
         # O padrão imprime o erro no stderr, que é justo o que não pode acontecer.
         pass
 
+    def emit(self, record):
+        super().emit(record)
+        self.soltar()
+
+    def soltar(self):
+        self.acquire()
+        try:
+            if self.stream is not None:
+                self.flush()
+                self.stream.close()
+                self.stream = None
+        finally:
+            self.release()
+
 
 def criar(pasta_dos_logs):
     """O logger do complemento, gravando em `<pasta_dos_logs>/complemento.log`.
@@ -30,6 +44,7 @@ def criar(pasta_dos_logs):
         )
     except OSError:
         return silencioso()
+    arquivo.soltar()
     arquivo.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
     logger = logging.getLogger(NOME_DO_LOGGER)
     for antigo in list(logger.handlers):
