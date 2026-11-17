@@ -1,0 +1,30 @@
+name: Lançamento
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  versao-do-complemento:
+    name: Versão da Conexão (Python ${{ matrix.python }})
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.9', '3.13']
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - run: node scripts/testar.mjs complemento -- -k test_as_fontes_de_hoje_sao_as_que_a_versao_do_complemento_registrou -k test_o_arquivo_da_extensao_instala_o_complemento_de_hoje
+        env:
+          PYTHON: python
