@@ -80,7 +80,6 @@ dar(['docs/design/voz/catalogo-textos.json'], true, true, 'o catálogo da Voz é
 dar(['docs/loja/texto.html'], true, false, 'a loja é lida pela suíte');
 dar(['complemento/envio.py'], false, true, 'o complemento');
 dar(['complemento/test_envio.py'], false, true, 'um teste do complemento');
-dar(['conexao/perpetualminer.ankiaddon'], false, true, 'o pacote do complemento');
 dar(['engine/gerar.py'], false, true, 'o engine');
 dar(['complemento/contrato/exemplos.json'], true, true, 'o contrato é dos dois lados');
 dar(['complemento/contrato/LEIA-ME.md'], true, true, 'o contrato é dos dois lados, até no texto');
@@ -95,5 +94,30 @@ dar(['lib/ankiweb.js'], true, true, 'o complemento confere o código do AnkiWeb 
 dar(['docs/design/dentro-do-anki.md'], false, true, 'o complemento lê este texto, mesmo sendo documentação');
 dar(['pasta-nova/arquivo.js'], true, true, 'um lugar que o classificador não conhece roda tudo');
 dar(['painel.js', 'pasta-nova/arquivo.js'], true, true, 'um desconhecido entre outros roda tudo');
+
+dar(['complemento/modelos_da_ia.json'], true, true, 'o fake do e2e lê a lista de modelos do complemento');
+dar(['conexao/perpetualminer.ankiaddon'], true, true, 'o pacote do complemento: o e2e também o serve');
+dar(['.gitattributes'], true, true, 'um arquivo oculto da raiz muda o git dos testes do complemento');
+dar(['.gitignore'], true, true, 'um arquivo oculto da raiz muda o git dos testes do complemento');
+dar(['complemento/NOTAS.md'], false, true, 'um texto que vai no pacote do complemento');
+dar(['complemento/LEIA-ME.md'], false, false, 'o LEIA-ME fica fora do pacote');
+
+const LE_FORA_DA_EXTENSAO = [/['"](complemento|engine|conexao)['"]\s*,\s*['"]([^'"]+)['"]/g, /['"](complemento|engine|conexao)\/([^'"]+)['"]/g];
+function arquivosJs(pasta) {
+  return fs.readdirSync(pasta, { withFileTypes: true }).flatMap(entrada => {
+    if (entrada.name === 'node_modules' || entrada.name === 'test-results') return [];
+    const caminho = path.join(pasta, entrada.name);
+    return entrada.isDirectory() ? arquivosJs(caminho) : (entrada.name.endsWith('.js') ? [caminho] : []);
+  });
+}
+const lidosPeloE2e = new Set();
+for (const arquivo of arquivosJs(path.join(__dirname, '..', '..', 'e2e'))) {
+  const texto = fs.readFileSync(arquivo, 'utf8');
+  for (const regra of LE_FORA_DA_EXTENSAO) for (const [, pasta, resto] of texto.matchAll(regra)) lidosPeloE2e.add(`${pasta}/${resto}`);
+}
+assert(lidosPeloE2e.has('complemento/modelos_da_ia.json'), 'a leitura do e2e que o teste procura existe');
+for (const lido of lidosPeloE2e) {
+  assert.strictEqual(selecionar([lido]).e2e, true, `o e2e lê ${lido}, então mexer nele roda o e2e (acrescente-o a LIDOS_PELO_E2E)`);
+}
 
 console.log('classificar ok');
