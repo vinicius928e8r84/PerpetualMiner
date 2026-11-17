@@ -40,7 +40,6 @@ class PaginaDoAnkiWeb(unittest.TestCase):
                 self.assertEqual(manifesto["package"], codigo)
 
     def test_com_o_codigo_publicado_o_arquivo_leva_um_mod_de_hora_real(self):
-        # Que ele seja o `mod` que o AnkiWeb deu à página só se confere na rede (`empacotar.py --mod-do-ankiweb`, #503).
         if codigo_do_ankiweb_da_extensao() is None:
             self.skipTest("o dono ainda não subiu o arquivo: sem código do AnkiWeb não há hora de upload")
         mod = self.manifesto_entregue()["mod"]

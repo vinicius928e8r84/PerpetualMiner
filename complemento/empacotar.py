@@ -80,9 +80,7 @@ ARQUIVOS_DO_MOTOR = (
 
 
 ANKIWEB = "https://ankiweb.net"
-# O download do AnkiWeb só responde a um Anki que ele aceita: `v=2.1` e `p=` o ponto da versão (`min_point_version` do
-# manifesto dá o piso; 250900 é o 25.09). Fora disso vem 400/404 e não o redirect com a hora.
-CONSULTA_DO_DOWNLOAD = "v=2.1&p=250900"
+CONSULTA_QUE_O_ANKIWEB_ACEITA_NO_DOWNLOAD = "v=2.1&p=250900"
 
 
 class ErroDoAnkiWeb(Exception):
@@ -90,12 +88,13 @@ class ErroDoAnkiWeb(Exception):
 
 
 def mod_do_ankiweb(codigo, base=ANKIWEB):
-    """O `mod` que o AnkiWeb dá à página `codigo`: o `t=` do redirect do download (HEAD, sem seguir o redirect nem baixar o zip)."""
+    """O `mod` que o AnkiWeb dá à página `codigo`: o `t=` do redirect do download (HEAD, sem seguir o redirect nem baixar o zip).
+    O AnkiWeb só dá o redirect a um Anki que ele aceita (`v=2.1` e `p=` o ponto da versão, 250900 é o 25.09); fora disso vem 400/404."""
     destino = urllib.parse.urlsplit(base)
     ligar = http.client.HTTPSConnection if destino.scheme == "https" else http.client.HTTPConnection
     conexao = ligar(destino.netloc, timeout=20)
     try:
-        conexao.request("HEAD", "/shared/download/%s?%s" % (codigo, CONSULTA_DO_DOWNLOAD))
+        conexao.request("HEAD", "/shared/download/%s?%s" % (codigo, CONSULTA_QUE_O_ANKIWEB_ACEITA_NO_DOWNLOAD))
         resposta = conexao.getresponse()
         status, local = resposta.status, resposta.getheader("Location", "")
     except (OSError, http.client.HTTPException) as erro:
