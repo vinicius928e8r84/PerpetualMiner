@@ -25,7 +25,7 @@
     texto.textContent = textoDaVoz(VOZ_DO_NIVEL[nivel][1], { idioma: NOME_DO_IDIOMA[lang].toLowerCase() });
   }
 
-  function campo(lang, rascunho, { prefixo = 'ajustes', aoEscolher, tipoProprio = prefixo === 'ajustes' } = {}) {
+  function campo(lang, rascunho, { prefixo = 'ajustes', aoEscolher, aoConfirmar, tipoProprio = prefixo === 'ajustes' } = {}) {
     const id = `${prefixo}-estilo-${lang}`;
     const rotulo = elemento('span', 'ajustes-campo__rotulo', textoDaVoz('BRG-42.titulo'));
     rotulo.id = `${id}-rotulo`;
@@ -49,6 +49,7 @@
       radio.name = id;
       radio.value = nivel;
       radio.checked = rascunho.nivel === nivel;
+      radio.addEventListener('click', () => { if (rascunho.nivel === nivel) aoConfirmar?.(nivel); });
       radio.addEventListener('change', () => {
         rascunho.nivel = nivel;
         preencher(lang, nivel, texto);
