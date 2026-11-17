@@ -14,8 +14,6 @@ on:
 permissions:
   contents: read
 
-# No push para a main a suíte inteira roda a cada merge, e só a execução mais nova segue.
-# O grupo leva o evento: um push não cancela a execução agendada da noite.
 concurrency:
   group: noturna-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
