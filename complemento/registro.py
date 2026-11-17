@@ -13,20 +13,21 @@ from .configuracao import NOME_DO_LOGGER
 
 
 class _ArquivoDeLog(logging.handlers.RotatingFileHandler):
-    """O arquivo só fica aberto durante a gravação de um registro.
+    """Abre o arquivo para cada registro e o solta logo depois (#501, #502): no Windows um log aberto em `user_files` impede o
+    `backupUserFiles` do Anki (renomeia a pasta), o diálogo “Atualizar Extensões” falha calado e o “Remover” (apagar a pasta)
+    deixa a Conexão pela metade."""
 
-    No Windows um arquivo aberto não se renomeia nem se apaga: com o log aberto em `user_files`, o “Remover” do
-    Anki (#502) e o backup de `user_files` da atualização (#501) falham e deixam a Conexão pela metade.
-    """
+    def __init__(self, *args, **kwargs):
+        kwargs["delay"] = True
+        super().__init__(*args, **kwargs)
 
     def emit(self, record):
         try:
             super().emit(record)
         finally:
-            self.soltar_o_arquivo()
+            self._soltar_o_arquivo()
 
-    def soltar_o_arquivo(self):
-        """Fecha o arquivo sem tirar o handler do logger: o próximo registro o abre de novo."""
+    def _soltar_o_arquivo(self):
         self.acquire()
         try:
             fluxo, self.stream = self.stream, None
@@ -50,12 +51,12 @@ def criar(pasta_dos_logs):
     sem handler o `logging` escreveria o erro no stderr (`lastResort`).
     """
     try:
-        arquivo = _ArquivoDeLog(
-            os.path.join(pasta_dos_logs, "complemento.log"), maxBytes=512 * 1024, backupCount=3, encoding="utf-8"
-        )
+        caminho = os.path.join(pasta_dos_logs, "complemento.log")
+        with open(caminho, "a", encoding="utf-8"):
+            pass
+        arquivo = _ArquivoDeLog(caminho, maxBytes=512 * 1024, backupCount=3, encoding="utf-8")
     except OSError:
         return silencioso()
-    arquivo.soltar_o_arquivo()
     arquivo.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
     logger = logging.getLogger(NOME_DO_LOGGER)
     for antigo in list(logger.handlers):
