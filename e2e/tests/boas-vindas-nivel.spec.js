@@ -62,6 +62,31 @@ test('com o inglês ligado, o passo mostra o Iniciante e a prévia do Cartão; e
   await estadoFinal(extensao, { [CHAVE]: { en: { nivel: 'intermediario', versao: 1 }, ru: { nivel: 'iniciante', versao: 0 } } });
 });
 
+test('clicar no Iniciante que já vem marcado salva o nível, marca o passo e o Tudo pronto o resume (#504)', async ({ page, extensao }) => {
+  await abrirONivel(page, extensao);
+  await expect(nivel(page, 'Inglês', 'Iniciante')).toBeChecked();
+  await expect(itemDaLista(page, 'Escolher o nível do cartão')).not.toHaveAccessibleName(/feito/);
+
+  await escolher(page, 'Inglês', 'Iniciante');
+  await estadoFinal(extensao, { [CHAVE]: { en: { nivel: 'iniciante', versao: 1 }, ru: { nivel: 'iniciante', versao: 0 } } });
+  await expect(itemDaLista(page, 'Escolher o nível do cartão')).toHaveAccessibleName(/feito$/);
+
+  await botaoDoCard(page, 'Continuar').click();
+  await page.goto(extensao.url('painel.html#boas-vindas/pronto'));
+  await expect(card(page).getByRole('listitem').filter({ hasText: 'Escolher o nível do cartão' })).toContainText('Inglês: Iniciante');
+  await expect(card(page).getByRole('listitem').filter({ hasText: 'Escolher o nível do cartão' })).not.toContainText('falta');
+  await estadoFinal(extensao, { [CHAVE]: { en: { nivel: 'iniciante', versao: 1 } } });
+});
+
+test('clicar de novo no nível já salvo não grava outra versão', async ({ page, extensao }) => {
+  await abrirONivel(page, extensao);
+  await escolher(page, 'Inglês', 'Iniciante');
+  await estadoFinal(extensao, { [CHAVE]: { en: { nivel: 'iniciante', versao: 1 } } });
+  await escolher(page, 'Inglês', 'Iniciante');
+  await escolher(page, 'Inglês', 'Intermediário');
+  await estadoFinal(extensao, { [CHAVE]: { en: { nivel: 'intermediario', versao: 2 } } });
+});
+
 test('a prévia tem as duas faces: a Frente só com a Frase e o botão de áudio, e o Verso com o resto do Cartão', async ({ page, extensao }) => {
   await abrirONivel(page, extensao);
 
