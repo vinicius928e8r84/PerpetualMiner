@@ -74,6 +74,9 @@ PARTES_DE_MENTIRA = {
 }
 
 
+PASSADO_NA_FRASE = {"give": "gave"}
+
+
 def _cartao_de_mentira(mensagens, prompt=""):
     """Um Cartão que o motor aceita, feito do pedido: a Palavra no verso e destacada na frente, o contexto, se veio, e as partes do verso que
     o `prompt` do nível manda escrever (sem prompt, as do Iniciante); o alinhamento só se o prompt o pede."""
@@ -90,7 +93,8 @@ def _cartao_de_mentira(mensagens, prompt=""):
     palavra = alvo.group(1).strip() if alvo else palavra
     contexto = re.search(r"\[Contexto: (.+?)\]", frase)
     frase = re.sub(r"\s*\[Contexto: .+?\]", "", frase)
-    frente = re.sub("(?i)" + re.escape(palavra), r"*\g<0>*", frase, 1) if palavra.lower() in frase.lower() else "*%s* aqui" % palavra
+    na_frase = palavra if palavra.lower() in frase.lower() else " ".join(PASSADO_NA_FRASE.get(parte, parte) for parte in palavra.split())
+    frente = re.sub("(?i)" + re.escape(na_frase), r"*\g<0>*", frase, 1) if na_frase.lower() in frase.lower() else "*%s* aqui" % palavra
     fonte = "Source Context: %s\n\n" % contexto.group(1) if contexto else ""
     imagem = "Google Image Search Queries:\n1. %s\n2. %s photo\n\nImage: A %s, no text.\n" % (palavra, palavra, palavra)
     verso = "".join("%s: %s\n\n" % (parte, PARTES_DE_MENTIRA[parte]) for parte in partes)
