@@ -21,7 +21,7 @@ The card is at least as tall as the list and its footer sits at the bottom, so t
 short step.
 
 A step is done by its real state: a phrase in the stored history, `pm_atalho` recorded, an account
-(`pm_user_info`, published only after persisting the private Firebase session in extension-origin IndexedDB; the reminder never reads bearer tokens), the Conexão com o Anki being on (`ConexaoAnki`), the OpenAI key checked
+(`pm_user_info`, published only after persisting the private Firebase session in extension-origin IndexedDB; the reminder never reads bearer tokens), the Conexão com o Anki being on and paired with this browser (`ConexaoAnki`; `conexaoPareada` in `lib/configuracao.js`, the proven `conferir`; step 4 holds the pairing notice `#painel-pareamento` in its own card, `#bv4-pareamento`), the OpenAI key checked
 (`pm_chave_openai`), a language of the
 automatic mining on, the level of every language the mining has on saved (its Ajustes de envio, `versao` > 0), `geminiApiKey` saved, the first Cartão in Anki (`pm_boas_vindas.primeiroEnvio.chegou`). Done wins over “agora não”. Only “agora não” and whether the person reached
 Abrir painel belong to the page, in `pm_boas_vindas`. `lib/configuracao.js` owns these rules and that key; the page

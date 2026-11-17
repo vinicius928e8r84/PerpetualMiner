@@ -207,7 +207,9 @@
     passo4 = PassosDaConexao.montar(lugar, {
       prefixo: 'bv4', navegacao: false, empilhado: true, aoSairOBotao: () => porId('bv-titulo'),
     });
-    return elemento('div', null, elemento('p', 'bv-texto', textoDaVoz('ONB-08.corpo')), lugar);
+    const vagaDoPareamento = elemento('div');
+    vagaDoPareamento.id = 'bv4-pareamento';
+    return elemento('div', null, elemento('p', 'bv-texto', textoDaVoz('ONB-08.corpo')), vagaDoPareamento, lugar);
   }
 
   function montarPasso6() {
