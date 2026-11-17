@@ -145,8 +145,9 @@ async function main() {
     real.pareamento.sortearCodigo('K7M4PX');
     await pagina.Pareamento.comecar(ENDERECO);
     igual(await pagina.Pareamento.concluir(ENDERECO, 'K7M-4PX'), { ok: true });
-    assert.strictEqual((await pagina.Pareamento.lerACredencial()).cliente, antes);
-    assert.deepStrictEqual([...real.pareamento.pareados().keys()], [antes]);
+    const depois = (await pagina.Pareamento.lerACredencial()).cliente;
+    assert.notStrictEqual(depois, antes);
+    assert.deepStrictEqual([...real.pareamento.pareados().keys()], [depois]);
   }
   console.log('pareamento do anki (ataques) tests passed');
 }

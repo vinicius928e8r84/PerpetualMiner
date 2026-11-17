@@ -42,7 +42,7 @@ test.describe('quem não é a Conexão', () => {
     await estadoFinal(extensao, { pm_chave_openai: null });
   });
 
-  test('o impostor que responde 401 pairing_required a quem já está pareado só leva a parear se a pessoa clicar em Conectar, e sem o código do Anki que ele não mostra nada pareia: a credencial fica', async ({ page, context, extensao, fakes }) => {
+  test('o impostor que responde 401 pairing_required a quem já está pareado só leva a Conectar sem enviar nada além do conferir, e se recusa o pedido do código não há campo e a credencial fica', async ({ page, context, extensao, fakes }) => {
     const vistos = await impostorNaPorta(context, fakes, () => ({ status: 401, corpo: { error: 'pairing_required' } }));
     const antes = (await credencialGuardada(extensao)).cliente;
     await abrirPainel(page, extensao, '#frases');

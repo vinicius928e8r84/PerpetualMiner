@@ -221,6 +221,30 @@ test.describe('depois de pareado', () => {
     await estadoFinalEm('os navegadores que a Conexão tem pareados', () => fakes.anki.pareamento.pareados().size, 1);
     await expect(ponto(page)).toHaveAttribute('data-estado', 'ligada');
   });
+
+  test('pareado com a base 1, depois com a base 2: voltar à base 1 oferece Conectar, e depois do Desconectar também', async ({ page, extensao, fakes, conexaoDoTeste }) => {
+    test.skip(Boolean(conexaoDoTeste), 'a segunda base é o fake que troca os navegadores que a Conexão conhece');
+    await abrirPainel(page, extensao, '#frases');
+    await expect(ponto(page)).toHaveAttribute('data-estado', 'ligada');
+
+    fakes.anki.pareamento.perderOsNavegadores();
+    await page.reload();
+    await parearPelaTela(page, fakes, conexaoDoTeste);
+    await expect(ponto(page)).toHaveAttribute('data-estado', 'ligada');
+
+    fakes.anki.pareamento.perderOsNavegadores();
+    fakes.anki.pareamento.parear('primeiro');
+    await page.reload();
+    await expect(faixa(page)).toContainText('Conecte este navegador ao Anki');
+    await expect(conectar(page)).toBeVisible();
+    await expect(ponto(page)).toHaveAttribute('data-estado', 'a_parear');
+
+    fakes.anki.pareamento.desconectar();
+    await page.reload();
+    await expect(faixa(page)).toContainText('Conecte este navegador ao Anki');
+    await expect(conectar(page)).toBeVisible();
+    await estadoFinalEm('os navegadores que a Conexão tem pareados', () => fakes.anki.pareamento.pareados().size, 0);
+  });
 });
 
 test('dois perfis do Chrome pareiam cada um o seu segredo, e o Desconectar do Anki pede o código aos dois', async ({ page, extensao, segundoPerfil, fakes, conexaoDoTeste }) => {

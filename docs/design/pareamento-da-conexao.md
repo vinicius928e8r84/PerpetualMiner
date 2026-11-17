@@ -34,7 +34,7 @@ Do lado da extensão (o `ConexaoAnki` ganha a nuance; texto pela Voz, regra C8: 
 | estado | quando | o que a tela diz (texto proposto, entra pelo catálogo) |
 |---|---|---|
 | desligada | `/health` não responde (como hoje) | o mesmo de hoje |
-| a parear | `/health` OK e **nenhuma credencial guardada** (este navegador nunca se pareou) | “Conecte este navegador ao Anki” + botão **Conectar** |
+| a parear | `/health` OK e **nenhuma credencial guardada** (este navegador nunca se pareou), ou `401 pairing_required` sem prova | “Conecte este navegador ao Anki” + botão **Conectar** |
 | esperando o código | `comecar` respondeu; diálogo aberto no Anki | “Digite o código que apareceu no Anki” + campo + **Confirmar** |
 | ligada | `conferir` provado (HMAC certo) nesta subida da Conexão | o “Ligada” de hoje. **O ponto da Conexão na barra lateral (e o texto dele) só diz ligada assim**: sem pareamento ele diz o texto de “a parear” e, com uma porta que não provou nada, o de “não confirmada” (`ConexaoAnki.apresentada()`) |
 | não confirmada | `/health` OK, mas `conferir` voltou sem prova válida (impostor, Conexão de outro usuário do computador, prova errada) | “Algo na porta do Anki não se confirmou. Nada foi enviado.” + Tentar de novo |
@@ -72,11 +72,11 @@ Falhas, sem exceção:
   (idempotente, como a regra `repetivel` do contrato exige), sem gravar de novo. Outro `cliente` com um código já usado → `409 pairing_code_used`.
   Depois de 5 minutos, a pessoa recomeça; a linha órfã sai pelo teto de 5 ou pelo Desconectar.
 - **Conexão cai entre o `conferir` e o pedido:** o pedido seguinte leva uma `sessao` que a nova subida não conhece → `401 session_expired` → `pedir`
-  refaz o `conferir` uma vez e repete. Se no lugar entrou um impostor, ele não prova o `conferir` → “não confirmada”.
+  refaz o `conferir` uma vez e repete. Se entrou um impostor que não responde `pairing_required`, ele não prova o `conferir` → “não confirmada”.
 - **Reverter:** só a pessoa, no Anki: Desconectar navegadores (todos). A Conexão guarda os segredos revogados (`revogados`, até 20) e o `conferir` de um navegador revogado responde
   `401 pairing_revoked` com `prova = HMAC(segredo antigo, "pm1\nrevogado\n" ‖ desafio)`, que só quem os guardou sabe dar. **Só essa resposta provada** apaga a credencial da extensão e volta o
   navegador ao Conectar (estado “a parear”); o código pede um navegador novo (`cliente` novo). A extensão **não** apaga a credencial por um `401` sem prova (um impostor não pode desparear ninguém).
-  O registro perdido (sem `pareamento.json`, ou com mais de 20 revogados depois) não deixa prova: o navegador fica “não confirmado”, sem Conectar, e só sai disso quem remove a extensão ou limpa os dados dela.
+  O registro perdido (sem `pareamento.json`, ou com mais de 20 revogados depois) não deixa prova, mas responde `401 pairing_required`: “a parear”, com Conectar, e o `concluir` usa um `cliente` novo (#496).
 - **Sem período de graça:** a Conexão nova recusa pedido sem assinatura desde a primeira versão; a extensão nova recusa falar
   o privado com uma Conexão sem `/pareamento/conferir` (senão um impostor se passaria por “versão antiga” para receber tudo).
 
@@ -109,7 +109,7 @@ Falhas, sem exceção:
   O preço é um incômodo visível (quem insiste bloqueia o próprio Conectar por 15 minutos, e o Painel diz o texto aprovado “Algo na porta do Anki não se confirmou”). O diálogo é um
   só por vez: o pedido repetido com ele à vista não o traz de novo, e o fechado é destruído (`deleteLater`).
 - **L6. Páginas abertas:** `GET /health` (versão e perfil) e o retorno do login do ChatGPT (`/auth/callback`, navegação, protegido por `state` e PKCE) seguem sem credencial.
-- **L7. Quem digita um código que não viu:** com o Anki fechado e um impostor na 8766, o Conectar “funciona” (o impostor responde ok) e nenhum diálogo aparece no Anki; quem digita qualquer coisa pareia com o impostor, e a extensão não tem como saber. O passo “o código apareceu no Anki” é da pessoa; é ele que faz o código autenticar a Conexão. Isto vale para o navegador que **nunca** se pareou, que a Conexão provou ter desconectado, ou que recebe `401 pairing_required` sem prova (#496): a tela diz “Conecte este navegador ao Anki”, a credencial não se apaga e só o código do Anki a troca; sem ele, nada pareia.
+- **L7. Quem digita um código que não viu:** com o Anki fechado e um impostor na 8766, o Conectar “funciona” (o impostor responde ok) e nenhum diálogo aparece no Anki; quem digita qualquer coisa pareia com o impostor, e a extensão não tem como saber. O passo “o código apareceu no Anki” é da pessoa; é ele que faz o código autenticar a Conexão. Isto vale para o navegador que **nunca** se pareou, que a Conexão provou ter desconectado, ou que recebe `401 pairing_required` sem prova (#496): a tela diz “Conecte este navegador ao Anki”, a credencial só é trocada pelo `concluir` confirmado com o código que a pessoa **viu** no Anki (um impostor que aceita qualquer código pareia, como acima).
 
 ## 6. Provas
 
