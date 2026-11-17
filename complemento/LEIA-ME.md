@@ -101,7 +101,7 @@ git push origin main
 
 Mudou um byte do pacote? Sobe a `VERSAO` (o número depois do maior do `versoes.json`) e o troca nos exemplos de `contrato/`,
 registra o hash, refaz o arquivo, roda os testes e faz o commit `Conexão X.Y.Z: versão dada no merge`; senão, não faz nada.
-`test_pacote.py` os cobra na main e nesse commit; numa branch, `testar.mjs` o pula.
+`test_pacote.py` os cobra aí e no lançamento (`docs/lancamento-da-conexao.md`).
 
 ## Ensaio do dono, no Mac
 

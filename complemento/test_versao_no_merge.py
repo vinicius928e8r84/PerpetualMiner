@@ -32,8 +32,8 @@ ARQUIVOS_DA_VERSAO = (
 
 
 def ambiente(**extra):
-    """O ambiente de quem roda o CI de uma PR leva `PM_VERSAO_BASE`; as cópias daqui escolhem o seu."""
-    return dict({k: v for k, v in os.environ.items() if k not in ("PM_VERSAO_BASE", "SOURCE_DATE_EPOCH")}, **extra)
+    """O ambiente do CI leva `PM_VERSAO_BASE` (PR) ou `PM_VERSAO_NO_LANCAMENTO` (push); as cópias daqui escolhem o seu."""
+    return dict({k: v for k, v in os.environ.items() if k not in ("PM_VERSAO_BASE", "PM_VERSAO_NO_LANCAMENTO", "SOURCE_DATE_EPOCH")}, **extra)
 
 
 def git(pasta, *args):

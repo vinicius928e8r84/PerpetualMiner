@@ -27,6 +27,7 @@ ARQUIVO_NO_PACOTE_DA_EXTENSAO = os.path.join(RAIZ, "conexao", "perpetualminer.an
 
 
 PULA_NA_PR = unittest.skipIf(empacotar.versao_vem_no_merge(), empacotar.DADA_NO_MERGE)
+PULA_NO_PUSH = unittest.skipIf(empacotar.versao_fica_para_o_lancamento(), empacotar.CONFERIDA_NO_LANCAMENTO)
 CODIGO_DO_ANKIWEB = "1108882947"
 
 
@@ -185,6 +186,7 @@ class VersaoDoComplemento(unittest.TestCase):
     Mudou o código sem subir a versão, o teste falha; subiu a versão, ela entra no arquivo com o hash novo."""
 
     @PULA_NA_PR
+    @PULA_NO_PUSH
     def test_as_fontes_de_hoje_sao_as_que_a_versao_do_complemento_registrou(self):
         with open(os.path.join(AQUI, "versoes.json"), encoding="utf-8") as arquivo:
             registradas = json.load(arquivo)
@@ -341,6 +343,7 @@ class ArquivoQueVaiNoPacoteDaExtensao(unittest.TestCase):
     permissão nova). Ele não pode ficar para trás do código do complemento na main: `versao_no_merge.py` o refaz."""
 
     @PULA_NA_PR
+    @PULA_NO_PUSH
     def test_o_arquivo_da_extensao_instala_o_complemento_de_hoje(self):
         self.assertTrue(
             os.path.isfile(ARQUIVO_NO_PACOTE_DA_EXTENSAO),

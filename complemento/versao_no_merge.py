@@ -132,7 +132,8 @@ def main(argv):
 
     if not opcoes.sem_testes:
         comando = shlex.split(opcoes.testes) if opcoes.testes else comando_dos_testes()
-        if subprocess.run(comando, cwd=RAIZ).returncode != 0:
+        ambiente = {nome: valor for nome, valor in os.environ.items() if nome != "PM_VERSAO_NO_LANCAMENTO"}
+        if subprocess.run(comando, cwd=RAIZ, env=ambiente).returncode != 0:
             desfazer()
             print("os testes do complemento falharam com a versão %s: nada foi commitado e a árvore voltou ao que era" % nova, file=sys.stderr)
             return 1
