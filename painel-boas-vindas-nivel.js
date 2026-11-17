@@ -11,11 +11,13 @@
       .map(({ chave, idioma }) => textoDaVoz('ONB-13.nivel', { idioma, nivel: textoDaVoz(VOZ_DO_NIVEL[AjustesDeEnvio.atual()[chave].nivel]) })).join(' · ');
   }
 
-  function guardarONivel(passo, lang, nivel) {
+  function guardarONivel(passo, lang, nivel, { soSeNaoSalvo = false } = {}) {
     passo.gravando = passo.gravando.then(async () => {
       passo.falha.hidden = true;
       try {
         const atuais = await AjustesDeEnvio.ler();
+        // Aceitar de novo o nível que já está salvo não grava outra versão.
+        if (soSeNaoSalvo && atuais[lang].versao > 0 && atuais[lang].nivel === nivel) return;
         let resposta = await AjustesDeEnvio.salvar(lang, { ...atuais[lang], nivel }, atuais[lang].versao);
         if (!resposta.ok) resposta = await AjustesDeEnvio.salvar(lang, { ...resposta.ajustes[lang], nivel }, resposta.ajustes[lang].versao);
         if (!resposta.ok) throw new Error('ajustes_desatualizados');
@@ -40,7 +42,7 @@
     const no = elemento('div', null, elemento('p', 'bv-texto', textoDaVoz('ONB-20.corpo')), semIdioma, campos, falha, raiz.EstiloDoCartao.maisEstilosEmAjustes());
 
     function mostrarOCampo(chave, bloco) {
-      const campo = raiz.EstiloDoCartao.campo(chave, bloco.rascunho, { prefixo: 'bv', aoEscolher: nivel => guardarONivel(passo, chave, nivel) });
+      const campo = raiz.EstiloDoCartao.campo(chave, bloco.rascunho, { prefixo: 'bv', aoEscolher: nivel => guardarONivel(passo, chave, nivel), aoConfirmar: nivel => guardarONivel(passo, chave, nivel, { soSeNaoSalvo: true }) });
       const descobrir = elemento('button', 'veio-botao veio-botao--secundario bv-nivel__descobrir', textoDaVoz('ONB-21.descobrir'));
       descobrir.type = 'button';
       descobrir.addEventListener('click', () => abrirOQuiz(chave, bloco));
