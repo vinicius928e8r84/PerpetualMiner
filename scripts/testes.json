@@ -16,10 +16,11 @@
       "arquivos": ["scripts/test_testar.mjs", "scripts/ganchos/test_limite_de_tokens.js", "scripts/ganchos/test_limite_de_tokens_entrada.js", "scripts/ganchos/test_limite_de_tokens_ci.js", "scripts/ganchos/test_configuracao_do_indice.js", ".agents/skills/verify-perpetualminer/scripts/test_receitas.js", "scripts/ganchos/test_pre_push.js"]
     },
     "complemento": {
-      "descricao": "O complemento do Anki; na biblioteca padrão, e o CI roda no Python 3.9 (o do Anki do Mac) e no 3.13",
+      "descricao": "O complemento do Anki; na biblioteca padrão, e o CI roda no Python 3.9 (o do Anki do Mac) e no 3.13. Roda em 2 processos, um módulo por vez de uma fila (scripts/unittest-em-paralelo.js); PM_PARALELO=1 ou argumentos depois de -- voltam ao unittest discover em série",
       "executor": "unittest",
       "pasta": "complemento",
-      "padrao": "test_*.py"
+      "padrao": "test_*.py",
+      "paralelo": 2
     },
     "engine": {
       "descricao": "O motor que gera os cartões",
