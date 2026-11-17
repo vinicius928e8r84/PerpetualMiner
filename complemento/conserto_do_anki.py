@@ -29,6 +29,11 @@ mesmo com o Anki travado). O script não é um navegador pareado e não assina: 
 `{"ok": true}` (nada de perfil, nada muda). Pedir a lista de perfis (`/anki/profiles`) não serve: sem assinatura é 401 para qualquer Anki,
 e o Anki saudável seria fechado à força.
 
+No Windows do instalador novo o Anki fechado à força deixa vivo o launcher (`anki.exe`, o programa que o abridor abre), sem
+filhos, para sempre (#540): depois de o Anki sair, o `reiniciado` encerra o launcher que era pai direto do Anki fechado, se ele ainda é
+o mesmo processo e não tem filho vivo, e só ele. O Anki que o abridor abre nasce na pasta da pessoa, nunca no diretório corrente do
+abridor (`user_files\\abridor`), que ele seguraria aberta: o Remover da Conexão e a atualização falhavam com WinError 32 (#539).
+
 O `meta.json` só tem uma marca mexida, a `disabled` do topo: o resto fica como estava. O de antes fica em
 `user_files/abridor/meta.json.antes`, e a troca é de uma vez (escreve ao lado e troca). Fechar o Anki **antes** de mexer no
 arquivo evita que ele regrave o dele por cima.
@@ -41,6 +46,7 @@ script do Mac com programas de mentira, e o `.ps1` do Windows só se confere por
 import shlex
 
 from .configuracao import ENDERECO, ORIGENS_ACEITAS, PORTA
+from .conserto_do_anki_windows import FUNCOES_DO_PS1  # noqa: F401
 
 ESPERA_PADRAO_S = 30
 PROGRAMAS_DO_MAC = {
@@ -209,142 +215,3 @@ def variaveis_do_ps1(conserto, pasta_do_abridor, texto_do_powershell):
         "$espera = " + str(int(conserto.espera_s)),
         "$porta = " + str(int(conserto.porta)),
     ])
-
-
-FUNCOES_DO_PS1 = r"""
-function AbrirOAnki {
-  if (-not (Test-Path -LiteralPath $anki -PathType Leaf)) { return $false }
-  try {
-    # O Windows não deixa aspas num nome de pasta, e o perfil do Anki é uma pasta: as aspas em volta bastam.
-    if ($perfil) { Start-Process -FilePath $anki -ArgumentList ('-p "' + $perfil + '"') } else { Start-Process -FilePath $anki }
-    return $true
-  } catch { return $false }
-}
-
-# consertar: os processos que rodam agora o programa que a Conexão anotou ($programaDoAnki, o do Anki), e os filhos dele que são o
-# mesmo Anki, e só eles. No Anki do instalador novo o programa anotado é o redirecionador do .venv (pythonw.exe), que roda o
-# CPython de verdade como filho, com os mesmos argumentos (`-c "import aqt, sys; ...; aqt.run()"`), e é o filho quem ouve a porta
-# da Conexão. Um filho é do Anki quando os argumentos dele são os do aqt.run(), são iguais aos do pai, e o pai (na cadeia, de filho
-# a pai, todos com esses argumentos) é um processo do programa anotado e nasceu antes dele (o pid de um pai que saiu pode ter sido
-# reusado). Nome do programa sozinho, ou a linha do aqt.run() sozinha, não bastam. Sem ler a tabela de processos, vale só o programa.
-# Os argumentos de uma linha de comando: o que vem depois do programa (o primeiro item, entre aspas ou não).
-function ArgumentosDaLinha($linha) {
-  $linha = ([string]$linha).Trim()
-  if ($linha.StartsWith('"')) { $fim = $linha.IndexOf('"', 1); if ($fim -lt 0) { return '' }; return $linha.Substring($fim + 1).Trim() }
-  $espaco = $linha.IndexOf(' ')
-  if ($espaco -lt 0) { return '' }
-  return $linha.Substring($espaco + 1).Trim()
-}
-function FilhosDoAnki($doPrograma, $todos) {
-  $filhos = @()
-  try {
-    $tabela = @{}
-    foreach ($p in @(Get-CimInstance Win32_Process)) { $tabela[[int]$p.ProcessId] = $p }
-    $ids = @($doPrograma | ForEach-Object { [int]$_.Id })
-    foreach ($candidato in $todos) {
-      $id = [int]$candidato.Id
-      if ($ids -contains $id -or -not $tabela.ContainsKey($id)) { continue }
-      $linha = ArgumentosDaLinha $tabela[$id].CommandLine
-      if ($linha -cnotmatch 'aqt\.run\(\)') { continue }
-      $atual = $tabela[$id]; $n = 0
-      while ($n -lt 8) {
-        $pai = [int]$atual.ParentProcessId
-        if ($pai -le 0 -or -not $tabela.ContainsKey($pai)) { break }
-        $acima = $tabela[$pai]
-        if ((ArgumentosDaLinha $acima.CommandLine) -cne $linha) { break }
-        if ($acima.CreationDate -and $atual.CreationDate -and $acima.CreationDate -gt $atual.CreationDate) { break }
-        if ($ids -contains $pai) { $filhos += $candidato; break }
-        $atual = $acima; $n++
-      }
-    }
-  } catch { return @() }
-  return $filhos
-}
-function ProcessosDoAnki {
-  if (-not $programaDoAnki) { return @() }
-  $todos = @(Get-Process -ErrorAction SilentlyContinue)
-  $doPrograma = @($todos | Where-Object { try { $_.Path -ieq $programaDoAnki } catch { $false } })
-  if ($doPrograma.Count -eq 0) { return @() }
-  return @($doPrograma) + @(FilhosDoAnki $doPrograma $todos)
-}
-function AnkiRodando { return (@(ProcessosDoAnki).Count -gt 0) }
-# Só volta 200 com a thread principal do Anki viva (o /health responde mesmo com o Anki travado).
-function ConexaoResponde {
-  try {
-    $resposta = Invoke-WebRequest -Uri $url -Method Post -Body '{}' -ContentType 'application/json' -Headers @{ Origin = $origem } -UseBasicParsing -TimeoutSec 3
-    return ($resposta.StatusCode -eq 200)
-  } catch { return $false }
-}
-function EsperarOAnkiSair($segundos) {
-  $inicio = Get-Date
-  while (AnkiRodando) {
-    if (((Get-Date) - $inicio).TotalSeconds -ge $segundos) { return $false }
-    Start-Sleep -Seconds 1
-  }
-  return $true
-}
-# Os pids que ouvem a porta da Conexão, se TODOS são do Anki. Outro programa na porta (mesmo dividindo-a com o Anki), ou ninguém,
-# não é um Anki travado: nada volta, e nada é morto.
-function DonosDaConexao {
-  try {
-    $donos = @(Get-NetTCPConnection -LocalPort $porta -State Listen -ErrorAction Stop | ForEach-Object { [int]$_.OwningProcess } | Select-Object -Unique)
-    $pidsDoAnki = @(ProcessosDoAnki | ForEach-Object { $_.Id })
-    foreach ($dono in $donos) { if ($pidsDoAnki -notcontains $dono) { return @() } }
-    return $donos
-  } catch { return @() }
-}
-function Falhou($motivo) { Responder ([ordered]@{ situacao = 'falhou'; motivo = $motivo }) }
-function Fechou { Responder ([ordered]@{ situacao = 'fechou' }) }
-# Nenhum processo recebeu o sinal: ou o Anki já tinha saído (a pessoa o fechou) ou o sinal não o alcança.
-function NinguemRecebeu { if (AnkiRodando) { Falhou 'nao_fechou' } else { Fechou } }
-
-function Consertar {
-  if (-not (AnkiRodando)) { Responder ([ordered]@{ situacao = 'fechado' }); return }
-  if (-not (Test-Path -LiteralPath (Join-Path $complemento '__init__.py') -PathType Leaf)) { Responder ([ordered]@{ situacao = 'sumiu' }); return }
-  $metaCaminho = Join-Path $complemento 'meta.json'
-  $novo = $null
-  if (Test-Path -LiteralPath $metaCaminho -PathType Leaf) {
-    try {
-      $meta = [IO.File]::ReadAllText($metaCaminho, [Text.Encoding]::UTF8) | ConvertFrom-Json
-      if ($meta -isnot [System.Management.Automation.PSCustomObject]) { throw 'meta' }
-      if ($meta.disabled -eq $true) { $meta.disabled = $false; $novo = $meta | ConvertTo-Json -Depth 32 }
-    } catch { Falhou 'meta_ilegivel'; return }
-  }
-  if ($null -ne $novo) {
-    # O complemento desativado: fecha o Anki pelo caminho normal (nunca à força), guarda o meta.json de antes, liga e abre.
-    $achados = @(ProcessosDoAnki)
-    if ($achados.Count -eq 0) { Fechou; return }
-    $recebeu = 0
-    foreach ($processo in $achados) { try { if ($processo.CloseMainWindow()) { $recebeu++ } } catch {} }
-    if ($recebeu -eq 0) { NinguemRecebeu; return }
-    if (-not (EsperarOAnkiSair $espera)) { Falhou 'nao_fechou'; return }
-    try {
-      [IO.File]::Copy($metaCaminho, $copia, $true)
-      $provisorio = $metaCaminho + '.novo'
-      [IO.File]::WriteAllText($provisorio, $novo, (New-Object Text.UTF8Encoding($false)))
-      Move-Item -LiteralPath $provisorio -Destination $metaCaminho -Force
-    } catch { Falhou 'meta_nao_gravou'; return }
-    if (-not (AbrirOAnki)) { Falhou 'nao_abriu'; return }
-    Responder ([ordered]@{ situacao = 'ligado' })
-    return
-  }
-  # Sem resposta por $espera segundos: fecha à força e abre, mas só os pids que são donos da porta da Conexão (o Anki travado de verdade).
-  # Um Anki que a pessoa fechou no meio da espera continua fechado (fechou).
-  $inicio = Get-Date
-  while ($true) {
-    if (-not (AnkiRodando)) { Fechou; return }
-    if (ConexaoResponde) { Responder ([ordered]@{ situacao = 'respondeu' }); return }
-    if (((Get-Date) - $inicio).TotalSeconds -ge $espera) { break }
-    Start-Sleep -Seconds 2
-  }
-  if (-not (AnkiRodando)) { Fechou; return }
-  $donos = @(DonosDaConexao)
-  if ($donos.Count -eq 0) { if (AnkiRodando) { Falhou 'conexao_fora' } else { Fechou }; return }
-  $recebeu = 0
-  foreach ($dono in $donos) { try { Stop-Process -Id $dono -Force -ErrorAction Stop; $recebeu++ } catch {} }
-  if ($recebeu -eq 0) { NinguemRecebeu; return }
-  if (-not (EsperarOAnkiSair 10)) { Falhou 'nao_fechou'; return }
-  if (-not (AbrirOAnki)) { Falhou 'nao_abriu'; return }
-  Responder ([ordered]@{ situacao = 'reiniciado' })
-}
-"""

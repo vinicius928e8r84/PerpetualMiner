@@ -310,13 +310,14 @@ class NoWindows(unittest.TestCase):
             {ONDE_O_CHROME_PROCURA_NO_WINDOWS + "\\" + HOST, ONDE_O_OPERA_PROCURA_NO_WINDOWS + "\\" + HOST},
         )
 
-    def test_o_bat_so_chama_o_powershell_do_windows_com_o_ps1_ao_lado_e_nao_ecoa_nada(self):
+    def test_o_bat_sai_da_pasta_do_abridor_e_so_chama_o_powershell_do_windows_com_o_ps1_ao_lado_e_nao_ecoa_nada(self):
         self.escrever()
         with open(self.caminho("abrir-o-anki.bat"), "rb") as arquivo:
             linhas = arquivo.read().decode("ascii").split("\r\n")
         comandos = [linha for linha in linhas if linha and not linha.lower().startswith("rem ")]
         self.assertEqual(comandos, [
             "@echo off",
+            'cd /d "%SystemRoot%"',
             '"%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -NoProfile -NonInteractive '
             '-ExecutionPolicy Bypass -File "%~dp0abrir-o-anki.ps1"',
         ])

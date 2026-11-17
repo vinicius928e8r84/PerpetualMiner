@@ -47,7 +47,8 @@ class NoWindows(unittest.TestCase):
 
     def test_o_ps1_so_fecha_os_processos_do_programa_que_o_complemento_anotou(self):
         self.assertIn("$_.Path -ieq $programaDoAnki", self.ps1)
-        self.assertEqual(self.ps1.count("Stop-Process"), 1)
+        self.assertEqual(self.ps1.count("Stop-Process"), 2)
+        self.assertIn("Stop-Process -Id $launcher.Id -Force", self.ps1)
         self.assertIn("foreach ($dono in $donos) { try { Stop-Process -Id $dono -Force", self.ps1)
         self.assertNotIn("Get-Process -Name", self.ps1)
         self.assertNotIn("taskkill", self.ps1.lower())
