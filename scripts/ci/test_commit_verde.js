@@ -70,6 +70,22 @@ fs.writeFileSync(path.join(repo, 'a.txt'), 'dois');
 }
 git('checkout', '-q', 'a.txt');
 
+fs.writeFileSync(path.join(repo, 'novo.txt'), 'não rastreado');
+{
+  const r = conferir({ raiz: repo, modo: 'exigir' });
+  assert.strictEqual(r.ok, false, 'arquivo não rastreado também entra no pacote, então não é o SHA marcado');
+  assert(/mudanças que não estão nele/.test(r.mensagem), r.mensagem);
+}
+fs.rmSync(path.join(repo, 'novo.txt'));
+fs.writeFileSync(path.join(repo, '.gitignore'), 'dist/\n');
+git('add', '.gitignore');
+git('commit', '-q', '-m', 'ignora dist');
+git('tag', `${PREFIXO}2026-11-17-abcdef1`);
+fs.mkdirSync(path.join(repo, 'dist'));
+fs.writeFileSync(path.join(repo, 'dist', 'pacote.zip'), 'saída do empacotador');
+assert.strictEqual(conferir({ raiz: repo, modo: 'exigir' }).ok, true, 'o que o .gitignore deixa de fora não sujaria o pacote');
+fs.rmSync(path.join(repo, 'dist'), { recursive: true });
+
 git('commit', '-q', '--allow-empty', '-m', 'dois');
 assert.strictEqual(conferir({ raiz: repo, modo: 'exigir' }).ok, false, 'o commit seguinte não herda a marca');
 

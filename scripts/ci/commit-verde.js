@@ -45,7 +45,7 @@ function conferir({ raiz = RAIZ, modo = 'avisar' } = {}) {
   let tags;
   try {
     sha = git(raiz, 'rev-parse', 'HEAD').trim();
-    sujo = git(raiz, 'status', '--porcelain', '--untracked-files=no').trim() !== '';
+    sujo = git(raiz, 'status', '--porcelain').trim() !== '';
     tags = tagsDoCommit(sha, raiz);
   } catch (erro) {
     return falha(`não consegui ler o git (${erro.message.split('\n')[0]})`);

@@ -11,7 +11,7 @@ Um commit da `main` é **verde** quando a suíte completa passou nele. O workflo
 
 ## Quem confere
 
-`node scripts/empacotar-extensao.mjs` (o zip da loja) e `python3 complemento/empacotar.py` (o `.ankiaddon`) rodam `node scripts/ci/commit-verde.js conferir`: o HEAD precisa ter uma tag `verde/*` e a árvore não pode ter mudança fora do commit. Faça `git fetch origin --tags` antes.
+`node scripts/empacotar-extensao.mjs` (o zip da loja) e `python3 complemento/empacotar.py` (o `.ankiaddon`) rodam `node scripts/ci/commit-verde.js conferir`: o HEAD precisa ter uma tag `verde/*` e a árvore não pode ter mudança nem arquivo novo fora do commit (o que o `.gitignore` deixa de fora, como `dist/`, não conta). Faça `git fetch origin --tags` antes.
 
 | `PM_COMMIT_VERDE` | O que acontece sem a tag |
 |---|---|
