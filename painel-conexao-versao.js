@@ -219,7 +219,9 @@
 
   function ponhaNoLugar(no) {
     const boasVindas = porId('boas-vindas');
-    if (boasVindas && !boasVindas.hidden) boasVindas.insertBefore(no, boasVindas.querySelector('.bv-grade'));
+    const vagaDoPasso4 = porId('bv4-pareamento');
+    if (boasVindas && !boasVindas.hidden && vagaDoPasso4 && !vagaDoPasso4.closest('[hidden]')) vagaDoPasso4.append(no);
+    else if (boasVindas && !boasVindas.hidden) boasVindas.insertBefore(no, boasVindas.querySelector('.bv-grade'));
     else document.querySelector('.shell-conteudo').prepend(no);
   }
 
@@ -234,6 +236,6 @@
     addEventListener('hashchange', () => setTimeout(() => { const no = porId('painel-pareamento'); if (no) ponhaNoLugar(no); }));   // a Boas-vindas e o Painel trocam de lugar sem recarregar
   }
 
-  raiz.ConexaoVersao = { iniciar };
+  raiz.ConexaoVersao = { iniciar, conectar };
   iniciar();
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});

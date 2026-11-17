@@ -24,17 +24,53 @@ test('sem pareamento, o Painel pede para conectar e nenhum pedido privado sai pa
   expect(await credencialGuardada(extensao)).toBeNull();
 });
 
-test('sem pareamento, a chave colada não sai: o card da IA diz que a Conexão não respondeu, e não que a sessão da conta expirou', async ({ page, extensao, fakes, conexaoDoTeste }) => {
+test('sem pareamento, a chave colada não sai: o card da IA diz para conectar este navegador, com Conectar, e não que a Conexão não respondeu', async ({ page, extensao, fakes, conexaoDoTeste }) => {
   await abrirPainel(page, extensao, '#configuracoes/ia');
   await expect(faixa(page)).toContainText('Conecte este navegador ao Anki');
 
   await page.locator('#cfg-ia').getByRole('textbox', { name: 'Chave da OpenAI' }).fill('sk-proj-chave-que-nao-pode-sair-5678');
   await page.locator('#cfg-ia').getByRole('button', { name: 'Conferir e salvar' }).click();
 
-  await expect(page.locator('#cfg-ia').getByRole('alert')).toContainText('A Conexão com o Anki não respondeu');
-  await expect(page.locator('#cfg-ia').getByRole('alert')).not.toContainText('sessão');
+  const erro = page.locator('#cfg-ia').getByRole('alert');
+  await expect(erro).toContainText('Este navegador ainda não está conectado ao Anki');
+  await expect(erro).not.toContainText('não respondeu');
+  await expect(erro).not.toContainText('sessão');
+  await expect(erro.getByRole('button', { name: 'Conectar' })).toBeVisible();
   await estadoFinal(extensao, { pm_chave_openai: null });
   if (!conexaoDoTeste) expect(JSON.stringify(fakes.anki.requisicoes)).not.toContain('sk-proj-chave-que-nao-pode-sair');
+});
+
+test('na Boas-vindas, o passo 5 sem pareamento diz para conectar este navegador; Conectar leva ao código e, conectado, a mesma chave é conferida', async ({ page, extensao, fakes, conexaoDoTeste }) => {
+  await page.goto(extensao.url('painel.html#boas-vindas/ia'));
+  const cartao = page.locator('.bv-card');
+  await page.getByRole('textbox', { name: 'Chave da OpenAI' }).fill('sk-proj-chave-de-exemplo-AbCd');
+  await page.getByRole('button', { name: 'Conferir e salvar' }).click();
+
+  const erro = cartao.getByRole('alert').filter({ hasText: 'Chave da OpenAI:' });
+  await expect(erro).toContainText('Este navegador ainda não está conectado ao Anki');
+  await erro.getByRole('button', { name: 'Conectar' }).click();
+  await expect(campo(page)).toBeFocused();
+  await campo(page).fill(await codigoNoAnki(fakes, conexaoDoTeste));
+  await confirmar(page).click();
+
+  await expect(faixa(page)).toHaveCount(0);
+  await expect(erro).toHaveCount(0);
+  await page.getByRole('button', { name: 'Conferir e salvar' }).click();
+  await expect(cartao).toContainText('••••••••AbCd');
+  await estadoFinal(extensao, { pm_chave_openai: { ultimos4: 'AbCd' } });
+});
+
+test('na Boas-vindas, o passo 4 pede o pareamento dentro dele e só fica feito depois de conectar', async ({ page, extensao, fakes, conexaoDoTeste }) => {
+  await page.goto(extensao.url('painel.html#boas-vindas/anki'));
+  const itemDoPasso = page.getByRole('navigation', { name: 'Passos da configuração' }).getByRole('button', { name: /^Ligar a Conexão com o Anki/ });
+  await expect(page.locator('#boas-vindas .bv-card #painel-pareamento')).toContainText('Conecte este navegador ao Anki');
+  await expect(page.locator('#boas-vindas > #painel-pareamento')).toHaveCount(0);
+  await expect(itemDoPasso).not.toHaveAccessibleName(/feito$/);
+
+  await parearPelaTela(page, fakes, conexaoDoTeste);
+
+  await expect(itemDoPasso).toHaveAccessibleName(/feito$/);
+  await estadoFinalEm('os navegadores que a Conexão tem pareados', () => quantosPareados(fakes, conexaoDoTeste), 1);
 });
 
 test('na Boas-vindas, que esconde o resto do Painel, o aviso de conectar aparece no alto dela, e conecta de lá', async ({ page, extensao, fakes, conexaoDoTeste }) => {
