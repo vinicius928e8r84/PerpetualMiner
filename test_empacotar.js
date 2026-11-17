@@ -26,15 +26,20 @@ for (const arquivo of arquivos) {
   const gitDeOutroCommit = path.join(saida, 'outro-repo');
   execFileSync('git', ['init', '-q', gitDeOutroCommit]);
   execFileSync('git', ['-C', gitDeOutroCommit, '-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '--allow-empty', '-m', 'sem tag']);
-  const com = modo => spawnSync('node', ['scripts/empacotar-extensao.mjs', '--saida', path.join(saida, modo)], {
-    encoding: 'utf8', env: { ...process.env, GIT_DIR: path.join(gitDeOutroCommit, '.git'), PM_COMMIT_VERDE: modo },
-  });
-  const exigido = com('exigir');
-  assert.strictEqual(exigido.status, 1, 'empacotar recusa um commit sem tag de verde quando a regra exige');
-  assert(/sem registro de verde/.test(exigido.stderr), exigido.stderr);
-  assert(!fs.existsSync(path.join(saida, 'exigir')), 'a recusa vem antes de escrever o pacote');
+  const com = modo => {
+    const env = { ...process.env, GIT_DIR: path.join(gitDeOutroCommit, '.git') };
+    delete env.PM_COMMIT_VERDE;
+    if (modo !== 'padrao') env.PM_COMMIT_VERDE = modo;
+    return spawnSync('node', ['scripts/empacotar-extensao.mjs', '--saida', path.join(saida, modo)], { encoding: 'utf8', env });
+  };
+  for (const modo of ['padrao', 'exigir']) {
+    const recusado = com(modo);
+    assert.strictEqual(recusado.status, 1, `empacotar recusa um commit sem tag de verde (${modo})`);
+    assert(/sem registro de verde/.test(recusado.stderr), recusado.stderr);
+    assert(!fs.existsSync(path.join(saida, modo)), 'a recusa vem antes de escrever o pacote');
+  }
   const avisado = com('avisar');
-  assert.strictEqual(avisado.status, 0, 'por padrão só avisa: ' + avisado.stderr);
+  assert.strictEqual(avisado.status, 0, 'avisar é escolha explícita: ' + avisado.stderr);
   assert(/sem registro de verde/.test(avisado.stderr), 'o aviso aparece');
   assert(fs.existsSync(path.join(saida, 'avisar', `perpetualminer-${versao}.zip`)), 'o pacote sai com o aviso');
 }

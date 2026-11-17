@@ -103,7 +103,8 @@ class ArquivoDoComplemento(unittest.TestCase):
         with tempfile.TemporaryDirectory() as pasta:
             copia = copiar_o_complemento(pasta)
             resultado = subprocess.run(
-                [sys.executable, os.path.join(copia, "empacotar.py")], cwd=pasta, capture_output=True, text=True
+                [sys.executable, os.path.join(copia, "empacotar.py")], cwd=pasta, capture_output=True, text=True,
+                env={**os.environ, "PM_COMMIT_VERDE": "ignorar"},
             )
             arquivo = os.path.join(pasta, "dist", "perpetualminer.ankiaddon")
             self.assertEqual(resultado.returncode, 0, resultado.stderr)
@@ -292,6 +293,7 @@ class HoraDoEmpacotamento(unittest.TestCase):
     def empacotar(self, nome, **variaveis):
         ambiente = {k: v for k, v in os.environ.items() if k != "SOURCE_DATE_EPOCH"}
         ambiente.update(variaveis)
+        ambiente["PM_COMMIT_VERDE"] = "ignorar"
         destino = os.path.join(self.pasta, nome)
         resultado = subprocess.run(
             [sys.executable, os.path.join(self.copia, "empacotar.py"), destino],

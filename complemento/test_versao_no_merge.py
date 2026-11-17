@@ -33,7 +33,7 @@ ARQUIVOS_DA_VERSAO = (
 
 def ambiente(**extra):
     """O ambiente de quem roda o CI de uma PR leva `PM_VERSAO_BASE`; as cópias daqui escolhem o seu."""
-    return dict({k: v for k, v in os.environ.items() if k not in ("PM_VERSAO_BASE", "SOURCE_DATE_EPOCH")}, **extra)
+    return dict({k: v for k, v in os.environ.items() if k not in ("PM_VERSAO_BASE", "SOURCE_DATE_EPOCH")}, PM_COMMIT_VERDE="ignorar", **extra)
 
 
 def git(pasta, *args):
@@ -363,7 +363,7 @@ class AVersaoVemNoMerge(Casa):
         self.uma_pr_de_codigo()
         subprocess.run(
             [sys.executable, os.path.join(self.repo, "complemento", "empacotar.py"), os.path.join(self.repo, "conexao", "perpetualminer.ankiaddon")],
-            cwd=self.repo, capture_output=True, text=True, check=True,
+            cwd=self.repo, capture_output=True, text=True, check=True, env=ambiente(),
         )
         git(self.repo, "commit", "-qam", "refez o arquivo à mão")
         resultado = self.rodar(*self.TESTES, PM_VERSAO_BASE="HEAD~2")

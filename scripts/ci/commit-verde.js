@@ -37,7 +37,7 @@ function tagsDoCommit(sha, raiz = RAIZ) {
   return saida.split('\n').map(linha => linha.trim()).filter(Boolean);
 }
 
-function conferir({ raiz = RAIZ, modo = 'avisar' } = {}) {
+function conferir({ raiz = RAIZ, modo = 'exigir' } = {}) {
   if (modo === 'ignorar') return { ok: true, mensagem: '' };
   const falha = motivo => ({ ok: modo !== 'exigir', mensagem: `commit sem registro de verde: ${motivo}` });
   let sha;
@@ -58,7 +58,7 @@ function conferir({ raiz = RAIZ, modo = 'avisar' } = {}) {
 }
 
 function modoDoAmbiente(env = process.env) {
-  return ['avisar', 'exigir', 'ignorar'].includes(env.PM_COMMIT_VERDE) ? env.PM_COMMIT_VERDE : 'avisar';
+  return ['avisar', 'ignorar'].includes(env.PM_COMMIT_VERDE) ? env.PM_COMMIT_VERDE : 'exigir';
 }
 
 const gh = (...args) => execFileSync('gh', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });

@@ -30,9 +30,10 @@ assert.strictEqual(
 assert(!esperados().includes('Registro da PR'), 'o Registro da PR só existe em PR');
 assert(esperados().includes('Testes rápidos') && esperados().includes('Regras de revisão'));
 
-assert.strictEqual(modoDoAmbiente({}), 'avisar');
-assert.strictEqual(modoDoAmbiente({ PM_COMMIT_VERDE: 'exigir' }), 'exigir');
-assert.strictEqual(modoDoAmbiente({ PM_COMMIT_VERDE: 'qualquer coisa' }), 'avisar');
+assert.strictEqual(modoDoAmbiente({}), 'exigir', 'sem a variável, a regra recusa');
+assert.strictEqual(modoDoAmbiente({ PM_COMMIT_VERDE: 'avisar' }), 'avisar');
+assert.strictEqual(modoDoAmbiente({ PM_COMMIT_VERDE: 'ignorar' }), 'ignorar');
+assert.strictEqual(modoDoAmbiente({ PM_COMMIT_VERDE: 'qualquer coisa' }), 'exigir', 'um valor que ninguém conhece não afrouxa a regra');
 
 const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-verde-'));
 const repo = path.join(pasta, 'repo');
@@ -90,14 +91,18 @@ git('commit', '-q', '--allow-empty', '-m', 'dois');
 assert.strictEqual(conferir({ raiz: repo, modo: 'exigir' }).ok, false, 'o commit seguinte não herda a marca');
 
 {
-  const r = spawnSync('node', [script, 'conferir', '--raiz', repo, '--exigir'], { encoding: 'utf8' });
-  assert.strictEqual(r.status, 1, 'a linha de comando sai com 1 quando recusa');
+  const semVariavel = { ...process.env };
+  delete semVariavel.PM_COMMIT_VERDE;
+  const r = spawnSync('node', [script, 'conferir', '--raiz', repo], { encoding: 'utf8', env: semVariavel });
+  assert.strictEqual(r.status, 1, 'a linha de comando sai com 1 quando recusa, sem variável nenhuma');
   assert(/sem registro de verde/.test(r.stderr));
   const aviso = spawnSync('node', [script, 'conferir', '--raiz', repo], { encoding: 'utf8', env: { ...process.env, PM_COMMIT_VERDE: 'avisar' } });
-  assert.strictEqual(aviso.status, 0);
+  assert.strictEqual(aviso.status, 0, 'avisar é escolha explícita de quem chama');
   assert(/sem registro de verde/.test(aviso.stderr));
   const exigido = spawnSync('node', [script, 'conferir', '--raiz', repo], { encoding: 'utf8', env: { ...process.env, PM_COMMIT_VERDE: 'exigir' } });
-  assert.strictEqual(exigido.status, 1, 'PM_COMMIT_VERDE=exigir vira recusa');
+  assert.strictEqual(exigido.status, 1, 'PM_COMMIT_VERDE=exigir recusa');
+  const ignorado = spawnSync('node', [script, 'conferir', '--raiz', repo], { encoding: 'utf8', env: { ...process.env, PM_COMMIT_VERDE: 'ignorar' } });
+  assert.strictEqual(ignorado.status, 0, 'PM_COMMIT_VERDE=ignorar pula a conferência');
 }
 
 {
