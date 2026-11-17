@@ -25,7 +25,7 @@ function arquivosMudados(base, head, repositorio) {
   return saida.split('\n').map(l => l.trim()).filter(Boolean);
 }
 
-module.exports = { soDocumentacao, arquivosMudados };
+module.exports = { soDocumentacao, ehDocumentacao, arquivosMudados };
 
 if (require.main === module) {
   const [base, head] = process.argv.slice(2);
