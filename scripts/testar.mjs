@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 
 import { spawn, spawnSync } from 'node:child_process';
+import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
-const { arquivosDoGrupo, baseDaVersao, dicaDeModulo, escolherPython, lerRegistro } = require('./grupos-de-teste.js');
+const { arquivosDoGrupo, baseDaVersao, dicaDeModulo, escolherPython, lerRegistro, trabalhadoresDoGrupo, tetoEmSegundos, estourouOTeto } = require('./grupos-de-teste.js');
+const { rodarEmParalelo } = require('./unittest-em-paralelo.js');
 const { arquivosDoRepositorio } = require('./regras/comum.js');
 
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -76,6 +78,7 @@ async function main(argv) {
   if (baseDaPr) process.env.PM_VERSAO_BASE = baseDaPr;
 
   const falhas = [];
+  const inicioDosGrupos = Date.now();
   for (const nome of escolhidos) {
     const grupo = registro.grupos[nome];
     const doGrupo = arquivosDoGrupo(grupo, arquivos);
@@ -84,9 +87,15 @@ async function main(argv) {
       falhas.push(nome);
       continue;
     }
-    for (const { comando, argumentos, cwd } of comandosDoGrupo(grupo, doGrupo, extras)) {
-      console.log(`\n▶ ${nome}: ${[comando, ...argumentos].join(' ')}`);
-      const resultado = await rodar(comando, argumentos, cwd, grupo.executor !== 'playwright');
+    const trabalhadores = grupo.executor === 'unittest' && !extras.length ? trabalhadoresDoGrupo(grupo, process.env) : 1;
+    const comandos = trabalhadores > 1
+      ? [{ paralelo: true, comando: escolherPython(process.env, RAIZ).comando, cwd: RAIZ, argumentos: ['-m', 'unittest', '<um módulo por vez>'] }]
+      : comandosDoGrupo(grupo, doGrupo, extras);
+    for (const { comando, argumentos, cwd, paralelo } of comandos) {
+      console.log(`\n▶ ${nome}: ${[comando, ...argumentos].join(' ')}${paralelo ? ` (${trabalhadores} em paralelo)` : ''}`);
+      const resultado = paralelo
+        ? await rodarEmParalelo({ python: comando, pasta: grupo.pasta, arquivos: doGrupo, trabalhadores, cwd })
+        : await rodar(comando, argumentos, cwd, grupo.executor !== 'playwright');
       if (resultado.error) {
         console.log(`✗ ${nome}: não consegui rodar ${comando} (${resultado.error.message})${grupo.precisa ? `; o grupo precisa de: ${grupo.precisa}` : ''}`);
         falhas.push(nome);
@@ -95,6 +104,18 @@ async function main(argv) {
         if (dica) console.log(dica);
         falhas.push(nome);
       }
+    }
+  }
+  const exatos = (Date.now() - inicioDosGrupos) / 1000;
+  const segundos = exatos.toFixed(1);
+  const teto = tetoEmSegundos(process.env);
+  if (teto !== null) {
+    const linha = `${escolhidos.join(', ')}: ${segundos} s (teto ${teto} s)`;
+    console.log(`\n${linha}`);
+    if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `- ${linha}\n`);
+    if (!falhas.length && estourouOTeto(exatos, teto)) {
+      console.log(`::error title=Teto de tempo::${escolhidos.join(', ')} levou ${segundos} s, o teto é ${teto} s`);
+      return 1;
     }
   }
   if (falhas.length) {

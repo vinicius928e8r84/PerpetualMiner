@@ -7,7 +7,7 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
-const { ehArquivoDeTeste, padraoComoRegex, escolherPython, dicaDeModulo, baseDaVersao } = require('./grupos-de-teste.js');
+const { ehArquivoDeTeste, padraoComoRegex, escolherPython, dicaDeModulo, baseDaVersao, trabalhadoresDoGrupo, tetoEmSegundos, estourouOTeto } = require('./grupos-de-teste.js');
 
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const testar = (...args) => spawnSync('node', [path.join(RAIZ, 'scripts', 'testar.mjs'), ...args], { cwd: RAIZ, encoding: 'utf8' });
@@ -94,6 +94,101 @@ assert.match(semModulo.stdout, /error: falharam: engine/);
   fs.rmSync(pasta, { recursive: true, force: true });
   assert.equal(porLink.status, 2, porLink.stdout + porLink.stderr);
   assert.match(porLink.stdout, /error: grupo desconhecido: inexistente/);
+}
+
+{
+  const { modulosDe, passou, testesDe } = require('./unittest-em-paralelo.js');
+  assert.deepEqual(modulosDe(['complemento/test_b.py', 'complemento/test_a.py']), ['test_a', 'test_b']);
+  assert.ok(passou({ status: 0, saida: '' }));
+  assert.ok(passou({ status: 5, saida: 'NO TESTS RAN\n' }), 'um módulo só de apoio sai com 5 no Python 3.12+');
+  assert.ok(!passou({ status: 5, saida: 'outra coisa\n' }));
+  assert.ok(!passou({ status: 1, saida: 'FAILED\n' }));
+  assert.equal(testesDe('....\nRan 4 tests in 0.1s\n\nOK\n'), 4);
+  assert.equal(testesDe('Ran 1 test in 0.0s\n'), 1);
+  assert.equal(trabalhadoresDoGrupo({ paralelo: 2 }, {}), 2);
+  assert.equal(trabalhadoresDoGrupo({ paralelo: 2 }, { PM_PARALELO: '1' }), 1, 'PM_PARALELO=1 volta à série');
+  assert.equal(trabalhadoresDoGrupo({}, { PM_PARALELO: '3' }), 3);
+  assert.equal(trabalhadoresDoGrupo({}, {}), 1);
+  assert.equal(trabalhadoresDoGrupo({ paralelo: 2 }, { PM_PARALELO: 'muitos' }), 1);
+}
+
+{
+  const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-paralelo-'));
+  const falso = path.join(pasta, 'python');
+  fs.writeFileSync(falso, `#!/bin/sh
+if [ "$1 $2" != "-m unittest" ] || [ "$3" = discover ]; then echo "$@" >> "${pasta}/serie"; exit 0; fi
+modulo="$3"
+echo "$PYTHONPATH" > "${pasta}/pythonpath"
+touch "${pasta}/vivo.$modulo"
+[ "$(ls "${pasta}" | grep -c '^vivo\\.')" -ge 2 ] && touch "${pasta}/concorrente"
+sleep 0.1
+rm "${pasta}/vivo.$modulo"
+if [ "$modulo" = "$MODULO_VERMELHO" ]; then echo "FAIL: $modulo" >&2; echo "Ran 1 test in 0.0s" >&2; exit 1; fi
+echo "Ran 2 tests in 0.0s" >&2
+`, { mode: 0o755 });
+  const rodarComplemento = (env, ...extras) => spawnSync('node', [path.join(RAIZ, 'scripts', 'testar.mjs'), 'complemento', ...extras], { cwd: RAIZ, encoding: 'utf8', env: { ...process.env, PYTHON: falso, ...env } });
+
+  const verde = rodarComplemento({});
+  assert.equal(verde.status, 0, verde.stdout + verde.stderr);
+  assert.match(verde.stdout, /\(2 em paralelo\)/);
+  assert.match(verde.stdout, /✓ test_servidor \(/);
+  assert.match(verde.stdout, /\d+ testes em [\d.]+ s, 2 em paralelo; ok/);
+  assert.ok(fs.existsSync(path.join(pasta, 'concorrente')), 'dois módulos rodaram ao mesmo tempo');
+  assert.ok(!fs.existsSync(path.join(pasta, 'serie')), 'sem discover');
+  assert.match(fs.readFileSync(path.join(pasta, 'pythonpath'), 'utf8'), /complemento/, 'o módulo se acha pela pasta do complemento, como no discover');
+
+  const vermelho = rodarComplemento({ MODULO_VERMELHO: 'test_servidor' });
+  assert.equal(vermelho.status, 1, 'um módulo vermelho reprova o grupo');
+  assert.match(vermelho.stdout, /✗ test_servidor \(/);
+  assert.match(vermelho.stdout, /falharam: test_servidor/);
+  assert.match(vermelho.stderr, /FAIL: test_servidor/, 'a saída do módulo vermelho aparece');
+  assert.match(vermelho.stdout, /error: falharam: complemento/);
+
+  fs.rmSync(path.join(pasta, 'concorrente'), { force: true });
+  const emSerie = rodarComplemento({ PM_PARALELO: '1' });
+  assert.equal(emSerie.status, 0, emSerie.stdout + emSerie.stderr);
+  assert.ok(fs.existsSync(path.join(pasta, 'serie')), 'PM_PARALELO=1 usa o unittest discover');
+  fs.rmSync(path.join(pasta, 'serie'));
+  const comArgumentos = rodarComplemento({}, '--', '-k', 'algo');
+  assert.equal(comArgumentos.status, 0, comArgumentos.stdout + comArgumentos.stderr);
+  assert.match(fs.readFileSync(path.join(pasta, 'serie'), 'utf8'), /discover .*-k algo/, 'argumentos depois de -- usam o discover em série');
+  fs.rmSync(pasta, { recursive: true, force: true });
+}
+
+{
+  assert.equal(tetoEmSegundos({}), null);
+  assert.equal(tetoEmSegundos({ PM_TETO_S: '420' }), 420);
+  assert.equal(tetoEmSegundos({ PM_TETO_S: 'muito' }), null);
+  assert.equal(tetoEmSegundos({ PM_TETO_S: '0' }), null);
+  assert.ok(!estourouOTeto(420, 420), 'no teto ainda cabe');
+  assert.ok(estourouOTeto(420.5, 420));
+  assert.ok(!estourouOTeto(9999, null));
+
+  const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-teto-'));
+  const falso = path.join(pasta, 'python');
+  const resumo = path.join(pasta, 'resumo.md');
+  fs.writeFileSync(falso, `#!/bin/sh\nsleep 1.2\n[ -z "$FALHAR" ]\n`, { mode: 0o755 });
+  const comTeto = env => spawnSync('node', [path.join(RAIZ, 'scripts', 'testar.mjs'), 'engine'], { cwd: RAIZ, encoding: 'utf8', env: { ...process.env, PYTHON: falso, GITHUB_STEP_SUMMARY: resumo, ...env } });
+
+  const dentro = comTeto({ PM_TETO_S: '30' });
+  assert.equal(dentro.status, 0, dentro.stdout + dentro.stderr);
+  assert.match(dentro.stdout, /engine: [\d.]+ s \(teto 30 s\)/);
+  assert.doesNotMatch(dentro.stdout, /::error/);
+  assert.match(fs.readFileSync(resumo, 'utf8'), /^- engine: [\d.]+ s \(teto 30 s\)$/m, 'o resumo da execução traz o tempo e o teto');
+
+  const fora = comTeto({ PM_TETO_S: '1' });
+  assert.equal(fora.status, 1, 'verde mas passou do teto: reprova');
+  assert.match(fora.stdout, /::error title=Teto de tempo::engine levou [\d.]+ s, o teto é 1 s/);
+
+  const semTeto = comTeto({});
+  assert.equal(semTeto.status, 0, 'sem PM_TETO_S nada muda');
+  assert.doesNotMatch(semTeto.stdout, /\(teto/);
+
+  const vermelho = comTeto({ PM_TETO_S: '1', FALHAR: '1' });
+  assert.equal(vermelho.status, 1);
+  assert.match(vermelho.stdout, /error: falharam: engine/);
+  assert.doesNotMatch(vermelho.stdout, /::error title=Teto de tempo/, 'a falha do teste fala sozinha, sem o alarme de tempo por cima');
+  fs.rmSync(pasta, { recursive: true, force: true });
 }
 
 const { lerRegistro } = require('./grupos-de-teste.js');
