@@ -17,7 +17,7 @@ AQUI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(AQUI))
 
 from complemento import empacotar, versao_no_merge
-from complemento.test_pacote import CONFERE_A_VERSAO, copiar_o_complemento
+from complemento.test_pacote import CONFERE_A_VERSAO, ambiente_sem_o_do_ci, copiar_o_complemento
 
 RAIZ = os.path.dirname(AQUI)
 EPOCA = "1700000000"
@@ -31,9 +31,7 @@ ARQUIVOS_DA_VERSAO = (
 )
 
 
-def ambiente(**extra):
-    """O ambiente de quem roda o CI de uma PR leva `PM_VERSAO_BASE`; as cópias daqui escolhem o seu."""
-    return dict({k: v for k, v in os.environ.items() if k not in ("PM_VERSAO_BASE", "SOURCE_DATE_EPOCH")}, **extra)
+ambiente = ambiente_sem_o_do_ci
 
 
 def git(pasta, *args):
