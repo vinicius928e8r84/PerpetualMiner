@@ -13,7 +13,6 @@
   const PASSO_DO_ABRIDOR = 'abridor';
   const ARQUIVO_DA_CONEXAO = 'conexao/perpetualminer.ankiaddon';
   const NOME_DO_ARQUIVO = 'perpetualminer.ankiaddon';
-  // “Não tenho” (#146) leva à página de download do Anki: não há endereço fixo de instalador (o direto é o #232).
   const PAGINA_DO_ANKI = 'https://apps.ankiweb.net/';
   const DEPOIS_DO_DOWNLOAD = Object.freeze({
     mac: 'ONB-18.depoisNoMac',
