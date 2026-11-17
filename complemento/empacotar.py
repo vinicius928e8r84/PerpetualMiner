@@ -9,6 +9,15 @@ do `conexao/perpetualminer.ankiaddon` versionado, o `mod` é o dele (rodado duas
 mesmos bytes); se mudou, é a hora atual, ou `SOURCE_DATE_EPOCH` quando definida. Ficam de fora os
 testes, os exemplos do contrato, `user_files`, o cache, o LEIA-ME e o `versoes.json`.
 
+    python3 complemento/empacotar.py --mod-do-ankiweb [destino.ankiaddon]
+
+Depois do upload, o AnkiWeb dá a seu modo a hora da página (o `t=` do redirect do download), que nunca é a hora em que o
+arquivo foi feito. Com `--mod-do-ankiweb` o arquivo sai com esse `mod` (#503): o Anki que instala por ele já está na versão
+do AnkiWeb e não oferece a mesma atualização. O arquivo vem do AnkiWeb (o zip que ele serve, e não as fontes de hoje, que a main
+pode ter mudado depois do upload): só o `manifest.json` muda, então não se sobe de novo. O `destino` (por padrão o
+`conexao/perpetualminer.ankiaddon`), se existe, tem de levar o mesmo código que o do AnkiWeb; senão o upload ainda não aconteceu
+e o script para. É o passo 3 do dono (`docs/ankiweb/LEIA-ME.md`); sem rede ou sem página no ar, não escreve nada.
+
 O motor de texto vem de `engine/` (`ARQUIVOS_DO_MOTOR`) e entra como a pasta `motor/` do pacote, ao lado do
 `motor/__init__.py` deste repositório (ver `motor/__init__.py`).
 
@@ -20,13 +29,17 @@ A versão e este arquivo são dados na hora do merge por `python3 complemento/ve
 `test_pacote.py` falha na main (e no commit de versão) enquanto o arquivo estiver para trás do código.
 """
 
+import argparse
 import hashlib
+import http.client
+import io
 import json
 import os
 import re
 import subprocess
 import sys
 import time
+import urllib.parse
 import zipfile
 
 PASTA = os.path.dirname(os.path.abspath(__file__))
@@ -71,6 +84,92 @@ ARQUIVOS_DO_MOTOR = (
     "prompts/ru_intermediario.txt",
     "send_to_anki.py",
 )
+
+
+ANKIWEB = "https://ankiweb.net"
+CONSULTA_QUE_O_ANKIWEB_ACEITA_NO_DOWNLOAD = "v=2.1&p=250900"
+
+
+class ErroDoAnkiWeb(Exception):
+    """O AnkiWeb não deu a hora da página (sem rede, página fora do ar, resposta sem `t=`)."""
+
+
+def _pedir(base, metodo, caminho, codigo):
+    destino = urllib.parse.urlsplit(base)
+    ligar = http.client.HTTPSConnection if destino.scheme == "https" else http.client.HTTPConnection
+    conexao = ligar(destino.netloc, timeout=60)
+    try:
+        conexao.request(metodo, caminho)
+        resposta = conexao.getresponse()
+        return resposta.status, resposta.getheader("Location", ""), resposta.read()
+    except (OSError, http.client.HTTPException) as erro:
+        raise ErroDoAnkiWeb("sem resposta do AnkiWeb para a página %s: %s" % (codigo, erro))
+    finally:
+        conexao.close()
+
+
+def _redirect_do_download(codigo, base):
+    """O `mod` e o caminho do zip que o AnkiWeb serve para a página `codigo`: o `t=` e a Location do redirect do download (HEAD).
+    O AnkiWeb só dá o redirect a um Anki que ele aceita (`v=2.1` e `p=` o ponto da versão, 250900 é o 25.09); fora disso vem 400/404."""
+    status, local, _ = _pedir(base, "HEAD", "/shared/download/%s?%s" % (codigo, CONSULTA_QUE_O_ANKIWEB_ACEITA_NO_DOWNLOAD), codigo)
+    t = urllib.parse.parse_qs(urllib.parse.urlsplit(local).query).get("t", [""])[0]
+    if status not in (301, 302, 303, 307, 308) or not t.isdigit() or int(t) <= 0:
+        raise ErroDoAnkiWeb("o AnkiWeb não deu a hora da página %s (status %s, Location %r): ela já está no ar?" % (codigo, status, local))
+    return int(t), local
+
+
+def mod_do_ankiweb(codigo, base=ANKIWEB):
+    """O `mod` que o AnkiWeb dá à página `codigo` (sem baixar o zip)."""
+    return _redirect_do_download(codigo, base)[0]
+
+
+def arquivo_do_ankiweb(codigo, base=ANKIWEB):
+    """O `mod` da página `codigo` e os bytes do zip que o AnkiWeb serve para ela."""
+    mod, local = _redirect_do_download(codigo, base)
+    status, _, corpo = _pedir(base, "GET", urllib.parse.urlsplit(local).path + "?" + urllib.parse.urlsplit(local).query, codigo)
+    if status != 200:
+        raise ErroDoAnkiWeb("o AnkiWeb não deu o arquivo da página %s (status %s)" % (codigo, status))
+    return mod, corpo
+
+
+def _entradas_do_zip(bytes_do_zip, de_onde):
+    try:
+        with zipfile.ZipFile(io.BytesIO(bytes_do_zip)) as pacote:
+            return [(nome, pacote.read(nome)) for nome in pacote.namelist()]
+    except (zipfile.BadZipFile, OSError) as erro:
+        raise ErroDoAnkiWeb("%s não é um .ankiaddon: %s" % (de_onde, erro))
+
+
+def refazer_com_o_mod_do_ankiweb(destino, base=ANKIWEB):
+    """Escreve em `destino` o arquivo que o AnkiWeb serve para a página do manifesto, só com o `mod` trocado pelo que o AnkiWeb deu."""
+    codigo = _manifesto()["package"]
+    if not codigo.isdigit():
+        raise ErroDoAnkiWeb("o package do manifesto (%s) não é o código de uma página do AnkiWeb" % codigo)
+    mod, bytes_do_zip = arquivo_do_ankiweb(codigo, base)
+    entradas = _entradas_do_zip(bytes_do_zip, "o que o AnkiWeb serviu para a página " + codigo)
+    do_ankiweb = dict(entradas)
+    try:
+        manifesto = json.loads(do_ankiweb["manifest.json"])
+    except (KeyError, ValueError):
+        raise ErroDoAnkiWeb("o arquivo da página %s no AnkiWeb não tem manifest.json" % codigo)
+    if mod < int(manifesto.get("mod", 0)):
+        raise ErroDoAnkiWeb("o AnkiWeb dá a hora %d à página %s, antes do mod %s do arquivo dela: não é a hora de um upload" % (mod, codigo, manifesto.get("mod")))
+    if os.path.exists(destino):
+        versionado = dict(_entradas_do_zip(_ler(destino), destino))
+        diferentes = sorted(nome for nome in set(versionado) | set(do_ankiweb) if nome != "manifest.json" and versionado.get(nome) != do_ankiweb.get(nome))
+        if diferentes:
+            raise ErroDoAnkiWeb("o arquivo do AnkiWeb não leva o mesmo código que %s (%s): o upload deste arquivo já aconteceu?" % (destino, ", ".join(diferentes[:5])))
+    manifesto["mod"] = mod
+    os.makedirs(os.path.dirname(os.path.abspath(destino)), exist_ok=True)
+    with zipfile.ZipFile(destino, "w", zipfile.ZIP_DEFLATED) as pacote:
+        for nome, conteudo in entradas:
+            pacote.writestr(_entrada(nome), json.dumps(manifesto, indent=2) + "\n" if nome == "manifest.json" else conteudo)
+    return destino
+
+
+def _ler(caminho):
+    with open(caminho, "rb") as arquivo:
+        return arquivo.read()
 
 
 DADA_NO_MERGE = "a versão é dada no merge (versao_no_merge.py): esta PR não mexe nela; a main e o commit de versão conferem"
@@ -214,7 +313,23 @@ def conferir_commit_verde(raiz=RAIZ):
     return saiu.returncode == 0
 
 
-if __name__ == "__main__":
+def main(argumentos, base=ANKIWEB):
+    leitor = argparse.ArgumentParser(prog="empacotar.py", description=__doc__.split("\n")[0])
+    leitor.add_argument("destino", nargs="?", help=".ankiaddon de saída (padrão: dist/perpetualminer.ankiaddon; com --mod-do-ankiweb, conexao/perpetualminer.ankiaddon)")
+    leitor.add_argument("--mod-do-ankiweb", action="store_true", help="refaz o arquivo que o AnkiWeb serve, com o mod que o AnkiWeb deu à página (depois do upload)")
+    opcoes = leitor.parse_args(argumentos)
+    if opcoes.mod_do_ankiweb:
+        try:
+            print(refazer_com_o_mod_do_ankiweb(opcoes.destino or ARQUIVO_DA_EXTENSAO, base))
+        except ErroDoAnkiWeb as erro:
+            print(erro, file=sys.stderr)
+            return 1
+        return 0
     if not conferir_commit_verde():
-        sys.exit(1)
-    print(empacotar(sys.argv[1] if len(sys.argv) > 1 else os.path.join(PASTA, "..", "dist", "perpetualminer.ankiaddon")))
+        return 1
+    print(empacotar(opcoes.destino or os.path.join(PASTA, "..", "dist", "perpetualminer.ankiaddon")))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
