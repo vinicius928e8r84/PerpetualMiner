@@ -27,6 +27,46 @@ else:
 
 LOGGER = logging.getLogger("perpetualminer.motor")
 
+_IRREGULAR_FORMS = """
+be am is are was were been being|have has had having|do does did done doing|go goes went gone going
+get gets got gotten getting|give gives gave given giving|take takes took taken taking|make makes made making
+come comes came coming|break breaks broke broken breaking|bring brings brought bringing|catch catches caught catching
+run runs ran running|put puts putting|let lets letting|set sets setting|cut cuts cutting|hit hits hitting
+see sees saw seen seeing|know knows knew known knowing|think thinks thought thinking|say says said saying
+tell tells told telling|find finds found finding|keep keeps kept keeping|leave leaves left leaving
+hold holds held holding|stand stands stood standing|understand understands understood understanding
+speak speaks spoke spoken speaking|write writes wrote written writing|read reads reading
+sit sits sat sitting|lie lies lay lain lying|lay lays laid laying|rise rises rose risen rising
+fall falls fell fallen falling|draw draws drew drawn drawing|grow grows grew grown growing
+throw throws threw thrown throwing|blow blows blew blown blowing|show shows showed shown showing
+wear wears wore worn wearing|tear tears tore torn tearing|swear swears swore sworn swearing
+choose chooses chose chosen choosing|freeze freezes froze frozen freezing|steal steals stole stolen stealing
+wake wakes woke woken waking|drive drives drove driven driving|ride rides rode ridden riding
+eat eats ate eaten eating|drink drinks drank drunk drinking|sing sings sang sung singing
+begin begins began begun beginning|swim swims swam swum swimming|ring rings rang rung ringing
+sell sells sold selling|buy buys bought buying|pay pays paid paying|send sends sent sending
+spend spends spent spending|lend lends lent lending|build builds built building|lose loses lost losing
+meet meets met meeting|feed feeds fed feeding|lead leads led leading|bleed bleeds bled bleeding
+win wins won winning|hang hangs hung hanging|stick sticks stuck sticking|strike strikes struck striking
+shake shakes shook shaken shaking|hide hides hid hidden hiding|bite bites bit bitten biting
+forget forgets forgot forgotten forgetting|forgive forgives forgave forgiven forgiving
+fight fights fought fighting|seek seeks sought seeking|teach teaches taught teaching
+sleep sleeps slept sleeping|sweep sweeps swept sweeping|bend bends bent bending|burst bursts bursting
+shut shuts shutting|split splits splitting|spread spreads spreading|quit quits quitting
+cost costs costing|hurt hurts hurting|shoot shoots shot shooting|deal deals dealt dealing
+mean means meant meaning|dig digs dug digging|spin spins spun spinning|slide slides slid sliding
+light lights lit lighting|lean leans leaned leant leaning|learn learns learned learnt learning
+undo undoes undid undone undoing|overcome overcomes overcame overcoming|withdraw withdraws withdrew withdrawn withdrawing
+foresee foresees foresaw foreseen foreseeing|upset upsets upsetting|rid rids ridding
+"""
+
+_FORMS_BY_LEMMA = {
+    group.split()[0]: frozenset(group.split()[1:])
+    for group in _IRREGULAR_FORMS.replace("\n", "|").split("|")
+    if group.strip()
+}
+_VOWELS = "aeiou"
+
 
 _TONE_HINTS = {
     "shameless": (
@@ -149,13 +189,62 @@ def _call_model(
     return text or None
 
 
+def _forms_of(word: str) -> Set[str]:
+    word = word.casefold()
+    forms = {word}
+    if word in _FORMS_BY_LEMMA:
+        return forms | _FORMS_BY_LEMMA[word]
+    if len(word) < 2 or not word.isalpha():
+        return forms
+    if word.endswith(("s", "x", "z", "ch", "sh", "o")):
+        forms.add(word + "es")
+    if word.endswith("y") and word[-2] not in _VOWELS:
+        forms |= {word[:-1] + "ies", word[:-1] + "ied"}
+    else:
+        forms.add(word + "s")
+    if word.endswith("e"):
+        forms |= {word + "d", word[:-1] + "ing"}
+        if word.endswith("ie"):
+            forms.add(word[:-2] + "ying")
+    else:
+        forms |= {word + "ed", word + "ing"}
+    if len(word) >= 3 and word[-1] not in _VOWELS + "wxy" and word[-2] in _VOWELS and word[-3] not in _VOWELS:
+        forms |= {word + word[-1] + "ed", word + word[-1] + "ing"}
+    return forms
+
+
+def _words_are_forms_of(words: List[str], lemma_words: List[str]) -> bool:
+    return len(words) == len(lemma_words) and all(
+        word == lemma or word in _forms_of(lemma) for word, lemma in zip(words, lemma_words)
+    )
+
+
+def _is_form_of_expression(text: str, expected: str) -> bool:
+    return _words_are_forms_of(
+        _normalize_keyword_for_validation(text).split(), _normalize_keyword_for_validation(expected).split()
+    )
+
+
+def _phrase_has_form_of_expression(phrase: str, expected: str) -> bool:
+    lemma_words = _normalize_keyword_for_validation(expected).split()
+    words = re.findall(r"\w+(?:['’]\w+)*", phrase.casefold())
+    return bool(lemma_words) and any(
+        _words_are_forms_of(words[start:start + len(lemma_words)], lemma_words)
+        for start in range(len(words) - len(lemma_words) + 1)
+    )
+
+
+def _back_headword_matches(found: str, exp: str) -> bool:
+    return found.startswith(exp) or _is_form_of_expression(" ".join(found.split()[:len(exp.split())]), exp)
+
+
 def _validate_keyword(card_text: str, expected: str) -> bool:
     match = re.search(r"Back:\s*\*{0,2}([^\n/]+)", card_text, re.IGNORECASE)
     if not match:
         return False
     found = _normalize_keyword_for_validation(_strip_back_headword_separator(match.group(1)))
     exp = _normalize_keyword_for_validation(expected)
-    if not found.startswith(exp):
+    if not _back_headword_matches(found, exp):
         return False
 
     front = _extract_front_text(card_text)
@@ -171,7 +260,7 @@ def _validate_keyword(card_text: str, expected: str) -> bool:
         _normalize_keyword_for_validation(item)
         for item in re.findall(r"\*([^*\n]+)\*", front)
     ]
-    return exp in highlighted
+    return exp in highlighted or any(_is_form_of_expression(item, exp) for item in highlighted)
 
 
 def _front_has_content_after_the_phrase(front: str) -> bool:
@@ -211,7 +300,9 @@ def _build_keyword_retry_message(user_message: str, keyword: str) -> str:
         "Regenerate the card because the previous response focused on only part of the target keyword.\n"
         f"Exact target keyword/expression: {keyword}\n"
         f'The Back field MUST start with exactly "{keyword}" before the IPA.\n'
-        f'The Front field MUST highlight the full expression as "*{keyword}*", not a subword inside it.\n'
+        f'The Front field MUST highlight the full expression as "*{keyword}*", or in the form of its words exactly as it is written in the phrase '
+        "(for example *turned down* when the phrase says turned down), not a subword inside it.\n"
+        "Never rewrite the phrase to make the expression fit.\n"
         "Do not create a card for a subword inside the target expression."
     )
 
@@ -323,7 +414,8 @@ def run(
             continue
 
         clean_phrase = _strip_inline_context(job.entry.phrase)
-        keeps_phrase = whole_phrase or job.is_generated or job.keyword.casefold() not in clean_phrase.casefold()
+        keeps_phrase = whole_phrase or job.is_generated or not (
+            job.keyword.casefold() in clean_phrase.casefold() or _phrase_has_form_of_expression(clean_phrase, job.keyword))
 
         def card_ok(text: str) -> bool:
             return _validate_keyword(text, job.keyword) and (keeps_phrase or _front_keeps_the_phrase(text, clean_phrase))
