@@ -13,6 +13,31 @@ from .configuracao import NOME_DO_LOGGER
 
 
 class _ArquivoDeLog(logging.handlers.RotatingFileHandler):
+    """Abre o arquivo para cada registro e o solta logo depois (#501): no Windows um log aberto em `user_files` impede o
+    `backupUserFiles` do Anki (renomeia a pasta) e o diálogo “Atualizar Extensões” falha calado."""
+
+    def __init__(self, *args, **kwargs):
+        kwargs["delay"] = True
+        super().__init__(*args, **kwargs)
+
+    def emit(self, record):
+        try:
+            super().emit(record)
+        finally:
+            self._soltar_o_arquivo()
+
+    def _soltar_o_arquivo(self):
+        self.acquire()
+        try:
+            fluxo, self.stream = self.stream, None
+            if fluxo is not None:
+                try:
+                    fluxo.close()
+                except OSError:
+                    pass
+        finally:
+            self.release()
+
     def handleError(self, record):
         # O padrão imprime o erro no stderr, que é justo o que não pode acontecer.
         pass
@@ -25,9 +50,10 @@ def criar(pasta_dos_logs):
     sem handler o `logging` escreveria o erro no stderr (`lastResort`).
     """
     try:
-        arquivo = _ArquivoDeLog(
-            os.path.join(pasta_dos_logs, "complemento.log"), maxBytes=512 * 1024, backupCount=3, encoding="utf-8"
-        )
+        caminho = os.path.join(pasta_dos_logs, "complemento.log")
+        with open(caminho, "a", encoding="utf-8"):
+            pass
+        arquivo = _ArquivoDeLog(caminho, maxBytes=512 * 1024, backupCount=3, encoding="utf-8")
     except OSError:
         return silencioso()
     arquivo.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
