@@ -67,8 +67,7 @@ class ConferenciaDoCommitVerde(unittest.TestCase):
     def test_arquivo_novo_fora_do_commit_marcado_e_recusado(self):
         pasta, git = self._repositorio()
         git("tag", "verde/2026-11-17-abcdef0")
-        with open(os.path.join(pasta, "novo.py"), "w") as arquivo:
-            arquivo.write("x = 1\n")
+        shutil.copy(os.path.abspath(__file__), os.path.join(pasta, "arquivo_novo"))
         passou, _ = self._conferir(pasta, None)
         self.assertFalse(passou)
 
