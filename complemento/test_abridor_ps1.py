@@ -38,6 +38,7 @@ class OPs1NoPowerShell(unittest.TestCase):
         self.addCleanup(self._raiz.cleanup)
         self.anki = os.path.join(self._raiz.name, "anki.exe")
         self.anotados = os.path.join(self._raiz.name, "anki-recebeu.txt")
+        self.diretorio = os.path.join(self._raiz.name, "anki-diretorio.txt")
         self.pasta = os.path.join(self._raiz.name, "abridor")
 
     def escrever(self, perfil="Usuário 1"):
@@ -48,20 +49,20 @@ class OPs1NoPowerShell(unittest.TestCase):
     def anki_no_lugar(self, abre):
         """Põe o Anki de mentira no lugar; com `abre` falso o sistema não consegue executá-lo."""
         with open(self.anki, "w", encoding="utf-8") as arquivo:
-            arquivo.write('#!/bin/sh\nfor a in "$@"; do printf "%%s\\n" "$a"; done > "%s"\n' % self.anotados)
+            arquivo.write('#!/bin/sh\nfor a in "$@"; do printf "%%s\\n" "$a"; done > "%s"\npwd -P > "%s"\n' % (self.anotados, self.diretorio))
         os.chmod(self.anki, 0o755 if abre else 0o644)
 
     def anki_sumiu(self):
         if os.path.exists(self.anki):
             os.remove(self.anki)
 
-    def conversar(self, mensagem):
+    def conversar(self, mensagem, diretorio=None):
         if os.path.exists(self.anotados):
             os.remove(self.anotados)
         corpo = json.dumps(mensagem, separators=(",", ":")).encode("utf-8")
         saida = subprocess.run(
             ["pwsh", "-NoProfile", "-NonInteractive", "-File", os.path.join(self.pasta, "abrir-o-anki.ps1")],
-            input=struct.pack("<I", len(corpo)) + corpo, stdout=subprocess.PIPE, timeout=60, check=True,
+            input=struct.pack("<I", len(corpo)) + corpo, stdout=subprocess.PIPE, timeout=60, check=True, cwd=diretorio,
         ).stdout
         tamanho, = struct.unpack_from("<I", saida, 0)
         self.assertEqual(len(saida), 4 + tamanho)
@@ -104,6 +105,15 @@ class OPs1NoPowerShell(unittest.TestCase):
         self.anki_no_lugar(abre=True)
         self.assertEqual(self.conversar({"acao": "abrir"}), {"achou": True, "abriu": True})
         self.assertEqual(self.recebeu(), [])
+
+    def test_o_anki_aberto_nao_herda_a_pasta_do_abridor_como_diretorio_corrente(self):
+        self.escrever()
+        self.anki_no_lugar(abre=True)
+        self.assertEqual(self.conversar({"acao": "abrir"}, diretorio=self.pasta), {"achou": True, "abriu": True})
+        self.assertIsNotNone(self.recebeu())
+        with open(self.diretorio, encoding="utf-8") as arquivo:
+            diretorio_do_anki = arquivo.read().strip()
+        self.assertNotEqual(diretorio_do_anki, os.path.realpath(self.pasta))
 
     def test_conferir_nao_abre_o_anki(self):
         self.escrever()

@@ -267,6 +267,8 @@ _BAT = "\r\n".join([
     "@echo off",
     "rem PerpetualMiner: o abridor do Anki (host de Native Messaging do Chrome e do Opera).",
     "rem A Conexao com o Anki escreve este arquivo quando o Anki abre: nao edite. O que ele faz esta no .ps1 ao lado.",
+    "rem O Chrome roda este arquivo dentro da pasta do abridor: sai dela, para o Anki aberto nao segurar a pasta (Remover e atualizar).",
+    'cd /d "%SystemRoot%"',
     '"%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -NoProfile -NonInteractive '
     '-ExecutionPolicy Bypass -File "%~dp0' + PS1_DO_WINDOWS + '"',
     "",

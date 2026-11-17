@@ -64,6 +64,13 @@ function Stop-Process {
   $alvo = @($global:mundo | Where-Object { [int]$_.pid -eq $Id })
   if ($alvo.Count -eq 0) { throw 'sem esse processo' }
   [void]$global:sinais.Add($Id)
+  foreach ($r in @($alvo[0].renasce)) {
+    if (-not $r) { continue }
+    foreach ($outro in @($global:mundo | Where-Object { [int]$_.pid -eq [int]$r.pid })) {
+      if ($r.criado) { $outro.criado = $r.criado }
+      if ($r.caminho) { $outro.caminho = $r.caminho }
+    }
+  }
   $morre = @($Id)
   $atual = $alvo[0]
   while ($atual -and $atual.ppid) {
@@ -74,7 +81,8 @@ function Stop-Process {
   }
   foreach ($m in $morre) { foreach ($p in @($global:mundo | Where-Object { [int]$_.pid -eq $m })) { $global:mundo.Remove($p) } }
 }
-function Start-Process { param($FilePath, $ArgumentList) [void]$global:aberturas.Add([string]$ArgumentList) }
+$global:pastas = [System.Collections.ArrayList]@()
+function Start-Process { param($FilePath, $ArgumentList, $WorkingDirectory) [void]$global:aberturas.Add([string]$ArgumentList); [void]$global:pastas.Add([string]$WorkingDirectory) }
 function Invoke-WebRequest { throw 'a Conexão não responde' }
 function Responder($resposta) { [void]$global:respostas.Add(($resposta | ConvertTo-Json -Compress)) }
 function Start-Sleep { param($Seconds) }
@@ -88,8 +96,11 @@ def _modelo(executavel):
     return variaveis, conserto_do_anki.FUNCOES_DO_PS1
 
 
-def processo(pid, ppid, caminho, linha, ouve=False, sai_com_o_filho=False, criado="2026-10-29T10:00:00"):
-    return {"pid": pid, "ppid": ppid, "caminho": caminho, "linha": linha, "ouve": ouve, "sai_com_o_filho": sai_com_o_filho, "criado": criado}
+def processo(pid, ppid, caminho, linha, ouve=False, sai_com_o_filho=False, criado="2026-10-29T10:00:00", renasce=None):
+    dados = {"pid": pid, "ppid": ppid, "caminho": caminho, "linha": linha, "ouve": ouve, "sai_com_o_filho": sai_com_o_filho, "criado": criado}
+    if renasce:
+        dados["renasce"] = renasce
+    return dados
 
 
 def anki_do_launcher(porta_no_filho=True):
@@ -112,15 +123,16 @@ class AnkiDoLauncherNoWindows(unittest.TestCase):
         anki_existe = tempfile.NamedTemporaryFile(suffix=".exe", delete=False)
         anki_existe.close()
         self.addCleanup(os.unlink, anki_existe.name)
+        mundo_em_json = json.dumps(mundo).replace(json.dumps(LAUNCHER)[1:-1], json.dumps(anki_existe.name)[1:-1])
         programa = "\n".join([
-            "$mundoJson = @'\n%s\n'@" % json.dumps(mundo),
+            "$mundoJson = @'\n%s\n'@" % mundo_em_json,
             PREFACIO,
             variaveis,
             "$anki = '%s'" % anki_existe.name,
             "$perfil = 'Teste-A'",
             funcoes,
             chamadas,
-            "[pscustomobject]@{ respostas = @($global:respostas); sinais = @($global:sinais); aberturas = @($global:aberturas); vivos = @($global:mundo | ForEach-Object { [int]$_.pid }) } | ConvertTo-Json -Compress -Depth 4",
+            "[pscustomobject]@{ respostas = @($global:respostas); sinais = @($global:sinais); aberturas = @($global:aberturas); pastas = @($global:pastas); vivos = @($global:mundo | ForEach-Object { [int]$_.pid }) } | ConvertTo-Json -Compress -Depth 4",
         ])
         with tempfile.TemporaryDirectory() as casa:
             arquivo = os.path.join(casa, "mundo.ps1")
@@ -144,16 +156,85 @@ class AnkiDoLauncherNoWindows(unittest.TestCase):
     def test_o_ouvinte_que_e_o_filho_cpython_do_redirecionador_e_reconhecido_e_so_ele_recebe_o_sinal(self):
         resposta, feito = self.reparar(anki_do_launcher())
         self.assertEqual(resposta, {"situacao": "reiniciado"})
-        self.assertEqual(feito["sinais"], [1648])
+        self.assertEqual(feito["sinais"], [1648, 25340])
         self.assertEqual(len(feito["aberturas"]), 1)
+
+    def test_o_launcher_que_sobra_sem_filhos_depois_do_reiniciado_e_encerrado_e_nada_do_anki_fica_vivo(self):
+        resposta, feito = self.reparar(anki_do_launcher())
+        self.assertEqual(resposta, {"situacao": "reiniciado"})
+        self.assertEqual(feito["sinais"], [1648, 25340])
+        self.assertEqual(feito["vivos"], [])
+
+    def test_o_launcher_so_e_encerrado_depois_de_o_anki_sair_e_so_o_que_e_pai_do_anki_que_foi_fechado(self):
+        mundo = anki_do_launcher() + [
+            processo(31000, 4000, LAUNCHER, LINHA_DO_LAUNCHER),
+            processo(31001, 31000, r"C:\Windows\System32\conhost.exe", "conhost.exe"),
+            processo(32000, 4000, LAUNCHER, LINHA_DO_LAUNCHER),
+        ]
+        resposta, feito = self.reparar(mundo)
+        self.assertEqual(resposta, {"situacao": "reiniciado"})
+        self.assertEqual(feito["sinais"], [1648, 25340])
+        self.assertEqual(sorted(feito["vivos"]), [31000, 31001, 32000])
+
+    def test_o_pid_do_launcher_reusado_por_outro_processo_com_outra_hora_de_nascimento_nao_e_encerrado(self):
+        mundo = anki_do_launcher()
+        mundo[2]["renasce"] = [{"pid": 25340, "criado": "2026-10-29T11:00:00"}]
+        resposta, feito = self.reparar(mundo)
+        self.assertEqual(resposta, {"situacao": "reiniciado"})
+        self.assertEqual(feito["sinais"], [1648])
         self.assertIn(25340, feito["vivos"])
+
+    def test_o_pid_do_launcher_reusado_por_outro_programa_com_a_mesma_hora_de_nascimento_nao_e_encerrado(self):
+        mundo = anki_do_launcher()
+        mundo[2]["renasce"] = [{"pid": 25340, "caminho": r"C:\Windows\explorer.exe"}]
+        resposta, feito = self.reparar(mundo)
+        self.assertEqual(resposta, {"situacao": "reiniciado"})
+        self.assertEqual(feito["sinais"], [1648])
+        self.assertIn(25340, feito["vivos"])
+
+    def test_o_launcher_que_ainda_tem_filho_vivo_nao_e_encerrado(self):
+        mundo = anki_do_launcher() + [processo(26000, 25340, r"C:\Windows\System32\conhost.exe", "conhost.exe")]
+        resposta, feito = self.reparar(mundo)
+        self.assertEqual(resposta, {"situacao": "reiniciado"})
+        self.assertEqual(feito["sinais"], [1648])
+        self.assertIn(25340, feito["vivos"])
+
+    def test_o_pai_que_nasceu_depois_do_redirecionador_nao_e_o_launcher_dele_e_nao_e_encerrado(self):
+        mundo = anki_do_launcher()
+        mundo[0]["criado"] = "2026-10-29T10:05:00"
+        resposta, feito = self.reparar(mundo)
+        self.assertEqual(feito["sinais"], [1648])
+        self.assertIn(25340, feito["vivos"])
+
+    def test_o_pai_que_nao_e_o_programa_que_o_abridor_abre_nao_e_encerrado(self):
+        mundo = anki_do_launcher()
+        mundo[0]["caminho"] = r"C:\Windows\explorer.exe"
+        resposta, feito = self.reparar(mundo)
+        self.assertEqual(feito["sinais"], [1648])
+        self.assertIn(25340, feito["vivos"])
+
+    def test_o_anki_cujo_programa_anotado_e_o_proprio_ouvinte_nao_tem_launcher_a_encerrar(self):
+        mundo = [processo(50, 4000, CPYTHON, LINHA_DO_AQT % CPYTHON, ouve=True)]
+        resposta, feito = self.reparar(mundo, executavel=CPYTHON)
+        self.assertEqual(feito["sinais"], [50])
+
+    def test_o_anki_reaberto_nao_herda_a_pasta_do_abridor_como_diretorio_corrente(self):
+        pasta_do_abridor = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, pasta_do_abridor)
+        with tempfile.TemporaryDirectory() as complemento:
+            shutil.copyfile(os.devnull, os.path.join(complemento, "__init__.py"))
+            chamadas = "Set-Location -LiteralPath '%s'\n$complemento = '%s'\nConsertar" % (pasta_do_abridor, complemento)
+            feito = self.rodar(anki_do_launcher(), chamadas=chamadas)
+        self.assertEqual(len(feito["pastas"]), 1)
+        self.assertNotEqual(feito["pastas"][0], "")
+        self.assertNotEqual(os.path.realpath(feito["pastas"][0]), os.path.realpath(pasta_do_abridor))
 
     def test_o_filho_cuja_linha_de_comando_e_identica_a_do_pai_inclusive_o_programa_tambem_e_reconhecido(self):
         mundo = anki_do_launcher()
         mundo[2]["linha"] = mundo[1]["linha"]
         resposta, feito = self.reparar(mundo)
         self.assertEqual(resposta, {"situacao": "reiniciado"})
-        self.assertEqual(feito["sinais"], [1648])
+        self.assertEqual(feito["sinais"], [1648, 25340])
 
     def test_o_anki_do_launcher_e_visto_como_rodando_o_redirecionador_e_o_filho_cpython(self):
         feito = self.rodar(anki_do_launcher(), chamadas="[void]$global:respostas.Add((@(ProcessosDoAnki | ForEach-Object { $_.Id }) -join ','))")
