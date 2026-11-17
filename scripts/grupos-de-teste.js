@@ -85,7 +85,21 @@ function baseDaVersao(env, ramo, temOrigemMain) {
   return ramo && ramo !== 'main' && ramo !== 'HEAD' ? 'origin/main' : null;
 }
 
+function trabalhadoresDoGrupo(grupo, env) {
+  const pedido = Number(env.PM_PARALELO || grupo.paralelo || 1);
+  return Number.isInteger(pedido) && pedido > 1 ? pedido : 1;
+}
+
+function tetoEmSegundos(env) {
+  const teto = Number(env.PM_TETO_S);
+  return teto > 0 ? teto : null;
+}
+
+function estourouOTeto(segundos, teto) {
+  return teto !== null && segundos > teto;
+}
+
 module.exports = {
-  ARQUIVO_DO_REGISTRO, ehArquivoDeTeste, padraoComoRegex, padroesDoGrupo, arquivosDoGrupo, lerRegistro, grupoDoArquivo,
+  tetoEmSegundos, estourouOTeto, trabalhadoresDoGrupo, ARQUIVO_DO_REGISTRO, ehArquivoDeTeste, padraoComoRegex, padroesDoGrupo, arquivosDoGrupo, lerRegistro, grupoDoArquivo,
   escolherPython, dicaDeModulo, baseDaVersao,
 };
