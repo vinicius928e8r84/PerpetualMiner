@@ -127,6 +127,8 @@ recusa({ corpo: altaCom('```', FRASE, `Head: ${HEAD}`, '```') }, /não tem a lin
   const chamadas = comandos(workflow).filter(comando => /scripts\/ci\/registro-da-pr\.js/.test(comando.texto));
   assert.strictEqual(chamadas.length, 1, 'um passo chama o script');
   assert.strictEqual(chamadas[0].executa, true, `o passo executa de verdade (${chamadas[0].motivo})`);
+  const checkout = workflow.jobs['registro-da-pr'].steps.find(p => /^actions\/checkout@/.test(p.uses || ''));
+  assert.strictEqual(String(checkout.with['fetch-depth']), '0', 'o checkout traz a história inteira, para conferir se o head só traz merges limpos da main');
   const passo = workflow.jobs['registro-da-pr'].steps.find(p => p.run === chamadas[0].texto);
   assert.deepStrictEqual(Object.fromEntries(Object.entries(passo.env)), {
     GITHUB_TOKEN: '${{ github.token }}', PR: '${{ github.event.pull_request.number }}', HEAD: '${{ github.event.pull_request.head.sha }}',
