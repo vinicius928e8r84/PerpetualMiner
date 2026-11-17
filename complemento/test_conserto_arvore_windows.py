@@ -64,6 +64,13 @@ function Stop-Process {
   $alvo = @($global:mundo | Where-Object { [int]$_.pid -eq $Id })
   if ($alvo.Count -eq 0) { throw 'sem esse processo' }
   [void]$global:sinais.Add($Id)
+  foreach ($r in @($alvo[0].renasce)) {
+    if (-not $r) { continue }
+    foreach ($outro in @($global:mundo | Where-Object { [int]$_.pid -eq [int]$r.pid })) {
+      if ($r.criado) { $outro.criado = $r.criado }
+      if ($r.caminho) { $outro.caminho = $r.caminho }
+    }
+  }
   $morre = @($Id)
   $atual = $alvo[0]
   while ($atual -and $atual.ppid) {
@@ -89,8 +96,11 @@ def _modelo(executavel):
     return variaveis, conserto_do_anki.FUNCOES_DO_PS1
 
 
-def processo(pid, ppid, caminho, linha, ouve=False, sai_com_o_filho=False, criado="2026-10-29T10:00:00"):
-    return {"pid": pid, "ppid": ppid, "caminho": caminho, "linha": linha, "ouve": ouve, "sai_com_o_filho": sai_com_o_filho, "criado": criado}
+def processo(pid, ppid, caminho, linha, ouve=False, sai_com_o_filho=False, criado="2026-10-29T10:00:00", renasce=None):
+    dados = {"pid": pid, "ppid": ppid, "caminho": caminho, "linha": linha, "ouve": ouve, "sai_com_o_filho": sai_com_o_filho, "criado": criado}
+    if renasce:
+        dados["renasce"] = renasce
+    return dados
 
 
 def anki_do_launcher(porta_no_filho=True):
@@ -165,6 +175,22 @@ class AnkiDoLauncherNoWindows(unittest.TestCase):
         self.assertEqual(resposta, {"situacao": "reiniciado"})
         self.assertEqual(feito["sinais"], [1648, 25340])
         self.assertEqual(sorted(feito["vivos"]), [31000, 31001, 32000])
+
+    def test_o_pid_do_launcher_reusado_por_outro_processo_com_outra_hora_de_nascimento_nao_e_encerrado(self):
+        mundo = anki_do_launcher()
+        mundo[2]["renasce"] = [{"pid": 25340, "criado": "2026-10-29T11:00:00"}]
+        resposta, feito = self.reparar(mundo)
+        self.assertEqual(resposta, {"situacao": "reiniciado"})
+        self.assertEqual(feito["sinais"], [1648])
+        self.assertIn(25340, feito["vivos"])
+
+    def test_o_pid_do_launcher_reusado_por_outro_programa_com_a_mesma_hora_de_nascimento_nao_e_encerrado(self):
+        mundo = anki_do_launcher()
+        mundo[2]["renasce"] = [{"pid": 25340, "caminho": r"C:\Windows\explorer.exe"}]
+        resposta, feito = self.reparar(mundo)
+        self.assertEqual(resposta, {"situacao": "reiniciado"})
+        self.assertEqual(feito["sinais"], [1648])
+        self.assertIn(25340, feito["vivos"])
 
     def test_o_launcher_que_ainda_tem_filho_vivo_nao_e_encerrado(self):
         mundo = anki_do_launcher() + [processo(26000, 25340, r"C:\Windows\System32\conhost.exe", "conhost.exe")]
