@@ -17,9 +17,12 @@
 ## Passo do dono (não é feito por agente; feito: o código é 1108882947)
 
 1. Suba `conexao/perpetualminer.ankiaddon` com a conta do dono. O AnkiWeb devolve o **código** (número) da página.
-2. No repositório, troque o `package` de `complemento/manifest.json` e o `codigo` de `lib/ankiweb.js` (`{ codigo: '<número>' }`) por esse número,
-   e refaça o arquivo: `python3 complemento/empacotar.py conexao/perpetualminer.ankiaddon` com `SOURCE_DATE_EPOCH=<hora do upload, em segundos>`
-   (o `mod` do arquivo é a hora do upload; o Anki compara com ela para oferecer atualização). Suba esse arquivo de novo em “Update”, se o AnkiWeb pedir.
+2. No repositório, troque o `package` de `complemento/manifest.json` e o `codigo` de `lib/ankiweb.js` (`{ codigo: '<número>' }`) por esse número.
+   Depois de cada upload, leia o `mod` que o AnkiWeb devolveu: o `t=` do redirect do download
+   (`curl -sI` no link de download da página no AnkiWeb: o `Location` traz `t=<segundos>`), não a hora em que o upload começou.
+   Com a main limpa, rode `python3 complemento/versao_no_merge.py --mod-do-ankiweb <segundos>`: refaz só `conexao/perpetualminer.ankiaddon` com esse `mod`
+   (o Anki compara o `mod` do arquivo instalado com o do AnkiWeb; se o do arquivo é menor, oferece uma atualização para a mesma versão) e faz um commit, que você empurra.
+   O arquivo que está no AnkiWeb não se sobe de novo: o upload mudaria o `mod` dele outra vez.
 3. `python3 -m unittest complemento.test_pacote` confere que o `package` do arquivo, o do manifesto e o código do painel são o mesmo número e que o `mod` é de uma hora real;
    o e2e `painel-anki-primeira-conexao` confere o código no Detalhes “O arquivo não abriu?”.
 

@@ -26,6 +26,7 @@ import re
 import shlex
 import subprocess
 import sys
+import zipfile
 
 PASTA = os.path.dirname(os.path.abspath(__file__))
 RAIZ = os.path.dirname(PASTA)
@@ -87,10 +88,35 @@ def comando_dos_testes():
     return [sys.executable, "-m", "unittest", "discover", "-s", "complemento", "-p", "test_*.py"]
 
 
+def mod_do_arquivo():
+    with zipfile.ZipFile(PACOTE) as pacote:
+        return int(json.loads(pacote.read("manifest.json"))["mod"])
+
+
+def refazer_com_o_mod_do_ankiweb(mod, atual, registrada, hash_de_hoje):
+    if registrada != hash_de_hoje:
+        print("--mod-do-ankiweb: a VERSAO %s ainda não registra as fontes de hoje; dê a versão (sem a bandeira) antes de refazer o arquivo" % atual, file=sys.stderr)
+        return 2
+    do_arquivo = mod_do_arquivo()
+    if mod < do_arquivo:
+        print("--mod-do-ankiweb %d é anterior ao mod %d do arquivo: o AnkiWeb recebe o arquivo depois de empacotado, o mod dele não pode ser menor" % (mod, do_arquivo), file=sys.stderr)
+        return 2
+    if mod == do_arquivo:
+        print("nada a fazer: o arquivo da extensão já leva o mod %d" % mod)
+        return 0
+    empacotar.empacotar(PACOTE, mod=mod)
+    arquivo = relativos([PACOTE])
+    git("add", "--", *arquivo)
+    git("commit", "-q", "-m", ASSUNTO % atual + ": mod do AnkiWeb", "-m", "O arquivo da extensão leva o mod %d que o AnkiWeb devolveu depois do upload (era %d)." % (mod, do_arquivo), "--", *arquivo)
+    print("%s\nempurre-o para a main." % git("log", "-1", "--format=%h %s"))
+    return 0
+
+
 def main(argv):
     leitor = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     leitor.add_argument("--acima-de", metavar="VERSAO", help="o número não pode ser menor ou igual a este (PRs abertas que já o levam)")
     leitor.add_argument("--versao", metavar="VERSAO", help="dá exatamente este número, que tem de estar em versoes-reservadas.json e fora do versoes.json (a PR que o prometeu)")
+    leitor.add_argument("--mod-do-ankiweb", type=int, metavar="SEGUNDOS", help="depois do upload: refaz só o arquivo da extensão com o mod que o AnkiWeb devolveu (o t= do redirect do download), num commit")
     testes = leitor.add_mutually_exclusive_group()
     testes.add_argument("--sem-testes", action="store_true", help="não roda os testes do complemento (só os testes deste script usam)")
     testes.add_argument("--testes", metavar="COMANDO", help="outro comando de testes, no lugar de todos os do complemento")
@@ -104,6 +130,8 @@ def main(argv):
     registradas = json.loads(ler(VERSOES))
     atual = LINHA_DA_VERSAO.search(ler(CONFIGURACAO)).group(1)
     hash_de_hoje = empacotar.hash_das_fontes()
+    if opcoes.mod_do_ankiweb is not None:
+        return refazer_com_o_mod_do_ankiweb(opcoes.mod_do_ankiweb, atual, registradas.get(atual), hash_de_hoje)
     if registradas.get(atual) == hash_de_hoje:
         print("nada a fazer: a VERSAO %s já registra as fontes de hoje" % atual)
         return 0
