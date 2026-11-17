@@ -56,6 +56,14 @@
       for (const lugar of lugares) if (!lugar.trocando && !lugar.conferindo) desenhar(lugar);
       if (conexaoLigada) conferirACopia();
     });
+    raiz.PareamentoComOAnki.aoMudar(pareamento => {
+      if (pareamento !== raiz.PareamentoComOAnki.ESTADO.PAREADA) return;
+      for (const lugar of lugares) {
+        if (lugar.erro?.motivo !== 'sem_pareamento') continue;
+        lugar.erro = null;
+        if (!lugar.conferindo) desenhar(lugar);
+      }
+    });
     ConexaoAnki.acompanhar(situacao => {
       if (situacao === ConexaoAnki.SITUACAO.CONECTANDO) return;
       const ligada = situacao === ConexaoAnki.SITUACAO.LIGADA;
@@ -246,6 +254,7 @@
       organizacao_nao_verificada: { texto: 'CFG-35.erroOrganizacao', acao: { rotulo: textoDaVoz('CFG-35.erroVerificarOrganizacao'), aoUsar: abrir(ONDE_VERIFICAR_A_ORGANIZACAO) } },
       openai_fora_do_ar: { texto: 'CFG-35.erroForaDoAr', acao: tentar },
       sem_conexao: { texto: 'CFG-35.erroSemConexao', acao: tentar },
+      sem_pareamento: { texto: 'BRG-52.erroChave', acao: { rotulo: textoDaVoz('BRG-52.botao'), aoUsar: () => raiz.ConexaoVersao.conectar() } },
       conexao_com_erro: { texto: 'CFG-35.erroConexaoComErro', acao: tentar },
       conexao_antiga: { texto: 'CFG-35.erroConexaoAntiga', acao: { rotulo: textoDaVoz('CFG-35.erroAtualizar'), aoUsar: baixarConexao } },
       outra_conta: { texto: 'CFG-35.erroOutraConta', acao: { rotulo: textoDaVoz('CFG-35.erroTrocar'), aoUsar: () => { lugar.trocando = true; trocarDeNovo(lugar); } } },

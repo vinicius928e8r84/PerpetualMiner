@@ -15,7 +15,7 @@ The Conexão com o Anki answers only a browser it has paired with (#192, owner's
 
 ## How to get to it (user POV)
 
-- Any Painel area, and the Boas-vindas (at the top of it, `#boas-vindas > #painel-pareamento`), with the Conexão on and no pairing: the notice shows by itself. The Anki side (dialog, tooltip, button) is only real in a real Anki (the owner's rehearsal).
+- Any Painel area, and the Boas-vindas (at the top of it, `#boas-vindas > #painel-pareamento`; on step 4 it is inside the card, under the status, and the step is not marked done until the pairing is proven), with the Conexão on and no pairing: the notice shows by itself. A key pasted in the IA card with no pairing answers `Este navegador ainda não está conectado ao Anki…` with **Conectar** (BRG-52.erroChave), not “A Conexão com o Anki não respondeu”. The Anki side (dialog, tooltip, button) is only real in a real Anki (the owner's rehearsal).
 
 ## Driving it with the Playwright e2e harness
 

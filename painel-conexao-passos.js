@@ -13,9 +13,7 @@
   const PASSO_DO_ABRIDOR = 'abridor';
   const ARQUIVO_DA_CONEXAO = 'conexao/perpetualminer.ankiaddon';
   const NOME_DO_ARQUIVO = 'perpetualminer.ankiaddon';
-  // “Não tenho” (#146) leva à página de download do Anki, que existe sempre e mostra o arquivo de cada
-  // sistema: não há endereço fixo de instalador (um por processador, com a versão no nome; o download
-  // direto é o #232). O que muda por sistema é o que fazer depois do download.
+  // “Não tenho” (#146) leva à página de download do Anki: não há endereço fixo de instalador (o direto é o #232).
   const PAGINA_DO_ANKI = 'https://apps.ankiweb.net/';
   const DEPOIS_DO_DOWNLOAD = Object.freeze({
     mac: 'ONB-18.depoisNoMac',
@@ -255,7 +253,7 @@
       estado.escolha = PASSO_DO_TENTAR;
       ConexaoAnki.tentarDeNovo();
     });
-    const conexao = elemento('div', 'bv-conexao', status, tentar);
+    const conexao = elemento('div', 'bv-conexao', status, tentar, elemento('div', 'pc-pareamento'));
 
     const pontoDoAbridor = elemento('span', 'bv-ponto');
     pontoDoAbridor.setAttribute('aria-hidden', 'true');
@@ -305,9 +303,9 @@
     function passoAberto() {
       if (estado.pronto) return PASSOS[PASSOS.length - 1].id;
       if (estado.escolha !== null) return estado.escolha;
-      const situacao = ConexaoAnki.situacao();
+      const situacao = ConexaoAnki.apresentada();
       if (situacao === CONEXAO.LIGADA) return PASSO_DO_ABRIDOR;
-      if (situacao === CONEXAO.CONECTANDO) return PASSO_DO_TENTAR;
+      if (situacao !== CONEXAO.DESLIGADA) return PASSO_DO_TENTAR;
       return estado.ligou || ConexaoAnki.jaConectou() ? PASSO_DO_TENTAR : PASSOS[0].id;
     }
     const indiceAberto = () => indice(passoAberto());
@@ -334,7 +332,7 @@
       estado.pronto = pronto;
       const aberto = pronto ? -1 : indiceAberto();
       const passoDoCard = PASSOS[pronto ? indice(PASSO_DO_ABRIDOR) : aberto];
-      const situacao = ConexaoAnki.situacao();
+      const situacao = ConexaoAnki.apresentada();
       const conectando = situacao === CONEXAO.CONECTANDO;
       const exibida = estado.conferindo && situacao === CONEXAO.DESLIGADA && passoDoCard.id === PASSO_DO_TENTAR
         ? CONEXAO.CONECTANDO : situacao;
@@ -373,7 +371,7 @@
         : mostrada === CONEXAO.LIGADA ? textoDeAchei() : ConexaoNaTela.texto(mostrada);
 
       ConexaoNaTela.pintarTentarDeNovo(tentar, exibida, {
-        sai: pronto || situacao === CONEXAO.LIGADA || passoDoCard.id !== PASSO_DO_TENTAR,
+        sai: pronto || ![CONEXAO.CONECTANDO, CONEXAO.DESLIGADA].includes(situacao) || passoDoCard.id !== PASSO_DO_TENTAR,
         focoPara: () => aoSairOBotao?.() ?? titulo,
       });
 
@@ -383,6 +381,7 @@
       voltar.hidden = aberto <= 0;
       continuar.hidden = aberto >= PASSOS.length - 1;
       desenharAEspera();
+      raiz.ConexaoVersao?.reposicionar();
     }
 
     /** Região viva: nunca `hidden` (o leitor não fala o que chega com ela); vazia, só sai da vista. */

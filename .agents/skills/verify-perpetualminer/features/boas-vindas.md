@@ -49,4 +49,4 @@ Preconditions:
 - The fixture removes `pm_boas_vindas` after install so every other spec starts without the reminder. A Boas-vindas or reminder proof must opt in with the `test.use` options, otherwise it sees a finished setup.
 - "Continuar" on a required step moves on without marking it; Tudo pronto then says "falta". Do not read the screen as done.
 - The Envio summary does not open over Boas-vindas; it waits until a panel area is entered.
-- Steps are done by real state (a phrase stored, `pm_atalho`, `pm_user_info` + `pm_firebase_auth`, the Conexão on, the OpenAI key checked (`pm_chave_openai`), a language of automatic mining on, the level of each language it has on saved (`ankiBridgePresets`), `geminiApiKey`); seed those, never `pm_boas_vindas` alone.
+- Steps are done by real state (a phrase stored, `pm_atalho`, `pm_user_info` + `pm_firebase_auth`, the Conexão on and this browser paired, the OpenAI key checked (`pm_chave_openai`), a language of automatic mining on, the level of each language it has on saved (`ankiBridgePresets`), `geminiApiKey`); seed those, never `pm_boas_vindas` alone.

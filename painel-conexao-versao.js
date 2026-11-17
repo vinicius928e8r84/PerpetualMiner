@@ -219,7 +219,9 @@
 
   function ponhaNoLugar(no) {
     const boasVindas = porId('boas-vindas');
-    if (boasVindas && !boasVindas.hidden) boasVindas.insertBefore(no, boasVindas.querySelector('.bv-grade'));
+    const noPasso = [...document.querySelectorAll('.pc-pareamento')].find(lugar => lugar.offsetParent !== null);
+    if (noPasso) noPasso.append(no);
+    else if (boasVindas && !boasVindas.hidden) boasVindas.insertBefore(no, boasVindas.querySelector('.bv-grade'));
     else document.querySelector('.shell-conteudo').prepend(no);
   }
 
@@ -231,9 +233,9 @@
     ConexaoAnki.acompanhar(lerASaude);
     ConexaoAnki.acompanhar(desenharOPareamento);
     PareamentoComOAnki.aoMudar(desenharOPareamento);
-    addEventListener('hashchange', () => setTimeout(() => { const no = porId('painel-pareamento'); if (no) ponhaNoLugar(no); }));   // a Boas-vindas e o Painel trocam de lugar sem recarregar
+    addEventListener('hashchange', () => setTimeout(() => raiz.ConexaoVersao.reposicionar()));   // a Boas-vindas e o Painel trocam de lugar sem recarregar
   }
 
-  raiz.ConexaoVersao = { iniciar };
+  raiz.ConexaoVersao = { iniciar, conectar, reposicionar: () => { const no = porId('painel-pareamento'); if (no) ponhaNoLugar(no); } };
   iniciar();
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});

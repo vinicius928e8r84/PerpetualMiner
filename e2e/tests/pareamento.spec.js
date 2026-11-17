@@ -24,14 +24,15 @@ test('sem pareamento, o Painel pede para conectar e nenhum pedido privado sai pa
   expect(await credencialGuardada(extensao)).toBeNull();
 });
 
-test('sem pareamento, a chave colada não sai: o card da IA diz que a Conexão não respondeu, e não que a sessão da conta expirou', async ({ page, extensao, fakes, conexaoDoTeste }) => {
+test('sem pareamento, a chave colada não sai: o card da IA diz que falta conectar este navegador, e não que a Conexão não respondeu nem que a sessão da conta expirou', async ({ page, extensao, fakes, conexaoDoTeste }) => {
   await abrirPainel(page, extensao, '#configuracoes/ia');
   await expect(faixa(page)).toContainText('Conecte este navegador ao Anki');
 
   await page.locator('#cfg-ia').getByRole('textbox', { name: 'Chave da OpenAI' }).fill('sk-proj-chave-que-nao-pode-sair-5678');
   await page.locator('#cfg-ia').getByRole('button', { name: 'Conferir e salvar' }).click();
 
-  await expect(page.locator('#cfg-ia').getByRole('alert')).toContainText('A Conexão com o Anki não respondeu');
+  await expect(page.locator('#cfg-ia').getByRole('alert')).toContainText('Este navegador ainda não está conectado ao Anki');
+  await expect(page.locator('#cfg-ia').getByRole('alert')).not.toContainText('não respondeu');
   await expect(page.locator('#cfg-ia').getByRole('alert')).not.toContainText('sessão');
   await estadoFinal(extensao, { pm_chave_openai: null });
   if (!conexaoDoTeste) expect(JSON.stringify(fakes.anki.requisicoes)).not.toContain('sk-proj-chave-que-nao-pode-sair');
