@@ -45,8 +45,7 @@
   "doc-datado": {},
   "indice-de-arquivos": {
     "scripts/com.perpetualminer.atualizar.plist.exemplo": 1,
-    "scripts/preparar-python.sh": 1,
-    "vercel.json": 1
+    "scripts/preparar-python.sh": 1
   },
   "aprovacao-visual": {
     "e2e/tests/boas-vindas-visual.spec.js": 15,

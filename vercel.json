@@ -3,5 +3,8 @@
   "buildCommand": "node preview/montar.mjs",
   "outputDirectory": "preview/dist",
   "installCommand": "echo sem dependencias",
-  "framework": null
+  "framework": null,
+  "git": {
+    "deploymentEnabled": false
+  }
 }

@@ -1,7 +1,8 @@
 # Preview do front
 
-O site que o Vercel publica a cada push, para olhar a mudança visual sem instalar nada. A cada
-pull request sai uma URL própria, comentada pelo bot do Vercel no PR.
+O site que o Vercel publica, para olhar a mudança visual sem instalar nada. A PR que muda algo que o
+preview mostra recebe uma URL própria, comentada pelo workflow `vitrine.yml` na PR; a produção sai
+quando essa mudança chega à main.
 
 | Arquivo | O que é |
 |---|---|
@@ -46,3 +47,12 @@ Uma faixa no rodapé avisa que aquilo é preview com dados de exemplo.
 `vercel.json` na raiz: `node preview/montar.mjs`, saída em `preview/dist`, sem instalação de
 dependências. Se uma branch não tiver `veio/` ou a vitrine, a capa se adapta e mostra só o que
 existe naquela branch.
+
+O Vercel **não** cria deploy sozinho (`git.deploymentEnabled: false`): o plano Hobby limita a 100
+deployments por dia, e o build pulado por `ignoreCommand` aparece como deployment cancelado e
+conta do mesmo jeito. Quem publica é `.github/workflows/vitrine.yml`, com o CLI do Vercel, e só
+quando a PR (ou o push na main) muda um caminho que o preview mostra: as telas da raiz, `manifest.json`,
+`lib/`, `veio/`, `conexao/`, `docs/design/`, `e2e/vitrine/`, `preview/` e `vercel.json`.
+`scripts/ci/test_vitrine.js` falha quando o preview passa a mostrar um arquivo que essa lista não pega.
+O workflow precisa dos segredos `VERCEL_TOKEN`, `VERCEL_ORG_ID` e `VERCEL_PROJECT_ID`; sem eles
+avisa e não publica.
