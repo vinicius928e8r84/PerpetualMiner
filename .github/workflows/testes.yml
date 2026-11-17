@@ -36,6 +36,8 @@ jobs:
     name: Testes do complemento (Python ${{ matrix.python }})
     runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
     timeout-minutes: 25
+    env:
+      RODAR_COMPLEMENTO: 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -48,10 +50,14 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 24
+      - name: Classificar a mudança
+        run: sh scripts/ci/classificar.sh
       - uses: actions/setup-python@v6
+        if: env.RODAR_COMPLEMENTO == 'true'
         with:
           python-version: ${{ matrix.python }}
       - name: Instalar o pwsh (se faltar)
+        if: env.RODAR_COMPLEMENTO == 'true'
         run: |
           if ! command -v pwsh >/dev/null; then
             wget -q "https://packages.microsoft.com/config/ubuntu/$(. /etc/os-release && echo "$VERSION_ID")/packages-microsoft-prod.deb"
@@ -60,7 +66,8 @@ jobs:
             sudo apt-get install -y powershell
           fi
           pwsh -NoProfile -Command '$PSVersionTable.PSVersion.ToString()'
-      - run: node scripts/testar.mjs complemento
+      - if: env.RODAR_COMPLEMENTO == 'true'
+        run: node scripts/testar.mjs complemento
         env:
           PYTHON: python
           EXIGIR_PWSH: '1'
@@ -74,7 +81,7 @@ jobs:
     # Uma fatia leva uns 5 minutos num runner livre; 40 deixa passar um runner carregado e ainda impede que uma travada gaste 45.
     timeout-minutes: 40
     env:
-      RODAR: 'true'
+      RODAR_E2E: 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -93,31 +100,31 @@ jobs:
       - name: Classificar a mudança
         run: sh scripts/ci/classificar.sh
       - run: npm ci
-        if: env.RODAR == 'true'
+        if: env.RODAR_E2E == 'true'
         working-directory: e2e
       - uses: actions/cache@v5
-        if: env.RODAR == 'true'
+        if: env.RODAR_E2E == 'true'
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-ubuntu-24.04-${{ hashFiles('e2e/package-lock.json') }}
       # Sem --with-deps: ele roda `apt` em toda fatia para instalar fontes que o Chromium dos testes não enxerga
       # (e2e/fontconfig), e a imagem já traz as bibliotecas. O teto de 5 minutos impede que uma rede ruim segure o job.
       - run: npx playwright install chromium
-        if: env.RODAR == 'true'
+        if: env.RODAR_E2E == 'true'
         timeout-minutes: 5
         working-directory: e2e
-      - if: env.RODAR == 'true'
+      - if: env.RODAR_E2E == 'true'
         run: sudo apt-get install -y --no-install-recommends fonts-dejavu-core
       # Os specs desta fatia: scripts/ci/fatias-e2e.json, montadas pela duração de cada spec (o --shard do Playwright
       # divide pelo número de testes, e uma fatia levava 9 minutos enquanto outra levava 3).
-      - if: env.RODAR == 'true'
+      - if: env.RODAR_E2E == 'true'
         run: xvfb-run --auto-servernum node scripts/testar.mjs e2e -- --workers=1 $(node scripts/ci/fatias-e2e.js ${{ matrix.fatia }})
       - name: Testes instáveis
         id: instaveis
-        if: ${{ !cancelled() && env.RODAR == 'true' }}
+        if: ${{ !cancelled() && env.RODAR_E2E == 'true' }}
         run: node scripts/ci/instaveis.js e2e/test-results/relatorio.json
       - uses: actions/upload-artifact@v6
-        if: ${{ (failure() || steps.instaveis.outputs.achou == 'true') && env.RODAR == 'true' }}
+        if: ${{ (failure() || steps.instaveis.outputs.achou == 'true') && env.RODAR_E2E == 'true' }}
         with:
           name: e2e-${{ matrix.fatia }}-resultados
           path: e2e/test-results
@@ -128,7 +135,7 @@ jobs:
     runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
     timeout-minutes: 20
     env:
-      RODAR: 'true'
+      RODAR_CONEXAO_REAL: 'true'
     steps:
       - uses: actions/checkout@v5
         with:
@@ -142,24 +149,24 @@ jobs:
       - name: Classificar a mudança
         run: sh scripts/ci/classificar.sh
       - uses: actions/setup-python@v6
-        if: env.RODAR == 'true'
+        if: env.RODAR_CONEXAO_REAL == 'true'
         with:
           python-version: '3.9'
       - run: npm ci
-        if: env.RODAR == 'true'
+        if: env.RODAR_CONEXAO_REAL == 'true'
         working-directory: e2e
       - uses: actions/cache@v5
-        if: env.RODAR == 'true'
+        if: env.RODAR_CONEXAO_REAL == 'true'
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-ubuntu-24.04-${{ hashFiles('e2e/package-lock.json') }}
       - run: npx playwright install chromium
-        if: env.RODAR == 'true'
+        if: env.RODAR_CONEXAO_REAL == 'true'
         timeout-minutes: 5
         working-directory: e2e
-      - if: env.RODAR == 'true'
+      - if: env.RODAR_CONEXAO_REAL == 'true'
         run: sudo apt-get install -y --no-install-recommends fonts-dejavu-core
-      - if: env.RODAR == 'true'
+      - if: env.RODAR_CONEXAO_REAL == 'true'
         run: xvfb-run --auto-servernum node scripts/testar.mjs e2e -- conexao-real pareamento.spec pareamento-ataques --workers=1
         env:
           PM_CONEXAO: real

@@ -1,14 +1,16 @@
 #!/bin/sh
 evento="${GITHUB_EVENT_NAME:-pull_request}"
+tudo="RODAR_E2E=true
+RODAR_COMPLEMENTO=true
+RODAR_CONEXAO_REAL=true"
 case "$evento" in
-  push) rodar=false ;;
+  push)
+    saida="RODAR_E2E=false
+RODAR_COMPLEMENTO=true
+RODAR_CONEXAO_REAL=false" ;;
   pull_request)
-    if so_documentacao=$(node "$(dirname "$0")/so-documentacao.js" HEAD^1 HEAD) && [ "$so_documentacao" = true ]; then
-      rodar=false
-    else
-      rodar=true
-    fi ;;
-  *) rodar=true ;;
+    saida=$(node "$(dirname "$0")/selecao-de-testes.js" HEAD^1 HEAD) || saida="$tudo" ;;
+  *) saida="$tudo" ;;
 esac
-echo "RODAR=$rodar" >> "${GITHUB_ENV:-/dev/null}"
-echo "RODAR=$rodar"
+echo "$saida" >> "${GITHUB_ENV:-/dev/null}"
+echo "$saida"
