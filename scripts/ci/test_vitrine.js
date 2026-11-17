@@ -66,5 +66,7 @@ const mudaAVitrine = filtro(doPR);
   assert(/--prebuilt/.test(publicar[0]) && /--prod/.test(publicar[0]) && /github\.event_name/.test(lerTexto('.github/workflows/vitrine.yml')),
     'a produção (--prod) e o preview saem do mesmo passo, escolhidos pelo evento');
   assert(!/(^|\n)\s+run:.*\$\{\{\s*secrets\./.test(lerTexto('.github/workflows/vitrine.yml')), 'o segredo vai por env, não dentro do comando');
+  const simples = lerTexto('.github/workflows/vitrine.yml').split('\n').filter(linha => /^\s*(?:-\s+)?run:\s+[^|>\s"'].*:\s/.test(linha));
+  assert.deepStrictEqual(simples, [], 'um run: em linha com ": " dentro não é YAML válido (o GitHub recusa o workflow inteiro); use run: |');
   console.log('ok: vitrine.yml cobre o que o preview mostra e o Vercel não faz deploy sozinho');
 })().catch(erro => { console.error(erro); process.exit(1); });

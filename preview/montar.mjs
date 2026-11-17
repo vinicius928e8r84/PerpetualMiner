@@ -117,7 +117,7 @@ function capa({ telas, prototipos, temVitrine, temVeio, git }) {
 ${temVeio ? '    <img class="veio-marca" src="/veio/icones/icone.svg" width="40" height="40" alt="">\n' : ''}    <span class="veio-nome">Perpetual<b>Miner</b>${temVeio ? '<span class="veio-cursor"></span>' : ''}</span>
   </div>
   <h1>Preview do front</h1>
-  <p>Como esta branch fica na tela. Gerado a cada push pelo Vercel.</p>
+  <p>Como esta branch fica na tela. Publicado pelo Vercel quando a mudança toca o que o preview mostra.</p>
 
   <h2>O app</h2>
   <ul>

@@ -38,7 +38,7 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: vitrine-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  group: vitrine-${{ github.event_name == 'pull_request' && github.ref || 'main' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -88,7 +88,8 @@ jobs:
           VERCEL_GIT_COMMIT_MESSAGE: ${{ github.event.pull_request.title || github.event.head_commit.message }}
       - name: Comentar o endereço na PR
         if: steps.segredos.outputs.prontos == 'true' && github.event_name == 'pull_request'
-        run: gh pr comment "$PR" --edit-last --create-if-none --body "Vitrine desta PR: $ENDERECO (commit ${HEAD:0:7})"
+        run: |
+          gh pr comment "$PR" --edit-last --create-if-none --body "Vitrine desta PR: $ENDERECO (commit ${HEAD:0:7})"
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
