@@ -143,6 +143,7 @@ function criarPareamento({ agora }) {
     /** @estado-guardado Os navegadores que a Conexão tem pareados (`cliente` → segredo em base64): o que `pareamento.json` guardaria. */
     pareados: () => new Map(navegadores),
     desconectar: () => { for (const [cliente, segredo] of navegadores) revogados.set(cliente, segredo); navegadores.clear(); concluido = null; },
+    perderOsNavegadores: () => { navegadores.clear(); concluido = null; },
     /** @estado-guardado O código que o Anki mostra agora (com o hífen, `K7M-4PX`), ou null: o que a pessoa lê na tela do Anki. */
     codigoNoAnki: () => (codigoPendente() ? mostrar(pendente.codigo) : null),
     /** @estado-guardado Os códigos que o Anki mostrou até agora, na ordem. */
