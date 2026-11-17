@@ -39,12 +39,19 @@ class PaginaDoAnkiWeb(unittest.TestCase):
             else:
                 self.assertEqual(manifesto["package"], codigo)
 
-    def test_com_o_codigo_publicado_o_arquivo_leva_o_mod_da_hora_do_upload(self):
+    def test_com_o_codigo_publicado_o_arquivo_leva_um_mod_de_hora_real(self):
+        # Que ele seja o `mod` que o AnkiWeb deu à página só se confere na rede (`empacotar.py --mod-do-ankiweb`, #503).
         if codigo_do_ankiweb_da_extensao() is None:
             self.skipTest("o dono ainda não subiu o arquivo: sem código do AnkiWeb não há hora de upload")
         mod = self.manifesto_entregue()["mod"]
         self.assertGreater(mod, 1700000000)
         self.assertLessEqual(mod, time.time())
+
+    def test_o_passo_do_dono_manda_refazer_o_arquivo_com_o_mod_do_ankiweb_depois_do_upload(self):
+        with open(os.path.join(RAIZ, "docs", "ankiweb", "LEIA-ME.md"), encoding="utf-8") as arquivo:
+            passos = arquivo.read()
+        self.assertIn("empacotar.py --mod-do-ankiweb conexao/perpetualminer.ankiaddon", passos)
+        self.assertNotIn("SOURCE_DATE_EPOCH=<hora do upload", passos)
 
     def test_o_codigo_do_ankiweb_e_so_digitos(self):
         codigo = codigo_do_ankiweb_da_extensao()

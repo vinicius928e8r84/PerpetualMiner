@@ -9,6 +9,13 @@ do `conexao/perpetualminer.ankiaddon` versionado, o `mod` é o dele (rodado duas
 mesmos bytes); se mudou, é a hora atual, ou `SOURCE_DATE_EPOCH` quando definida. Ficam de fora os
 testes, os exemplos do contrato, `user_files`, o cache, o LEIA-ME e o `versoes.json`.
 
+    python3 complemento/empacotar.py --mod-do-ankiweb [destino.ankiaddon]
+
+Depois do upload, o AnkiWeb dá a seu modo a hora da página (o `t=` do redirect do download), que nunca é a hora em que o
+arquivo foi feito. Com `--mod-do-ankiweb` o arquivo sai com esse `mod` (#503): o Anki que instala por ele já está na versão
+do AnkiWeb e não oferece a mesma atualização. Os outros bytes não mudam, então não se sobe de novo. É o passo 2 do dono
+(`docs/ankiweb/LEIA-ME.md`); sem rede ou sem página no ar, o script para sem escrever nada.
+
 O motor de texto vem de `engine/` (`ARQUIVOS_DO_MOTOR`) e entra como a pasta `motor/` do pacote, ao lado do
 `motor/__init__.py` deste repositório (ver `motor/__init__.py`).
 
@@ -18,12 +25,14 @@ A versão e este arquivo são dados na hora do merge por `python3 complemento/ve
 """
 
 import hashlib
+import http.client
 import json
 import os
 import re
 import subprocess
 import sys
 import time
+import urllib.parse
 import zipfile
 
 PASTA = os.path.dirname(os.path.abspath(__file__))
@@ -68,6 +77,35 @@ ARQUIVOS_DO_MOTOR = (
     "prompts/ru_intermediario.txt",
     "send_to_anki.py",
 )
+
+
+ANKIWEB = "https://ankiweb.net"
+# O download do AnkiWeb só responde a um Anki que ele aceita: `v=2.1` e `p=` o ponto da versão (`min_point_version` do
+# manifesto dá o piso; 250900 é o 25.09). Fora disso vem 400/404 e não o redirect com a hora.
+CONSULTA_DO_DOWNLOAD = "v=2.1&p=250900"
+
+
+class ErroDoAnkiWeb(Exception):
+    """O AnkiWeb não deu a hora da página (sem rede, página fora do ar, resposta sem `t=`)."""
+
+
+def mod_do_ankiweb(codigo, base=ANKIWEB):
+    """O `mod` que o AnkiWeb dá à página `codigo`: o `t=` do redirect do download (HEAD, sem seguir o redirect nem baixar o zip)."""
+    destino = urllib.parse.urlsplit(base)
+    ligar = http.client.HTTPSConnection if destino.scheme == "https" else http.client.HTTPConnection
+    conexao = ligar(destino.netloc, timeout=20)
+    try:
+        conexao.request("HEAD", "/shared/download/%s?%s" % (codigo, CONSULTA_DO_DOWNLOAD))
+        resposta = conexao.getresponse()
+        status, local = resposta.status, resposta.getheader("Location", "")
+    except (OSError, http.client.HTTPException) as erro:
+        raise ErroDoAnkiWeb("sem resposta do AnkiWeb para a página %s: %s" % (codigo, erro))
+    finally:
+        conexao.close()
+    t = urllib.parse.parse_qs(urllib.parse.urlsplit(local).query).get("t", [""])[0]
+    if status not in (301, 302, 303, 307, 308) or not t.isdigit() or int(t) <= 0:
+        raise ErroDoAnkiWeb("o AnkiWeb não deu a hora da página %s (status %s, Location %r): ela já está no ar?" % (codigo, status, local))
+    return int(t)
 
 
 DADA_NO_MERGE = "a versão é dada no merge (versao_no_merge.py): esta PR não mexe nela; a main e o commit de versão conferem"
@@ -185,5 +223,24 @@ def empacotar(destino, mod=None):
     return destino
 
 
+def main(argumentos, base=ANKIWEB):
+    com_mod_do_ankiweb = "--mod-do-ankiweb" in argumentos
+    restantes = [argumento for argumento in argumentos if argumento != "--mod-do-ankiweb"]
+    destino = restantes[0] if restantes else os.path.join(PASTA, "..", "dist", "perpetualminer.ankiaddon")
+    mod = None
+    if com_mod_do_ankiweb:
+        codigo = _manifesto()["package"]
+        if not codigo.isdigit():
+            print("o package do manifesto (%s) não é o código de uma página do AnkiWeb" % codigo, file=sys.stderr)
+            return 2
+        try:
+            mod = mod_do_ankiweb(codigo, base)
+        except ErroDoAnkiWeb as erro:
+            print(erro, file=sys.stderr)
+            return 1
+    print(empacotar(destino, mod=mod))
+    return 0
+
+
 if __name__ == "__main__":
-    print(empacotar(sys.argv[1] if len(sys.argv) > 1 else os.path.join(PASTA, "..", "dist", "perpetualminer.ankiaddon")))
+    sys.exit(main(sys.argv[1:]))
