@@ -52,9 +52,7 @@ class RegistroTest(unittest.TestCase):
         self.assertTrue(os.path.exists(os.path.join(self.logs, "complemento.log.1")))
         self.assertEqual(self._abertos(), [])
 
-    def test_a_pasta_do_complemento_se_remove_inteira_logo_depois_de_gravar(self):
-        # No Windows é isto que o “Remover” faz; com o arquivo aberto o rmtree levanta WinError 32.
-        # Aqui o arquivo "aberto" aparece como `stream` ainda preso ao handler.
+    def test_a_pasta_de_user_files_se_remove_inteira_logo_depois_de_gravar_sem_nada_aberto(self):
         self.logger.error("erro qualquer")
         self.assertEqual(self._abertos(), [])
         for h in list(self.logger.handlers):
