@@ -157,7 +157,7 @@ def _historico(id_, pedido, estado, status):
     """Um Envio que terminou, só para a aba Custos: sem as Frases (as linhas ficam em hoje), como um Envio de depois do Apagar tudo."""
     certas, erradas = _frases(estado.get("successfulPhraseIds")), _frases(estado.get("failedPhraseIds"))
     cartoes = {envio.id_do_cartao(frase, 0): {"phraseId": frase, "status": envio.ADICIONADO, "error": None} for frase in certas}
-    cartoes.update({envio.id_do_cartao(frase, 0): {"phraseId": frase, "status": envio.FALHOU, "error": envio.CARTOES_FALHARAM} for frase in erradas})
+    cartoes.update({envio.id_do_cartao(frase, 0): {"phraseId": frase, "status": envio.FALHOU, "error": envio.estado_do_envio.CARTOES_FALHARAM} for frase in erradas})
     criado = str(pedido.get("createdAt") or estado.get("updatedAt") or "")
     novo = {
         "jobId": id_, "lang": pedido.get("lang"), "deckName": str(pedido.get("deckName") or ""), "imageSource": str(pedido.get("imageSource") or "1"),
@@ -167,7 +167,7 @@ def _historico(id_, pedido, estado, status):
     }
     final = {
         "jobId": id_, "status": status, "stage": status, "completedStages": [], "progress": {}, "successfulPhraseIds": certas,
-        "failedPhraseIds": erradas, "duplicatePhraseIds": [], "lastError": None if status == envio.COMPLETED else envio.CARTOES_FALHARAM,
+        "failedPhraseIds": erradas, "duplicatePhraseIds": [], "lastError": None if status == envio.COMPLETED else envio.estado_do_envio.CARTOES_FALHARAM,
         "updatedAt": str(estado.get("updatedAt") or criado), "cards": cartoes, "wiped": True,
     }
     return novo, final

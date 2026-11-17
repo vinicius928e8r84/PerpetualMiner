@@ -843,6 +843,7 @@
   "ONB-23.motivoChatGPT": "O login do ChatGPT não serve para gerar cartões.",
   "ONB-23.motivoTipoDeNota": "O tipo de nota deste idioma foi alterado no Anki.",
   "ONB-23.motivoAnki": "O Anki não guardou o cartão.",
+  "ONB-23.motivoSemPalavra": "Falta marcar a Palavra. Clique na palavra da frase que o cartão vai ensinar e envie de novo.",
   "ONB-23.motivoConexao": "A Conexão com o Anki não respondeu. Confira se ela está ligada.",
   "ONB-23.motivoOutro": "Algo impediu o envio.",
   "BRG-44.titulo": "Frente",

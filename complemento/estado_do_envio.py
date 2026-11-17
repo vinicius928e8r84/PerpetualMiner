@@ -15,6 +15,7 @@ FIM = (COMPLETED, PARTIAL, FAILED)
 STATUS = (QUEUED, RUNNING) + FIM
 ESPERANDO, APAGADO = "esperando", "apagado"
 FRASES_APAGADAS = "frases_apagadas"
+CARTOES_FALHARAM, SEM_PALAVRA = "cards_failed", "keyword_missing"
 
 TRANSICOES = {
     QUEUED: {RUNNING, APAGADO},
@@ -103,3 +104,11 @@ def apagar(estado):
         estado.pop("waiting", None)
         estado.update(status=FAILED, stage=FAILED, lastError=FRASES_APAGADAS, progress={})
     estado["wiped"] = True
+
+
+def sem_cartao(pedido, falharam):
+    """O `lastError` de Frases que não entraram sem um motivo de Cartão: `keyword_missing` se uma delas tem a linha sem Palavra marcada
+    (as `keywords` fixadas vazias no criar, #543), senão `cards_failed`."""
+    entradas = pedido.get("entries", [])
+    sem_palavra = {e.get("phraseId") for e in entradas if isinstance(e.get("line"), str) and e.get("keywords") == []}
+    return SEM_PALAVRA if sem_palavra.intersection(falharam) else CARTOES_FALHARAM
