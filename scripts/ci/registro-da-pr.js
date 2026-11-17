@@ -10,6 +10,7 @@ const VEREDITO_LIMPO = 'CLEAN';
 // Num repositório público qualquer pessoa comenta: só vale o registro de quem pode escrever no repositório.
 const QUEM_REGISTRA = ['OWNER', 'MEMBER', 'COLLABORATOR'];
 const MODELO = '.github/PULL_REQUEST_TEMPLATE.md';
+const { soMergesLimposDaMain } = require('./so-merge-da-main.js');
 const PUBLICADOR = 'scripts/ci/registrar-na-pr.js';
 
 const urlDaIssue = repositorio => new RegExp(`^https://github\\.com/${repositorio ? repositorio.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : '[\\w.-]+/[\\w.-]+'}/issues/\\d+$`, 'i');
@@ -73,9 +74,15 @@ function atencaoDe(textos) {
   return { falta: `a atenção "${ditas[0]}" do corpo não é ${ATENCOES.join(' nem ')} (o valor sozinho na linha)` };
 }
 
-function faltaDaRevisao(registros, head) {
+function registroQueVale(registros, head, equivalentes = []) {
   const todos = registros.map(linhasQueValem).map(linhas => linhas.map(linha => linha.texto)).filter(textos => valoresDe(textos, 'Veredito').length);
-  const doHead = todos.filter(textos => !faltaDoHead(textos, head)).pop();
+  const aceitos = [head, ...equivalentes];
+  const doHead = todos.filter(textos => aceitos.some(aceito => !faltaDoHead(textos, aceito))).pop();
+  return { todos, doHead, headDoRegistro: doHead && aceitos.find(aceito => !faltaDoHead(doHead, aceito)) };
+}
+
+function faltaDaRevisao(registros, head, equivalentes = []) {
+  const { todos, doHead } = registroQueVale(registros, head, equivalentes);
   if (!doHead) {
     return todos.length ? faltaDoHead(todos[todos.length - 1], head, 'o registro do /code-review mais recente')
       : 'nenhum comentário ou revisão da PR é o registro do /code-review (as linhas "Veredito: CLEAN", "Head: <SHA>", "Autor:" e "Revisor:")';
@@ -87,6 +94,12 @@ function faltaDaRevisao(registros, head) {
   if (!autor || !revisor) return 'o registro do /code-review não diz quem é o autor e quem é o revisor (as linhas "Autor:" e "Revisor:")';
   if (igual(autor, revisor)) return `o revisor do registro do /code-review é o próprio autor (${autor})`;
   return null;
+}
+
+function headsSoComMergeDaMain(registros, head, base, raiz) {
+  const citados = registros.map(linhasQueValem).map(linhas => linhas.map(linha => linha.texto)).filter(textos => valoresDe(textos, 'Veredito').length)
+    .flatMap(textos => hexasDe(valoresDe(textos, 'Head'))).filter(hexa => SHA_INTEIRO.test(hexa) && hexa !== head);
+  return [...new Set(citados)].filter(de => soMergesLimposDaMain({ de, ate: head, base, raiz }));
 }
 
 function faltasDaIssue(linhas, repositorio) {
@@ -111,7 +124,7 @@ function faltaDaProva(linhas, head) {
   return semHead && `atenção ALTA: ${semHead}`;
 }
 
-function conferir({ corpo, rotulos, registros, head, repositorio }) {
+function conferir({ corpo, rotulos, registros, head, repositorio, headsEquivalentes = [] }) {
   const linhas = linhasQueValem(corpo);
   const textos = linhas.map(linha => linha.texto);
   const foraDoModelo = [
@@ -124,10 +137,14 @@ function conferir({ corpo, rotulos, registros, head, repositorio }) {
     foraDoModelo.length && `o corpo não segue o modelo do /pr: falta ${foraDoModelo.join(', ')}`,
     semAtencao,
     ...faltasDaIssue(linhas, repositorio),
-    faltaDaRevisao(registros, head),
+    faltaDaRevisao(registros, head, headsEquivalentes),
     alta && faltaDaProva(linhas, head),
   ].filter(Boolean);
-  if (!faltas.length) return { ok: true, mensagem: `registro da PR ok no head ${head}: atenção ${atencao}, /code-review ${VEREDITO_LIMPO}${alta ? `, ${FRASE}` : ''}` };
+  if (!faltas.length) {
+    const { headDoRegistro } = registroQueVale(registros, head, headsEquivalentes);
+    const viaMerge = headDoRegistro !== head ? ` (registro do head ${headDoRegistro}; daí até este head só há merges limpos da main)` : '';
+    return { ok: true, mensagem: `registro da PR ok no head ${head}: atenção ${atencao}, /code-review ${VEREDITO_LIMPO}${viaMerge}${alta ? `, ${FRASE}` : ''}` };
+  }
   return {
     ok: false,
     mensagem: [
@@ -139,7 +156,7 @@ function conferir({ corpo, rotulos, registros, head, repositorio }) {
   };
 }
 
-async function lerDoGitHub(env) {
+async function lerDoGitHub(env, headConferido) {
   const ler = async caminho => {
     const resposta = await fetch(`${env.GITHUB_API_URL || 'https://api.github.com'}/repos/${env.GITHUB_REPOSITORY}/${caminho}`, {
       headers: { accept: 'application/vnd.github+json', ...(env.GITHUB_TOKEN ? { authorization: `Bearer ${env.GITHUB_TOKEN}` } : {}) },
@@ -160,7 +177,8 @@ async function lerDoGitHub(env) {
     .filter(registro => QUEM_REGISTRA.includes(registro.author_association))
     .map(registro => ({ corpo: registro.body || '', quando: registro.submitted_at || registro.created_at || '' }))
     .sort((a, b) => a.quando.localeCompare(b.quando)).map(registro => registro.corpo);
-  return { corpo: pr.body, rotulos: pr.labels.map(rotulo => rotulo.name), registros, head: pr.head.sha, repositorio: env.GITHUB_REPOSITORY };
+  const headsEquivalentes = headsSoComMergeDaMain(registros, headConferido || pr.head.sha, pr.base && pr.base.ref, env.RAIZ_DO_GIT || process.cwd());
+  return { corpo: pr.body, rotulos: pr.labels.map(rotulo => rotulo.name), registros, head: pr.head.sha, repositorio: env.GITHUB_REPOSITORY, headsEquivalentes };
 }
 
 async function main(env) {
@@ -171,7 +189,7 @@ async function main(env) {
   }
   let lido;
   try {
-    lido = await lerDoGitHub(env);
+    lido = await lerDoGitHub(env, head);
   } catch (erro) {
     console.log(`✗ Não consegui ler a PR ${env.PR} no GitHub: ${erro.message}`);
     return 2;
