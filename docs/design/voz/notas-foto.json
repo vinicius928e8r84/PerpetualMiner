@@ -1,27 +1,157 @@
 {
-  "FOT-01": "V9.",
-  "FOT-02": "",
-  "FOT-03": "",
-  "FOT-04": "",
-  "FOT-05": "Botão “Abrir Configurações”, que abre `#configuracoes/chave` com o campo focado. A página não tem mais campo de chave.",
-  "FOT-06": "Com “Cancelar” ao lado (lista fechada).",
-  "FOT-07": "Com “Cancelar”. “Adicionando ao histórico de frases…” (enganoso) some.",
-  "FOT-08": "",
-  "FOT-09": "Frase, não trecho (glossário).",
-  "FOT-10": "Só quando a leitura funcionou; se a API falhou, é o FOT-11 (C2). Título em negrito e o texto embaixo, e com várias fotos lidas, “nestas fotos”, como no protótipo.",
-  "FOT-11": "A 2ª frase traduz a causa: chave inválida → “A chave do Gemini não funciona. Confira em Configurações.” Sem “Detalhes” (exceção à V3, decisão do dono). Com frases na tela, um aviso só para as fotos que falharam (“Não deu para ler 3 fotos.”, com a causa da primeira); sem nenhuma frase, a coluna diz “Não deu para ler a foto” / “Não deu para ler as fotos”, com a causa embaixo, sem aviso.",
-  "FOT-12": "",
-  "FOT-13": "É o rótulo do botão desabilitado, então vai sem ponto final (V7), como no protótipo.",
-  "FOT-14": "O botão volta ao rótulo normal (hoje fica preso em “salvos!”).",
-  "FOT-15": "Com “Tentar de novo” nas 2 (C4).",
-  "FOT-16": "",
-  "FOT-17": "",
-  "FOT-18": "C9: entra na lista fechada. Sem resultados pendentes, recomeça direto.",
-  "FOT-19": "Selo por foto. “Falhou” vem com o motivo embaixo e “Tentar de novo”: a 2ª frase do FOT-11 (“O Gemini está recebendo pedidos demais; espere um minuto e tente de novo.”, “A chave do Gemini não funciona. Confira em Configurações.”) ou “Sem conexão com a internet. Confira a rede e tente de novo.”. “Sem marcações”: a leitura funcionou e não achou nada (FOT-10).",
-  "FOT-20": "No topo da fila de fotos, ao lado de “Cancelar”.",
-  "FOT-21": "Aviso informativo depois do Cancelar (lista fechada), com “Leitura cancelada.” em negrito. Singular: “1 foto ficou sem ler”. Cancelada antes de qualquer leitura, a coluna diz “Leitura cancelada” (título, sem ponto) e “Nenhuma foto chegou a ser lida.”.",
-  "FOT-22": "“Livro” é o rótulo do campo do Título, que fica lembrado entre visitas; em branco, a frase vai com o Título “Físico/Livro”. “Voltar ao painel” foca a aba do painel já aberta.",
-  "FOT-23": "O título da coluna da esquerda, a área de envio depois da 1ª foto e o botão que abre o seletor. Sem chave, a fila mostra só “Adicione a chave do Gemini para começar”, no lugar da área de envio.",
-  "FOT-24": "A legenda no pé da fila (só lá, por decisão do dono).",
-  "FOT-25": "“Selecionar todas” é o checkbox único (misto se parcial). “Foto 2” abre o grupo das frases daquela foto. Uma frase já minerada fica com o selo `--ok` “Minerada” (o ✓ sai: V5) e sai do botão. “Ler marcações” é o botão da prévia de 1 foto. “As frases aparecem aqui…” continua o subtítulo do FOT-01 no mesmo parágrafo, por isso leva ponto (V7)."
+  "FOT-01": {
+    "estado": "Título + subtítulo",
+    "categoria": "status",
+    "hoje": "Transcrição de Livro Físico",
+    "nota": "V9."
+  },
+  "FOT-02": {
+    "estado": "Área de envio vazia",
+    "categoria": "vazio",
+    "hoje": "Arraste fotos aqui · ou clique para selecionar · múltiplas imagens suportadas · JPG, PNG, HEIC, WEBP",
+    "nota": ""
+  },
+  "FOT-03": {
+    "estado": "Aviso na prévia",
+    "categoria": "status",
+    "hoje": "Confira se as marcações estão visíveis na foto",
+    "nota": ""
+  },
+  "FOT-04": {
+    "estado": "Arquivo que não é foto",
+    "categoria": "erro",
+    "hoje": "Nenhum arquivo de imagem. Use JPG, PNG, WEBP ou HEIC.",
+    "nota": ""
+  },
+  "FOT-05": {
+    "estado": "Sem chave do Gemini",
+    "categoria": "erro",
+    "hoje": "Insira sua Gemini API Key nas configurações à esquerda.",
+    "nota": "Botão “Abrir Configurações”, que abre `#configuracoes/chave` com o campo focado. A página não tem mais campo de chave."
+  },
+  "FOT-06": {
+    "estado": "Lendo 1 foto",
+    "categoria": "loading",
+    "hoje": "Analisando a imagem… / O Gemini está identificando os trechos marcados",
+    "nota": "Com “Cancelar” ao lado (lista fechada)."
+  },
+  "FOT-07": {
+    "estado": "Lendo várias fotos",
+    "categoria": "loading",
+    "hoje": "Processando imagem 2 de 5…",
+    "nota": "Com “Cancelar”. “Adicionando ao histórico de frases…” (enganoso) some."
+  },
+  "FOT-08": {
+    "estado": "Fotos esperando na fila",
+    "categoria": "status",
+    "hoje": "+2 fotos na fila aguardando / Processando foto... 2 na fila · pode arrastar mais!",
+    "nota": ""
+  },
+  "FOT-09": {
+    "estado": "Contagem de resultados",
+    "categoria": "status",
+    "hoje": "Total acumulado: 1 trecho prontos para salvar",
+    "nota": "Frase, não trecho (glossário)."
+  },
+  "FOT-10": {
+    "estado": "Nenhuma marcação encontrada",
+    "categoria": "vazio",
+    "hoje": "Não encontrei trechos marcados nesta imagem. / …",
+    "nota": "Só quando a leitura funcionou; se a API falhou, é o FOT-11 (C2). Título em negrito e o texto embaixo, e com várias fotos lidas, “nestas fotos”, como no protótipo."
+  },
+  "FOT-11": {
+    "estado": "Gemini falhou numa foto",
+    "categoria": "erro",
+    "hoje": "Imagem 2: HTTP 429 / Erro ao processar foto: <msg em inglês>",
+    "nota": "A 2ª frase traduz a causa: chave inválida → “A chave do Gemini não funciona. Confira em Configurações.” Sem “Detalhes” (exceção à V3, decisão do dono). Com frases na tela, um aviso só para as fotos que falharam (“Não deu para ler 3 fotos.”, com a causa da primeira); sem nenhuma frase, a coluna diz “Não deu para ler a foto” / “Não deu para ler as fotos”, com a causa embaixo, sem aviso."
+  },
+  "FOT-12": {
+    "estado": "Botão principal",
+    "categoria": "status",
+    "hoje": "Salvar no PerpetualMiner",
+    "nota": ""
+  },
+  "FOT-13": {
+    "estado": "Nenhuma frase marcada p/ minerar",
+    "categoria": "erro",
+    "hoje": "Selecione ao menos um trecho para salvar.",
+    "nota": "É o rótulo do botão desabilitado, então vai sem ponto final (V7), como no protótipo."
+  },
+  "FOT-14": {
+    "estado": "Minerou tudo",
+    "categoria": "sucesso",
+    "hoje": "12 trecho(s) salvo(s) no PerpetualMiner!",
+    "nota": "O botão volta ao rótulo normal (hoje fica preso em “salvos!”)."
+  },
+  "FOT-15": {
+    "estado": "Minerou parte",
+    "categoria": "erro",
+    "hoje": "(não avisa)",
+    "marca": "novo",
+    "nota": "Com “Tentar de novo” nas 2 (C4)."
+  },
+  "FOT-16": {
+    "estado": "Falhou tudo",
+    "categoria": "erro",
+    "hoje": "Não foi possível salvar os trechos.",
+    "nota": ""
+  },
+  "FOT-17": {
+    "estado": "Botão Trocar Foto + Limpar Lista (juntos)",
+    "categoria": "status",
+    "hoje": "Limpar Lista / Trocar Foto",
+    "nota": ""
+  },
+  "FOT-18": {
+    "estado": "Recomeçar com resultados não minerados",
+    "categoria": "confirmação",
+    "hoje": "(sem confirmação)",
+    "marca": "novo",
+    "nota": "C9: entra na lista fechada. Sem resultados pendentes, recomeça direto."
+  },
+  "FOT-19": {
+    "estado": "Status de cada foto na fila",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "Selo por foto. “Falhou” vem com o motivo embaixo e “Tentar de novo”: a 2ª frase do FOT-11 (“O Gemini está recebendo pedidos demais; espere um minuto e tente de novo.”, “A chave do Gemini não funciona. Confira em Configurações.”) ou “Sem conexão com a internet. Confira a rede e tente de novo.”. “Sem marcações”: a leitura funcionou e não achou nada (FOT-10)."
+  },
+  "FOT-20": {
+    "estado": "Progresso da leitura",
+    "categoria": "status",
+    "hoje": "Processando imagem 2 de 5…",
+    "marca": "novo",
+    "nota": "No topo da fila de fotos, ao lado de “Cancelar”."
+  },
+  "FOT-21": {
+    "estado": "Leitura cancelada",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "Aviso informativo depois do Cancelar (lista fechada), com “Leitura cancelada.” em negrito. Singular: “1 foto ficou sem ler”. Cancelada antes de qualquer leitura, a coluna diz “Leitura cancelada” (título, sem ponto) e “Nenhuma foto chegou a ser lida.”."
+  },
+  "FOT-22": {
+    "estado": "Topo da página",
+    "categoria": "status",
+    "hoje": "Título do Livro (opcional) · Ex: Atomic Habits · Voltar ao Painel",
+    "nota": "“Livro” é o rótulo do campo do Título, que fica lembrado entre visitas; em branco, a frase vai com o Título “Físico/Livro”. “Voltar ao painel” foca a aba do painel já aberta."
+  },
+  "FOT-23": {
+    "estado": "Fila de fotos",
+    "categoria": "status",
+    "hoje": "Arraste mais fotos aqui para acumular resultados · Selecionar",
+    "nota": "O título da coluna da esquerda, a área de envio depois da 1ª foto e o botão que abre o seletor. Sem chave, a fila mostra só “Adicione a chave do Gemini para começar”, no lugar da área de envio."
+  },
+  "FOT-24": {
+    "estado": "Marcações que o Gemini lê",
+    "categoria": "status",
+    "hoje": "Marcações reconhecidas · /texto/ Barras oblíquas · …",
+    "nota": "A legenda no pé da fila (só lá, por decisão do dono)."
+  },
+  "FOT-25": {
+    "estado": "Lista de frases",
+    "categoria": "status",
+    "hoje": "Marcar todas · Desmarcar todas · Analisar Marcações",
+    "nota": "“Selecionar todas” é o checkbox único (misto se parcial). “Foto 2” abre o grupo das frases daquela foto. Uma frase já minerada fica com o selo `--ok` “Minerada” (o ✓ sai: V5) e sai do botão. “Ler marcações” é o botão da prévia de 1 foto. “As frases aparecem aqui…” continua o subtítulo do FOT-01 no mesmo parágrafo, por isso leva ponto (V7)."
+  }
 }

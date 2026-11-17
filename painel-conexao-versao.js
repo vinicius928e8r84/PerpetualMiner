@@ -2,6 +2,7 @@
 
 (function (raiz) {
   const { textoDaVoz, Veio, ConexaoAnki, ConexaoNaTela, PareamentoComOAnki, PedidoAoAnki, Abridor, AbrirOAnki, AvisoDaVersao } = raiz;
+  const { elemento } = Veio;
   const { SITUACAO } = ConexaoAnki;
   const { ESTADO } = PareamentoComOAnki;
   const { ESTADO: AVISO, EVENTO } = AvisoDaVersao;
@@ -122,13 +123,6 @@
     assinatura: '',
     desenhado: null,
   };
-
-  function elemento(tag, classe, ...filhos) {
-    const no = document.createElement(tag);
-    if (classe) no.className = classe;
-    no.append(...filhos);
-    return no;
-  }
 
   function dizer(mensagem) {
     if (!mensagem) return '';

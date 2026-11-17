@@ -2,7 +2,7 @@
 
 (function (raiz) {
   const { textoDaVoz } = raiz;
-  const { mostrarToastDeSucesso, montarAviso } = raiz.Veio;
+  const { mostrarToastDeSucesso, montarAviso, elemento } = raiz.Veio;
 
   // Gerenciar uso: a página de uso do ChatGPT, onde a pessoa vê o uso e desconecta o app (doc do Sign in with ChatGPT,
   // “Accounts and sessions” § Tracking usage; os endereços do login estão em complemento/chatgpt_oficial.py).
@@ -188,13 +188,6 @@
     b.type = 'button';
     b.addEventListener('click', () => { if (b.getAttribute('aria-disabled') !== 'true') aoUsar(); });
     return b;
-  }
-
-  function elemento(tag, classe, ...filhos) {
-    const no = document.createElement(tag);
-    no.className = classe;
-    no.append(...filhos);
-    return no;
   }
 
   document.addEventListener('DOMContentLoaded', () => {

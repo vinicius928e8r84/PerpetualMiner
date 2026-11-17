@@ -2,6 +2,7 @@
 
 (function (raiz) {
   const { textoDaVoz, Veio, Contexto, IDIOMAS, SituacaoDoEnvio } = raiz;
+  const { elemento } = Veio;
   const { ESTADO, ESPERA, AJUDA } = SituacaoDoEnvio;
 
   const ETAPAS = [
@@ -129,13 +130,6 @@
       lista.append(no);
     }
     return lista;
-  }
-
-  function elemento(tag, classe, ...filhos) {
-    const no = document.createElement(tag);
-    if (classe) no.className = classe;
-    no.append(...filhos);
-    return no;
   }
 
   function criar({ situacaoDe, estadoDoJob, esquecerOEnvio, falhaAoRetomar, tentarCriarDeNovo, continuarEnvio, redesenhar }) {

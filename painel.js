@@ -11,7 +11,7 @@ const Perigo = PerpetualMiner.Perigo;
 const Envio = PerpetualMiner.Envio;
 const { SITUACOES } = Conta;
 const { Sincronizacao, ChaveDaOpenAI } = PerpetualMiner;
-const { mostrarToastDeSucesso, abrirModal, montarAviso } = PerpetualMiner.Veio;
+const { mostrarToastDeSucesso, abrirModal, montarAviso, criar } = PerpetualMiner.Veio;
 
 const POR_PAGINA = 10;
 
@@ -774,13 +774,6 @@ function botaoIcone(icone, rotulo, acao, id, variante = '') {
   botao.title = rotulo;
   botao.append(iconeVeio(icone));
   return botao;
-}
-
-function criar(tag, classe, texto) {
-  const no = document.createElement(tag);
-  if (classe) no.className = classe;
-  if (texto != null) no.textContent = texto;
-  return no;
 }
 
 function cartaoNaLista(id) {

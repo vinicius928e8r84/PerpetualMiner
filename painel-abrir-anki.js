@@ -2,6 +2,7 @@
 
 (function (raiz) {
   const { textoDaVoz, Veio, ConexaoAnki, Shell } = raiz;
+  const { elemento } = Veio;
   const { SITUACAO } = ConexaoAnki;
   const porId = id => document.getElementById(id);
 
@@ -247,13 +248,6 @@
       rotuloDeFechar: textoDaVoz('PAI-34'),
       aoFechar: () => { estado.falha = null; partes.avisoDe = null; },
     }));
-  }
-
-  function elemento(tag, classe, ...filhos) {
-    const no = document.createElement(tag);
-    if (classe) no.className = classe;
-    no.append(...filhos);
-    return no;
   }
 
   document.addEventListener('DOMContentLoaded', iniciar);

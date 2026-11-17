@@ -2,17 +2,11 @@
 
 (function (raiz) {
   const { textoDaVoz, Veio, ConexaoAnki, PedidoAoAnki, AjustesDeEnvio } = raiz;
+  const { elemento } = Veio;
   const { PARTES_DO_TIPO_PROPRIO: PARTES, PARTES_OBRIGATORIAS: OBRIGATORIAS } = AjustesDeEnvio;
   const VOZ_DA_PARTE = {
     frase: 'BRG-45.frase', audio_da_frase: 'BRG-45.audioDaFrase', resposta: 'BRG-45.resposta', palavra: 'BRG-45.palavra', audio_da_palavra: 'BRG-45.audioDaPalavra', imagem: 'BRG-45.imagem',
   };
-
-  function elemento(tag, classe, ...filhos) {
-    const no = document.createElement(tag);
-    if (classe) no.className = classe;
-    no.append(...filhos);
-    return no;
-  }
 
   async function lerOsTipos() {
     let resposta;

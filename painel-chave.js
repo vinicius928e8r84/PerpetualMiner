@@ -2,7 +2,7 @@
 
 (function (raiz) {
   const { textoDaVoz } = raiz;
-  const { mostrarToastDeSucesso } = raiz.Veio;
+  const { mostrarToastDeSucesso, elemento } = raiz.Veio;
   const porId = id => document.getElementById(id);
 
   const estado = {
@@ -141,13 +141,6 @@
     b.type = 'button';
     b.addEventListener('click', aoUsar);
     return b;
-  }
-
-  function elemento(tag, classe, ...filhos) {
-    const no = document.createElement(tag);
-    no.className = classe;
-    no.append(...filhos);
-    return no;
   }
 
   document.addEventListener('DOMContentLoaded', iniciar);

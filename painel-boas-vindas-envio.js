@@ -2,6 +2,7 @@
 
 (function (raiz) {
   const { textoDaVoz, Veio, AjustesDeEnvio, ConexaoAnki, PedidoAoAnki, Configuracao, ehRussa } = raiz;
+  const { elemento } = Veio;
   const ESPERA_DA_LEITURA_MS = 1000;
   const ETAPAS_DO_FIM = ['completed', 'partial', 'failed'];
   const CONTEXTO_DA_FRASE_DE_TESTE = '[Contexto: Teste - Boas-vindas - Primeiro cartão]';
@@ -14,13 +15,6 @@
   const OUTRO = doCodigo(null);
 
   const esperar = ms => new Promise(resolver => setTimeout(resolver, ms));
-
-  function elemento(tag, classe, ...filhos) {
-    const no = document.createElement(tag);
-    if (classe) no.className = classe;
-    no.append(...filhos);
-    return no;
-  }
 
   function botao(variante, id, aoClicar) {
     const no = elemento('button', `veio-botao veio-botao--${variante}`, textoDaVoz(id));

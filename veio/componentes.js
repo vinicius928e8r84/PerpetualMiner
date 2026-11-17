@@ -78,6 +78,26 @@
     return svg;
   }
 
+  function elemento(tag, classe, ...filhos) {
+    const no = document.createElement(tag);
+    if (classe) no.className = classe;
+    no.append(...filhos);
+    return no;
+  }
+
+  function criar(tag, classe, texto) {
+    const no = document.createElement(tag);
+    if (classe) no.className = classe;
+    if (texto != null) no.textContent = texto;
+    return no;
+  }
+
+  function botao(variante, ...filhos) {
+    const no = elemento('button', `veio-botao ${variante}`, ...filhos);
+    no.type = 'button';
+    return no;
+  }
+
   function abrirModal(scrim, { aoFechar } = {}) {
     const dialogo = scrim.querySelector('[role="dialog"]');
     if (!dialogo) throw new Error('Um modal da Veio precisa de um [role="dialog"] dentro do scrim');
@@ -461,6 +481,9 @@
 
   raiz.Veio = {
     iconeVeio,
+    elemento,
+    criar,
+    botao,
     abrirModal,
     abrirConfirmacao,
     mostrarToastDeSucesso,

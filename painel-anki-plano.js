@@ -8,6 +8,7 @@
 // mostra (#9), com a correção das frases da Criação (#169, `correctionUsd`, só nas linhas de períodos que a tiveram) à parte da criação de cartões.
 
 (function (raiz) {
+  const { elemento } = raiz.Veio;
   const { textoDaVoz } = raiz;
 
   const PARTES = {
@@ -43,13 +44,6 @@
       }
     }
     return soma;
-  }
-
-  function elemento(tag, classe, ...filhos) {
-    const no = document.createElement(tag);
-    if (classe) no.className = classe;
-    no.append(...filhos);
-    return no;
   }
 
   function cartao(envios, dinheiro) {

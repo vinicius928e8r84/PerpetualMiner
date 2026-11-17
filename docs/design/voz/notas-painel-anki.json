@@ -1,36 +1,220 @@
 {
-  "BRG-01": "C8.",
-  "BRG-02": "",
-  "BRG-03": "2 casas; com “Mostrar custos com 4 casas” ligado no Avançado, todos os valores com 4 casas (V7).",
-  "BRG-04": "“Tentar de novo”.",
-  "BRG-07": "“Presets” sai (V6). Um card por idioma (protótipo `prototipo-ajustes-envio.html`, variante A). O Baralho é uma escolha entre os do Anki (`::` vira ›); sem a lista, um campo de texto que recusa nível vazio. A aba desatualizada (#35) é um aviso persistente com “Ver os novos”. O sotaque se escolhe pelo nome do lugar, com Ouvir ao lado.",
-  "BRG-08": "Escolha e Triagem ficam no Avançado.",
-  "BRG-09": "",
-  "BRG-10": "",
-  "BRG-11": "Botão “Tentar de novo”, com a causa em Detalhes. O Reparar Anki saiu da extensão (#152): quem conserta é o abridor, BRG-39.",
-  "BRG-12": "A primeira, com o Anki fechado (a Conexão desligada), nas três abas (Custos, Baralhos e termos, Vocabulário): o motivo vai na frente. A segunda, quando a Conexão responde com o último dado guardado.",
-  "BRG-14": "",
-  "BRG-19": "",
-  "BRG-20": "“Tentar de novo”.",
-  "BRG-21": "",
-  "BRG-22": "",
-  "BRG-23": "",
-  "BRG-24": "Tooltip honesto.",
-  "BRG-25": "Linha com o gerúndio + esqueleto (C3).",
-  "BRG-26": "Valor positivo abaixo de 1 centavo; nunca “US$ 0,00”. Com “Mostrar custos com 4 casas” ligado, mostra as 4 casas (V7), e abaixo de US$ 0,0001 diz “< US$ 0,0001”: o modelo é “< US$ {valor}”.",
-  "BRG-27": "Legenda do azulejo, em minúscula como “palavras”; o valor vira “—”. O detalhe mostra BRG-14 com “Abrir Ajustes de envio”.",
-  "BRG-28": "O período é o controle segmentado; De/Até à direita. “Todos os idiomas” é o primeiro azulejo; cada azulejo diz o código do idioma, o total e o nº de envios. “Idioma dos custos” rotula o grupo de azulejos para o leitor de tela.",
-  "BRG-29": "“Outros custos” só aparece acima de zero: com ele o total bate com a soma das partes (#9).",
-  "BRG-30": "As 4 barras de BRG-09, com % e contagem.",
-  "BRG-31": "Lista × detalhe. A etapa em andamento vem de ENV-07.",
-  "BRG-32": "Recolhido no pé da aba. As duas chaves ficam lembradas neste computador.",
-  "BRG-33": "A dica é o tooltip de Continuar envio (C8), no hover e no foco. O texto e “Ver tudo” completam o vazio BRG-22. A última é a nota no topo de Ajustes de envio enquanto a conexão está desligada.",
-  "BRG-34": "Azulejos Inglês · Russo com o nº de palavras; o baralho escolhido tem o anel de maturidade (maduros · recentes · novos) e a lista de números. “66% de maturidade” é o nome do anel. “Abrir Ajustes de envio” é a ação de BRG-14.",
-  "BRG-35": "Azulejos Inglês · Russo com o total de itens; filtros tipo e status, a busca e lista × detalhe. O texto e “Limpar busca” completam o vazio BRG-21.",
-  "BRG-37": "Com a Conexão desligada e nenhuma leitura do Baralho: no azulejo da Mineração automática (popup), em Baralhos e termos e em Vocabulário. O botão é BRG-38.",
-  "BRG-38": "Selo BRG-12 e BRG-37 de Baralhos e termos e de Vocabulário; selo POP-17 e BRG-37 do popup. Só o clique o chama; “Abrindo…” dura até o Anki responder, 2 min no máximo.",
-  "BRG-39": "O abridor conserta sem clique (#152): “Conferindo…” só aparece se o abridor demora; as duas primeiras são toast de sucesso e a faixa do Envio some quando o Anki responde. Os avisos persistentes (a Conexão sumiu, o conserto falhou e a porta 8766) trazem a causa em Detalhes: Instalar de novo leva à primeira conexão; Baixar diagnóstico baixa o que o abridor respondeu. Nada é fechado nem reaberto sem o Anki aberto pela pessoa.",
-  "BRG-40": "Acima da faixa de resumo, só com Cartão do plano no período (#159). O Envio nunca mostra valor.",
-  "BRG-41": "Acima da faixa de resumo (#160). Aviso no alto do Painel, com Ajustar teto (leva a Custos). Padrão: US$ 10.",
-  "BRG-42": "Nos Ajustes de envio (#162, o russo desde o #163). Os textos são os do #134, com o idioma em minúsculas."
+  "BRG-01": {
+    "estado": "Estado do Bridge",
+    "categoria": "status",
+    "hoje": "Online / Offline",
+    "nota": "C8."
+  },
+  "BRG-02": {
+    "estado": "Conectando",
+    "categoria": "loading",
+    "hoje": "Aguardando bridge...",
+    "nota": ""
+  },
+  "BRG-03": {
+    "estado": "Custo total",
+    "categoria": "status",
+    "hoje": "$0.0000 (também quando falhou)",
+    "nota": "2 casas; com “Mostrar custos com 4 casas” ligado no Avançado, todos os valores com 4 casas (V7)."
+  },
+  "BRG-04": {
+    "estado": "Custos falharam",
+    "categoria": "erro",
+    "hoje": "Analytics indisponivel. Verifique se o bridge esta online.",
+    "nota": "“Tentar de novo”."
+  },
+  "BRG-07": {
+    "estado": "Presets EN/RU",
+    "categoria": "status",
+    "hoje": "Presets · Salvar presets · Presets do Anki Bridge salvos.",
+    "nota": "“Presets” sai (V6). Um card por idioma (protótipo `prototipo-ajustes-envio.html`, variante A). O Baralho é uma escolha entre os do Anki (`::` vira ›); sem a lista, um campo de texto que recusa nível vazio. A aba desatualizada (#35) é um aviso persistente com “Ver os novos”. O sotaque se escolhe pelo nome do lugar, com Ouvir ao lado."
+  },
+  "BRG-08": {
+    "estado": "Métricas de custo",
+    "categoria": "status",
+    "hoje": "Cards · Imagem IA · Judge · Guard · Economia",
+    "nota": "Escolha e Triagem ficam no Avançado."
+  },
+  "BRG-09": {
+    "estado": "Origem das imagens",
+    "categoria": "status",
+    "hoje": "Google · Gerada · Pulada · Falhou · G 3 / IA 2",
+    "nota": ""
+  },
+  "BRG-10": {
+    "estado": "Lendo baralhos",
+    "categoria": "loading",
+    "hoje": "Aguardando Anki... · Atualizando Anki...",
+    "nota": ""
+  },
+  "BRG-11": {
+    "estado": "Baralhos falharam",
+    "categoria": "erro",
+    "hoje": "Cards e termos por idioma indisponiveis. Use Reparar Anki e atualize novamente.",
+    "nota": "Botão “Tentar de novo”, com a causa em Detalhes. O Reparar Anki saiu da extensão (#152): quem conserta é o abridor, BRG-39."
+  },
+  "BRG-12": {
+    "estado": "Dados antigos",
+    "categoria": "status",
+    "hoje": "Mostrando cache anterior. Atualizacao do Anki falhou: ankistats_refresh_in_progress",
+    "nota": "A primeira, com o Anki fechado (a Conexão desligada), nas três abas (Custos, Baralhos e termos, Vocabulário): o motivo vai na frente. A segunda, quando a Conexão responde com o último dado guardado."
+  },
+  "BRG-14": {
+    "estado": "Baralho não existe",
+    "categoria": "erro",
+    "hoje": "Baralho nao encontrado",
+    "nota": ""
+  },
+  "BRG-19": {
+    "estado": "Vocabulário",
+    "categoria": "loading",
+    "hoje": "Aguardando vocabulario... · Calculando vocabulario da Frente...",
+    "nota": ""
+  },
+  "BRG-20": {
+    "estado": "Vocabulário falhou",
+    "categoria": "erro",
+    "hoje": "Vocabulario indisponivel. · Nao foi possivel carregar o vocabulario.",
+    "nota": "“Tentar de novo”."
+  },
+  "BRG-21": {
+    "estado": "Vocabulário: resumo / vazio",
+    "categoria": "status",
+    "hoje": "1200 items em Ingles | mostrando 50 · Nenhum item encontrado. · So palavras / So termos",
+    "nota": ""
+  },
+  "BRG-22": {
+    "estado": "Lista de envios vazia",
+    "categoria": "vazio",
+    "hoje": "Sem jobs nesse filtro.",
+    "nota": ""
+  },
+  "BRG-23": {
+    "estado": "Diagnóstico (Avançado)",
+    "categoria": "status",
+    "hoje": "Baixar debug bundle · Debug bundle baixado. · Falha ao baixar debug bundle.",
+    "nota": ""
+  },
+  "BRG-24": {
+    "estado": "Botão atualizar",
+    "categoria": "status",
+    "hoje": "Atualizar custos (também abre o Anki)",
+    "nota": "Tooltip honesto."
+  },
+  "BRG-25": {
+    "estado": "Custos carregando",
+    "categoria": "loading",
+    "hoje": "Atualizando...",
+    "nota": "Linha com o gerúndio + esqueleto (C3)."
+  },
+  "BRG-26": {
+    "estado": "Custo abaixo de 1 centavo",
+    "categoria": "status",
+    "hoje": "$0.0042",
+    "nota": "Valor positivo abaixo de 1 centavo; nunca “US$ 0,00”. Com “Mostrar custos com 4 casas” ligado, mostra as 4 casas (V7), e abaixo de US$ 0,0001 diz “< US$ 0,0001”: o modelo é “< US$ {valor}”."
+  },
+  "BRG-27": {
+    "estado": "Azulejo do baralho que não existe",
+    "categoria": "erro",
+    "hoje": "Baralho nao encontrado | 0.0% maturidade",
+    "nota": "Legenda do azulejo, em minúscula como “palavras”; o valor vira “—”. O detalhe mostra BRG-14 com “Abrir Ajustes de envio”."
+  },
+  "BRG-28": {
+    "estado": "Custos: período e idiomas",
+    "categoria": "status",
+    "hoje": "Hoje · Mes · Tudo · select Idioma",
+    "marca": "novo",
+    "nota": "O período é o controle segmentado; De/Até à direita. “Todos os idiomas” é o primeiro azulejo; cada azulejo diz o código do idioma, o total e o nº de envios. “Idioma dos custos” rotula o grupo de azulejos para o leitor de tela."
+  },
+  "BRG-29": {
+    "estado": "Custos: faixa de resumo e partes",
+    "categoria": "status",
+    "hoje": "Frases OK · Jobs OK · (otherUsd oculto)",
+    "marca": "novo",
+    "nota": "“Outros custos” só aparece acima de zero: com ele o total bate com a soma das partes (#9)."
+  },
+  "BRG-30": {
+    "estado": "Custos: Origem das imagens",
+    "categoria": "status",
+    "hoje": "Origem das imagens · 3 imagem(ns)",
+    "marca": "novo",
+    "nota": "As 4 barras de BRG-09, com % e contagem."
+  },
+  "BRG-31": {
+    "estado": "Custos: Envios recentes",
+    "categoria": "status",
+    "hoje": "Jobs recentes · OK · Parcial · Rodando",
+    "marca": "novo",
+    "nota": "Lista × detalhe. A etapa em andamento vem de ENV-07."
+  },
+  "BRG-32": {
+    "estado": "Custos: Avançado",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "Recolhido no pé da aba. As duas chaves ficam lembradas neste computador."
+  },
+  "BRG-33": {
+    "estado": "Conexão desligada e vazio de Custos",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "A dica é o tooltip de Continuar envio (C8), no hover e no foco. O texto e “Ver tudo” completam o vazio BRG-22. A última é a nota no topo de Ajustes de envio enquanto a conexão está desligada."
+  },
+  "BRG-34": {
+    "estado": "Baralhos e termos: azulejos e detalhe",
+    "categoria": "status",
+    "hoje": "Ingles | English Mining · 3412 palavras · 2140 cards · …",
+    "marca": "novo",
+    "nota": "Azulejos Inglês · Russo com o nº de palavras; o baralho escolhido tem o anel de maturidade (maduros · recentes · novos) e a lista de números. “66% de maturidade” é o nome do anel. “Abrir Ajustes de envio” é a ação de BRG-14."
+  },
+  "BRG-35": {
+    "estado": "Vocabulário: filtros, lista e detalhe",
+    "categoria": "status",
+    "hoje": "Palavras + termos · Todas · Novas · Recentes · Maduras · Mistas · Buscar · Palavra · Termo · Cards · Visto",
+    "marca": "novo",
+    "nota": "Azulejos Inglês · Russo com o total de itens; filtros tipo e status, a busca e lista × detalhe. O texto e “Limpar busca” completam o vazio BRG-21."
+  },
+  "BRG-37": {
+    "estado": "Sem nenhuma leitura guardada",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "Com a Conexão desligada e nenhuma leitura do Baralho: no azulejo da Mineração automática (popup), em Baralhos e termos e em Vocabulário. O botão é BRG-38."
+  },
+  "BRG-38": {
+    "estado": "Botão Abrir o Anki",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "Selo BRG-12 e BRG-37 de Baralhos e termos e de Vocabulário; selo POP-17 e BRG-37 do popup. Só o clique o chama; “Abrindo…” dura até o Anki responder, 2 min no máximo."
+  },
+  "BRG-39": {
+    "estado": "Consertar sozinho",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "O abridor conserta sem clique (#152): “Conferindo…” só aparece se o abridor demora; as duas primeiras são toast de sucesso e a faixa do Envio some quando o Anki responde. Os avisos persistentes (a Conexão sumiu, o conserto falhou e a porta 8766) trazem a causa em Detalhes: Instalar de novo leva à primeira conexão; Baixar diagnóstico baixa o que o abridor respondeu. Nada é fechado nem reaberto sem o Anki aberto pela pessoa."
+  },
+  "BRG-40": {
+    "estado": "Custos: com o plano do ChatGPT",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "Acima da faixa de resumo, só com Cartão do plano no período (#159). O Envio nunca mostra valor."
+  },
+  "BRG-41": {
+    "estado": "Custos: o teto do mês",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "Acima da faixa de resumo (#160). Aviso no alto do Painel, com Ajustar teto (leva a Custos). Padrão: US$ 10."
+  },
+  "BRG-42": {
+    "estado": "Ajustes de envio: o estilo do cartão",
+    "categoria": "status",
+    "hoje": "(não existe)",
+    "marca": "novo",
+    "nota": "Nos Ajustes de envio (#162, o russo desde o #163). Os textos são os do #134, com o idioma em minúsculas."
+  }
 }

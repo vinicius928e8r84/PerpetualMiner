@@ -26,6 +26,7 @@
   ];
 
   const { textoDaVoz, Veio, Shell, ConexaoAnki, Contexto, IDIOMAS, PrimeiraConexao, PedidoAoAnki, PlanoDosCustos, SomaDosCustos } = raiz;
+  const { elemento } = Veio;
   const { numero, partes } = SomaDosCustos;
   const somar = envios => SomaDosCustos.somar(envios, ORIGENS);
   const { haQuanto } = Contexto;
@@ -599,13 +600,6 @@
       estado.diagnosticoFalhou = true;
     }
     desenhar();
-  }
-
-  function elemento(tag, classe, ...filhos) {
-    const no = document.createElement(tag);
-    if (classe) no.className = classe;
-    no.append(...filhos);
-    return no;
   }
 
   function botao(rotulo, classe, aoUsar) {

@@ -1,6 +1,7 @@
 'use strict';
 
 (function (raiz) {
+  const { elemento } = raiz.Veio;
   const { textoDaVoz, IDIOMAS } = raiz;
   const PAUSA_DA_RESPOSTA_MS = 1000;
   const NOME_DO_IDIOMA = { en: IDIOMAS.INGLES, ru: IDIOMAS.RUSSO };
@@ -8,13 +9,6 @@
   const VOZ_DO_AUDIO = { semConexao: 'ONB-21.audioSemConexao', antiga: 'ONB-21.audioAntiga', falhou: 'ONB-21.semAudio' };
 
   const lidos = new Map();
-
-  function elemento(tag, classe, ...filhos) {
-    const no = document.createElement(tag);
-    if (classe) no.className = classe;
-    no.append(...filhos);
-    return no;
-  }
 
   function botao(texto, classe, aoClicar) {
     const no = elemento('button', `veio-botao ${classe}`, texto);

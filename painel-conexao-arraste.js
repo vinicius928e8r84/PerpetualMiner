@@ -1,14 +1,8 @@
 'use strict';
 
 (function (raiz) {
+  const { elemento } = raiz.Veio;
   const { textoDaVoz } = raiz;
-
-  function elemento(tag, classe, ...filhos) {
-    const no = document.createElement(tag);
-    no.className = classe;
-    no.append(...filhos);
-    return no;
-  }
 
   function item(desenho, nome) {
     const no = elemento('span', 'pc-arraste__item', desenho);

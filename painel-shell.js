@@ -13,6 +13,7 @@
   const fimDosDestaques = new Map();
 
   const { textoDaVoz, Atalhos, Veio, ConexaoAnki, ConexaoNaTela } = raiz;
+  const { elemento } = Veio;
   const { SITUACAO } = ConexaoAnki;
   const $ = seletor => document.querySelector(seletor);
   const $$ = seletor => [...document.querySelectorAll(seletor)];
@@ -203,13 +204,6 @@
 
   function mascararChave(chave) {
     return chave.length > 8 ? chave.slice(0, 4) + MASCARA_DA_CHAVE + chave.slice(-4) : MASCARA_DA_CHAVE;
-  }
-
-  function elemento(tag, classe, ...filhos) {
-    const no = document.createElement(tag);
-    if (classe) no.className = classe;
-    no.append(...filhos);
-    return no;
   }
 
   function mostrarConexao(situacao) {

@@ -2,6 +2,7 @@
 
 (function (raiz) {
   const { textoDaVoz, Atalhos, Veio } = raiz;
+  const { elemento } = Veio;
   const { ACOES } = Atalhos;
 
   const PARTE_DO_CATALOGO = { [ACOES.LEGENDA]: 'minerarLegenda', [ACOES.SELECAO]: 'minerarSelecao' };
@@ -153,13 +154,6 @@
       linhas.get(ACOES.LEGENDA).botao.focus();
       Atalhos.restaurarAtalhosPadrao();
     }
-  }
-
-  function elemento(tag, classe, ...filhos) {
-    const no = document.createElement(tag);
-    if (classe) no.className = classe;
-    no.append(...filhos);
-    return no;
   }
 
   document.addEventListener('DOMContentLoaded', () => {
