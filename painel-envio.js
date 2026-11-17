@@ -110,6 +110,8 @@
     abrirProgresso();
     if (!await criarOsEnvios(envios, () => Boolean(progresso) || remessa.envios.some(e => e.jobId))) return;
     if (fase === FASE.PARADA) return esquecer();
+    const semResposta = envios.find(semRespostaAoCriar);
+    if (semResposta) await pedirOAnkiFechado(semResposta);
     desenharProgresso();
     acompanhar();
   }
@@ -312,12 +314,17 @@
 
   async function tentarCriarDeNovo(envio) {
     if (!FaseDaRemessa.aceita(fase, EVENTO.CRIAR)) return;
-    if (semRespostaAoCriar(envio) && await ConexaoAnki.conferir() === CONEXAO.DESLIGADA && ConexaoAnki.jaConectou()) {
-      if (!remessa?.envios.includes(envio)) return;
-      aguardandoOAbridor = envio;
-      return ankiFechado.pedir(envio.ids);
-    }
+    if (await pedirOAnkiFechado(envio)) return;
     return recomecar(() => criarEnvio(envio));
+  }
+
+  async function pedirOAnkiFechado(envio) {
+    if (!semRespostaAoCriar(envio) || await ConexaoAnki.conferir() !== CONEXAO.DESLIGADA || !ConexaoAnki.jaConectou()) return false;
+    if (remessa?.envios.includes(envio)) {
+      aguardandoOAbridor = envio;
+      await ankiFechado.pedir(envio.ids);
+    }
+    return true;
   }
 
   async function recomecar(passo) {
