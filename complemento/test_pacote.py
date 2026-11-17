@@ -173,6 +173,11 @@ class ArquivoDoComplemento(unittest.TestCase):
 CONFERE_A_VERSAO = "test_as_fontes_de_hoje_sao_as_que_a_versao_do_complemento_registrou"
 
 
+def ambiente_sem_o_do_ci(**extra):
+    """O ambiente do CI leva `PM_VERSAO_BASE` (PR) ou `PM_VERSAO_NO_LANCAMENTO` (push); os testes que rodam outro processo escolhem o seu."""
+    return dict({k: v for k, v in os.environ.items() if k not in ("PM_VERSAO_BASE", "PM_VERSAO_NO_LANCAMENTO", "SOURCE_DATE_EPOCH")}, **extra)
+
+
 def copiar_o_complemento(pasta):
     """Uma cópia limpa do complemento em `pasta`, com o `engine/` ao lado (de onde vem o motor do pacote); devolve a do complemento."""
     copia = os.path.join(pasta, "complemento")
@@ -208,7 +213,7 @@ class VersaoDoComplemento(unittest.TestCase):
             mudar(copia)
             return subprocess.run(
                 [sys.executable, "-m", "unittest", "complemento.test_pacote.VersaoDoComplemento." + CONFERE_A_VERSAO],
-                cwd=pasta, capture_output=True, text=True,
+                cwd=pasta, capture_output=True, text=True, env=ambiente_sem_o_do_ci(),
             )
 
     def test_mudar_um_arquivo_do_pacote_sem_subir_a_versao_falha_pedindo_para_subi_la(self):

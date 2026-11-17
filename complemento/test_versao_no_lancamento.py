@@ -55,5 +55,15 @@ class AVersaoFicaParaOLancamento(Casa):
         self.assertEqual(resultado.returncode, 0, resultado.stderr)
 
 
+class OPacoteComOAmbienteDoPush(unittest.TestCase):
+
+    def test_o_test_pacote_inteiro_passa(self):
+        resultado = subprocess.run(
+            [sys.executable, "-m", "unittest", "complemento.test_pacote"],
+            cwd=os.path.dirname(AQUI), capture_output=True, text=True, env=ambiente(PM_VERSAO_NO_LANCAMENTO="1"),
+        )
+        self.assertEqual(resultado.returncode, 0, resultado.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()
