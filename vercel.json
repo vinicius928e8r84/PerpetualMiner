@@ -3,5 +3,6 @@
   "buildCommand": "node preview/montar.mjs",
   "outputDirectory": "preview/dist",
   "installCommand": "echo sem dependencias",
-  "framework": null
+  "framework": null,
+  "ignoreCommand": "sh preview/ignorar-build.sh"
 }
