@@ -16,7 +16,6 @@
       passo.falha.hidden = true;
       try {
         const atuais = await AjustesDeEnvio.ler();
-        // Aceitar de novo o nível que já está salvo não grava outra versão.
         if (soSeNaoSalvo && atuais[lang].versao > 0 && atuais[lang].nivel === nivel) return;
         let resposta = await AjustesDeEnvio.salvar(lang, { ...atuais[lang], nivel }, atuais[lang].versao);
         if (!resposta.ok) resposta = await AjustesDeEnvio.salvar(lang, { ...resposta.ajustes[lang], nivel }, resposta.ajustes[lang].versao);

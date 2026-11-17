@@ -49,7 +49,6 @@
       radio.name = id;
       radio.value = nivel;
       radio.checked = rascunho.nivel === nivel;
-      // Clicar no nível que já vem marcado não dispara `change`: é a pessoa aceitando o nível mostrado.
       radio.addEventListener('click', () => { if (rascunho.nivel === nivel) aoConfirmar?.(nivel); });
       radio.addEventListener('change', () => {
         rascunho.nivel = nivel;

@@ -75,6 +75,7 @@ test('clicar no Iniciante que já vem marcado salva o nível, marca o passo e o 
   await page.goto(extensao.url('painel.html#boas-vindas/pronto'));
   await expect(card(page).getByRole('listitem').filter({ hasText: 'Escolher o nível do cartão' })).toContainText('Inglês: Iniciante');
   await expect(card(page).getByRole('listitem').filter({ hasText: 'Escolher o nível do cartão' })).not.toContainText('falta');
+  await estadoFinal(extensao, { [CHAVE]: { en: { nivel: 'iniciante', versao: 1 } } });
 });
 
 test('clicar de novo no nível já salvo não grava outra versão', async ({ page, extensao }) => {
