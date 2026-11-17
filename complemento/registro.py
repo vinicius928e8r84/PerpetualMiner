@@ -13,8 +13,9 @@ from .configuracao import NOME_DO_LOGGER
 
 
 class _ArquivoDeLog(logging.handlers.RotatingFileHandler):
-    """Abre o arquivo para cada registro e o solta logo depois (#501): no Windows um log aberto em `user_files` impede o
-    `backupUserFiles` do Anki (renomeia a pasta) e o diálogo “Atualizar Extensões” falha calado."""
+    """Abre o arquivo para cada registro e o solta logo depois (#501, #502): no Windows um log aberto em `user_files` impede o
+    `backupUserFiles` do Anki (renomeia a pasta), o diálogo “Atualizar Extensões” falha calado e o “Remover” (apagar a pasta)
+    deixa a Conexão pela metade."""
 
     def __init__(self, *args, **kwargs):
         kwargs["delay"] = True
