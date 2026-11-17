@@ -76,6 +76,16 @@ ARQUIVOS_DO_MOTOR = (
 DADA_NO_MERGE = "a versão é dada no merge (versao_no_merge.py): esta PR não mexe nela; a main e o commit de versão conferem"
 
 
+CONFERIDA_NO_LANCAMENTO = "a versão é conferida no lançamento (PM_VERSAO_NO_LANCAMENTO): o push da main não a cobra, porque a versão só chega depois do merge (versao_no_merge.py)"
+
+
+def versao_fica_para_o_lancamento():
+    """Verdadeiro no CI do push para a main (`PM_VERSAO_NO_LANCAMENTO=1`): entre o merge e o commit de versão a main está sempre
+    atrás, então cobrar o hash e o `.ankiaddon` ali deixa a main vermelha por desenho. Quem cobra é o commit de versão
+    (`versao_no_merge.py` roda tudo) e o lançamento (`.github/workflows/lancamento.yml`)."""
+    return os.environ.get("PM_VERSAO_NO_LANCAMENTO") == "1"
+
+
 def versao_vem_no_merge():
     """Verdadeiro numa PR que não mexe na versão (`PM_VERSAO_BASE` é a ponta da branch-alvo, só no CI da PR): a `VERSAO`, o
     `versoes.json` e o `.ankiaddon` ficam como na base, porque a versão é dada no merge (`versao_no_merge.py`) e os testes
