@@ -85,7 +85,7 @@ class OMotorComoPacote(unittest.TestCase):
             with open(os.path.join(pasta, "custos", "costs.jsonl"), encoding="utf-8") as arquivo:
                 custos = arquivo.read()
         self.assertEqual((salvos, falhas), (["17-0"], {}))
-        self.assertIn("<b>give up</b>", nota["front"])
+        self.assertIn("<b>gave up</b>", nota["front"])
         self.assertEqual([p[0] for p in openai.chats], ["Bearer sk-proj-chave-do-teste-0000"])
         self.assertIn('"keyword": "17-0"', custos)
         self.assertNotIn("give up", custos)
