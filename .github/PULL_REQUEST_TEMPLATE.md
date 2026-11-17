@@ -28,6 +28,12 @@ O check "Registro da PR" (.github/workflows/registro-da-pr.yml, scripts/ci/regis
    Vale o registro mais recente com a linha "Head:" deste head. Um comentário não dispara o check: publique com
    `node scripts/ci/registrar-na-pr.js revisao`, que lê o head no GitHub e roda o check de novo.
 
+   Um head novo que é só merge limpo da main sobre o head revisado (cada commit novo da branch é um merge da main, sem
+   conflito resolvido à mão nem mudança dentro do merge; scripts/ci/so-merge-da-main.js) não pede revisão nova: vale o
+   registro do head anterior. Qualquer outro commit pede. Por isso: atualize a branch com a main só quando houver conflito
+   (ou quando a main trouxer algo de que a PR precise); a main andar não é motivo, o check não exige a branch em dia.
+   A seção "Prova real" (item 3) continua valendo só para o head exato.
+
 3. Com Atenção ALTA (ou o rótulo `risco:alto`), o corpo tem também a seção abaixo, com o que foi provado no produto
    de verdade e como:
 
