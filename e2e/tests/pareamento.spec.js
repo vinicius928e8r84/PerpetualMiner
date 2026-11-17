@@ -190,6 +190,37 @@ test.describe('depois de pareado', () => {
     expect((await credencialGuardada(extensao))?.cliente).not.toBe(antes);
     await expect(ponto(page)).toHaveAttribute('data-estado', 'ligada');
   });
+
+  test('a Conexão que perdeu o navegador sem o desconectar (reinstalada, outro Anki): o Painel oferece Conectar, a credencial fica até o código do Anki valer, e o código pareia de novo', async ({ page, extensao, fakes, conexaoDoTeste }) => {
+    test.skip(Boolean(conexaoDoTeste), 'a Conexão real que não conhece o navegador responde pairing_required: provado em complemento/test_pareamento.py');
+    await abrirPainel(page, extensao, '#frases');
+    await expect(ponto(page)).toHaveAttribute('data-estado', 'ligada');
+    const antes = (await credencialGuardada(extensao))?.cliente;
+    expect(antes).toMatch(/^[0-9a-f-]{36}$/);
+
+    fakes.anki.pareamento.perderOsNavegadores();
+    await page.reload();
+
+    await expect(faixa(page)).toContainText('Conecte este navegador ao Anki');
+    await expect(conectar(page)).toBeVisible();
+    await expect(ponto(page)).toHaveAttribute('data-estado', 'a_parear');
+    await estadoFinalEm('os caminhos de pareamento que a Conexão recebeu', () => [...new Set(fakes.anki.pareamento.recebidos().map(r => r.caminho))], ['/pareamento/conferir']);
+    await estadoFinalEm('a credencial que o navegador guarda', async () => (await credencialGuardada(extensao))?.cliente, antes);
+
+    await conectar(page).click();
+    await expect(campo(page)).toBeVisible();
+    await campo(page).fill('AAA-AAA');
+    await confirmar(page).click();
+    await expect(faixa(page)).toContainText('Código errado. Restam 4 tentativas');
+    await estadoFinalEm('os navegadores que a Conexão tem pareados', () => fakes.anki.pareamento.pareados().size, 0);
+    await estadoFinalEm('a credencial que o navegador guarda', async () => (await credencialGuardada(extensao))?.cliente, antes);
+
+    await campo(page).fill(fakes.anki.pareamento.codigoNoAnki());
+    await confirmar(page).click();
+    await expect(faixa(page)).toHaveCount(0);
+    await estadoFinalEm('os navegadores que a Conexão tem pareados', () => fakes.anki.pareamento.pareados().size, 1);
+    await expect(ponto(page)).toHaveAttribute('data-estado', 'ligada');
+  });
 });
 
 test('dois perfis do Chrome pareiam cada um o seu segredo, e o Desconectar do Anki pede o código aos dois', async ({ page, extensao, segundoPerfil, fakes, conexaoDoTeste }) => {

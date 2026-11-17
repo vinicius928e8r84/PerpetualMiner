@@ -109,7 +109,7 @@ Falhas, sem exceção:
   O preço é um incômodo visível (quem insiste bloqueia o próprio Conectar por 15 minutos, e o Painel diz o texto aprovado “Algo na porta do Anki não se confirmou”). O diálogo é um
   só por vez: o pedido repetido com ele à vista não o traz de novo, e o fechado é destruído (`deleteLater`).
 - **L6. Páginas abertas:** `GET /health` (versão e perfil) e o retorno do login do ChatGPT (`/auth/callback`, navegação, protegido por `state` e PKCE) seguem sem credencial.
-- **L7. Quem digita um código que não viu:** com o Anki fechado e um impostor na 8766, o Conectar “funciona” (o impostor responde ok) e nenhum diálogo aparece no Anki; quem digita qualquer coisa pareia com o impostor, e a extensão não tem como saber. O passo “o código apareceu no Anki” é da pessoa; é ele que faz o código autenticar a Conexão. Isto vale para o navegador que **nunca** se pareou, ou que a Conexão provou ter desconectado. **Quem já tem credencial nunca é levado a digitar um código por um `401` sem prova** (um impostor o responde): a tela diz “Algo na porta do Anki não se confirmou. Nada foi enviado”, com Tentar de novo e sem Conectar, e a credencial não se apaga. Só a prova da revogação (§ 3, Reverter) devolve o navegador ao Conectar; o registro perdido não a tem (o limite acima).
+- **L7. Quem digita um código que não viu:** com o Anki fechado e um impostor na 8766, o Conectar “funciona” (o impostor responde ok) e nenhum diálogo aparece no Anki; quem digita qualquer coisa pareia com o impostor, e a extensão não tem como saber. O passo “o código apareceu no Anki” é da pessoa; é ele que faz o código autenticar a Conexão. Isto vale para o navegador que **nunca** se pareou, que a Conexão provou ter desconectado, ou que recebe `401 pairing_required` sem prova (#496): a tela diz “Conecte este navegador ao Anki”, a credencial não se apaga e só o código do Anki a troca; sem ele, nada pareia.
 
 ## 6. Provas
 
@@ -149,8 +149,8 @@ Decisões do código, para a revisão não as achar por acidente:
 - **Todo pedido assinado pede um `conferir` novo** antes de sair (leitura ou não): nenhuma sessão provada é reaproveitada.
 - **O ponto da Conexão só fica verde com a Conexão provada** (a revisão do #192): `ConexaoAnki.apresentada()` é a situação como a tela a diz (`ligada`, ou `a_parear` / `nao_confirmada`);
   o shell, o texto dele e as abas de Custos e de Baralhos e termos a usam. As outras telas seguem a situação do `/health` e ganham 401 do `pedir` nos pedidos que fazem.
-- **Quem já estava pareado e recebe `401 pairing_required` sem prova vê “não confirmada”, não “a parear”, e não há Conectar** (a revisão do #192; L7). **O `401 pairing_revoked` com a prova da
-  revogação** (o Desconectar navegadores, decisão do dono de 10/11) apaga a credencial e dá “a parear”; sem a prova, “não confirmada”.
+- **Quem já estava pareado e recebe `401 pairing_required` sem prova vê “a parear”, com Conectar, e a credencial não se apaga** (#496; L7): a Conexão reinstalada ou de outro Anki não tem o navegador, e só o código
+  que o Anki mostra o pareia de novo. **O `401 pairing_revoked` com a prova da revogação** (o Desconectar navegadores, decisão do dono de 10/11) apaga a credencial e dá “a parear”; sem a prova, “não confirmada”.
 - **O teto do código novo** (L5): três códigos esgotados seguidos bloqueiam o seguinte por 15 minutos (`429 pairing_locked`).
 - **Texto**: o único texto novo do Painel é o BRG-52 (os que o dono aprovou); o do Anki é o ANK-05 e o botão do ANK-02. “Algo na porta do Anki não se confirmou” também serve quando o Anki não
   consegue abrir o diálogo (não há texto aprovado para isso).

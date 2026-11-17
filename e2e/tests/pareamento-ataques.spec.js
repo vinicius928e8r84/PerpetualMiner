@@ -42,17 +42,20 @@ test.describe('quem não é a Conexão', () => {
     await estadoFinal(extensao, { pm_chave_openai: null });
   });
 
-  test('o impostor que responde 401 pairing_required a quem já está pareado não leva ninguém a parear sozinho: o Painel diz que a porta não se confirmou e nada de pareamento sai', async ({ page, context, extensao, fakes }) => {
+  test('o impostor que responde 401 pairing_required a quem já está pareado só leva a parear se a pessoa clicar em Conectar, e sem o código do Anki que ele não mostra nada pareia: a credencial fica', async ({ page, context, extensao, fakes }) => {
     const vistos = await impostorNaPorta(context, fakes, () => ({ status: 401, corpo: { error: 'pairing_required' } }));
     const antes = (await credencialGuardada(extensao)).cliente;
     await abrirPainel(page, extensao, '#frases');
 
-    await expect(faixa(page)).toContainText(NAO_CONFIRMOU);
-    await expect(faixa(page)).not.toContainText('Conecte este navegador ao Anki');
-    await expect(ponto(page)).toHaveAttribute('data-estado', 'nao_confirmada');
+    await expect(faixa(page)).toContainText('Conecte este navegador ao Anki');
+    await expect(ponto(page)).toHaveAttribute('data-estado', 'a_parear');
     await expect(campo(page)).toHaveCount(0);
-    await expect(conectar(page)).toHaveCount(0);
-    await estadoFinalEm('o que o impostor da porta recebeu', () => [...new Set(vistos.map(v => v.caminho))].sort(), ['/health', '/pareamento/conferir']);
+    await estadoFinalEm('o que o impostor da porta recebeu sem ninguém clicar', () => [...new Set(vistos.map(v => v.caminho))].sort(), ['/health', '/pareamento/conferir']);
+
+    await conectar(page).click();
+    await expect(faixa(page)).toContainText(NAO_CONFIRMOU);
+    await expect(campo(page)).toHaveCount(0);
+    await estadoFinalEm('o que o impostor da porta recebeu', () => [...new Set(vistos.map(v => v.caminho))].sort(), ['/health', '/pareamento/comecar', '/pareamento/conferir']);
     expect((await credencialGuardada(extensao)).cliente).toBe(antes);
   });
 });

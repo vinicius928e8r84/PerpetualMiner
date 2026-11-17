@@ -135,8 +135,9 @@ async function main() {
     const conexao = criarConexao({ impostor: async ({ caminho }) => (caminho === '/health' ? resposta(200, { ok: true, versao: '9.9.9', perfil: 'X' }) : resposta(401, { error: 'pairing_required' })) });
     const pagina = carregarAPagina(conexao);
     await parearComChaveGuardada(pagina);
-    assert.strictEqual((await pagina.Pareamento.provar(ENDERECO)).estado, 'nao_confirmada');
-    await assert.rejects(pagina.PedidoAoAnki.pedir(ENDERECO, pagina.PedidoAoAnki.chaveDaOpenAI('sk-proj-x')), /não provou/);
+    assert.strictEqual((await pagina.Pareamento.provar(ENDERECO)).estado, 'a_parear');
+    const negada = await pagina.PedidoAoAnki.pedir(ENDERECO, pagina.PedidoAoAnki.chaveDaOpenAI('sk-proj-x'));
+    igual([negada.status, await lerJson(negada)], [401, { error: 'pairing_required' }]);
     igual([...new Set(conexao.vistos.map(v => v.caminho))], ['/pareamento/conferir']);
     const antes = (await pagina.Pareamento.lerACredencial()).cliente;
     const real = criarConexao({ navegadores: [] });
