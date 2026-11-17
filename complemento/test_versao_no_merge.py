@@ -361,7 +361,7 @@ class AVersaoVemNoMerge(Casa):
         self.uma_pr_de_codigo()
         subprocess.run(
             [sys.executable, os.path.join(self.repo, "complemento", "empacotar.py"), os.path.join(self.repo, "conexao", "perpetualminer.ankiaddon")],
-            cwd=self.repo, capture_output=True, text=True, check=True,
+            cwd=self.repo, capture_output=True, text=True, check=True, env=ambiente(),
         )
         git(self.repo, "commit", "-qam", "refez o arquivo à mão")
         resultado = self.rodar(*self.TESTES, PM_VERSAO_BASE="HEAD~2")

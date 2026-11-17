@@ -6,6 +6,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { decidir } = require('./issue-da-noturna.js');
+const { lerYaml } = require('../yaml-de-workflow.js');
 
 const script = path.join(__dirname, 'issue-da-noturna.js');
 const URL_DA_EXECUCAO = 'https://github.com/dono/repo/actions/runs/42';
@@ -36,14 +37,14 @@ if (args[0] === 'issue' && args[1] === 'list') {
 }
 `, { mode: 0o755 });
 
-function rodar({ fatias, conexaoReal, aberta, falha }) {
+function rodar({ fatias, conexaoReal, complemento = 'success', aberta, falha }) {
   fs.rmSync(chamadas, { force: true });
   fs.rmSync(abertas, { force: true });
   if (aberta) fs.writeFileSync(abertas, `${aberta}\n`);
   const env = { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}` };
   delete env.GH_FALHA;
   if (falha) env.GH_FALHA = '1';
-  const r = spawnSync('node', [script, URL_DA_EXECUCAO, fatias, conexaoReal], { env, encoding: 'utf8' });
+  const r = spawnSync('node', [script, URL_DA_EXECUCAO, fatias, conexaoReal, complemento], { env, encoding: 'utf8' });
   const todas = fs.existsSync(chamadas) ? fs.readFileSync(chamadas, 'utf8').split('\n').filter(Boolean).map(l => JSON.parse(l)) : [];
   const escritas = todas.filter(a => ['create', 'comment', 'close'].includes(a[1]) && a[0] === 'issue');
   return { status: r.status, saida: r.stdout + r.stderr, todas, escritas };
@@ -97,6 +98,19 @@ const valor = (args, opcao) => args[args.indexOf(opcao) + 1];
 }
 
 {
+  const r = rodar({ fatias: 'success', conexaoReal: 'success', complemento: 'failure' });
+  assert.strictEqual(r.status, 0, r.saida);
+  assert.deepStrictEqual(r.escritas.map(a => a[1]), ['create'], 'o complemento vermelho (teste ou teto de tempo) abre a issue');
+  assert(valor(r.escritas[0], '--body').includes('complemento (Python 3.9 e 3.13): failure'));
+  assert(valor(r.escritas[0], '--body').includes('Teto de tempo'), 'o corpo diz como reconhecer o teto de tempo');
+  assert.deepStrictEqual(rodar({ fatias: 'success', conexaoReal: 'success', complemento: 'cancelled' }).escritas.map(a => a[1]), ['create']);
+  assert.deepStrictEqual(rodar({ fatias: 'success', conexaoReal: 'success', complemento: 'skipped', aberta: 7 }).todas, [], 'complemento pulado não fecha a issue');
+  const fechando = rodar({ fatias: 'success', conexaoReal: 'success', complemento: 'success', aberta: 7 });
+  assert.deepStrictEqual(fechando.escritas.map(a => [a[1], a[2]]), [['comment', '7'], ['close', '7']], 'verde nos três fecha');
+  assert.strictEqual(spawnSync('node', [script, URL_DA_EXECUCAO, 'success', 'success'], { encoding: 'utf8' }).status, 2, 'faltando o resultado do complemento é erro de uso');
+}
+
+{
   const r = rodar({ fatias: 'failure', conexaoReal: 'success' });
   const corpo = valor(r.escritas[0], '--body');
   assert(!/esta noite/i.test(corpo), 'a suíte também roda a cada push na main: o corpo não fala só de noite');
@@ -105,6 +119,19 @@ const valor = (args, opcao) => args[args.indexOf(opcao) + 1];
 
 {
   const fluxo = fs.readFileSync(path.join(__dirname, '..', '..', '.github', 'workflows', 'noturna.yml'), 'utf8');
+  const yaml = lerYaml(fluxo);
+  const passoDe = (job, texto) => yaml.jobs[job].steps.find(passo => passo.run === texto);
+  const e2e = passoDe('e2e', 'xvfb-run --auto-servernum node scripts/testar.mjs e2e -- --workers=1 $(node scripts/ci/fatias-e2e.js ${{ matrix.fatia }})');
+  assert(e2e, 'cada fatia da e2e roda nas fatias balanceadas do PR');
+  assert.strictEqual(String(e2e.env.PM_TETO_S), '420', 'cada fatia da e2e tem o teto de 7 minutos');
+  assert(!/--shard/.test(fluxo), 'um teto por fatia só diz algo se as fatias forem as balanceadas');
+  const complemento = passoDe('complemento', 'node scripts/testar.mjs complemento');
+  assert(complemento, 'a noturna roda o grupo complemento');
+  assert.strictEqual(String(complemento.env.PM_TETO_S), '360', 'o complemento tem o teto de 6 minutos');
+  assert.strictEqual(String(complemento.env.PM_VERSAO_NO_LANCAMENTO), '1', 'a versão fica para o lançamento, como no push: a main atrasada de versão não deixa a noturna vermelha');
+  const avisar = yaml.jobs.avisar;
+  assert.deepStrictEqual(String(avisar.needs).replace(/[[\]\s]/g, '').split(','), ['e2e', 'e2e-conexao-real', 'complemento'], 'a issue espera o complemento');
+  assert.strictEqual(avisar.steps.find(passo => /issue-da-noturna/.test(passo.run || '')).env.COMPLEMENTO, '${{ needs.complemento.result }}', 'a issue lê o resultado do complemento');
   assert(/^on:[\s\S]*?^ {2}push:\n {4}branches: \[main\]$/m.test(fluxo), 'a suíte inteira roda no push para a main');
   assert(/^ {2}group: noturna-\$\{\{ github\.event_name \}\}-\$\{\{ github\.ref \}\}$/m.test(fluxo), 'o grupo separa o push do cron: um push não cancela a noturna agendada');
   assert(/^ {2}cancel-in-progress: \$\{\{ github\.event_name == 'pull_request' \|\| github\.event_name == 'push' \}\}$/m.test(fluxo), 'só a execução mais nova do push segue');
