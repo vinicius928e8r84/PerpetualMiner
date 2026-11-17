@@ -17,10 +17,19 @@
 ## Passo do dono (não é feito por agente; feito: o código é 1108882947)
 
 1. Suba `conexao/perpetualminer.ankiaddon` com a conta do dono. O AnkiWeb devolve o **código** (número) da página.
-2. No repositório, troque o `package` de `complemento/manifest.json` e o `codigo` de `lib/ankiweb.js` (`{ codigo: '<número>' }`) por esse número,
-   e refaça o arquivo: `python3 complemento/empacotar.py conexao/perpetualminer.ankiaddon` com `SOURCE_DATE_EPOCH=<hora do upload, em segundos>`
-   (o `mod` do arquivo é a hora do upload; o Anki compara com ela para oferecer atualização). Suba esse arquivo de novo em “Update”, se o AnkiWeb pedir.
-3. `python3 -m unittest complemento.test_pacote` confere que o `package` do arquivo, o do manifesto e o código do painel são o mesmo número e que o `mod` é de uma hora real;
+2. No repositório, troque o `package` de `complemento/manifest.json` e o `codigo` de `lib/ankiweb.js` (`{ codigo: '<número>' }`) por esse número
+   e refaça o arquivo; suba esse arquivo de novo em “Update”, se o AnkiWeb pedir.
+   O script recusa um HEAD que não é commit verde (tag `verde/*`, ver `docs/commit-verde.md`); aqui a árvore está sendo editada, então rode com `PM_COMMIT_VERDE=ignorar`, e o arquivo que vai ao AnkiWeb sai de um commit verde, sem a variável.
+3. **Depois do upload** (de cada versão nova, também), refaça o arquivo com o `mod` que o AnkiWeb deu à página:
+   `python3 complemento/empacotar.py --mod-do-ankiweb conexao/perpetualminer.ankiaddon`. O script lê o `t=` do redirect do download do AnkiWeb
+   (o mesmo que `curl -sI 'https://ankiweb.net/shared/download/<código>?v=2.1&p=250900'` mostra na `Location`), **baixa o zip que o AnkiWeb serve** e o grava com esse número no `manifest.json`:
+   os outros bytes são os do upload (não as fontes de hoje, que a main pode ter mudado depois), então **não se sobe de novo**.
+   Se o `conexao/perpetualminer.ankiaddon` existe e leva outro código que o do AnkiWeb (o upload ainda não aconteceu, ou foi de outro arquivo), o script para e não escreve nada; o mesmo sem rede ou sem a página no ar.
+   Não use a hora do upload nem a do empacotamento: o AnkiWeb dá a sua (na #503, 49 minutos depois da do arquivo), e com qualquer outro número o Anki que instalou pelo arquivo
+   vê “atualização” para a mesma versão (no 25.09, um download inútil; no 2.1.50, o diálogo Atualizar Extensões, que falha por W2: #503).
+   Confira: o `t=` do `curl -sI` acima é o `mod` do `manifest.json` do arquivo (`python3 -c "import zipfile; print(zipfile.ZipFile('conexao/perpetualminer.ankiaddon').read('manifest.json').decode())"`).
+   Commite o arquivo refeito direto na main, como o commit de versão: uma PR não mexe no `.ankiaddon` (a regra `versoes-publicadas` a barra).
+4. `python3 -m unittest complemento.test_pacote` confere que o `package` do arquivo, o do manifesto e o código do painel são o mesmo número e que o `mod` é de uma hora real (que ele é o do AnkiWeb, só o passo 3 garante: o teste não vai à rede);
    o e2e `painel-anki-primeira-conexao` confere o código no Detalhes “O arquivo não abriu?”.
 
 ## Antes de subir uma versão

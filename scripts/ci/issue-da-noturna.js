@@ -20,31 +20,39 @@ function issueAberta() {
   return lista.length ? lista[0].number : null;
 }
 
-function relato(url, fatias, conexaoReal) {
-  return [`Execução: ${url}`, '', `- as fatias da e2e: ${fatias}`, `- a e2e com a Conexão real: ${conexaoReal}`].join('\n');
+function relato(url, fatias, conexaoReal, complemento) {
+  return [
+    `Execução: ${url}`,
+    '',
+    `- as fatias da e2e: ${fatias}`,
+    `- a e2e com a Conexão real: ${conexaoReal}`,
+    `- o complemento (Python 3.9 e 3.13): ${complemento}`,
+    '',
+    'Uma fatia da e2e que passou de 7 minutos, ou o complemento de 6, também reprova o job: o log diz "Teto de tempo".',
+  ].join('\n');
 }
 
-function principal([url, fatias, conexaoReal]) {
-  const decisao = decidir([fatias, conexaoReal]);
+function principal([url, fatias, conexaoReal, complemento]) {
+  const decisao = decidir([fatias, conexaoReal, complemento]);
   if (decisao === 'nada') {
-    console.log(`noturna ${fatias}/${conexaoReal}: nada a fazer`);
+    console.log(`noturna ${fatias}/${conexaoReal}/${complemento}: nada a fazer`);
     return;
   }
   const aberta = issueAberta();
   if (decisao === 'vermelha') {
     if (aberta) {
-      gh('issue', 'comment', String(aberta), '--body', `Continua vermelha.\n\n${relato(url, fatias, conexaoReal)}`);
+      gh('issue', 'comment', String(aberta), '--body', `Continua vermelha.\n\n${relato(url, fatias, conexaoReal, complemento)}`);
       console.log(`comentário na issue #${aberta}`);
       return;
     }
     gh('label', 'create', ROTULO, '--description', 'Suíte noturna da main vermelha', '--color', 'B60205', '--force');
     gh('issue', 'create', '--title', TITULO, '--label', ROTULO,
-      '--body', `A suíte inteira da main ficou vermelha (roda a cada push na main e toda noite). Esta issue fica aberta até a primeira execução verde, que a fecha.\n\n${relato(url, fatias, conexaoReal)}`);
+      '--body', `A suíte inteira da main ficou vermelha (roda a cada push na main e toda noite). Esta issue fica aberta até a primeira execução verde, que a fecha.\n\n${relato(url, fatias, conexaoReal, complemento)}`);
     console.log('issue aberta');
     return;
   }
   if (aberta) {
-    gh('issue', 'comment', String(aberta), '--body', `Voltou ao verde.\n\n${relato(url, fatias, conexaoReal)}`);
+    gh('issue', 'comment', String(aberta), '--body', `Voltou ao verde.\n\n${relato(url, fatias, conexaoReal, complemento)}`);
     gh('issue', 'close', String(aberta));
     console.log(`issue #${aberta} fechada`);
   }
@@ -54,8 +62,8 @@ module.exports = { decidir };
 
 if (require.main === module) {
   const argumentos = process.argv.slice(2);
-  if (argumentos.length !== 3) {
-    console.error('uso: node scripts/ci/issue-da-noturna.js <url da execução> <resultado das fatias> <resultado da Conexão real>');
+  if (argumentos.length !== 4) {
+    console.error('uso: node scripts/ci/issue-da-noturna.js <url da execução> <resultado das fatias> <resultado da Conexão real> <resultado do complemento>');
     process.exit(2);
   }
   try {
