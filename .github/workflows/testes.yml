@@ -72,6 +72,7 @@ jobs:
           PYTHON: python
           EXIGIR_PWSH: '1'
           PM_VERSAO_BASE: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+          PM_VERSAO_NO_LANCAMENTO: ${{ github.event_name == 'push' && '1' || '' }}
 
   e2e:
     name: e2e (${{ matrix.fatia }}/8)
