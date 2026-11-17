@@ -169,7 +169,7 @@ class ModDoAnkiWeb(unittest.TestCase):
 
     def test_sem_a_opcao_o_script_nao_vai_ao_ankiweb(self):
         with tempfile.TemporaryDirectory() as pasta, AnkiWebDeMentira() as ankiweb:
-            with mock.patch("sys.stdout", io.StringIO()):
+            with mock.patch("sys.stdout", io.StringIO()), mock.patch.dict(os.environ, {"PM_COMMIT_VERDE": "ignorar"}):
                 self.assertEqual(empacotar.main([os.path.join(pasta, "a.ankiaddon")], base=ankiweb.base), 0)
         self.assertEqual(ankiweb.pedidos, [])
 

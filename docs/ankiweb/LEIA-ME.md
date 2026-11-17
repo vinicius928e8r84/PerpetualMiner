@@ -19,6 +19,7 @@
 1. Suba `conexao/perpetualminer.ankiaddon` com a conta do dono. O AnkiWeb devolve o **código** (número) da página.
 2. No repositório, troque o `package` de `complemento/manifest.json` e o `codigo` de `lib/ankiweb.js` (`{ codigo: '<número>' }`) por esse número
    e refaça o arquivo; suba esse arquivo de novo em “Update”, se o AnkiWeb pedir.
+   O script recusa um HEAD que não é commit verde (tag `verde/*`, ver `docs/commit-verde.md`); aqui a árvore está sendo editada, então rode com `PM_COMMIT_VERDE=ignorar`, e o arquivo que vai ao AnkiWeb sai de um commit verde, sem a variável.
 3. **Depois do upload** (de cada versão nova, também), refaça o arquivo com o `mod` que o AnkiWeb deu à página:
    `python3 complemento/empacotar.py --mod-do-ankiweb conexao/perpetualminer.ankiaddon`. O script lê o `t=` do redirect do download do AnkiWeb
    (o mesmo que `curl -sI 'https://ankiweb.net/shared/download/<código>?v=2.1&p=250900'` mostra na `Location`), **baixa o zip que o AnkiWeb serve** e o grava com esse número no `manifest.json`:

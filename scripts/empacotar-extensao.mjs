@@ -11,6 +11,7 @@ const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 const require = createRequire(import.meta.url);
 const { arquivosDoPacote, PASTAS_QUE_NAO_SAO_RUNTIME } = require('./arquivos-do-pacote.js');
+const { conferir: conferirCommitVerde, modoDoAmbiente } = require('./ci/commit-verde.js');
 require('../lib/arquivos-da-extensao.js');
 const { arquivosDaExtensao } = globalThis.PerpetualMiner;
 
@@ -131,6 +132,10 @@ if (erros.length) {
   for (const erro of erros) console.error(`  - ${erro}`);
   process.exit(1);
 }
+
+const verde = conferirCommitVerde({ raiz: RAIZ, modo: modoDoAmbiente() });
+if (verde.mensagem) console.error(verde.mensagem);
+if (!verde.ok) process.exit(1);
 
 const saida = pastaDeSaida();
 fs.mkdirSync(saida, { recursive: true });

@@ -21,6 +21,9 @@ e o script para. É o passo 3 do dono (`docs/ankiweb/LEIA-ME.md`); sem rede ou s
 O motor de texto vem de `engine/` (`ARQUIVOS_DO_MOTOR`) e entra como a pasta `motor/` do pacote, ao lado do
 `motor/__init__.py` deste repositório (ver `motor/__init__.py`).
 
+Rodado como programa, o script confere que o HEAD é um commit verde, marcado pela suíte completa na main
+(`scripts/ci/commit-verde.js`, `docs/commit-verde.md`): sem a tag ele recusa (`PM_COMMIT_VERDE=avisar` só avisa, `ignorar` pula).
+
 A extensão entrega este arquivo num link de download (`conexao/perpetualminer.ankiaddon`, no pacote da loja).
 A versão e este arquivo são dados na hora do merge por `python3 complemento/versao_no_merge.py`, num commit só;
 `test_pacote.py` falha na main (e no commit de versão) enquanto o arquivo estiver para trás do código.
@@ -294,6 +297,22 @@ def empacotar(destino, mod=None):
     return destino
 
 
+def conferir_commit_verde(raiz=RAIZ):
+    """Confere, com `scripts/ci/commit-verde.js`, que o HEAD tem a tag de commit verde e a árvore não tem nada fora dele.
+    Sem `PM_COMMIT_VERDE` ela recusa (`False`); `avisar` só avisa e `ignorar` pula. Sem o `node` ou sem o script ela também recusa."""
+    modo = os.environ.get("PM_COMMIT_VERDE")
+    if modo == "ignorar":
+        return True
+    script = os.path.join(RAIZ, "scripts", "ci", "commit-verde.js")
+    try:
+        saiu = subprocess.run(["node", script, "conferir", "--raiz", raiz], capture_output=True, text=True)
+    except OSError:
+        print("commit sem registro de verde: não achei o node para conferir", file=sys.stderr)
+        return modo == "avisar"
+    print((saiu.stdout + saiu.stderr).strip(), file=sys.stderr)
+    return saiu.returncode == 0
+
+
 def main(argumentos, base=ANKIWEB):
     leitor = argparse.ArgumentParser(prog="empacotar.py", description=__doc__.split("\n")[0])
     leitor.add_argument("destino", nargs="?", help=".ankiaddon de saída (padrão: dist/perpetualminer.ankiaddon; com --mod-do-ankiweb, conexao/perpetualminer.ankiaddon)")
@@ -306,6 +325,8 @@ def main(argumentos, base=ANKIWEB):
             print(erro, file=sys.stderr)
             return 1
         return 0
+    if not conferir_commit_verde():
+        return 1
     print(empacotar(opcoes.destino or os.path.join(PASTA, "..", "dist", "perpetualminer.ankiaddon")))
     return 0
 
