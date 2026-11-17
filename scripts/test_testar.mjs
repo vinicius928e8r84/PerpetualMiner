@@ -172,13 +172,13 @@ echo "Ran 2 tests in 0.0s" >&2
 
   const dentro = comTeto({ PM_TETO_S: '30' });
   assert.equal(dentro.status, 0, dentro.stdout + dentro.stderr);
-  assert.match(dentro.stdout, /engine: \d+ s \(teto 30 s\)/);
+  assert.match(dentro.stdout, /engine: [\d.]+ s \(teto 30 s\)/);
   assert.doesNotMatch(dentro.stdout, /::error/);
-  assert.match(fs.readFileSync(resumo, 'utf8'), /^- engine: \d+ s \(teto 30 s\)$/m, 'o resumo da execução traz o tempo e o teto');
+  assert.match(fs.readFileSync(resumo, 'utf8'), /^- engine: [\d.]+ s \(teto 30 s\)$/m, 'o resumo da execução traz o tempo e o teto');
 
   const fora = comTeto({ PM_TETO_S: '1' });
   assert.equal(fora.status, 1, 'verde mas passou do teto: reprova');
-  assert.match(fora.stdout, /::error title=Teto de tempo::engine levou \d+ s, o teto é 1 s/);
+  assert.match(fora.stdout, /::error title=Teto de tempo::engine levou [\d.]+ s, o teto é 1 s/);
 
   const semTeto = comTeto({});
   assert.equal(semTeto.status, 0, 'sem PM_TETO_S nada muda');

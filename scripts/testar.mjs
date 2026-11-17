@@ -107,7 +107,7 @@ async function main(argv) {
     }
   }
   const exatos = (Date.now() - inicioDosGrupos) / 1000;
-  const segundos = Math.round(exatos);
+  const segundos = exatos.toFixed(1);
   const teto = tetoEmSegundos(process.env);
   if (teto !== null) {
     const linha = `${escolhidos.join(', ')}: ${segundos} s (teto ${teto} s)`;
