@@ -108,4 +108,79 @@
   }
 
   raiz.FaseDaRemessa = Object.freeze({ FASE, EVENTO, PRAZO_DO_PEDIDO_MS, proxima, aceita });
+
+  const INTERVALO_DA_LEITURA_MS = 2000;
+  const esperarOIntervalo = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+  function acompanhar({ jobId } = {}, { conversa = raiz.ConversaComOAnki, esperar = esperarOIntervalo, intervaloMs = INTERVALO_DA_LEITURA_MS } = {}) {
+    if (typeof jobId !== 'string' || !jobId) throw new Error('EnvioAcompanhado.acompanhar pede o jobId do Envio');
+    const { PedidoAoAnki } = raiz;
+    const ouvintes = new Set();
+    let situacao = null;
+    let pedidoEmCurso = null;
+    let lendo = false;
+    let vez = 0;
+
+    function mudarPara(nova) {
+      const antes = situacao;
+      situacao = nova;
+      if (JSON.stringify(antes) === JSON.stringify(nova)) return;
+      for (const ouvinte of [...ouvintes]) ouvinte(nova);
+    }
+
+    async function ler(minha) {
+      const desfecho = await conversa.pedir(PedidoAoAnki.verEnvio(jobId), { formato: dados => Boolean(dados.state) });
+      if (minha !== vez) return false;
+      if (desfecho.ok) mudarPara(situacaoDoEnvio({ jobId }, desfecho.dados.state));
+      else if (desfecho.codigo === 'job_not_found') mudarPara(situacaoDoEnvio({ jobId }, null, { desconhecido: true }));
+      else return false;
+      return true;
+    }
+
+    async function seguir() {
+      if (lendo) return;
+      lendo = true;
+      const minha = vez;
+      try {
+        for (;;) {
+          const leu = await ler(minha);
+          if (minha !== vez || (leu && terminou(situacao))) return;
+          await esperar(intervaloMs);
+          if (minha !== vez) return;
+        }
+      } finally {
+        if (minha === vez) lendo = false;
+      }
+    }
+
+    async function pedirDeNovo() {
+      const minha = vez;
+      const desfecho = await conversa.pedir(PedidoAoAnki.tentarEnvioDeNovo(jobId));
+      if (desfecho.ok) {
+        if (minha === vez) seguir();
+        return { ok: true };
+      }
+      if (desfecho.codigo === 'job_wiped') return { apagado: true };
+      return { falha: `POST /jobs/retry ${jobId} · ${desfecho.detalhes}` };
+    }
+
+    function tentarDeNovo() {
+      pedidoEmCurso ||= pedirDeNovo().finally(() => { pedidoEmCurso = null; });
+      return pedidoEmCurso;
+    }
+
+    function aoMudar(ouvinte) {
+      ouvintes.add(ouvinte);
+      return () => ouvintes.delete(ouvinte);
+    }
+
+    function largar() {
+      vez += 1;
+      lendo = false;
+    }
+
+    return Object.freeze({ tentarDeNovo, situacao: () => situacao, aoMudar, largar });
+  }
+
+  raiz.EnvioAcompanhado = Object.freeze({ INTERVALO_MS: INTERVALO_DA_LEITURA_MS, acompanhar });
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});
