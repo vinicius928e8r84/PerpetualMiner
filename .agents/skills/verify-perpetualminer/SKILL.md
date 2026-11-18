@@ -69,6 +69,8 @@ Which spec and which `-g` prove which feature is in `features/<feature>.md`; the
 - **Visual specs** (`*-visual.spec.js`) compare against committed Linux baselines. Run them to check for regressions, but never pass `--update-snapshots`: a new baseline needs the owner's approval (`CODING_STANDARDS.md` rule 10).
 - **Fast, non-browser checks** worth running alongside: `node scripts/testar.mjs node regras ferramentas` (from the repo root; the groups are listed in `scripts/testes.json`).
 
+Env knobs: `PM_VERIFY_ROOT` (default `/tmp/pm-verify`; keep it short: Chromium's profile socket path must stay under ~100 characters, and a deep root fails with `Socket path too long`), `PM_HEAVY_RUN` (limiter command prefix), `PM_WORKERS` (Playwright workers, default 2; use 1 on a loaded host), `HEADED=1` (show the browser; needs a display).
+
 ## Driving against the real Conexão
 
 The ordinary specs talk to `fakes.anki`, a JavaScript copy of the Conexão. For a change to the key, the account or any route that carries state, also drive the real Python owner and its HTTP, outside Anki, with `scripts/conexao-real.py` and a scratch spec: the procedure, the spec and the traps are in [`conexao-real.md`](./conexao-real.md). The e2e also has a mode for whole specs, `PM_CONEXAO=real` (fixture `conexaoDoTeste`; `.agents/skills/e2e-suite/SKILL.md`).
@@ -103,76 +105,11 @@ For the PR body, quote the `drive.sh` command, the `run.log` summary line (`N pa
 
 Stops what `drive.sh` started for that run and removes the run's scratch (`tmp/`, `pw-output/`). It **keeps `evidence/`** and prints how many files remain; confirm they are still there (`ls <run-dir>/evidence`). A normal finished run leaves nothing running; the fixture already removes each test's profile. Also delete any `zz-scratch-*.spec.js` you made and leave `git status` showing only intended changes (`e2e/test-results/` is git-ignored). Run Cleanup after a failed or interrupted run too.
 
-Safety rules the script enforces, so you can rely on them:
-
-- **Paths.** The run ID must be one plain segment (letters, digits, `. _ -`, starting with a letter or digit); the run directory must be a real directory directly under the verification root, with no symlink among `evidence`, `tmp`, `pw-output`, `drive.pid`; otherwise it refuses (exit 2) and deletes nothing.
-- **What gets stopped.** `drive.sh` runs Playwright as a job in its own process group and records the group in `drive.pid`. Cleanup stops drive.sh (only when pid, start time, exact command line and this checkout's `drive.sh` path all match the record, and the command is shaped `<interpreter> …/drive.sh <run-id> …`; a command that merely mentions `drive.sh` does not count), every process of that group, and their descendants, so it still works after drive.sh was killed or the terminal closed and the browser was left behind. Each process is signalled only while it is still the one that was collected (same start time); TERM first, then KILL for what ignores it. A stale or reused pid is reported and left alone, never killed by pid alone and never by name. A run recorded by another checkout's `drive.sh` is refused (exit 2) with nothing touched: use that checkout's `cleanup.sh`.
-- **A failed job leaves nothing behind.** When the Playwright job ends (pass or fail), `drive.sh` stops whatever it left running in its group (TERM, then KILL) before it returns, and deletes `drive.pid` only once the group is empty. If something survives KILL, `drive.sh` exits 1 and keeps `drive.pid`, so Cleanup can still find it.
-- **Survivors fail loudly.** If anything is still alive after KILL, Cleanup exits 1, names it, and keeps `drive.pid` and the scratch so a re-run retries.
-- **Re-runnable.** If Cleanup was interrupted (or the run is already clean), run the same command; it re-checks, finishes the removal and reports the evidence it kept.
-
 To throw the evidence away as well when you no longer need it: `rm -rf "${PM_VERIFY_ROOT:-/tmp/pm-verify}/<run-id>"`.
 
-## Helpers
+## Branches
 
-| Script | Invocation | Does |
-|---|---|---|
-| `scripts/doctor.sh` | `.agents/skills/verify-perpetualminer/scripts/doctor.sh` | Read-only readiness check, exit 0/1 |
-| `scripts/drive.sh` | `…/drive.sh <run-id> <playwright test args…>` | Runs specs isolated (own process group), writes evidence, refuses a used run ID, records its identity |
-| `scripts/cleanup.sh` | `…/cleanup.sh <run-id>` | Stops that run's processes (drive.sh, its job's group, descendants; identity-checked), removes scratch, keeps evidence; re-runnable; exit 1 if something survives |
-| `scripts/mapa-de-features.sh` | `PR_BODY=… …/mapa-de-features.sh origin/main` | The CI ratchet described below (§ Keeping the feature map honest); run it locally before opening a PR (exit 1 names the surfaces) |
-| `scripts/conexao-real.py` | `python3.9 …/conexao-real.py "$PWD" "$PRONTO" &` | Starts the real Conexão outside Anki on a free port (§ Driving against the real Conexão); runs until killed |
-| `scripts/lib.sh` | sourced by `drive.sh` and `cleanup.sh` | Run-id and path-containment checks, process and process-group identity |
-| `scripts/test_helpers.sh` | `.agents/skills/verify-perpetualminer/scripts/test_helpers.sh` | Tests the safety rules above and the `PM_WORKERS` count (refusals, symlinks, forged records, evidence reuse, a TERM-resistant child, a failed job that leaves a child, the feature-map ratchet, an orphaned child after `kill -9` of drive.sh, an interrupted cleanup run again, another checkout's run, re-run) with the real scripts and a stand-in for `npx`; no browser, ~60 s. Run it after touching any script |
-
-Env knobs: `PM_VERIFY_ROOT` (default `/tmp/pm-verify`; keep it short: Chromium's profile socket path must stay under ~100 characters, and a deep root fails with `Socket path too long`), `PM_HEAVY_RUN` (limiter command prefix), `PM_WORKERS` (Playwright workers, default 2; use 1 on a loaded host), `HEADED=1` (show the browser; needs a display).
-
-## Keeping the feature map honest
-
-`features/` is the maintained record of what can be verified and how. **Any PR that changes a user-facing feature or command updates its file in `features/` (add the sub-feature ID, the driving step, the proof), or says "feature map unchanged" in the PR body.** User-facing means anything a person sees or presses: panel areas and addresses, popup, overlay, shortcuts, onboarding steps, Anki send/connection screens, photo mining, Conexão routes the panel calls. CI enforces it: the `Regras` workflow runs `scripts/mapa-de-features.sh` on every PR and fails when `manifest.json`, any `*.html` in the repo root, `popup.js`, `painel*.js`, `bookreader.js`, `overlay.js`, `content.js`, `background.js`, `complemento/servidor.py` or `lib/voz/catalogo.js` changed and neither `features/` was touched nor the PR body says "feature map unchanged" (editing the body re-runs the check). A change that is not in that file list (another `lib/` module, a `popup.css` rule) is still covered by the rule above, by review. For a periodic audit use `/maintain-verification-skill`.
-
-## Platforms
-
-| | Linux (this skill) | Mac | Windows |
-|---|---|---|---|
-| Extension in Chromium | e2e harness, headless | owner | owner (Chrome 153 has no `--load-extension`: load the folder in chrome://extensions) |
-| Conexão (Python) | `scripts/conexao-real.py`, outside Anki | inside Anki (owner) | inside Anki (owner) |
-| Opener (Native Messaging, `anki-open-alone`) | none: `abridor.deste_computador` returns None; the e2e uses a fake host | registered in Chrome's host folder only | registered in HKCU\Software\Google\Chrome; found by Chrome 153 and Opera GX 136 |
-| Login item (`anki-no-login`) | none: `/abrir-com-o-computador` answers 501 `login_item_unsupported` | LaunchAgent | Startup-folder shortcut |
-| Key file mode | 0600 | 0600 | inherits the folder ACL (no 0600; see `docs/seguranca/chave-da-openai.md`) |
-
-A proof says which column it ran in. The Linux cells come from `item_de_login.deste_computador` and the opener's `deste_computador` returning None outside Mac and Windows (`test_item_de_login.py`); `conexao-real.py` is created without a login item, so it answers 501 on any system and does not prove the Linux decision. The Mac and Windows columns are facts cited from `complemento/LEIA-ME.md` and the owner's Windows run of PR 205, not something this skill proves. Owner steps for Mac/Windows: `complemento/LEIA-ME.md`.
-
-## The 8 variants of the Conexão
-
-A slice that touches the Conexão com o Anki (the key, sync, any route that carries state) is proven in each of these 8 variants, or says in writing which one does not apply and why. The same list is in `docs/design/modelo-fatia-alta.md` § 4. "Today" is how the e2e reproduces it now; "Missing" is a mode the Anki fake does not have yet.
-
-| # | Variant | Today | Missing |
-|---|---|---|---|
-| 1 | No Conexão | `fakes.anki.desligar()` (`configuracoes-ia.spec.js`: `N2:`, "com a Conexão desligada…") | |
-| 2 | Anki closed | `configuracoes-ia.spec.js -g 'K3:'`: the add-on runs inside Anki, so closed means nothing on 8766, `fakes.anki.desligar()` | |
-| 3 | Old add-on (0.1.0, unversioned state) | `configuracoes-ia.spec.js -g 'K4'` (`K4:` and `K4-delete:`), built by hand with `fakes.anki.responder('POST', '/ia/estado', …)` without `versao`; `guardarChaveNaConexao(…)` only seeds the key | an old-version mode of the fake |
-| 4 | An add-on version without the key routes | `configuracoes-ia.spec.js -g 'B1:'`, a 404 set per route with `fakes.anki.responder('POST', rota, …)` | a mode of the fake that 404s every key route |
-| 5 | Two profiles or accounts on one Conexão | `chave-autoridade.spec.js -g 'K1:'` (a second Chromium profile), `-g 'K1-delete:'`, `-g 'P1'` | |
-| 6 | Coming from `main` (legacy store, no UID) | `chave-autoridade.spec.js -g 'K2:'`, `-g 'P1 legado:'` | |
-| 7 | Lost answer or panel closed | `chave-autoridade.spec.js -g 'R1'` (`R1:` and `R1 autoridade`) | |
-| 8 | Repeated request | `chave-autoridade.spec.js -g 'K1-PC:'` | |
-
-There is no helper yet that runs one test over the variants; until it lands, name the variant in the test title or in a comment.
-
-## Known limits
-
-- The harness fakes Anki, Gemini and Google; nothing here talks to a real Anki Desktop, Gemini or Firestore.
-- The context menu, toolbar badge, midnight alarm and extension update are simulated by calling the function Chrome would call.
-- Evidence screenshots exist only where a spec calls `fotografar`; other specs leave `run.log` and `report.json`.
-- Windows is the owner's machine; this skill was proven on Linux headless Chromium, and on a Mac (macOS 15, `/bin/bash` 3.2, headless) for `doctor.sh`, `drive.sh`, `cleanup.sh`, `test_helpers.sh` and `conexao-real.py`. On the Mac `painel-frases-selecao.spec` › `Copiar frase põe o texto` fails (it pastes with Control+V). On any host, `painel-envio-estados.spec` › `na aba Custos, o Envio com as Frases apagadas` fails while the local date is not the UTC date (it dates its Envios with the real clock in UTC, and Custos asks for the local month). `.claude/skills/verify-perpetualminer` is a symlink to this directory (one canonical copy); a Windows checkout without symlink support sees a plain file there, so open `.agents/skills/verify-perpetualminer/` directly.
-- The Anki add-on (`complemento/`) is mapped in `features/ia.md` (the key), `features/anki-no-login.md` (the login item) and `features/anki.md` › `anki-open-alone` (the opener); its own tests run with `PYTHON=python3.9|python3.13 node scripts/testar.mjs complemento`. Baralhos e termos and Vocabulário: `features/anki-baralhos.md`.
-- The add-on's read side (the Anki adapter) is proven only against a fake `mw`; a real Anki is the owner's rehearsal.
-- The OpenAI key was never checked against the real OpenAI: its provider and Firestore are the repo's fakes, even in the real Conexão drive.
-- The helpers have no `--help`/`--version` of their own and no machine-readable output: usage is in each script's header comment and `drive.sh`'s Playwright output goes to the terminal as is (an AXI-style polish, not a safety issue).
-- Process ownership is proven by pid + start time + command line + process group, not by a secret token; a record forged by hand with a real process's own identity would pass. The threat model is stale or reused pids and mistakes, not an adversary writing `drive.pid`. Reuse of a pid by an unrelated process is not simulated in the tests.
-- Several checkouts sharing one `PM_VERIFY_ROOT` and one run ID collide by design (the second is refused); use distinct IDs.
-- `drive.sh` does not stop a Playwright job that moved itself out of its process group (`setsid`); Cleanup still reaches it as a descendant while a parent is alive.
-- The `--update-snapshots` rule is stated in the Drive section and in `features/README.md`; `CODING_STANDARDS.md` rule 10 owns it.
-- Known gaps from the last review, none a safety hole in normal use: a recorded process group whose leader died is accepted without a second proof, so a stale `drive.pid` plus real pid reuse could signal an unrelated group; the group id is read from the job with a 5 s wait that is not an error when it expires; `drive.sh` waits for the whole pipeline, so a child holding the job's stdout delays the post-job stop until it exits; the `setsid`-ed Chromium that Playwright launches (`detached`) is outside the group and found only as a descendant while its parent lives (a `--user-data-dir=<run>/tmp/` match would close that, not done); two `drive.sh` with the same run ID started together can both pass the single-use check; `drive.sh` exits 1 for leftover processes only when the job itself had passed; `test_helpers.sh` cases 8 and 11 use their own copy of the scripts, so `PM_SCRIPTS_DIR` does not apply to them; the feature-map step accepts the phrase "feature map unchanged" anywhere in the body and does not see a `git mv` of `complemento/servidor.py` (rename detection).
-- The upkeep ratchet is path-based: it cannot tell a user-visible change in a file outside its list (a `lib/` module, `popup.css`) from a refactor, and a PR that only declares "feature map unchanged" is trusted. It lives in the `Regras` workflow as a step, not as a rule in `scripts/regras/` (those scan file contents against a baseline; this one reads the PR's diff and body).
+- **A slice that touches the Conexão com o Anki**, or a proof that names its system: [`variantes-e-plataformas.md`](./variantes-e-plataformas.md) (the 8 variants such a slice is proven in; what Linux, Mac and Windows each prove).
+- **A PR that changes a user-facing feature or command**: [`mapa-de-features.md`](./mapa-de-features.md) (update `features/` or say "feature map unchanged"; the CI step that checks it).
+- **Changing a script in `scripts/`, or a Cleanup that refused or exited 1**: [`ajudantes.md`](./ajudantes.md) (each script, the safety rules, the known gaps).
+- **Writing what a proof does not cover**: [`limites.md`](./limites.md).
