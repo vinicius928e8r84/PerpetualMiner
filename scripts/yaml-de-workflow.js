@@ -169,4 +169,4 @@ function comandos(workflow) {
   return saida;
 }
 
-module.exports = { lerYaml, rodaNoPR, comandos, motivoDoIf };
+module.exports = { lerYaml, rodaNoPR, comandos };

@@ -131,7 +131,7 @@ async function principal([comando, ...resto]) {
   return 2;
 }
 
-module.exports = { PREFIXO, nomeDaTag, avaliar, esperados, conferir, modoDoAmbiente, tagsDoCommit };
+module.exports = { PREFIXO, nomeDaTag, avaliar, esperados, conferir, modoDoAmbiente };
 
 if (require.main === module) {
   principal(process.argv.slice(2)).then(codigo => process.exit(codigo), erro => { console.error(erro.message); process.exit(1); });

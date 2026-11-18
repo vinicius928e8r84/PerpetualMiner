@@ -110,4 +110,4 @@ async function parearComChaveGuardada(pagina, navegador = 'primeiro') {
 }
 
 
-module.exports = { ENDERECO, comoValores, criarIndexedDB, criarConexao, resposta, carregarAPagina, lerJson, igual, parear, parearComChaveGuardada };
+module.exports = { ENDERECO, comoValores, criarConexao, resposta, carregarAPagina, lerJson, igual, parear, parearComChaveGuardada };

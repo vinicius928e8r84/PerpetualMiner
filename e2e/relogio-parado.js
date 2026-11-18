@@ -22,4 +22,4 @@ async function pararRelogio(page, { em = new Date(), prazoDoTeste = 0 } = {}) {
   };
 }
 
-module.exports = { pararRelogio, montarRelogio, margemDoTeste, MARGEM_MINIMA_MS };
+module.exports = { pararRelogio, montarRelogio };

@@ -4,7 +4,6 @@ const { test, expect } = require('../fixtures');
 const { estadoFinal, estadoFinalEm } = require('../estado-final');
 const { AGORA, INGLESAS, SACK, ARM, abrirPainel, marcar, enviarAoAnki, progresso, resumo, envio, baralho, enviosCriados } = require('../apoio-do-envio');
 
-const pedidosDeCriar = fakes => fakes.anki.requisicoes.filter(r => r.caminho === '/jobs');
 const ingles = page => envio(page, /^Envio em inglês/);
 
 test.beforeEach(async ({ extensao, fakes }) => {
