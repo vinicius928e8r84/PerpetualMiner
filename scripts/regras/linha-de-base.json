@@ -66,5 +66,9 @@
     "painel.css": 2057,
     "painel.js": 639
   },
-  "sem-comentario-novo": {}
+  "sem-comentario-novo": {},
+  "html-cru": {
+    "veio/componentes.js": 1
+  },
+  "dialogo-nativo": {}
 }
