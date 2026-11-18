@@ -26,6 +26,7 @@ from .rotas_da_chave import (
 )
 from .configuracao import ENDERECO, OPENAI_BASE, OPENVERSE_BASE, VOZ_BASE
 from .colecao_vazia import SemColecao
+from .ia_dos_cartoes import IaDosCartoes
 from .modelo_dos_cartoes import ModeloDosCartoes, lista_nossa
 from .teto_do_mes import TetoDoMes
 from .perfil import PerfilFixo
@@ -291,6 +292,7 @@ class Conexao:
         self.modelos = ModeloDosCartoes(os.path.join(dados.raiz, "modelo-dos-cartoes.json"), modelos_da_ia or lista_nossa(), hoje,
                                         logger, self.chatgpt, self.cofre, openai_base,
                                         lambda: motor.config_loader.base_config()["openai"]["chat_model"])
+        self.ia = IaDosCartoes(self.chatgpt, self.cofre, self.modelos)
         self.firestore_base = firestore_base
         self.item_de_login = item_de_login
         self.atualizacao = atualizacao or Atualizacao(
@@ -304,7 +306,7 @@ class Conexao:
         self._thread_da_passagem = None
         self.fila = envio.Fila(dados, motor, logger)
         self.teto = TetoDoMes(os.path.join(dados.raiz, "teto-do-mes.json"), self.fila, hoje)
-        trabalho = envio.Trabalho(self.fila, self.colecao, self.cofre, logger, openai_base, threading.Event(), chatgpt=self.chatgpt, modelos=self.modelos,
+        trabalho = envio.Trabalho(self.fila, self.colecao, self.ia, logger, openai_base, threading.Event(),
                                   espera_do_anki=espera_do_anki, esperas_da_openai=esperas_da_openai, espera_do_plano=espera_do_plano, voz_base=voz_base,
                                   openverse_base=openverse_base, adaptador_de_imagem=adaptador_de_imagem)
         trabalho.teto, trabalho.espera_do_teto = self.teto, espera_do_teto

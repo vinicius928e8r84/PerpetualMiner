@@ -1,0 +1,53 @@
+"""A IA dos cartões como porta (C5): quem paga cada pedido pago do Envio e do Ouvir, num lugar só. A tabela etapa × situação
+(`quem_paga_a_etapa`) e o porquê de cada linha estão em `docs/design/ia-dos-cartoes.md`.
+
+A porta é a única do Envio e das rotas que lê o login do ChatGPT e o cofre para decidir quem paga. Nesta primeira fatia ela embrulha as
+funções de hoje (`modelo_dos_cartoes.credencial` e `credencial_da_imagem`) e entrega a credencial de cada etapa; quem faz o pedido
+ainda é o motor. O modelo do texto lido uma vez por Envio fica aqui (`novo_envio` o esquece)."""
+
+from .login_do_chatgpt import SEM_LOGIN
+from .modelo_dos_cartoes import CHAVE, PARADO, SEM_CHAVE, credencial, credencial_da_imagem, quem_paga
+
+TEXTO, CORRECAO, JUIZ, IMAGEM, VOZ, OUVIR = "texto", "correcao", "juiz", "imagem", "voz", "ouvir"
+PELO_PLANO = (TEXTO, CORRECAO, JUIZ)
+SO_PELA_CHAVE = (IMAGEM, VOZ, OUVIR)
+ETAPAS = PELO_PLANO + SO_PELA_CHAVE
+
+
+def quem_paga_a_etapa(etapa, login, motivo, pela_chave, tem_chave):
+    """`(PLANO | CHAVE | PARADO, o motivo do parado)` de um pedido da `etapa`. `login` e `motivo` são a `situacao()` do login;
+    `pela_chave`, o Usar a minha chave do Envio (#158); `tem_chave`, se o cofre tem a chave da OpenAI. Parado é ninguém paga: o que a
+    etapa faz então (parar o Envio, pular, seguir sem imagem ou sem voz, 409) é dela."""
+    if etapa in PELO_PLANO:
+        return quem_paga(login, motivo, pela_chave, tem_chave)
+    if etapa in SO_PELA_CHAVE:
+        return (CHAVE, None) if tem_chave else (PARADO, SEM_CHAVE)
+    raise ValueError(etapa)
+
+
+class IaDosCartoes:
+    """`login` é o `LoginDoChatGPT` (None: sem login), `cofre` o das chaves e `modelos` o `ModeloDosCartoes`."""
+
+    def __init__(self, login, cofre, modelos):
+        self._login, self._cofre, self._modelos = login, cofre, modelos
+        self._do_envio = {}
+
+    def novo_envio(self):
+        self._do_envio = {}
+
+    def pagador(self, etapa, pela_chave=False):
+        """Quem paga agora um pedido da `etapa`, pela tabela, com o login e a chave guardados neste instante."""
+        situacao = self._login.situacao() if self._login is not None else (SEM_LOGIN, None)
+        return quem_paga_a_etapa(etapa, *situacao, pela_chave, self._cofre.ler("openai") is not None)
+
+    def para_o_texto(self, pela_chave=False):
+        """O `Pagador` do texto do próximo Cartão e da correção da Criação (`modelo_dos_cartoes.credencial`)."""
+        return credencial(self._login, self._cofre, self._do_envio, self._modelos, pela_chave)
+
+    def para_a_imagem(self, pela_chave=False):
+        """`(plano do juiz, chave da triagem e da imagem gerada)` do próximo Cartão (`modelo_dos_cartoes.credencial_da_imagem`)."""
+        return credencial_da_imagem(self._login, self._cofre, self._do_envio, self._modelos, pela_chave)
+
+    def para_a_fala(self):
+        """A chave da voz de reserva e do Ouvir, ou None: o plano do ChatGPT não cobre voz."""
+        return self._cofre.ler("openai")

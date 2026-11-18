@@ -9,15 +9,15 @@ deixam as frases que faltam para o próximo Envio, sem erro. O custo vai ao `cos
 import re
 
 from . import baralhos, tipo_de_nota
-from .modelo_dos_cartoes import PARADO, credencial
+from .modelo_dos_cartoes import PARADO
 from .motor.openai_http import ErroDaOpenAI
 
 LIMITE_POR_ENVIO = 20
 
 
 class CorrecaoDaCriacao:
-    """A parte do `Trabalho` que corrige as frases da Criação. Pede `self.fila`, `self.colecao`, `self.motor`, `self.cofre`, `self.chatgpt`, `self.modelos`,
-    `self.plano`, `self.openai_base`, `self.teto` e `self.logger`."""
+    """A parte do `Trabalho` que corrige as frases da Criação. Pede `self.fila`, `self.colecao`, `self.motor`, `self.ia`,
+    `self.openai_base`, `self.teto` e `self.logger`."""
 
     def _corrigir_as_frases(self, job_id, pedido, config, parada):
         """Chamado depois do último Cartão com o código que parou o Envio, ou None: a chave que o parou não corrige nada."""
@@ -34,7 +34,7 @@ class CorrecaoDaCriacao:
         for nota in notas:
             if self.fila.estado(job_id).get("wiped") or (self.teto is not None and self.teto.chegou()):
                 return
-            chave = credencial(self.chatgpt, self.cofre, self.plano, self.modelos, self.fila.estado(job_id).get("usingKey", False))
+            chave = self.ia.para_o_texto(self.fila.estado(job_id).get("usingKey", False))
             if chave.quem == PARADO:
                 return
             chave = chave.config
