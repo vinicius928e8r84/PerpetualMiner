@@ -23,7 +23,7 @@ MAC=(ssh -o BatchMode=yes -o ConnectTimeout=15 "$HOST")
 mkdir -p "$RUN/evidence"
 
 LIMPAR='P=$1; D=$(printf %s "$P" | tr -d "[]"); case "$D" in "$2"/pm-*-??????) ;; *) echo "refused to clean $D" >&2; exit 2 ;; esac
-G=$(cat "$D/.grupo" 2>/dev/null); [ -n "$G" ] && kill -TERM -- "-$G" 2>/dev/null
+G=$(cat "$D/.grupo" 2>/dev/null); case "$G" in ""|*[!0-9]*|0|1) G= ;; esac; [ -n "$G" ] && kill -TERM -- "-$G" 2>/dev/null
 pkill -TERM -f "$P" 2>/dev/null; sleep 1; [ -n "$G" ] && kill -KILL -- "-$G" 2>/dev/null; pkill -KILL -f "$P" 2>/dev/null
 rm -rf "$D"; [ ! -e "$D" ] && echo "deleted on the Mac: $D"'
 

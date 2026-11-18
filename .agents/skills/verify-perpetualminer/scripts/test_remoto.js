@@ -67,6 +67,13 @@ try {
   assert.equal(vivos(`${mac}/pm-m3-`), '', 'a detached process whose command line names the copy is stopped');
   assert.deepEqual(restos(), []);
 
+  const kills = path.join(pasta, 'kills.log');
+  r = spawnSync('bash', [path.join(SCRIPTS, 'no-mac.sh'), 'm4', '--', 'sh', '-c', 'sleep 0.3; echo 1 > ../.grupo'],
+    { env: { ...env, 'BASH_FUNC_kill%%': `() { echo "kill $*" >> ${JSON.stringify(kills)}; }` }, encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.ok(!/ -- -1\b/.test(fs.existsSync(kills) ? fs.readFileSync(kills, 'utf8') : ''), 'a .grupo that says 1 never becomes kill -- -1, a signal to every process of the user');
+  assert.deepEqual(restos(), []);
+
   r = rodar('no-pc.sh', ['p1', '-'], 'Write-Output "olá"\n');
   assert.equal(r.status, 0, r.stdout + r.stderr);
   const ps1 = fs.readdirSync(path.join(discoC, 'Temp', 'pm-p1', 'ps'));
