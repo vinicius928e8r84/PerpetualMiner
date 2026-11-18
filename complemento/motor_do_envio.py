@@ -7,13 +7,15 @@ from .audio_do_cartao import aplicar_os_sotaques
 
 
 def motor_do_complemento():
-    """Os módulos do motor que o Envio usa: o texto, a correção da Criação, a voz e a imagem."""
+    """Os módulos do motor que o Envio usa: o texto, a correção da Criação, a voz e a imagem; e os provedores e o custo, que a IA dos cartões usa."""
     from .motor import (
-        config_loader, corrigir_frase, estilos, extract_prompts, generate_audio, generate_cards, image_pipeline, image_utils, nota_do_cartao, parser, send_to_anki)
+        config_loader, corrigir_frase, cost_tracker, estilos, extract_prompts, generate_audio, generate_cards, image_pipeline, image_utils, nota_do_cartao, parser,
+        provedores, send_to_anki)
 
     return SimpleNamespace(
-        config_loader=config_loader, corrigir_frase=corrigir_frase, estilos=estilos, extract_prompts=extract_prompts, generate_audio=generate_audio, generate_cards=generate_cards,
-        image_pipeline=image_pipeline, image_utils=image_utils, nota_do_cartao=nota_do_cartao, parser=parser, send_to_anki=send_to_anki)
+        config_loader=config_loader, corrigir_frase=corrigir_frase, cost_tracker=cost_tracker, estilos=estilos, extract_prompts=extract_prompts,
+        generate_audio=generate_audio, generate_cards=generate_cards, image_pipeline=image_pipeline, image_utils=image_utils, nota_do_cartao=nota_do_cartao,
+        parser=parser, provedores=provedores, send_to_anki=send_to_anki)
 
 
 def prompt_do_dono(fila, padrao):

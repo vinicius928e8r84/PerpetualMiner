@@ -155,16 +155,9 @@
 
     const pedidoDosCustos = PedidoAoAnki.custosDosEnvios({ de, ate });
     const pedido = `POST /analytics/jobs ${JSON.stringify(pedidoDosCustos.corpo)}`;
-    let envios = null;
-    let erro = null;
-    try {
-      const resposta = await PedidoAoAnki.pedir(ENDERECO_DA_CONEXAO, pedidoDosCustos);
-      if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
-      const { jobs } = await resposta.json();
-      envios = Array.isArray(jobs) ? jobs : [];
-    } catch (falha) {
-      erro = `${pedido} · ${falha.message}`;
-    }
+    const desfecho = await ConversaComOAnki.pedir(pedidoDosCustos);
+    const envios = desfecho.ok ? (Array.isArray(desfecho.dados.jobs) ? desfecho.dados.jobs : []) : null;
+    const erro = desfecho.ok ? null : `${pedido} · ${desfecho.status >= 300 ? `HTTP ${desfecho.status}` : desfecho.detalhes}`;
     if (leitura !== estado.leitura) return;
 
     estado.carregando = false;

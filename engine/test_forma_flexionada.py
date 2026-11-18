@@ -4,7 +4,7 @@ from pathlib import Path
 
 import generate_cards
 from parser import MiningEntry
-from test_generate_cards import GOOD_CARD, _config, _write_prompts
+from test_generate_cards import GOOD_CARD, _config, _write_prompts, roteiro
 
 
 class InflectedFormTests(unittest.TestCase):
@@ -74,19 +74,9 @@ class InflectedFormTests(unittest.TestCase):
             (root / "Output").mkdir()
             (root / "log").mkdir()
             _write_prompts(root)
-            messages = []
-            original_call_model = generate_cards._call_model
-
-            def fake_call_model(base, key, system, message, *args, **kwargs):
-                messages.append(message)
-                return responses.pop(0)
-
-            generate_cards._call_model = fake_call_model
-            failures = {}
-            try:
-                saved = generate_cards.run([MiningEntry(keywords=[keyword], phrase=phrase)], _config(root), failures=failures)
-            finally:
-                generate_cards._call_model = original_call_model
+            pedidos, failures = [], {}
+            saved = generate_cards.run([MiningEntry(keywords=[keyword], phrase=phrase)], _config(root), roteiro(*responses, pedidos=pedidos), failures=failures)
+            messages = [mensagem for _, mensagem, _ in pedidos]
             texts = [path.read_text(encoding="utf-8") for path in (root / "Output").glob("*.txt")]
         return saved, messages, texts, failures
 

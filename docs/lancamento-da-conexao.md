@@ -8,6 +8,8 @@ vermelha por isso escondia as quebras de verdade.
 Eles continuam sendo cobrados em dois lugares:
 
 - no commit de versão: `versao_no_merge.py` roda todos os testes do complemento, sem a variável;
+- na PR do commit de versão: o job `PR de versão refeita` (workflow `Regras`, `scripts/ci/pr-de-versao.js`) roda o `versao_no_merge.py`
+  do pai numa cópia do pai, com o número e o `mod` do `.ankiaddon` da PR, e falha quando a árvore que ele dá não é a do head;
 - no lançamento: o workflow `Lançamento` (`.github/workflows/lancamento.yml`, manual em Actions ou ao publicar um release) roda
   só eles, no Python 3.9 e no 3.13. Rode-o no commit que vai para a loja ou para o AnkiWeb antes de enviar
   (`docs/publicar-chrome-web-store.md`). Reprovou: falta dar a versão, `python3 complemento/versao_no_merge.py` na main.
