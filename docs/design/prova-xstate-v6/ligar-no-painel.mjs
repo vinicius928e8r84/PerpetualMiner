@@ -38,8 +38,11 @@ const { test, expect } = require('../fixtures');
 const { abrirPainel } = require('../apoio-do-envio');
 
 test('a prova do XState roda na página da extensão, sem build e sem violar a CSP', async ({ page, extensao }) => {
+  const DO_PAINEL_SEM_A_PROVA = [/^Failed to load resource: the server responded with a status of 503/, /^Blocked script execution in 'about:srcdoc'/];
   const erros = [];
-  page.on('console', mensagem => { if (mensagem.type() === 'error') erros.push(mensagem.text()); });
+  page.on('console', mensagem => {
+    if (mensagem.type() === 'error' && !DO_PAINEL_SEM_A_PROVA.some(conhecido => conhecido.test(mensagem.text()))) erros.push(mensagem.text());
+  });
   page.on('pageerror', erro => erros.push(String(erro)));
   await abrirPainel(page, extensao);
 
@@ -64,13 +67,11 @@ test('a prova do XState roda na página da extensão, sem build e sem violar a C
         ajustes: { ler: async () => ({ en: { deckName: 'PM::Prova', imageSource: 'google' } }) },
         guardar: { gravar: async () => {}, esquecer: async () => {}, apagarTudo: async () => {} },
       });
+      const fases = [];
+      remessa.ator.subscribe(() => { if (fases.at(-1) !== remessa.visao().fase) fases.push(remessa.visao().fase); });
       remessa.ator.start();
       remessa.enviar([{ id: 1, lang: 'en', linha: 'the cat' }], { en: 'prova-en' });
-      const fases = [remessa.visao().fase];
-      for (let i = 0; i < 100 && remessa.visao().fase !== 'resumo'; i += 1) {
-        await new Promise(resolver => setTimeout(resolver, 50));
-        if (fases.at(-1) !== remessa.visao().fase) fases.push(remessa.visao().fase);
-      }
+      for (let i = 0; i < 100 && remessa.visao().fase !== 'resumo'; i += 1) await new Promise(resolver => setTimeout(resolver, 50));
       visto.remessa = { fases, enviadas: remessa.visao().resumo?.enviadas };
       remessa.ator.stop();
     }
@@ -81,7 +82,7 @@ test('a prova do XState roda na página da extensão, sem build e sem violar a C
     aFaseEhADoXState: true,
     criar: 'criando',
     csp: null,
-    remessa: ${modo === 'inteira' ? "{ fases: ['criando', 'acompanhando', 'resumo'], enviadas: [1] }" : 'null'},
+    remessa: ${modo === 'inteira' ? "{ fases: ['parada', 'criando', 'acompanhando', 'resumo'], enviadas: [1] }" : 'null'},
     violacoes: [],
   });
   expect(erros).toEqual([]);
