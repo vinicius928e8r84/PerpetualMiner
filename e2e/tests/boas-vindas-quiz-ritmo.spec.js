@@ -132,6 +132,22 @@ test.describe('o resultado', () => {
   });
 });
 
+test.describe('quando a prévia do resultado não vem', () => {
+  test('o tipo de nota que sumiu do Anki: a prévia diz isso e oferece Tentar de novo, sem mandar atualizar a Conexão', async ({ page, extensao, fakes, relogioParado }) => {
+    fakes.anki.responder('POST', '/anki/card-preview', () => ({ status: 404, json: { error: 'note_type_missing' } }));
+    const relogio = await abrirOQuiz(page, extensao, relogioParado);
+    await responderAParte1(page, 'Inglês', 'iniciante');
+    await percorrer(page, 'Inglês', fakes, relogio, ['certo', 'certo', 'certo', 'certo', 'certo', 'errado']);
+
+    const previa = quiz(page, 'Inglês').locator('.previa');
+    await expect(previa).toContainText('O tipo de nota não está mais no Anki.');
+    await expect(previa).not.toContainText('Atualize a Conexão com o Anki');
+    await expect(previa.getByRole('button', { name: 'Tentar de novo' })).toBeVisible();
+    // Exceção de teste: sem-estado-guardado — a prévia só desenha o que a Conexão respondeu.
+    expect((await extensao.lerStorage(CHAVE))[CHAVE]).toBeUndefined();
+  });
+});
+
 test.describe('quando o áudio não vem', () => {
   test('com a Conexão desligada, a pergunta de áudio diz o que falta, segue respondível e Ouvir de novo toca quando ela volta', async ({ page, extensao, fakes, relogioParado }) => {
     fakes.anki.desligar();
