@@ -132,24 +132,6 @@ def record_image_pipeline(
     _append(log_dir, record)
 
 
-def record_session(
-    log_dir: str | Path,
-    n_cards: int,
-    total_cost_usd: float,
-    deck: str = "",
-    lang: str = "",
-) -> None:
-    """Append a session-level summary record."""
-    _append(log_dir, {
-        "date": date.today().isoformat(),
-        "type": "session",
-        "n_cards": n_cards,
-        "cost_usd": round(total_cost_usd, 6),
-        "deck": deck,
-        "lang": lang,
-    })
-
-
 def _append(log_dir: str | Path, record: dict) -> None:
     p = _log_path(log_dir)
     p.parent.mkdir(exist_ok=True)
