@@ -93,6 +93,21 @@ test('Usar a minha chave segue o Envio pela chave: a Conexão marca o Envio, o l
   await estadoFinal(extensao, { pm_envio: { envios: [{ ids: INGLESAS.map(f => f.id), jobId: job.jobId }] } });
 });
 
+test('Usar a minha chave que a Conexão recusa por outro motivo diz que não deu, e o Envio segue esperando o plano', async ({ page, extensao, fakes }) => {
+  const job = await planoNoLimite(page, extensao, fakes);
+  fakes.anki.responder('POST', '/jobs/usar-a-chave', () => ({ status: 409, json: { error: 'job_finished' } }));
+  const cartao = envio(page, CARTAO);
+  await expect(cartao).toContainText('Limite de uso atingido', { timeout: 20_000 });
+
+  await cartao.getByRole('button', { name: 'Usar a minha chave' }).click();
+
+  await expect(cartao).toContainText('Não deu para retomar o envio. Confira se a Conexão com o Anki está ligada.');
+  await expect(cartao.getByRole('button', { name: 'Usar a minha chave' })).toBeVisible();
+  await expect(progresso(page)).toBeVisible();
+  expect(fakes.anki.envios[0].state.usingKey).toBeUndefined();
+  await estadoFinal(extensao, { pm_envio: { envios: [{ ids: INGLESAS.map(f => f.id), jobId: job.jobId }] } });
+});
+
 test('Usar a minha chave sem chave guardada leva às Configurações da IA e o Envio segue esperando o plano', async ({ page, extensao, fakes }) => {
   const job = await planoNoLimite(page, extensao, fakes);
   const cartao = envio(page, CARTAO);

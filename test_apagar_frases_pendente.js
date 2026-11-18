@@ -6,7 +6,7 @@ globalThis.PerpetualMiner = {};
 require('./lib/pedido-ao-anki.js');
 require('./lib/envio-gravado.js');
 require('./lib/apagar-frases-pendente.js');
-const { ApagarFrasesPendente, PedidoAoAnki } = globalThis.PerpetualMiner;
+const { ApagarFrasesPendente, ConversaComOAnki } = globalThis.PerpetualMiner;
 
 const ENDERECO = 'http://127.0.0.1:8766';
 
@@ -26,12 +26,12 @@ function montar({ gravado, conexao = 'responde' }) {
       clear: async nome => alarmes.delete(nome),
     },
   };
-  const pedir = async (endereco, pedido) => {
+  const transporte = async pedido => {
     pedidos.push(`${pedido.metodo} ${pedido.caminho}`);
     if (conexao === 'fora') throw new TypeError('Failed to fetch');
-    return { ok: conexao === 'responde', status: conexao === 'responde' ? 200 : 404 };
+    return conexao === 'responde' ? { status: 200, texto: '{"ok":true}' } : { status: 404, texto: '{"error":"not_found"}' };
   };
-  const pendente = ApagarFrasesPendente.criar({ chrome, PedidoAoAnki: { ...PedidoAoAnki, pedir }, endereco: ENDERECO });
+  const pendente = ApagarFrasesPendente.criar({ chrome, conversa: ConversaComOAnki.criar({ transporte }) });
   return { chrome, armazenamento, alarmes, pedidos, pendente };
 }
 
@@ -87,7 +87,10 @@ const MARCA = { pm_envio: { envios: [], apagarFrases: true } };
     chrome.alarms.onAlarm = 'onAlarm';
     chrome.storage.onChanged = 'onChanged';
     const ouvirChrome = (evento, ouvinte) => ouvintes.push([evento, ouvinte]);
-    globalThis.PerpetualMiner.PedidoAoAnki = { ...PedidoAoAnki, pedir: async (endereco, pedido) => { pedidos.push(`${pedido.metodo} ${pedido.caminho}`); return { ok: true }; } };
+    globalThis.PerpetualMiner.PareamentoComOAnki = { pedirAssinado: async (endereco, pedido) => {
+      pedidos.push(`${pedido.metodo} ${endereco}${pedido.caminho}`);
+      return new Response('{"ok":true}', { status: 200 });
+    } };
     ApagarFrasesPendente.ligar({ chrome, ouvirChrome, endereco: ENDERECO });
     const aguardar = () => new Promise(r => setImmediate(r));
     const ouvinte = evento => async (...args) => { ouvintes.find(([nome]) => nome === evento)[1](...args); await aguardar(); };
@@ -97,7 +100,7 @@ const MARCA = { pm_envio: { envios: [], apagarFrases: true } };
     await ouvinte('onAlarm')({ name: 'pm-virada-do-dia' });
     assert.deepStrictEqual(pedidos, [], 'outro alarme não pede nada');
     await ouvinte('onAlarm')({ name: ApagarFrasesPendente.ALARME });
-    assert.deepStrictEqual(pedidos, ['POST /jobs/apagar-frases'], 'a volta do alarme pede o apagamento');
+    assert.deepStrictEqual(pedidos, [`POST ${ENDERECO}/jobs/apagar-frases`], 'a volta do alarme pede o apagamento, assinado, ao endereço que o service worker deu');
     assert.strictEqual('pm_envio' in armazenamento, false, 'e a Conexão confirmou: a marca sai');
 
     armazenamento.pm_envio = MARCA.pm_envio;

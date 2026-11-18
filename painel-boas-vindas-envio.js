@@ -1,7 +1,7 @@
 'use strict';
 
 (function (raiz) {
-  const { textoDaVoz, Veio, AjustesDeEnvio, ConexaoAnki, PedidoAoAnki, Configuracao, ehRussa } = raiz;
+  const { textoDaVoz, Veio, AjustesDeEnvio, ConversaComOAnki, PedidoAoAnki, Configuracao, ehRussa } = raiz;
   const { elemento } = Veio;
   const ESPERA_DA_LEITURA_MS = 1000;
   const ETAPAS_DO_FIM = ['completed', 'partial', 'failed'];
@@ -21,15 +21,6 @@
     no.type = 'button';
     no.addEventListener('click', aoClicar);
     return no;
-  }
-
-  async function chamar(pedido) {
-    try {
-      const resposta = await PedidoAoAnki.pedir(ConexaoAnki.ENDERECO, pedido);
-      return { ok: resposta.ok, status: resposta.status, json: await resposta.json().catch(() => ({})) };
-    } catch {
-      return { semResposta: true };
-    }
   }
 
   function motivoDoEnvio(estado) {
@@ -84,7 +75,7 @@
     }
 
     async function abrirNoAnki(guid, erro) {
-      const resposta = await chamar(PedidoAoAnki.abrirNoAnki(guid));
+      const resposta = await ConversaComOAnki.pedir(PedidoAoAnki.abrirNoAnki(guid));
       erro.replaceChildren(...(resposta.ok ? [] : [Veio.iconeVeio('alerta'), textoDaVoz('ONB-23.naoAbriu')]));
       erro.hidden = Boolean(resposta.ok);
     }
@@ -124,11 +115,11 @@
         return minha === vez ? mostrarFalha(OUTRO) : undefined;
       }
       const { corpo } = primeiro;
-      const criado = await chamar(PedidoAoAnki.criarEnvio(corpo));
+      const criado = await ConversaComOAnki.pedir(PedidoAoAnki.criarEnvio(corpo));
       if (minha !== vez) return undefined;
-      if (!criado.ok) return mostrarFalha(criado.semResposta || criado.status >= 500 ? DA_CONEXAO : OUTRO);
-      if (['failed', 'partial'].includes(criado.json.status)) {
-        const outra = await chamar(PedidoAoAnki.tentarEnvioDeNovo(corpo.jobId));
+      if (!criado.ok) return mostrarFalha(criado.motivo === ConversaComOAnki.MOTIVO.SEM_RESPOSTA || criado.status >= 500 ? DA_CONEXAO : OUTRO);
+      if (['failed', 'partial'].includes(criado.dados.status)) {
+        const outra = await ConversaComOAnki.pedir(PedidoAoAnki.tentarEnvioDeNovo(corpo.jobId));
         if (minha !== vez) return undefined;
         if (outra.status === 409) {
           await Configuracao.guardarPrimeiroEnvio(() => ({ corpo: null }));
@@ -138,10 +129,10 @@
       }
 
       for (;;) {
-        const lido = await chamar(PedidoAoAnki.verEnvio(corpo.jobId));
+        const lido = await ConversaComOAnki.pedir(PedidoAoAnki.verEnvio(corpo.jobId), { formato: dados => Boolean(dados.state) });
         if (minha !== vez) return undefined;
         if (!lido.ok) return mostrarFalha(DA_CONEXAO);
-        const { state: estado } = lido.json;
+        const { state: estado } = lido.dados;
         if (estado.status === 'completed') {
           const guid = Object.values(estado.cards || {}).find(cartao => cartao.guid)?.guid || null;
           await Configuracao.guardarPrimeiroEnvio(() => ({ chegou: true, guid }));
