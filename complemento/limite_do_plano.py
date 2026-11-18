@@ -8,12 +8,13 @@ parar a Conexão, que a encerram. Um Cartão já no Anki, ou com o texto pago, n
 """
 
 from .estado_do_envio import APAGADO, FIM, situacao
+from .ia_dos_cartoes import TEXTO
+from .modelo_dos_cartoes import CHAVE
 from .paradas_do_envio import Apagado, Interrompido
 from .teto_do_mes import PausaPeloTeto
 
 LIMITE_DO_PLANO = "chatgpt_usage_limit"  # o mesmo de `engine/openai_http.LIMITE_DO_PLANO`
 PLANO_NO_LIMITE = {"reason": "plan_limit"}
-SEM_CHAVE = "openai_key_missing"
 ENVIO_TERMINOU = "job_finished"
 
 
@@ -50,15 +51,16 @@ class LimiteDoPlano(PausaPeloTeto):
             raise Apagado()
 
 
-def usar_a_chave(fila, cofre, job_id):
+def usar_a_chave(fila, ia, job_id):
     """`POST /jobs/usar-a-chave`: (status, resposta). O que falta do Envio passa a ir pela chave da OpenAI; repetido, nada é regravado.
-    Sem chave guardada, 409 `openai_key_missing`; Envio que terminou (ou apagado), 409 `job_finished`."""
+    Se a chave não paga o texto (`ia.pagador`: sem chave guardada), 409 `openai_key_missing`; Envio que terminou (ou apagado), 409 `job_finished`."""
     with fila.tranca:
         estado = fila.estado_ou_refazer(job_id)
         if situacao(estado) in FIM + (APAGADO,):
             return 409, {"error": ENVIO_TERMINOU}
-        if not cofre.ler("openai"):
-            return 409, {"error": SEM_CHAVE}
+        quem, motivo = ia.pagador(TEXTO, pela_chave=True)
+        if quem != CHAVE:
+            return 409, {"error": motivo}
         if not estado.get("usingKey"):
             estado = fila.mudar(job_id, lambda novo: novo.update(usingKey=True))
     fila.despertador.set()

@@ -12,7 +12,6 @@ from pathlib import Path
 
 from .imagem_qt import AdaptadorQt
 from .login_do_chatgpt import SAIU
-from .modelo_dos_cartoes import credencial_da_imagem
 
 DO_PLANO_QUE_PARA = ("chatgpt_usage_limit", "chatgpt_not_eligible", "chatgpt_rejected", SAIU)
 
@@ -26,7 +25,7 @@ class ParaOEnvio(Exception):
 
 
 class ImagemDoCartao:
-    """O que o `Trabalho` faz para o Cartão ganhar imagem; usa `fila`, `motor`, `cofre`, `logger`, `openai_base`, `openverse_base`, `adaptador_de_imagem`, `chatgpt`, `plano` e `_etapa` dele."""
+    """O que o `Trabalho` faz para o Cartão ganhar imagem; usa `fila`, `motor`, `ia`, `logger`, `openai_base`, `openverse_base`, `adaptador_de_imagem` e `_etapa` dele."""
 
     def _usar_o_adaptador_de_imagem(self):
         self.motor.image_utils.usar_adaptador(self.adaptador_de_imagem or AdaptadorQt())
@@ -49,7 +48,7 @@ class ImagemDoCartao:
 
     def _escolher_a_imagem(self, pedido, config, cartao_id, conteudo, so_a_chave):
         """Os bytes do PNG escolhido para o Cartão, ou None se nenhuma imagem serviu. `so_a_chave`: Usar a minha chave (#158), o juiz também."""
-        plano, chave = credencial_da_imagem(self.chatgpt, self.cofre, self.plano, self.modelos, so_a_chave)
+        plano, chave = self.ia.para_a_imagem(so_a_chave)
         if not (plano or chave) or (pedido["imageSource"] != "1" and not chave):
             return None
         motor = self.motor

@@ -29,7 +29,7 @@ def ouvir_a_voz(conexao, corpo):
                 return 400, {"error": "invalid_request"}
             audio = voz.pedir_o_audio(conexao.voz_base, AMOSTRAS[lang], lang, corpo["sotaque"])
         else:
-            chave = conexao.cofre.ler("openai")  # só a chave: o plano do ChatGPT não cobre voz
+            chave = conexao.ia.para_a_fala()
             if not chave:
                 return 409, {"error": "openai_key_missing"}
             audio = voz_da_openai.pedir_o_audio(conexao.openai_base, chave, AMOSTRAS[lang])

@@ -161,6 +161,7 @@ _Avoid_: Presets
 
 **IA dos cartões**:
 Quem escreve o texto dos Cartões e como se paga por ele: a chave da OpenAI da pessoa (por uso) ou o plano do ChatGPT dela. A chave do Gemini é outra: só lê as fotos de Minerar de uma foto.
+_Nome no código_: `complemento/ia_dos_cartoes.py` (quem paga cada pedido)
 _Avoid_: API key, token, “chave” sem dizer de quem
 
 **Custos**:

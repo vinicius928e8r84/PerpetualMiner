@@ -35,7 +35,7 @@ def _tentar_envio_de_novo(conexao, corpo):
 
 def _usar_a_chave_no_envio(conexao, corpo):
     """O limite do plano (#158): o que falta do Envio vai pela chave da OpenAI."""
-    return _com_o_envio(corpo, conexao, lambda job_id: limite_do_plano.usar_a_chave(conexao.fila, conexao.cofre, job_id))
+    return _com_o_envio(corpo, conexao, lambda job_id: limite_do_plano.usar_a_chave(conexao.fila, conexao.ia, job_id))
 
 
 def _apagar_as_frases_dos_envios(conexao, corpo):
