@@ -32,8 +32,8 @@
 
   async function atualizarAgora() {
     if (!despachar({ tipo: EVENTO.ATUALIZAR })) return;
-    const pedido = await ConversaComOAnki.pedir(PedidoAoAnki.atualizarAConexao(), { prazoMs: 60 * 1000 });
-    const resultado = pedido.ok ? pedido.dados : { estado: 'falhou', versao: null };
+    const desfecho = await ConversaComOAnki.pedir(PedidoAoAnki.atualizarAConexao(), { prazoMs: 60 * 1000 });
+    const resultado = desfecho.ok ? desfecho.dados : { estado: 'falhou', versao: null };
     await ConexaoAnki.conferir();
     despachar({ tipo: EVENTO.ATUALIZOU, resultado });
   }

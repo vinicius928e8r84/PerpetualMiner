@@ -99,6 +99,21 @@ test('trocar o perfil numa Conexão que recusa: o aviso diz que não trocou e a 
   await estadoFinalEm('o perfil marcado na Conexão', () => fakes.anki.perfilMarcado(), 'Ana');
 });
 
+test('a chave que a Conexão recusa duas vezes por sessão vencida: a faixa diz que a Conexão não respondeu, não que a chave foi recusada, e nada é guardado', async ({ page, extensao, fakes }) => {
+  fakes.anki.responder('POST', '/ia/openai/chave', () => ({ status: 401, json: { error: 'session_expired' } }));
+  await abrirIA(page, extensao);
+  const faixa = cardDaIA(page).getByRole('alert');
+
+  await cardDaIA(page).getByRole('textbox', { name: 'Chave da OpenAI' }).fill('sk-proj-chave-de-exemplo-9f3a');
+  await cardDaIA(page).getByRole('button', { name: 'Conferir e salvar' }).click();
+
+  await expect(faixa).toContainText('A Conexão com o Anki não respondeu, e é ela que confere a chave. Ligue-a e tente de novo.');
+  await expect(causaEmDetalhes(faixa)).toHaveText('sem resposta');
+  await expect(cardDaIA(page).locator('.cfg-resumo')).toHaveText('Sem chave');
+  expect(fakes.anki.requisicoes.filter(r => r.caminho === '/ia/openai/chave')).toHaveLength(4);
+  await estadoFinalEm('a chave na Conexão', () => fakes.anki.chaveNaConexao(), null);
+});
+
 test.describe('com a permissão do abridor', () => {
   test.use({ permissaoDoAbridor: true });
 

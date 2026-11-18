@@ -119,6 +119,16 @@ async function aRespostaForaDoContrato() {
   assert.strictEqual((await respondendo(401, '{"error":"openai_key_rejected"}').pedir(pedido)).motivo, 'recusado', 'o 401 da OpenAI não é o Pareamento');
 }
 
+async function quandoOPareamentoNaoDeixaPedir() {
+  const semPedir = estado => ConversaComOAnki.criar({ transporte: async () => ({ pareamento: estado }) }).pedir(PedidoAoAnki.estadoDaIA());
+  assert.deepStrictEqual(await semPedir('a_parear'),
+    { ok: false, motivo: 'a_parear', codigo: 'pairing_required', status: 401, dados: { error: 'pairing_required' }, detalhes: 'HTTP 401 · pairing_required' },
+    'o navegador sem pareamento tem o desfecho que a Conexão daria ao pedido sem assinatura');
+  assert.deepStrictEqual(await semPedir('antiga'),
+    { ok: false, motivo: 'antiga', codigo: 'not_found', status: 404, dados: { error: 'not_found' }, detalhes: 'HTTP 404 · not_found' },
+    'a Conexão de antes do pareamento tem o desfecho de quem não conhece a rota');
+}
+
 async function soOPedidoDeUmConstrutor() {
   let pedidos = 0;
   const conversa = ConversaComOAnki.criar({ transporte: async () => { pedidos += 1; return { status: 200, texto: '{}' }; } });
@@ -205,6 +215,7 @@ async function main() {
   await cadaExemploDoContratoTemOSeuDesfecho();
   await oPrazoEAFaltaDeResposta();
   await aRespostaForaDoContrato();
+  await quandoOPareamentoNaoDeixaPedir();
   await soOPedidoDeUmConstrutor();
   await peloHttpAssinado();
   await ondeNaoHaConexaoAnki();

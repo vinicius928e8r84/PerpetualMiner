@@ -6,7 +6,7 @@ const { ehJsDaExtensao, fechamento, linhaDe, semComentariosJs } = require('./com
 
 const id = 'contrato-fechado';
 
-const conserto = 'Peça pela `PerpetualMiner.PedidoAoAnki.pedir(endereco, PedidoAoAnki.<construtor>(…))` (lib/pedido-ao-anki.js: '
+const conserto = 'Peça pela `PerpetualMiner.ConversaComOAnki.pedir(PedidoAoAnki.<construtor>(…))` (lib/pedido-ao-anki.js: '
   + '`saude`, `baralhos`, `estatisticas`, `vocabulario`); uma rota nova ganha o construtor e os exemplos dela em '
   + 'complemento/contrato/exemplos.json (o caso feliz, cada erro, cada corpo que a extensão monta) antes de a extensão pedi-la. '
   + 'Veja complemento/contrato/LEIA-ME.md § Como uma rota nova entra.';
@@ -59,7 +59,7 @@ function verificar(arquivo, fonte, raiz = process.cwd()) {
     const detalhe = rota === '' || rota.startsWith(':id')
       ? `fetch direto à Conexão com o caminho vindo de uma variável (${metodo}): o contrato não tem como conferir o pedido`
       : rotas.has(`${metodo} ${rota}`)
-      ? `fetch direto a ${metodo} ${rota}, que o contrato tem: peça por PedidoAoAnki.pedir com o construtor dele`
+      ? `fetch direto a ${metodo} ${rota}, que o contrato tem: peça por ConversaComOAnki.pedir com o construtor dele`
       : `fetch direto a ${metodo} ${rota}: a rota não tem exemplo no contrato (complemento/contrato/exemplos.json)`;
     achados.push({ linha: linhaDe(codigo, m.index), detalhe });
   }

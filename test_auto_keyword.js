@@ -149,14 +149,15 @@ async function russianManualSaveDoesNotAutoKeyword() {
 async function baralhoGravadoQueNaoRespondeNaoViraVocabularioVazio() {
   const pedidos = [];
   const respostas = {
-    CIMV: { ok: false, status: 503, json: async () => ({}) },
-    'PerpetualMiner::Inglês': { ok: true, status: 200, json: async () => ({ words: [], source: 'anki' }) },
+    CIMV: { status: 503, texto: '{}' },
+    'PerpetualMiner::Inglês': { status: 200, texto: '{"words":[],"source":"anki"}' },
   };
   const storage = { ankiBridgePresets: { en: { deckName: 'CIMV' } } };
   const context = loadBackground(storage);
   context.PerpetualMiner.PareamentoComOAnki = {
     pedirAssinado: async (endereco, pedido, opcoes, enviar) => enviar(endereco, pedido, JSON.stringify(pedido.corpo), opcoes),
   };
+  context.AbortSignal = AbortSignal;
   context.fetch = async (_url, opcoes) => {
     const { deck } = JSON.parse(opcoes.body);
     pedidos.push(deck);
