@@ -2,7 +2,7 @@
 
 const { test, expect } = require('../fixtures');
 const { estadoFinal, estadoFinalEm } = require('../estado-final');
-const { AGORA, INGLESAS, SACK, ARM, abrirPainel, marcar, enviarAoAnki, progresso, resumo, envio, baralho, enviosCriados } = require('../apoio-do-envio');
+const { AGORA, INGLESAS, RUSSA, SACK, ARM, abrirPainel, marcar, enviarAoAnki, progresso, resumo, envio, baralho, toasts, marcarEEnviar, enviosCriados } = require('../apoio-do-envio');
 
 const ingles = page => envio(page, /^Envio em inglês/);
 
@@ -168,6 +168,25 @@ test('as Frases de um Envio que não concluiu são apagadas na Conexão sem o pa
     [[job.jobId, []], [novo.jobId, [SACK.id]]]);
 });
 
+test('o Tentar de novo de um Envio em parte que a Conexão recusa diz que não deu para retomar, com a causa em Detalhes e sem “Envio retomado”', async ({ page, extensao, fakes }) => {
+  await extensao.gravarStorage({ frases: [...INGLESAS, RUSSA] });
+  fakes.anki.responder('POST', '/jobs/retry', () => ({ status: 500, json: { error: 'internal_error' } }));
+  await abrirPainel(page, extensao);
+  await marcarEEnviar(page, [SACK.texto, ARM.texto, RUSSA.texto]);
+  const [emIngles, emRusso] = await enviosCriados(fakes, 2);
+  fakes.anki.moverEnvio(emRusso.jobId, { stage: 'generate_cards' });
+  fakes.anki.concluirEnvio(emIngles.jobId, { falhas: [ARM.id] });
+
+  const cartao = envio(page, 'Envio em inglês · 2 frases');
+  await expect(cartao).toContainText('Concluído em parte', { timeout: 10_000 });
+  await cartao.getByRole('button', { name: 'Tentar de novo' }).click();
+
+  await expect(cartao).toContainText('Não deu para retomar o envio. Confira se a Conexão com o Anki está ligada.');
+  await expect(cartao.locator('pre')).toContainText(`POST /jobs/retry ${emIngles.jobId} → HTTP 500`);
+  await expect(toasts(page)).toHaveCount(0);
+  await estadoFinalEm('os Envios que o painel acompanha', async () => (await extensao.lerStorage('pm_envio')).pm_envio.envios.map(e => e.jobId), [emIngles.jobId, emRusso.jobId]);
+});
+
 const custos = page => page.locator('#anki-custos');
 const naAbaCustos = () => [
   { jobId: 'job-en-falhou', lang: 'en', createdAt: new Date().toISOString(), status: 'failed', pedidas: 3, custos: { cartoes: 0.011 }, lastError: 'openai_rate_limited' },
@@ -193,4 +212,19 @@ test('na aba Custos, o Envio com as Frases apagadas diz isso e não oferece Cont
   await expect(falhou).not.toContainText('Não deu para retomar o envio');
   await expect(page.locator('.veio-toast')).toHaveCount(0);
   await estadoFinalEm('os pedidos de retomar que chegaram à Conexão', () => fakes.anki.requisicoes.filter(r => r.caminho === '/jobs/retry').map(r => r.dados?.jobId), ['job-en-falhou']);
+});
+
+// Exceção de teste: sem-estado-guardado — baixar o diagnóstico não grava nada.
+test('na aba Custos, o diagnóstico que a Conexão não entrega diz que não deu para baixar, e nada é baixado', async ({ page, extensao, fakes }) => {
+  fakes.anki.definirCustos(naAbaCustos());
+  fakes.anki.responder('POST', '/jobs/debug-bundle', () => ({ status: 404, json: { error: 'job_not_found' } }));
+  await page.goto(extensao.url('painel.html#anki/custos'));
+  await custos(page).getByText('Avançado').click();
+  let baixados = 0;
+  page.on('download', () => { baixados += 1; });
+
+  await page.locator('#anki-custos-avancado').getByRole('row', { name: /Envio em inglês/ }).getByRole('button', { name: 'Baixar diagnóstico' }).click();
+
+  await expect(page.locator('#anki-diagnostico-falha')).toHaveText('Não deu para baixar o diagnóstico.');
+  expect(baixados).toBe(0);
 });
