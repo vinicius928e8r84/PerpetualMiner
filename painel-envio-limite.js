@@ -1,7 +1,7 @@
 'use strict';
 
 (function (raiz) {
-  const { textoDaVoz, PedidoAoAnki, ConexaoAnki, ColunaDoChatGPT } = raiz;
+  const { textoDaVoz, PedidoAoAnki, ConversaComOAnki, ColunaDoChatGPT } = raiz;
   const FIM = ['completed', 'partial', 'failed'];
   const escolheram = new Set();
   const naoDeu = new Set();
@@ -22,18 +22,12 @@
     if (pedindo.has(envio.jobId)) return;
     pedindo.add(envio.jobId);
     naoDeu.delete(envio.jobId);
-    try {
-      const resposta = await PedidoAoAnki.pedir(ConexaoAnki.ENDERECO, PedidoAoAnki.usarAChaveNoEnvio(envio.jobId));
-      const dados = await resposta.json().catch(() => ({}));
-      if (resposta.ok) escolheram.add(envio.jobId);
-      else if (dados.error === 'openai_key_missing') irAoCardDaIA();
-      else naoDeu.add(envio.jobId);
-    } catch {
-      naoDeu.add(envio.jobId);
-    } finally {
-      pedindo.delete(envio.jobId);
-      redesenhar();
-    }
+    const desfecho = await ConversaComOAnki.pedir(PedidoAoAnki.usarAChaveNoEnvio(envio.jobId));
+    if (desfecho.ok) escolheram.add(envio.jobId);
+    else if (desfecho.codigo === 'openai_key_missing') irAoCardDaIA();
+    else naoDeu.add(envio.jobId);
+    pedindo.delete(envio.jobId);
+    redesenhar();
   }
 
   function pedido(envio, estado, { tentarDeNovo, falhou, redesenhar }) {

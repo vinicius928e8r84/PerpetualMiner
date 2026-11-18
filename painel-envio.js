@@ -3,14 +3,15 @@
 (function (raiz) {
   const INTERVALO = 2000;
 
-  const { textoDaVoz, Veio, Shell, ConexaoAnki, EnvioApagarFrases, ehRussa, AjustesDeEnvio, PedidoAoAnki, CartaoDoEnvio, EnvioComOAnkiFechado, SituacaoDoEnvio, FaseDaRemessa, EnvioGravado } = raiz;
+  const { textoDaVoz, Veio, Shell, ConexaoAnki, ConversaComOAnki, EnvioApagarFrases, ehRussa, AjustesDeEnvio, PedidoAoAnki, CartaoDoEnvio, EnvioComOAnkiFechado, SituacaoDoEnvio, FaseDaRemessa, EnvioGravado } = raiz;
   const { ETAPAS, nomeDoIdioma } = CartaoDoEnvio;
   const { FASE, EVENTO } = FaseDaRemessa;
   const { AREAS_DO_PAINEL } = Shell;
-  const { ENDERECO: ENDERECO_DA_CONEXAO, SITUACAO: CONEXAO } = ConexaoAnki;
+  const { SITUACAO: CONEXAO } = ConexaoAnki;
+  const { MOTIVO } = ConversaComOAnki;
   const porId = id => document.getElementById(id);
   const gravado = EnvioGravado.criar(chrome.storage.local);
-  const pedir = pedido => PedidoAoAnki.pedir(ENDERECO_DA_CONEXAO, pedido, { signal: AbortSignal.timeout(FaseDaRemessa.PRAZO_DO_PEDIDO_MS) });
+  const pedir = (pedido, formato) => ConversaComOAnki.pedir(pedido, { prazoMs: FaseDaRemessa.PRAZO_DO_PEDIDO_MS, formato });
   const { montarCartao } = CartaoDoEnvio.criar({
     situacaoDe,
     estadoDoJob,
@@ -144,19 +145,16 @@
       await gravar();
     }
     if (remessa !== aRemessaDoEnvio) return;
-    let resposta;
-    try {
-      resposta = await pedir(PedidoAoAnki.criarEnvio(envio.corpo));
-    } catch (erro) {
-      envio.falhaAoCriar = { semResposta: true, causa: `POST /jobs → ${erro.message || erro}` };
+    const desfecho = await pedir(PedidoAoAnki.criarEnvio(envio.corpo));
+    if (desfecho.motivo === MOTIVO.SEM_RESPOSTA) {
+      envio.falhaAoCriar = { semResposta: true, causa: `POST /jobs → ${desfecho.detalhes}` };
       return;
     }
-    const dados = await resposta.json().catch(() => ({}));
-    if (!resposta.ok || !dados.jobId) {
-      envio.falhaAoCriar = { semResposta: false, causa: `POST /jobs → HTTP ${resposta.status} · ${dados.error || ''}`.trim() };
+    if (!desfecho.ok || !desfecho.dados.jobId) {
+      envio.falhaAoCriar = { semResposta: false, causa: `POST /jobs → HTTP ${desfecho.status} · ${desfecho.dados?.error || ''}`.trim() };
       return;
     }
-    envio.jobId = dados.jobId;
+    envio.jobId = desfecho.dados.jobId;
     jobs.set(envio.jobId, { jobId: envio.jobId, status: 'queued', state: { status: 'queued', stage: 'queued' } });
   }
 
@@ -183,21 +181,16 @@
   }
 
   async function lerJobs() {
-    try {
-      const resposta = await pedir(PedidoAoAnki.listarEnvios());
-      if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
-      const lista = (await resposta.json()).jobs || [];
-      const porJob = new Map(lista.map(job => [job.jobId, job]));
-      for (const envio of remessa?.envios || []) {
-        if (!envio.jobId) continue;
-        const job = porJob.get(envio.jobId);
-        desconhecidos[job ? 'delete' : 'add'](envio.jobId);
-        if (job) jobs.set(envio.jobId, job);
-        else jobs.delete(envio.jobId);
-      }
-      semNoticia = false;
-    } catch {
-      semNoticia = true;
+    const desfecho = await pedir(PedidoAoAnki.listarEnvios(), dados => !dados.jobs || Array.isArray(dados.jobs));
+    semNoticia = !desfecho.ok;
+    if (semNoticia) return;
+    const porJob = new Map((desfecho.dados.jobs || []).map(job => [job.jobId, job]));
+    for (const envio of remessa?.envios || []) {
+      if (!envio.jobId) continue;
+      const job = porJob.get(envio.jobId);
+      desconhecidos[job ? 'delete' : 'add'](envio.jobId);
+      if (job) jobs.set(envio.jobId, job);
+      else jobs.delete(envio.jobId);
     }
   }
 
@@ -354,22 +347,18 @@
 
   async function retomar(envio) {
     const { jobId } = envio;
-    try {
-      const resposta = await pedir(PedidoAoAnki.tentarEnvioDeNovo(jobId));
-      const job = jobs.get(jobId);
-      falhasAoRetomar.delete(jobId);
-      // 409: as Frases dele foram apagadas na Conexão.
-      if (resposta.status === 409) {
-        jobs.set(jobId, { ...job, state: { ...job?.state, wiped: true } });
-        return false;
-      }
-      if (!resposta.ok) throw new Error(`POST /jobs/retry ${jobId} → HTTP ${resposta.status}`);
-      if (SituacaoDoEnvio.retomavel(situacaoDe(envio))) jobs.set(jobId, { ...job, status: 'queued', state: { ...job?.state, status: 'queued', stage: 'queued', progress: {}, lastError: null, ankiError: null } });
-      return true;
-    } catch (erro) {
-      falhasAoRetomar.set(jobId, String(erro.message || erro));
+    const desfecho = await pedir(PedidoAoAnki.tentarEnvioDeNovo(jobId));
+    const job = jobs.get(jobId);
+    const naoRetomou = causa => { falhasAoRetomar.set(jobId, causa); return false; };
+    if (desfecho.motivo === MOTIVO.SEM_RESPOSTA) return naoRetomou(desfecho.detalhes);
+    falhasAoRetomar.delete(jobId);
+    if (desfecho.codigo === 'job_wiped') {
+      jobs.set(jobId, { ...job, state: { ...job?.state, wiped: true } });
       return false;
     }
+    if (!desfecho.ok) return naoRetomou(`POST /jobs/retry ${jobId} → HTTP ${desfecho.status}`);
+    if (SituacaoDoEnvio.retomavel(situacaoDe(envio))) jobs.set(jobId, { ...job, status: 'queued', state: { ...job?.state, status: 'queued', stage: 'queued', progress: {}, lastError: null, ankiError: null } });
+    return true;
   }
 
   function prontoParaResumo() {

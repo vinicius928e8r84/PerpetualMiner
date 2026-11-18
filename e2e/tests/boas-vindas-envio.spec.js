@@ -284,6 +284,29 @@ test('com a Conexão fora do ar, o Cartão não foi: o motivo é a Conexão, e T
   await estadoFinal(extensao, { pm_boas_vindas: { primeiroEnvio: { corpo: { lang: 'en' } } } });
 });
 
+test('a Conexão que recusa o pedido do Envio: algo impediu o envio, e o motivo não é a Conexão', async ({ page, extensao, fakes }) => {
+  fakes.anki.responder('POST', '/jobs', () => ({ status: 400, json: { error: 'invalid_request' } }));
+  await abrirOEnvio(page, extensao, { frases: [MAIS_RECENTE] });
+
+  await expect(passo(page).getByRole('alert')).toContainText('Algo impediu o envio.');
+  await expect(passo(page).getByRole('alert')).not.toContainText('A Conexão com o Anki não respondeu');
+  await estadoFinal(extensao, { pm_boas_vindas: { primeiroEnvio: { corpo: { lang: 'en' } } } });
+});
+
+test('a Conexão que quebra ao criar o Envio, ou que não diz mais como ele vai: o motivo é a Conexão', async ({ page, extensao, fakes }) => {
+  fakes.anki.responder('POST', '/jobs', () => ({ status: 500, json: { error: 'internal_error' } }));
+  await abrirOEnvio(page, extensao, { frases: [MAIS_RECENTE] });
+  await expect(passo(page).getByRole('alert')).toContainText('A Conexão com o Anki não respondeu. Confira se ela está ligada.');
+
+  fakes.anki.pararDeResponder('POST', '/jobs');
+  fakes.anki.responder('POST', '/jobs/get', () => ({ status: 500, json: { error: 'internal_error' } }));
+  await botao(page, 'Tentar de novo').click();
+
+  await expect.poll(() => fakes.anki.requisicoes.filter(r => r.caminho === '/jobs/get').length).toBeGreaterThan(0);
+  await expect(passo(page).getByRole('alert')).toContainText('A Conexão com o Anki não respondeu. Confira se ela está ligada.');
+  await estadoFinal(extensao, { pm_boas_vindas: { primeiroEnvio: { corpo: { lang: 'en' } } } });
+});
+
 test('as outras Frases esperam no Envio: só o Cartão da mais recente vai', async ({ page, extensao, fakes }) => {
   await abrirOEnvio(page, extensao, { frases: INGLESAS });
   const [envio] = await enviosCriados(fakes, 1);
