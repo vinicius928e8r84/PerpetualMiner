@@ -66,7 +66,6 @@ Google Image Search Queries:
 def _config(root: Path) -> dict:
     return {
         "lang": "en",
-        "openai_api_key": "test",
         "openai": {"chat_model": "mock-model"},
         "paths": {
             "output_dir": str(root / "Output"),
@@ -77,6 +76,18 @@ def _config(root: Path) -> dict:
             },
         },
     }
+
+
+def roteiro(*respostas, pedidos=None):
+    """The `pedir` of a test: answers `respostas` in order (the last one again when they run out) and keeps (system, message, label) of each request."""
+    fila = list(respostas)
+
+    def pedir(sistema, mensagem, rotulo):
+        if pedidos is not None:
+            pedidos.append((sistema, mensagem, rotulo))
+        return fila.pop(0) if len(fila) > 1 else fila[0]
+
+    return pedir
 
 
 def _write_prompts(root: Path) -> None:
@@ -132,22 +143,11 @@ class GenerateCardsKeywordValidationTests(unittest.TestCase):
             _write_prompts(root)
             entry = MiningEntry(keywords=["exerts himself"], phrase="He exerts himself on brands of his own, if at all.")
             dropped = GOOD_CARD.replace("He *exerts himself* on", "*exerts himself* on")
-            responses = [dropped, GOOD_CARD]
-            messages = []
-            original_call_model = generate_cards._call_model
+            pedidos = []
+            saved = generate_cards.run([entry], _config(root), roteiro(dropped, GOOD_CARD, pedidos=pedidos))
 
-            def fake_call_model(base, key, system, message, *args, **kwargs):
-                messages.append(message)
-                return responses.pop(0)
-
-            generate_cards._call_model = fake_call_model
-            try:
-                saved = generate_cards.run([entry], _config(root))
-            finally:
-                generate_cards._call_model = original_call_model
-
-            self.assertEqual(len(messages), 2)
-            self.assertIn("every word", messages[1])
+            self.assertEqual(len(pedidos), 2)
+            self.assertIn("every word", pedidos[1][1])
             self.assertIn("Front: He *exerts himself* on", (root / "Output" / f"{saved[0]}.txt").read_text(encoding="utf-8"))
 
     def test_run_retries_keyword_mismatch_and_saves_corrected_card(self):
@@ -164,18 +164,7 @@ class GenerateCardsKeywordValidationTests(unittest.TestCase):
             )
 
             calls = []
-            responses = [BAD_CARD, GOOD_CARD]
-            original_call_model = generate_cards._call_model
-
-            def fake_call_model(*args, **kwargs):
-                calls.append(args)
-                return responses.pop(0)
-
-            generate_cards._call_model = fake_call_model
-            try:
-                saved = generate_cards.run([entry], _config(root))
-            finally:
-                generate_cards._call_model = original_call_model
+            saved = generate_cards.run([entry], _config(root), roteiro(BAD_CARD, GOOD_CARD, pedidos=calls))
 
             expected_stem = build_card_stem(
                 "exerts himself",
@@ -199,46 +188,27 @@ class GenerateCardsKeywordValidationTests(unittest.TestCase):
             )
 
             calls = []
-            original_call_model = generate_cards._call_model
-
-            def fake_call_model(*args, **kwargs):
-                calls.append(args)
-                return BAD_CARD
-
-            generate_cards._call_model = fake_call_model
-            try:
-                saved = generate_cards.run([entry], _config(root))
-            finally:
-                generate_cards._call_model = original_call_model
+            saved = generate_cards.run([entry], _config(root), roteiro(BAD_CARD, pedidos=calls))
 
             self.assertEqual(len(calls), 2)
             self.assertEqual(saved, [])
             self.assertEqual(list((root / "Output").glob("*.txt")), [])
 
-    def test_a_named_card_is_the_only_label_in_the_log_and_the_cost_record_and_only_stems_limits_the_run(self):
+    def test_a_named_card_is_the_only_label_in_the_log_and_in_the_request_and_only_stems_limits_the_run(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             (root / "Output").mkdir()
             (root / "log").mkdir()
             _write_prompts(root)
             entry = MiningEntry(keywords=["exerts himself", "toil"], phrase="He exerts himself on brands of his own, if at all.")
-            labels, original_call_model = [], generate_cards._call_model
-
-            def fake_call_model(openai_base, api_key, system_prompt, user_message, model, log_dir, keyword):
-                labels.append(keyword)
-                return GOOD_CARD
-
-            generate_cards._call_model = fake_call_model
-            try:
-                with self.assertLogs("perpetualminer.motor", level="INFO") as logged:
-                    saved = generate_cards.run(
-                        [entry], _config(root), card_stem=lambda job, index: "77-%d" % index, only_stems={"77-0"}
-                    )
-            finally:
-                generate_cards._call_model = original_call_model
+            pedidos = []
+            with self.assertLogs("perpetualminer.motor", level="INFO") as logged:
+                saved = generate_cards.run(
+                    [entry], _config(root), roteiro(GOOD_CARD, pedidos=pedidos), card_stem=lambda job, index: "77-%d" % index, only_stems={"77-0"}
+                )
 
             self.assertEqual(saved, ["77-0"])
-            self.assertEqual(labels, ["77-0"])
+            self.assertEqual([rotulo for _, _, rotulo in pedidos], ["77-0"])
             self.assertEqual([path.name for path in (root / "Output").glob("*.txt")], ["77-0.txt"])
             self.assertNotIn("exerts himself", "\n".join(logged.output))
             self.assertNotIn("toil", "\n".join(logged.output))
@@ -250,17 +220,11 @@ class GenerateCardsKeywordValidationTests(unittest.TestCase):
             (root / "log").mkdir()
             _write_prompts(root)
             entry = MiningEntry(keywords=["exerts himself", "toil"], phrase="He exerts himself on brands of his own, if at all.")
-            calls, original_call_model = {}, generate_cards._call_model
-
-            def fake_call_model(openai_base, api_key, system_prompt, user_message, model, log_dir, keyword):
+            pedidos = []
+            generate_cards.run([entry], _config(root), roteiro(GOOD_CARD, pedidos=pedidos))
+            calls = {}
+            for system_prompt, user_message, keyword in pedidos:
                 calls.setdefault(keyword, (system_prompt, user_message))
-                return GOOD_CARD
-
-            generate_cards._call_model = fake_call_model
-            try:
-                generate_cards.run([entry], _config(root))
-            finally:
-                generate_cards._call_model = original_call_model
 
             (main_system, main_message), (generated_system, generated_message) = calls["exerts himself"], calls["toil"]
             self.assertEqual(main_system, "en prompt")
@@ -339,18 +303,9 @@ class GenerateCardsByStyleTests(unittest.TestCase):
             root = Path(td)
             (root / "Output").mkdir()
             (root / "log").mkdir()
-            enviados = []
-            original = generate_cards._call_model
-
-            def fake_call_model(openai_base, api_key, system_prompt, user_message, model, log_dir, keyword):
-                enviados.append((system_prompt, user_message))
-                return resposta
-
-            generate_cards._call_model = fake_call_model
-            try:
-                saved = generate_cards.run([entry], _com_o_estilo(root, lang))
-            finally:
-                generate_cards._call_model = original
+            pedidos = []
+            saved = generate_cards.run([entry], _com_o_estilo(root, lang), roteiro(resposta, pedidos=pedidos))
+            enviados = [(sistema, mensagem) for sistema, mensagem, _ in pedidos]
             textos = [path.read_text(encoding="utf-8") for path in (root / "Output").glob("*.txt")]
         return saved, enviados, textos
 
@@ -380,15 +335,12 @@ class GenerateCardsByStyleTests(unittest.TestCase):
             root = Path(td)
             (root / "Output").mkdir()
             (root / "log").mkdir()
-            enviados = []
-            original = generate_cards._call_model
-            generate_cards._call_model = lambda base, key, prompt, mensagem, modelo, log, kw: enviados.append((prompt, mensagem)) or cartao
+            pedidos = []
             config = _com_o_estilo(root, "ru")
             config["estilo"] = dict(estilos.estilo("ru", "intermediario"), prompt=str(Path(__file__).resolve().parent / "prompts" / "ru_intermediario.txt"))
-            try:
-                saved = generate_cards.run([MiningEntry(keywords=["Она приходила"], phrase="Она приходила вчера.", file_stem="russa")], config)
-            finally:
-                generate_cards._call_model = original
+            saved = generate_cards.run(
+                [MiningEntry(keywords=["Она приходила"], phrase="Она приходила вчера.", file_stem="russa")], config, roteiro(cartao, pedidos=pedidos))
+            enviados = [(sistema, mensagem) for sistema, mensagem, _ in pedidos]
             textos = [path.read_text(encoding="utf-8") for path in (root / "Output").glob("*.txt")]
         intermediario = (Path(__file__).resolve().parent / "prompts" / "ru_intermediario.txt").read_text(encoding="utf-8").strip()
         self.assertEqual(([prompt for prompt, _ in enviados], saved), ([intermediario], ["russa"]))

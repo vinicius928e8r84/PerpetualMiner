@@ -38,9 +38,10 @@ diz em cada um continua em [login-do-chatgpt.md](login-do-chatgpt.md) e [modelo-
 
 ## 3. Transições
 
-Nenhuma nova. A porta só lê: o login renovado pelo `token()` e o login que acaba seguem dele (`login_do_chatgpt.py`), e a troca do
-modelo que caiu segue do `ModeloDosCartoes.do_envio`. Um pedido repetido relê os dois donos e dá o mesmo pagador; uma resposta perdida
-não deixa nada a meio, porque a porta não grava.
+Nenhuma nova. A porta não grava credencial nem login: o login renovado pelo `token()` e o login que acaba seguem dele
+(`login_do_chatgpt.py`), e a troca do modelo que caiu segue do `ModeloDosCartoes.do_envio`. Um pedido repetido relê os dois donos e dá o
+mesmo pagador. O que ela grava é a linha de custo de cada texto pago, depois da resposta, como o motor fazia: uma resposta perdida não
+anota custo, e o texto que não chegou ao disco é pedido de novo, como antes.
 
 ## 4. As 8 variantes
 
@@ -51,15 +52,17 @@ Conexão. A 7 e a 8 estão na seção 3.
 ## 5. Limites
 
 Os da chave ([chave-da-openai.md](../seguranca/chave-da-openai.md)) e os do login ([login-do-chatgpt.md](login-do-chatgpt.md)), sem
-nenhum novo. Nesta fatia quem faz o pedido ainda é o motor, com a credencial que a porta entrega no `config`.
+nenhum novo. O texto do Cartão a porta pede ela mesma (`pedido_do_texto`: a credencial, o pedido pela camada de provedores do motor e o
+custo no `costs.jsonl` do Envio, no formato de sempre), e o motor só recebe a função `pedir`; a correção, o juiz, a imagem e a voz ainda
+recebem a credencial no `config` ou na chamada.
 
 ## 6. Provas
 
-A tabela e a leitura do que está guardado: `complemento/test_ia_dos_cartoes.py`. O caminho inteiro, com o servidor real e a OpenAI de
+A tabela, a leitura do que está guardado e o texto pedido pela porta (pela chave e pelo plano, com o custo que fica): `complemento/test_ia_dos_cartoes.py`; o motor com um roteiro de respostas no lugar da rede: `engine/test_generate_cards.py`. O caminho inteiro, com o servidor real e a OpenAI de
 mentira: `test_quem_paga.py`, `test_imagem_pelo_plano.py`, `test_voz_de_reserva.py`, `test_ouvir_a_voz.py`, `test_limite_do_plano.py`
 e os `test_envio*.py`. Não provam o login real nem a OpenAI real.
 
 ## Os próximos passos
 
-Cada um é uma versão da Conexão: o texto pede pela porta (`ia.texto`) e somem as opções de lote do motor; a imagem e a correção pedem
-pela porta e o `config` deixa de levar segredo; o motor passa a ter duas entradas (`escrever` e `montar`), sem a herança do `Trabalho`.
+Cada um é uma versão da Conexão: somem as opções de lote do motor (um Cartão por vez); a imagem e a correção pedem pela porta e o
+`config` deixa de levar segredo; o motor passa a ter duas entradas (`escrever` e `montar`), sem a herança do `Trabalho`.

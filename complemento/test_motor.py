@@ -14,6 +14,8 @@ from unittest import mock
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import envio, motor_do_envio
+from complemento.ia_dos_cartoes import IaDosCartoes
+from complemento.modelo_dos_cartoes import CHAVE, Pagador
 from complemento.palavras_do_cartao import cartoes_da_frase
 from complemento.test_imagens_de_mentira import JPEG_DE_MENTIRA, png_de
 from complemento.test_openai_de_mentira import OpenAIDeMentira
@@ -29,6 +31,12 @@ def configuracao_do_teste(motor, pasta):
     config["paths"]["output_dir"] = os.path.join(pasta, "textos")
     config["paths"]["log_dir"] = os.path.join(pasta, "custos")
     return config
+
+
+def pela_chave(motor, config, openai_base):
+    """O `pedir` do texto que a IA dos cartões dá ao motor quando a chave de `config` paga."""
+    ia = IaDosCartoes(None, None, None, motor=motor, openai_base=openai_base)
+    return ia.pedido_do_texto(Pagador(CHAVE, {"openai_api_key": config["openai_api_key"], "modelo_do_texto": None}, None), config)
 
 
 class OMotorComoPacote(unittest.TestCase):
@@ -79,7 +87,7 @@ class OMotorComoPacote(unittest.TestCase):
             falhas = {}
             entrada = motor.parser.parse_mining_line("give up : She gave up smoking")
             salvos = motor.generate_cards.run(
-                [entrada], config, openai_base=openai.base, failures=falhas, card_stem=lambda trabalho, posicao: "17-%d" % posicao)
+                [entrada], config, pela_chave(motor, config, openai.base), failures=falhas, card_stem=lambda trabalho, posicao: "17-%d" % posicao)
             with open(os.path.join(pasta, "textos", "17-0.txt"), encoding="utf-8") as arquivo:
                 nota = motor.send_to_anki.card_fields(arquivo.read(), "en")
             with open(os.path.join(pasta, "custos", "costs.jsonl"), encoding="utf-8") as arquivo:
