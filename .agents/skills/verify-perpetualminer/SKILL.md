@@ -15,7 +15,7 @@ Read cold, mid-task. Everything here was run on this repo; if a command disagree
 | **Engine** (`engine/`) | Nothing directly; the add-on runs it for the Envio | `engine/test_*.py` (`node scripts/testar.mjs engine`; needs `scripts/preparar-python.sh` → `.venv`) | Listed in `features/README.md` § Other surfaces |
 | **Anki add-on "Conexão" (`complemento/`)** | Runs inside Anki; plain stdlib HTTP on `127.0.0.1:8766`: `GET /health`; `POST /anki/decks`, `/anki/stats/decks`, `/anki/vocabulary`; `/abrir-com-o-computador[/estado]`; `/ia/estado`, `/ia/openai/chave`, `/ia/openai/chave/apagar`, `/ia/openai/sincronizar`, `/ia/openai/legado`; the Envio, `/jobs`, `/jobs/list`, `/jobs/get`, `/jobs/retry`, `/jobs/debug-bundle`, `/analytics/jobs` (#142: each Frase becomes a text Card in the collection) (the list is `ROTAS` in `complemento/servidor.py`) | Its own tests, every `complemento/test_*.py` (`PYTHON=python3.9 node scripts/testar.mjs complemento`, also with `python3.13`), and the extension side of the same contract, `e2e/tests/contrato-da-conexao.spec.js` | See `features/README.md` § Other surfaces. It runs outside Anki for a drive (§ Driving against the real Conexão); a real Anki is the owner's rehearsal, and the e2e Anki fake answers its contract in the ordinary specs. Do not install it into a real Anki from here. Its OpenAI key routes are driven through the AI card (`features/ia.md`) |
 
-The extension never reaches a real Anki, Gemini or Google in the harness: the fixture fakes those at the HTTP boundary and blocks every other external request. So a pass proves the extension's behavior against the documented contracts, **not** a real Anki. Say so in any proof.
+The extension never reaches a real Anki, Gemini or Google in the harness: the fixture fakes those at the HTTP boundary and blocks every other external request. One exception: the ChatGPT login specs (`configuracoes-chatgpt.spec`, `configuracoes-chatgpt-plano.spec` › `entrar com o ChatGPT pela primeira vez`) open a tab that the fake login redirects to `http://127.0.0.1:8766/auth/callback`; on a Mac whose Anki listened on 8766 that tab reached the real listener (those tests failed with its answer). Where `doctor.sh` notes a listener on 8766, do not drive those specs. So a pass proves the extension's behavior against the documented contracts, **not** a real Anki. Say so in any proof.
 
 ## Launch
 
@@ -41,7 +41,7 @@ Runs are isolated: every `drive.sh` run gets its own `TMPDIR` (so its Chromium p
 .agents/skills/verify-perpetualminer/scripts/doctor.sh
 ```
 
-Read-only. Prints repo, commit (and whether there are uncommitted changes), the manifest version, Node, Playwright, the Chromium binary, that the extension root has its manifest, that the suite is collectable (`playwright test --list`; the count it prints is the suite's), and whether something already listens on `127.0.0.1:8766`. A real bridge there does not disturb the run (the Anki fake answers inside Chromium and never opens the port), but the note stops anyone confusing the two. Exit 0 = drive; exit 1 = a `FAIL` line names the fix. Run it first whenever anything looks off.
+Read-only. Prints repo, commit (and whether there are uncommitted changes), the manifest version, Node, Playwright, the Chromium binary, that the extension root has its manifest, that the suite is collectable (`playwright test --list`; the count it prints is the suite's), and whether something already listens on `127.0.0.1:8766`. The Anki fake answers the extension's requests inside Chromium and never opens the port, so a listener there does not change the other specs; it does receive the ChatGPT login callback tab (see the exception above), and the note says so. Exit 0 = drive; exit 1 = a `FAIL` line names the fix. Run it first whenever anything looks off.
 
 ## Drive
 
@@ -71,49 +71,7 @@ Which spec and which `-g` prove which feature is in `features/<feature>.md`; the
 
 ## Driving against the real Conexão
 
-The ordinary specs talk to `fakes.anki`, a JavaScript copy of the Conexão. For a change to the key, the account or any route that carries state, also drive the real Python owner and its HTTP, outside Anki. `scripts/conexao-real.py` starts `complemento.servidor.Conexao` on a free port with the repo's fake OpenAI and Firestore, and writes `{porta, pasta}` to the file you name. It proves the real Python owner and HTTP, not Anki, OpenAI or Firestore.
-
-```bash
-PRONTO=/tmp/conexao-<run-id>.json    # outside the run directory: drive.sh refuses files in evidence/
-python3.9 .agents/skills/verify-perpetualminer/scripts/conexao-real.py "$PWD" "$PRONTO" & PID=$!   # also python3.13
-until [ -s "$PRONTO" ] || ! kill -0 $PID; do sleep 0.2; done
-PM_CONEXAO_REAL="$PRONTO" .agents/skills/verify-perpetualminer/scripts/drive.sh <run-id> zz-scratch-<run-id>.spec
-kill $PID; rm -rf "$PRONTO"    # its scratch folder (`conexao-real-*` in the temp dir) stays: remove it
-```
-
-The spec is a scratch one (`e2e/tests/zz-scratch-<run-id>.spec.js`, delete it before committing); it sends the panel's `127.0.0.1:8766` requests to that port:
-
-```js
-const fs = require('fs'), path = require('path');
-const { test, expect } = require('../fixtures');
-const { fotografar } = require('../evidencias-mineracao');
-const { porta, pasta } = JSON.parse(fs.readFileSync(process.env.PM_CONEXAO_REAL, 'utf8'));
-test('real Conexão: colar a chave grava o dono no cofre real, com conta vazia e revisão 1', async ({ page, context, extensao }) => {
-  await context.route(/^http:\/\/(127\.0\.0\.1|localhost):8766\//,
-    route => route.continue({ url: route.request().url().replace(/:8766\//, `:${porta}/`) }));
-  await page.goto(extensao.url('painel.html#configuracoes/ia'));
-  const card = page.locator('#cfg-ia');
-  await card.getByRole('textbox', { name: 'Chave da OpenAI' }).fill('sk-proj-chave-de-exemplo-9f3a');
-  await card.getByRole('button', { name: 'Conferir e salvar' }).click();
-  await expect(card.locator('.cfg-resumo')).toHaveText('••••••••9f3a');
-  await fotografar(page, 'conexao-real-colar.png');
-  const dono = JSON.parse(fs.readFileSync(path.join(pasta, 'chaves', 'openai.json'), 'utf8'));
-  expect({ conta: dono.conta, versao: dono.versao, naoEnviada: dono.naoEnviada, fim: dono.chave.slice(-4) })
-    .toEqual({ conta: '', versao: 1, naoEnviada: true, fim: '9f3a' });
-  expect((fs.statSync(path.join(pasta, 'chaves', 'openai.json')).mode & 0o777).toString(8)).toBe('600');
-});
-```
-
-A second Chromium profile (the `K1:` test in `chave-autoridade.spec.js` launches one) needs the same `route` on its own context. For a rest check, read the key file's `versao` every few seconds for 60 s with both profiles open: against the real Conexão it moved once (B's sign-in took the owner from a synced A: 1 → 2) and then stayed.
-
-Traps the hand-made harnesses fell into:
-
-- **`pasta_de_dados.preparar`** must run before the Conexão starts: without it the key folder is missing and every save is a 500 (`FileNotFoundError: …/chaves/openai.json.novo`, and the screen says "Sem chave"). The script does it.
-- **The fakes answer only inside the `with`** (`OpenAIDeMentira`, `FirestoreDeMentira`); a Conexão started after the block ends gets connection refused.
-- **Seed old-store state through the service worker before opening the panel**, never with the panel already open: the panel reads it when it loads.
-- **A reload is `page.reload()`**: `page.goto` to the same `#` address does not reload.
-- **Read the key file only by its last 4 characters** (`dono.chave.slice(-4)`), and never print or save the whole value.
-- **Fake keys only.** The fake OpenAI accepts any well-formed one; a real key must never reach this script.
+The ordinary specs talk to `fakes.anki`, a JavaScript copy of the Conexão. For a change to the key, the account or any route that carries state, also drive the real Python owner and its HTTP, outside Anki, with `scripts/conexao-real.py` and a scratch spec: the procedure, the spec and the traps are in [`conexao-real.md`](./conexao-real.md). The e2e also has a mode for whole specs, `PM_CONEXAO=real` (fixture `conexaoDoTeste`; `.agents/skills/e2e-suite/SKILL.md`).
 
 ## Evidence
 
@@ -171,7 +129,7 @@ Env knobs: `PM_VERIFY_ROOT` (default `/tmp/pm-verify`; keep it short: Chromium's
 
 ## Keeping the feature map honest
 
-`features/` is the maintained record of what can be verified and how. **Any PR that changes a user-facing feature or command updates its file in `features/` (add the sub-feature ID, the driving step, the proof), or says "feature map unchanged" in the PR body.** User-facing means anything a person sees or presses: panel areas and addresses, popup, overlay, shortcuts, onboarding steps, Anki send/connection screens, photo mining, Conexão routes the panel calls. CI enforces it: the `Regras` workflow runs `scripts/mapa-de-features.sh` on every PR and fails when `manifest.json`, any `*.html` in the repo root, `popup.js`, `painel*.js`, `bookreader.js`, `overlay.js`, `content.js`, `background.js`, `bridge/server.py`, `complemento/servidor.py` or `lib/voz/catalogo.js` changed and neither `features/` was touched nor the PR body says "feature map unchanged" (editing the body re-runs the check). A change that is not in that file list (another `lib/` module, a `popup.css` rule) is still covered by the rule above, by review. For a periodic audit use `/maintain-verification-skill`.
+`features/` is the maintained record of what can be verified and how. **Any PR that changes a user-facing feature or command updates its file in `features/` (add the sub-feature ID, the driving step, the proof), or says "feature map unchanged" in the PR body.** User-facing means anything a person sees or presses: panel areas and addresses, popup, overlay, shortcuts, onboarding steps, Anki send/connection screens, photo mining, Conexão routes the panel calls. CI enforces it: the `Regras` workflow runs `scripts/mapa-de-features.sh` on every PR and fails when `manifest.json`, any `*.html` in the repo root, `popup.js`, `painel*.js`, `bookreader.js`, `overlay.js`, `content.js`, `background.js`, `complemento/servidor.py` or `lib/voz/catalogo.js` changed and neither `features/` was touched nor the PR body says "feature map unchanged" (editing the body re-runs the check). A change that is not in that file list (another `lib/` module, a `popup.css` rule) is still covered by the rule above, by review. For a periodic audit use `/maintain-verification-skill`.
 
 ## Platforms
 
@@ -207,7 +165,7 @@ There is no helper yet that runs one test over the variants; until it lands, nam
 - The harness fakes Anki, Gemini and Google; nothing here talks to a real Anki Desktop, Gemini or Firestore.
 - The context menu, toolbar badge, midnight alarm and extension update are simulated by calling the function Chrome would call.
 - Evidence screenshots exist only where a spec calls `fotografar`; other specs leave `run.log` and `report.json`.
-- Windows is the owner's machine; this skill was proven on Linux headless Chromium. `.claude/skills/verify-perpetualminer` is a symlink to this directory (one canonical copy); a Windows checkout without symlink support sees a plain file there, so open `.agents/skills/verify-perpetualminer/` directly.
+- Windows is the owner's machine; this skill was proven on Linux headless Chromium, and on a Mac (macOS 15, `/bin/bash` 3.2, headless) for `doctor.sh`, `drive.sh`, `cleanup.sh`, `test_helpers.sh` and `conexao-real.py`. On the Mac `painel-frases-selecao.spec` › `Copiar frase põe o texto` fails (it pastes with Control+V) and the ChatGPT login specs need a free 8766 (above). On any host, `painel-envio-estados.spec` › `na aba Custos, o Envio com as Frases apagadas` fails while the local date is not the UTC date (it dates its Envios with the real clock in UTC, and Custos asks for the local month). `.claude/skills/verify-perpetualminer` is a symlink to this directory (one canonical copy); a Windows checkout without symlink support sees a plain file there, so open `.agents/skills/verify-perpetualminer/` directly.
 - The Anki add-on (`complemento/`) is mapped in `features/ia.md` (the key), `features/anki-no-login.md` (the login item) and `features/anki.md` › `anki-open-alone` (the opener); its own tests run with `PYTHON=python3.9|python3.13 node scripts/testar.mjs complemento`. Baralhos e termos and Vocabulário: `features/anki-baralhos.md`.
 - The add-on's read side (the Anki adapter) is proven only against a fake `mw`; a real Anki is the owner's rehearsal.
 - The OpenAI key was never checked against the real OpenAI: its provider and Firestore are the repo's fakes, even in the real Conexão drive.
@@ -216,5 +174,5 @@ There is no helper yet that runs one test over the variants; until it lands, nam
 - Several checkouts sharing one `PM_VERIFY_ROOT` and one run ID collide by design (the second is refused); use distinct IDs.
 - `drive.sh` does not stop a Playwright job that moved itself out of its process group (`setsid`); Cleanup still reaches it as a descendant while a parent is alive.
 - The `--update-snapshots` rule is stated in the Drive section and in `features/README.md`; `CODING_STANDARDS.md` rule 10 owns it.
-- Known gaps from the last review, none a safety hole in normal use: a recorded process group whose leader died is accepted without a second proof, so a stale `drive.pid` plus real pid reuse could signal an unrelated group; the group id is read from the job with a 5 s wait that is not an error when it expires; `drive.sh` waits for the whole pipeline, so a child holding the job's stdout delays the post-job stop until it exits; the `setsid`-ed Chromium that Playwright launches (`detached`) is outside the group and found only as a descendant while its parent lives (a `--user-data-dir=<run>/tmp/` match would close that, not done); two `drive.sh` with the same run ID started together can both pass the single-use check; `drive.sh` exits 1 for leftover processes only when the job itself had passed; `test_helpers.sh` cases 8 and 11 use their own copy of the scripts, so `PM_SCRIPTS_DIR` does not apply to them; the feature-map step accepts the phrase "feature map unchanged" anywhere in the body and does not see a `git mv` of `bridge/server.py` (rename detection).
+- Known gaps from the last review, none a safety hole in normal use: a recorded process group whose leader died is accepted without a second proof, so a stale `drive.pid` plus real pid reuse could signal an unrelated group; the group id is read from the job with a 5 s wait that is not an error when it expires; `drive.sh` waits for the whole pipeline, so a child holding the job's stdout delays the post-job stop until it exits; the `setsid`-ed Chromium that Playwright launches (`detached`) is outside the group and found only as a descendant while its parent lives (a `--user-data-dir=<run>/tmp/` match would close that, not done); two `drive.sh` with the same run ID started together can both pass the single-use check; `drive.sh` exits 1 for leftover processes only when the job itself had passed; `test_helpers.sh` cases 8 and 11 use their own copy of the scripts, so `PM_SCRIPTS_DIR` does not apply to them; the feature-map step accepts the phrase "feature map unchanged" anywhere in the body and does not see a `git mv` of `complemento/servidor.py` (rename detection).
 - The upkeep ratchet is path-based: it cannot tell a user-visible change in a file outside its list (a `lib/` module, `popup.css`) from a refactor, and a PR that only declares "feature map unchanged" is trusted. It lives in the `Regras` workflow as a step, not as a rule in `scripts/regras/` (those scan file contents against a baseline; this one reads the PR's diff and body).

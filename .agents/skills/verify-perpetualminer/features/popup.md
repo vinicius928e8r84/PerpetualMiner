@@ -22,7 +22,7 @@ The popup (click the toolbar icon) is the quick door: type a phrase and mine it,
 Preconditions: `doctor.sh` green. The popup is opened with `page.goto(extensao.url('popup.html'))`; phrases are seeded with `extensao.gravarStorage({ frases })`; the active tab is read from the service worker (`abaAtiva`).
 
 - **Panel door.** `drive.sh popup-painel popup.spec -g "Abrir painel|Ver todas"`. Observable: with a panel tab open, the active tab becomes it, with its address unchanged (`#configuracoes`) and exactly one panel tab; without one, a new panel tab opens; Ver todas makes the open tab `…/painel.html#frases` showing the list.
-- **Last five.** `-g "as 5 últimas, só leitura"`: five items, the first `mark` is `responsibility`, no input or button inside `#ultimas`. `-g "frase minerada em outra aba"`, `-g "carregando (POP-01)"`.
+- **Last five.** `-g "as 5 últimas, só leitura"`: five items, the first `mark` is `responsibility`, no input or button inside `#ultimas`. `-g "frase minerada em outra aba"`, `-g "carregando \(POP-01\)"` (escaped: unescaped, the parentheses are a regex group and select no test).
 - **Empty and shortcut.** `-g "vazio"` (POP-02, with and without a recorded shortcut; `kbd` Ctrl, Shift, L), `-g "rodapé"`, `-g "Mudar atalho"`: the panel tab ends at `#configuracoes/atalhos` with `Atalhos` expanded, still one panel tab.
 - **Quick mining.** `-g "mineração rápida"` — see [mineracao.md](./mineracao.md) › `mine-popup-quick`.
 - **Seal and tiles.** `-g "selo"`, `-g "esperando o Anki"`, `-g "leitura de outro Baralho"`.
