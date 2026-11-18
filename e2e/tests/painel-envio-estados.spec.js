@@ -182,7 +182,7 @@ test('o Tentar de novo de um Envio em parte que a Conexão recusa diz que não d
   await cartao.getByRole('button', { name: 'Tentar de novo' }).click();
 
   await expect(cartao).toContainText('Não deu para retomar o envio. Confira se a Conexão com o Anki está ligada.');
-  await expect(cartao.locator('pre')).toContainText(`POST /jobs/retry ${emIngles.jobId} → HTTP 500`);
+  await expect(cartao.locator('pre')).toContainText(`POST /jobs/retry ${emIngles.jobId} · HTTP 500 · internal_error`);
   await expect(toasts(page)).toHaveCount(0);
   await estadoFinalEm('os Envios que o painel acompanha', async () => (await extensao.lerStorage('pm_envio')).pm_envio.envios.map(e => e.jobId), [emIngles.jobId, emRusso.jobId]);
 });

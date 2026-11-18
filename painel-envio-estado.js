@@ -112,12 +112,11 @@
   const INTERVALO_DA_LEITURA_MS = 2000;
   const esperarOIntervalo = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-  function acompanhar({ jobId } = {}, { conversa = raiz.ConversaComOAnki, esperar = esperarOIntervalo, intervaloMs = INTERVALO_DA_LEITURA_MS } = {}) {
+  function acompanhar({ jobId } = {}, { conversa = raiz.ConversaComOAnki, esperar = esperarOIntervalo, intervaloMs = INTERVALO_DA_LEITURA_MS, lerSozinho = true } = {}) {
     if (typeof jobId !== 'string' || !jobId) throw new Error('EnvioAcompanhado.acompanhar pede o jobId do Envio');
     const { PedidoAoAnki } = raiz;
     const ouvintes = new Set();
     let situacao = null;
-    let pedidoEmCurso = null;
     let lendo = false;
     let vez = 0;
 
@@ -153,21 +152,24 @@
       }
     }
 
-    async function pedirDeNovo() {
+    async function pedirESeguir(pedido, recusa) {
       const minha = vez;
-      const desfecho = await conversa.pedir(PedidoAoAnki.tentarEnvioDeNovo(jobId));
+      const desfecho = await conversa.pedir(pedido);
       if (desfecho.ok) {
-        if (minha === vez) seguir();
+        if (lerSozinho && minha === vez) seguir();
         return { ok: true };
       }
-      if (desfecho.codigo === 'job_wiped') return { apagado: true };
-      return { falha: `POST /jobs/retry ${jobId} · ${desfecho.detalhes}` };
+      if (desfecho.codigo === recusa.codigo) return { ...recusa.desfecho };
+      return { falha: `${pedido.metodo} ${pedido.caminho} ${jobId} · ${desfecho.detalhes}` };
     }
 
-    function tentarDeNovo() {
-      pedidoEmCurso ||= pedirDeNovo().finally(() => { pedidoEmCurso = null; });
-      return pedidoEmCurso;
+    function umPedidoPorVez(pedir) {
+      let emCurso = null;
+      return () => (emCurso ||= pedir().finally(() => { emCurso = null; }));
     }
+
+    const tentarDeNovo = umPedidoPorVez(() => pedirESeguir(PedidoAoAnki.tentarEnvioDeNovo(jobId), { codigo: 'job_wiped', desfecho: { apagado: true } }));
+    const usarAChave = umPedidoPorVez(() => pedirESeguir(PedidoAoAnki.usarAChaveNoEnvio(jobId), { codigo: 'openai_key_missing', desfecho: { semChave: true } }));
 
     function aoMudar(ouvinte) {
       ouvintes.add(ouvinte);
@@ -179,7 +181,7 @@
       lendo = false;
     }
 
-    return Object.freeze({ tentarDeNovo, situacao: () => situacao, aoMudar, largar });
+    return Object.freeze({ tentarDeNovo, usarAChave, situacao: () => situacao, aoMudar, largar });
   }
 
   raiz.EnvioAcompanhado = Object.freeze({ INTERVALO_MS: INTERVALO_DA_LEITURA_MS, acompanhar });

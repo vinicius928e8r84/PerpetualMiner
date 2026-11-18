@@ -1,7 +1,7 @@
 'use strict';
 
 (function (raiz) {
-  const { textoDaVoz, PedidoAoAnki, ConversaComOAnki, ColunaDoChatGPT } = raiz;
+  const { textoDaVoz, ColunaDoChatGPT } = raiz;
   const FIM = ['completed', 'partial', 'failed'];
   const escolheram = new Set();
   const naoDeu = new Set();
@@ -18,19 +18,19 @@
     location.hash = '#configuracoes/ia';
   }
 
-  async function usarAChave(envio, redesenhar) {
+  async function usarAChave(envio, pedirAChave, redesenhar) {
     if (pedindo.has(envio.jobId)) return;
     pedindo.add(envio.jobId);
     naoDeu.delete(envio.jobId);
-    const desfecho = await ConversaComOAnki.pedir(PedidoAoAnki.usarAChaveNoEnvio(envio.jobId));
+    const desfecho = await pedirAChave();
     if (desfecho.ok) escolheram.add(envio.jobId);
-    else if (desfecho.codigo === 'openai_key_missing') irAoCardDaIA();
+    else if (desfecho.semChave) irAoCardDaIA();
     else naoDeu.add(envio.jobId);
     pedindo.delete(envio.jobId);
     redesenhar();
   }
 
-  function pedido(envio, estado, { tentarDeNovo, falhou, redesenhar }) {
+  function pedido(envio, estado, { tentarDeNovo, usarAChave: pedirAChave, falhou, redesenhar }) {
     if (!esperaOPlano(estado)) {
       escolheram.delete(envio.jobId);
       return null;
@@ -40,7 +40,7 @@
       motivo: [textoDaVoz('ENV-19.limite', { n: faltam(estado) }), textoDaVoz(falhou || naoDeu.has(envio.jobId) ? 'ENV-14.falha' : 'ENV-19.continua')],
       acoes: [
         { rotulo: textoDaVoz('ENV-19.gerenciar'), foco: 'gerenciar', href: ColunaDoChatGPT.GERENCIAR_USO, principal: true },
-        { rotulo: textoDaVoz('ENV-19.chave'), foco: 'usar-a-chave', emAndamento: pedindo.has(envio.jobId), aoUsar: () => usarAChave(envio, redesenhar) },
+        { rotulo: textoDaVoz('ENV-19.chave'), foco: 'usar-a-chave', emAndamento: pedindo.has(envio.jobId), aoUsar: () => usarAChave(envio, pedirAChave, redesenhar) },
         { rotulo: textoDaVoz('ENV-03.tentarDeNovo'), foco: 'tentar', aoUsar: tentarDeNovo },
       ],
     };

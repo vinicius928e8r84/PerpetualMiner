@@ -126,7 +126,7 @@
     return lista;
   }
 
-  function criar({ situacaoDe, estadoDoJob, esquecerOEnvio, falhaAoRetomar, tentarCriarDeNovo, continuarEnvio, redesenhar }) {
+  function criar({ situacaoDe, estadoDoJob, esquecerOEnvio, falhaAoRetomar, tentarCriarDeNovo, continuarEnvio, usarAChave, redesenhar }) {
     function retratoDe(situacao) {
       const fora = FORA_DAS_ETAPAS[situacao.estado];
       if (fora) {
@@ -207,7 +207,7 @@
       const esquecer = motivo => ({ motivo, rotulo: textoDaVoz('ENV-23.esquecer'), foco: 'esquecer', aoUsar: () => esquecerOEnvio(envio) });
       const continuar = { rotulo: textoDaVoz('ENV-03.tentarDeNovo'), foco: 'continuar', aoUsar: () => continuarEnvio(envio) };
       const falhou = Boolean(falhaAoRetomar(envio));
-      const noLimite = estado ? raiz.EnvioNoLimite.pedido(envio, estado, { tentarDeNovo: () => continuarEnvio(envio), falhou, redesenhar }) : null;
+      const noLimite = estado ? raiz.EnvioNoLimite.pedido(envio, estado, { tentarDeNovo: () => continuarEnvio(envio), usarAChave: () => usarAChave(envio), falhou, redesenhar }) : null;
       switch (situacao.estado) {
         case ESTADO.NAO_COMECOU:
           return { motivo: textoDaVoz(MOTIVO_DE_NAO_COMECAR[situacao.causa]), rotulo: textoDaVoz('ENV-03.tentarDeNovo'), foco: 'tentar', aoUsar: () => tentarCriarDeNovo(envio) };

@@ -26,8 +26,12 @@ Three pure pieces, no screen, proven without a browser by `node test_estado_do_e
   `{ ok }`, `{ apagado }` for `409 job_wiped`, `{ falha }` with the request and the cause), then a `POST /jobs/get` every 2 s until
   `terminou`, `aoMudar` called when the `SituacaoDoEnvio` changes, `largar()`. Its first user is the Custos tab's **Continuar envio**
   (`painel-anki-continuar.js`): the detail re-reads `/analytics/jobs` at each change without the loading look, so it goes Na fila → the stage
-  → Concluído by itself. Proven by `node test_envio_acompanhado.js` and `e2e/tests/painel-anki-continuar.spec.js`; the Boas-vindas and the
-  modal move to it in the next steps.
+  → Concluído by itself. The progress modal (the remessa) sits on top of it too (step 3): each Envio with a `jobId` has its
+  `EnvioAcompanhado` with `lerSozinho: false`, and its **Tentar de novo** and **Usar a minha chave** (`usarAChave()`: `POST /jobs/usar-a-chave`;
+  `{ ok }`, `{ semChave }` for `409 openai_key_missing`, `{ falha }`) go through it; the modal still reads all its Envios in one
+  `/jobs/list` every 2 s, so nothing reads `/jobs/get` there. Proven by `node test_envio_acompanhado.js`,
+  `e2e/tests/painel-anki-continuar.spec.js` and the modal's specs (`painel-envio-limite.spec.js`, `painel-envio-estados.spec.js`); the
+  Boas-vindas moves to it in its own step.
 
 The Conexão's side of the same Envio is its own machine, `complemento/estado_do_envio.py` (the recorded state: `queued → running ⇄ esperando →
 completed | partial | failed → queued`, and `apagado`, terminal; the stored format did not change: `esperando` is `running` with `waiting`, `apagado`
