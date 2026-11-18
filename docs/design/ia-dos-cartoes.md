@@ -52,9 +52,9 @@ Conexão. A 7 e a 8 estão na seção 3.
 ## 5. Limites
 
 Os da chave ([chave-da-openai.md](../seguranca/chave-da-openai.md)) e os do login ([login-do-chatgpt.md](login-do-chatgpt.md)), sem
-nenhum novo. O texto do Cartão a porta pede ela mesma (`pedido_do_texto`: a credencial, o pedido pela camada de provedores do motor e o
-custo no `costs.jsonl` do Envio, no formato de sempre), e o motor só recebe a função `pedir`; a correção, o juiz, a imagem e a voz ainda
-recebem a credencial no `config` ou na chamada.
+nenhum novo. O texto do Cartão e a correção da Criação a porta pede ela mesma (`pedido_do_texto`: a credencial, o pedido pela camada de
+provedores do motor e o custo no `costs.jsonl` do Envio, no formato de sempre; o da correção à parte), e o motor só recebe a função
+`pedir`; o juiz, a imagem e a voz ainda recebem a credencial no `config` ou na chamada.
 
 ## 6. Provas
 
@@ -64,5 +64,5 @@ e os `test_envio*.py`. Não provam o login real nem a OpenAI real.
 
 ## Os próximos passos
 
-Cada um é uma versão da Conexão: somem as opções de lote do motor (um Cartão por vez); a imagem e a correção pedem pela porta e o
-`config` deixa de levar segredo; o motor passa a ter duas entradas (`escrever` e `montar`), sem a herança do `Trabalho`.
+Cada um é uma versão da Conexão: somem as opções de lote do motor (um Cartão por vez); a imagem pede pela porta e o `config` deixa
+de levar segredo; o motor passa a ter duas entradas (`escrever` e `montar`), sem a herança do `Trabalho`.
