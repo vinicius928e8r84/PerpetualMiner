@@ -1,6 +1,6 @@
 """Quem paga cada pedido (C5), pela porta da IA dos cartões e sem montar um Envio: a tabela etapa × situação de
 `docs/design/ia-dos-cartoes.md`, o que a porta lê do login e do cofre guardados (os arquivos reais, numa pasta temporária) e a
-credencial que ela entrega a cada etapa. O caminho inteiro, com o servidor e a OpenAI de mentira, segue em `test_quem_paga.py`,
+credencial que ela entrega a cada etapa, e o texto do Cartão pedido por ela à OpenAI de mentira (quem paga e o custo que fica). O caminho inteiro, com o servidor e a OpenAI de mentira, segue em `test_quem_paga.py`,
 `test_imagem_pelo_plano.py`, `test_voz_de_reserva.py` e `test_ouvir_a_voz.py`.
 
     python3.9 complemento/test_ia_dos_cartoes.py
@@ -13,13 +13,16 @@ import sys
 import tempfile
 import time
 import unittest
+from datetime import date
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from complemento import envio
 from complemento.chaves import Cofre
 from complemento.ia_dos_cartoes import CORRECAO, ETAPAS, IMAGEM, JUIZ, OUVIR, TEXTO, VOZ, IaDosCartoes, quem_paga_a_etapa
 from complemento.login_do_chatgpt import ACABOU, CONECTADA, SAIU, SEM_LOGIN, ErroDoPlano, LoginDoChatGPT
-from complemento.modelo_dos_cartoes import CHAVE, PARADO, PLANO
+from complemento.modelo_dos_cartoes import CHAVE, PARADO, PLANO, ModeloDosCartoes, lista_nossa
+from complemento.test_openai_de_mentira import OpenAIDeMentira
 
 CHAVE_GUARDADA = "sk-test-ia-dos-cartoes-0000"
 SEM_CHAVE = "openai_key_missing"
@@ -38,10 +41,10 @@ SO_PELA_CHAVE = [(CHAVE, None), (PARADO, SEM_CHAVE), (CHAVE, None), (CHAVE, None
 TABELA = {TEXTO: PELO_PLANO, CORRECAO: PELO_PLANO, JUIZ: PELO_PLANO, IMAGEM: SO_PELA_CHAVE, VOZ: SO_PELA_CHAVE, OUVIR: SO_PELA_CHAVE}
 
 
-def guardar(pasta, login, tem_chave):
+def guardar(pasta, login, tem_chave, api="http://127.0.0.1:9"):
     """Os arquivos do login e da chave de uma situação, como a Conexão os deixa em `user_files/chaves`."""
     if login == CONECTADA:
-        guardado = {"client_id": "cliente", "access_token": "token", "refresh_token": "renovar", "expira_em": time.time() + 3600}
+        guardado = {"client_id": "cliente", "access_token": "acesso-do-teste", "refresh_token": "renovar", "expira_em": time.time() + 3600}
     else:
         guardado = {"acabou": SAIU, "em": 1} if login == ACABOU else None
     if guardado is not None:
@@ -50,7 +53,7 @@ def guardar(pasta, login, tem_chave):
     cofre = Cofre(pasta)
     if tem_chave:
         cofre.guardar("openai", CHAVE_GUARDADA)
-    return LoginDoChatGPT(pasta, logging.getLogger("teste"), base="http://127.0.0.1:9", api="http://127.0.0.1:9"), cofre
+    return LoginDoChatGPT(pasta, logging.getLogger("teste"), base="http://127.0.0.1:9", api=api), cofre
 
 
 def porta(pasta, situacao):
@@ -131,6 +134,62 @@ class ACredencialDeCadaEtapa(unittest.TestCase):
             with self.assertRaises(ErroDoPlano) as parou:
                 ia.para_a_imagem(False)
         self.assertEqual(parou.exception.codigo, SAIU)
+
+
+def porta_na_openai(pasta, situacao, openai):
+    """A porta como a Conexão a monta (`servidor.Conexao`), com o login, o cofre, o modelo dos cartões e o motor, falando com a OpenAI de mentira."""
+    motor = envio.motor_do_complemento()
+    login, cofre = guardar(pasta, SITUACOES[situacao][0], SITUACOES[situacao][3], api=openai.base)
+    modelos = ModeloDosCartoes(os.path.join(pasta, "modelo-dos-cartoes.json"), lista_nossa(), date.today, logging.getLogger("teste"), login, cofre,
+                               openai.base, lambda: motor.config_loader.base_config()["openai"]["chat_model"])
+    config = motor.config_loader.base_config()
+    config["paths"]["log_dir"] = os.path.join(pasta, "custos")
+    return IaDosCartoes(login, cofre, modelos, motor=motor, openai_base=openai.base), config
+
+
+def custos(config):
+    with open(os.path.join(config["paths"]["log_dir"], "costs.jsonl"), encoding="utf-8") as arquivo:
+        return [json.loads(linha) for linha in arquivo]
+
+
+class OTextoPelaPorta(unittest.TestCase):
+    def test_pela_chave_o_texto_vai_com_a_chave_e_o_custo_dos_tokens_fica_com_o_nome_do_cartao(self):
+        with tempfile.TemporaryDirectory() as pasta, OpenAIDeMentira() as openai:
+            ia, config = porta_na_openai(pasta, "sem login", openai)
+            pedir = ia.pedido_do_texto(ia.para_o_texto(), config)
+            texto = pedir("o prompt", "give up : She gave up smoking", "17-0")
+            registros = custos(config)
+            [(autorizacao, corpo)] = openai.chats
+        self.assertIn("Front:", texto)
+        self.assertEqual((autorizacao, corpo["model"], corpo["messages"][0]), ("Bearer " + CHAVE_GUARDADA, "gpt-4o", {"role": "system", "content": "o prompt"}))
+        self.assertEqual([(r["type"], r["model"], r["input_tokens"], r["output_tokens"], r["cost_usd"], r["keyword"]) for r in registros],
+                         [("tokens", "gpt-4o", 1000, 200, 0.0045, "17-0")])
+        self.assertEqual(openai.respostas, [])
+
+    def test_pelo_plano_o_texto_vai_pela_responses_api_sem_custo_em_dolar_e_com_o_que_a_chave_teria_cobrado(self):
+        with tempfile.TemporaryDirectory() as pasta, OpenAIDeMentira() as openai:
+            ia, config = porta_na_openai(pasta, "com login", openai)
+            pedir = ia.pedido_do_texto(ia.para_o_texto(), config)
+            texto = pedir("o prompt", "give up : She gave up smoking", "17-0")
+            registros = custos(config)
+            [(autorizacao, corpo)] = openai.respostas
+        self.assertIn("Front:", texto)
+        self.assertEqual((autorizacao, corpo["model"], corpo["instructions"]), ("Bearer acesso-do-teste", "gpt-6-luna", "o prompt"))
+        self.assertEqual([(r["type"], r["model"], r["cost_usd"], r["would_cost_usd"], r["keyword"]) for r in registros],
+                         [("plan_tokens", "gpt-6-luna", 0.0, 0.0045, "17-0")])
+        self.assertNotIn("acesso-do-teste", json.dumps(registros))
+        self.assertEqual(openai.chats, [])
+
+    def test_a_recusa_da_openai_chega_a_quem_pediu_como_o_codigo_e_nada_fica_no_custo(self):
+        with tempfile.TemporaryDirectory() as pasta, OpenAIDeMentira() as openai:
+            openai.recusar_o_chat_de("*", 401, "invalid_api_key")
+            ia, config = porta_na_openai(pasta, "sem login", openai)
+            pedir = ia.pedido_do_texto(ia.para_o_texto(), config)
+            with self.assertRaises(envio.motor_do_complemento().provedores.ErroDoProvedor) as recusa:
+                pedir("o prompt", "give up : She gave up smoking", "17-0")
+            ficou = os.path.exists(os.path.join(config["paths"]["log_dir"], "costs.jsonl"))
+        self.assertEqual(recusa.exception.codigo, "openai_key_rejected")
+        self.assertFalse(ficou)
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 'use strict';
 
 (function (raiz) {
-  const { textoDaVoz, Veio, ConexaoAnki, PedidoAoAnki } = raiz;
+  const { textoDaVoz, Veio, ConexaoAnki, ConversaComOAnki, PedidoAoAnki } = raiz;
   const { elemento } = Veio;
   const { SITUACAO } = ConexaoAnki;
   const AVISO_A_PARTIR_DE = 0.8;
@@ -16,22 +16,16 @@
   const lerNumero = texto => (/^\d+(?:[.,]\d+)?$/.test(texto.trim()) ? Number(texto.trim().replace(',', '.')) : NaN);
   const usado = () => (dados && dados.limitUsd > 0 ? dados.spentUsd / dados.limitUsd : 0);
 
-  async function chamar(pedido) {
-    const resposta = await PedidoAoAnki.pedir(ConexaoAnki.ENDERECO, pedido);
-    if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
-    return resposta.json();
-  }
+  const pedirOTeto = pedido => ConversaComOAnki.pedir(pedido, { formato: teto => typeof teto.limitUsd === 'number' && typeof teto.spentUsd === 'number' });
 
   async function ler() {
     if (ConexaoAnki.situacao() !== SITUACAO.LIGADA) {
       dados = null;
       return desenhar();
     }
-    try {
-      dados = await chamar(PedidoAoAnki.tetoDoMes());
-    } catch {
-      return;
-    }
+    const desfecho = await pedirOTeto(PedidoAoAnki.tetoDoMes());
+    if (!desfecho.ok) return;
+    dados = desfecho.dados;
     desenhar();
   }
 
@@ -79,12 +73,11 @@
     salvar.addEventListener('click', async () => {
       const valor = lerNumero(campo.value);
       if (!(valor > 0)) return void (situacao.textContent = textoDaVoz('BRG-41.invalido'));
-      try {
-        dados = await chamar(PedidoAoAnki.definirOTeto(valor));
-        situacao.textContent = textoDaVoz('BRG-41.salvo');
+      const desfecho = await pedirOTeto(PedidoAoAnki.definirOTeto(valor));
+      situacao.textContent = textoDaVoz(desfecho.ok ? 'BRG-41.salvo' : 'BRG-41.falha');
+      if (desfecho.ok) {
+        dados = desfecho.dados;
         campo.value = numero(dados.limitUsd);
-      } catch {
-        situacao.textContent = textoDaVoz('BRG-41.falha');
       }
       desenhar();
     });

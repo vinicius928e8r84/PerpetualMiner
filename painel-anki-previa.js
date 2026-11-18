@@ -9,7 +9,7 @@
   const ALTURA_MAXIMA = 460;
   const POLITICA = "default-src 'none'; img-src data:; style-src 'unsafe-inline'";
   const { MOTIVO } = ConversaComOAnki;
-  const ESTADO = Object.freeze({ CARREGANDO: 'carregando', PRONTA: 'pronta', SEM_CONEXAO: 'semConexao', ANTIGA: 'antiga', FALHOU: 'falhou' });
+  const ESTADO = Object.freeze({ CARREGANDO: 'carregando', PRONTA: 'pronta', SEM_CONEXAO: 'semConexao', ANTIGA: 'antiga', SEM_NOTA: 'semNota', SEM_TIPO: 'semTipo', FALHOU: 'falhou' });
 
   const lidas = new Map();
 
@@ -38,7 +38,9 @@
     const desfecho = await ConversaComOAnki.pedir(pedido, { formato: temOCartao });
     if (desfecho.ok) return { estado: ESTADO.PRONTA, previa: desfecho.dados };
     if ([MOTIVO.SEM_RESPOSTA, MOTIVO.ANKI_OCUPADO].includes(desfecho.motivo)) return { estado: ESTADO.SEM_CONEXAO };
-    return { estado: desfecho.status === 404 ? ESTADO.ANTIGA : ESTADO.FALHOU };
+    if (desfecho.motivo === MOTIVO.ANTIGA) return { estado: ESTADO.ANTIGA };
+    if (desfecho.codigo === 'note_not_found') return { estado: ESTADO.SEM_NOTA };
+    return { estado: desfecho.codigo === 'note_type_missing' ? ESTADO.SEM_TIPO : ESTADO.FALHOU };
   }
 
   function montar({ prefixo, lang }) {

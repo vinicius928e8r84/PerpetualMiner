@@ -13,6 +13,7 @@ from unittest import mock
 
 import generate_cards
 import openai_http
+import provedores
 from parser import MiningEntry, build_card_stem
 
 CHAVE = "sk-proj-chave-de-teste-0000"
@@ -113,7 +114,6 @@ def configuracao(raiz):
     (raiz / "prompts" / "ru_card.txt").write_text("ru prompt", encoding="utf-8")
     return {
         "lang": "en",
-        "openai_api_key": CHAVE,
         "openai": {"chat_model": "gpt-4o"},
         "paths": {
             "output_dir": str(raiz / "Output"),
@@ -126,19 +126,27 @@ def configuracao(raiz):
 ENTRADA = MiningEntry(keywords=["exerts himself"], phrase="He exerts himself on brands of his own, if at all.")
 
 
+def pedir_com(cred):
+    """The `pedir` the Conexão's IA dos cartões gives the engine, without its cost record: the text through the provider layer."""
+    return lambda sistema, mensagem, rotulo: provedores.texto(cred, sistema, mensagem)[0]
+
+
+def pela_chave(base):
+    return pedir_com({"provedor": provedores.OPENAI, "segredo": CHAVE, "modelo": "gpt-4o", "base": base})
+
+
 class GerarCartoesPorHttp(unittest.TestCase):
-    def test_o_cartao_gerado_fica_no_disco_e_o_custo_dos_tokens_no_log_de_custos(self):
+    def test_o_cartao_pedido_pela_chave_fica_no_disco_e_o_motor_nao_anota_custo(self):
         with tempfile.TemporaryDirectory() as pasta, OpenAIDeMentira([resposta_do_chat(CARTAO)]) as openai:
             raiz = Path(pasta)
-            salvos = generate_cards.run([ENTRADA], configuracao(raiz), openai_base=openai.base)
+            salvos = generate_cards.run([ENTRADA], configuracao(raiz), pela_chave(openai.base))
             stem = build_card_stem(ENTRADA.keywords[0], ENTRADA.phrase)
             texto = (raiz / "Output" / (stem + ".txt")).read_text(encoding="utf-8")
-            custos = [json.loads(linha) for linha in (raiz / "log" / "costs.jsonl").read_text(encoding="utf-8").splitlines()]
+            sem_custo = not (raiz / "log" / "costs.jsonl").exists()
         self.assertEqual(salvos, [stem])
         self.assertIn("Back: exerts himself", texto)
         self.assertEqual(openai.pedidos[0]["corpo"]["messages"][0], {"role": "system", "content": "en prompt"})
-        self.assertEqual([(c["type"], c["model"], c["input_tokens"], c["output_tokens"], c["cost_usd"]) for c in custos],
-                         [("tokens", "gpt-4o", 1000, 200, 0.0045)])
+        self.assertTrue(sem_custo)
 
     def test_um_texto_ja_gerado_nao_e_pedido_de_novo_quando_se_pede_para_pular_os_prontos(self):
         with tempfile.TemporaryDirectory() as pasta, OpenAIDeMentira([]) as openai:
@@ -146,13 +154,13 @@ class GerarCartoesPorHttp(unittest.TestCase):
             stem = build_card_stem(ENTRADA.keywords[0], ENTRADA.phrase)
             (raiz / "Output").mkdir()
             (raiz / "Output" / (stem + ".txt")).write_text(CARTAO, encoding="utf-8")
-            salvos = generate_cards.run([ENTRADA], configuracao(raiz), openai_base=openai.base, skip_existing=True)
+            salvos = generate_cards.run([ENTRADA], configuracao(raiz), pela_chave(openai.base), skip_existing=True)
         self.assertEqual((salvos, openai.pedidos), ([stem], []))
 
     def test_a_falha_de_cada_cartao_fica_com_o_codigo_para_quem_pediu(self):
         falhas = {}
         with tempfile.TemporaryDirectory() as pasta, OpenAIDeMentira([erro(401, "Incorrect API key provided", "invalid_api_key")]) as openai:
-            salvos = generate_cards.run([ENTRADA], configuracao(Path(pasta)), openai_base=openai.base, failures=falhas)
+            salvos = generate_cards.run([ENTRADA], configuracao(Path(pasta)), pela_chave(openai.base), failures=falhas)
         self.assertEqual((salvos, falhas), ([], {build_card_stem(ENTRADA.keywords[0], ENTRADA.phrase): openai_http.RECUSADA}))
 
     def test_gerar_nao_escreve_na_saida_do_processo(self):
@@ -162,7 +170,7 @@ class GerarCartoesPorHttp(unittest.TestCase):
         saida, erro_ = io.StringIO(), io.StringIO()
         with tempfile.TemporaryDirectory() as pasta, OpenAIDeMentira([resposta_do_chat(CARTAO)]) as openai:
             with contextlib.redirect_stdout(saida), contextlib.redirect_stderr(erro_):
-                generate_cards.run([ENTRADA], configuracao(Path(pasta)), openai_base=openai.base)
+                generate_cards.run([ENTRADA], configuracao(Path(pasta)), pela_chave(openai.base))
         self.assertEqual((saida.getvalue(), erro_.getvalue()), ("", ""))
 
     def test_importar_o_motor_de_texto_nao_mexe_nos_avisos_do_processo_nem_precisa_do_sdk(self):
@@ -313,20 +321,15 @@ class ResponderPeloPlano(unittest.TestCase):
             self.assertEqual(recusa_.exception.codigo, codigo)
             self.assertNotIn(TOKEN_DO_PLANO, str(recusa_.exception))
 
-    def test_com_o_plano_o_cartao_sai_pela_responses_api_sem_custo_em_dolar_e_com_o_que_a_chave_teria_cobrado(self):
+    def test_com_o_plano_o_cartao_sai_pela_responses_api_e_o_token_nao_fica_no_disco(self):
         with tempfile.TemporaryDirectory() as pasta, PlanoDeMentira(eventos(CARTAO[:40], CARTAO[40:])) as plano:
             raiz = Path(pasta)
-            config = dict(configuracao(raiz), openai_api_key=None, plano_do_chatgpt={"token": TOKEN_DO_PLANO, "modelo": "gpt-6-luna"})
-            salvos = generate_cards.run([ENTRADA], config, openai_base=plano.base)
-            registros = [json.loads(linha) for linha in (raiz / "log" / "costs.jsonl").read_text(encoding="utf-8").splitlines()]
+            cred = {"provedor": provedores.OPENAI, "via": "plano", "segredo": TOKEN_DO_PLANO, "modelo": "gpt-6-luna", "base": plano.base}
+            salvos = generate_cards.run([ENTRADA], configuracao(raiz), pedir_com(cred))
+            gravado = "".join(caminho.read_text(encoding="utf-8") for caminho in raiz.rglob("*") if caminho.is_file())
         self.assertEqual(salvos, [build_card_stem(ENTRADA.keywords[0], ENTRADA.phrase)])
         self.assertEqual([(p["caminho"], p["corpo"]["instructions"], p["corpo"]["model"]) for p in plano.pedidos], [("/v1/responses", "en prompt", "gpt-6-luna")])
-        # 2061 tokens de entrada e 387 de saída, ao preço do gpt-4o da chave: o plano não cobra por Cartão.
-        self.assertEqual(
-            [(r["type"], r["model"], r["cost_usd"], r["would_cost_usd"], r["keyword"]) for r in registros],
-            [("plan_tokens", "gpt-6-luna", 0.0, 0.009023, ENTRADA.keywords[0])],
-        )
-        self.assertNotIn(TOKEN_DO_PLANO, json.dumps(registros))
+        self.assertNotIn(TOKEN_DO_PLANO, gravado)
 
 
 if __name__ == "__main__":
