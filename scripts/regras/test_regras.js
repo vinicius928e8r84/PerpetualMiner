@@ -272,7 +272,7 @@ acusa('contrato-fechado', 'painel-anki-baralhos.js', [
 ].join('\n'), 1, 'o POST com o caminho numa variável (7996b48)');
 const [saude] = acusa('contrato-fechado', 'lib/conexao-anki.js',
   "const resposta = await fetch(`${ENDERECO}/health`, { signal: AbortSignal.timeout(TEMPO_DA_RESPOSTA) });\n", 1, 'a saúde por fetch direto');
-assert.match(saude.detalhe, /fetch direto a GET \/health, que o contrato tem: peça por PedidoAoAnki\.pedir/);
+assert.match(saude.detalhe, /fetch direto a GET \/health, que o contrato tem: peça por ConversaComOAnki\.pedir/);
 total++;
 const [retomar] = acusa('contrato-fechado', 'painel-envio.js',
   "const resposta = await fetch(`${ENDERECO_DA_CONEXAO}/jobs/${encodeURIComponent(jobId)}/retry`, { method: 'POST' });\n", 1, 'rota fora do contrato');
@@ -280,7 +280,7 @@ assert.match(retomar.detalhe, /POST \/jobs\/:id\/retry: a rota não tem exemplo 
 total++;
 acusa('contrato-fechado', 'background.js', "await fetch('http://127.0.0.1:8766/health');\n", 1, 'o endereço por extenso');
 acusa('contrato-fechado', 'painel-ajustes.js',
-  'const resposta = await raiz.PedidoAoAnki.pedir(ConexaoAnki.ENDERECO, raiz.PedidoAoAnki.baralhos());\n', 0, 'o construtor');
+  'const desfecho = await raiz.ConversaComOAnki.pedir(raiz.PedidoAoAnki.baralhos());\n', 0, 'o construtor');
 acusa('contrato-fechado', 'lib/sincronizacao.js', "const r = await fetch(`${URL_DO_FIRESTORE}/documents/frases`, { method: 'POST' });\n", 0, 'outro servidor');
 acusa('contrato-fechado', 'background.js', "// fetch(`${BRIDGE_URL}/jobs`)\n", 0, 'um comentário');
 
