@@ -139,8 +139,7 @@ function criarFakeAnki() {
     if (req.method !== 'GET' || url.pathname !== '/auth/callback') return false;
     requisicoes.push({ metodo: req.method, caminho: url.pathname, busca: url.search, corpo: null, dados: null });
     if (!estado.ligada) return false;
-    const muda = estado.muda === true || estado.muda === url.pathname;
-    if (!muda) chatgpt.responderRetornoNaPortaDeTeste(url, res);
+    chatgpt.responderRetornoNaPortaDeTeste(url, res);
     return true;
   }
 
