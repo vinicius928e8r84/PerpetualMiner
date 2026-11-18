@@ -5,6 +5,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 import image_judge
 import openai_http
@@ -20,13 +21,20 @@ PNG_BYTES = (
 CHAVE = "sk-proj-chave-do-juiz-0000"
 
 
-def julgar(pasta, openai, mode="real_only", **mais):
+def juiz_pela_chave(base):
+    """The judge the add-on's IA dos cartões gives the engine without the plan: the request through the bound key, which pays it."""
+    presa = provedores.PelaChave(CHAVE, base)
+    return SimpleNamespace(julgar=lambda modelo, sistema, conteudo, rotulo: (
+        *presa.texto(modelo, sistema, conteudo, temperatura=0, json=True, repeticoes=provedores.REPETICOES_DA_IMAGEM), True))
+
+
+def julgar(pasta, openai, mode="real_only", juiz=None, **mais):
     raiz = Path(pasta)
     imagem = raiz / "candidate.png"
     imagem.write_bytes(PNG_BYTES)
     (raiz / "log").mkdir(exist_ok=True)
     return image_judge.rank_candidates(
-        pela_chave=provedores.PelaChave(CHAVE, openai.base), model="mock-judge", log_dir=str(raiz / "log"), keyword="saw", phrase="I saw it happen.", context="test",
+        juiz=juiz or juiz_pela_chave(openai.base), model="mock-judge", log_dir=str(raiz / "log"), keyword="saw", phrase="I saw it happen.", context="test",
         card_text="Front: I saw it happen.", candidates=[{"path": str(imagem), "meta": {"query": "eye", "source": "openverse"}}],
         mode=mode, **mais)
 
@@ -48,6 +56,20 @@ class ImageJudgeTests(unittest.TestCase):
         imagens = [parte["image_url"]["url"] for parte in pedido["corpo"]["messages"][1]["content"] if parte["type"] == "image_url"]
         self.assertEqual(imagens, ["data:image/png;base64," + base64.b64encode(PNG_BYTES).decode("ascii")])
         self.assertEqual([(c["type"], c["model"], c["input_tokens"], c["output_tokens"], c["keyword"]) for c in custos], [("tokens", "mock-judge", 1500, 40, "[image_judge] saw")])
+
+    def test_a_judge_the_key_does_not_pay_leaves_no_cost_record(self):
+        pelo_plano = SimpleNamespace(julgar=lambda modelo, sistema, conteudo, rotulo: (json.dumps({"best_index": 0, "best_score": 70}), {"entrada": 9}, False))
+        with tempfile.TemporaryDirectory() as td, ServidorDeMentira({}) as openai:
+            resultado = julgar(td, openai, juiz=pelo_plano)
+            sem_custo = not (Path(td) / "log" / "costs.jsonl").exists()
+        self.assertEqual((resultado["best_score"], sem_custo), (70, True))
+
+    def test_the_judge_is_asked_with_the_key_model_and_the_card_label(self):
+        pedidos = []
+        juiz = SimpleNamespace(julgar=lambda modelo, sistema, conteudo, rotulo: pedidos.append((modelo, rotulo)) or ('{"best_index": 0}', {}, True))
+        with tempfile.TemporaryDirectory() as td, ServidorDeMentira({}) as openai:
+            julgar(td, openai, juiz=juiz, label="1760000000000-0")
+        self.assertEqual(pedidos, [("mock-judge", "1760000000000-0")])
 
     def test_the_cost_label_can_be_something_other_than_the_keyword(self):
         with tempfile.TemporaryDirectory() as td, ServidorDeMentira({"/v1/chat/completions": veredito()}) as openai:
