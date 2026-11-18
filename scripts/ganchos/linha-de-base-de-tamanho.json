@@ -2,7 +2,6 @@
   "descricao": "Arquivos que já passavam do limite quando o gancho entrou (caminho: bytes). Cada um pode ser editado, não pode crescer além do tamanho daqui (nem do que tinha no último commit); esta lista só desce: entrada nova ou maior barra o commit. Depois de dividir um deles, rode `node scripts/ganchos/limite-de-tokens.js --atualizar-linha-de-base`. Arquivo novo não entra aqui: tem de caber no limite. Apagar este arquivo liga o modo estrito (tudo acima do limite barra o commit).",
   "arquivos": {
     ".agents/skills/painel-anki/SKILL.md": 24323,
-    ".agents/skills/verify-perpetualminer/SKILL.md": 26856,
     "background.js": 41086,
     "bookreader.js": 35868,
     "complemento/contrato/exemplos.json": 108985,
