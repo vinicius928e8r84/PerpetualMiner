@@ -90,8 +90,16 @@ test('a chave recusada num Envio, com outro ainda andando: o cartão dele diz o 
 
   await expect(ingles(page)).toContainText('Não concluído', { timeout: 10_000 });
   await expect(ingles(page)).toContainText('A OpenAI não aceitou a chave.');
-  await expect(ingles(page).getByRole('button', { name: 'Trocar a chave' })).toBeVisible();
   await expect(ingles(page).getByRole('button', { name: 'Tentar de novo' })).toHaveCount(0);
+  const erros = [];
+  page.on('pageerror', erro => erros.push(erro.message));
+
+  await ingles(page).getByRole('button', { name: 'Trocar a chave' }).click();
+
+  await expect(page).toHaveURL(/#configuracoes\/ia$/);
+  await expect(progresso(page)).toBeHidden();
+  expect(erros).toEqual([]);
+  expect(fakes.anki.requisicoes.filter(r => r.caminho === '/jobs/usar-a-chave' || r.caminho === '/jobs/retry')).toEqual([]);
   await estadoFinalEm('o Envio em inglês na Conexão', () => doIngles.state.lastError, 'openai_key_rejected');
 });
 
