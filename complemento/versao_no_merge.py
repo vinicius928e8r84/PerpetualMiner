@@ -10,7 +10,8 @@ barra); depois de cada merge, quem junta roda este script na main, com a árvore
    exemplos de `contrato/`, registra a versão com o hash das fontes e refaz o `.ankiaddon` com `empacotar.py`
    (`SOURCE_DATE_EPOCH` fixa o `mod`, como em `empacotar.py`);
 3. roda os testes do complemento; se algum falha, desfaz tudo e sai com erro;
-4. faz UM commit, `Conexão X.Y.Z: versão dada no merge`, e não empurra: quem juntou empurra.
+4. faz UM commit, `Conexão X.Y.Z: versão dada no merge`, com a autoria do dono (o `EMAIL_DO_DONO` de
+   `scripts/ci/autoria.js`, seja qual for a identidade do git de quem roda), e não empurra: quem juntou empurra.
 
 `versoes-reservadas.json` lista os números que PRs abertas já carregam (o script nunca os dá, e a regra só deixa uma PR
 escrevê-los à mão enquanto estiverem ali; esvazie a lista quando elas mesclarem); `--acima-de` reserva mais um, de passagem.
@@ -42,6 +43,8 @@ ARQUIVOS_DA_VERSAO = [CONFIGURACAO, VERSOES, *EXEMPLOS, PACOTE]
 PASTAS_DO_PACOTE = [PASTA, empacotar.ENGINE, os.path.dirname(PACOTE)]
 LINHA_DA_VERSAO = re.compile(r'^VERSAO = "([^"]+)"', re.M)
 ASSUNTO = "Conexão %s: versão dada no merge"  # a regra `versoes-publicadas` (scripts/regras) reconhece o commit por ele
+AUTORIA = os.path.join(RAIZ, "scripts", "ci", "autoria.js")
+LINHA_DO_DONO = re.compile(r"^const EMAIL_DO_DONO = '([^']+)';$", re.M)
 
 
 def como_tupla(versao):
@@ -75,6 +78,16 @@ def git(*argumentos):
     return resultado.stdout.strip()
 
 
+def autoria_do_dono():
+    """O `-c user.email`/`-c user.name` do dono para o `git commit`: o e-mail vem do `EMAIL_DO_DONO` que o check `Autoria
+    dos commits` cobra (`scripts/ci/autoria.js`), e o nome é o usuário dentro dele (`<id>+<usuário>@users.noreply...`)."""
+    achado = LINHA_DO_DONO.search(ler(AUTORIA)) if os.path.exists(AUTORIA) else None
+    if not achado:
+        raise SystemExit("não achei a linha `const EMAIL_DO_DONO = '...';` em scripts/ci/autoria.js: o commit de versão sairia sem a autoria do dono")
+    email = achado.group(1)
+    return ["-c", "user.email=" + email, "-c", "user.name=" + email.split("@")[0].split("+")[-1]]
+
+
 def relativos(caminhos):
     return [os.path.relpath(caminho, RAIZ).replace(os.sep, "/") for caminho in caminhos]
 
@@ -101,6 +114,7 @@ def main(argv):
         print("há mudança não commitada no complemento, no engine ou no arquivo da extensão: commite ou descarte antes\n" + sujo, file=sys.stderr)
         return 2
 
+    dono = autoria_do_dono()
     registradas = json.loads(ler(VERSOES))
     atual = LINHA_DA_VERSAO.search(ler(CONFIGURACAO)).group(1)
     hash_de_hoje = empacotar.hash_das_fontes()
@@ -141,7 +155,7 @@ def main(argv):
     arquivos = relativos(ARQUIVOS_DA_VERSAO)
     git("add", "--", *arquivos)
     git(
-        "commit", "-q", "-m", ASSUNTO % nova,
+        *dono, "commit", "-q", "-m", ASSUNTO % nova,
         "-m", "Versão dada pelo complemento/versao_no_merge.py depois do merge (era %s).\nHash das fontes: %s" % (atual, hash_novo),
         "--", *arquivos,
     )
