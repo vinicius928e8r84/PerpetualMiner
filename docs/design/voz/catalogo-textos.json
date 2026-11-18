@@ -818,6 +818,8 @@
   "BRG-43.carregando": "Montando a prévia…",
   "BRG-43.semConexao": "A prévia aparece com a Conexão com o Anki ligada.",
   "BRG-43.antiga": "Atualize a Conexão com o Anki para ver a prévia.",
+  "BRG-43.semNota": "Este cartão não está mais no Anki.",
+  "BRG-43.semTipo": "O tipo de nota não está mais no Anki.",
   "BRG-43.falhou": "Não deu para montar a prévia. Tente de novo.",
   "BRG-43.tentarDeNovo": "Tentar de novo",
   "BRG-43.maisEstilos": "Mais estilos em Ajustes de envio",

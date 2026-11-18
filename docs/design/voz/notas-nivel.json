@@ -4,7 +4,7 @@
     "categoria": "status",
     "hoje": "(não existe)",
     "marca": "novo",
-    "nota": "O Cartão de exemplo do estilo, desenhado pelo Anki (#164), em Ajustes de envio › Estilo do cartão e no passo do nível da Boas-vindas (ONB-20). Muda com o nível escolhido na tela, antes de salvar. “O seu cartão…” é a legenda da prévia de uma nota gravada (o primeiro Envio, ONB-21). Frente e Verso são as duas faces; o Verso traz a frente, como o Anki depois de “Mostrar resposta”. “Mais estilos…” só aparece na Boas-vindas e leva a Ajustes de envio."
+    "nota": "O Cartão de exemplo do estilo, desenhado pelo Anki (#164), em Ajustes de envio › Estilo do cartão e no passo do nível da Boas-vindas (ONB-20). Muda com o nível escolhido na tela, antes de salvar. “O seu cartão…” é a legenda da prévia de uma nota gravada (o primeiro Envio, ONB-21). Frente e Verso são as duas faces; o Verso traz a frente, como o Anki depois de “Mostrar resposta”. “Mais estilos…” só aparece na Boas-vindas e leva a Ajustes de envio. Quando a prévia não vem, o aviso diz a causa (#564): “Este cartão não está mais no Anki” é a nota apagada, “O tipo de nota não está mais no Anki” é o tipo que sumiu, os dois com Tentar de novo; só a Conexão que não tem a rota pede para atualizar, sem Tentar de novo."
   },
   "ONB-20": {
     "estado": "Passo do nível do cartão",
