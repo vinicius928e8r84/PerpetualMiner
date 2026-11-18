@@ -145,12 +145,12 @@ class ArquivoDoComplemento(unittest.TestCase):
                 self.assertEqual(motor.config_loader.base_config()["anki"]["note_type"], "Básico")
                 self.assertTrue(os.path.isfile(os.path.join(os.path.dirname(motor.config_loader.__file__), "prompts", "en_card.txt")))
                 from complemento.test_openai_de_mentira import OpenAIDeMentira
-                from complemento.test_motor import SEM_AS_BIBLIOTECAS_DE_FORA, configuracao_do_teste
+                from complemento.test_motor import SEM_AS_BIBLIOTECAS_DE_FORA, configuracao_do_teste, pela_chave
 
                 with OpenAIDeMentira() as openai, mock.patch.dict(sys.modules, SEM_AS_BIBLIOTECAS_DE_FORA):
                     config = configuracao_do_teste(motor, pasta)
                     entrada = motor.parser.parse_mining_line("give up : She gave up smoking")
-                    salvos = motor.generate_cards.run([entrada], config, openai_base=openai.base, card_stem=lambda trabalho, posicao: "9-%d" % posicao)
+                    salvos = motor.generate_cards.run([entrada], config, pela_chave(motor, config, openai.base), card_stem=lambda *_: "9-0")
                 self.assertEqual(salvos, ["9-0"])
                 self.assertTrue(os.path.isfile(os.path.join(pasta, "textos", "9-0.txt")))
                 from pathlib import Path
@@ -160,7 +160,7 @@ class ArquivoDoComplemento(unittest.TestCase):
                 with OpenAIDeMentira() as openai, mock.patch.dict(sys.modules, SEM_AS_BIBLIOTECAS_DE_FORA):
                     imagem = Path(pasta) / "imagem.png"
                     concreta = motor.parser.parse_mining_line("bicycle : He rides a bicycle")
-                    motor.generate_cards.run([concreta], config, openai_base=openai.base, card_stem=lambda trabalho, posicao: "9-1")
+                    motor.generate_cards.run([concreta], config, pela_chave(motor, config, openai.base), card_stem=lambda *_: "9-1")
                     escolha = motor.image_pipeline.build(dict(config, openai_base=openai.base), Path(pasta) / "textos", "2", config["openai_api_key"], config["paths"]["log_dir"])
                     resultado = escolha.generate_direct("9-1", "a bicycle", imagem)
                 self.assertEqual(resultado, "ok")
