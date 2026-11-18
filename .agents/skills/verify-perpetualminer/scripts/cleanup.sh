@@ -28,7 +28,7 @@ if [ -f "$RUN/drive.pid" ]; then
       sleep 0.5
     done
     if [ -n "$(pm_sobreviventes "${alvos[@]}")" ]; then
-      primeiros=("${alvos[@]}"); coletar; alvos=("${primeiros[@]}" "${alvos[@]}")
+      primeiros=("${alvos[@]}"); coletar; alvos=("${primeiros[@]}" ${alvos[@]+"${alvos[@]}"})
       pm_sinalizar KILL "${alvos[@]}"
       sleep 1
     fi
