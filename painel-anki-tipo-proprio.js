@@ -1,24 +1,19 @@
 'use strict';
 
 (function (raiz) {
-  const { textoDaVoz, Veio, ConexaoAnki, PedidoAoAnki, AjustesDeEnvio } = raiz;
+  const { textoDaVoz, Veio, ConversaComOAnki, PedidoAoAnki, AjustesDeEnvio } = raiz;
   const { elemento } = Veio;
   const { PARTES_DO_TIPO_PROPRIO: PARTES, PARTES_OBRIGATORIAS: OBRIGATORIAS } = AjustesDeEnvio;
   const VOZ_DA_PARTE = {
     frase: 'BRG-45.frase', audio_da_frase: 'BRG-45.audioDaFrase', resposta: 'BRG-45.resposta', palavra: 'BRG-45.palavra', audio_da_palavra: 'BRG-45.audioDaPalavra', imagem: 'BRG-45.imagem',
   };
 
+  const ESTADO_DO_MOTIVO = { sem_resposta: 'semConexao', anki_ocupado: 'semConexao', antiga: 'antiga' };
+
   async function lerOsTipos() {
-    let resposta;
-    try {
-      resposta = await PedidoAoAnki.pedir(ConexaoAnki.ENDERECO, PedidoAoAnki.tiposDeNota());
-    } catch {
-      return { estado: 'semConexao' };
-    }
-    if (resposta.status === 503) return { estado: 'semConexao' };
-    if (!resposta.ok) return { estado: PedidoAoAnki.ausenciaDaRota(resposta.status) };
-    const dados = await resposta.json().catch(() => null);
-    return Array.isArray(dados?.noteTypes) ? { estado: 'pronta', tipos: dados.noteTypes } : { estado: 'falhou' };
+    const desfecho = await ConversaComOAnki.pedir(PedidoAoAnki.tiposDeNota(), { formato: dados => Array.isArray(dados.noteTypes) });
+    if (desfecho.ok) return { estado: 'pronta', tipos: desfecho.dados.noteTypes };
+    return { estado: ESTADO_DO_MOTIVO[desfecho.motivo] || 'falhou' };
   }
 
   function mapaSugerido(tipo) {

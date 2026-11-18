@@ -120,6 +120,45 @@ test('sem a Conexão com o Anki ligada a lista não vem, a tela diz e o Tentar d
   await estadoFinal(extensao, { [CHAVE]: { en: { versao: 1 } } });
 });
 
+test('com a Conexão com o Anki sem responder a lista não vem, a tela diz e o Tentar de novo lê de novo', async ({ page, extensao, fakes }) => {
+  await abrirAjustes(page, extensao, fakes);
+  fakes.anki.desligar();
+
+  await abrirOTipo(page).click();
+  await expect(painelDoTipo(page)).toContainText('Os tipos de nota aparecem com a Conexão com o Anki ligada.');
+  fakes.anki.ligar();
+  await painelDoTipo(page).getByRole('button', { name: 'Tentar de novo' }).click();
+  await expect(campo(page, 'Tipo de nota')).toBeVisible();
+  await estadoFinal(extensao, { [CHAVE]: { en: { versao: 1 } } });
+});
+
+test('uma Conexão com o Anki que não conhece os tipos de nota pede a atualização, sem Tentar de novo', async ({ page, extensao, fakes }) => {
+  await abrirAjustes(page, extensao, fakes);
+  fakes.anki.responder('POST', '/anki/note-types', () => ({ status: 404, json: { error: 'not_found' } }));
+
+  await abrirOTipo(page).click();
+  await expect(painelDoTipo(page)).toContainText('Atualize a Conexão com o Anki para usar um tipo que você já tem.');
+  await expect(painelDoTipo(page).getByRole('button', { name: 'Tentar de novo' })).toHaveCount(0);
+  await estadoFinal(extensao, { [CHAVE]: { en: { versao: 1 } } });
+});
+
+test('a leitura dos tipos recusada, ou fora do formato, diz que não deu e o Tentar de novo lê de novo', async ({ page, extensao, fakes }) => {
+  await abrirAjustes(page, extensao, fakes);
+  const leituras = () => fakes.anki.requisicoes.filter(r => r.caminho === '/anki/note-types').length;
+  fakes.anki.responder('POST', '/anki/note-types', () => ({ status: 500, json: { error: 'internal_error' } }));
+
+  await abrirOTipo(page).click();
+  await expect(painelDoTipo(page)).toContainText('Não deu para ler os tipos de nota. Tente de novo.');
+  fakes.anki.responder('POST', '/anki/note-types', () => ({ status: 200, json: { noteTypes: 'nenhum' } }));
+  await painelDoTipo(page).getByRole('button', { name: 'Tentar de novo' }).click();
+  await expect.poll(leituras).toBe(2);
+  await expect(painelDoTipo(page)).toContainText('Não deu para ler os tipos de nota. Tente de novo.');
+  fakes.anki.pararDeResponder('POST', '/anki/note-types');
+  await painelDoTipo(page).getByRole('button', { name: 'Tentar de novo' }).click();
+  await expect(campo(page, 'Tipo de nota')).toBeVisible();
+  await estadoFinal(extensao, { [CHAVE]: { en: { versao: 1 } } });
+});
+
 test.describe('o Envio seguinte leva o mapeamento', () => {
   test.beforeEach(({ fakes }) => {
     fakes.anki.usarRelogio(() => AGORA);
