@@ -5,8 +5,7 @@
     "painel.css": 2
   },
   "gravacao-de-frases": {
-    "lib/sincronizacao.js": 2,
-    "painel.js": 3
+    "lib/sincronizacao.js": 2
   },
   "idioma-solto": {},
   "teste-le-codigo": {},
@@ -64,7 +63,7 @@
   "link-de-doc": {},
   "limite-de-linhas": {
     "painel.css": 2057,
-    "painel.js": 639
+    "painel.js": 635
   },
   "sem-comentario-novo": {},
   "html-cru": {
