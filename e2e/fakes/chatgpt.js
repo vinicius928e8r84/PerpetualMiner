@@ -19,14 +19,23 @@ function criarFakeChatGPT() {
     return `${AUTORIZAR}?${parametros}`;
   }
 
+  function receberRetorno(url) {
+    const state = url.searchParams.get('state');
+    if (state && state === estado.state && estado.situacao === 'entrando') {
+      estado.state = null;
+      estado.situacao = !url.searchParams.get('error') ? 'conectada' : estado.acabado ? 'acabou' : 'recusou';
+      estado.acabado = false;
+    }
+  }
+
+  function responderRetornoNaPortaDeTeste(url, res) {
+    receberRetorno(url);
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }).end(PAGINA_DO_RETORNO);
+  }
+
   function naConexao(route, url, respostaDoContrato) {
     if (url.pathname === '/auth/callback') {
-      const state = url.searchParams.get('state');
-      if (state && state === estado.state && estado.situacao === 'entrando') {
-        estado.state = null;
-        estado.situacao = !url.searchParams.get('error') ? 'conectada' : estado.acabado ? 'acabou' : 'recusou';
-        estado.acabado = false;
-      }
+      receberRetorno(url);
       return route.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body: PAGINA_DO_RETORNO });
     }
     const { status, json } = respostaDoContrato('POST', url.pathname, {});
@@ -72,6 +81,7 @@ function criarFakeChatGPT() {
     tratar,
     responderAutorizacao,
     naConexao,
+    responderRetornoNaPortaDeTeste,
     definir(situacao) { [estado.situacao, estado.acabado] = [situacao, false]; },
     /** @estado-guardado O login que a Conexão guarda agora (`conectada` é o arquivo dos tokens na Conexão de verdade). */
     situacao() { return estado.situacao; },
