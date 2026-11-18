@@ -478,7 +478,7 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, CorrecaoDaCriacao, LimiteDoPlano, 
                 paga = self.ia.para_o_texto(pela_chave)
                 if paga.quem == PARADO:
                     return paga.motivo if paga.motivo in PARA_O_ENVIO + (SEM_CHAVE,) else self._cartao(job_id, cartao_id, status=FALHOU, error=paga.motivo)
-                falha = self._gerar_o_texto(job_id, pedido, dict(config, **paga.config), cartao_id, cartao["phraseId"], linha)
+                falha = self._gerar_o_texto(job_id, pedido, config, cartao_id, cartao["phraseId"], linha, paga)
                 paga = None
                 if self.fila.estado(job_id).get("wiped"):
                     with self.fila.tranca:
@@ -500,7 +500,7 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, CorrecaoDaCriacao, LimiteDoPlano, 
             return parada.codigo
         return None
 
-    def _gerar_o_texto(self, job_id, pedido, config, cartao_id, phrase_id, linha):
+    def _gerar_o_texto(self, job_id, pedido, config, cartao_id, phrase_id, linha, paga):
         """Gera o texto de um Cartão, tentando de novo o que falha por um motivo passageiro; devolve o código da falha, ou None."""
         entrada = self.motor.parser.parse_line(config["estilo"]["entrada"], linha)
         if entrada is None:
@@ -513,7 +513,7 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, CorrecaoDaCriacao, LimiteDoPlano, 
                 self._dormir(espera)
             falhas = {}
             self.motor.generate_cards.run(
-                [entrada], config, openai_base=self.openai_base, skip_existing=True, failures=falhas, card_stem=nome, only_stems={cartao_id})
+                [entrada], config, self.ia.pedido_do_texto(paga, config), skip_existing=True, failures=falhas, card_stem=nome, only_stems={cartao_id})
             codigo = falhas.get(cartao_id)
             if codigo not in PASSAGEIROS:
                 break

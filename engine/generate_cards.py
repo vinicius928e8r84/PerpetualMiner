@@ -1,12 +1,12 @@
 """
-generate_cards.py - Generate Anki card content via local prompts + chat completions (or the ChatGPT plan's Responses API).
+generate_cards.py - Generate Anki card content via local prompts and the `pedir` its caller gives (who pays and the cost record are the caller's).
 
 One request per keyword (not batched) to prevent keyword hallucination.
   - keywords[0] -> uses the original phrase from the input
   - keywords[1..N] -> explicit instruction to invent a new sentence
 
-The model is asked through the provider layer (`provedores`, plain HTTP), and progress goes to the `perpetualminer.motor` logger,
-never to stdout: the module runs inside the Anki add-on (`complemento/motor`).
+The model is asked through `pedir` (in the Anki add-on, the Conexão's IA dos cartões, `complemento/ia_dos_cartoes.py`), and progress goes to
+the `perpetualminer.motor` logger, never to stdout: the module runs inside the Anki add-on (`complemento/motor`).
 """
 
 import logging
@@ -16,13 +16,12 @@ from pathlib import Path
 from typing import Callable, Dict, List, Optional, Set
 
 if __package__:  # inside the Anki add-on the engine is the package `complemento.motor`
-    from . import cost_tracker, provedores
-    from .parser import CardJob, get_card_jobs, parse_mining_file
+    from . import provedores
+    from .parser import CardJob, get_card_jobs
     from .prompt_loader import load_prompt
 else:
-    import cost_tracker
     import provedores
-    from parser import CardJob, get_card_jobs, parse_mining_file
+    from parser import CardJob, get_card_jobs
     from prompt_loader import load_prompt
 
 LOGGER = logging.getLogger("perpetualminer.motor")
@@ -160,33 +159,6 @@ def _has_ru_translation(card_text: str) -> bool:
         re.IGNORECASE | re.MULTILINE,
     )
     return bool(match and match.group(1).strip())
-
-
-def _record_chat_cost(log_dir: str, model: str, usage: dict, keyword: str) -> None:
-    if not usage:
-        return
-    cost_tracker.record_tokens(
-        log_dir,
-        model=model,
-        input_tokens=usage.get("entrada", 0),
-        output_tokens=usage.get("saida", 0),
-        keyword=keyword,
-    )
-
-
-def _call_model(
-    openai_base: Optional[str],
-    api_key: str,
-    system_prompt: str,
-    user_message: str,
-    model: str,
-    log_dir: str,
-    keyword: str,
-) -> Optional[str]:
-    cred = {"provedor": provedores.OPENAI, "segredo": api_key, "modelo": model, "base": openai_base}
-    text, usage = provedores.texto(cred, system_prompt, user_message, temperatura=0.2)
-    _record_chat_cost(log_dir, model, usage, keyword)
-    return text or None
 
 
 def _forms_of(word: str) -> Set[str]:
@@ -330,14 +302,17 @@ def _write_card(dest: Path, card: str) -> None:
 def run(
     entries,
     config: dict,
+    pedir: Callable[[str, str, str], Optional[str]],
     *,
-    openai_base: Optional[str] = None,
     skip_existing: bool = False,
     failures: Optional[Dict[str, str]] = None,
     card_stem: Optional[Callable[[CardJob, int], str]] = None,
     only_stems: Optional[Set[str]] = None,
 ) -> List[str]:
-    """Generate one card .txt per CardJob via local prompts + chat completions.
+    """Generate one card .txt per CardJob via local prompts and `pedir`.
+
+    `pedir(system_prompt, message, label)` asks the model for one card's text and returns it (or None); a refusal is an
+    `ErroDoProvedor`. Who pays it and its cost record are the caller's: the engine never sees a credential.
 
     `skip_existing`: a card whose .txt is already there is not asked again (it was paid for).
     `failures`: when given, gets `{stem: code}` for each card that was not saved (a code of the provider layer,
@@ -350,11 +325,7 @@ def run(
     output_dir = Path(config["paths"]["output_dir"])
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    api_key = config["openai_api_key"]
-    plan = config.get("plano_do_chatgpt")
-    log_dir = config["paths"]["log_dir"]
     lang = config.get("lang", "en")
-    model = provedores.modelo_do_texto(config)
     failures = failures if failures is not None else {}
 
     all_jobs: List[tuple] = []
@@ -373,11 +344,7 @@ def run(
 
     def call(message: str, label: str, stem: str) -> Optional[str]:
         try:
-            if plan:
-                text, usage = provedores.texto(provedores.credencial_do_texto(config, openai_base), system_prompt, message)
-                cost_tracker.record_plan_tokens(log_dir, plan["modelo"], model, usage["entrada"], usage["saida"], label)
-                return text or None
-            return _call_model(openai_base, api_key, system_prompt, message, model, log_dir, label)
+            return pedir(system_prompt, message, label) or None
         except provedores.ErroDoProvedor as exc:
             LOGGER.error("Modelo falhou para '%s': %s", label, exc)
             failures[stem] = exc.codigo
@@ -452,11 +419,3 @@ def run(
 
     return saved
 
-
-if __name__ == "__main__":
-    from config_loader import load_config
-
-    cfg = load_config()
-    mining_entries = parse_mining_file(Path(cfg["paths"]["mining_file"]))
-    result = run(mining_entries, cfg)
-    print(f"OK {len(result)} card(s) generated.")
