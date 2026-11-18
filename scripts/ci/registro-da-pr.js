@@ -124,7 +124,7 @@ function faltaDaProva(linhas, head) {
   return semHead && `atenção ALTA: ${semHead}`;
 }
 
-function conferir({ corpo, rotulos, registros, head, repositorio, headsEquivalentes = [] }) {
+function faltasDoCorpo({ corpo, repositorio }) {
   const linhas = linhasQueValem(corpo);
   const textos = linhas.map(linha => linha.texto);
   const foraDoModelo = [
@@ -132,11 +132,19 @@ function conferir({ corpo, rotulos, registros, head, repositorio, headsEquivalen
     ...CAMPOS_DO_MODELO.filter(campo => !valoresDe(textos, campo).length).map(campo => `o campo "${campo}:" preenchido`),
   ];
   const { atencao, falta: semAtencao } = atencaoDe(textos);
-  const alta = atencao === 'ALTA' || rotulos.some(rotulo => igual(String(rotulo), ROTULO_DE_RISCO_ALTO));
   const faltas = [
     foraDoModelo.length && `o corpo não segue o modelo do /pr: falta ${foraDoModelo.join(', ')}`,
     semAtencao,
     ...faltasDaIssue(linhas, repositorio),
+  ].filter(Boolean);
+  return { linhas, atencao, faltas };
+}
+
+function conferir({ corpo, rotulos, registros, head, repositorio, headsEquivalentes = [] }) {
+  const { linhas, atencao, faltas: doCorpo } = faltasDoCorpo({ corpo, repositorio });
+  const alta = atencao === 'ALTA' || rotulos.some(rotulo => igual(String(rotulo), ROTULO_DE_RISCO_ALTO));
+  const faltas = [
+    ...doCorpo,
     faltaDaRevisao(registros, head, headsEquivalentes),
     alta && faltaDaProva(linhas, head),
   ].filter(Boolean);
@@ -203,4 +211,4 @@ async function main(env) {
 
 if (require.main === module) main(process.env).then(codigo => { process.exitCode = codigo; });
 
-module.exports = { FRASE, ROTULO_DE_RISCO_ALTO, SECAO_DA_PROVA, conferir, faltaDaProva, faltaDaRevisao, lerDoGitHub, linhasQueValem };
+module.exports = { FRASE, MODELO, ROTULO_DE_RISCO_ALTO, SECAO_DA_PROVA, conferir, faltaDaProva, faltaDaRevisao, faltasDoCorpo, lerDoGitHub, linhasQueValem };

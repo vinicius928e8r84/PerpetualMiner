@@ -3,12 +3,15 @@
 
 const { execFileSync } = require('child_process');
 const fs = require('fs');
-const { FRASE, SECAO_DA_PROVA, conferir, faltaDaProva, faltaDaRevisao, lerDoGitHub, linhasQueValem } = require('./registro-da-pr.js');
+const { FRASE, MODELO, SECAO_DA_PROVA, conferir, faltaDaProva, faltaDaRevisao, faltasDoCorpo, lerDoGitHub, linhasQueValem } = require('./registro-da-pr.js');
 
 const WORKFLOW = 'registro-da-pr.yml';
 
 const AJUDA = `uso: node scripts/ci/registrar-na-pr.js <comando> --pr <número> [opções]
 
+  corpo      diz o que o check "Registro da PR" diria de um corpo que ainda está num arquivo, antes de abrir ou
+             editar a PR; não pede --pr e não fala com o GitHub
+               --arquivo <corpo.md>
   conferir   diz o que o check "Registro da PR" diria agora, e se ele já rodou no head
   revisao    publica o registro do /code-review num comentário e roda o check de novo
                --head <SHA revisado> --autor <quem escreveu> --revisor <quem revisou> [--veredito CLEAN] [--nota <arquivo>]
@@ -33,9 +36,9 @@ const nomeDoTitulo = texto => texto.replace(/[*_`]/g, '').trim().toLowerCase();
 function lerArgumentos(argv) {
   const [comando, ...resto] = argv;
   if (!comando || comando === '--help' || comando === '-h' || resto.includes('--help')) return { ajuda: true };
-  if (!['conferir', 'revisao', 'prova'].includes(comando)) throw new ErroDeUso(`comando desconhecido: ${comando}`);
+  if (!['corpo', 'conferir', 'revisao', 'prova'].includes(comando)) throw new ErroDeUso(`comando desconhecido: ${comando}`);
   const opcoes = { comando, veredito: 'CLEAN', publicar: false };
-  const comValor = ['pr', 'head', 'veredito', 'autor', 'revisor', 'nota', 'repo'];
+  const comValor = ['pr', 'head', 'veredito', 'autor', 'revisor', 'nota', 'repo', 'arquivo'];
   for (let i = 0; i < resto.length; i++) {
     const nome = resto[i].replace(/^--/, '');
     if (resto[i] === '--publicar') opcoes.publicar = true;
@@ -44,8 +47,8 @@ function lerArgumentos(argv) {
       opcoes[nome] = resto[++i];
     } else throw new ErroDeUso(`opção desconhecida: ${resto[i]}`);
   }
-  if (!/^\d+$/.test(opcoes.pr || '')) throw new ErroDeUso('--pr <número> é obrigatório');
-  const pedidas = { conferir: [], revisao: ['head', 'autor', 'revisor'], prova: ['head', 'nota'] }[comando];
+  if (comando !== 'corpo' && !/^\d+$/.test(opcoes.pr || '')) throw new ErroDeUso('--pr <número> é obrigatório');
+  const pedidas = { corpo: ['arquivo'], conferir: [], revisao: ['head', 'autor', 'revisor'], prova: ['head', 'nota'] }[comando];
   const faltam = pedidas.filter(nome => !String(opcoes[nome] || '').trim());
   if (faltam.length) throw new ErroDeUso(`${comando} pede ${faltam.map(nome => `--${nome}`).join(', ')}`);
   if (opcoes.head) opcoes.head = opcoes.head.trim().toLowerCase();
@@ -76,6 +79,22 @@ function corpoComAProva(corpo, secao) {
   }
   if (inicio < 0) return `${linhas.join('\n').replace(/\s+$/, '')}\n\n${secao}\n`;
   return [...linhas.slice(0, inicio), secao, '', ...linhas.slice(fim)].join('\n');
+}
+
+function conferirCorpo(corpo, repositorio) {
+  const { atencao, faltas } = faltasDoCorpo({ corpo, repositorio });
+  if (faltas.length) {
+    return {
+      ok: false,
+      mensagem: [
+        '✗ O check "Registro da PR" recusaria este corpo:',
+        ...faltas.map(falta => `    - ${falta}`),
+        `  Conserto: o formato de cada parte está em ${MODELO}. O que está em comentário de HTML, em bloco de código ou em citação não conta.`,
+      ].join('\n'),
+    };
+  }
+  const depois = atencao === 'ALTA' ? `o registro do /code-review e a seção "${SECAO_DA_PROVA}", os dois do head` : 'o registro do /code-review do head';
+  return { ok: true, mensagem: `corpo ok para o check "Registro da PR": atenção ${atencao}, issue dita. Com a PR aberta falta ${depois}.` };
 }
 
 function faltaDoHeadInformado(informado, head, oQue) {
@@ -143,6 +162,7 @@ function ambiente(env, opcoes) {
   };
   const doRemoto = () => (/github\.com[:/]([^/]+\/[^/]+?)(?:\.git)?$/.exec(tentar('git', ['remote', 'get-url', 'origin'])) || [])[1];
   const repo = opcoes.repo || env.GITHUB_REPOSITORY || doRemoto();
+  if (opcoes.comando === 'corpo') return { ...env, GITHUB_REPOSITORY: repo };
   if (!repo) throw new ErroDeUso('não sei qual é o repositório: passe --repo <dono/repo>');
   return { ...env, GITHUB_REPOSITORY: repo, PR: opcoes.pr, GITHUB_TOKEN: env.GITHUB_TOKEN || env.GH_TOKEN || tentar('gh', ['auth', 'token']) };
 }
@@ -159,6 +179,11 @@ async function main(argv, env) {
     return 2;
   }
   try {
+    if (opcoes.comando === 'corpo') {
+      const { ok, mensagem } = conferirCorpo(fs.readFileSync(opcoes.arquivo, 'utf8'), env.GITHUB_REPOSITORY);
+      console.log(mensagem);
+      return ok ? 0 : 1;
+    }
     const nota = opcoes.nota ? fs.readFileSync(opcoes.nota, 'utf8') : '';
     const pedir = cliente(env);
     const pr = await lerDoGitHub(env);
@@ -188,4 +213,4 @@ async function main(argv, env) {
 
 if (require.main === module) main(process.argv.slice(2), process.env).then(codigo => { process.exitCode = codigo; });
 
-module.exports = { corpoComAProva, planejar, registroDaRevisao, secaoDaProva };
+module.exports = { conferirCorpo, corpoComAProva, planejar, registroDaRevisao, secaoDaProva };

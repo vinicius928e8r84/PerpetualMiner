@@ -17,6 +17,8 @@ O check "Registro da PR" (.github/workflows/registro-da-pr.yml, scripts/ci/regis
 
 1. O corpo segue o modelo do /pr: as seções Summary, Evidence e Merge Danger, as linhas "Door:", "Blast Radius:"
    e "Política:" preenchidas, e a linha "Atenção:" só com BAIXA, MÉDIA ou ALTA (o porquê vai na linha de baixo).
+   Antes de abrir ou editar a PR, `node scripts/ci/registrar-na-pr.js corpo --arquivo <corpo.md>` diz o que o check
+   diria do corpo (este item e o 4), sem falar com o GitHub.
 
 2. Um comentário (ou revisão) da PR, de quem pode escrever no repositório, é o registro do /code-review deste head:
 

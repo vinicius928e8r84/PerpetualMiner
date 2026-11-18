@@ -7,7 +7,7 @@ const http = require('http');
 const os = require('os');
 const path = require('path');
 const { conferir } = require('./registro-da-pr.js');
-const { corpoComAProva, planejar, secaoDaProva } = require('./registrar-na-pr.js');
+const { conferirCorpo, corpoComAProva, planejar, secaoDaProva } = require('./registrar-na-pr.js');
 
 const HEAD = '1d606d78aac180096ca7cc5df8279355f21ac729';
 const ANTERIOR = '13cf9d9a6ec64ca5d07f1266fe8998323de16ef3';
@@ -52,6 +52,32 @@ assert.match(planejar(revisao(), pr(), 'Veredito: FINDINGS no eixo Spec').recusa
   assert.strictEqual(conferir({ ...pr(), corpo: novo, registros: [registro(HEAD)] }).ok, true);
   const comModelo = corpoCom('**Atenção:** ALTA', '', '<!--', '   ## Prova real', '   Head: <SHA>', '-->', '', '```', '## Prova real', '```');
   assert.strictEqual(corpoComAProva(comModelo, secaoDaProva(HEAD)), `${comModelo}\n\n## Prova real\n\nPROVADO 100% REAL\nHead: ${HEAD}\n`);
+}
+{
+  const ISSUE = 'https://github.com/dono/repo/issues/9';
+  const comIssue = (...linhas) => corpoCom(...linhas).replace('Sem issue', linhas.includes('Prova que falta: o Envio no Mac.') ? `Refs ${ISSUE}` : `Closes ${ISSUE}`);
+  assert.deepStrictEqual(conferirCorpo(MEDIA, 'dono/repo'), { ok: true, mensagem: 'corpo ok para o check "Registro da PR": atenção MÉDIA, issue dita. Com a PR aberta falta o registro do /code-review do head.' });
+  assert.match(conferirCorpo(ALTA, 'dono/repo').mensagem, /atenção ALTA, issue dita\. Com a PR aberta falta o registro do \/code-review e a seção "Prova real", os dois do head\.$/);
+  assert.strictEqual(conferirCorpo(comIssue('**Atenção:** BAIXA'), 'dono/repo').ok, true);
+  assert.strictEqual(conferirCorpo(comIssue('**Atenção:** BAIXA', 'Prova que falta: o Envio no Mac.'), 'dono/repo').ok, true);
+  for (const [corpo, padrao, oQue] of [
+    [corpoCom(), /campo de atenção preenchido/, 'sem a atenção'],
+    [corpoCom('**Atenção:** BAIXA: só documentação'), /a atenção "BAIXA: só documentação" do corpo não é BAIXA nem MÉDIA nem ALTA/, 'a atenção com o porquê na mesma linha'],
+    [MEDIA.replace('## Evidence', '## Provas'), /não segue o modelo do \/pr: falta a seção Evidence/, 'fora do modelo'],
+    [MEDIA.replace('Sem issue', 'Closes #9'), /a linha "Closes #9" não tem a URL completa da issue/, 'a issue pelo número solto'],
+    [MEDIA.replace('Sem issue', `Refs ${ISSUE}`), /"Refs" sem a linha "Prova que falta: <texto>"/, 'Refs sem a prova que falta'],
+    [MEDIA.replace('Sem issue', 'Mudança pequena.'), /o corpo não diz a issue/, 'sem a issue'],
+    [MEDIA.replace('Sem issue', 'Closes https://github.com/outro/repo/issues/9'), /não tem a URL completa da issue/, 'a issue de outro repositório'],
+  ]) {
+    const { ok, mensagem } = conferirCorpo(corpo, 'dono/repo');
+    assert.strictEqual(ok, false, oQue);
+    assert.match(mensagem, padrao, oQue);
+    assert.match(mensagem, /^✗ O check "Registro da PR" recusaria este corpo:\n {4}- [^]*Conserto: o formato de cada parte está em \.github\/PULL_REQUEST_TEMPLATE\.md/, oQue);
+    const noCheck = conferir({ ...pr(), corpo, repositorio: 'dono/repo', registros: [registro(HEAD)] });
+    assert.strictEqual(noCheck.ok, false, `${oQue}: o check de verdade também recusa`);
+    assert.match(noCheck.mensagem, padrao, `${oQue}: com a mesma falta`);
+  }
+  assert.doesNotMatch(conferirCorpo(corpoCom(), 'dono/repo').mensagem, /code-review|Prova real/, 'o que só existe com a PR aberta não é falta do arquivo');
 }
 
 (async () => {
@@ -136,7 +162,22 @@ assert.match(planejar(revisao(), pr(), 'Veredito: FINDINGS no eixo Spec').recusa
     assert.match(conferida.stdout, new RegExp(`mais recente é do commit ${ANTERIOR}`));
     assert.deepStrictEqual(conferida.escritas, []);
 
+    const arquivo = path.join(pasta, 'corpo.md');
+    fs.writeFileSync(arquivo, MEDIA);
+    const doArquivo = await rodar(['corpo', '--arquivo', arquivo]);
+    assert.strictEqual(doArquivo.status, 0, doArquivo.stdout);
+    assert.match(doArquivo.stdout, /^corpo ok para o check "Registro da PR": atenção MÉDIA/);
+    assert.deepStrictEqual(pedidos, [], 'conferir o arquivo não fala com o GitHub');
+    fs.writeFileSync(arquivo, MEDIA.replace('Sem issue', 'Closes https://github.com/outro/repo/issues/9'));
+    const deOutroRepo = await rodar(['corpo', '--arquivo', arquivo]);
+    assert.strictEqual(deOutroRepo.status, 1, 'o repositório vem do ambiente, como nos outros comandos');
+    assert.match(deOutroRepo.stdout, /^✗ O check "Registro da PR" recusaria este corpo:[^]*issues\/<N>; o número solto e a issue de outro repositório não valem/);
+    const semArquivo = await rodar(['corpo', '--arquivo', path.join(pasta, 'nao-existe.md')]);
+    assert.strictEqual(semArquivo.status, 2);
+    assert.match(semArquivo.stdout, /^✗ ENOENT/);
+
     for (const [args, padrao] of [
+      [['corpo'], /corpo pede --arquivo/],
       [['revisao', '--pr', '7', '--head', HEAD], /revisao pede --autor, --revisor/], [['prova', '--pr', '7', '--head', HEAD], /prova pede --nota/],
       [['publicar', '--pr', '7'], /comando desconhecido: publicar/], [['conferir'], /--pr <número> é obrigatório/], [['conferir', '--pr', '7', '--forcar'], /opção desconhecida: --forcar/],
     ]) {
@@ -155,7 +196,10 @@ assert.match(planejar(revisao(), pr(), 'Veredito: FINDINGS no eixo Spec').recusa
   }
 
   assert(conferir({ ...pr(), corpo: '' }).mensagem.includes('node scripts/ci/registrar-na-pr.js --help'), 'a mensagem do check vermelho cita o publicador');
-  assert(fs.readFileSync(path.join(__dirname, '..', '..', '.github', 'PULL_REQUEST_TEMPLATE.md'), 'utf8').includes('scripts/ci/registrar-na-pr.js'), 'o modelo cita o publicador');
+  const modelo = fs.readFileSync(path.join(__dirname, '..', '..', '.github', 'PULL_REQUEST_TEMPLATE.md'), 'utf8');
+  assert(modelo.includes('scripts/ci/registrar-na-pr.js'), 'o modelo cita o publicador');
+  assert(modelo.includes('node scripts/ci/registrar-na-pr.js corpo --arquivo'), 'e o conferir do corpo antes de abrir a PR');
+  assert.strictEqual(conferirCorpo(modelo, 'dono/repo').ok, false, 'o modelo em branco não passa: ninguém abre a PR com ele vazio');
   console.log('test_registrar_na_pr: ok');
 })().catch(erro => {
   console.error(erro);
