@@ -50,6 +50,11 @@ A palavra da frase que o cartão ensina, grifada na frase; pode ser escolhida pe
 _Nome no código_: `keywords` (`palavra@posição` para cada palavra, com `|` entre uma Palavra e a seguinte), `autoKeyword`; `keyword` no motor
 _Avoid_: Keyword (na tela), palavra-chave, nova, grupo
 
+**Idioma**:
+O idioma da Frase, detectado do texto: Inglês ou Russo. Cada idioma tem os seus Ajustes de envio, o seu Baralho e a sua Mineração automática.
+_Nome no código_: `idioma` (`'Inglês'`, `'Russo'`) na Frase; `lang` (`en`, `ru`) na Conexão com o Anki e no motor
+_Avoid_: Língua, lang
+
 ## Onde a pessoa usa
 
 **Extensão**:
@@ -60,6 +65,10 @@ _Avoid_: Plugin, add-on
 A tela grande da extensão, com três Áreas: Frases, Conexão com o Anki e Configurações.
 _Nome no código_: `painel.html`, `painel*.js`
 _Avoid_: Dashboard, página de opções
+
+**Área**:
+Cada uma das três partes do Painel, com endereço próprio (`#frases`, `#anki`, `#configuracoes`). A Área Conexão com o Anki tem abas (Custos, Baralhos e termos, Vocabulário, Ajustes de envio); Configurações tem seções.
+_Avoid_: Página, tela, vista
 
 **Popup**:
 A janela pequena que abre pelo ícone da extensão: a mineração rápida, as últimas mineradas e a Mineração automática. “Cockpit” é só o nome da variante de desenho aprovada.
@@ -111,6 +120,10 @@ _Nome no código_: `engine/`, `complemento/motor`
 _Avoid_: Engine, Automatic Anki, pipeline
 
 ## Envio
+
+**Enviar ao Anki**:
+A ação que entrega as Frases selecionadas à Conexão com o Anki para virarem Cartões.
+_Avoid_: Exportar
 
 **Envio**:
 As frases de um único idioma entregues de uma vez ao Anki pela Conexão com o Anki; enviar frases de dois idiomas gera dois envios.
@@ -188,6 +201,11 @@ O lado do Cartão que pergunta; o verso responde. Cada idioma escolhe uma de sei
 _Nome no código_: `frente` (`frase_com_audio`, `ouvir_primeiro`, `lacuna`, `producao`, `ditado`, `criacao`), `/anki/card-front`
 _Avoid_: Front, modelo de cartão (na tela)
 
+**Vocabulário**:
+As palavras e os Termos que aparecem nos Cartões de um Baralho, cada um Novo, Recente, Maduro ou Misto conforme o Anki. É por ele que a Mineração automática sabe o que a pessoa já conhece.
+_Nome no código_: `vocabulary`, `/anki/vocabulary`, `lib/vocabulario-da-mineracao.js`
+_Avoid_: Vocab, dicionário
+
 **Termo**:
 No Vocabulário, a expressão de duas ou mais palavras que é a Palavra de algum Cartão (“take it for granted”); “palavra”, ali, é cada palavra solta da frente dos Cartões. “Termos-alvo”, em Baralhos e termos, conta todas as Palavras diferentes que os Cartões do Baralho ensinam, de uma palavra só ou não; por isso “Termos-alvo” e o nome da aba Baralhos e termos passam a falar de Palavras, e a tela de hoje ainda diz “termos”.
 _Nome no código_: `term`, `targetTerms`, `uniqueTerms`
@@ -236,4 +254,7 @@ Fonte → Minerar → Frase (no Histórico) → Enviar ao Anki → Remessa → E
 ## Ambiguidades resolvidas
 
 - **cartão**: só o item do Anki. O bloco de tela (como o da IA dos cartões) é “card” só no código e nos docs, e a tela não o nomeia; hoje uma mensagem ainda diz “card da IA dos cartões” (`BRG-07`).
+- **palavra**: a Palavra é o que o Cartão ensina e pode ter várias palavras (o botão que acrescenta outra se chama “Adicionar outra palavra”; a tela de hoje ainda diz “Adicionar outro grupo”); no Vocabulário, “palavra” é cada palavra solta.
+- **nível e estilo**: o Nível é a escolha (Iniciante, Intermediário, Avançado) e o Estilo do cartão é o que ela define; o campo em que se escolhe passa a se chamar “Nível”, e a tela de hoje ainda usa os dois nomes para a mesma escolha. Só a parte do nome de um Baralho depois de `::` (`Mineradas`, em `Inglês::Mineradas`) é um **sub-baralho**, nunca “nível”; a mensagem “Tem um nível vazio” (`BRG-07`) ainda usa a palavra.
 - **grupo**: “Ranking do grupo” (Boas-vindas) é o das pessoas do quiz, nada a ver com a Palavra, que não se chama “grupo”.
+- **trecho**: não é Frase. Em Minerar de uma foto a tela ainda diz “trechos marcados” para a Marcação.
