@@ -22,6 +22,7 @@ from complemento.chaves import Cofre
 from complemento.ia_dos_cartoes import CORRECAO, ETAPAS, IMAGEM, JUIZ, OUVIR, TEXTO, VOZ, IaDosCartoes, quem_paga_a_etapa
 from complemento.login_do_chatgpt import ACABOU, CONECTADA, SAIU, SEM_LOGIN, ErroDoPlano, LoginDoChatGPT
 from complemento.modelo_dos_cartoes import CHAVE, PARADO, PLANO, ModeloDosCartoes, lista_nossa
+from complemento.test_correcao_de_mentira import COMECO_DO_PROMPT
 from complemento.test_openai_de_mentira import OpenAIDeMentira
 
 CHAVE_GUARDADA = "sk-test-ia-dos-cartoes-0000"
@@ -190,6 +191,35 @@ class OTextoPelaPorta(unittest.TestCase):
             ficou = os.path.exists(os.path.join(config["paths"]["log_dir"], "costs.jsonl"))
         self.assertEqual(recusa.exception.codigo, "openai_key_rejected")
         self.assertFalse(ficou)
+
+
+PEDIDO_DE_CORRECAO = (COMECO_DO_PROMPT + ".", "Word: give up\nExample sentence: She gave up smoking\nLearner's sentence: She give up the job", "")
+
+
+class ACorrecaoPelaPorta(unittest.TestCase):
+    def test_pela_chave_a_correcao_vai_com_a_chave_e_o_custo_fica_a_parte_do_dos_cartoes(self):
+        with tempfile.TemporaryDirectory() as pasta, OpenAIDeMentira() as openai:
+            ia, config = porta_na_openai(pasta, "sem login", openai)
+            corrigida = ia.pedido_do_texto(ia.para_o_texto(), config, CORRECAO)(*PEDIDO_DE_CORRECAO)
+            registros = custos(config)
+        self.assertEqual(corrigida, "She give up the job")
+        self.assertEqual(openai.correcoes, [("Bearer " + CHAVE_GUARDADA, "She give up the job", "give up")])
+        self.assertEqual([(r["type"], r["model"], r["input_tokens"], r["output_tokens"], r["cost_usd"]) for r in registros],
+                         [("correction_tokens", "gpt-4o", 300, 40, 0.00115)])
+
+    def test_pelo_plano_a_correcao_nao_gasta_a_chave_e_custa_zero(self):
+        with tempfile.TemporaryDirectory() as pasta, OpenAIDeMentira() as openai:
+            ia, config = porta_na_openai(pasta, "com login", openai)
+            corrigida = ia.pedido_do_texto(ia.para_o_texto(), config, CORRECAO)(*PEDIDO_DE_CORRECAO)
+            registros = custos(config)
+        self.assertEqual(corrigida, "She give up the job")
+        self.assertEqual([autorizacao for autorizacao, _, _ in openai.correcoes], ["Bearer acesso-do-teste"])
+        self.assertEqual([(r["type"], r["model"], r["cost_usd"]) for r in registros], [("correction_tokens", "gpt-6-luna", 0.0)])
+        self.assertNotIn("acesso-do-teste", json.dumps(registros))
+
+    def test_so_o_texto_e_a_correcao_sao_pedidos_pela_porta(self):
+        with self.assertRaises(ValueError):
+            IaDosCartoes(None, None, None).pedido_do_texto(None, {"paths": {"log_dir": "."}}, IMAGEM)
 
 
 if __name__ == "__main__":
