@@ -6,6 +6,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { EMAIL_DO_DONO } = require('../ci/autoria.js');
+const { lerYaml } = require('../yaml-de-workflow.js');
 
 const RAIZ = path.resolve(__dirname, '..', '..');
 const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-pre-push-'));
@@ -69,10 +70,27 @@ r = empurrar('--no-verify', 'origin', 'regra-quebrada');
 assert.strictEqual(r.status, 0, saida(r));
 assert(noRemoto('regra-quebrada'), '--no-verify pula o gancho');
 
+git(trabalho, 'checkout', '-q', '-b', 'arquivo-grande', 'main');
+escrever('docs/pre-push-grande.md', 'linha de texto\n'.repeat(1400));
+git(trabalho, 'add', '-A');
+git(trabalho, 'commit', '-q', '--no-verify', '-m', 'muda docs/pre-push-grande.md');
+r = empurrar('origin', 'arquivo-grande');
+assert.notStrictEqual(r.status, 0, 'o arquivo acima do limite de tamanho barra');
+assert(/docs\/pre-push-grande\.md: 21000 bytes/.test(saida(r)) && /acima do limite/.test(saida(r)) && /Push barrado/.test(saida(r)), saida(r));
+assert(!noRemoto('arquivo-grande'), 'nada chegou ao remoto');
+
+const passosDoCI = lerYaml(fs.readFileSync(path.join(RAIZ, '.github', 'workflows', 'regras.yml'), 'utf8')).jobs.regras.steps;
+const conferenciasDoCI = passosDoCI.filter(passo => passo.run && !(passo.env && 'PR_BODY' in passo.env))
+  .map(passo => /^node (scripts\/\S+)/.exec(passo.run)).filter(Boolean).map(achado => achado[1]).filter(script => script !== 'scripts/testar.mjs');
+const gancho = fs.readFileSync(path.join(__dirname, 'pre-push'), 'utf8');
+assert.deepStrictEqual(conferenciasDoCI, ['scripts/regras/verificar.js', 'scripts/ganchos/limite-de-tokens.js', 'scripts/ci/autoria.js']);
+assert.deepStrictEqual(conferenciasDoCI.filter(script => !gancho.includes(`node ${script} `)), [],
+  'o pre-push roda cada conferência do job Regras que não lê o corpo da PR');
+
 git(trabalho, 'checkout', '-q', '-b', 'outra', 'main');
 r = empurrar('origin', 'autoria-errada:outra-destino');
 assert.notStrictEqual(r.status, 0, 'a autoria vale para qualquer branch');
-assert(/não é o HEAD; as regras de revisão foram puladas/.test(saida(r)) && /sem a autoria do dono/.test(saida(r)), saida(r));
+assert(/não é o HEAD; as regras de revisão e o limite de tamanho foram pulados/.test(saida(r)) && /sem a autoria do dono/.test(saida(r)), saida(r));
 assert(!noRemoto('outra-destino'));
 
 r = empurrar('origin', '--delete', 'certa');
