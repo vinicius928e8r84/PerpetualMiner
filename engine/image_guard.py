@@ -76,12 +76,12 @@ _SYSTEM = (
 
 def should_generate_image(
     keyword: str,
-    api_key: str,
+    pela_chave,
     log_dir: str = "log",
-    openai_base: Optional[str] = None,
     label: Optional[str] = None,
 ) -> bool:
-    """`label` is what the cost record says the call was for (the word by default; the add-on passes the card's id)."""
+    """`pela_chave` is the key bound to its provider (`provedores.PelaChave`). `label` is what the cost record says the call was for
+    (the word by default; the add-on passes the card's id)."""
     fast = _heuristic(keyword)
     if fast is False:
         return False
@@ -89,8 +89,8 @@ def should_generate_image(
         return True
 
     try:
-        verdict, usage = provedores.texto(
-            {"provedor": provedores.OPENAI, "segredo": api_key, "modelo": "gpt-4o-mini", "base": openai_base},
+        verdict, usage = pela_chave.texto(
+            "gpt-4o-mini",
             _SYSTEM,
             keyword,
             temperatura=0,

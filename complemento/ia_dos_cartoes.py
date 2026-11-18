@@ -75,8 +75,10 @@ class IaDosCartoes:
         return pedir
 
     def para_a_imagem(self, pela_chave=False):
-        """`(plano do juiz, chave da triagem e da imagem gerada)` do próximo Cartão (`modelo_dos_cartoes.credencial_da_imagem`)."""
-        return credencial_da_imagem(self._login, self._cofre, self._do_envio, self._modelos, pela_chave)
+        """`(plano do juiz, a chave presa)` do próximo Cartão (`modelo_dos_cartoes.credencial_da_imagem`): a chave presa
+        (`provedores.PelaChave` do motor, None sem chave) paga a triagem, a imagem gerada e o juiz sem o plano, e o motor não recebe o segredo."""
+        plano, chave = credencial_da_imagem(self._login, self._cofre, self._do_envio, self._modelos, pela_chave)
+        return plano, (self._motor.provedores.PelaChave(chave, self._openai_base) if chave else None)
 
     def para_a_fala(self):
         """A chave da voz de reserva e do Ouvir, ou None: o plano do ChatGPT não cobre voz."""

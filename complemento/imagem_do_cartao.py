@@ -53,7 +53,7 @@ class ImagemDoCartao:
             return None
         motor = self.motor
         self._usar_o_adaptador_de_imagem()
-        configurada = dict(config, openai_api_key=chave, plano_do_chatgpt=plano, openai_base=self.openai_base, openverse_base=self.openverse_base,
+        configurada = dict(config, pela_chave=chave, plano_do_chatgpt=plano, openai_base=self.openai_base, openverse_base=self.openverse_base,
                            image_records_by_card=True)
         pipeline = motor.image_pipeline.build(configurada, Path(config["paths"]["output_dir"]), pedido["imageSource"], chave, config["paths"]["log_dir"])
         prompt = motor.extract_prompts.card_prompt(conteudo)
