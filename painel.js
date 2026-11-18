@@ -10,7 +10,7 @@ const Conta = PerpetualMiner.Conta;
 const Perigo = PerpetualMiner.Perigo;
 const Envio = PerpetualMiner.Envio;
 const { SITUACOES } = Conta;
-const { Sincronizacao, ChaveDaOpenAI } = PerpetualMiner;
+const { Sincronizacao, ChaveDaOpenAI, Historico } = PerpetualMiner;
 const { mostrarToastDeSucesso, abrirModal, montarAviso, criar } = PerpetualMiner.Veio;
 
 const POR_PAGINA = 10;
@@ -1000,7 +1000,7 @@ async function apagarFrases(ids, { toast = ids.length > 1 } = {}) {
   todasFrases = todasFrases.filter(f => !apagadas.has(f.id));
   ids.forEach(id => { delete keywords[id]; selecionadas.delete(id); });
   if (edicaoDeTexto && apagadas.has(edicaoDeTexto.id)) edicaoDeTexto = null;
-  await new Promise(resolve => chrome.storage.local.set({ frases: todasFrases }, resolve));
+  await Historico.apagar(ids);
   atualizarTotal();
   aplicarFiltro();
   if (toast) mostrarToastDeSucesso(textoDaVoz('PAI-14', { n: ids.length }));

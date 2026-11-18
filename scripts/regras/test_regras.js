@@ -59,15 +59,15 @@ acusa('gravacao-de-frases', 'background.js', "await chrome.storage.local.remove(
 acusa('gravacao-de-frases', 'painel.js', "chrome.storage.local.set({\n  frases: todasFrases,\n}, () => {});\nchrome.storage.local.remove('frases');\n", 2,
   'objeto em várias linhas e remove');
 acusa('gravacao-de-frases', 'background.js', [
-  'function naFilaDeGravacao(tarefa) { return fila.then(tarefa); }',
   'async function salvarFrase(nova) {',
   '  await naFilaDeGravacao(async () => {',
-  '    const data = await chromeGet({ frases: [] });',
-  '    await chromeSet({ frases: [nova, ...data.frases] });',
+  '    await chromeSet({ frases: [nova] });',
   '  });',
+  '  await Historico.apagar(ids);',
   "  chrome.storage.local.set({ pm_tema: 'claro', frasesDoDia: 3 });",
   '}',
-].join('\n'), 0, 'a escrita dentro de naFilaDeGravacao e outra chave');
+].join('\n'), 1, 'só a fila, sem tranca; o Historico e outra chave não');
+assert.strictEqual(regras['gravacao-de-frases'].seAplica('lib/historico.js'), false, 'o dono');
 
 acusa('idioma-solto', 'popup.js', "  const idioma = /[\\u0400-\\u04FF]/.test(texto) ? 'Russo' : 'Inglês';\n", 3, 'o detector copiado (bf640d9)');
 acusa('idioma-solto', 'painel.js', "const classe = (f.idioma === 'Russo' || detectarIdioma(f.texto || '') === 'Russo') ? ' frase-ru' : '';\n", 2,

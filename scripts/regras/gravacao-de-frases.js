@@ -4,28 +4,19 @@ const { ehJsDaExtensao, fechamento, linhaDe, semComentariosJs } = require('./com
 
 const id = 'gravacao-de-frases';
 
-const conserto = 'Não abra um lugar novo que grava `frases`. No service worker, faça a leitura '
-  + 'e a escrita dentro de `naFilaDeGravacao(async () => …)` (background.js), como `salvarFrase`. Numa página, peça a '
-  + 'gravação ao service worker (`SALVAR_HISTORICO`, via `PerpetualMiner.Mineracao` em lib/mineracao.js) ou reuse um '
-  + 'dos lugares que já gravam; nunca grave de volta uma cópia lida antes de um `await` (CODING_STANDARDS.md regra 7).';
+const conserto = 'Não abra um lugar novo que grava `frases`: quem grava é `PerpetualMiner.Historico` (lib/historico.js), '
+  + 'que lê de novo dentro da tranca `pm-historico` e muda só o que pediram. No service worker e nas páginas da extensão, '
+  + 'chame uma operação dele (`acrescentar`, `editar`, `apagar`); falta uma? Ela entra em lib/historico.js. Até todos os lugares '
+  + 'migrarem, nunca grave de volta uma cópia lida antes de um `await` (CODING_STANDARDS.md regra 7).';
 
 const CHAVES = /(?:^|[{,\s])(?:frases|['"]frases['"])\s*(?::|,|\})/;
 
-const seAplica = ehJsDaExtensao;
+const DONO = 'lib/historico.js';
 
-function trechosNaFila(codigo) {
-  const trechos = [];
-  for (const m of codigo.matchAll(/\bnaFilaDeGravacao\s*\(/g)) {
-    const abre = m.index + m[0].length - 1;
-    const fecha = fechamento(codigo, abre);
-    if (fecha > 0 && !/function\s*$/.test(codigo.slice(0, m.index))) trechos.push([abre, fecha]);
-  }
-  return trechos;
-}
+const seAplica = arquivo => ehJsDaExtensao(arquivo) && arquivo !== DONO;
 
 function verificar(arquivo, fonte) {
   const codigo = semComentariosJs(fonte);
-  const naFila = trechosNaFila(codigo);
   const achados = [];
   for (const m of codigo.matchAll(/(?:\.set|\bchromeSet|\.remove)\s*\(/g)) {
     const abre = m.index + m[0].length - 1;
@@ -37,9 +28,8 @@ function verificar(arquivo, fonte) {
       ? CHAVES.test(argumentos.slice(0, fechamento(argumentos, argumentos.indexOf('{')) + 1))
       : /^\[?\s*['"]frases['"]/.test(primeiro);
     if (!gravaAsChaves) continue;
-    if (naFila.some(([de, ate]) => m.index > de && m.index < ate)) continue;
     const linha = linhaDe(codigo, m.index);
-    achados.push({ linha, detalhe: `grava fora da fila: ${fonte.split('\n')[linha - 1].trim().slice(0, 100)}` });
+    achados.push({ linha, detalhe: `grava fora do Historico: ${fonte.split('\n')[linha - 1].trim().slice(0, 100)}` });
   }
   return achados;
 }
