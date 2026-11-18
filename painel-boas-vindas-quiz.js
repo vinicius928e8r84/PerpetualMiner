@@ -29,16 +29,11 @@
   }
 
   async function pedir(lang, sotaque, texto) {
-    const { PedidoAoAnki, ConexaoAnki } = raiz;
-    let resposta;
-    try {
-      resposta = await PedidoAoAnki.pedir(ConexaoAnki.ENDERECO, PedidoAoAnki.falarAFrase(lang, sotaque, texto));
-    } catch {
-      return { erro: VOZ_DO_AUDIO.semConexao };
-    }
-    if (!resposta.ok) return { erro: PedidoAoAnki.ausenciaDaRota(resposta.status) === 'antiga' ? VOZ_DO_AUDIO.antiga : VOZ_DO_AUDIO.falhou };
-    const dados = await resposta.json().catch(() => null);
-    return typeof dados?.audio === 'string' && dados.audio ? { audio: dados.audio } : { erro: VOZ_DO_AUDIO.falhou };
+    const { PedidoAoAnki, ConversaComOAnki } = raiz;
+    const desfecho = await ConversaComOAnki.pedir(PedidoAoAnki.falarAFrase(lang, sotaque, texto), { formato: dados => typeof dados.audio === 'string' && dados.audio !== '' });
+    if (desfecho.ok) return { audio: desfecho.dados.audio };
+    if (desfecho.motivo === ConversaComOAnki.MOTIVO.SEM_RESPOSTA) return { erro: VOZ_DO_AUDIO.semConexao };
+    return { erro: desfecho.motivo === ConversaComOAnki.MOTIVO.ANTIGA ? VOZ_DO_AUDIO.antiga : VOZ_DO_AUDIO.falhou };
   }
 
   function montar({ lang, aoUsar, aoSair }) {

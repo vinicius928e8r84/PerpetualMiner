@@ -20,7 +20,7 @@ def aplicar_os_sotaques(config, lang, tts):
 
 
 class AudioDoCartao:
-    """O que o `Trabalho` faz para o Cartão ganhar voz; usa `fila`, `motor`, `logger`, `voz_base`, `esperas_da_openai`, `_dormir` e `_etapa` dele."""
+    """O que o `Trabalho` faz para o Cartão ganhar voz; usa `fila`, `motor`, `ia`, `logger`, `voz_base`, `esperas_da_openai`, `_dormir` e `_etapa` dele."""
 
     def _a_voz(self, texto, lang, sotaque, reserva, job_id, cartao_id):
         """O áudio de um texto: o do Google e, se ele falha, o da primeira voz de reserva que fala; sem nenhuma, a falha é a do Google."""
@@ -37,7 +37,7 @@ class AudioDoCartao:
         """O áudio da voz de reserva `nome`, ou None se ela não existe aqui, não tem com que falar ou falhou (o log diz só o código)."""
         if nome != "openai":
             return None
-        chave = self.cofre.ler("openai")  # só a chave: o plano do ChatGPT não cobre voz
+        chave = self.ia.para_a_fala()
         if not chave:
             return None
         try:
