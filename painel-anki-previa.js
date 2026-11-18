@@ -1,13 +1,14 @@
 'use strict';
 
 (function (raiz) {
-  const { textoDaVoz, Veio, ConexaoAnki, PedidoAoAnki, IDIOMAS } = raiz;
+  const { textoDaVoz, Veio, ConversaComOAnki, PedidoAoAnki, IDIOMAS } = raiz;
   const { elemento } = Veio;
   const NOME_DO_IDIOMA = { en: IDIOMAS.INGLES, ru: IDIOMAS.RUSSO };
   const VOZ_DO_NIVEL = { iniciante: 'BRG-42.iniciante', intermediario: 'BRG-42.intermediario', avancado: 'BRG-42.avancado' };
   const ALTURA_MINIMA = 140;
   const ALTURA_MAXIMA = 460;
   const POLITICA = "default-src 'none'; img-src data:; style-src 'unsafe-inline'";
+  const { MOTIVO } = ConversaComOAnki;
   const ESTADO = Object.freeze({ CARREGANDO: 'carregando', PRONTA: 'pronta', SEM_CONEXAO: 'semConexao', ANTIGA: 'antiga', FALHOU: 'falhou' });
 
   const lidas = new Map();
@@ -31,18 +32,13 @@
 
   const pedir = (lang, nivel, tipoProprio) => pedirAoAnki(PedidoAoAnki.previaDoCartao(lang, nivel, tipoProprio));
 
+  const temOCartao = previa => ['front', 'back', 'css'].every(parte => typeof previa[parte] === 'string');
+
   async function pedirAoAnki(pedido) {
-    let resposta;
-    try {
-      resposta = await PedidoAoAnki.pedir(ConexaoAnki.ENDERECO, pedido);
-    } catch {
-      return { estado: ESTADO.SEM_CONEXAO };
-    }
-    if (resposta.status === 503) return { estado: ESTADO.SEM_CONEXAO };
-    if (!resposta.ok) return { estado: PedidoAoAnki.ausenciaDaRota(resposta.status) === 'antiga' ? ESTADO.ANTIGA : ESTADO.FALHOU };
-    const previa = await resposta.json().catch(() => null);
-    if (typeof previa?.front !== 'string' || typeof previa?.back !== 'string' || typeof previa?.css !== 'string') return { estado: ESTADO.FALHOU };
-    return { estado: ESTADO.PRONTA, previa };
+    const desfecho = await ConversaComOAnki.pedir(pedido, { formato: temOCartao });
+    if (desfecho.ok) return { estado: ESTADO.PRONTA, previa: desfecho.dados };
+    if ([MOTIVO.SEM_RESPOSTA, MOTIVO.ANKI_OCUPADO].includes(desfecho.motivo)) return { estado: ESTADO.SEM_CONEXAO };
+    return { estado: desfecho.status === 404 ? ESTADO.ANTIGA : ESTADO.FALHOU };
   }
 
   function montar({ prefixo, lang }) {
