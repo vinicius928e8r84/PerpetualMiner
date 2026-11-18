@@ -81,3 +81,33 @@ test('com o Histórico trancado, o Contexto de N frases espera a vez da Frase mi
   ]);
   await expect(page.locator('.veio-toast')).toHaveText('Contexto de 2 frases atualizado');
 });
+
+test('com o Histórico trancado, o Exportar .txt espera a vez da Frase minerada, e só as exportadas ganham a marca', async ({ page, extensao }) => {
+  const { minerada } = await minerarComOHistoricoTrancado(page, extensao, [SAI, FICA]);
+  await page.getByRole('checkbox', { name: 'Selecionar página' }).check();
+  await Promise.all([
+    page.waitForEvent('download'),
+    page.locator('#frases-barra').getByRole('button', { name: 'Exportar .txt', exact: true }).click(),
+  ]);
+  await soltarDepoisDoPainelEntrarNaFila(page, extensao, [SAI, FICA]);
+
+  expect((await minerada).ok).toBe(true);
+  await expect.poll(async () => (await extensao.frases()).map(f => [f.texto, f.exportadaTxt])).toEqual([
+    [NOVA, undefined],
+    [SAI.texto, true],
+    [FICA.texto, true],
+  ]);
+});
+
+test('com o Histórico trancado, o Apagar tudo espera a vez, apaga as Frases que estavam na tela e deixa a que chegou', async ({ page, extensao }) => {
+  const { minerada } = await minerarComOHistoricoTrancado(page, extensao, [SAI, FICA]);
+  await page.locator('.shell-lateral').getByRole('link', { name: 'Configurações', exact: true }).click();
+  await page.getByRole('button', { name: 'Zona de perigo', exact: true }).click();
+  await page.getByRole('button', { name: 'Apagar todas as 2 frases' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Apagar 2 frases' }).click();
+  await soltarDepoisDoPainelEntrarNaFila(page, extensao, [SAI, FICA]);
+
+  expect((await minerada).ok).toBe(true);
+  await expect.poll(async () => (await extensao.frases()).map(f => f.texto)).toEqual([NOVA]);
+  await expect(page.getByRole('button', { name: 'Apagar 1 frase', exact: true })).toBeVisible();
+});
