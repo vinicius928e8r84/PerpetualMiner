@@ -1,11 +1,12 @@
 'use strict';
 
 (function (raiz) {
-  const { textoDaVoz, Veio, ConexaoAnki, Shell } = raiz;
+  const { textoDaVoz, Veio, ConexaoAnki, ConversaComOAnki, Shell } = raiz;
   const { elemento } = Veio;
   const { SITUACAO } = ConexaoAnki;
   const porId = id => document.getElementById(id);
 
+  const { MOTIVO } = ConversaComOAnki;
   const RECUSAS = new Set(['anki_not_found', 'login_item_failed', 'login_item_unsupported', 'invalid_request']);
 
   const estado = {
@@ -39,35 +40,25 @@
     Shell.aoEntrarNaArea('configuracoes', () => { if (estado.situacao === SITUACAO.LIGADA) { ler(); lerOsPerfis(); } });
   }
 
-  async function pedir(pedido) {
-    const resposta = await raiz.PedidoAoAnki.pedir(ConexaoAnki.ENDERECO, pedido, { signal: AbortSignal.timeout(ConexaoAnki.TEMPO_DA_RESPOSTA) });
-    const dados = await resposta.json().catch(() => null);
-    if (!resposta.ok) {
-      throw Object.assign(new Error(`HTTP ${resposta.status}${dados?.error ? ` · ${dados.error}` : ''}`), {
-        codigo: dados?.error || null,
-        status: resposta.status,
-      });
-    }
-    if (typeof dados?.ligado !== 'boolean') throw Object.assign(new Error('Resposta sem “ligado”'), { status: resposta.status });
-    return dados.ligado;
+  const pedir = (pedido, formato) => ConversaComOAnki.pedir(pedido, { prazoMs: ConexaoAnki.TEMPO_DA_RESPOSTA, formato });
+  const pedirOItem = pedido => pedir(pedido, dados => typeof dados.ligado === 'boolean');
+
+  function erroDe({ motivo, status, dados, detalhes }) {
+    if (motivo === MOTIVO.SEM_RESPOSTA) return { message: detalhes };
+    return { message: `HTTP ${status}${dados?.error ? ` · ${dados.error}` : ''}`, codigo: dados?.error || null };
   }
+  const erroDoItem = desfecho => (desfecho.motivo === MOTIVO.INVALIDA ? { message: 'Resposta sem “ligado”' } : erroDe(desfecho));
 
   async function ler() {
     const leitura = ++estado.leitura;
-    let ligado = null;
-    let erro = null;
-    try {
-      ligado = await pedir(raiz.PedidoAoAnki.estadoDoItemDeLogin());
-    } catch (causa) {
-      erro = causa;
-    }
+    const desfecho = await pedirOItem(raiz.PedidoAoAnki.estadoDoItemDeLogin());
     if (leitura !== estado.leitura || estado.gravando) return;
-    if (erro) {
-      estado.confirmado = false;
-      estado.semResposta = raiz.PedidoAoAnki.ausenciaDaRota(erro.status);
-    } else {
-      Object.assign(estado, { ligado, confirmado: true, semResposta: null });
+    if (desfecho.ok) {
+      Object.assign(estado, { ligado: desfecho.dados.ligado, confirmado: true, semResposta: null });
       reconciliarOAviso();
+    } else {
+      estado.confirmado = false;
+      estado.semResposta = desfecho.motivo === MOTIVO.ANTIGA ? 'antiga' : 'falhou';
     }
     desenhar();
   }
@@ -84,37 +75,24 @@
     estado.falha = null;
     estado.leitura++;
     desenhar();
-    let erro = null;
-    try {
-      Object.assign(estado, { ligado: await pedir(raiz.PedidoAoAnki.abrirComOComputador(ligar)), confirmado: true, semResposta: null });
-    } catch (causa) {
-      erro = causa;
-    }
+    const desfecho = await pedirOItem(raiz.PedidoAoAnki.abrirComOComputador(ligar));
+    const erro = desfecho.ok ? null : erroDoItem(desfecho);
     estado.gravando = false;
     if (erro) {
       estado.falha = { ligar, erro, incerta: !RECUSAS.has(erro.codigo) };
       estado.confirmado = false;
+    } else {
+      Object.assign(estado, { ligado: desfecho.dados.ligado, confirmado: true, semResposta: null });
     }
     desenhar();
     if (erro) await ler();
     partes.interruptor.focus();
   }
 
-  async function pedirOPerfil(pedido) {
-    const resposta = await raiz.PedidoAoAnki.pedir(ConexaoAnki.ENDERECO, pedido, { signal: AbortSignal.timeout(ConexaoAnki.TEMPO_DA_RESPOSTA) });
-    const dados = await resposta.json().catch(() => null);
-    if (!resposta.ok) throw Object.assign(new Error(`HTTP ${resposta.status}${dados?.error ? ` · ${dados.error}` : ''}`), { status: resposta.status });
-    return dados;
-  }
-
   async function lerOsPerfis() {
     const leitura = ++perfis.leitura;
-    let dados = null;
-    try {
-      dados = await pedirOPerfil(raiz.PedidoAoAnki.perfisDoAnki());
-    } catch {
-      dados = null;
-    }
+    const desfecho = await pedir(raiz.PedidoAoAnki.perfisDoAnki());
+    const dados = desfecho.ok ? desfecho.dados : null;
     if (leitura !== perfis.leitura || perfis.escolhendo) return;
     const entendida = Array.isArray(dados?.profiles) && dados.profiles.every(nome => typeof nome === 'string');
     perfis.lista = entendida ? dados.profiles : null;
@@ -128,11 +106,8 @@
     perfis.falha = null;
     perfis.leitura++;
     desenhar();
-    try {
-      await pedirOPerfil(raiz.PedidoAoAnki.escolherOPerfil(nome));
-    } catch (erro) {
-      perfis.falha = { nome, erro };
-    }
+    const desfecho = await pedir(raiz.PedidoAoAnki.escolherOPerfil(nome));
+    if (!desfecho.ok) perfis.falha = { nome, erro: erroDe(desfecho) };
     perfis.escolhendo = false;
     await lerOsPerfis();
   }
