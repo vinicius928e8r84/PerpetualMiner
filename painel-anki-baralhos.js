@@ -43,7 +43,7 @@
   const { elemento } = Veio;
   const { haQuanto } = raiz.Contexto;
   const { esqueleto, linhaDeEspera, seloDoDadoAntigo } = raiz.Anki.pecas;
-  const { ENDERECO: ENDERECO_DA_CONEXAO, SITUACAO: CONEXAO } = ConexaoAnki;
+  const { SITUACAO: CONEXAO } = ConexaoAnki;
   const porId = id => document.getElementById(id);
 
   const estado = {
@@ -126,13 +126,9 @@
 
     const nomes = { ...estado.nomes };
     const baralhosPedidos = IDIOMAS_DOS_AZULEJOS.map(({ idioma }) => ({ deckName: estado.nomes[idioma], lang: idioma }));
-    let dados = null;
-    let erro = null;
-    try {
-      dados = await pedirJson(raiz.PedidoAoAnki.estatisticas(baralhosPedidos, { deNovo, abrirOAnki }));
-    } catch (falha) {
-      erro = `POST /anki/stats/decks · ${falha.message}`;
-    }
+    const desfecho = await raiz.ConversaComOAnki.pedir(raiz.PedidoAoAnki.estatisticas(baralhosPedidos, { deNovo, abrirOAnki }));
+    const dados = desfecho.ok ? desfecho.dados : null;
+    const erro = desfecho.ok ? null : `POST /anki/stats/decks · ${desfecho.detalhes}`;
     const quando = Date.now();
     if (leitura !== baralhos.leitura) return;
 
@@ -155,7 +151,9 @@
     const nomes = { ...estado.nomes };
     const lerIdioma = async idioma => {
       const deckName = estado.nomes[idioma];
-      const resposta = await pedirJson(raiz.PedidoAoAnki.vocabulario(deckName, idioma));
+      const desfecho = await raiz.ConversaComOAnki.pedir(raiz.PedidoAoAnki.vocabulario(deckName, idioma));
+      if (!desfecho.ok) throw new Error(desfecho.detalhes);
+      const resposta = desfecho.dados;
       const itens = Array.isArray(resposta.words) ? resposta.words : [];
       return { deckName: resposta.deckName || deckName, itens, total: numero(resposta.totalWords ?? itens.length) };
     };
@@ -177,15 +175,6 @@
       chrome.storage.local.set({ [CHAVE_VOCABULARIO]: { dados, quando, nomes } });
     }
     desenhar();
-  }
-
-  async function pedirJson(pedido) {
-    const resposta = await raiz.PedidoAoAnki.pedir(ENDERECO_DA_CONEXAO, pedido);
-    if (!resposta.ok) {
-      const corpo = await resposta.json().catch(() => ({}));
-      throw new Error([`HTTP ${resposta.status}`, corpo.error, corpo.detail].filter(Boolean).join(' · '));
-    }
-    return resposta.json();
   }
 
   function desenhar() {
