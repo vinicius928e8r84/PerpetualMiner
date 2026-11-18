@@ -61,6 +61,8 @@ def repositorio(pasta):
     shutil.copy(os.path.join(RAIZ, "conexao", "perpetualminer.ankiaddon"), os.path.join(pasta, "conexao"))
     for oculto in (".gitattributes", ".gitignore"):
         shutil.copy(os.path.join(RAIZ, oculto), pasta)
+    os.makedirs(os.path.join(pasta, "scripts", "ci"))
+    shutil.copy(os.path.join(RAIZ, "scripts", "ci", "autoria.js"), os.path.join(pasta, "scripts", "ci"))
     escrever(pasta, "complemento/versoes-reservadas.json", "[]\n")
     git(pasta, "init", "-q", "-b", "main")
     git(pasta, "config", "user.email", "versao@teste")
@@ -260,6 +262,18 @@ class QuemMudouOCodigoRecebeAProximaVersao(Casa):
         resultado = dar_a_versao(self.repo, "--versao", velha)
         self.assertNotEqual(resultado.returncode, 0)
         self.assertIn(velha, resultado.stderr)
+
+    def test_o_commit_de_versao_sai_com_a_autoria_do_dono_mesmo_com_outra_identidade_no_git(self):
+        """O check `Autoria dos commits` barra o commit de um clone sem a identidade do dono (as 0.4.38 e 0.4.40)."""
+        dono = re.search(r"^const EMAIL_DO_DONO = '([^']+)';$", ler(RAIZ, "scripts/ci/autoria.js"), re.M).group(1)
+        git(self.repo, "config", "user.email", "alguem@maquina.local")
+        git(self.repo, "config", "user.name", "alguem")
+        mudar_o_codigo(self.repo)
+        git(self.repo, "commit", "-qam", "uma PR de Conexão")
+        resultado = dar_a_versao(self.repo)
+        self.assertEqual(resultado.returncode, 0, resultado.stdout + resultado.stderr)
+        self.assertEqual(git(self.repo, "log", "-1", "--format=%ae %ce"), "%s %s" % (dono, dono))
+        self.assertEqual(git(self.repo, "config", "user.email"), "alguem@maquina.local")
 
     def test_o_commit_de_versao_leva_so_os_arquivos_da_versao_mesmo_com_outro_no_indice(self):
         mudar_o_codigo(self.repo)
