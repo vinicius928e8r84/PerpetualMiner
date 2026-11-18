@@ -4,7 +4,7 @@ generate_images.py — Generate images via OpenAI Images API and save to Output/
 Reads keyword:prompt pairs from prompts.txt (written by extract_prompts.py).
 Output filenames: {stem}.png  (stem matches the keyword's safe filename).
 
-Model is read from config (openai.image_model). gpt-image-* models return
+The key comes bound (`config["pela_chave"]`, a `provedores.PelaChave`), never as a secret. Model is read from config (openai.image_model). gpt-image-* models return
 base64 (b64_json); dall-e-* historically returned a URL. Both are handled.
 
 A failed generation (model retired or unavailable, rate limit, network, ...) never
@@ -23,11 +23,9 @@ from typing import Callable, List, Optional
 
 if __package__:  # inside the Anki add-on the engine is the package `complemento.motor`
     from . import openai_http, provedores
-    from .config_loader import load_config
 else:
     import openai_http
     import provedores
-    from config_loader import load_config
 
 LOGGER = logging.getLogger("perpetualminer.motor")
 
@@ -88,9 +86,8 @@ def _save_from_response(item: dict, dest: Path) -> bool:
 
 
 def _generate(config: dict, prompt: str) -> dict:
-    """Ask the Images API for one image: the answer's first item (`{}` if none)."""
-    cred = {"provedor": provedores.OPENAI, "segredo": config["openai_api_key"], "modelo": config["openai"]["image_model"], "base": config.get("openai_base")}
-    return provedores.imagem(cred, prompt, config["openai"]["image_size"])
+    """Ask the Images API for one image through the bound key (`config["pela_chave"]`): the answer's first item (`{}` if none)."""
+    return config["pela_chave"].imagem(config["openai"]["image_model"], prompt, config["openai"]["image_size"])
 
 
 def generate_one(config: dict, stem: str, prompt: str, dest: Optional[Path] = None) -> bool:
@@ -159,8 +156,3 @@ def run(
     (log_dir / "generated_images.txt").write_text("\n".join(log_lines), encoding="utf-8")
     return generated
 
-
-if __name__ == "__main__":
-    cfg = load_config()
-    result = run(cfg)
-    print(f"✅ {len(result)} image(s) generated.")
