@@ -2,7 +2,7 @@
 remoto="$1"
 raiz=$(git rev-parse --show-toplevel) || exit 0
 if ! command -v node >/dev/null 2>&1; then
-  echo "aviso: node não encontrado; a conferência de regras e de autoria foi pulada" >&2
+  echo "aviso: node não encontrado; a conferência de regras, de tamanho e de autoria foi pulada" >&2
   exit 0
 fi
 base=
@@ -13,7 +13,7 @@ for candidata in "$remoto/main" origin/main; do
   fi
 done
 if [ -z "$base" ]; then
-  echo "aviso: sem $remoto/main nem origin/main para comparar (git fetch origin main); a conferência de regras e de autoria foi pulada" >&2
+  echo "aviso: sem $remoto/main nem origin/main para comparar (git fetch origin main); a conferência de regras, de tamanho e de autoria foi pulada" >&2
   exit 0
 fi
 zeros=0000000000000000000000000000000000000000
@@ -26,8 +26,9 @@ while read -r ref_local sha_local ref_remota _; do
   echo "pre-push: $ref_local contra $base"
   if [ "$sha_local" = "$cabeca" ]; then
     (cd "$raiz" && node scripts/regras/verificar.js --base "$base") || barrado=1
+    (cd "$raiz" && node scripts/ganchos/limite-de-tokens.js --base "$base") || barrado=1
   else
-    echo "aviso: $ref_local não é o HEAD; as regras de revisão foram puladas (a autoria é conferida)" >&2
+    echo "aviso: $ref_local não é o HEAD; as regras de revisão e o limite de tamanho foram pulados (a autoria é conferida)" >&2
   fi
   (cd "$raiz" && node scripts/ci/autoria.js "$base" "$sha_local") || barrado=1
 done
