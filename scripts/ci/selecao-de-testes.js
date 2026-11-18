@@ -39,7 +39,7 @@ function linhasDe(rodar) {
   ];
 }
 
-module.exports = { selecionar, linhasDe };
+module.exports = { selecionar };
 
 if (require.main === module) {
   const [base, head] = process.argv.slice(2);

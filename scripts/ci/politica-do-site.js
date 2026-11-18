@@ -111,4 +111,4 @@ function main(argv, env, raiz) {
 
 if (require.main === module) process.exitCode = main(process.argv.slice(2), process.env, process.cwd());
 
-module.exports = { conferir, declaracaoDoCorpo, sinaisDeDados };
+module.exports = { conferir };

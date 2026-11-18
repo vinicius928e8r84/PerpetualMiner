@@ -26,12 +26,3 @@ function arquivosMudados(base, head, repositorio) {
 }
 
 module.exports = { soDocumentacao, ehDocumentacao, arquivosMudados };
-
-if (require.main === module) {
-  const [base, head] = process.argv.slice(2);
-  if (!base || !head) {
-    console.error('uso: node scripts/ci/so-documentacao.js <base> <head>');
-    process.exit(2);
-  }
-  console.log(String(soDocumentacao(arquivosMudados(base, head))));
-}

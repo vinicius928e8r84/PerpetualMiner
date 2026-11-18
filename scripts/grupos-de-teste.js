@@ -100,6 +100,6 @@ function estourouOTeto(segundos, teto) {
 }
 
 module.exports = {
-  tetoEmSegundos, estourouOTeto, trabalhadoresDoGrupo, ARQUIVO_DO_REGISTRO, ehArquivoDeTeste, padraoComoRegex, padroesDoGrupo, arquivosDoGrupo, lerRegistro, grupoDoArquivo,
+  tetoEmSegundos, estourouOTeto, trabalhadoresDoGrupo, ARQUIVO_DO_REGISTRO, ehArquivoDeTeste, padraoComoRegex, arquivosDoGrupo, lerRegistro, grupoDoArquivo,
   escolherPython, dicaDeModulo, baseDaVersao,
 };
