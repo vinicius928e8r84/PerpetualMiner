@@ -108,6 +108,22 @@ test('a Frase e a resposta no mesmo campo, ou uma delas sem campo, desligam o Co
   await estadoFinal(extensao, { [CHAVE]: { en: { versao: 1 } } });
 });
 
+test('o tipo de nota que some do Anki depois de lido: a prévia diz isso, sem mandar atualizar a Conexão, e Tentar de novo a mostra quando ele volta', async ({ page, extensao, fakes }) => {
+  await abrirAjustes(page, extensao, fakes);
+  await abrirOTipo(page).click();
+  await expect(campo(page, 'Tipo de nota')).toBeVisible();
+  fakes.anki.previa.tiposDeNota.definir([TIPO_DE_UM_CAMPO]);
+  await campo(page, 'Tipo de nota').selectOption('Meu Inglês');
+
+  const previa = page.getByRole('region', { name: 'Prévia do cartão' }).last();
+  await expect(previa).toContainText('O tipo de nota não está mais no Anki.');
+  await expect(previa).not.toContainText('Atualize a Conexão com o Anki');
+  fakes.anki.previa.tiposDeNota.definir([MEU_TIPO, TIPO_DE_UM_CAMPO]);
+  await previa.getByRole('button', { name: 'Tentar de novo' }).click();
+  await expect(previa).toHaveAttribute('data-estado', 'pronta');
+  await estadoFinal(extensao, { [CHAVE]: { en: { versao: 1 } } });
+});
+
 test('sem a Conexão com o Anki ligada a lista não vem, a tela diz e o Tentar de novo lê de novo', async ({ page, extensao, fakes }) => {
   await abrirAjustes(page, extensao, fakes);
   fakes.anki.abrirPerfil(null);
