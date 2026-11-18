@@ -13,7 +13,6 @@ if (chrome.storage.local.setAccessLevel) {
 importScripts('lib/arquivos-da-extensao.js', 'lib/auto-recarregar.js');
 PerpetualMiner.AutoRecarregar.iniciar();
 
-const ENDERECO = 'http://127.0.0.1:8766';
 const AUTO_MINER_SETTINGS_KEY = MineracaoDoDia.CHAVES.ajustes;
 const AUTO_MINER_DAILY_KEY = MineracaoDoDia.CHAVES.diario;
 const AUTO_MINER_LAST_EVENT_KEY = MineracaoDoDia.CHAVES.ultimoEvento;
@@ -561,15 +560,9 @@ async function getAutoKeywordVocabulary(lang = 'en') {
   const ultimaLeitura = VocabularioDaMineracao.doBaralho(cached[cacheKey], deckName);
   if (ultimaLeitura && VocabularioDaMineracao.estaEmDia(ultimaLeitura)) return autoVocabularyFromCache(ultimaLeitura);
 
-  let data = null;
-  try {
-    const resp = await PerpetualMiner.PedidoAoAnki.pedir(ENDERECO, PerpetualMiner.PedidoAoAnki.vocabulario(deckName, normalizedLang), {
-      signal: ultimaLeitura ? AbortSignal.timeout(AUTO_KEYWORD_RENEW_TIMEOUT_MS) : undefined,
-    });
-    if (resp.ok) data = await resp.json();
-  } catch {
-    data = null;
-  }
+  const desfecho = await PerpetualMiner.ConversaComOAnki.pedir(PerpetualMiner.PedidoAoAnki.vocabulario(deckName, normalizedLang),
+    ultimaLeitura ? { prazoMs: AUTO_KEYWORD_RENEW_TIMEOUT_MS } : {});
+  const data = desfecho.ok ? desfecho.dados : null;
   if (!data) return ultimaLeitura ? autoVocabularyFromCache(ultimaLeitura) : autoEmptyVocabulary(false);
 
   const words = [];
@@ -879,7 +872,7 @@ ouvirChrome(chrome.storage.onChanged, (changes, area) => {
 
 agendarViradaDoDia();
 atualizarBadgeDaToolbar();
-PerpetualMiner.ApagarFrasesPendente.ligar({ chrome, ouvirChrome, endereco: ENDERECO });
+PerpetualMiner.ApagarFrasesPendente.ligar({ chrome, ouvirChrome });
 
 function publicarEstadoDaAutomatica(state) {
   chrome.storage.local.set({ [MineracaoDoDia.CHAVES.estadoPublicado]: { settings: state.settings, daily: state.daily, updatedAt: Date.now() } });

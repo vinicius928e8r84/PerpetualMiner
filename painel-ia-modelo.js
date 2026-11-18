@@ -9,20 +9,15 @@
   const lugares = new Map();
   let rodada = 0;
 
-  async function pedir(pedido) {
-    try {
-      const resposta = await raiz.PedidoAoAnki.pedir(raiz.ConexaoAnki.ENDERECO, pedido, { signal: AbortSignal.timeout(8000) });
-      return { status: resposta.status, json: await resposta.json().catch(() => null) };
-    } catch { return null; }
-  }
+  const pedir = pedido => raiz.ConversaComOAnki.pedir(pedido, { prazoMs: 8000 });
 
   async function reler() {
     const minha = ++rodada;
     const resposta = await pedir(raiz.PedidoAoAnki.estadoDoModelo());
     if (minha !== rodada) return;
-    const json = resposta?.status === 200 ? resposta.json : null;
-    estado.modelo = json && Array.isArray(json.modelos) && typeof json.escolha === 'string' ? json : null;
-    estado.erro = resposta?.status === 503;
+    const lido = resposta.status === 200 ? resposta.dados : null;
+    estado.modelo = lido && Array.isArray(lido.modelos) && typeof lido.escolha === 'string' ? lido : null;
+    estado.erro = resposta.status === 503;
     desenharTudo();
   }
 
@@ -30,7 +25,7 @@
     const minha = ++rodada;
     const resposta = await pedir(raiz.PedidoAoAnki.escolherOModelo(modelo));
     if (minha !== rodada) return;
-    if (resposta?.status === 200) return reler();
+    if (resposta.status === 200) return reler();
     estado.erro = true;
     desenharTudo();
   }

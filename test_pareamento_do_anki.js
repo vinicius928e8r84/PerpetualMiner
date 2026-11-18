@@ -25,12 +25,12 @@ async function main() {
   {
     const conexao = criarConexao({ navegadores: [] });
     const pagina = carregarAPagina(conexao);
-    const lida = await pagina.PedidoAoAnki.pedir(ENDERECO, pagina.PedidoAoAnki.estadoDaIA());
+    const lida = await pagina.pedir(pagina.PedidoAoAnki.estadoDaIA());
     igual([lida.status, await lerJson(lida)], [401, { error: 'pairing_required' }]);
     igual(conexao.vistos.map(v => v.caminho), ['/pareamento/conferir'], 'sem credencial a Conexão só vê o conferir, de um cliente que ninguém tem, e nenhum cabeçalho de assinatura');
     assert.ok(!Object.keys(conexao.vistos[0].cabecalhos).some(nome => nome.startsWith('x-perpetualminer')));
     assert.strictEqual(pagina.Pareamento.estado(), 'a_parear');
-    const saude = await pagina.PedidoAoAnki.pedir(ENDERECO, pagina.PedidoAoAnki.saude());
+    const saude = await pagina.pedir(pagina.PedidoAoAnki.saude());
     assert.strictEqual(saude.status, 200, 'a saúde segue aberta');
   }
 
@@ -48,7 +48,7 @@ async function main() {
     assert.strictEqual(credencial.chave.extractable, false, 'nem o código da extensão lê os bytes do segredo');
     await assert.rejects(webcrypto.subtle.exportKey('raw', credencial.chave));
     assert.strictEqual(conexao.pareamento.pareados().size, 1);
-    const lida = await pagina.PedidoAoAnki.pedir(ENDERECO, pagina.PedidoAoAnki.estadoDaIA());
+    const lida = await pagina.pedir(pagina.PedidoAoAnki.estadoDaIA());
     igual([lida.status, await lerJson(lida)], [200, { ok: true, caminho: '/ia/estado' }]);
     const privado = conexao.vistos.at(-1);
     assert.ok(privado.cabecalhos['x-perpetualminer-assinatura'] && privado.cabecalhos['x-perpetualminer-nonce'], 'o pedido privado vai assinado');
@@ -100,7 +100,7 @@ async function main() {
       }
       return nova.fetch(url, opcoes);
     };
-    const lida = await pagina.PedidoAoAnki.pedir(ENDERECO, pagina.PedidoAoAnki.estadoDaIA());
+    const lida = await pagina.pedir(pagina.PedidoAoAnki.estadoDaIA());
     assert.strictEqual(lida.status, 200);
     igual(nova.vistos.map(v => v.caminho), ['/ia/estado', '/pareamento/conferir', '/ia/estado'], 'session_expired, conferir e o pedido de novo');
   }
@@ -113,7 +113,7 @@ async function main() {
     const conferencias = () => conexao.vistos.filter(v => v.caminho === '/pareamento/conferir').length;
     for (const pedido of [pagina.PedidoAoAnki.estadoDaIA(), pagina.PedidoAoAnki.estadoDaIA(), pagina.PedidoAoAnki.chaveDaOpenAI('sk-proj-x')]) {
       const antes = conferencias();
-      await pagina.PedidoAoAnki.pedir(ENDERECO, pedido);
+      await pagina.pedir(pedido);
       assert.strictEqual(conferencias(), antes + 1, `${pedido.caminho}: um conferir novo antes do pedido`);
     }
   }
@@ -124,7 +124,7 @@ async function main() {
     const paginaA = carregarAPagina(conexao);
     igual(await parear(paginaA, conexao), { ok: true });
     const paginaB = carregarAPagina(conexao, paginaA.indexedDB);
-    const lida = await paginaB.PedidoAoAnki.pedir(ENDERECO, paginaB.PedidoAoAnki.estadoDaIA());
+    const lida = await paginaB.pedir(paginaB.PedidoAoAnki.estadoDaIA());
     assert.strictEqual(lida.status, 200);
   }
 
@@ -139,7 +139,7 @@ async function main() {
     assert.ok(variantes.length > 40);
     for (const { nome, pedido } of variantes) {
       conexao.vistos.length = 0;
-      await pagina.PedidoAoAnki.pedir(ENDERECO, pedido);
+      await pagina.pedir(pedido);
       const enviado = conexao.vistos.at(-1);
       const aberto = (pedido.metodo === 'GET' && pedido.caminho === '/health') || pedido.caminho.startsWith('/pareamento/');
       assert.strictEqual(Boolean(enviado.cabecalhos['x-perpetualminer-assinatura']), !aberto, `${nome}: ${aberto ? 'o pedido aberto não leva assinatura' : 'o pedido privado vai assinado'}`);
