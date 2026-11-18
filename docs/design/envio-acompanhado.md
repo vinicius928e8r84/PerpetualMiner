@@ -36,7 +36,7 @@ na linha de base de tamanho (uma tag a mais tem de sair de outro lugar). O Conti
 |---|---|---|---|
 | o estado do Envio (`state`) | a Conexão (`user_files`, `envio.py`) | o módulo guarda a última leitura, só em memória | gravado: o módulo não escreve no `chrome.storage` |
 | a linha de custos do Envio | a Conexão (`POST /analytics/jobs`) | `pm_anki_custos`, o retrato da última leitura da aba Custos | decidido pela tela: a aba relê a Conexão quando a situação muda |
-| a Remessa (`pm_envio`) | o modal do Envio (`EnvioGravado`) | nenhum | tocada pelo módulo (no passo 3 o modal guarda um módulo por `jobId`, só em memória) |
+| a Remessa (`pm_envio`) | o modal do Envio (`EnvioGravado`) | nenhum | escrita pelo módulo: no passo 3 o modal guarda um módulo por `jobId` só em memória |
 | o `usingKey` do Envio | a Conexão (`limite_do_plano.usar_a_chave`) | ninguém: o cartão do modal lê o `waiting` na próxima leitura | gravado pelo painel |
 
 ## 2. Estados

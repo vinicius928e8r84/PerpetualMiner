@@ -20,7 +20,7 @@
     falhaAoRetomar: envio => envio.jobId && falhasAoRetomar.get(envio.jobId),
     tentarCriarDeNovo,
     continuarEnvio,
-    usarAChave: envio => acompanhado(envio.jobId).usarAChave(),
+    pedirAChave: envio => acompanhado(envio.jobId).usarAChave(),
     redesenhar: () => desenharProgresso(),
   });
 
