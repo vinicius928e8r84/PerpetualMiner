@@ -1,6 +1,6 @@
 'use strict';
 
-importScripts('lib/voz/catalogo.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/mineracao.js', 'lib/ajustes-de-envio.js', 'lib/mineracao-do-dia.js', 'lib/vocabulario-da-mineracao.js', 'lib/pedido-ao-anki.js', 'lib/pareamento.js', 'lib/envio-gravado.js', 'lib/apagar-frases-pendente.js', 'lib/sincronizacao.js');
+importScripts('lib/voz/catalogo.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/mineracao.js', 'lib/ajustes-de-envio.js', 'lib/mineracao-do-dia.js', 'lib/vocabulario-da-mineracao.js', 'lib/pedido-ao-anki.js', 'lib/pareamento.js', 'lib/envio-gravado.js', 'lib/apagar-frases-pendente.js', 'lib/sincronizacao.js', 'lib/historico.js');
 const { textoDaVoz, detectarIdioma, contarLetras, idiomaDe, IDIOMAS, MineracaoDoDia, Mineracao, VocabularioDaMineracao, Sincronizacao } = PerpetualMiner;
 
 if (chrome.storage.local.setAccessLevel) {
@@ -189,18 +189,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-let filaDeGravacao = Promise.resolve();
-
-function naFilaDeGravacao(tarefa) {
-  const resultado = filaDeGravacao.then(tarefa);
-  filaDeGravacao = resultado.catch(() => {});
-  return resultado;
-}
-
-function proximoIdDeFrase(historico) {
-  const maiorId = historico.reduce((maior, frase) => Math.max(maior, Number(frase.id) || 0), 0);
-  return Math.max(Date.now(), maiorId + 1);
-}
+const historico = PerpetualMiner.Historico.criar({ armazenamento: { get: chromeGet, set: chromeSet } });
 
 async function salvarFrase(texto, origem, contexto = null, idioma = IDIOMAS.INGLES, extras = {},
   { comPalavraAutomatica = true, comNuvem = true } = {}) {
@@ -221,14 +210,10 @@ async function salvarFrase(texto, origem, contexto = null, idioma = IDIOMAS.INGL
     novaFrase.autoKeyword = true;
   }
 
-  await naFilaDeGravacao(async () => {
-    const data = await chromeGet({ frases: [] });
-    novaFrase.id = proximoIdDeFrase(data.frases);
-    await chromeSet({ frases: [novaFrase, ...data.frases] });
-  });
+  const gravada = await historico.acrescentar(novaFrase);
 
-  if (comNuvem) sincronizarComFirestore(novaFrase);
-  return novaFrase;
+  if (comNuvem) sincronizarComFirestore(gravada);
+  return gravada;
 }
 
 async function nuvemDaConta() {

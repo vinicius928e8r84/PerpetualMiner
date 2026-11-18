@@ -136,13 +136,13 @@ The OpenAI key follows the account (#154): the versioned Conexão owner replicat
 
 The capture shortcuts and the floating button only react to trusted events (`event.isTrusted`), so a page cannot mine by dispatching a synthetic keydown or click.
 
-### Write Serialization (background.js)
+### Write Serialization (lib/historico.js)
 
-Every read-modify-write of `frases` in the service worker goes through `naFilaDeGravacao`, so concurrent saves (e.g. BookReader saving many passages at once) never overwrite each other. Phrase ids are assigned inside that queue and are unique even within the same millisecond.
+`PerpetualMiner.Historico` owns the writes of `frases`. Each operation (`acrescentar`, `editar`, `apagar`) takes the Web Lock `pm-historico`, reads `frases` again inside it, changes only what was asked and writes; the lock is the same for the service worker and every extension page, so a save in one never overwrites a change from another. The service worker's `salvarFrase` goes through `acrescentar` (e.g. BookReader saving many passages at once), and phrase ids are assigned inside the lock, unique even within the same millisecond. In the panel, Apagar (one phrase, the selection, or Tirar do histórico after an Envio) goes through `apagar`.
 
-Not covered by the queue:
-- The auto-miner duplicate check reads `frases` outside the queue before calling `salvarFrase`, so two identical auto candidates arriving together can both be saved (a duplicate, never a lost phrase).
-- `painel.js` rewrites `frases`, and `lib/sincronizacao.js` writes local sync state, outside the service worker's queue, so editing or deleting in the panel during a photo save can still lose phrases. Minerar frases (Colar and Arquivo .txt) is not in this list: it saves through the service worker.
+Not covered by the lock:
+- The auto-miner duplicate check reads `frases` outside the lock before calling `salvarFrase`, so two identical auto candidates arriving together can both be saved (a duplicate, never a lost phrase).
+- The other rewrites of `frases` in `painel.js`, and the local sync state `lib/sincronizacao.js` writes, still happen outside the lock, so editing in the panel (or Apagar tudo, or a sync) during a photo save can still lose phrases until they move to `Historico` (the rule `gravacao-de-frases` counts them). Minerar frases (Colar and Arquivo .txt) is not in this list: it saves through the service worker.
 
 ### Toolbar Badge (background.js)
 
