@@ -1,6 +1,8 @@
 'use strict';
 
+const fs = require('fs');
 const { test, expect } = require('../fixtures');
+const conexaoReal = require('../conexao-real');
 const { estadoFinal, estadoFinalEm } = require('../estado-final');
 const contrato = require('../../complemento/contrato/exemplos.json');
 const { exemploDaExtensao, diferencaDoContrato } = require('../fakes/anki');
@@ -60,3 +62,22 @@ for (const exemplo of soDaColecao) {
     expect(diferencaDoContrato(resposta.json, exemplo.resposta.json)).toBeNull();
   });
 }
+
+test('falar uma frase vai à voz de mentira: a Conexão real dos testes não fala com o Google de verdade', async ({ page, extensao, conexaoDoTeste }) => {
+  await page.goto(extensao.url('manifest.json'), { waitUntil: 'domcontentloaded' });
+
+  const resposta = await pedirDaPagina(page, { metodo: 'POST', caminho: '/voz/falar', corpo: { lang: 'en', sotaque: 'com', texto: 'Hello there' } });
+
+  expect(resposta.status).toBe(200);
+  await estadoFinalEm('o que a voz de mentira ouviu', async () => (await conexaoDoTeste.enviar({ estado: true })).falas, [['com', 'en', 'Hello there']]);
+});
+
+test('a Conexão real dos testes apaga a pasta de dados dela ao fechar', async () => {
+  const outra = await conexaoReal.subir();
+  const { pasta } = await outra.enviar({ estado: true });
+  const existia = fs.existsSync(pasta);
+
+  await outra.fechar();
+
+  expect([existia, fs.existsSync(pasta)]).toEqual([true, false]);
+});
