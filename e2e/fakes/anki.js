@@ -132,9 +132,23 @@ function criarFakeAnki() {
     return responderJson(route, 404, { error: 'not_found' });
   }
 
+  const chegaramNaPortaDeTeste = [];
+
+  function responderNaPortaDeTeste(url, req, res) {
+    chegaramNaPortaDeTeste.push(`${req.method} ${url.pathname}${url.search}`);
+    if (req.method !== 'GET' || url.pathname !== '/auth/callback') return false;
+    requisicoes.push({ metodo: req.method, caminho: url.pathname, busca: url.search, corpo: null, dados: null });
+    if (!estado.ligada) return false;
+    const muda = estado.muda === true || estado.muda === url.pathname;
+    if (!muda) chatgpt.responderRetornoNaPortaDeTeste(url, res);
+    return true;
+  }
+
   return {
     padrao: /^http:\/\/(127\.0\.0\.1|localhost):8766\//,
     tratar,
+    responderNaPortaDeTeste,
+    chegaramNaPortaDeTeste,
     requisicoes,
     pareamento,
     chatgpt,
