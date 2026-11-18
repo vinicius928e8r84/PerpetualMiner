@@ -163,6 +163,18 @@ test.describe('quando o áudio não vem', () => {
     expect((await extensao.lerStorage(CHAVE))[CHAVE]).toBeUndefined();
   });
 
+  test('uma fala que vem sem o áudio diz que não deu para tocar', async ({ page, extensao, fakes, relogioParado }) => {
+    fakes.anki.responder('POST', FALAR, () => ({ status: 200, json: { audio: '' } }));
+    const relogio = await abrirOQuiz(page, extensao, relogioParado);
+    await responderAParte1(page, 'Inglês', 'iniciante');
+    await quiz(page, 'Inglês').locator('.quiz__opcao').first().click();
+    await relogio.avancar(PAUSA_DA_RESPOSTA_MS);
+
+    await expect(quiz(page, 'Inglês').locator('.quiz__aviso')).toHaveText('Não deu para tocar o áudio. Tente de novo.');
+    // Exceção de teste: sem-estado-guardado — o aviso do áudio é só o que aparece na tela.
+    expect((await extensao.lerStorage(CHAVE))[CHAVE]).toBeUndefined();
+  });
+
   test('o Google recusando a fala diz que não deu para tocar, e a pergunta segue respondível', async ({ page, extensao, fakes, relogioParado }) => {
     fakes.anki.responder('POST', FALAR, () => ({ status: 502, json: { error: 'tts_rejected' } }));
     const relogio = await abrirOQuiz(page, extensao, relogioParado);

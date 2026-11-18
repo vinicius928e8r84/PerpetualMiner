@@ -1,0 +1,65 @@
+# Página de desenho: a IA dos cartões como porta (C5, quem paga cada pedido)
+
+Fatia ALTA pelo [modelo](modelo-fatia-alta.md): mexe em por onde passa a credencial (a chave da OpenAI e o login do ChatGPT), sem
+mudar onde ela mora nem quem a guarda ([#154](../seguranca/chave-da-openai.md), [login-do-chatgpt.md](login-do-chatgpt.md)). A decisão
+de quem paga cada pedido pago estava em seis lugares (`modelo_dos_cartoes.py`, `imagem_do_cartao.py`, `correcao_da_criacao.py`,
+`audio_do_cartao.py`, `rotas_da_voz.py`, `limite_do_plano.py`); passa a ser uma tabela só, `complemento/ia_dos_cartoes.py`, e a
+porta `IaDosCartoes` é quem lê o login e o cofre para o Envio e para as rotas.
+
+## Quem paga cada pedido
+
+| etapa (`ia_dos_cartoes`) | pedido | com login do ChatGPT | sem login, ou Usar a minha chave | sem chave |
+|---|---|---|---|---|
+| `texto` | o texto do Cartão | o plano; login acabado: o Envio para, mesmo com chave | a chave | o Envio para: `openai_key_missing` |
+| `correcao` | a correção da Criação | como o texto | a chave | pula, sem erro |
+| `juiz` | o juiz da imagem | o plano | a chave | sem plano também: sem imagem |
+| `imagem` | a triagem e a imagem gerada | a chave, sempre | a chave | só a foto real, ou nenhuma |
+| `voz` | a voz de reserva | a chave, sempre | a chave | sem reserva |
+| `ouvir` | o Ouvir (a amostra da voz da OpenAI) | a chave, sempre | a chave | 409 `openai_key_missing` |
+
+`quem_paga_a_etapa` dá `plano`, `chave` ou `parado` (ninguém paga, com o motivo); o que a etapa faz parada (a última coluna) é dela.
+O plano não cobre voz nem a imagem gerada; o Usar a minha chave (#158) vale até com o login acabado. `test_ia_dos_cartoes.py` é esta
+tabela, com o login e o cofre reais numa pasta temporária.
+
+## 1. Dono único de cada dado
+
+| dado | dono | o que a cópia nunca é |
+|---|---|---|
+| a chave da OpenAI | o cofre (`chaves.py`, `user_files/chaves/openai.json`) | guardada pela porta: ela relê o cofre a cada pedido |
+| o login do ChatGPT | `login_do_chatgpt.py` (`chaves/chatgpt.json`) | guardado pela porta: ela pede a `situacao()` e o `token()` a cada pedido |
+| a escolha Usar a minha chave | o estado do Envio (`usingKey`) | lembrada pela porta: o Envio a passa a cada pedido |
+| o modelo do texto deste Envio | a porta (`novo_envio` o esquece no começo de cada Envio) | gravado: some com o Envio |
+| quem paga cada etapa | `quem_paga_a_etapa` | decidido de novo numa etapa ou numa rota |
+
+## 2. Estados
+
+Os três do login (sem login, conectada, acabou) vezes a chave (guardada ou não) vezes o Usar a minha chave. A tela não muda: o que ela
+diz em cada um continua em [login-do-chatgpt.md](login-do-chatgpt.md) e [modelo-dos-cartoes.md](modelo-dos-cartoes.md).
+
+## 3. Transições
+
+Nenhuma nova. A porta só lê: o login renovado pelo `token()` e o login que acaba seguem dele (`login_do_chatgpt.py`), e a troca do
+modelo que caiu segue do `ModeloDosCartoes.do_envio`. Um pedido repetido relê os dois donos e dá o mesmo pagador; uma resposta perdida
+não deixa nada a meio, porque a porta não grava.
+
+## 4. As 8 variantes
+
+Sem mudança de rota nem de contrato: a extensão não vê a porta. As variantes 1 a 4 (sem Conexão, Anki fechado, Conexão antiga, a
+bridge Flask) e a 6 (quem vem da `main`) não passam por ela. A 5 (dois perfis numa Conexão) segue o cofre e o login, que são um por
+Conexão. A 7 e a 8 estão na seção 3.
+
+## 5. Limites
+
+Os da chave ([chave-da-openai.md](../seguranca/chave-da-openai.md)) e os do login ([login-do-chatgpt.md](login-do-chatgpt.md)), sem
+nenhum novo. Nesta fatia quem faz o pedido ainda é o motor, com a credencial que a porta entrega no `config`.
+
+## 6. Provas
+
+A tabela e a leitura do que está guardado: `complemento/test_ia_dos_cartoes.py`. O caminho inteiro, com o servidor real e a OpenAI de
+mentira: `test_quem_paga.py`, `test_imagem_pelo_plano.py`, `test_voz_de_reserva.py`, `test_ouvir_a_voz.py`, `test_limite_do_plano.py`
+e os `test_envio*.py`. Não provam o login real nem a OpenAI real.
+
+## Os próximos passos
+
+Cada um é uma versão da Conexão: o texto pede pela porta (`ia.texto`) e somem as opções de lote do motor; a imagem e a correção pedem
+pela porta e o `config` deixa de levar segredo; o motor passa a ter duas entradas (`escrever` e `montar`), sem a herança do `Trabalho`.

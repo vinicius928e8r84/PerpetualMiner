@@ -201,6 +201,15 @@ test.describe('quando a prévia não vem', () => {
     await expect(cartao(page, 'Inglês')).toContainText(INICIANTE);
   });
 
+  // Exceção de teste: sem-estado-guardado — a prévia só desenha o que a Conexão respondeu.
+  test('uma prévia que vem sem o CSS do Cartão diz que não deu para montar', async ({ page, extensao, fakes }) => {
+    fakes.anki.responder('POST', PREVIA, () => ({ status: 200, json: { front: '<b>frente</b>', back: '<i>verso</i>' } }));
+    await abrirONivel(page, extensao);
+
+    await expect(previa(page, 'Inglês')).toContainText('Não deu para montar a prévia. Tente de novo.');
+    await expect(previa(page, 'Inglês').locator('iframe')).toHaveCount(0);
+  });
+
   test('sem a prévia, o nível ainda se escolhe e se salva', async ({ page, extensao, fakes }) => {
     fakes.anki.responder('POST', PREVIA, () => ({ status: 500, json: { error: 'internal_error' } }));
     await abrirONivel(page, extensao);

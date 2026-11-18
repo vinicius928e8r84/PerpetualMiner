@@ -38,7 +38,7 @@ from .configuracao import OPENVERSE_BASE, VOZ_BASE
 from .imagem_do_cartao import ImagemDoCartao, ParaOEnvio
 from .limite_do_plano import LIMITE_DO_PLANO, LimiteDoPlano, espera_pelo_plano
 from .login_do_chatgpt import RECUSOU, SAIU
-from .modelo_dos_cartoes import PARADO, credencial
+from .modelo_dos_cartoes import PARADO
 from .palavras_do_cartao import com_as_palavras_fixas, esquecer, fixar_na_entrada, quantos_cartoes
 from .motor_do_envio import configuracao_do_motor, motor_do_complemento
 from .paradas_do_envio import Apagado, Interrompido  # noqa: F401  (`envio.Interrompido`)
@@ -339,13 +339,12 @@ def resolver(pedido, estado):
 class Trabalho(AudioDoCartao, ImagemDoCartao, CorrecaoDaCriacao, LimiteDoPlano, TipoDoEnvio):
     """Faz um Envio: confere o tipo de nota e, Cartão a Cartão, acha a nota no Anki, gera o texto, o áudio e a imagem e grava a nota."""
 
-    def __init__(self, fila, colecao, cofre, logger, openai_base, parar, espera_do_anki=2.0, esperas_da_openai=(2, 8, 30),
-                 voz_base=VOZ_BASE, openverse_base=OPENVERSE_BASE, adaptador_de_imagem=None, chatgpt=None, espera_do_plano=300, modelos=None):
-        self.fila, self.chatgpt, self.modelos, self.plano = fila, chatgpt, modelos, {}
+    def __init__(self, fila, colecao, ia, logger, openai_base, parar, espera_do_anki=2.0, esperas_da_openai=(2, 8, 30),
+                 voz_base=VOZ_BASE, openverse_base=OPENVERSE_BASE, adaptador_de_imagem=None, espera_do_plano=300):
+        self.fila, self.ia = fila, ia
         self.espera_do_plano = espera_do_plano
         self.motor = fila.motor
         self.colecao = colecao
-        self.cofre = cofre
         self.logger = logger
         self.openai_base = openai_base
         self.voz_base = voz_base
@@ -422,7 +421,7 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, CorrecaoDaCriacao, LimiteDoPlano, 
         self.logger.info("Envio %s: %s (%s)", job_id, estado["status"], estado["lastError"] or "sem erro")
 
     def fazer(self, job_id):
-        self.plano = {}
+        self.ia.novo_envio()
         pedido = self.fila.pedido(job_id)
         if self.fila.estado_ou_refazer(job_id).get("wiped"):
             return
@@ -476,7 +475,7 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, CorrecaoDaCriacao, LimiteDoPlano, 
                 return None
             while True:
                 pela_chave = self.fila.estado(job_id).get("usingKey", False)
-                paga = credencial(self.chatgpt, self.cofre, self.plano, self.modelos, pela_chave)
+                paga = self.ia.para_o_texto(pela_chave)
                 if paga.quem == PARADO:
                     return paga.motivo if paga.motivo in PARA_O_ENVIO + (SEM_CHAVE,) else self._cartao(job_id, cartao_id, status=FALHOU, error=paga.motivo)
                 falha = self._gerar_o_texto(job_id, pedido, dict(config, **paga.config), cartao_id, cartao["phraseId"], linha)

@@ -223,4 +223,16 @@ test.describe('quando a Conexão não troca a frente', () => {
     await estadoFinal(extensao, { [CHAVE]: { en: { frente: 'frase_com_audio', versao: 1 } } });
     expect(fakes.anki.frente.guardadas()).toEqual({});
   });
+
+  test('uma recusa da Conexão diz que ela não conseguiu trocar a frente, e nada muda nela', async ({ page, extensao, fakes }) => {
+    await abrirAjustes(page, extensao, { gravado: { [CHAVE]: AJUSTES } });
+    fakes.anki.responder('POST', CAMINHO, () => ({ status: 500, json: { error: 'internal_error' } }));
+
+    await escolher(page, 'Lacuna');
+    await salvar(page).click();
+
+    await expect(aviso(page)).toContainText('Os outros ajustes foram salvos, mas a frente não mudou: a Conexão não conseguiu trocá-la.');
+    await estadoFinal(extensao, { [CHAVE]: { en: { frente: 'frase_com_audio', versao: 1 } } });
+    expect(fakes.anki.frente.guardadas()).toEqual({});
+  });
 });
