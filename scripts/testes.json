@@ -11,9 +11,9 @@
       "arquivos": ["scripts/regras/test_regras.js", "scripts/regras/test_versoes_publicadas.js", "scripts/regras/test_doc_datado.js", "scripts/regras/test_link_de_doc.js", "scripts/regras/test_relogio_fora_da_fixture.js", "scripts/regras/test_limite_de_linhas.js", "scripts/regras/test_sem_comentario_novo.js", "scripts/regras/test_sem_comentario_novo_comando.js", "scripts/regras/test_indice_e_aprovacao.js", "scripts/regras/test_workflow_com_crlf.js", "scripts/regras/test_tabela_de_regras.js", "scripts/regras/test_dom_da_extensao.js"]
     },
     "ferramentas": {
-      "descricao": "As ferramentas de scripts/: o executor dos grupos, os ganchos (o limite de tamanho dos arquivos e o pre-push) e as receitas do mapa de features",
+      "descricao": "As ferramentas de scripts/: o executor dos grupos, os ganchos (o limite de tamanho dos arquivos e o pre-push), as receitas do mapa de features e os condutores do Mac e do PC",
       "executor": "node",
-      "arquivos": ["scripts/test_testar.mjs", "scripts/ganchos/test_limite_de_tokens.js", "scripts/ganchos/test_limite_de_tokens_entrada.js", "scripts/ganchos/test_limite_de_tokens_ci.js", "scripts/ganchos/test_configuracao_do_indice.js", ".agents/skills/verify-perpetualminer/scripts/test_receitas.js", "scripts/ganchos/test_pre_push.js"]
+      "arquivos": ["scripts/test_testar.mjs", "scripts/ganchos/test_limite_de_tokens.js", "scripts/ganchos/test_limite_de_tokens_entrada.js", "scripts/ganchos/test_limite_de_tokens_ci.js", "scripts/ganchos/test_configuracao_do_indice.js", ".agents/skills/verify-perpetualminer/scripts/test_receitas.js", ".agents/skills/verify-perpetualminer/scripts/test_remoto.js", "scripts/ganchos/test_pre_push.js"]
     },
     "complemento": {
       "descricao": "O complemento do Anki; na biblioteca padrão, e o CI roda no Python 3.9 (o do Anki do Mac) e no 3.13. Roda em 2 processos, um módulo por vez de uma fila (scripts/unittest-em-paralelo.js); PM_PARALELO=1 ou argumentos depois de -- voltam ao unittest discover em série",
