@@ -118,7 +118,7 @@ async function abrirPerfil({ fakes, paginas, servidorDoLogin, portaDaConexaoDeTe
     await context.route(url => /^https?:$/.test(url.protocol) && !origensLocais.includes(url.origin),
       route => route.abort('blockedbyclient'));
     for (const fake of Object.values(fakes)) if (fake.padrao) await context.route(fake.padrao, fake.tratar);
-    if (conexaoDoTeste) await context.route(fakes.anki.padrao, conexaoReal.rotaParaAConexaoReal(conexaoDoTeste));
+    if (conexaoDoTeste) await context.route(fakes.anki.padrao, conexaoReal.rotaComFalhasNaFrente(conexaoDoTeste, fakes.anki));
   } catch (erro) {
     await context?.close().catch(() => {});
     fs.rmSync(perfil, { recursive: true, force: true });
@@ -260,7 +260,10 @@ const test = base.extend({
     await use(RAIZ_DA_EXTENSAO);
   },
 
-  context: async ({ fakes, paginas, servidorDoLogin, portaDaConexaoDeTeste, pastaDaExtensao, permissaoDoAbridor, conexaoDoTeste }, use) => {
+  conexaoDesligadaAoAbrir: [false, { option: true }],
+
+  context: async ({ fakes, paginas, servidorDoLogin, portaDaConexaoDeTeste, pastaDaExtensao, permissaoDoAbridor, conexaoDoTeste, conexaoDesligadaAoAbrir }, use) => {
+    if (conexaoDesligadaAoAbrir) fakes.anki.desligar();
     const perfil = await abrirPerfil({ fakes, paginas, servidorDoLogin, portaDaConexaoDeTeste, pastaDaExtensao, permissaoDoAbridor, conexaoDoTeste });
     await use(perfil.context);
     await perfil.fechar();

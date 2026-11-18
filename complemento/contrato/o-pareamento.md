@@ -3,7 +3,7 @@
 A Conexão só atende o pedido assinado por um navegador que se **pareou** com ela. `GET /health` (e o retorno do login do ChatGPT, `GET /auth/callback`) ficam abertos; as três rotas do
 pareamento e `POST /anki/responde` (a pergunta do abridor que conserta sozinho; decisão do dono em `LEIA-ME.md`) exigem a origem da extensão, mas não a assinatura; tudo o mais, **a rota que não existe inclusive**, exige a origem **e** a assinatura. O desenho (os donos de cada dado, os
 estados, as falhas, as 8 variantes, os limites) é `docs/design/pareamento-da-conexao.md`; o código é `complemento/pareamento.py` e `servidor.py` › `_pedido_aceito` (o porteiro, num lugar
-só) do lado do complemento e `lib/pareamento.js` e `PedidoAoAnki.pedir` do lado da extensão. Os exemplos são `exemplos-do-pareamento.json`.
+só) do lado do complemento e `lib/pareamento.js` e `ConversaComOAnki.pedir` do lado da extensão. Os exemplos são `exemplos-do-pareamento.json`.
 
 ## As rotas do pareamento
 

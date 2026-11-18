@@ -5,7 +5,7 @@ a **opção A, o código mostrado no Anki e digitado no Painel** (09/11/2026), s
 B (botão Permitir) e C (o abridor entrega o segredo) ficaram no relatório do #192 e mudam só a seção 3 (como o segredo nasce).
 
 Onde está cada peça: o complemento em [`complemento/pareamento.py`](../../complemento/pareamento.py) (o porteiro é `servidor.py` › `_pedido_aceito`), a extensão em
-[`lib/pareamento.js`](../../lib/pareamento.js) (o porteiro é `PedidoAoAnki.pedir`), a faixa do Painel em `painel-conexao-versao.js`, o diálogo e o botão no Anki em
+[`lib/pareamento.js`](../../lib/pareamento.js) (o porteiro é `ConversaComOAnki.pedir`), a faixa do Painel em `painel-conexao-versao.js`, o diálogo e o botão no Anki em
 `complemento/janela.py` e `qt_do_anki.py`. O contrato (rotas, cabeçalhos, exemplos): [`complemento/contrato/o-pareamento.md`](../../complemento/contrato/o-pareamento.md).
 
 Ideia central em uma frase: **o segredo de pareamento nasce na Conexão, chega à extensão uma única vez, depois que a pessoa
@@ -50,7 +50,7 @@ vencido.
 | **começar** `POST /pareamento/comecar {}` | painel (botão Conectar) | `Origin` da extensão | a Conexão | cria `C` (ou reaproveita o pendente) e abre no Anki o diálogo ANK-05 com `C` e Cancelar | nenhum cliente é criado; `C` não volta na resposta |
 | **concluir** `POST /pareamento/concluir { codigo, cliente, nome }` | painel (Confirmar) | `C` pendente, tentativas < 5 | a Conexão, com `hmac.compare_digest` | grava `{cliente, S}` em `pareamento.json` (o mais antigo sai se passar de 5, **revogado** (vai para `revogados`)), fecha o diálogo, responde `{ cliente, segredo }` | um código errado não grava nada; no 5º erro o código morre e o diálogo diz isso |
 | **conferir** `POST /pareamento/conferir { cliente, desafio }` | `ConexaoAnki`, depois de cada `/health` OK e antes de todo pedido que leva segredo | cliente conhecido | a Conexão | nada: responde `{ sessao, prova: HMAC(S, "pm1 servidor" ‖ desafio ‖ sessao) }`; a extensão confere | nenhum estado muda; serve só para provar o listener |
-| **pedido privado** (todas as rotas de hoje, menos `/health` e as páginas) | `PedidoAoAnki.pedir` | `S`, `sessao` provada | `_pedido_aceito` em `servidor.py` (um lugar só, antes de escolher a rota) | o que a rota já faz | sem assinatura ou com assinatura errada a rota nem roda: `401` (`pairing_required`, `pairing_invalid`, `session_expired`) |
+| **pedido privado** (todas as rotas de hoje, menos `/health` e as páginas) | `ConversaComOAnki.pedir` | `S`, `sessao` provada | `_pedido_aceito` em `servidor.py` (um lugar só, antes de escolher a rota) | o que a rota já faz | sem assinatura ou com assinatura errada a rota nem roda: `401` (`pairing_required`, `pairing_invalid`, `session_expired`) |
 | **resposta** | a Conexão (`_responder`) | a assinatura do pedido | `pedir`, que confere antes de devolver a resposta a quem chamou | nada | uma resposta sem prova válida é tratada como “não confirmada”, nunca como dado |
 | **desconectar navegadores** | a pessoa, no Anki (janela PerpetualMiner…, ANK-02) | — | a Conexão | move `clientes` para `revogados` (até 20): o segredo revogado não assina mais nada, só prova a revogação no `conferir` | os Envios, a chave e o resto ficam |
 

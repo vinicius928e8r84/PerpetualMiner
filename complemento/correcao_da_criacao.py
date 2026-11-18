@@ -9,6 +9,7 @@ deixam as frases que faltam para o próximo Envio, sem erro. O custo vai ao `cos
 import re
 
 from . import baralhos, tipo_de_nota
+from .ia_dos_cartoes import CORRECAO
 from .modelo_dos_cartoes import PARADO
 from .motor.openai_http import ErroDaOpenAI
 
@@ -17,7 +18,7 @@ LIMITE_POR_ENVIO = 20
 
 class CorrecaoDaCriacao:
     """A parte do `Trabalho` que corrige as frases da Criação. Pede `self.fila`, `self.colecao`, `self.motor`, `self.ia`,
-    `self.openai_base`, `self.teto` e `self.logger`."""
+    `self.teto` e `self.logger`."""
 
     def _corrigir_as_frases(self, job_id, pedido, config, parada):
         """Chamado depois do último Cartão com o código que parou o Envio, ou None: a chave que o parou não corrige nada."""
@@ -34,13 +35,13 @@ class CorrecaoDaCriacao:
         for nota in notas:
             if self.fila.estado(job_id).get("wiped") or (self.teto is not None and self.teto.chegou()):
                 return
-            chave = self.ia.para_o_texto(self.fila.estado(job_id).get("usingKey", False))
-            if chave.quem == PARADO:
+            paga = self.ia.para_o_texto(self.fila.estado(job_id).get("usingKey", False))
+            if paga.quem == PARADO:
                 return
-            chave = chave.config
+            pedir = self.ia.pedido_do_texto(paga, config, CORRECAO)
             palavra = re.split(r"\s+-\s+/", nota["palavra"])[0]  # o campo traz a pronúncia depois da Palavra
             try:
-                correcao = self.motor.corrigir_frase.corrigir(dict(config, **chave), self.openai_base, palavra, nota["frase"], nota["escrita"])
+                correcao = self.motor.corrigir_frase.corrigir(config, pedir, palavra, nota["frase"], nota["escrita"])
             except ErroDaOpenAI as erro:
                 self.logger.warning("Envio %s: a correção da Criação parou (%s)", job_id, erro.codigo)
                 return

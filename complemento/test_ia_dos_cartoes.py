@@ -22,6 +22,7 @@ from complemento.chaves import Cofre
 from complemento.ia_dos_cartoes import CORRECAO, ETAPAS, IMAGEM, JUIZ, OUVIR, TEXTO, VOZ, IaDosCartoes, quem_paga_a_etapa
 from complemento.login_do_chatgpt import ACABOU, CONECTADA, SAIU, SEM_LOGIN, ErroDoPlano, LoginDoChatGPT
 from complemento.modelo_dos_cartoes import CHAVE, PARADO, PLANO, ModeloDosCartoes, lista_nossa
+from complemento.test_correcao_de_mentira import COMECO_DO_PROMPT
 from complemento.test_openai_de_mentira import OpenAIDeMentira
 
 CHAVE_GUARDADA = "sk-test-ia-dos-cartoes-0000"
@@ -58,7 +59,7 @@ def guardar(pasta, login, tem_chave, api="http://127.0.0.1:9"):
 
 def porta(pasta, situacao):
     login, _, _, tem_chave = SITUACOES[situacao]
-    return IaDosCartoes(*guardar(pasta, login, tem_chave), modelos=None)
+    return IaDosCartoes(*guardar(pasta, login, tem_chave), modelos=None, motor=envio.motor_do_complemento(), openai_base="http://127.0.0.1:9")
 
 
 class ATabelaDeQuemPaga(unittest.TestCase):
@@ -118,15 +119,20 @@ class ACredencialDeCadaEtapa(unittest.TestCase):
             pagador = ia.para_o_texto(True)
         self.assertEqual((pagador.quem, pagador.motivo), (PARADO, SEM_CHAVE))
 
-    def test_a_imagem_sem_login_vai_so_pela_chave(self):
+    def test_a_imagem_sem_login_vai_so_pela_chave_presa(self):
         with tempfile.TemporaryDirectory() as pasta:
-            par = porta(pasta, "sem login").para_a_imagem(False)
-        self.assertEqual(par, (None, CHAVE_GUARDADA))
+            plano, presa = porta(pasta, "sem login").para_a_imagem(False)
+        self.assertEqual((plano, type(presa).__name__), (None, "PelaChave"))
+        self.assertNotIn(CHAVE_GUARDADA, repr(presa))
 
     def test_a_imagem_com_usar_a_minha_chave_nao_pede_o_token_do_login_acabado(self):
         with tempfile.TemporaryDirectory() as pasta:
-            par = porta(pasta, "Usar a minha chave, login acabado").para_a_imagem(True)
-        self.assertEqual(par, (None, CHAVE_GUARDADA))
+            plano, presa = porta(pasta, "Usar a minha chave, login acabado").para_a_imagem(True)
+        self.assertEqual((plano, type(presa).__name__), (None, "PelaChave"))
+
+    def test_a_imagem_sem_chave_nao_tem_o_que_a_chave_paga(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            self.assertEqual(porta(pasta, "sem chave").para_a_imagem(False), (None, None))
 
     def test_a_imagem_com_o_login_acabado_para_como_o_texto(self):
         with tempfile.TemporaryDirectory() as pasta:
@@ -190,6 +196,48 @@ class OTextoPelaPorta(unittest.TestCase):
             ficou = os.path.exists(os.path.join(config["paths"]["log_dir"], "costs.jsonl"))
         self.assertEqual(recusa.exception.codigo, "openai_key_rejected")
         self.assertFalse(ficou)
+
+
+class AImagemPelaChavePresa(unittest.TestCase):
+    def test_a_triagem_e_a_imagem_gerada_vao_com_a_chave_guardada_sem_o_motor_a_receber(self):
+        with tempfile.TemporaryDirectory() as pasta, OpenAIDeMentira() as openai:
+            ia, _ = porta_na_openai(pasta, "sem login", openai)
+            _, presa = ia.para_a_imagem(False)
+            veredito, _ = presa.texto("gpt-4o-mini", "You are a classifier.", "bicycle", temperatura=0, max_tokens=1)
+            imagem = presa.imagem("gpt-image-1", "a bicycle", "1024x1024")
+            [autorizacao_da_imagem] = [autorizacao for metodo, caminho, autorizacao in openai.pedidos if caminho == "/v1/images/generations"]
+        self.assertEqual((veredito, openai.triagens), ("C", [("Bearer " + CHAVE_GUARDADA, "bicycle")]))
+        self.assertTrue(imagem)
+        self.assertEqual(autorizacao_da_imagem, "Bearer " + CHAVE_GUARDADA)
+
+
+PEDIDO_DE_CORRECAO = (COMECO_DO_PROMPT + ".", "Word: give up\nExample sentence: She gave up smoking\nLearner's sentence: She give up the job", "")
+
+
+class ACorrecaoPelaPorta(unittest.TestCase):
+    def test_pela_chave_a_correcao_vai_com_a_chave_e_o_custo_fica_a_parte_do_dos_cartoes(self):
+        with tempfile.TemporaryDirectory() as pasta, OpenAIDeMentira() as openai:
+            ia, config = porta_na_openai(pasta, "sem login", openai)
+            corrigida = ia.pedido_do_texto(ia.para_o_texto(), config, CORRECAO)(*PEDIDO_DE_CORRECAO)
+            registros = custos(config)
+        self.assertEqual(corrigida, "She give up the job")
+        self.assertEqual(openai.correcoes, [("Bearer " + CHAVE_GUARDADA, "She give up the job", "give up")])
+        self.assertEqual([(r["type"], r["model"], r["input_tokens"], r["output_tokens"], r["cost_usd"]) for r in registros],
+                         [("correction_tokens", "gpt-4o", 300, 40, 0.00115)])
+
+    def test_pelo_plano_a_correcao_nao_gasta_a_chave_e_custa_zero(self):
+        with tempfile.TemporaryDirectory() as pasta, OpenAIDeMentira() as openai:
+            ia, config = porta_na_openai(pasta, "com login", openai)
+            corrigida = ia.pedido_do_texto(ia.para_o_texto(), config, CORRECAO)(*PEDIDO_DE_CORRECAO)
+            registros = custos(config)
+        self.assertEqual(corrigida, "She give up the job")
+        self.assertEqual([autorizacao for autorizacao, _, _ in openai.correcoes], ["Bearer acesso-do-teste"])
+        self.assertEqual([(r["type"], r["model"], r["cost_usd"]) for r in registros], [("correction_tokens", "gpt-6-luna", 0.0)])
+        self.assertNotIn("acesso-do-teste", json.dumps(registros))
+
+    def test_so_o_texto_e_a_correcao_sao_pedidos_pela_porta(self):
+        with self.assertRaises(ValueError):
+            IaDosCartoes(None, None, None).pedido_do_texto(None, {"paths": {"log_dir": "."}}, IMAGEM)
 
 
 if __name__ == "__main__":

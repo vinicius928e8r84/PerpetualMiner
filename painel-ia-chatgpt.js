@@ -17,20 +17,15 @@
   let releitura = null;
   let avisando = false;
 
-  async function pedir(pedido) {
-    try {
-      const resposta = await raiz.PedidoAoAnki.pedir(raiz.ConexaoAnki.ENDERECO, pedido, { signal: AbortSignal.timeout(5000) });
-      return { status: resposta.status, json: await resposta.json().catch(() => null) };
-    } catch { return null; }
-  }
+  const pedir = pedido => raiz.ConversaComOAnki.pedir(pedido, { prazoMs: 5000 });
 
-  const doPedido = resposta => ({ motivo: !resposta ? 'sem_conexao' : resposta.status === 404 ? 'antiga' : 'chatgpt_login_failed',
-    detalhes: resposta ? `HTTP ${resposta.status}${resposta.json?.error ? ` · ${resposta.json.error}` : ''}` : 'sem resposta' });
+  const doPedido = ({ status, dados }) => ({ motivo: status === null ? 'sem_conexao' : status === 404 ? 'antiga' : 'chatgpt_login_failed',
+    detalhes: status === null ? 'sem resposta' : `HTTP ${status}${dados?.error ? ` · ${dados.error}` : ''}` });
 
   async function ler() {
     clearTimeout(releitura);
     const resposta = await pedir(raiz.PedidoAoAnki.estadoDoChatGPT());
-    const login = resposta?.status === 200 && typeof resposta.json?.conectada === 'boolean' ? resposta.json : null;
+    const login = resposta.status === 200 && typeof resposta.dados?.conectada === 'boolean' ? resposta.dados : null;
     const pagava = quemPaga(estado.login);
     estado.login = login;
     if (pagava !== quemPaga(login)) raiz.ModeloDosCartoes.reler();
@@ -72,7 +67,7 @@
     desenharTudo();
     const resposta = await pedir(raiz.PedidoAoAnki.entrarComOChatGPT());
     estado.pedindo = false;
-    const url = resposta?.status === 200 ? resposta.json?.url : null;
+    const url = resposta.status === 200 ? resposta.dados?.url : null;
     if (typeof url === 'string' && url.startsWith(AUTORIZAR)) {
       chrome.tabs.create({ url });
       return ler();
@@ -88,8 +83,8 @@
     desenharTudo();
     const resposta = await pedir(raiz.PedidoAoAnki.sairDoChatGPT());
     estado.pedindo = false;
-    if (resposta?.status === 200 && resposta.json?.ok === true) {
-      if (resposta.json.revogada === true) { if (!calado) mostrarToastDeSucesso(textoDaVoz('CFG-35.chatgptSaiu')); }
+    if (resposta.status === 200 && resposta.dados?.ok === true) {
+      if (resposta.dados.revogada === true) { if (!calado) mostrarToastDeSucesso(textoDaVoz('CFG-35.chatgptSaiu')); }
       else estado.erro = { motivo: 'sem_revogar', detalhes: 'revogada: false' };
       return ler();
     }

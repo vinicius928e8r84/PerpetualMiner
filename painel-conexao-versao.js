@@ -1,7 +1,7 @@
 'use strict';
 
 (function (raiz) {
-  const { textoDaVoz, Veio, ConexaoAnki, ConexaoNaTela, PareamentoComOAnki, PedidoAoAnki, Abridor, AbrirOAnki, AvisoDaVersao } = raiz;
+  const { textoDaVoz, Veio, ConexaoAnki, ConexaoNaTela, ConversaComOAnki, PareamentoComOAnki, PedidoAoAnki, Abridor, AbrirOAnki, AvisoDaVersao } = raiz;
   const { elemento } = Veio;
   const { SITUACAO } = ConexaoAnki;
   const { ESTADO } = PareamentoComOAnki;
@@ -18,12 +18,6 @@
   const porId = id => document.getElementById(id);
   const espera = ms => new Promise(resolver => setTimeout(resolver, ms));
 
-  async function chamar(pedido, limiteMs) {
-    const resposta = await PedidoAoAnki.pedir(ConexaoAnki.ENDERECO, pedido, { signal: AbortSignal.timeout(limiteMs) });
-    if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
-    return resposta.json();
-  }
-
   function despachar(evento) {
     const antes = maquina;
     maquina = AvisoDaVersao.proxima(maquina, evento);
@@ -38,12 +32,8 @@
 
   async function atualizarAgora() {
     if (!despachar({ tipo: EVENTO.ATUALIZAR })) return;
-    let resultado;
-    try {
-      resultado = await chamar(PedidoAoAnki.atualizarAConexao(), 60 * 1000);
-    } catch {
-      resultado = { estado: 'falhou', versao: null };
-    }
+    const desfecho = await ConversaComOAnki.pedir(PedidoAoAnki.atualizarAConexao(), { prazoMs: 60 * 1000 });
+    const resultado = desfecho.ok ? desfecho.dados : { estado: 'falhou', versao: null };
     await ConexaoAnki.conferir();
     despachar({ tipo: EVENTO.ATUALIZOU, resultado });
   }
@@ -56,8 +46,7 @@
     try {
       if (!await permissao) {
         desfecho = EVENTO.SEM_PERMISSAO;
-      } else {
-        await chamar(PedidoAoAnki.reiniciarOAnki(), 15 * 1000);
+      } else if ((await ConversaComOAnki.pedir(PedidoAoAnki.reiniciarOAnki(), { prazoMs: 15 * 1000 })).ok) {
         await esperarCalar();
         await espera(FOLGA_DO_FECHAMENTO_MS);
         const aberto = await Abridor.abrirOAnki();

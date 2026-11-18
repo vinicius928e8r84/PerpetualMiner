@@ -7,6 +7,9 @@ A stage never names a provider's protocol. It builds a credential, `{provedor, s
   texto(cred, sistema, mensagem, json=False, ...)  -> (text, {entrada, saida})   `mensagem` is a text, or the chat's parts (text and base64 `image_url`)
   imagem(cred, prompt, tamanho)                    -> the first image of the answer, `{"b64_json": ...}` or `{"url": ...}` (`{}` if none)
 
+A stage that the key always pays (the image screening, the generated image, the judge without the plan) gets a `PelaChave` instead:
+the key bound to its provider, so the stage asks with a model and never holds the secret (the add-on's IA dos cartões makes it).
+
 Each provider is an adapter: a module with the same two functions, listed in `ADAPTADORES`. `openai_http` is the only one so far. A refusal
 is an `ErroDoProvedor(codigo)`, the code of the provider that refused (`openai_key_rejected`...), never what the provider wrote.
 """
@@ -55,3 +58,19 @@ def texto(cred, sistema, mensagem, json=False, temperatura=None, max_tokens=None
 def imagem(cred, prompt, tamanho):
     """Ask `cred`'s provider for one image."""
     return _adaptador(cred).imagem(cred, prompt, tamanho)
+
+
+class PelaChave:
+    """A key bound to its provider: `texto(modelo, sistema, mensagem, ...)` and `imagem(modelo, prompt, tamanho)` as above, with no secret to hand on."""
+
+    def __init__(self, segredo, base=None):
+        self._credencial = {"provedor": OPENAI, "segredo": segredo, "base": base}
+
+    def __repr__(self):
+        return "PelaChave(%s)" % self._credencial["provedor"]
+
+    def texto(self, modelo, sistema, mensagem, **opcoes):
+        return texto(dict(self._credencial, modelo=modelo), sistema, mensagem, **opcoes)
+
+    def imagem(self, modelo, prompt, tamanho):
+        return imagem(dict(self._credencial, modelo=modelo), prompt, tamanho)

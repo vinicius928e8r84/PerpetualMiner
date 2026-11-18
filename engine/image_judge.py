@@ -120,7 +120,7 @@ def _invalid_image_format_fallback(mode: str, valid_index_map: list[int]) -> dic
 
 def rank_candidates(
     *,
-    api_key: str,
+    pela_chave,
     model: str,
     log_dir: str,
     keyword: str,
@@ -133,8 +133,10 @@ def rank_candidates(
     label: str | None = None,
     plano: dict[str, str] | None = None,
 ) -> dict[str, Any]:
-    """`label` is what the cost record says the call was for (the keyword by default; the add-on passes the card's id).
-    `plano` (`{token, modelo}`): the judge goes through the ChatGPT plan's Responses API, the JSON by `text.format`, with no cost record."""
+    """`pela_chave` is the key bound to its provider (`provedores.PelaChave`, None without a key); `model` is the key's judge.
+    `label` is what the cost record says the call was for (the keyword by default; the add-on passes the card's id).
+    `plano` (`{token, modelo}`): the judge goes through the ChatGPT plan's Responses API, the JSON by `text.format`, with no cost record;
+    a passing refusal of the plan falls back to the key's judge, any other (the limit, the account) reaches the caller and stops the Envio."""
     content: list[dict[str, Any]] = [{
         "type": "text",
         "text": (
@@ -189,13 +191,13 @@ def rank_candidates(
                     {"provedor": provedores.OPENAI, "via": "plano", "segredo": plano["token"], "modelo": plano["modelo"], "base": openai_base},
                     _SYSTEM, content, tempo=provedores.TEMPO_DA_IMAGEM, json=True, repeticoes=provedores.REPETICOES_DA_IMAGEM)
             except provedores.ErroDoProvedor as exc:
-                if not (api_key and provedores.passageira(exc.codigo, exc.status)):  # a plan that cannot go on (limit, account) stops the Envio
+                if not (pela_chave and provedores.passageira(exc.codigo, exc.status)):
                     raise
                 LOGGER.warning("image_judge plan judge failed (%s): the key judge decides keyword=%s", exc.codigo, label or keyword)
                 plano = None
         if not plano:
-            raw, usage = provedores.texto(
-                {"provedor": provedores.OPENAI, "segredo": api_key, "modelo": model, "base": openai_base},
+            raw, usage = pela_chave.texto(
+                model,
                 _SYSTEM,
                 content,
                 temperatura=0,
