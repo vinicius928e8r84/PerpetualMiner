@@ -56,6 +56,8 @@ Each line is `scripts/drive.sh <run-id> <command>`; the filters are regexes (SKI
 
 **Regression proofs of PR 204** (run them on any change to the key, the account or the Conexão): `drive.sh ia-204 chave-autoridade.spec -g "K1: a saúde|K1-PC|P1: uma chave sem conta|O1:"`. They cover the ping-pong between two profiles, the revision advancing on reconfirm, an unbound (`conta: ''`) key exported to the first account, and deleting while signed out. Observable: `fakes.anki.estadoDaChave()` keeps its revision at rest; `fakes.google.chaveDaOpenAIDe(uid)` is unchanged for every account. They run against the fake Conexão; for the real one see SKILL.md § Driving against the real Conexão.
 
+**At rest** (the open panel that writes nothing by itself): `drive.sh ia-repouso repouso.spec`. The AI card (one profile, the ChatGPT connected, two profiles) and Conta & sync (one and two profiles) stay open with nothing pressed; observable: no write reaches the Conexão or the fake Firestore (with the ChatGPT connected, only the login is read again), and the `emRepouso falha …` tests prove the check itself fails when the panel does write.
+
 Reading the actual values:
 
 - Owner regressions: `chave-autoridade.spec.js` covers K1/K2 (independent profiles and exact main migration), N1, L1, R1 (abort/reload/late acceptance), same-suffix change/deletion, legacy P1 and F4. Check `fakes.anki.chaveNaConexao()`, `estadoDaChave()`, `fakes.google.chaveDaOpenAIDe(uid)` and `extensao.lerStorage('pm_chave_openai')`. `pm-segredos/chaves.getAll()` must have no secrets after completed migration/wipe.
