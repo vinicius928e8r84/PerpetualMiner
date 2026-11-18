@@ -188,4 +188,4 @@ async function main(argv, env) {
 
 if (require.main === module) main(process.argv.slice(2), process.env).then(codigo => { process.exitCode = codigo; });
 
-module.exports = { corpoComAProva, planejar, registroDaRevisao, secaoDaProva };
+module.exports = { corpoComAProva, planejar, secaoDaProva };

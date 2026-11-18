@@ -60,4 +60,4 @@ async function emRepouso(page, { ciclos, fakes, extensao, tambem = [], esperar =
   expect(await guardado(), `chrome.storage.local em ${ciclos} ciclos de repouso`).toEqual(antes.storage);
 }
 
-module.exports = { emRepouso, assentar, umCiclo };
+module.exports = { emRepouso, assentar };

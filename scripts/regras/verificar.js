@@ -23,6 +23,8 @@ const REGRAS = [
   require('./link-de-doc'),
   require('./limite-de-linhas'),
   require('./sem-comentario-novo'),
+  require('./html-cru'),
+  require('./dialogo-nativo'),
 ];
 
 const ARQUIVO_DA_LINHA_DE_BASE = 'scripts/regras/linha-de-base.json';

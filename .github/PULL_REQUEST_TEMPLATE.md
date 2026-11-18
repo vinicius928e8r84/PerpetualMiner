@@ -70,6 +70,14 @@ O check "Registro da PR" (.github/workflows/registro-da-pr.yml, scripts/ci/regis
    Nas outras PRs basta "Política: sem mudança" (ou com o motivo). A PR da política não precisa estar mesclada, mas a
    política tem de estar no ar antes de a versão ir para a loja ou para o AnkiWeb (docs/publicar-chrome-web-store.md).
 
+6. Uma PR que muda um arquivo que o usuário vê (a lista é a de .agents/skills/verify-perpetualminer/scripts/mapa-de-features.sh)
+   atualiza .agents/skills/verify-perpetualminer/features/ ou diz no corpo, quando o mapa não muda:
+
+   feature map unchanged
+
+Antes de abrir a PR (ou de editar o corpo), confira o corpo sem o GitHub, com o mesmo código dos itens 1, 3, 4, 5 e 6:
+`node scripts/ci/corpo-da-pr.js <arquivo do corpo>`.
+
 O SHA é o inteiro, de 40 caracteres (`git rev-parse HEAD`). Um commit novo muda o head: revise e prove de novo.
 O que está em comentário de HTML, em bloco de código ou em citação (`>`) não conta.
 O check confere o artefato e o SHA, não que a revisão ou a prova aconteceram.

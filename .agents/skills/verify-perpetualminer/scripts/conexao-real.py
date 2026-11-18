@@ -2,15 +2,17 @@
 and Firestore and an in-memory collection (Baralhos "Inglês" and "Русский", the note type "Básico" with "Frente" and "Verso"; the Envio adds its own note type per language),
 with the Envio's worker thread on. Logs like the product (`registro.criar`): `<pasta>/logs/complemento.log`. Writes {"porta", "pasta"} to argv[2] when ready; runs until killed.
 Usage: conexao-real.py <repo> <ready.json>"""
-import json, sys, tempfile, time
+import json, os, sys, tempfile, time
 repo, pronto = sys.argv[1], sys.argv[2]
 sys.path.insert(0, repo)
 from complemento import servidor, configuracao, pasta_de_dados, registro
 from complemento.test_openai_de_mentira import OpenAIDeMentira, FirestoreDeMentira
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria
+from complemento.test_pareamento_de_mentira import CLIENTE, OUTRO_CLIENTE, OUTRO_SEGREDO, SEGREDO, semear
 pasta = tempfile.mkdtemp(prefix='conexao-real-')
 dados = pasta_de_dados.preparar(pasta)
 logger = registro.criar(dados.logs)
+semear(os.path.join(dados.raiz, 'pareamento.json'), ((CLIENTE, SEGREDO), (OUTRO_CLIENTE, OUTRO_SEGREDO)))
 with OpenAIDeMentira('aceita') as openai, FirestoreDeMentira() as firestore:
     c = servidor.Conexao(porta=0, origens_aceitas=configuracao.ORIGENS_ACEITAS, versao=configuracao.VERSAO,
                          perfil_aberto=lambda: 'Usuário 1', logger=logger,
