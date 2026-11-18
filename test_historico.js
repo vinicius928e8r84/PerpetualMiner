@@ -165,6 +165,41 @@ async function editarUmaFraseQueSaiuDoHistoricoNaoATrazDeVolta() {
   assert.deepStrictEqual(dados.frases, [outra]);
 }
 
+async function editarVariasMudaSoAsFrasesEOsCamposPedidos() {
+  const enviada = { ...fraseDoPainel, status: 'exported' };
+  const outra = { ...fraseDoPainel, id: 2, texto: 'Let us call it a day.' };
+  const terceira = { ...fraseDoPainel, id: 3, texto: 'Rain drummed on the tin roof.' };
+  const dados = { frases: [terceira, outra, enviada] };
+  const historico = Historico.criar({ armazenamento: armazenamentoComPortao(dados).area });
+  const contexto = { fonte: 'livro', titulo: 'Dark', detalhe: 'T1E3' };
+
+  const editadas = await historico.editarVarias(new Map([[1, { streaming: 'livro', contexto }], ['3', { contexto }], [9, { contexto }]]));
+
+  assert.deepStrictEqual(dados.frases, [{ ...terceira, contexto }, outra, { ...enviada, streaming: 'livro', contexto }],
+    'a marca Enviada continua, a outra não muda, e o id que saiu do Histórico não volta');
+  assert.deepStrictEqual(editadas, [dados.frases[0], dados.frases[2]], 'e devolve as Frases como ficaram');
+}
+
+async function oContextoDeVariasEditadoDuranteUmSalvamentoDeFotoNaoApagaAFoto() {
+  const outra = { ...fraseDoPainel, id: 2, texto: 'Let us call it a day.' };
+  const dados = { frases: [outra, fraseDoPainel] };
+  const { area, segurarAProximaLeitura } = armazenamentoComPortao(dados);
+  const sw = serviceWorker(area);
+  const historico = Historico.criar({ armazenamento: area });
+  const contexto = { fonte: 'netflix', titulo: 'Dark', detalhe: '' };
+
+  const portao = segurarAProximaLeitura();
+  const editar = historico.editarVarias([[1, { contexto }], [2, { contexto }]]);
+  await portao.leu;
+  const foto = salvarFoto(sw, 'The ferry left the harbour.');
+  await new Promise(resolve => setTimeout(resolve, 5));
+  portao.soltar();
+  await Promise.all([foto, editar]);
+
+  assert.deepStrictEqual(dados.frases.map(f => [f.texto, f.contexto?.titulo]),
+    [['The ferry left the harbour.', 'Livro'], [outra.texto, 'Dark'], [fraseDoPainel.texto, 'Dark']]);
+}
+
 async function duasFrasesNoMesmoMilissegundoGanhamIdsDiferentesEFicamAsDuas() {
   const dados = { frases: [] };
   const { area } = armazenamentoComPortao(dados);
@@ -193,6 +228,8 @@ async function duasFrasesNoMesmoMilissegundoGanhamIdsDiferentesEFicamAsDuas() {
     aFraseApagadaNoPainelDuranteUmSalvamentoDeFotoNaoVolta,
     editarMudaSoOsCamposPedidosNaFraseGravadaAgora,
     editarUmaFraseQueSaiuDoHistoricoNaoATrazDeVolta,
+    editarVariasMudaSoAsFrasesEOsCamposPedidos,
+    oContextoDeVariasEditadoDuranteUmSalvamentoDeFotoNaoApagaAFoto,
     duasFrasesNoMesmoMilissegundoGanhamIdsDiferentesEFicamAsDuas,
   ];
   let falhas = 0;

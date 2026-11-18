@@ -29,7 +29,7 @@ test('a Palavra que saiu do texto editado sai da frase, e o Envio não a leva', 
   await trocarOTexto(page, COM_PALAVRA.texto, novo);
 
   await expect(chip(page, novo)).toHaveCount(0);
-  expect(await guardada(extensao)).toMatchObject({ texto: novo, keywords: [] });
+  await expect.poll(() => guardada(extensao)).toMatchObject({ texto: novo, keywords: [] });
 
   await marcarEEnviar(page, [novo]);
   const [naConexao] = await enviosCriados(fakes, 1);
@@ -45,7 +45,7 @@ test('a Palavra que continua no texto editado fica grifada no lugar novo', async
 
   await expect(chip(page, novo)).toContainText('sack');
   await expect(cartao(page, novo).getByRole('button', { name: 'sack', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  expect(await guardada(extensao)).toMatchObject({ texto: novo, keywords: ['sack@9'] });
+  await expect.poll(() => guardada(extensao)).toMatchObject({ texto: novo, keywords: ['sack@9'] });
 });
 
 test('o texto editado para outro idioma muda o idioma da frase: ela aparece no filtro dele', async ({ page, extensao }) => {
@@ -57,5 +57,5 @@ test('o texto editado para outro idioma muda o idioma da frase: ela aparece no f
 
   await page.getByRole('combobox', { name: 'Idioma', exact: true }).selectOption({ label: 'Russo' });
   await expect(cartao(page, novo)).toBeVisible();
-  expect(await guardada(extensao)).toMatchObject({ texto: novo, idioma: 'Russo', keywords: [] });
+  await expect.poll(() => guardada(extensao)).toMatchObject({ texto: novo, idioma: 'Russo', keywords: [] });
 });

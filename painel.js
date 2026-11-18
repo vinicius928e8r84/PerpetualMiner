@@ -829,10 +829,14 @@ function aoTeclarNaFrase(e) {
 function gravarPalavras(id) {
   const idxFrase = todasFrases.findIndex(f => f.id === id);
   if (idxFrase < 0) return;
-  todasFrases[idxFrase] = { ...todasFrases[idxFrase], keywords: keywords[id] || [], autoKeyword: false };
-  chrome.storage.local.set({ frases: todasFrases });
+  editarFrase(idxFrase, { keywords: keywords[id] || [], autoKeyword: false });
   salvarFraseFirestore(todasFrases[idxFrase], ['keywords', 'autoKeyword']);
   atualizarCartao(id);
+}
+
+function editarFrase(idx, campos) {
+  todasFrases[idx] = { ...todasFrases[idx], ...campos };
+  return Historico.editar(todasFrases[idx].id, campos);
 }
 
 function toggleWord(id, wordIdx, wordClean) {
@@ -942,8 +946,7 @@ function salvarTextoFrase(id, novoTexto) {
   const palavras = Mineracao.palavrasQueFicam(keywords[id], novoTexto);
   if (palavras.length) keywords[id] = palavras;
   else delete keywords[id];
-  todasFrases[idx] = { ...todasFrases[idx], texto: novoTexto, idioma: detectarIdioma(novoTexto), keywords: palavras };
-  chrome.storage.local.set({ frases: todasFrases });
+  editarFrase(idx, { texto: novoTexto, idioma: detectarIdioma(novoTexto), keywords: palavras });
   salvarFraseFirestore(todasFrases[idx]);
   aplicarFiltro();
 }
@@ -1200,18 +1203,16 @@ function salvarContexto() {
 
 function salvarContextoDeVarias(ids, { fonte, titulo, detalhe }) {
   const alvo = new Set(ids);
-  const editadas = [];
+  const preenchidos = Object.fromEntries(Object.entries({ fonte, titulo, detalhe }).filter(([, v]) => v));
+  const edicoes = new Map();
   todasFrases = todasFrases.map(f => {
     if (!alvo.has(f.id)) return f;
-    const ctx = { ...(f.contexto || { fonte: f.streaming || '', titulo: '', detalhe: '' }) };
-    if (fonte)   ctx.fonte   = fonte;
-    if (titulo)  ctx.titulo  = titulo;
-    if (detalhe) ctx.detalhe = detalhe;
-    const updated = { ...f, ...(fonte ? { streaming: fonte } : {}), contexto: ctx };
-    editadas.push(updated);
-    return updated;
+    const contexto = { ...(f.contexto || { fonte: f.streaming || '', titulo: '', detalhe: '' }), ...preenchidos };
+    edicoes.set(f.id, { ...(fonte ? { streaming: fonte } : {}), contexto });
+    return { ...f, ...edicoes.get(f.id) };
   });
-  chrome.storage.local.set({ frases: todasFrases }, () => {
+  const editadas = todasFrases.filter(f => edicoes.has(f.id));
+  Historico.editarVarias(edicoes).then(() => {
     construirFiltroDeFonte();
     aplicarFiltro();
     mostrarToastDeSucesso(textoDaVoz('PAI-22', { n: editadas.length }));
@@ -1229,8 +1230,7 @@ function salvarContextoDeUmaFrase(id, { fonte, titulo, detalhe }) {
   if (idx < 0) return;
   const f = todasFrases[idx];
   const novaFonte = fonte || f.contexto?.fonte || f.streaming || '';
-  todasFrases[idx] = { ...f, streaming: novaFonte, contexto: { fonte: novaFonte, titulo, detalhe } };
-  chrome.storage.local.set({ frases: todasFrases }, () => {
+  editarFrase(idx, { streaming: novaFonte, contexto: { fonte: novaFonte, titulo, detalhe } }).then(() => {
     construirFiltroDeFonte();
     aplicarFiltro();
   });
