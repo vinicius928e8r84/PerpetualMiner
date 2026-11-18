@@ -1,6 +1,8 @@
 'use strict';
 
 const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
 
 const contrato = require('./complemento/contrato/carregar');
 const { ENDERECO, criarConexao, resposta, carregarAPagina, igual, parearComChaveGuardada } = require('./e2e/pagina-de-mentira-do-pareamento');
@@ -165,12 +167,39 @@ async function peloHttpAssinado() {
   }
 }
 
+async function ondeNaoHaConexaoAnki() {
+  const conexao = criarConexao();
+  const enderecos = new Set();
+  const original = conexao.fetch;
+  conexao.fetch = (url, opcoes) => {
+    enderecos.add(new URL(url).origin);
+    return original(url, opcoes);
+  };
+  const servico = carregarAPagina(conexao);
+  await parearComChaveGuardada(servico);
+  igual(await servico.Conversa.pedir(servico.PedidoAoAnki.estadoDaIA()), { ok: true, status: 200, dados: { ok: true, caminho: '/ia/estado' } },
+    'o service worker carrega lib/pedido-ao-anki.js sem lib/conexao-anki.js, e a conversa da extensão responde lá também');
+  assert.strictEqual(servico.Conversa.ENDERECO, ENDERECO);
+  assert.deepStrictEqual([...enderecos], [ENDERECO], 'todo pedido da conversa da extensão vai ao endereço da Conexão');
+}
+
+function oEnderecoCarregaAntesDeQuemOLe() {
+  for (const pagina of ['painel.html', 'popup.html']) {
+    const html = fs.readFileSync(path.join(__dirname, pagina), 'utf8');
+    const lugar = arquivo => html.indexOf(`<script src="lib/${arquivo}"></script>`);
+    assert.ok(lugar('pedido-ao-anki.js') >= 0 && lugar('pedido-ao-anki.js') < lugar('conexao-anki.js'),
+      `${pagina}: lib/pedido-ao-anki.js (o endereço da Conexão) carrega antes de lib/conexao-anki.js, que o lê ao carregar`);
+  }
+}
+
 async function main() {
+  oEnderecoCarregaAntesDeQuemOLe();
   await cadaExemploDoContratoTemOSeuDesfecho();
   await oPrazoEAFaltaDeResposta();
   await aRespostaForaDoContrato();
   await soOPedidoDeUmConstrutor();
   await peloHttpAssinado();
+  await ondeNaoHaConexaoAnki();
   console.log('conversa com o Anki tests passed');
 }
 
