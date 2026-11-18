@@ -8,7 +8,7 @@ Each entry in `chrome.storage.local["frases"]` (unlimited, newest first):
   texto:     string,
   data:      string,          // "dd/mm/yyyy" (pt-BR locale)
   streaming: string,          // platform name, 'web', 'pdf', or 'livro'
-  id:        number,          // max(Date.now(), highest stored id + 1), assigned inside naFilaDeGravacao
+  id:        number,          // max(Date.now(), highest stored id + 1), assigned inside the `pm-historico` lock (`lib/historico.js`)
   idioma:    string,          // 'Inglês' or 'Russo' (lib/idioma.js: Cyrillic → Russo, else Inglês)
   contexto?: {                // optional; added for web/pdf/book sources
     fonte:   string,

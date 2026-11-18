@@ -138,7 +138,7 @@
         <div class="frases-selecao" id="frases-selecao" hidden>
           <label class="frases-selecao__pagina">
             <input type="checkbox" class="veio-checkbox" id="sel-pagina" data-voz-aria="PAI-31">
-            <span class="frases-selecao__rotulo" id="sel-pagina-rotulo" data-voz="PAI-31"></span>
+            <span id="sel-pagina-rotulo" data-voz="PAI-31"></span>
           </label>
           <div class="frases-barra" id="frases-barra" hidden>
             <button class="veio-botao-icone" id="btn-desmarcar-todas" type="button"
@@ -465,7 +465,7 @@
               data-voz-aria="PAI-34" data-voz-title="PAI-34"><span data-icone="fechar"></span></button>
       <h2 class="veio-modal__titulo" id="modal-minerar-titulo" data-voz="ADD-01.botao"></h2>
 
-      <div class="minerar-modal__edicao" id="minerar-edicao">
+      <div id="minerar-edicao">
         <div class="minerar-abas">
           <div class="veio-segmentado" role="radiogroup" data-voz-aria="ADD-01.botao">
             <label class="veio-segmentado__opcao"><input type="radio" name="aba-minerar" value="colar"><span data-voz="ADD-01.colar"></span></label>
@@ -584,6 +584,7 @@
   <script src="lib/abridor.js"></script>
   <script src="lib/abrir-o-anki.js"></script>
   <script src="lib/sincronizacao.js"></script>
+  <script src="lib/historico.js"></script>
   <script src="painel-shell.js"></script>
   <script src="painel-conta.js"></script>
   <script src="painel-atalhos.js"></script>

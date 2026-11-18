@@ -59,7 +59,7 @@ and opens `bookreader.html` in a new tab, as the menu's Foto does. The PAI-02 em
   (against the history and inside the file, case- and whitespace-insensitive) stay out; the toast is ADD-10 with
   repeated ones, ADD-05 without.
 - **Progress (ADD-04)** replaces the options and fields inside the modal. Each phrase is sent to the service worker
-  (`SALVAR_HISTORICO`) one at a time, so it goes through `naFilaDeGravacao`, and the count moves only when that save
+  (`SALVAR_HISTORICO`) one at a time, so it goes through `Historico.acrescentar` (`lib/historico.js`), and the count moves only when that save
   comes back confirmed; the list shows each one through `chrome.storage.onChanged`. `umaMineracaoPorVez` makes a second
   click (the double click of #9) do nothing — and so does Minerar in Colar while a chosen .txt is still being read.
 - **Cloud:** the panel sends `semNuvem: true` and uploads the new phrases in one `batchWrite` at the end. If that fails, the persistent aviso ADD-06 stays in Frases with Tentar de novo (which
