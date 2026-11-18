@@ -11,9 +11,11 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from complemento.motor import image_pipeline
 from complemento.test_envio import CHAVE, ID, EnvioNoTeste, pedido
 from complemento.test_envio_imagem import FOTOS, FRASE, imagens, juiz_fraco_que_prefere_a_gerada, juiz_que_prefere, so_a_imagem
 from complemento.test_imagens_de_mentira import png_de
@@ -92,6 +94,24 @@ class OJuizDeImagemPeloPlano(unittest.TestCase):
             registros = [conteudo for nome, conteudo in conexao.arquivos().items() if nome.startswith("custos")]
         self.assertTrue(registros)
         self.assertFalse([registro for registro in registros if b"image_judge" in registro])
+
+
+class OConfigDoMotorNaoLevaSegredo(unittest.TestCase):
+    def test_com_o_login_e_a_chave_o_config_da_imagem_nao_leva_o_token_do_plano_nem_a_chave(self):
+        configs, original = [], image_pipeline.build
+
+        def build(config, *resto):
+            configs.append(config)
+            return original(config, *resto)
+
+        with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao, mock.patch.object(image_pipeline, "build", build):
+            conexao.openverse.fotos = FOTOS
+            conexao.openai.juiz = juiz_que_prefere(1)
+            acesso, estado, _ = enviar_com_o_plano(conexao)
+        visto = json.dumps(configs, default=repr)
+        self.assertEqual((estado["status"], len(configs)), ("completed", 1))
+        self.assertNotIn(acesso[len("Bearer "):], visto)
+        self.assertNotIn(CHAVE, visto)
 
 
 class AImagemGeradaSaiSempreSemChave(unittest.TestCase):
