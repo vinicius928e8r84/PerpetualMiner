@@ -1079,7 +1079,7 @@ function apagarTudo() {
     }
     return ok;
   });
-  chrome.storage.local.set({ frases: [] }, async () => {
+  Historico.apagar(ids).then(async () => {
     atualizarTotal();
     paginaAtual = 1;
     aplicarFiltro();
@@ -1093,7 +1093,7 @@ function exportarTxt() {
   const linhas = todasFrases
     .filter(f => selecionadas.has(f.id))
     .map(linhaDoTxt)
-    .filter(l => l.trim().length > 0);
+    .filter(l => l.trim());
 
   const blob = new Blob([linhas.join('\n')], { type: 'text/plain;charset=utf-8' });
   const url  = URL.createObjectURL(blob);
@@ -1111,7 +1111,7 @@ function exportarTxt() {
   });
   selecionadas.clear();
   atualizarContadorSelecao();
-  chrome.storage.local.set({ frases: todasFrases }, () => {
+  Historico.marcarExportadas(exportadas.map(f => f.id)).then(() => {
     atualizarTotal();
     aplicarFiltro();
   });
@@ -1147,7 +1147,7 @@ async function marcarComoEnviadas(ids) {
     return atualizada;
   });
   if (marcadas.length === 0) return;
-  await chromeSet({ frases: todasFrases });
+  await Historico.marcarEnviadas(marcadas.map(f => f.id));
   if (nuvem) nuvem.gravarFrases(marcadas).catch(err => mostrarFalhaNaNuvem(err));
   aplicarFiltro();
 }
@@ -1632,8 +1632,4 @@ function sanitizarCampo(val) {
 
 function chromeGet(defaults) {
   return new Promise(resolve => chrome.storage.local.get(defaults, resolve));
-}
-
-function chromeSet(itens) {
-  return new Promise(resolve => chrome.storage.local.set(itens, resolve));
 }

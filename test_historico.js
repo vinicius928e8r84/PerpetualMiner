@@ -200,6 +200,41 @@ async function oContextoDeVariasEditadoDuranteUmSalvamentoDeFotoNaoApagaAFoto() 
     [['The ferry left the harbour.', 'Livro'], [outra.texto, 'Dark'], [fraseDoPainel.texto, 'Dark']]);
 }
 
+async function aMarcaEnviadaDuranteUmSalvamentoDeFotoNaoApagaAFotoNemAPalavra() {
+  const comPalavra = { ...fraseDoPainel, keywords: ['barely@2'], autoKeyword: false };
+  const outra = { ...fraseDoPainel, id: 2, texto: 'Let us call it a day.' };
+  const dados = { frases: [outra, fraseDoPainel] };
+  const { area, segurarAProximaLeitura } = armazenamentoComPortao(dados);
+  const sw = serviceWorker(area);
+  const historico = Historico.criar({ armazenamento: area });
+
+  const portao = segurarAProximaLeitura();
+  const foto = salvarFoto(sw, 'The ferry left the harbour.');
+  await portao.leu;
+  const palavra = historico.editar(1, { keywords: comPalavra.keywords, autoKeyword: false });
+  const enviadas = historico.marcarEnviadas([1, '2']);
+  await new Promise(resolve => setTimeout(resolve, 5));
+  portao.soltar();
+  await Promise.all([foto, palavra, enviadas]);
+
+  assert.deepStrictEqual(dados.frases.slice(1), [{ ...outra, status: 'exported' }, { ...comPalavra, status: 'exported' }],
+    'as duas ficam Enviadas ao Anki, e a Palavra marcada antes continua');
+  assert.strictEqual(dados.frases[0].texto, 'The ferry left the harbour.', 'e a Frase da foto ficou');
+  assert.strictEqual(dados.frases[0].status, undefined, 'sem a marca');
+}
+
+async function aMarcaExportadaMudaSoAMarcaDasPedidas() {
+  const enviada = { ...fraseDoPainel, status: 'exported' };
+  const outra = { ...fraseDoPainel, id: 2, texto: 'Let us call it a day.' };
+  const dados = { frases: [outra, enviada] };
+  const historico = Historico.criar({ armazenamento: armazenamentoComPortao(dados).area });
+
+  const exportadas = await historico.marcarExportadas([1]);
+
+  assert.deepStrictEqual(dados.frases, [outra, { ...enviada, exportadaTxt: true }], 'Exportada não tira Enviada ao Anki');
+  assert.deepStrictEqual(exportadas, [dados.frases[1]]);
+}
+
 async function duasFrasesNoMesmoMilissegundoGanhamIdsDiferentesEFicamAsDuas() {
   const dados = { frases: [] };
   const { area } = armazenamentoComPortao(dados);
@@ -230,6 +265,8 @@ async function duasFrasesNoMesmoMilissegundoGanhamIdsDiferentesEFicamAsDuas() {
     editarUmaFraseQueSaiuDoHistoricoNaoATrazDeVolta,
     editarVariasMudaSoAsFrasesEOsCamposPedidos,
     oContextoDeVariasEditadoDuranteUmSalvamentoDeFotoNaoApagaAFoto,
+    aMarcaEnviadaDuranteUmSalvamentoDeFotoNaoApagaAFotoNemAPalavra,
+    aMarcaExportadaMudaSoAMarcaDasPedidas,
     duasFrasesNoMesmoMilissegundoGanhamIdsDiferentesEFicamAsDuas,
   ];
   let falhas = 0;
