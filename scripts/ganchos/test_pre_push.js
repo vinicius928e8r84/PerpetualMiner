@@ -86,6 +86,11 @@ const gancho = fs.readFileSync(path.join(__dirname, 'pre-push'), 'utf8');
 assert.deepStrictEqual(conferenciasDoCI, ['scripts/regras/verificar.js', 'scripts/ganchos/limite-de-tokens.js', 'scripts/ci/autoria.js']);
 assert.deepStrictEqual(conferenciasDoCI.filter(script => !gancho.includes(`node ${script} `)), [],
   'o pre-push roda cada conferência do job Regras que não lê o corpo da PR');
+for (const script of ['scripts/regras/verificar.js', 'scripts/ganchos/limite-de-tokens.js']) {
+  const passo = passosDoCI.find(p => p.run && p.run.startsWith(`node ${script}`));
+  assert.strictEqual(passo.env && passo.env.REGRAS_BASE, "${{ github.event_name == 'push' && github.event.before || 'HEAD^1' }}",
+    `${script} no PR compara com o HEAD^1, a main sobre a qual o GitHub montou o merge ref; o origin/main da hora pode já ter andado e dar falso vermelho`);
+}
 
 git(trabalho, 'checkout', '-q', '-b', 'outra', 'main');
 r = empurrar('origin', 'autoria-errada:outra-destino');
