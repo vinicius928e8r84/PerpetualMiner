@@ -162,12 +162,13 @@ test.describe('com a permissão que o Chrome guardou depois de Permitir', () => 
 
     fakes.anki.ligar();
     await relogio.avancar(15_000);
-    await expect(itemDaLista(page, /^Ter o Anki/)).toHaveAccessibleName(/feito$/);
-    await expect(itemDaLista(page, /^Pôr a Conexão no Anki/)).toHaveAccessibleName(/feito$/);
-    await expect(tituloDoPasso(page)).toHaveText('Abrir o Anki sozinho');
+    await expect.poll(() => fakes.abridor.pedidos()).toEqual([ABRIR, CONFERIR]);
+    for (const passo of [/^Ter o Anki/, /^Pôr a Conexão no Anki/, /^Reiniciar o Anki/, /^Abrir o Anki sozinho/]) {
+      await expect(itemDaLista(page, passo)).toHaveAccessibleName(/feito$/);
+    }
+    await expect(tituloDoPasso(page)).toHaveText('Conexão com o Anki: ligada');
     await expect(resultadoDoAnki(page)).toBeHidden();
     await fotografar(page, 'ter-o-anki-abridor-abriu.png');
-    await expect.poll(() => fakes.abridor.pedidos()).toEqual([ABRIR, CONFERIR]);
     await estadoFinalEm('a permissão nativeMessaging no Chrome', () => extensao.permissaoDoAbridor(), true);
   });
 
