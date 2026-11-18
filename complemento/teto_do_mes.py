@@ -21,11 +21,6 @@ TETO_MAXIMO = 1_000_000.0
 NO_TETO = {"reason": "monthly_cap"}
 
 
-def espera_pelo_teto(estado):
-    """O Envio espera o teto do mês (o que o estado diz em `waiting`)?"""
-    return (estado.get("waiting") or {}).get("reason") == NO_TETO["reason"]
-
-
 def _valor_do_teto(valor):
     """O teto em dólares com dois decimais, ou None se não é um número positivo que sirva (`bool` não é número aqui)."""
     if isinstance(valor, bool) or not isinstance(valor, (int, float)) or not math.isfinite(valor):
