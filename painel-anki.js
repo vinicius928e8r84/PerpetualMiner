@@ -50,6 +50,7 @@
     diagnosticoFalhou: false,
   };
   const ouvintesDoAtualizar = [];
+  const continuar = raiz.ContinuarEnvioNosCustos.criar({ estado, ler, desenhar, marcarIndisponivel });
 
   async function iniciar() {
     PrimeiraConexao.montar();
@@ -146,19 +147,22 @@
     ler();
   }
 
-  async function ler() {
+  async function ler({ calado = false } = {}) {
+    if (calado && estado.carregando) return;
     const leitura = ++estado.leitura;
     const { periodo, de, ate } = estado;
-    estado.carregando = true;
-    estado.erro = null;
-    desenhar();
+    if (!calado) {
+      estado.carregando = true;
+      estado.erro = null;
+      desenhar();
+    }
 
     const pedidoDosCustos = PedidoAoAnki.custosDosEnvios({ de, ate });
     const pedido = `POST /analytics/jobs ${JSON.stringify(pedidoDosCustos.corpo)}`;
     const desfecho = await ConversaComOAnki.pedir(pedidoDosCustos);
     const envios = desfecho.ok ? (Array.isArray(desfecho.dados.jobs) ? desfecho.dados.jobs : []) : null;
     const erro = desfecho.ok ? null : `${pedido} · ${desfecho.status >= 300 ? `HTTP ${desfecho.status}` : desfecho.detalhes}`;
-    if (leitura !== estado.leitura) return;
+    if (leitura !== estado.leitura || (calado && !envios)) return;
 
     estado.carregando = false;
     estado.erro = erro;
@@ -493,7 +497,7 @@
       elemento('dd', 'anki-partes__total', dinheiro(p.total)));
     detalhe.append(custos, imagensDoEnvio(envio));
 
-    if (retomavel) detalhe.append(continuarEnvio(envio));
+    if (retomavel) detalhe.append(continuar.montar(envio));
     return detalhe;
   }
 
@@ -522,30 +526,6 @@
         marca.setAttribute('aria-hidden', 'true');
         return elemento('span', null, marca, texto);
       })));
-  }
-
-  function continuarEnvio(envio) {
-    const acao = botao(textoDaVoz('ENV-13.continuar'), 'veio-botao veio-botao--contorno veio-botao--compacto',
-      () => retomar(envio.jobId, acao));
-    acao.dataset.foco = `continuar:${envio.jobId}`;
-    const dica = elemento('span', 'veio-dica', textoDaVoz('BRG-33.continuar'));
-    dica.id = 'anki-continuar-indisponivel';
-    dica.setAttribute('role', 'tooltip');
-    marcarIndisponivel(acao, dica.id);
-    return elemento('div', 'anki-acao', elemento('span', 'veio-com-dica', acao, dica));
-  }
-
-  async function retomar(jobId, acao) {
-    if (acao.getAttribute('aria-disabled') === 'true') return;
-    const desfecho = await ConversaComOAnki.pedir(PedidoAoAnki.tentarEnvioDeNovo(jobId));
-    estado.falhasAoRetomar.delete(jobId);
-    if (desfecho.ok) {
-      Veio.mostrarToastDeSucesso(textoDaVoz('ENV-14.sucesso'));
-      return ler();
-    }
-    if (desfecho.codigo === 'job_wiped') estado.apagados.add(jobId);
-    else estado.falhasAoRetomar.set(jobId, `POST /jobs/retry ${jobId} · ${desfecho.status ? `HTTP ${desfecho.status}` : desfecho.detalhes}`);
-    desenhar();
   }
 
   function desenharAvancado(envios, soma) {
