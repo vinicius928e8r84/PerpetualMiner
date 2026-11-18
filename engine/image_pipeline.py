@@ -4,8 +4,9 @@ the card's prompt. The code runs inside the Anki add-on (`complemento/imagem_do_
 standard library only, no output of its own. `build` returns the functions that do one card; `image_real_first.py` has
 the "real photo first" one.
 
-Two optional keys of `config` are for the add-on: `openai_base` / `openverse_base` (where the requests go; without them the
-real addresses) and `image_records_by_card` (the cost records name the card by its stem and keep no search text, because they stay
+The key arrives bound (`pela_chave`, a `provedores.PelaChave`, also `config["pela_chave"]` for the generated image), never as a secret.
+Optional keys of `config` are for the add-on: `openai_base` / `openverse_base` (where the plan's judge and the photo search go; without
+them the real addresses), `plano_do_chatgpt` (the judge through the ChatGPT plan) and `image_records_by_card` (the cost records name the card by its stem and keep no search text, because they stay
 on disk after the Frases are erased).
 """
 
@@ -29,7 +30,7 @@ else:
 QUERY_FIELDS = ("queries", "query_stats", "best_real_query")
 
 
-def build(config, output_dir, img_source, api_key, log_dir):
+def build(config, output_dir, img_source, pela_chave, log_dir):
     """The pipeline for one run: `real_first(stem, prompt, dest)`, `generate_direct(stem, prompt, dest)` and `img_sources`
     (`{stem: "real" | "gerada"}`, filled as the pictures are chosen). The card's text is read from `output_dir/{stem}.txt`."""
     img_sources: dict[str, str] = {}
@@ -38,10 +39,11 @@ def build(config, output_dir, img_source, api_key, log_dir):
     openai_host = {"openai_base": config["openai_base"]} if config.get("openai_base") else {}
 
     def guard_extra(stem: str) -> dict:
-        return dict(openai_host, label=stem) if by_card else dict(openai_host)
+        return {"label": stem} if by_card else {}
 
     def judge_extra(stem: str) -> dict:
-        return dict(guard_extra(stem), plano=config["plano_do_chatgpt"]) if config.get("plano_do_chatgpt") else guard_extra(stem)
+        extra = dict(openai_host, **guard_extra(stem))
+        return dict(extra, plano=config["plano_do_chatgpt"]) if config.get("plano_do_chatgpt") else extra
 
     stopwords = {
         "a", "an", "the", "and", "or", "but", "with", "without", "for", "from",
@@ -170,7 +172,7 @@ def build(config, output_dir, img_source, api_key, log_dir):
     def _wants_image(stem: str, prompt: str) -> bool:
         if not guard_enabled:
             return True
-        return image_guard.should_generate_image(_visual_subject(stem, prompt), api_key, log_dir, **guard_extra(stem))
+        return image_guard.should_generate_image(_visual_subject(stem, prompt), pela_chave, log_dir, **guard_extra(stem))
 
     def _save_real(best_path: str, stem: str, dest: Path) -> bool:
         dest.write_bytes(Path(best_path).read_bytes())
@@ -312,7 +314,7 @@ def build(config, output_dir, img_source, api_key, log_dir):
         return "failed"
 
     pipeline = SimpleNamespace(
-        config=config, api_key=api_key, log_dir=log_dir, judge_cfg=judge_cfg, judge_enabled=judge_enabled, max_queries=max_queries,
+        config=config, pela_chave=pela_chave, log_dir=log_dir, judge_cfg=judge_cfg, judge_enabled=judge_enabled, max_queries=max_queries,
         generated_image_cost=generated_image_cost, real_candidate_limit=real_candidate_limit,
         real_total_candidate_limit=real_total_candidate_limit, openverse_hosts=openverse_hosts, judge_extra=judge_extra,
         card_content=_card_content, card_phrase_and_context=_card_phrase_and_context, visual_subject=_visual_subject,

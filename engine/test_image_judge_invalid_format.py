@@ -8,6 +8,7 @@ from pathlib import Path
 
 import image_judge
 import openai_http
+import provedores
 from test_servidor_de_mentira import ServidorDeMentira
 
 PNG_BYTES = (
@@ -25,9 +26,9 @@ def julgar(pasta, openai, mode="real_only", **mais):
     imagem.write_bytes(PNG_BYTES)
     (raiz / "log").mkdir(exist_ok=True)
     return image_judge.rank_candidates(
-        api_key=CHAVE, model="mock-judge", log_dir=str(raiz / "log"), keyword="saw", phrase="I saw it happen.", context="test",
+        pela_chave=provedores.PelaChave(CHAVE, openai.base), model="mock-judge", log_dir=str(raiz / "log"), keyword="saw", phrase="I saw it happen.", context="test",
         card_text="Front: I saw it happen.", candidates=[{"path": str(imagem), "meta": {"query": "eye", "source": "openverse"}}],
-        mode=mode, openai_base=openai.base, **mais)
+        mode=mode, **mais)
 
 
 def veredito(**campos):

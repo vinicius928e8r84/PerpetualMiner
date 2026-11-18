@@ -8,6 +8,7 @@ import os
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
@@ -31,6 +32,13 @@ def configuracao_do_teste(motor, pasta):
     config["paths"]["output_dir"] = os.path.join(pasta, "textos")
     config["paths"]["log_dir"] = os.path.join(pasta, "custos")
     return config
+
+
+def gerar_a_imagem(motor, config, openai_base, cartao, destino):
+    """A imagem gerada do `cartao` pelo pipeline do motor, paga pela chave de `config`, presa como a IA dos cartões a entrega."""
+    presa = motor.provedores.PelaChave(config["openai_api_key"], openai_base)
+    escolha = motor.image_pipeline.build(dict(config, pela_chave=presa), Path(config["paths"]["output_dir"]), "2", presa, config["paths"]["log_dir"])
+    return escolha.generate_direct(cartao, "a bicycle", destino)
 
 
 def pela_chave(motor, config, openai_base):
