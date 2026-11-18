@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 import image_guard
+import provedores
 from test_servidor_de_mentira import ServidorDeMentira
 
 
@@ -16,7 +17,7 @@ def resposta(letra):
 class ImageGuardTests(unittest.TestCase):
     def decidir(self, palavra, rota, **mais):
         with tempfile.TemporaryDirectory() as td, ServidorDeMentira({"/v1/chat/completions": rota}) as openai:
-            decisao = image_guard.should_generate_image(palavra, "sk-proj-0000", td, openai_base=openai.base, **mais)
+            decisao = image_guard.should_generate_image(palavra, provedores.PelaChave("sk-proj-0000", openai.base), td, **mais)
             custos = [json.loads(linha) for linha in (Path(td) / "costs.jsonl").read_text(encoding="utf-8").splitlines()] if (Path(td) / "costs.jsonl").exists() else []
             return decisao, openai.pedidos, custos
 

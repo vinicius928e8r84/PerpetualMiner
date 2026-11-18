@@ -17,7 +17,7 @@ else:
 
 def criar(c):
     """The function that chooses one card's picture: `c` is the pipeline's context (see `image_pipeline.build`)."""
-    config, api_key, log_dir, judge_cfg, judge_enabled = c.config, c.api_key, c.log_dir, c.judge_cfg, c.judge_enabled
+    config, pela_chave, log_dir, judge_cfg, judge_enabled = c.config, c.pela_chave, c.log_dir, c.judge_cfg, c.judge_enabled
     max_queries, generated_image_cost = c.max_queries, c.generated_image_cost
     real_candidate_limit, real_total_candidate_limit = c.real_candidate_limit, c.real_total_candidate_limit
     openverse_hosts, judge_extra = c.openverse_hosts, c.judge_extra
@@ -139,7 +139,7 @@ def criar(c):
 
             real_rank = image_judge.rank_candidates(
                 **judge_extra(stem),
-                api_key=api_key,
+                pela_chave=pela_chave,
                 model=config["openai"].get("image_judge_model", "gpt-4.1-mini"),
                 log_dir=log_dir,
                 keyword=keyword,
@@ -292,7 +292,7 @@ def criar(c):
 
             compare = image_judge.rank_candidates(
                 **judge_extra(stem),
-                api_key=api_key,
+                pela_chave=pela_chave,
                 model=config["openai"].get("image_judge_model", "gpt-4.1-mini"),
                 log_dir=log_dir,
                 keyword=keyword,

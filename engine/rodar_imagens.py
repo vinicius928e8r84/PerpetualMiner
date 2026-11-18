@@ -4,12 +4,12 @@ import image_pipeline
 from image_queries import _build_card_google_queries  # noqa: F401 - os testes de imagem a pedem daqui
 
 
-def _run_images(config, prompt_lines, output_dir, img_source, api_key, log_dir):
+def _run_images(config, prompt_lines, output_dir, img_source, pela_chave, log_dir):
     """What the Envio does with each `stem:prompt` line, seen from outside: the files made, the lines skipped and where each
     picture came from. "1" is the real photo first; any other value generates the picture."""
     img_files: list[str] = []
     n_skipped = 0
-    pipeline = image_pipeline.build(config, output_dir, img_source, api_key, log_dir)
+    pipeline = image_pipeline.build(config, output_dir, img_source, pela_chave, log_dir)
     for line in prompt_lines:
         if ":" not in line:
             continue
