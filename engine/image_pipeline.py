@@ -134,12 +134,6 @@ def build(config, output_dir, img_source, api_key, log_dir):
         except Exception:
             return ""
 
-    def _field_value(content: str, pattern: str) -> str:
-        match = re.search(pattern, content, re.IGNORECASE)
-        if not match:
-            return ""
-        return match.group(1).strip().rstrip("*").strip()
-
     def _card_google_queries(stem: str, prompt: str) -> list[str]:
         content = _card_content(stem)
         return _build_card_google_queries(
