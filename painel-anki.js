@@ -25,7 +25,7 @@
     { chave: 'failed', rotulo: 'BRG-09.falhou', serie: 'falhou' },
   ];
 
-  const { textoDaVoz, Veio, Shell, ConexaoAnki, Contexto, IDIOMAS, PrimeiraConexao, PedidoAoAnki, PlanoDosCustos, SomaDosCustos } = raiz;
+  const { textoDaVoz, Veio, Shell, ConexaoAnki, Contexto, IDIOMAS, PrimeiraConexao, PedidoAoAnki, ConversaComOAnki, PlanoDosCustos, SomaDosCustos } = raiz;
   const { elemento } = Veio;
   const { numero, partes } = SomaDosCustos;
   const somar = envios => SomaDosCustos.somar(envios, ORIGENS);
@@ -544,17 +544,15 @@
 
   async function retomar(jobId, acao) {
     if (acao.getAttribute('aria-disabled') === 'true') return;
-    try {
-      const resposta = await PedidoAoAnki.pedir(ENDERECO_DA_CONEXAO, PedidoAoAnki.tentarEnvioDeNovo(jobId));
-      estado.falhasAoRetomar.delete(jobId);
-      if (resposta.status === 409) return void (estado.apagados.add(jobId), desenhar());
-      if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
+    const desfecho = await ConversaComOAnki.pedir(PedidoAoAnki.tentarEnvioDeNovo(jobId));
+    estado.falhasAoRetomar.delete(jobId);
+    if (desfecho.ok) {
       Veio.mostrarToastDeSucesso(textoDaVoz('ENV-14.sucesso'));
-      ler();
-    } catch (falha) {
-      estado.falhasAoRetomar.set(jobId, `POST /jobs/retry ${jobId} · ${falha.message}`);
-      desenhar();
+      return ler();
     }
+    if (desfecho.codigo === 'job_wiped') estado.apagados.add(jobId);
+    else estado.falhasAoRetomar.set(jobId, `POST /jobs/retry ${jobId} · ${desfecho.status ? `HTTP ${desfecho.status}` : desfecho.detalhes}`);
+    desenhar();
   }
 
   function desenharAvancado(envios, soma) {
@@ -583,11 +581,10 @@
   }
 
   async function baixarDiagnostico(jobId) {
-    try {
-      const resposta = await PedidoAoAnki.pedir(ENDERECO_DA_CONEXAO, PedidoAoAnki.pacoteDeDiagnostico(jobId));
-      if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
-      const pacote = await resposta.json();
-      const url = URL.createObjectURL(new Blob([JSON.stringify(pacote, null, 2)], { type: 'application/json' }));
+    const desfecho = await ConversaComOAnki.pedir(PedidoAoAnki.pacoteDeDiagnostico(jobId));
+    estado.diagnosticoFalhou = !desfecho.ok;
+    if (desfecho.ok) {
+      const url = URL.createObjectURL(new Blob([JSON.stringify(desfecho.dados, null, 2)], { type: 'application/json' }));
       const link = elemento('a');
       link.href = url;
       link.download = `diagnostico-${jobId}.json`;
@@ -595,9 +592,6 @@
       link.click();
       link.remove();
       URL.revokeObjectURL(url);
-      estado.diagnosticoFalhou = false;
-    } catch {
-      estado.diagnosticoFalhou = true;
     }
     desenhar();
   }
