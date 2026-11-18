@@ -12,6 +12,7 @@ const QUEM_REGISTRA = ['OWNER', 'MEMBER', 'COLLABORATOR'];
 const MODELO = '.github/PULL_REQUEST_TEMPLATE.md';
 const { soMergesLimposDaMain } = require('./so-merge-da-main.js');
 const PUBLICADOR = 'scripts/ci/registrar-na-pr.js';
+const CONFERIDOR_DO_CORPO = 'scripts/ci/corpo-da-pr.js';
 
 const urlDaIssue = repositorio => new RegExp(`^https://github\\.com/${repositorio ? repositorio.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : '[\\w.-]+/[\\w.-]+'}/issues/\\d+$`, 'i');
 const TEXTO_PURO = /^(?! {4}|\t)[^`]*$/;
@@ -124,7 +125,7 @@ function faltaDaProva(linhas, head) {
   return semHead && `atenção ALTA: ${semHead}`;
 }
 
-function conferir({ corpo, rotulos, registros, head, repositorio, headsEquivalentes = [] }) {
+function partesDoCorpo({ corpo, rotulos, head, repositorio }) {
   const linhas = linhasQueValem(corpo);
   const textos = linhas.map(linha => linha.texto);
   const foraDoModelo = [
@@ -133,13 +134,26 @@ function conferir({ corpo, rotulos, registros, head, repositorio, headsEquivalen
   ];
   const { atencao, falta: semAtencao } = atencaoDe(textos);
   const alta = atencao === 'ALTA' || rotulos.some(rotulo => igual(String(rotulo), ROTULO_DE_RISCO_ALTO));
-  const faltas = [
-    foraDoModelo.length && `o corpo não segue o modelo do /pr: falta ${foraDoModelo.join(', ')}`,
-    semAtencao,
-    ...faltasDaIssue(linhas, repositorio),
-    faltaDaRevisao(registros, head, headsEquivalentes),
-    alta && faltaDaProva(linhas, head),
-  ].filter(Boolean);
+  return {
+    atencao,
+    alta,
+    doModelo: [
+      foraDoModelo.length && `o corpo não segue o modelo do /pr: falta ${foraDoModelo.join(', ')}`,
+      semAtencao,
+      ...faltasDaIssue(linhas, repositorio),
+    ].filter(Boolean),
+    daProva: alta && faltaDaProva(linhas, head),
+  };
+}
+
+function faltasDoCorpo(pr) {
+  const { doModelo, daProva } = partesDoCorpo(pr);
+  return [...doModelo, daProva].filter(Boolean);
+}
+
+function conferir({ corpo, rotulos, registros, head, repositorio, headsEquivalentes = [] }) {
+  const { atencao, alta, doModelo, daProva } = partesDoCorpo({ corpo, rotulos, head, repositorio });
+  const faltas = [...doModelo, faltaDaRevisao(registros, head, headsEquivalentes), daProva].filter(Boolean);
   if (!faltas.length) {
     const { headDoRegistro } = registroQueVale(registros, head, headsEquivalentes);
     const viaMerge = headDoRegistro !== head ? ` (registro do head ${headDoRegistro}; daí até este head só há merges limpos da main)` : '';
@@ -151,6 +165,7 @@ function conferir({ corpo, rotulos, registros, head, repositorio, headsEquivalen
       `✗ O registro da PR não vale para o head ${head}:`,
       ...faltas.map(falta => `    - ${falta}`),
       `  Conserto: o formato de cada parte está em ${MODELO}. O que está em comentário de HTML, em bloco de código ou em citação não conta.`,
+      `  O corpo se confere antes de abrir a PR ou de editá-lo, sem o GitHub: node ${CONFERIDOR_DO_CORPO} <arquivo do corpo>`,
       `  O registro do /code-review e a prova com o head lido do GitHub (e o check rodando de novo): node ${PUBLICADOR} --help`,
     ].join('\n'),
   };
@@ -203,4 +218,4 @@ async function main(env) {
 
 if (require.main === module) main(process.env).then(codigo => { process.exitCode = codigo; });
 
-module.exports = { FRASE, ROTULO_DE_RISCO_ALTO, SECAO_DA_PROVA, conferir, faltaDaProva, faltaDaRevisao, lerDoGitHub, linhasQueValem };
+module.exports = { FRASE, ROTULO_DE_RISCO_ALTO, SECAO_DA_PROVA, conferir, faltaDaProva, faltaDaRevisao, faltasDoCorpo, lerDoGitHub, linhasQueValem };
