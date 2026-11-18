@@ -89,9 +89,9 @@ const MARCA = { pm_envio: { envios: [], apagarFrases: true } };
     const ouvirChrome = (evento, ouvinte) => ouvintes.push([evento, ouvinte]);
     globalThis.PerpetualMiner.PareamentoComOAnki = { pedirAssinado: async (endereco, pedido) => {
       pedidos.push(`${pedido.metodo} ${endereco}${pedido.caminho}`);
-      return new Response('{"ok":true}', { status: 200 });
+      return { status: 200, texto: '{"ok":true}' };
     } };
-    ApagarFrasesPendente.ligar({ chrome, ouvirChrome, endereco: ENDERECO });
+    ApagarFrasesPendente.ligar({ chrome, ouvirChrome });
     const aguardar = () => new Promise(r => setImmediate(r));
     const ouvinte = evento => async (...args) => { ouvintes.find(([nome]) => nome === evento)[1](...args); await aguardar(); };
     await aguardar();
@@ -100,7 +100,7 @@ const MARCA = { pm_envio: { envios: [], apagarFrases: true } };
     await ouvinte('onAlarm')({ name: 'pm-virada-do-dia' });
     assert.deepStrictEqual(pedidos, [], 'outro alarme não pede nada');
     await ouvinte('onAlarm')({ name: ApagarFrasesPendente.ALARME });
-    assert.deepStrictEqual(pedidos, [`POST ${ENDERECO}/jobs/apagar-frases`], 'a volta do alarme pede o apagamento, assinado, ao endereço que o service worker deu');
+    assert.deepStrictEqual(pedidos, [`POST ${ENDERECO}/jobs/apagar-frases`], 'a volta do alarme pede o apagamento, assinado, ao endereço da Conexão');
     assert.strictEqual('pm_envio' in armazenamento, false, 'e a Conexão confirmou: a marca sai');
 
     armazenamento.pm_envio = MARCA.pm_envio;

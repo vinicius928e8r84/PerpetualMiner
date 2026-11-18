@@ -11,7 +11,7 @@ const contrato = require('./complemento/contrato/carregar');
 
 const enviados = [];
 const comoValores = valor => JSON.parse(JSON.stringify(valor)); // os objetos do `vm` têm outro protótipo
-const respostaDeMentira = { ok: true, status: 200, statusText: '', headers: new Map([['X-P', 'prova']]), arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)) };
+const respostaDeMentira = { ok: true, status: 200, text: () => Promise.resolve('{}') };
 const contexto = vm.createContext({
   fetch: (url, opcoes) => { enviados.push({ url, ...opcoes }); return Promise.resolve(respostaDeMentira); },
   TextEncoder, TextDecoder, Response, JSON,
@@ -19,10 +19,14 @@ const contexto = vm.createContext({
 contexto.globalThis = contexto;
 vm.runInContext(fs.readFileSync(path.join(__dirname, 'lib', 'pedido-ao-anki.js'), 'utf8'), contexto);
 vm.runInContext(fs.readFileSync(path.join(__dirname, 'e2e', 'variantes-do-pedido-ao-anki.js'), 'utf8'), contexto);
-const { PedidoAoAnki, VariantesDoPedidoAoAnki } = contexto.PerpetualMiner;
+const { PedidoAoAnki, ConversaComOAnki, VariantesDoPedidoAoAnki } = contexto.PerpetualMiner;
 contexto.PerpetualMiner.PareamentoComOAnki = {
-  pedirAssinado: async (endereco, pedido, opcoes, enviar) => enviar(endereco, pedido, pedido.corpo === undefined ? undefined : JSON.stringify(pedido.corpo), opcoes, { 'X-Assinatura': 'a' }),
+  pedirAssinado: async (endereco, pedido, opcoes, enviar) => {
+    const recebida = await enviar(endereco, pedido, pedido.corpo === undefined ? undefined : JSON.stringify(pedido.corpo), opcoes, { 'X-Assinatura': 'a' });
+    return { status: recebida.status, texto: await recebida.text() };
+  },
 };
+const conversa = ConversaComOAnki.criar({ endereco: 'http://127.0.0.1:8766', sinalDoPrazo: () => 'sinal' });
 
 const CHAVE_DE_EXEMPLO = contrato.exemplos.find(e => e.pedido.caminho === '/ia/openai/chave').pedido.corpo.chave;
 const BARALHOS = [{ deckName: 'Inglês', lang: 'en' }, { deckName: 'Alemão', lang: 'ru' }];
@@ -39,9 +43,8 @@ const exemplosDa = pedido => contrato.exemplos.filter(e => exemploDaExtensao(e)
   && isDeepStrictEqual(formaDoCorpo(e.pedido.corpo), formaDoCorpo(pedido.corpo)));
 
 async function main() {
-  assert.strictEqual(PedidoAoAnki.ausenciaDaRota(404), 'antiga');
-  assert.strictEqual(PedidoAoAnki.ausenciaDaRota(500), 'falhou');
-  assert.strictEqual(PedidoAoAnki.ausenciaDaRota(undefined), 'falhou');
+  assert.deepStrictEqual([PedidoAoAnki.pedir, PedidoAoAnki.ausenciaDaRota], [undefined, undefined],
+    'a Response crua não sai mais de PedidoAoAnki: quem pede é ConversaComOAnki.pedir, que devolve o desfecho');
 
   const variantes = VariantesDoPedidoAoAnki.variantes(BARALHOS, CHAVE_DE_EXEMPLO, ENVIO_DE_EXEMPLO);
   assert.ok(variantes.length >= 7, 'os construtores montam os pedidos de saúde, Baralhos, números (3 leituras) e vocabulário');
@@ -73,7 +76,7 @@ async function main() {
 
   enviados.length = 0;
   const atualizar = PedidoAoAnki.estatisticas(BARALHOS, { deNovo: true, abrirOAnki: true });
-  await PedidoAoAnki.pedir('http://127.0.0.1:8766', atualizar, { signal: 'sinal' });
+  assert.deepStrictEqual(comoValores(await conversa.pedir(atualizar)), { ok: true, status: 200, dados: {} });
   assert.deepStrictEqual(comoValores(enviados.map(({ url, method, headers, body, signal }) => ({ url, method, headers, body, signal }))), [{
     url: 'http://127.0.0.1:8766/anki/stats/decks',
     method: 'POST',
@@ -82,11 +85,19 @@ async function main() {
     signal: 'sinal',
   }]);
   enviados.length = 0;
-  await PedidoAoAnki.pedir('http://127.0.0.1:8766', PedidoAoAnki.saude());
-  assert.deepStrictEqual(comoValores(enviados), [{ url: 'http://127.0.0.1:8766/health', method: 'GET' }], 'o GET da saúde vai sem corpo nem cabeçalho');
+  await conversa.pedir(PedidoAoAnki.saude());
+  assert.deepStrictEqual(comoValores(enviados), [{ url: 'http://127.0.0.1:8766/health', method: 'GET', signal: 'sinal' }], 'o GET da saúde vai sem corpo nem cabeçalho');
 
-  assert.throws(() => PedidoAoAnki.pedir('http://127.0.0.1:8766', { metodo: 'POST', caminho: '/anki/stats/decks', corpo: { decks: [] } }),
-    /não saiu de PedidoAoAnki/);
+  await assert.rejects(conversa.pedir({ metodo: 'POST', caminho: '/anki/stats/decks', corpo: { decks: [] } }), /não saiu de PedidoAoAnki/);
+
+  enviados.length = 0;
+  await PedidoAoAnki.enviarSemAssinatura('http://127.0.0.1:8766', PedidoAoAnki.conferirOPareamento('cliente', 'desafio'), { signal: 'sinal' });
+  assert.deepStrictEqual(comoValores(enviados.map(({ url, method, body }) => ({ url, method, body }))),
+    [{ url: 'http://127.0.0.1:8766/pareamento/conferir', method: 'POST', body: '{"cliente":"cliente","desafio":"desafio"}' }], 'o Pareamento manda os pedidos dele, que não levam assinatura');
+  assert.throws(() => PedidoAoAnki.enviarSemAssinatura('http://127.0.0.1:8766', PedidoAoAnki.baralhos()), /só vai assinado/,
+    'um pedido privado não sai sem assinatura, e a Response crua dele não chega a ninguém');
+  assert.throws(() => PedidoAoAnki.enviarSemAssinatura('http://127.0.0.1:8766', { metodo: 'GET', caminho: '/health', semAssinatura: true }), /não saiu de PedidoAoAnki/);
+  assert.deepStrictEqual(enviados.length, 1);
   assert.throws(() => PedidoAoAnki.estatisticas(BARALHOS, { deNovo: false, abrirOAnki: true }), /leitura dos números sem exemplo no contrato/);
 
   const doAbridor = vm.createContext({});

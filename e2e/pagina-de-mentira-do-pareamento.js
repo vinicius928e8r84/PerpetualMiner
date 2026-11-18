@@ -81,17 +81,18 @@ const resposta = (status, json, headers = {}) => new Response(JSON.stringify(jso
 
 function carregarAPagina(conexao, indexedDB = criarIndexedDB()) {
   const contexto = vm.createContext({
-    fetch: (url, opcoes) => conexao.fetch(url, opcoes), indexedDB, crypto: webcrypto, TextEncoder, TextDecoder, Response, atob, btoa, AbortSignal, Date, JSON, Uint8Array,
+    fetch: (url, opcoes) => conexao.fetch(url, opcoes), indexedDB, crypto: webcrypto, TextEncoder, TextDecoder, atob, btoa, AbortSignal, Date, JSON, Uint8Array,
     setTimeout, navigator: { userAgentData: { brands: [{ brand: 'Chromium' }, { brand: 'Google Chrome' }] } },
   });
   contexto.globalThis = contexto;
   for (const arquivo of ['pedido-ao-anki.js', 'pareamento.js']) vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'lib', arquivo), 'utf8'), contexto);
   vm.runInContext(fs.readFileSync(path.join(__dirname, 'variantes-do-pedido-ao-anki.js'), 'utf8'), contexto);
   const { PedidoAoAnki, PareamentoComOAnki, ConversaComOAnki, VariantesDoPedidoAoAnki } = contexto.PerpetualMiner;
-  return { PedidoAoAnki, Pareamento: PareamentoComOAnki, Conversa: ConversaComOAnki, Variantes: VariantesDoPedidoAoAnki, indexedDB };
+  const conversa = ConversaComOAnki.criar({ endereco: ENDERECO });
+  return { PedidoAoAnki, Pareamento: PareamentoComOAnki, Conversa: ConversaComOAnki, pedir: conversa.pedir, Variantes: VariantesDoPedidoAoAnki, indexedDB };
 }
 
-const lerJson = async r => r.json();
+const lerJson = async desfecho => desfecho.dados;
 const igual = (obtido, esperado, mensagem) => assert.deepStrictEqual(comoValores(obtido), esperado, mensagem);
 
 async function parear(pagina, conexao, codigoSorteado = 'K7M4PX') {
