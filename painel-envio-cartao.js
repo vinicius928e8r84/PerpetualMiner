@@ -33,15 +33,9 @@
   async function abrirOPerfil(envio) {
     if (abrindoOPerfil.has(envio.jobId)) return;
     abrindoOPerfil.add(envio.jobId);
-    try {
-      const resposta = await raiz.PedidoAoAnki.pedir(raiz.ConexaoAnki.ENDERECO, raiz.PedidoAoAnki.abrirOPerfilMarcado());
-      if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
-      falhasAoAbrirOPerfil.delete(envio.jobId);
-    } catch {
-      falhasAoAbrirOPerfil.add(envio.jobId);
-    } finally {
-      abrindoOPerfil.delete(envio.jobId);
-    }
+    const desfecho = await raiz.ConversaComOAnki.pedir(raiz.PedidoAoAnki.abrirOPerfilMarcado());
+    falhasAoAbrirOPerfil[desfecho.ok ? 'delete' : 'add'](envio.jobId);
+    abrindoOPerfil.delete(envio.jobId);
   }
 
   function escolherOutroPerfil() {
