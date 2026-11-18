@@ -50,3 +50,20 @@ jobs:
         env:
           BASE: ${{ github.base_ref }}
           HEAD: ${{ github.event.pull_request.head.sha }}
+
+  pr-de-versao:
+    name: PR de versão refeita
+    if: github.event_name == 'pull_request'
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 2
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - run: node scripts/ci/pr-de-versao.js "$HEAD"
+        env:
+          HEAD: ${{ github.event.pull_request.head.sha }}
