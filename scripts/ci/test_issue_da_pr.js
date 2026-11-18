@@ -29,6 +29,7 @@ passa({ corpo: comIssue(`Closes ${ISSUE}`) }, 'Closes com a URL completa');
 passa({ corpo: comIssue(`Closes ${ISSUE}`, '', `Closes ${OUTRA_ISSUE}`) }, 'uma linha Closes por issue');
 passa({ corpo: comIssue(`- **closes** ${ISSUE}.`) }, 'item de lista, negrito, minúsculas e ponto final');
 passa({ corpo: comIssue(`Closes ${ISSUE}`).replace('O que mudou.', 'Mexe no CI.') }, 'o texto do Summary não importa');
+passa({ corpo: comIssue(`Closes ${ISSUE}`, 'Prova que falta: a primeira execução de `Commit verde` na main depois do merge criar a tag `verde/...` num commit de verdade') }, 'Closes com a prova real pendente (o corpo da PR 526): a issue fecha no merge');
 passa({ corpo: comIssue(`Refs ${ISSUE}`, 'Prova que falta: rodar o envio no Anki de verdade') }, 'Refs com a prova que falta');
 passa({ corpo: comIssue(`Closes ${ISSUE}`, `Refs ${OUTRA_ISSUE}`, '**Prova que falta:** o envio real') }, 'uma issue fecha e a outra fica aberta com a prova que falta');
 passa({ corpo: comIssue('**Sem issue**') }, 'Sem issue sozinha na linha');
