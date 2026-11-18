@@ -65,31 +65,34 @@ test.describe('a mesma situação, a mesma tela', () => {
     expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
   });
 
-  test('conectando: as três superfícies dizem BRG-02 e pintam o ponto de conectando', async ({ page, extensao, fakes }) => {
-    fakes.anki.desligar();
-    await page.goto(extensao.url('painel.html#anki/custos'));
-    await expect(cardDaPrimeiraConexao(page)).toBeVisible();
+  test.describe('com a Conexão desligada desde que a extensão abre', () => {
+    test.use({ conexaoDesligadaAoAbrir: true });
 
-    const liberar = segurarOHealth(fakes);
-    fakes.anki.ligar();
-    await tentarDaF1(page).click();
-    await expect(sidebar(page)).toHaveText(TEXTO.conectando);
-    await expect(pontoDaSidebar(page)).toHaveAttribute('data-estado', 'conectando');
-    await expect(statusDoCard(page)).toHaveText(TEXTO.conectando);
-    await expect(pontoDoCard(page)).toHaveAttribute('data-estado', 'conectando');
-    await fotografar(page, 'a3-onb16-conectando.png');
-    liberar();
-    await expect(sidebar(page)).toHaveText(TEXTO.desligada);
+    test('conectando: as três superfícies dizem BRG-02 e pintam o ponto de conectando', async ({ page, extensao, fakes }) => {
+      await page.goto(extensao.url('painel.html#anki/custos'));
+      await expect(cardDaPrimeiraConexao(page)).toBeVisible();
 
-    const outraAba = await page.context().newPage();
-    const liberarDeNovo = segurarOHealth(fakes);
-    await outraAba.goto(extensao.url('painel.html#boas-vindas/anki'));
-    await expect(statusDoPasso4(outraAba)).toHaveText(TEXTO.conectando);
-    await expect(pontoDoPasso4(outraAba)).toHaveAttribute('data-estado', 'conectando');
-    await irParaReiniciar(outraAba);
-    liberarDeNovo();
-    await expect(statusDoPasso4(outraAba)).toHaveText(TEXTO.desligada);
-    expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
+      const liberar = segurarOHealth(fakes);
+      fakes.anki.ligar();
+      await tentarDaF1(page).click();
+      await expect(sidebar(page)).toHaveText(TEXTO.conectando);
+      await expect(pontoDaSidebar(page)).toHaveAttribute('data-estado', 'conectando');
+      await expect(statusDoCard(page)).toHaveText(TEXTO.conectando);
+      await expect(pontoDoCard(page)).toHaveAttribute('data-estado', 'conectando');
+      await fotografar(page, 'a3-onb16-conectando.png');
+      liberar();
+      await expect(sidebar(page)).toHaveText(TEXTO.desligada);
+
+      const outraAba = await page.context().newPage();
+      const liberarDeNovo = segurarOHealth(fakes);
+      await outraAba.goto(extensao.url('painel.html#boas-vindas/anki'));
+      await expect(statusDoPasso4(outraAba)).toHaveText(TEXTO.conectando);
+      await expect(pontoDoPasso4(outraAba)).toHaveAttribute('data-estado', 'conectando');
+      await irParaReiniciar(outraAba);
+      liberarDeNovo();
+      await expect(statusDoPasso4(outraAba)).toHaveText(TEXTO.desligada);
+      expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
+    });
   });
 
   test('ONB-16: tentar de novo durante o Pronto anuncia Conectando sem desfazer o marco', async ({ page, extensao, fakes, relogioParado }) => {

@@ -104,15 +104,25 @@ function criarFakeAnki() {
     ...rotasDoEnvio,
   ];
 
+  function naFrente(req, url) {
+    const corpoDoPedido = req.postData();
+    if (!url.pathname.startsWith('/pareamento/')) requisicoes.push({ metodo: req.method(), caminho: url.pathname, busca: url.search, corpo: corpoDoPedido, dados: dadosDoCorpo(corpoDoPedido) });
+    if (!estado.ligada) return { recusar: true };
+    if (estado.muda === true || estado.muda === url.pathname) return { calar: true };
+    const roteiro = estado.rotas.get(`${req.method()} ${url.pathname}`);
+    return roteiro ? { roteiro } : {};
+  }
+
   async function tratar(daPorta) {
     const req = daPorta.request();
     const url = new URL(req.url());
     const corpoDoPedido = req.postData();
     const doPareamento = url.pathname.startsWith('/pareamento/');
-    if (doPareamento) pareamento.tentou(url.pathname); else requisicoes.push({ metodo: req.method(), caminho: url.pathname, busca: url.search, corpo: corpoDoPedido, dados: dadosDoCorpo(corpoDoPedido) });
+    if (doPareamento) pareamento.tentou(url.pathname);
 
-    if (!estado.ligada) return daPorta.abort('connectionrefused');
-    if (estado.muda === true || estado.muda === url.pathname) return new Promise(() => {});
+    const frente = naFrente(req, url);
+    if (frente.recusar) return daPorta.abort('connectionrefused');
+    if (frente.calar) return new Promise(() => {});
     if (doPareamento) {
       const { status, json } = pareamento.responder(req.method(), url.pathname, dadosDoCorpo(corpoDoPedido)) || { status: 404, json: { error: 'not_found' } };
       return responderJson(daPorta, status, json);
@@ -146,6 +156,7 @@ function criarFakeAnki() {
   return {
     padrao: /^http:\/\/(127\.0\.0\.1|localhost):8766\//,
     tratar,
+    naFrente,
     responderNaPortaDeTeste,
     chegaramNaPortaDeTeste,
     requisicoes,
