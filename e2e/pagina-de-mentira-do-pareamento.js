@@ -87,8 +87,8 @@ function carregarAPagina(conexao, indexedDB = criarIndexedDB()) {
   contexto.globalThis = contexto;
   for (const arquivo of ['pedido-ao-anki.js', 'pareamento.js']) vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'lib', arquivo), 'utf8'), contexto);
   vm.runInContext(fs.readFileSync(path.join(__dirname, 'variantes-do-pedido-ao-anki.js'), 'utf8'), contexto);
-  const { PedidoAoAnki, PareamentoComOAnki, VariantesDoPedidoAoAnki } = contexto.PerpetualMiner;
-  return { PedidoAoAnki, Pareamento: PareamentoComOAnki, Variantes: VariantesDoPedidoAoAnki, indexedDB };
+  const { PedidoAoAnki, PareamentoComOAnki, ConversaComOAnki, VariantesDoPedidoAoAnki } = contexto.PerpetualMiner;
+  return { PedidoAoAnki, Pareamento: PareamentoComOAnki, Conversa: ConversaComOAnki, Variantes: VariantesDoPedidoAoAnki, indexedDB };
 }
 
 const lerJson = async r => r.json();
