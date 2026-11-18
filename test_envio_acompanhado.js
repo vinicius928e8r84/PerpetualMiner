@@ -253,6 +253,27 @@ async function tentarDeNovoDepoisDoFimAcompanhaOutraVez() {
   envio.largar();
 }
 
+async function oSegundoAcompanhamentoComALeituraSemRespostaSegueLendo() {
+  const conexao = conexaoDeMentira();
+  const { envio, relogio, estados } = acompanharNaMentira(conexao);
+  await envio.tentarDeNovo();
+  await vez();
+  conexao.mudar({ status: 'partial', stage: 'partial', lastError: 'cards_failed' });
+  await relogio.passar();
+  assert.strictEqual(relogio.esperando(), 0);
+
+  conexao.responderSempre('/jobs/get', () => { throw new Error('Failed to fetch'); });
+  assert.deepStrictEqual(await envio.tentarDeNovo(), { ok: true });
+  await vez();
+  assert.strictEqual(relogio.esperando(), 1, 'a situação do fim anterior não encerra o novo acompanhamento');
+
+  conexao.voltar('/jobs/get');
+  conexao.mudar({ status: 'completed', stage: 'completed' });
+  await relogio.passar();
+  assert.deepStrictEqual(estados(), [ESTADO.NA_FILA, ESTADO.EM_PARTE, ESTADO.CONCLUIDO]);
+  assert.strictEqual(relogio.esperando(), 0);
+}
+
 async function oPadraoLeACadaDoisSegundosPelaConversaDoPainel() {
   assert.strictEqual(EnvioAcompanhado.INTERVALO_MS, 2000);
   assert.throws(() => EnvioAcompanhado.acompanhar({}), /jobId/);
@@ -271,6 +292,7 @@ async function oPadraoLeACadaDoisSegundosPelaConversaDoPainel() {
   await largarComOPedidoNoArNaoComecaALer();
   await tirarOOuvinteParaDeAvisar();
   await tentarDeNovoDepoisDoFimAcompanhaOutraVez();
+  await oSegundoAcompanhamentoComALeituraSemRespostaSegueLendo();
   await oPadraoLeACadaDoisSegundosPelaConversaDoPainel();
   console.log('test_envio_acompanhado: ok');
 })().catch(erro => {

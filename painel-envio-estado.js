@@ -130,9 +130,11 @@
 
     async function ler(minha) {
       const desfecho = await conversa.pedir(PedidoAoAnki.verEnvio(jobId), { formato: dados => Boolean(dados.state) });
-      if (minha !== vez) return;
+      if (minha !== vez) return false;
       if (desfecho.ok) mudarPara(situacaoDoEnvio({ jobId }, desfecho.dados.state));
       else if (desfecho.codigo === 'job_not_found') mudarPara(situacaoDoEnvio({ jobId }, null, { desconhecido: true }));
+      else return false;
+      return true;
     }
 
     async function seguir() {
@@ -141,8 +143,8 @@
       const minha = vez;
       try {
         for (;;) {
-          await ler(minha);
-          if (minha !== vez || (situacao && terminou(situacao))) return;
+          const leu = await ler(minha);
+          if (minha !== vez || (leu && terminou(situacao))) return;
           await esperar(intervaloMs);
           if (minha !== vez) return;
         }
