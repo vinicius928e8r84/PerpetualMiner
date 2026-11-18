@@ -49,10 +49,16 @@ O check "Registro da PR" (.github/workflows/registro-da-pr.yml, scripts/ci/regis
    Closes <URL completa da issue>
 
    Uma linha por issue; a issue fecha sozinha no merge. Só vale a URL completa (https://github.com/<dono>/<repo>/issues/<N>):
-   o número solto (#N) não fecha nada. Com a prova real pendente (R10), a issue fica aberta e o corpo diz o que falta:
+   o número solto (#N) não fecha nada. Com a prova real pendente (R10), a issue fecha do mesmo jeito no merge e o corpo diz
+   o que falta:
+
+   Closes <URL completa da issue>
+   Prova que falta: <o que falta provar>
+
+   Uma PR que é um passo de uma série deixa a issue aberta e diz o que ainda falta:
 
    Refs <URL completa da issue>
-   Prova que falta: <o que falta provar>
+   Prova que falta: <o que ainda falta para fechar a issue>
 
    Uma PR sem issue diz, sozinha na linha:
 
