@@ -112,4 +112,5 @@ To throw the evidence away as well when you no longer need it: `rm -rf "${PM_VER
 - **A slice that touches the Conexão com o Anki**, or a proof that names its system: [`variantes-e-plataformas.md`](./variantes-e-plataformas.md) (the 8 variants such a slice is proven in; what Linux, Mac and Windows each prove).
 - **A PR that changes a user-facing feature or command**: [`mapa-de-features.md`](./mapa-de-features.md) (update `features/` or say "feature map unchanged"; the CI step that checks it).
 - **Changing a script in `scripts/`, or a Cleanup that refused or exited 1**: [`ajudantes.md`](./ajudantes.md) (each script, the safety rules, the known gaps).
+- **Running a heavy suite or a proof on the Mac or the Windows PC**: `scripts/no-mac.sh` and `scripts/no-pc.sh`, in [`ajudantes.md`](./ajudantes.md).
 - **Writing what a proof does not cover**: [`limites.md`](./limites.md).
