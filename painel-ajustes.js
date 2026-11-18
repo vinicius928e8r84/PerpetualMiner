@@ -67,14 +67,8 @@
 
   async function lerBaralhos() {
     const leitura = ++estado.ultimaLeituraDeBaralhos;
-    let baralhos = null;
-    try {
-      const resposta = await raiz.PedidoAoAnki.pedir(ConexaoAnki.ENDERECO, raiz.PedidoAoAnki.baralhos());
-      if (resposta.ok) {
-        const dados = await resposta.json();
-        if (Array.isArray(dados.decks)) baralhos = dados.decks.map(String);
-      }
-    } catch {}
+    const desfecho = await raiz.ConversaComOAnki.pedir(raiz.PedidoAoAnki.baralhos(), { formato: dados => Array.isArray(dados.decks) });
+    const baralhos = desfecho.ok ? desfecho.dados.decks.map(String) : null;
     if (leitura !== estado.ultimaLeituraDeBaralhos) return;
     if (JSON.stringify(baralhos) === JSON.stringify(estado.baralhos)) return;
     estado.baralhos = baralhos;
@@ -376,16 +370,11 @@
   }
 
   async function tocarAAmostra(pedido) {
-    let resposta;
+    const desfecho = await raiz.ConversaComOAnki.pedir(pedido);
+    if (desfecho.motivo === raiz.ConversaComOAnki.MOTIVO.SEM_RESPOSTA) return 'BRG-07.ouvirSemConexao';
+    if (!desfecho.ok) return desfecho.codigo === 'openai_key_missing' ? 'BRG-07.ouvirSemChave' : 'BRG-07.ouvirFalhou';
     try {
-      resposta = await raiz.PedidoAoAnki.pedir(ConexaoAnki.ENDERECO, pedido);
-    } catch {
-      return 'BRG-07.ouvirSemConexao';
-    }
-    const dados = await resposta.json().catch(() => ({}));
-    if (!resposta.ok) return dados.error === 'openai_key_missing' ? 'BRG-07.ouvirSemChave' : 'BRG-07.ouvirFalhou';
-    try {
-      estado.audio = new Audio(`data:audio/mpeg;base64,${dados.audio}`);
+      estado.audio = new Audio(`data:audio/mpeg;base64,${desfecho.dados.audio}`);
       await estado.audio.play();
     } catch {
       return 'BRG-07.ouvirFalhou';

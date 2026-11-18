@@ -2,7 +2,7 @@
 
 (function (raiz) {
   const { elemento } = raiz.Veio;
-  const { textoDaVoz, AjustesDeEnvio, IDIOMAS, ConexaoAnki } = raiz;
+  const { textoDaVoz, AjustesDeEnvio, IDIOMAS } = raiz;
   const { NIVEIS, FRENTES, frenteDisponivel } = AjustesDeEnvio;
   const AO_MUDAR_O_NIVEL = new WeakMap();
   const NOME_DO_IDIOMA = { en: IDIOMAS.INGLES, ru: IDIOMAS.RUSSO };
@@ -112,16 +112,12 @@
   }
 
   async function trocarAFrente(lang, frente) {
-    let resposta;
-    try {
-      resposta = await raiz.PedidoAoAnki.pedir(ConexaoAnki.ENDERECO, raiz.PedidoAoAnki.trocarAFrente(lang, frente));
-    } catch {
-      return 'BRG-44.semConexao';
-    }
-    if (resposta.ok) return null;
-    if (resposta.status === 503) return 'BRG-44.ankiOcupado';
-    const dados = await resposta.json().catch(() => ({}));
-    return dados.error === 'note_type_changed' ? 'BRG-44.tipoMexido' : 'BRG-44.falhou';
+    const { ConversaComOAnki, PedidoAoAnki } = raiz;
+    const desfecho = await ConversaComOAnki.pedir(PedidoAoAnki.trocarAFrente(lang, frente));
+    if (desfecho.ok) return null;
+    if (desfecho.motivo === ConversaComOAnki.MOTIVO.SEM_RESPOSTA) return 'BRG-44.semConexao';
+    if (desfecho.motivo === ConversaComOAnki.MOTIVO.ANKI_OCUPADO) return 'BRG-44.ankiOcupado';
+    return desfecho.codigo === 'note_type_changed' ? 'BRG-44.tipoMexido' : 'BRG-44.falhou';
   }
 
   async function trocarSeMudou(lang, escolhida, gravada) {

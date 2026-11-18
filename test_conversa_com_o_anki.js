@@ -76,12 +76,20 @@ async function oPrazoEAFaltaDeResposta() {
 
   const semPrazoDito = conversa.pedir(PedidoAoAnki.baralhos());
   const comPrazoDito = conversa.pedir(PedidoAoAnki.atualizarAConexao(), { prazoMs: 60000 });
+  const daVoz = [
+    conversa.pedir(PedidoAoAnki.ouvirAVoz('en', 'google', 'co.uk')),
+    conversa.pedir(PedidoAoAnki.ouvirAVoz('en', 'openai')),
+    conversa.pedir(PedidoAoAnki.falarAFrase('en', 'co.uk', 'Could you tell me where the nearest pharmacy is?')),
+    conversa.pedir(PedidoAoAnki.falarAFrase('en', 'co.uk', 'Hi'), { prazoMs: 3000 }),
+  ];
   await new Promise(setImmediate);
-  assert.deepStrictEqual(prazos, [ConversaComOAnki.PRAZO_PADRAO_MS, 60000], 'todo pedido sai com prazo: o padrão, ou o que o chamador disser');
+  assert.deepStrictEqual(prazos.slice(0, 2), [ConversaComOAnki.PRAZO_PADRAO_MS, 60000], 'todo pedido sai com prazo: o padrão, ou o que o chamador disser');
   assert.strictEqual(ConversaComOAnki.PRAZO_PADRAO_MS, 15000);
+  assert.deepStrictEqual(prazos.slice(2), [20000, 20000, 20000, 3000],
+    'a voz espera mais que os 15 s que a Conexão dá ao Google e à OpenAI (TEMPO_DE_CADA_PEDIDO): quem diz que a voz não veio é ela; o chamador ainda pode dizer outro prazo');
   assert.deepStrictEqual(sinais, relogio.map(c => c.signal), 'o transporte recebe o sinal do prazo');
   relogio.forEach(controle => controle.abort(new DOMException('The operation timed out.', 'TimeoutError')));
-  for (const desfecho of [await semPrazoDito, await comPrazoDito]) {
+  for (const desfecho of [await semPrazoDito, await comPrazoDito, ...await Promise.all(daVoz)]) {
     assert.deepStrictEqual(desfecho, { ok: false, motivo: 'sem_resposta', codigo: 'prazo', status: null, dados: null, detalhes: 'The operation timed out.' });
   }
 
