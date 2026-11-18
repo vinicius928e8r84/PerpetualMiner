@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 import generate_images
+import provedores
 from test_servidor_de_mentira import ServidorDeMentira
 
 PNG_BYTES = b"fake png bytes"
@@ -14,8 +15,7 @@ CHAVE = "sk-proj-chave-da-imagem-0000"
 
 def _config(root: Path, base: str, model: str = "test-image-model") -> dict:
     return {
-        "openai_api_key": CHAVE,
-        "openai_base": base,
+        "pela_chave": provedores.PelaChave(CHAVE, base),
         "openai": {"image_model": model, "image_size": "1024x1024"},
         "paths": {
             "output_dir": str(root / "Output"),

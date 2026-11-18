@@ -91,6 +91,22 @@ class Imagem(unittest.TestCase):
         }])
 
 
+class AChavePresa(unittest.TestCase):
+    def test_o_texto_e_a_imagem_pela_chave_presa_vao_com_a_chave_e_o_modelo_pedido(self):
+        with OpenAIDeMentira([resposta_do_chat("C", entrada=80, saida=1), (200, {"data": [{"b64_json": "AAAA"}]})]) as openai:
+            presa = provedores.PelaChave(CHAVE, openai.base)
+            texto, uso = presa.texto("gpt-4o-mini", "o sistema", "bicycle", temperatura=0, max_tokens=1)
+            item = presa.imagem("gpt-image-2.5-flare", "uma maçã", "1024x1024")
+        self.assertEqual((texto, uso, item), ("C", {"entrada": 80, "saida": 1}, {"b64_json": "AAAA"}))
+        self.assertEqual([(p["caminho"], p["autorizacao"], p["corpo"]["model"]) for p in openai.pedidos], [
+            ("/v1/chat/completions", "Bearer " + CHAVE, "gpt-4o-mini"), ("/v1/images/generations", "Bearer " + CHAVE, "gpt-image-2.5-flare")])
+        self.assertEqual((openai.pedidos[0]["corpo"]["temperature"], openai.pedidos[0]["corpo"]["max_tokens"]), (0, 1))
+
+    def test_a_chave_presa_nao_se_mostra_quando_escrita(self):
+        presa = provedores.PelaChave(CHAVE, "http://x")
+        self.assertNotIn(CHAVE, repr(presa) + str(presa))
+
+
 class Credencial(unittest.TestCase):
     def test_um_provedor_que_a_camada_nao_tem_e_recusado_sem_pedido_nenhum(self):
         with OpenAIDeMentira([]) as openai:
