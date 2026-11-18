@@ -40,8 +40,8 @@ The Conexão keeps its data in the add-on's `user_files` (`complemento/pasta_de_
 |---|---|
 | 1 Voice catalog | review; `e2e/tests/catalogo-da-voz.spec.js` |
 | 2 Veio tokens | `tokens-veio` |
-| 3 Components | review |
-| 4 Page text as text | `e2e/tests/texto-literal.spec.js`; review |
+| 3 Components | `dialogo-nativo`; review |
+| 4 Page text as text | `html-cru`; `e2e/tests/texto-literal.spec.js` |
 | 5 Language | `idioma-solto` |
 | 6 True status | review |
 | 7 Storage writes | `gravacao-de-frases` (new write sites); a stale copy in an existing one: review |
