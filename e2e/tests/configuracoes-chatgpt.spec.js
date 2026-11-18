@@ -2,6 +2,7 @@
 
 const { test, expect } = require('../fixtures');
 const { estadoFinalEm } = require('../estado-final');
+const { PORTA_DO_COMPUTADOR } = require('../fakes/porta-da-conexao');
 
 const card = page => page.locator('#cfg-ia');
 const coluna = page => card(page).getByRole('region', { name: /Conta do ChatGPT/ });
@@ -48,6 +49,23 @@ test('Continuar com o ChatGPT: o ChatGPT abre numa aba, a pessoa autoriza e a co
   await estadoFinalEm('o login do ChatGPT na Conexão', () => fakes.anki.chatgpt.situacao(), 'conectada');
   const storage = await storageInteiro(extensao);
   for (const doLogin of ['codigo-do-fake', 'state-da-tentativa', 'oaiapp_fake', 'auth.openai.com']) expect(storage).not.toContain(doLogin);
+});
+
+test('a aba de retorno do ChatGPT chega à porta da Conexão de teste, nunca à porta 8766 do computador', async ({ page, context, extensao, fakes }) => {
+  const retornosSemResposta = [];
+  context.on('requestfailed', pedido => { if (new URL(pedido.url()).pathname === '/auth/callback') retornosSemResposta.push(pedido.failure().errorText); });
+  await abrirIA(page, extensao);
+
+  const [aba] = await Promise.all([context.waitForEvent('page'), continuar(page).click()]);
+  await expect(aba).toHaveURL(`http://127.0.0.1:${PORTA_DO_COMPUTADOR}/auth/callback?code=codigo-do-fake&state=state-da-tentativa-1&client_id=oaiapp_fake`);
+  await expect(aba.locator('body')).toHaveText('Pode fechar esta aba e voltar ao PerpetualMiner.');
+  await expect(coluna(page)).toContainText('Usando o plano do ChatGPT');
+
+  expect(retornosSemResposta).toEqual([]);
+  expect(fakes.anki.chegaramNaPortaDeTeste.filter(pedido => pedido.includes('/auth/callback')))
+    .toEqual(['GET /auth/callback?code=codigo-do-fake&state=state-da-tentativa-1&client_id=oaiapp_fake']);
+
+  await estadoFinalEm('o login do ChatGPT na Conexão', () => fakes.anki.chatgpt.situacao(), 'conectada');
 });
 
 test('enquanto a pessoa não termina no ChatGPT, o botão espera e não abre outra aba', async ({ page, context, extensao, fakes }) => {

@@ -23,6 +23,7 @@ const { criarFakeAnki } = require('./fakes/anki');
 const { criarFakeGemini } = require('./fakes/gemini');
 const { criarFakeGoogle } = require('./fakes/google');
 const { subirServidorDoLogin } = require('./fakes/login-google');
+const { subirPortaDaConexaoDeTeste, regrasQueTiramAPortaDoComputador } = require('./fakes/porta-da-conexao');
 const conexaoReal = require('./conexao-real');
 const { parearNoServiceWorker } = require('./pareamento-de-teste');
 const { pararRelogio } = require('./relogio-parado');
@@ -74,9 +75,11 @@ async function esperarAbaDaInstalacao(context, id) {
   throw new Error('A instalação não abriu a aba da Boas-vindas');
 }
 
-async function abrirPerfil({ fakes, paginas, servidorDoLogin, pastaDaExtensao, permissaoDoAbridor, conexaoDoTeste }) {
+async function abrirPerfil({ fakes, paginas, servidorDoLogin, portaDaConexaoDeTeste, pastaDaExtensao, permissaoDoAbridor, conexaoDoTeste }) {
   servidorDoLogin.atender(fakes.google.responderLogin);
   servidorDoLogin.atenderChatGPT(fakes.chatgpt.responderAutorizacao);
+  portaDaConexaoDeTeste.atender(fakes.anki.responderNaPortaDeTeste);
+  const regrasDaPorta8766 = regrasQueTiramAPortaDoComputador(conexaoDoTeste ? conexaoDoTeste.porta : portaDaConexaoDeTeste.porta);
   const perfil = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-e2e-'));
   let context = null;
   let copiaComAPermissao = null;
@@ -101,7 +104,7 @@ async function abrirPerfil({ fakes, paginas, servidorDoLogin, pastaDaExtensao, p
       args: [
         `--disable-extensions-except=${pastaDaExtensao}`,
         `--load-extension=${pastaDaExtensao}`,
-        `--host-resolver-rules=MAP accounts.google.com 127.0.0.1:${servidorDoLogin.porta}, MAP auth.openai.com 127.0.0.1:${servidorDoLogin.porta}`,
+        `--host-resolver-rules=MAP accounts.google.com 127.0.0.1:${servidorDoLogin.porta}, MAP auth.openai.com 127.0.0.1:${servidorDoLogin.porta}, ${regrasDaPorta8766}`,
         // Só o servidor local do login usa HTTPS, com certificado autoassinado.
         '--ignore-certificate-errors',
         // A rede é toda falsificada ou bloqueada aqui: um proxy do ambiente
@@ -228,6 +231,12 @@ const test = base.extend({
     await servidor.fechar();
   }, { scope: 'worker' }],
 
+  portaDaConexaoDeTeste: [async ({}, use) => {
+    const porta = await subirPortaDaConexaoDeTeste();
+    await use(porta);
+    await porta.fechar();
+  }, { scope: 'worker' }],
+
   fakes: async ({}, use) => {
     const anki = criarFakeAnki(), google = criarFakeGoogle();
     const abridor = criarFakeAbridor();
@@ -251,8 +260,8 @@ const test = base.extend({
     await use(RAIZ_DA_EXTENSAO);
   },
 
-  context: async ({ fakes, paginas, servidorDoLogin, pastaDaExtensao, permissaoDoAbridor, conexaoDoTeste }, use) => {
-    const perfil = await abrirPerfil({ fakes, paginas, servidorDoLogin, pastaDaExtensao, permissaoDoAbridor, conexaoDoTeste });
+  context: async ({ fakes, paginas, servidorDoLogin, portaDaConexaoDeTeste, pastaDaExtensao, permissaoDoAbridor, conexaoDoTeste }, use) => {
+    const perfil = await abrirPerfil({ fakes, paginas, servidorDoLogin, portaDaConexaoDeTeste, pastaDaExtensao, permissaoDoAbridor, conexaoDoTeste });
     await use(perfil.context);
     await perfil.fechar();
   },
@@ -284,8 +293,8 @@ const test = base.extend({
   // abridor, mesma Conexão com o Anki): a cena de duas contas Google em dois perfis diante de uma Conexão só.
   // Não é uma segunda aba do mesmo perfil, que dividiria o armazenamento. `context` abre páginas dele;
   // `extensao` é o mesmo objeto que o teste já tem (semearSessao, lerStorage, …), mas do segundo perfil.
-  segundoPerfil: async ({ extensao, fakes, paginas, servidorDoLogin, pastaDaExtensao, permissaoDoAbridor, conexaoDoTeste, manterAbaDaInstalacao, lembreteDaConfiguracao, pareada }, use) => {
-    const perfil = await abrirPerfil({ fakes, paginas, servidorDoLogin, pastaDaExtensao, permissaoDoAbridor, conexaoDoTeste });
+  segundoPerfil: async ({ extensao, fakes, paginas, servidorDoLogin, portaDaConexaoDeTeste, pastaDaExtensao, permissaoDoAbridor, conexaoDoTeste, manterAbaDaInstalacao, lembreteDaConfiguracao, pareada }, use) => {
+    const perfil = await abrirPerfil({ fakes, paginas, servidorDoLogin, portaDaConexaoDeTeste, pastaDaExtensao, permissaoDoAbridor, conexaoDoTeste });
     if (pareada) fakes.anki.pareamento.parear('segundo');
     try {
       await use({ context: perfil.context, extensao: await prepararExtensao(perfil.context, { manterAbaDaInstalacao, lembreteDaConfiguracao, navegador: pareada ? 'segundo' : null }) });

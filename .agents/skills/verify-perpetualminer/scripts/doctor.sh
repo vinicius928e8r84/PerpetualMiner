@@ -34,7 +34,7 @@ if [ -d "$E2E/node_modules/@playwright/test" ]; then
 fi
 
 if (exec 3<>/dev/tcp/127.0.0.1/8766) 2>/dev/null; then
-  printf 'note  something listens on 127.0.0.1:8766 (a real Conexão?). The e2e fake answers the extension inside Chromium, but the ChatGPT login specs (configuracoes-chatgpt*.spec) open a callback tab that reaches this listener: do not drive them here.\n'
+  printf 'note  something listens on 127.0.0.1:8766 (a real Conexão?). The test Chromium never reaches it: the fixture maps that port to the test one (e2e/fakes/porta-da-conexao.js), and the e2e fake answers the extension.\n'
 else
   ok '127.0.0.1:8766 free (nothing to confuse with the fake)'
 fi

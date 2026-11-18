@@ -1,10 +1,13 @@
 'use strict';
 
 const assert = require('assert');
+const http = require('http');
 const { isDeepStrictEqual } = require('util');
 const { criarFakeAnki, exemploDaExtensao, diferencaDoContrato } = require('./e2e/fakes/anki');
 const { criarFakeGoogle } = require('./e2e/fakes/google');
 const { cabecalhosAssinados } = require('./e2e/pareamento-de-teste');
+const { PAGINA_DO_RETORNO } = require('./e2e/fakes/chatgpt');
+const { subirPortaDaConexaoDeTeste, regrasQueTiramAPortaDoComputador } = require('./e2e/fakes/porta-da-conexao');
 
 const fake = criarFakeAnki();
 assert.deepStrictEqual(fake.respostaDoContrato('GET', '/health').json.perfil, 'Usuário 1');
@@ -150,4 +153,40 @@ async function conferirACopiaDaChave() {
   assert.strictEqual(recusada.chaveNaConexao(), null);
 }
 
-conferirOsExemplos().then(conferirACopiaDaChave).then(() => console.log('fake anki key tests passed')).catch(erro => { console.error(erro); process.exit(1); });
+const pedirNaPortaDeTeste = (porta, metodo, caminho) => new Promise(resolve => {
+  const pedido = http.request({ host: '127.0.0.1', port: porta, method: metodo, path: caminho, agent: false }, resposta => {
+    let corpo = '';
+    resposta.setEncoding('utf8').on('data', parte => { corpo += parte; }).on('end', () => resolve({ status: resposta.statusCode, corpo }));
+  });
+  pedido.on('error', () => resolve({ semResposta: true }));
+  pedido.end();
+});
+
+async function conferirAPortaDeTeste() {
+  const porta = await subirPortaDaConexaoDeTeste();
+  try {
+    assert.strictEqual(regrasQueTiramAPortaDoComputador(porta.porta), `MAP 127.0.0.1:8766 127.0.0.1:${porta.porta}, MAP localhost:8766 127.0.0.1:${porta.porta}`);
+    assert.deepStrictEqual(await pedirNaPortaDeTeste(porta.porta, 'GET', '/auth/callback'), { semResposta: true });
+
+    const entrando = criarFakeAnki();
+    porta.atender(entrando.responderNaPortaDeTeste);
+    const { json } = await pedirAoFake(entrando, 'POST', '/ia/chatgpt/entrar', {});
+    const retorno = `/auth/callback?code=codigo&state=${new URL(json.url).searchParams.get('state')}`;
+    assert.strictEqual(entrando.chatgpt.situacao(), 'entrando');
+
+    assert.deepStrictEqual(await pedirNaPortaDeTeste(porta.porta, 'GET', '/health'), { semResposta: true });
+    assert.deepStrictEqual(await pedirNaPortaDeTeste(porta.porta, 'POST', retorno), { semResposta: true });
+    entrando.desligar();
+    assert.deepStrictEqual(await pedirNaPortaDeTeste(porta.porta, 'GET', retorno), { semResposta: true });
+    assert.strictEqual(entrando.chatgpt.situacao(), 'entrando');
+
+    entrando.ligar();
+    assert.deepStrictEqual(await pedirNaPortaDeTeste(porta.porta, 'GET', retorno), { status: 200, corpo: PAGINA_DO_RETORNO });
+    assert.strictEqual(entrando.chatgpt.situacao(), 'conectada');
+    assert.deepStrictEqual(entrando.chegaramNaPortaDeTeste, ['GET /health', `POST ${retorno}`, `GET ${retorno}`, `GET ${retorno}`]);
+  } finally {
+    await porta.fechar();
+  }
+}
+
+conferirOsExemplos().then(conferirACopiaDaChave).then(conferirAPortaDeTeste).then(() => console.log('fake anki key tests passed')).catch(erro => { console.error(erro); process.exit(1); });

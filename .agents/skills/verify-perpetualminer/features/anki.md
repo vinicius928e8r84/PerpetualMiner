@@ -55,7 +55,7 @@ Preconditions:
 ## Gotchas
 
 - This proves the panel against the *contract*, not the real send (say so); add-on side: `complemento/test_envio.py`.
-- The Conexão's real port is 8766 and the fake never opens it. A listener there is not part of the run, except for the ChatGPT login callback tab (`SKILL.md`).
+- The Conexão's real port is 8766 and the fake never opens it. A listener there is not part of the run: the test Chromium never reaches it (`SKILL.md`).
 - Double-clicking Enviar ao Anki must create one Envio per language, not two (`bug #9: duplo clique`); count `fakes.anki.envios`.
 - Off and never connected, Enviar ao Anki is unavailable and its tooltip explains; do not try to force it. Off after a first answer it opens the Anki (`anki-send-closed`).
 - The summary waits while another modal is open and opens on its own after a reload (`recarregar com um Envio em andamento`).
