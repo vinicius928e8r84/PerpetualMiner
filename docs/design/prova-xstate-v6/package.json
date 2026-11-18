@@ -1,0 +1,17 @@
+{
+  "name": "prova-xstate-v6",
+  "private": true,
+  "description": "Prova de conceito: o XState v6 beta medido contra o ciclo da Remessa. Não entra no pacote da extensão.",
+  "license": "AGPL-3.0-only",
+  "scripts": {
+    "testar": "node test_fase_da_remessa_fsm.js && node test_remessa.js && node test_remessa_falhas.js",
+    "tipos": "tsc -p tipos/tsconfig.json",
+    "complexidade": "node medir-complexidade.mjs",
+    "vendor": "node conferir-vendor.mjs"
+  },
+  "devDependencies": {
+    "eslint": "10.15.0",
+    "typescript": "7.0.2",
+    "xstate": "6.0.0-beta.3"
+  }
+}

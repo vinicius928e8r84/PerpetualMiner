@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "noEmit": true,
+    "allowJs": true,
+    "checkJs": true,
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "target": "es2022",
+    "types": [],
+    "skipLibCheck": true
+  },
+  "files": ["com-typescript.ts", "com-jsdoc.js", "fsm-com-jsdoc.js"]
+}
