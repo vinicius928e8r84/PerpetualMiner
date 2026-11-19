@@ -56,7 +56,9 @@ nenhum novo. O texto do Cartão e a correção da Criação a porta pede ela mes
 provedores do motor e o custo no `costs.jsonl` do Envio, no formato de sempre; o da correção à parte), e o motor só recebe a função
 `pedir`. Na imagem, a chave chega ao motor presa (`provedores.PelaChave`: a triagem e a imagem gerada pedem por ela) e o juiz chega
 pronto (`JuizDaImagem.julgar`: o plano, ou a chave sem plano ou quando o plano recusa de passagem): o `config` do motor não leva segredo
-nenhum. A voz de reserva e o Ouvir são da Conexão e recebem a chave na chamada.
+nenhum. A voz de reserva e o Ouvir são da Conexão e recebem a chave na chamada. A credencial tem um formato só, o da camada de
+provedores do motor (`{provedor, segredo, modelo}`, mais `via: "plano"`): o `Pagador` do texto e o plano do juiz a levam assim, e só a
+porta lhe põe o endereço.
 
 ## 6. Provas
 
