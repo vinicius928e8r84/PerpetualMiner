@@ -14,7 +14,7 @@ from unittest import mock
 import generate_cards
 import openai_http
 import provedores
-from parser import MiningEntry, build_card_stem
+from parser import MiningEntry, get_card_jobs
 
 CHAVE = "sk-proj-chave-de-teste-0000"
 
@@ -124,6 +124,7 @@ def configuracao(raiz):
 
 
 ENTRADA = MiningEntry(keywords=["exerts himself"], phrase="He exerts himself on brands of his own, if at all.")
+TRABALHO = get_card_jobs(ENTRADA)[0]
 
 
 def pedir_com(cred):
@@ -139,29 +140,26 @@ class GerarCartoesPorHttp(unittest.TestCase):
     def test_o_cartao_pedido_pela_chave_fica_no_disco_e_o_motor_nao_anota_custo(self):
         with tempfile.TemporaryDirectory() as pasta, OpenAIDeMentira([resposta_do_chat(CARTAO)]) as openai:
             raiz = Path(pasta)
-            salvos = generate_cards.run([ENTRADA], configuracao(raiz), pela_chave(openai.base))
-            stem = build_card_stem(ENTRADA.keywords[0], ENTRADA.phrase)
-            texto = (raiz / "Output" / (stem + ".txt")).read_text(encoding="utf-8")
+            falha = generate_cards.escrever(TRABALHO, configuracao(raiz), pela_chave(openai.base), "4-0")
+            texto = (raiz / "Output" / "4-0.txt").read_text(encoding="utf-8")
             sem_custo = not (raiz / "log" / "costs.jsonl").exists()
-        self.assertEqual(salvos, [stem])
+        self.assertIsNone(falha)
         self.assertIn("Back: exerts himself", texto)
         self.assertEqual(openai.pedidos[0]["corpo"]["messages"][0], {"role": "system", "content": "en prompt"})
         self.assertTrue(sem_custo)
 
-    def test_um_texto_ja_gerado_nao_e_pedido_de_novo_quando_se_pede_para_pular_os_prontos(self):
+    def test_um_texto_ja_escrito_nao_e_pedido_de_novo(self):
         with tempfile.TemporaryDirectory() as pasta, OpenAIDeMentira([]) as openai:
             raiz = Path(pasta)
-            stem = build_card_stem(ENTRADA.keywords[0], ENTRADA.phrase)
             (raiz / "Output").mkdir()
-            (raiz / "Output" / (stem + ".txt")).write_text(CARTAO, encoding="utf-8")
-            salvos = generate_cards.run([ENTRADA], configuracao(raiz), pela_chave(openai.base), skip_existing=True)
-        self.assertEqual((salvos, openai.pedidos), ([stem], []))
+            (raiz / "Output" / "4-0.txt").write_text(CARTAO, encoding="utf-8")
+            falha = generate_cards.escrever(TRABALHO, configuracao(raiz), pela_chave(openai.base), "4-0")
+        self.assertEqual((falha, openai.pedidos), (None, []))
 
-    def test_a_falha_de_cada_cartao_fica_com_o_codigo_para_quem_pediu(self):
-        falhas = {}
+    def test_a_falha_do_cartao_volta_com_o_codigo_para_quem_pediu(self):
         with tempfile.TemporaryDirectory() as pasta, OpenAIDeMentira([erro(401, "Incorrect API key provided", "invalid_api_key")]) as openai:
-            salvos = generate_cards.run([ENTRADA], configuracao(Path(pasta)), pela_chave(openai.base), failures=falhas)
-        self.assertEqual((salvos, falhas), ([], {build_card_stem(ENTRADA.keywords[0], ENTRADA.phrase): openai_http.RECUSADA}))
+            falha = generate_cards.escrever(TRABALHO, configuracao(Path(pasta)), pela_chave(openai.base), "4-0")
+        self.assertEqual(falha, openai_http.RECUSADA)
 
     def test_gerar_nao_escreve_na_saida_do_processo(self):
         import contextlib
@@ -170,7 +168,7 @@ class GerarCartoesPorHttp(unittest.TestCase):
         saida, erro_ = io.StringIO(), io.StringIO()
         with tempfile.TemporaryDirectory() as pasta, OpenAIDeMentira([resposta_do_chat(CARTAO)]) as openai:
             with contextlib.redirect_stdout(saida), contextlib.redirect_stderr(erro_):
-                generate_cards.run([ENTRADA], configuracao(Path(pasta)), pela_chave(openai.base))
+                generate_cards.escrever(TRABALHO, configuracao(Path(pasta)), pela_chave(openai.base), "4-0")
         self.assertEqual((saida.getvalue(), erro_.getvalue()), ("", ""))
 
     def test_importar_o_motor_de_texto_nao_mexe_nos_avisos_do_processo_nem_precisa_do_sdk(self):
@@ -325,9 +323,10 @@ class ResponderPeloPlano(unittest.TestCase):
         with tempfile.TemporaryDirectory() as pasta, PlanoDeMentira(eventos(CARTAO[:40], CARTAO[40:])) as plano:
             raiz = Path(pasta)
             cred = {"provedor": provedores.OPENAI, "via": "plano", "segredo": TOKEN_DO_PLANO, "modelo": "gpt-6-luna", "base": plano.base}
-            salvos = generate_cards.run([ENTRADA], configuracao(raiz), pedir_com(cred))
+            falha = generate_cards.escrever(TRABALHO, configuracao(raiz), pedir_com(cred), "4-0")
+            escrito = (raiz / "Output" / "4-0.txt").exists()
             gravado = "".join(caminho.read_text(encoding="utf-8") for caminho in raiz.rglob("*") if caminho.is_file())
-        self.assertEqual(salvos, [build_card_stem(ENTRADA.keywords[0], ENTRADA.phrase)])
+        self.assertEqual((falha, escrito), (None, True))
         self.assertEqual([(p["caminho"], p["corpo"]["instructions"], p["corpo"]["model"]) for p in plano.pedidos], [("/v1/responses", "en prompt", "gpt-6-luna")])
         self.assertNotIn(TOKEN_DO_PLANO, gravado)
 

@@ -68,4 +68,5 @@ e os `test_envio*.py`. Não provam o login real nem a OpenAI real.
 
 ## Os próximos passos
 
-Cada um é uma versão da Conexão: somem as opções de lote do motor (um Cartão por vez); o motor passa a ter duas entradas (`escrever` e `montar`), sem a herança do `Trabalho`.
+O motor já escreve um Cartão por chamada (`generate_cards.escrever`: o texto que já está no disco não é pedido de novo), sem as opções de lote. Falta, numa
+versão da Conexão: o motor passa a ter duas entradas (`escrever` e `montar`), sem a herança do `Trabalho`.
