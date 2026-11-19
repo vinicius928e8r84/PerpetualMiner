@@ -5,6 +5,9 @@ A porta é a única do Envio e das rotas que lê o login do ChatGPT e o cofre pa
 (`modelo_dos_cartoes.credencial` e `credencial_da_imagem`) e entrega a credencial de cada etapa; o texto do Cartão ela mesma pede e anota
 o custo, e a correção da Criação também (`pedido_do_texto`): o motor só recebe a função. O modelo do texto lido uma vez por Envio fica aqui (`novo_envio` o esquece)."""
 
+import logging
+
+from .configuracao import NOME_DO_LOGGER
 from .login_do_chatgpt import SEM_LOGIN
 from .modelo_dos_cartoes import CHAVE, PARADO, PLANO, SEM_CHAVE, credencial, credencial_da_imagem, quem_paga
 
@@ -25,13 +28,37 @@ def quem_paga_a_etapa(etapa, login, motivo, pela_chave, tem_chave):
     raise ValueError(etapa)
 
 
+class JuizDaImagem:
+    """O juiz da imagem do próximo Cartão: pelo plano do ChatGPT quando há (`plano`: o token renovado e o Automático da conta), senão
+    pela chave presa (`presa`). O plano que recusa de passagem deixa a chave decidir; outra recusa dele (o limite, a conta) sobe e para o Envio."""
+
+    def __init__(self, provedores, plano, presa, base, logger):
+        self._provedores, self._plano, self._presa, self._base, self._logger = provedores, plano, presa, base, logger
+
+    def julgar(self, modelo_da_chave, sistema, conteudo, rotulo):
+        """`(o JSON do veredito, o uso, se a chave pagou)`. Levanta o `ErroDoProvedor` do motor."""
+        p = self._provedores
+        if self._plano:
+            credencial = {"provedor": p.OPENAI, "via": "plano", "segredo": self._plano["token"], "modelo": self._plano["modelo"], "base": self._base}
+            try:
+                texto, uso = p.texto(credencial, sistema, conteudo, tempo=p.TEMPO_DA_IMAGEM, json=True, repeticoes=p.REPETICOES_DA_IMAGEM)
+                return texto, uso, False
+            except p.ErroDoProvedor as erro:
+                if not (self._presa and p.passageira(erro.codigo, erro.status)):
+                    raise
+                self._logger.warning("image_judge plan judge failed (%s): the key judge decides keyword=%s", erro.codigo, rotulo)
+        texto, uso = self._presa.texto(modelo_da_chave, sistema, conteudo, temperatura=0, json=True, repeticoes=p.REPETICOES_DA_IMAGEM)
+        return texto, uso, True
+
+
 class IaDosCartoes:
     """`login` é o `LoginDoChatGPT` (None: sem login), `cofre` o das chaves, `modelos` o `ModeloDosCartoes`, `motor` o de `engine/`
-    (`envio.motor_do_complemento()`) e `openai_base` o endereço da OpenAI."""
+    (`envio.motor_do_complemento()`), `openai_base` o endereço da OpenAI e `logger` o da Conexão."""
 
-    def __init__(self, login, cofre, modelos, motor=None, openai_base=None):
+    def __init__(self, login, cofre, modelos, motor=None, openai_base=None, logger=None):
         self._login, self._cofre, self._modelos = login, cofre, modelos
         self._motor, self._openai_base = motor, openai_base
+        self._logger = logger or logging.getLogger(NOME_DO_LOGGER)
         self._do_envio = {}
 
     def novo_envio(self):
@@ -75,10 +102,13 @@ class IaDosCartoes:
         return pedir
 
     def para_a_imagem(self, pela_chave=False):
-        """`(plano do juiz, a chave presa)` do próximo Cartão (`modelo_dos_cartoes.credencial_da_imagem`): a chave presa
-        (`provedores.PelaChave` do motor, None sem chave) paga a triagem, a imagem gerada e o juiz sem o plano, e o motor não recebe o segredo."""
+        """`(o juiz, a chave presa)` do próximo Cartão (`modelo_dos_cartoes.credencial_da_imagem`): o `JuizDaImagem` (None sem plano nem
+        chave) e a chave presa (`provedores.PelaChave` do motor, None sem chave), que paga a triagem e a imagem gerada. O motor não recebe
+        segredo nenhum: nem a chave nem o token do plano."""
         plano, chave = credencial_da_imagem(self._login, self._cofre, self._do_envio, self._modelos, pela_chave)
-        return plano, (self._motor.provedores.PelaChave(chave, self._openai_base) if chave else None)
+        presa = self._motor.provedores.PelaChave(chave, self._openai_base) if chave else None
+        juiz = JuizDaImagem(self._motor.provedores, plano, presa, self._openai_base, self._logger) if plano or presa else None
+        return juiz, presa
 
     def para_a_fala(self):
         """A chave da voz de reserva e do Ouvir, ou None: o plano do ChatGPT não cobre voz."""

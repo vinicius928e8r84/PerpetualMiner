@@ -120,7 +120,7 @@ def _invalid_image_format_fallback(mode: str, valid_index_map: list[int]) -> dic
 
 def rank_candidates(
     *,
-    pela_chave,
+    juiz,
     model: str,
     log_dir: str,
     keyword: str,
@@ -129,14 +129,12 @@ def rank_candidates(
     card_text: str,
     candidates: list[dict[str, Any]],
     mode: str,
-    openai_base: str | None = None,
     label: str | None = None,
-    plano: dict[str, str] | None = None,
 ) -> dict[str, Any]:
-    """`pela_chave` is the key bound to its provider (`provedores.PelaChave`, None without a key); `model` is the key's judge.
-    `label` is what the cost record says the call was for (the keyword by default; the add-on passes the card's id).
-    `plano` (`{token, modelo}`): the judge goes through the ChatGPT plan's Responses API, the JSON by `text.format`, with no cost record;
-    a passing refusal of the plan falls back to the key's judge, any other (the limit, the account) reaches the caller and stops the Envio."""
+    """`juiz` asks the verdict: `juiz.julgar(model, system, content, label)` -> (the JSON text, the usage, whether the key paid it). In the
+    add-on it is the IA dos cartões' `JuizDaImagem` (the ChatGPT plan, or the key's `model`); the engine never sees who pays nor the secret.
+    `label` is what the cost record says the call was for (the keyword by default; the add-on passes the card's id); only the key's verdict
+    has a cost record."""
     content: list[dict[str, Any]] = [{
         "type": "text",
         "text": (
@@ -185,25 +183,7 @@ def rank_candidates(
         }
 
     try:
-        if plano:
-            try:
-                raw, usage = provedores.texto(
-                    {"provedor": provedores.OPENAI, "via": "plano", "segredo": plano["token"], "modelo": plano["modelo"], "base": openai_base},
-                    _SYSTEM, content, tempo=provedores.TEMPO_DA_IMAGEM, json=True, repeticoes=provedores.REPETICOES_DA_IMAGEM)
-            except provedores.ErroDoProvedor as exc:
-                if not (pela_chave and provedores.passageira(exc.codigo, exc.status)):
-                    raise
-                LOGGER.warning("image_judge plan judge failed (%s): the key judge decides keyword=%s", exc.codigo, label or keyword)
-                plano = None
-        if not plano:
-            raw, usage = pela_chave.texto(
-                model,
-                _SYSTEM,
-                content,
-                temperatura=0,
-                json=True,
-                repeticoes=provedores.REPETICOES_DA_IMAGEM,
-            )
+        raw, usage, pela_chave = juiz.julgar(model, _SYSTEM, content, label or keyword)
     except provedores.ErroDoProvedor as exc:
         if exc.codigo != provedores.IMAGEM_INVALIDA:
             raise
@@ -214,7 +194,7 @@ def rank_candidates(
             len(valid_index_map),
         )
         return _invalid_image_format_fallback(mode, valid_index_map)
-    if not plano:
+    if pela_chave:
         _record_cost(log_dir, model, usage, f"[image_judge] {label or keyword}")
 
     try:
