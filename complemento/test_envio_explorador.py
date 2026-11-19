@@ -180,6 +180,7 @@ def conferir(caso, plano, explorador, fim):
     caso.assertEqual(fim["encalhados"], [], "%s: id encalhado na fila" % rotulo)
     caso.assertEqual(len(fim["palavras"]), len(set(fim["palavras"])), "%s: um Cartão virou duas notas" % rotulo)
     if explorador.apagou is None:
+        caso.assertFalse([a for acoes in plano.values() for a in acoes if a == "apagar"], "%s: o Apagar tudo planejado não rodou" % rotulo)
         caso.assertEqual((fim["estado"]["status"], fim["palavras"]), ("completed", sorted([PALAVRA, "late"][:fim["cartoes"]])), rotulo)
         return
     pedidos_no_apagar, notas_no_apagar = explorador.apagou
