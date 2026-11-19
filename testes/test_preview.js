@@ -24,11 +24,13 @@ const extensao = path.join(saida, 'extensao');
   for (const pagina of paginas) {
     const html = fs.readFileSync(pagina, 'utf8');
     const pedidos = [...html.matchAll(/\b(?:src|href)="([^"#?:]+)"/g)].map(m => m[1]).filter(p => !p.startsWith('//'));
-    if (pagina !== 'abridor.html') assert(pedidos.length > 0, `${pagina}: não achei o que ela carrega`);
+    if (pagina !== 'abridor/ponte.html') assert(pedidos.length > 0, `${pagina}: não achei o que ela carrega`);
     for (const pedido of pedidos) {
       assert(fs.existsSync(path.join(extensao, pedido)), `${pagina} carrega ${pedido}, que não está no preview`);
     }
   }
+
+  assert(!fs.existsSync('abridor.html') && fs.existsSync(path.join(extensao, 'abridor', 'ponte.html')), 'a ponte do abridor mora em abridor/, não na raiz');
 
   assert(fs.existsSync(path.join(extensao, 'conexao', 'perpetualminer.ankiaddon')), 'falta o .ankiaddon no preview');
 

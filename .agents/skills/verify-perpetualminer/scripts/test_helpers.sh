@@ -165,8 +165,8 @@ mapa true; muda painel-shell.js
 confere && falhou "ratchet passed painel-shell.js with nothing" || passou "ratchet fails a painel*.js change"
 mapa true; muda complemento/servidor.py
 confere && falhou "ratchet passed a complemento/servidor.py change with nothing" || passou "ratchet fails a complemento/servidor.py change"
-mapa true; muda abridor.html
-confere && falhou "ratchet passed a root abridor.html change with nothing" || passou "ratchet fails a root *.html change"
+mapa true; muda pagina-qualquer.html
+confere && falhou "ratchet passed a root pagina-qualquer.html change with nothing" || passou "ratchet fails a root *.html change"
 mapa true; muda lib/voz/catalogo.js
 confere && falhou "ratchet passed a lib/voz/catalogo.js change with nothing" || passou "ratchet fails a Voice catalog change"
 mapa true; muda lib/voz/outro.js e2e/pages/player.html
