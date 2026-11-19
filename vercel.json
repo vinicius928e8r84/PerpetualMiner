@@ -4,5 +4,12 @@
   "outputDirectory": "preview/dist",
   "installCommand": "echo sem dependencias",
   "framework": null,
-  "ignoreCommand": "sh preview/ignorar-build.sh"
+  "ignoreCommand": "sh preview/ignorar-build.sh",
+  "git": {
+    "deploymentEnabled": {
+      "**": false,
+      "main": true,
+      "vitrine/**": true
+    }
+  }
 }
