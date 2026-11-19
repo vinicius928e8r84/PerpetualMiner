@@ -16,7 +16,7 @@ async function guardarEvidencia(page, nome, estado) {
 
 async function minerarNoPopup(page, extensao, texto) {
   await page.setViewportSize({ width: 340, height: 600 });
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url('popup/popup.html'));
   const campo = page.getByRole('textbox', { name: 'Cole ou escreva uma frase' });
   await campo.fill(texto);
   await campo.press('Enter');

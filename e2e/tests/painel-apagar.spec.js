@@ -25,7 +25,7 @@ async function abrirPainelSincronizado(page, extensao, endereco = '') {
 
 test('com a conta conectada, a frase apagada no painel sai da nuvem e fica no tombstone', async ({ page, extensao, fakes }) => {
   await extensao.semearSessao({ uid: 'uid-painel' });
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url('popup/popup.html'));
   const [apagada] = await minerar(page, [PRIMEIRA, SEGUNDA]);
   await expect.poll(() => fakes.google.frasesDe('uid-painel').length).toBe(2);
 
@@ -40,7 +40,7 @@ test('com a conta conectada, a frase apagada no painel sai da nuvem e fica no to
 
 test('com a conta conectada, "Apagar tudo" no painel apaga todas as frases da nuvem', async ({ page, extensao, fakes }) => {
   await extensao.semearSessao({ uid: 'uid-tudo' });
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url('popup/popup.html'));
   const mineradas = await minerar(page, [PRIMEIRA, SEGUNDA]);
   await expect.poll(() => fakes.google.frasesDe('uid-tudo').length).toBe(2);
 

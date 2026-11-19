@@ -9,7 +9,7 @@ const { test, expect } = require('../fixtures');
 const RAIZ = path.resolve(__dirname, '../..');
 const ASSETS_DA_MARCA = path.join(RAIZ, 'docs/design/identidade-veio/assets');
 const TAMANHOS = [16, 32, 48, 128];
-const PAGINAS_DA_EXTENSAO = ['painel.html', 'popup.html', 'bookreader/bookreader.html'];
+const PAGINAS_DA_EXTENSAO = ['painel.html', 'popup/popup.html', 'bookreader/bookreader.html'];
 const FRASE_RUSSA = 'Тихая гавань проснулась раньше чаек.';
 
 const digest = bytes => crypto.createHash('sha256').update(Buffer.from(bytes)).digest('hex');
@@ -170,7 +170,7 @@ test('os tokens do tema claro existem e trocam a página inteira', async ({ page
 });
 
 test('o cursor ouro depois do nome pisca a cada 1,1 s', async ({ page, extensao }) => {
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url('popup/popup.html'));
 
   const cursor = page.locator('.veio-cursor');
   await expect(cursor).toBeVisible();
@@ -181,7 +181,7 @@ test('o cursor ouro depois do nome pisca a cada 1,1 s', async ({ page, extensao 
 
 test('com movimento reduzido, o cursor fica parado', async ({ page, extensao }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url('popup/popup.html'));
 
   const cursor = page.locator('.veio-cursor');
   await expect(cursor).toBeVisible();
@@ -222,7 +222,7 @@ for (const pagina of PAGINAS_DA_EXTENSAO) {
 }
 
 test('o teclado vê onde está: os controles do popup mostram o anel ouro', async ({ page, extensao }) => {
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url('popup/popup.html'));
 
   const botao = page.getByRole('button', { name: 'Abrir painel' });
   await botao.focus();
