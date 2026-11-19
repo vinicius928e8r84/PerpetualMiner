@@ -66,11 +66,11 @@ class Explorador:
         self.contadas = 0
         self.antes_da_escrita = None
         self.dentro = False
-        self.apagou = None  # (pedidos à OpenAI, notas) no instante em que o Apagar tudo respondeu
+        self.apagou = None
         self.openai = self.colecao = None
 
     def passar(self):
-        if self.dentro or self.fila.tranca._is_owned():  # um pedido só entra onde a tranca está livre
+        if self.dentro or self.fila.tranca._is_owned():
             return
         numero, self.contadas = self.contadas, self.contadas + 1
         for acao in self.plano.get(numero, ()):
@@ -102,7 +102,7 @@ class Explorador:
             explorador.antes_da_escrita = explorador.contadas
             explorador.passar()
             gravar_texto(*argumentos)
-            explorador.passar()  # o texto já está no disco, a conferência do `wiped` ainda não aconteceu
+            explorador.passar()
 
         patches.append(mock.patch.object(motor, "_write_card", _write_card))
         return patches
