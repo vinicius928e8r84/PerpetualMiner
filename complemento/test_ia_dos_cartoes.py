@@ -146,13 +146,19 @@ class ACredencialDeCadaEtapa(unittest.TestCase):
 
 def porta_na_openai(pasta, situacao, openai):
     """A porta como a Conexão a monta (`servidor.Conexao`), com o login, o cofre, o modelo dos cartões e o motor, falando com a OpenAI de mentira."""
+    ia, _, config = porta_e_modelos_na_openai(pasta, situacao, openai)
+    return ia, config
+
+
+def porta_e_modelos_na_openai(pasta, situacao, openai):
+    """(a porta, o `ModeloDosCartoes` dela, o config do motor), como em `porta_na_openai`."""
     motor = envio.motor_do_complemento()
     login, cofre = guardar(pasta, SITUACOES[situacao][0], SITUACOES[situacao][3], api=openai.base)
     modelos = ModeloDosCartoes(os.path.join(pasta, "modelo-dos-cartoes.json"), lista_nossa(), date.today, logging.getLogger("teste"), login, cofre,
                                openai.base, lambda: motor.config_loader.base_config()["openai"]["chat_model"])
     config = motor.config_loader.base_config()
     config["paths"]["log_dir"] = os.path.join(pasta, "custos")
-    return IaDosCartoes(login, cofre, modelos, motor=motor, openai_base=openai.base), config
+    return IaDosCartoes(login, cofre, modelos, motor=motor, openai_base=openai.base), modelos, config
 
 
 def custos(config):
@@ -179,6 +185,16 @@ class UmFormatoDeCredencial(unittest.TestCase):
             ia.pedido_do_texto(pagador._replace(credencial=dict(pagador.credencial, modelo="gpt-4.1-mini")), config)("s", "give up : She gave up", "1-0")
             [(_, corpo)] = openai.chats
         self.assertEqual(corpo["model"], "gpt-4.1-mini")
+
+
+class OModeloDosCartoesPelaTabela(unittest.TestCase):
+    def test_quem_paga_no_modelo_dos_cartoes_e_o_pagador_do_texto_na_tabela(self):
+        for situacao in ("com login", "com login, sem chave", "login acabado", "sem login", "sem chave"):
+            with self.subTest(situacao=situacao), tempfile.TemporaryDirectory() as pasta, OpenAIDeMentira() as openai:
+                ia, modelos, _ = porta_e_modelos_na_openai(pasta, situacao, openai)
+                paga = modelos.conta()[0]
+                quem, _ = ia.pagador(TEXTO)
+            self.assertEqual(paga, None if quem == PARADO else quem)
 
 
 class OTextoPelaPorta(unittest.TestCase):

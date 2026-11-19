@@ -233,6 +233,53 @@ class GenerateCardsKeywordValidationTests(unittest.TestCase):
         self.assertEqual(falha, "openai_key_rejected")
         self.assertEqual([caminho.name for caminho in escritos if caminho.parent.name == "Output"], [])
 
+    def test_a_nova_tentativa_recusada_pelo_provedor_volta_com_o_codigo_da_recusa_e_nao_como_resposta_vazia(self):
+        respostas = [BAD_CARD]
+
+        def pedir(sistema, mensagem, rotulo):
+            if respostas:
+                return respostas.pop(0)
+            raise generate_cards.provedores.ErroDoProvedor("openai_rate_limited")
+
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            _write_prompts(root)
+            entrada = MiningEntry(keywords=["exerts himself"], phrase="He exerts himself on brands of his own, if at all.")
+            falha = generate_cards.escrever(get_card_jobs(entrada)[0], _config(root), pedir, "5-0")
+            escritos = list((root / "Output").glob("*.txt"))
+
+        self.assertEqual((falha, escritos), ("openai_rate_limited", []))
+
+    def test_um_erro_que_nao_e_do_provedor_vira_generation_error_e_nada_fica_no_disco(self):
+        def quebra(sistema, mensagem, rotulo):
+            raise ValueError("quebrou")
+
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            _write_prompts(root)
+            trabalho = get_card_jobs(MiningEntry(keywords=["toil"], phrase="They toil all day."))[0]
+            falha = generate_cards.escrever(trabalho, _config(root), quebra, "8-0")
+            escritos = list((root / "Output").glob("*.txt"))
+
+        self.assertEqual((falha, escritos), ("generation_error", []))
+
+    def test_um_erro_que_nao_e_do_provedor_vai_ao_log_so_pelo_tipo_sem_a_mensagem_que_cita_o_pedido(self):
+        def quebra_citando_o_pedido(sistema, mensagem, rotulo):
+            raise ValueError("nao entendi o pedido: %s" % mensagem)
+
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            _write_prompts(root)
+            trabalho = get_card_jobs(MiningEntry(keywords=["zymurgyxq"], phrase="The zymurgyxq vat bubbled all night."))[0]
+            with self.assertLogs("perpetualminer.motor", level="INFO") as logged:
+                generate_cards.escrever(trabalho, _config(root), quebra_citando_o_pedido, "8-0")
+
+        registrado = "\n".join(logged.output)
+        self.assertIn("8-0", registrado)
+        self.assertIn("ValueError", registrado)
+        self.assertNotIn("zymurgyxq", registrado)
+        self.assertNotIn("nao entendi", registrado)
+
     def test_a_resposta_vazia_e_empty_response(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
