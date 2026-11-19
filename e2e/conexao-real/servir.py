@@ -8,6 +8,9 @@ e fala com o fixture por linhas de JSON: ao ficar pronta escreve `{"porta": N}`;
     {"colecao": {...}}        abre uma coleção descrita como nos exemplos do contrato (`ColecaoEmMemoria`)
     {"mundo": {"colecao": {...}, "perfil": "..."}}  o mundo que o fake montou (`fakes.anki.naFrente`): a coleção aberta no perfil, ou,
                               com `perfil` null, o Anki na tela de perfis (a coleção fechada)
+    {"mudar": {"jobId", "state"}}  o estado que o fake deu ao Envio (`moverEnvio`, `concluirEnvio`), gravado pelo portão `Fila.mudar`:
+                              uma transição que a máquina não aceita volta `{"erro": ...}`
+    {"criar": {...}}          um Envio que chega sem a extensão (`receberEnvio`), pelo `Fila.criar`
     {"envios": true}          os Envios que a fila guardou, na ordem: `{jobId, lang, corpo (o pedido como as rotas o mostram), createdAt, state}`
     {"estado": true}          responde o que a Conexão guardou: a cópia da chave, os documentos da nuvem, os pedidos à OpenAI,
                               as falas que a voz de mentira ouviu e a pasta de dados (apagada ao fechar)
@@ -90,6 +93,16 @@ def main():
                 colecao.atual = ColecaoEmMemoria(comando["mundo"]["colecao"], perfil_aberto=perfil) if perfil else ColecaoEmMemoria.fechada()
                 colecao.atual.fixar_o_perfil(conexao.perfil_fixo)
                 responder({"ok": True})
+            elif "mudar" in comando:
+                novo = comando["mudar"]["state"]
+                try:
+                    conexao.fila.mudar(comando["mudar"]["jobId"], lambda estado: (estado.clear(), estado.update(novo)))
+                    responder({"ok": True})
+                except ValueError as erro:
+                    responder({"erro": str(erro)})
+            elif "criar" in comando:
+                status, resposta = conexao.fila.criar(comando["criar"])
+                responder({"status": status, "resposta": resposta} if status < 300 else {"erro": json.dumps(resposta)})
             elif comando.get("envios"):
                 lista = []
                 for item in conexao.fila.ordem():

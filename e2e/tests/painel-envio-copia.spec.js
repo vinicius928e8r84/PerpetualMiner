@@ -82,7 +82,8 @@ test('as telas do Envio com a Conexão dentro do Anki só dizem o que o catálog
   expect(fakes.anki.enviosEm('ru')).toHaveLength(1);
 });
 
-test('a espera pelo Anki só diz o que fazer depois de 5 minutos, sem fazer o Envio falhar (#246)', async ({ page, extensao, fakes }) => {
+test('a espera pelo Anki só diz o que fazer depois de 5 minutos, sem fazer o Envio falhar (#246)', async ({ page, extensao, fakes, conexaoDoTeste }) => {
+  test.skip(Boolean(conexaoDoTeste), 'a Conexão real carimba a hora de cada mudança do Envio (Fila.mudar): só o fake volta o updatedAt no tempo');
   const haMinutos = n => new Date(AGORA.getTime() - n * 60 * 1000);
   await extensao.gravarStorage({ frases: INGLESAS });
   await abrirPainel(page, extensao);

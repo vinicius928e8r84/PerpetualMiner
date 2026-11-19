@@ -38,7 +38,8 @@ async function enviarTodas(page, fakes, n) {
   await expect.poll(() => fakes.anki.requisicoes.filter(r => r.metodo === 'POST' && r.caminho === '/jobs').length).toBe(n);
 }
 
-test('o progresso: um Envio andando, o outro que não começou (ENV-03)', async ({ page, extensao, fakes }) => {
+test('o progresso: um Envio andando, o outro que não começou (ENV-03)', async ({ page, extensao, fakes, conexaoDoTeste }) => {
+  test.skip(Boolean(conexaoDoTeste), 'a Conexão real carimba a hora de cada mudança do Envio (Fila.mudar): só o fake volta o updatedAt no tempo');
   fakes.anki.recusarEnvios('ru');
   await abrirFrases(page, extensao);
   await enviarTodas(page, fakes, 2);
@@ -100,7 +101,8 @@ test('Enviar ao Anki indisponível com a Conexão desligada, com o tooltip', asy
   await expect(page).toHaveScreenshot('envio-indisponivel.png');
 });
 
-test('o Envio esperando o Anki: a coleção fechada ou sincronizando, e a Conexão espera', async ({ page, extensao, fakes }) => {
+test('o Envio esperando o Anki: a coleção fechada ou sincronizando, e a Conexão espera', async ({ page, extensao, fakes, conexaoDoTeste }) => {
+  test.skip(Boolean(conexaoDoTeste), 'a Conexão real carimba a hora de cada mudança do Envio (Fila.mudar): só o fake volta o updatedAt no tempo');
   await abrirFrases(page, extensao);
   await enviarTodas(page, fakes, 2);
   const [ingles, russo] = fakes.anki.envios;

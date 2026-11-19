@@ -66,6 +66,10 @@ const rotaComFalhasNaFrente = (conexao, anki) => {
     if (frente.recusar) return route.abort('connectionrefused');
     if (frente.calar) return new Promise(() => {});
     if (frente.mundo) await conexao.enviar({ mundo: frente.mundo });
+    for (const comando of frente.fila || []) {
+      const { erro } = await conexao.enviar(comando);
+      if (erro) throw new Error(`A fila da Conexão real recusou o que o fake fez com o Envio: ${erro}`);
+    }
     if (frente.perder) anki.perdeuAResposta();
     if (!frente.roteiro) return url.pathname.startsWith('/jobs') ? rotaParaAConexaoReal(conexao, { ...doEnvio, perder: frente.perder })(route) : adiante(route);
     const { status = 200, json = {} } = await frente.roteiro(req, url);

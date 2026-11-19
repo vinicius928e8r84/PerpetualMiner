@@ -83,7 +83,7 @@ jobs:
         timeout-minutes: 5
         working-directory: e2e
       - run: sudo apt-get install -y --no-install-recommends fonts-dejavu-core
-      - name: As specs da Conexão real, as de falhas e pedidos e as do mundo da leitura e do perfil e as do Envio criado, com a fachada do fake na frente dela
+      - name: As specs da Conexão real, as de falhas e pedidos e as do mundo da leitura e do perfil e as do Envio, com a fachada do fake na frente dela
         run: >-
           xvfb-run --auto-servernum node scripts/testar.mjs e2e -- conexao-real pareamento.spec pareamento-ataques
           tests/abrir-o-anki-sozinho.spec.js tests/boas-vindas-nivel-visual.spec.js tests/boas-vindas-quiz-ritmo.spec.js
@@ -95,6 +95,7 @@ jobs:
           tests/overlay-marca.spec.js tests/overlay-visual.spec.js tests/seam.spec.js tests/sincronizacao.spec.js
           tests/boas-vindas-nivel.spec.js tests/painel-envio-desconhecido.spec.js
           tests/painel-conserto.spec.js tests/painel-envio-retido.spec.js tests/painel-envio-anki-fechado.spec.js
+          tests/painel-envio-parado.spec.js tests/painel-envio-plano.spec.js tests/painel-envio-copia.spec.js tests/painel-envio-visual.spec.js
           --workers=1
         env:
           PM_CONEXAO: real
