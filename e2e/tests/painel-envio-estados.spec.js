@@ -90,8 +90,16 @@ test('a chave recusada num Envio, com outro ainda andando: o cartão dele diz o 
 
   await expect(ingles(page)).toContainText('Não concluído', { timeout: 10_000 });
   await expect(ingles(page)).toContainText('A OpenAI não aceitou a chave.');
-  await expect(ingles(page).getByRole('button', { name: 'Trocar a chave' })).toBeVisible();
   await expect(ingles(page).getByRole('button', { name: 'Tentar de novo' })).toHaveCount(0);
+  const erros = [];
+  page.on('pageerror', erro => erros.push(erro.message));
+
+  await ingles(page).getByRole('button', { name: 'Trocar a chave' }).click();
+
+  await expect(page).toHaveURL(/#configuracoes\/ia$/);
+  await expect(progresso(page)).toBeHidden();
+  expect(erros).toEqual([]);
+  expect(fakes.anki.requisicoes.filter(r => r.caminho === '/jobs/usar-a-chave' || r.caminho === '/jobs/retry')).toEqual([]);
   await estadoFinalEm('o Envio em inglês na Conexão', () => doIngles.state.lastError, 'openai_key_rejected');
 });
 
@@ -182,7 +190,7 @@ test('o Tentar de novo de um Envio em parte que a Conexão recusa diz que não d
   await cartao.getByRole('button', { name: 'Tentar de novo' }).click();
 
   await expect(cartao).toContainText('Não deu para retomar o envio. Confira se a Conexão com o Anki está ligada.');
-  await expect(cartao.locator('pre')).toContainText(`POST /jobs/retry ${emIngles.jobId} → HTTP 500`);
+  await expect(cartao.locator('pre')).toContainText(`POST /jobs/retry ${emIngles.jobId} · HTTP 500 · internal_error`);
   await expect(toasts(page)).toHaveCount(0);
   await estadoFinalEm('os Envios que o painel acompanha', async () => (await extensao.lerStorage('pm_envio')).pm_envio.envios.map(e => e.jobId), [emIngles.jobId, emRusso.jobId]);
 });
