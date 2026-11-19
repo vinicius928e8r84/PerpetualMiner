@@ -4,7 +4,7 @@ const PAGINA_DO_RETORNO = '<!doctype html><html lang="pt-BR"><meta charset="utf-
   + '<p>Pode fechar esta aba e voltar ao PerpetualMiner.</p></html>';
 const AUTORIZAR = 'https://auth.openai.com/api/accounts/authorize';
 
-function criarFakeChatGPT() {
+function criarFakeChatGPT({ paraAReal = () => {} } = {}) {
   const estado = { situacao: 'desconectada', acabado: false, state: null, tentativas: 0, autorizacao: 'aceita', abertas: [], urlDaConexao: null };
 
   function urlDeAutorizacao() {
@@ -82,7 +82,8 @@ function criarFakeChatGPT() {
     responderAutorizacao,
     naConexao,
     responderRetornoNaPortaDeTeste,
-    definir(situacao) { [estado.situacao, estado.acabado] = [situacao, false]; },
+    definir(situacao) { [estado.situacao, estado.acabado] = [situacao, false]; paraAReal({ login: situacao }); },
+    espelhar(situacao) { estado.situacao = situacao; },
     /** @estado-guardado O login que a Conexão guarda agora (`conectada` é o arquivo dos tokens na Conexão de verdade). */
     situacao() { return estado.situacao; },
     responderNaAutorizacao(como) { estado.autorizacao = como; },
