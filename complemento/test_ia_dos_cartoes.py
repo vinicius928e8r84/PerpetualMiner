@@ -197,6 +197,21 @@ class OModeloDosCartoesPelaTabela(unittest.TestCase):
             self.assertEqual(paga, None if quem == PARADO else quem)
 
 
+class OJuizDaImagemPelaTabela(unittest.TestCase):
+    def test_o_juiz_e_a_chave_da_imagem_saem_do_pagador_do_juiz_na_tabela(self):
+        for situacao, (_, _, pela_chave, _) in SITUACOES.items():
+            with self.subTest(situacao=situacao), tempfile.TemporaryDirectory() as pasta, OpenAIDeMentira() as openai:
+                ia, _ = porta_na_openai(pasta, situacao, openai)
+                quem, motivo = ia.pagador(JUIZ, pela_chave)
+                try:
+                    juiz, presa = ia.para_a_imagem(pela_chave)
+                    visto = ("juiz" if juiz else None, "presa" if presa else None)
+                except ErroDoPlano as parou:
+                    visto = ("parou", parou.codigo)
+            esperado = {PLANO: ("juiz", visto[1]), CHAVE: ("juiz", "presa")}.get(quem) or (("parou", motivo) if motivo == SAIU else (None, None))
+            self.assertEqual(visto, esperado)
+
+
 class OTextoPelaPorta(unittest.TestCase):
     def test_pela_chave_o_texto_vai_com_a_chave_e_o_custo_dos_tokens_fica_com_o_nome_do_cartao(self):
         with tempfile.TemporaryDirectory() as pasta, OpenAIDeMentira() as openai:
