@@ -76,7 +76,7 @@ _Avoid_: Cockpit
 
 **Overlay**:
 O que a extensão desenha por cima da página do vídeo: o botão Minerar legenda e o aviso do que foi minerado. Não tem nome na tela.
-_Nome no código_: `overlay.js`, `<perpetualminer-overlay>`
+_Nome no código_: `overlay/overlay.js`, `<perpetualminer-overlay>`
 _Avoid_: Botão flutuante (é só uma parte)
 
 **Boas-vindas**:
