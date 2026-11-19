@@ -200,7 +200,7 @@ test('Sincronizando (CFG-01): enquanto a nuvem não responde, o card, o resumo e
 
 test('Primeira subida (CFG-09): entrar com frases neste computador mostra “Sincronizando 12 frases…” e sobe todas', async ({ page, extensao, fakes }) => {
   await extensao.gravarStorage({ frases: frasesDeExemplo(12) });
-  const liberar = await segurarANuvem(page, /:batchWrite/);
+  const liberar = await segurarANuvem(page, /:commit/);
   await abrirPainel(page, extensao, '#configuracoes/conta');
 
   await conta(page).getByRole('button', { name: 'Entrar com Google' }).click();
