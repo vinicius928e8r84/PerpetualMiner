@@ -456,7 +456,7 @@ const plano = valor => JSON.parse(JSON.stringify(valor));
 
 async function escolherDireto() {
   const { PalavraAutomatica } = carregarBackground({}).PerpetualMiner;
-  if (!PalavraAutomatica) return;
+  assert.ok(PalavraAutomatica, 'lib/palavra-automatica.js carrega no service worker');
   const contexto = carregarBackground({});
   const vocab = lang => contexto.autoVocabularyFromCache(VOCABULARIOS[lang]);
   for (const [texto, saidas] of ESPERADO.en) {
