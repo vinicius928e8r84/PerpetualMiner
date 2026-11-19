@@ -9,7 +9,7 @@ const { test, expect } = require('../fixtures');
 const RAIZ = path.resolve(__dirname, '../..');
 const ASSETS_DA_MARCA = path.join(RAIZ, 'docs/design/identidade-veio/assets');
 const TAMANHOS = [16, 32, 48, 128];
-const PAGINAS_DA_EXTENSAO = ['painel.html', 'popup/popup.html', 'bookreader.html'];
+const PAGINAS_DA_EXTENSAO = ['painel.html', 'popup/popup.html', 'bookreader/bookreader.html'];
 const FRASE_RUSSA = 'Тихая гавань проснулась раньше чаек.';
 
 const digest = bytes => crypto.createHash('sha256').update(Buffer.from(bytes)).digest('hex');

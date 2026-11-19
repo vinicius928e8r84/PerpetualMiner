@@ -139,7 +139,7 @@ test('o mesmo texto minerado pelo menu, pelo popup e pela foto grava o mesmo idi
 
   await extensao.gravarStorage({ geminiApiKey: 'chave-de-teste' });
   fakes.gemini.responderFrases([FRASE_RUSSA]);
-  await page.goto(extensao.url('bookreader.html'));
+  await page.goto(extensao.url('bookreader/bookreader.html'));
   await page.locator('#foto-arquivo').setInputFiles({ name: 'pagina.png', mimeType: 'image/png', buffer: PNG_1X1 });
   await page.getByRole('button', { name: 'Ler marcações' }).click();
   await expect(page.locator('#foto-minerar')).toHaveText('Minerar 1 frase');

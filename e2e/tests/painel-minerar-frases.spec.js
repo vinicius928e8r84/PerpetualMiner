@@ -106,7 +106,7 @@ test('Foto abre Minerar de uma foto numa aba nova', async ({ page, context, exte
     context.waitForEvent('page'),
     itemDoMenu(page, /^Foto/).click(),
   ]);
-  await expect(aba).toHaveURL(extensao.url('bookreader.html'));
+  await expect(aba).toHaveURL(extensao.url('bookreader/bookreader.html'));
   await expect(menu(page)).toBeHidden();
 });
 
@@ -207,7 +207,6 @@ test('duplo clique em Minerar N frases: as frases entram uma vez só (bug de #9)
   await botaoDeMinerar(page).dblclick();
 
   await expect(toasts(page)).toHaveText('2 frases mineradas');
-  // Dá tempo a um segundo pedido que tivesse escapado.
   await page.waitForTimeout(500);
   expect((await extensao.frases()).map(f => f.texto).sort()).toEqual(['Break a leg.', 'Keep me posted.']);
 });
@@ -350,7 +349,7 @@ test('Foto ↗, ao lado das abas, fecha o modal e abre Minerar de uma foto numa 
     context.waitForEvent('page'),
     modal(page).getByRole('button', { name: 'Foto', exact: true }).click(),
   ]);
-  await expect(nova).toHaveURL(extensao.url('bookreader.html'));
+  await expect(nova).toHaveURL(extensao.url('bookreader/bookreader.html'));
   await expect(modal(page)).toBeHidden();
 });
 

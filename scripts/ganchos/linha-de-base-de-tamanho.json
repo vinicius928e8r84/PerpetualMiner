@@ -3,7 +3,7 @@
   "arquivos": {
     ".agents/skills/painel-anki/SKILL.md": 24323,
     "background.js": 41086,
-    "bookreader.js": 35868,
+    "bookreader/bookreader.js": 35868,
     "complemento/contrato/exemplos.json": 108985,
     "complemento/envio.py": 32513,
     "complemento/test_chave_da_openai.py": 38353,
@@ -50,7 +50,7 @@
     "engine/test_image_fallback_policy.py": 28977,
     "lib/sincronizacao.js": 29245,
     "lib/voz/catalogo.js": 44483,
-    "overlay.js": 22279,
+    "overlay/overlay.js": 22279,
     "painel-anki-baralhos.js": 30110,
     "painel-anki.js": 29486,
     "painel-boas-vindas.js": 22520,

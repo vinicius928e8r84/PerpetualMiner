@@ -23,7 +23,7 @@ _Avoid_: Capturar, salvar, coletar, adicionar
 
 **Minerar de uma foto**:
 A página que lê, com o Gemini, as Marcações de fotos de páginas de livro e deixa escolher quais frases minerar.
-_Nome no código_: `bookreader.html/js/css`
+_Nome no código_: `bookreader/bookreader.html/js/css`
 _Avoid_: BookReader, leitor de livros
 
 **Marcação**:
@@ -76,7 +76,7 @@ _Avoid_: Cockpit
 
 **Overlay**:
 O que a extensão desenha por cima da página do vídeo: o botão Minerar legenda e o aviso do que foi minerado. Não tem nome na tela.
-_Nome no código_: `overlay.js`, `<perpetualminer-overlay>`
+_Nome no código_: `overlay/overlay.js`, `<perpetualminer-overlay>`
 _Avoid_: Botão flutuante (é só uma parte)
 
 **Boas-vindas**:

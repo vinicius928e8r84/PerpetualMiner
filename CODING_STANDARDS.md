@@ -13,9 +13,9 @@ The rules that cross surfaces are in `docs/arquitetura.md` and the role of each 
 | `popup/popup.html/js/css` | `popup` |
 | `painel.js`, `painel.css` (Frases list, Minerar frases) | `painel-frases` |
 | `painel-anki*.js`, `painel-ajustes.js`, `painel-envio.js`, `lib/ajustes-de-envio.js` | `painel-anki` |
-| `bookreader.html/js/css` | `minerar-foto` |
+| `bookreader/bookreader.html/js/css` | `minerar-foto` |
 | `veio/componentes.css`, `veio/componentes.js` | `veio-componentes` |
-| `overlay.js`, `overlay.css`, `content.js` (the caption and selection capture and the answer on screen) | `overlay` |
+| `overlay/overlay.js`, `overlay/overlay.css`, `content.js` (the caption and selection capture and the answer on screen) | `overlay` |
 | `e2e/fixtures.js`, `e2e/fakes/`, `e2e/pages/`, `e2e/vitrine/`, `e2e/tests/*-visual.spec.js` | `e2e-suite` |
 
 A surface not in this table (the panel shell, sync, storage, the service worker) is still described in `docs/arquitetura.md` itself.
