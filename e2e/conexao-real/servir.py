@@ -111,7 +111,7 @@ def main():
                 try:
                     conexao.fila.mudar(comando["mudar"]["jobId"], lambda estado: (estado.clear(), estado.update(novo)))
                     responder({"ok": True})
-                except ValueError as erro:
+                except (ValueError, TypeError) as erro:
                     responder({"erro": str(erro)})
             elif "fila" in comando:
                 semear_a_fila(dados.raiz, ler_o_contrato()["filas"][comando["fila"]])
