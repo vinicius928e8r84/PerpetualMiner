@@ -7,7 +7,7 @@ const { execFileSync } = require('child_process');
 
 const RAIZ = path.join(__dirname, '..', '..');
 const NOMES = ['bookreader.css', 'bookreader.html', 'bookreader.js'];
-const ANTIGO = /(?<![\w./-])bookreader\.(css|html|js)\b/;
+const ANTIGO = /(?<![\w.-])(?<!bookreader\/)bookreader\.(css|html|js|\*)/;
 const ESTE_TESTE = 'scripts/ci/test_bookreader_na_pasta.js';
 
 for (const nome of NOMES) {

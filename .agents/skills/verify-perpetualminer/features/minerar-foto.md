@@ -15,7 +15,7 @@
 ## How to get to it (user POV)
 
 - Panel › Frases › **Minerar frases** menu › **Foto** (opens a new tab), or the **Foto ↗** button beside the tabs of the Colar/Arquivo modal.
-- Open `chrome-extension://<id>/bookreader.html` (every recipe below does).
+- Open `chrome-extension://<id>/bookreader/bookreader.html` (every recipe below does).
 - Needs a Gemini key (Configurações › Chave do Gemini, or Boas-vindas step 6).
 
 ## Driving it with the Playwright e2e harness
@@ -26,7 +26,7 @@ Preconditions:
 
 - **One photo, read and mine (`foto-read-one`, `foto-mine`, `foto-book`).** Run `drive.sh foto-uma minerar-foto.spec -g "uma foto: prévia, leitura"`. Observable: after typing `Atomic Habits` in the `Livro` field and uploading `pagina.png`, the preview text `Confira se as marcações aparecem na foto` shows and Gemini was not called yet; `Ler marcações` leaves the item `3 frases`, three checked checkboxes named by their text, button `Minerar 3 frases`; the Gemini fake saw the key `chave-de-teste` in the `x-goog-api-key` header; clicking it shows toast `3 frases mineradas`, and `frases()` has 3 entries with `contexto { fonte: 'livro', titulo: 'Atomic Habits', detalhe: '' }`, `idioma 'Inglês'`. Evidence: `c1-foto-minerada.png`, `c1-foto-minerada.json`.
 - **The key is in the header, not the URL (`foto-read-one`).** `drive.sh foto-chave minerar-foto-chave.spec`. Observable: one Gemini call whose `chave` is `chave-de-teste` and whose `url` is the bare `…gemini-3-flash-preview:generateContent` (no `?key=`), the three phrases mined, `geminiApiKey` unchanged.
-- **Entry from the panel.** `drive.sh foto-menu painel-minerar-frases.spec -g "Foto abre Minerar de uma foto numa aba nova"` and `-g "Foto ↗, ao lado das abas"`. Observable: a new tab at `…/bookreader.html`, the menu or modal closed.
+- **Entry from the panel.** `drive.sh foto-menu painel-minerar-frases.spec -g "Foto abre Minerar de uma foto numa aba nova"` and `-g "Foto ↗, ao lado das abas"`. Observable: a new tab at `…/bookreader/bookreader.html`, the menu or modal closed.
 - **Edit and select (`foto-edit-select`).** `-g "a frase editada na lista"` (the edited text is what is stored) and `-g "Selecionar todas” marca e desmarca"` (tri-state, button counts only the checked).
 - **Book title (`foto-book`).** `-g "o Livro digitado volta preenchido"` and `-g "com o Livro em branco"` (Título `Físico/Livro`).
 - **Several photos (`foto-read-many`).** `-g "várias fotos pulam a prévia"`.

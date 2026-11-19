@@ -1270,7 +1270,7 @@ function configurarMinerarFrases() {
   }
   document.getElementById('btn-minerar-foto').addEventListener('click', () => {
     modalDeMinerar?.fechar();
-    abrirMinerarDeUmaFoto();
+    abrirFoto();
   });
 
   const campo = document.getElementById('minerar-frases');
@@ -1335,12 +1335,12 @@ function aoTeclarNoMenuDeMinerar(e) {
 }
 
 function escolherModoDeMinerar(modo) {
-  if (modo === 'foto') abrirMinerarDeUmaFoto();
+  if (modo === 'foto') abrirFoto();
   else                 abrirMinerarFrases(modo);
 }
 
-function abrirMinerarDeUmaFoto() {
-  chrome.tabs.create({ url: 'bookreader/bookreader.html' });
+function abrirFoto() {
+  chrome.tabs.create({ url: chrome.runtime.getURL('bookreader/bookreader.html') });
 }
 
 function abrirMinerarFrases(aba) {
