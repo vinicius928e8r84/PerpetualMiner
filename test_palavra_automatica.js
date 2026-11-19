@@ -457,6 +457,28 @@ async function saidaAtual() {
   return JSON.parse(JSON.stringify(saida));
 }
 
+// Depois da mudança, a função pura dá a mesma saída sem passar pelo service worker.
+const plano = valor => JSON.parse(JSON.stringify(valor));
+
+async function escolherDireto() {
+  const { PalavraAutomatica } = carregarBackground({}).PerpetualMiner;
+  if (!PalavraAutomatica) return;
+  const contexto = carregarBackground({});
+  const vocab = lang => contexto.autoVocabularyFromCache(VOCABULARIOS[lang]);
+  for (const [texto, saidas] of ESPERADO.en) {
+    assert.deepStrictEqual(plano(PalavraAutomatica.escolher(texto, 'en', vocab('en'), { limit: 2, requireVocabulary: true })), saidas.limite2, texto);
+    assert.deepStrictEqual(plano(PalavraAutomatica.escolher(texto, 'en', vocab('en'), { limit: 1 })), saidas.limite1, texto);
+  }
+  for (const [texto, saidas] of ESPERADO.ru) {
+    assert.deepStrictEqual(plano(PalavraAutomatica.escolher(texto, 'ru', vocab('ru'), {})), saidas.limite1, texto);
+    assert.deepStrictEqual(plano(PalavraAutomatica.escolher(texto, 'ru', vocab('ru'), { limit: 2 })), saidas.limite2, texto);
+  }
+  for (const [texto, lang, avaliacao] of ESPERADO.avaliar) {
+    const completo = AVALIAR.find(([t]) => t.slice(0, 40) === texto)[0];
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(await PalavraAutomatica.avaliar(completo, lang, vocab(lang)))), avaliacao, texto);
+  }
+}
+
 async function run() {
   const atual = await saidaAtual();
   if (process.env.PALAVRA_GRAVAR) {
@@ -464,6 +486,7 @@ async function run() {
     return;
   }
   assert.deepStrictEqual(atual, ESPERADO, 'a escolha da Palavra automática mudou');
+  await escolherDireto();
   console.log('Palavra automática: a escolha fixada continua igual.');
 }
 
