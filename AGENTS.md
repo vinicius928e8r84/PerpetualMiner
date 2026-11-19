@@ -6,7 +6,7 @@ A Chrome extension (Manifest V3, plain JavaScript, no build) plus the Conexão c
 
 - **Files:** the role of every root file and every `lib/` module is in the tables of `docs/arquivos/` (read on demand); a new file gets its row there, not here.
 - **Architecture:** data flow, panel shell, sync and permissions: `docs/arquitetura.md`; the storage keys: `docs/armazenamento.md`; testing the extension: `docs/testes.md`.
-- **Design specs and prototypes:** `docs/design/README.md` (index); domain glossary: `glossary.md`.
+- **Design specs and prototypes:** `docs/design/README.md` (index); domain glossary: `docs/glossary.md`.
 - **Veio identity:** `veio/README.md`. **Envio state machine:** `complemento/envio.py`'s docstring. **Engine:** `engine/CLAUDE.md`. **Device and store tooling:** `scripts/`, `docs/instalar-extensao.md`, `docs/publicar-chrome-web-store.md`.
 - **Tests:** `e2e/` (see `docs/testes.md`), `testes/test_*.js`, `complemento/test_*.py`, `engine/test_*.py`.
 - `preview/` only copies files into `preview/dist`; never edit an extension file to make the preview work.
@@ -14,7 +14,7 @@ A Chrome extension (Manifest V3, plain JavaScript, no build) plus the Conexão c
 
 ## Standards
 
-What the reviewer enforces (Voice catalog copy, Veio tokens, base components, storage writes, tests): `CODING_STANDARDS.md`.
+What the reviewer enforces (Voice catalog copy, Veio tokens, base components, storage writes, tests): `docs/CODING_STANDARDS.md`.
 
 ## Commands
 
@@ -36,7 +36,7 @@ The Conexão keeps its data in the add-on's `user_files` (`complemento/pasta_de_
 
 `node scripts/regras/verificar.js` checks what a script can see, the same in CI; how its baseline and line exceptions work: `--help`.
 
-| Rule (`CODING_STANDARDS.md`) | Enforced by |
+| Rule (`docs/CODING_STANDARDS.md`) | Enforced by |
 |---|---|
 | 1 Voice catalog | review; `e2e/tests/catalogo-da-voz.spec.js` |
 | 2 Veio tokens | `tokens-veio` |
@@ -54,7 +54,7 @@ The Conexão keeps its data in the add-on's `user_files` (`complemento/pasta_de_
 
 A PR that changes a user-facing file (`popup.*`, `painel*`, `manifest.json`, `complemento/servidor.py`, …) also needs `.agents/skills/verify-perpetualminer/features/` updated or "feature map unchanged" in its body: the `Mapa de features` step of `.github/workflows/regras.yml` (PRs only).
 
-When the same correction comes up twice, add its rule to `CODING_STANDARDS.md` and this table, enforced at the highest level that works.
+When the same correction comes up twice, add its rule to `docs/CODING_STANDARDS.md` and this table, enforced at the highest level that works.
 
 ## Agent skills
 
@@ -72,7 +72,7 @@ The five default labels: `needs-triage`, `needs-info`, `ready-for-agent`, `ready
 
 ### Domain docs
 
-Single-context: `glossary.md` at the root; `docs/adr/` does not exist yet (created with the first recorded decision). See `docs/agents/domain.md`.
+Single-context: `docs/glossary.md`; `docs/adr/` does not exist yet (created with the first recorded decision). See `docs/agents/domain.md`.
 
 ## Maintaining this file
 

@@ -8,7 +8,7 @@ const id = 'tokens-veio';
 const conserto = 'Use um token `var(--veio-…)` de veio/tokens.css (cores: --veio-bg, --veio-text, --veio-accent…; '
   + 'letra: --veio-tam-*; raio: --veio-raio-*; tempo: --veio-transicao, --veio-destaque…). '
   + 'Um valor que ainda não existe vira token novo em veio/tokens.css, registrado no veio/README.md. '
-  + 'As únicas exceções são as de veio/README.md § Como usar (CODING_STANDARDS.md regra 2).';
+  + 'As únicas exceções são as de veio/README.md § Como usar (docs/CODING_STANDARDS.md regra 2).';
 
 function seAplica(arquivo) {
   if (arquivo === 'veio/tokens.css') return false;
