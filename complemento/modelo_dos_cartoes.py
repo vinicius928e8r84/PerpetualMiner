@@ -89,14 +89,15 @@ class ModeloDosCartoes:
         return oferta[0] if oferta else None
 
     def conta(self):
-        """(quem paga, o que ela oferece): `plano` com o login, `chave` com a chave, `None` e `[]` sem nenhum dos dois, ou com o login
-        acabado (ninguém paga até a pessoa escolher)."""
+        """(quem paga, o que ela oferece): quem paga o texto pela tabela (`quem_paga`, a mesma da porta da IA dos cartões): `plano` com o
+        login, `chave` com a chave, `None` e `[]` quando ninguém paga (sem nenhum dos dois, ou com o login acabado, até a pessoa escolher)."""
         try:
-            token = self._login.token()
+            chave = self._cofre.ler("openai")
+            quem, _ = quem_paga(*self._login.situacao(), False, bool(chave))
+            token = self._login.token() if quem == PLANO else None
             if token:
                 return PLANO, self.disponiveis(self._login.modelos(token))
-            chave = self._cofre.ler("openai")
-            return (CHAVE, self.da_chave(chave)) if chave else (None, [])
+            return (CHAVE, self.da_chave(chave)) if quem != PARADO and chave else (None, [])
         except (ErroDoPlano, openai_api.ErroDaChave) as erro:
             if getattr(erro, "codigo", None) == SAIU:
                 return None, []
