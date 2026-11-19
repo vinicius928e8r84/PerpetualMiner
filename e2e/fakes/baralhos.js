@@ -79,4 +79,16 @@ function criarBaralhos({ estado, contrato, nomeDoExemploSemBaralho }) {
   return { vocabulario, numerosDosBaralhos };
 }
 
-module.exports = { criarBaralhos };
+const CARTAO = { maduro: { tipo: 2, intervalo: 30 }, recente: { tipo: 2, intervalo: 5 }, novo: { tipo: 0, intervalo: 0 } };
+const POR_SITUACAO = { mature: { maduros: 1 }, recent: { recentes: 1 }, new: { novos: 1 } };
+
+const notasDoVocabulario = palavras => palavras.map(item => {
+  const { word, ...resto } = typeof item === 'string' ? { word: item } : item;
+  const { maduros = 0, recentes = 0, novos = 0 } = resto.maduros || resto.recentes || resto.novos ? resto : POR_SITUACAO[resto.status] || { maduros: 1 };
+  const cartoes = [...Array(maduros).fill(CARTAO.maduro), ...Array(recentes).fill(CARTAO.recente), ...Array(novos).fill(CARTAO.novo)];
+  return { frente: word, verso: '', cartoes };
+});
+
+const colecaoDoVocabulario = baralhos => ({ baralhos: baralhos.map(([nome, palavras]) => ({ nome, notas: notasDoVocabulario(palavras) })) });
+
+module.exports = { criarBaralhos, colecaoDoVocabulario };
