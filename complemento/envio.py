@@ -30,16 +30,17 @@ import threading
 from datetime import datetime
 
 from . import baralhos, custos, voz
-from .audio_do_cartao import FRASE_APAGADA, AudioDoCartao
+from .audio_do_cartao import FRASE_APAGADA
 from .correcao_da_criacao import CorrecaoDaCriacao
 from .envios_dos_custos import EnviosDosCustos
 from .gravacao_de_json import apagar as _apagar, apagar_os_provisorios, avisar_do_que_ficou, gravar_json as _gravar_json
 from .configuracao import OPENVERSE_BASE, VOZ_BASE
-from .imagem_do_cartao import ImagemDoCartao, ParaOEnvio
+from .imagem_do_cartao import ParaOEnvio
 from .limite_do_plano import LIMITE_DO_PLANO, LimiteDoPlano, espera_pelo_plano
 from .login_do_chatgpt import RECUSOU, SAIU
 from .modelo_dos_cartoes import PARADO
 from .palavras_do_cartao import com_as_palavras_fixas, esquecer, fixar_na_entrada, quantos_cartoes
+from .motor_do_cartao import Cartao, MotorDoCartao
 from .motor_do_envio import configuracao_do_motor, motor_do_complemento
 from .paradas_do_envio import Apagado, Interrompido  # noqa: F401  (`envio.Interrompido`)
 from .tipo_do_envio import TipoDoEnvio
@@ -336,8 +337,8 @@ def resolver(pedido, estado):
     return status, no_anki, falharam, duplicadas
 
 
-class Trabalho(AudioDoCartao, ImagemDoCartao, CorrecaoDaCriacao, LimiteDoPlano, TipoDoEnvio):
-    """Faz um Envio: confere o tipo de nota e, Cartão a Cartão, acha a nota no Anki, gera o texto, o áudio e a imagem e grava a nota."""
+class Trabalho(CorrecaoDaCriacao, LimiteDoPlano, TipoDoEnvio):
+    """Faz um Envio: confere o tipo de nota e, Cartão a Cartão, acha a nota no Anki, gera o texto, monta a nota e a grava."""
 
     def __init__(self, fila, colecao, ia, logger, openai_base, parar, espera_do_anki=2.0, esperas_da_openai=(2, 8, 30),
                  voz_base=VOZ_BASE, openverse_base=OPENVERSE_BASE, adaptador_de_imagem=None, espera_do_plano=300):
@@ -346,13 +347,11 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, CorrecaoDaCriacao, LimiteDoPlano, 
         self.motor = fila.motor
         self.colecao = colecao
         self.logger = logger
-        self.openai_base = openai_base
-        self.voz_base = voz_base
-        self.openverse_base = openverse_base
-        self.adaptador_de_imagem = adaptador_de_imagem
         self.parar = parar
         self.espera_do_anki = espera_do_anki
         self.esperas_da_openai = tuple(esperas_da_openai)
+        self.motor_do_cartao = MotorDoCartao(self.motor, logger, fila.tranca, parar, openai_base, voz_base, openverse_base,
+            adaptador_de_imagem, esperas_da_openai)
 
     def _dormir(self, segundos):
         if self.parar.wait(segundos):
@@ -521,16 +520,16 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, CorrecaoDaCriacao, LimiteDoPlano, 
         lang, baralho, tipo = pedido["lang"], pedido["deckName"], config["anki"]["note_type"]
         with open(arquivo, encoding="utf-8") as texto:
             conteudo = texto.read()
+        linha = self.fila.linha_do_cartao(job_id, int(cartao_id.rsplit("-", 1)[0]))
+        if linha is None:
+            return self._cartao(job_id, cartao_id, status=FALHOU, error=FRASE_APAGADA)
+        do_motor = Cartao(cartao_id, guid, linha, pedido, config, self.fila.estado(job_id).get("usingKey", False), job_id)
         try:
-            arquivos, da_frase, da_palavra, palavra = self._o_audio(job_id, pedido, config, cartao_id, guid, conteudo)
+            nota, arquivos = self.motor_do_cartao.montar(do_motor, conteudo, self.ia, lambda etapa: self._etapa(job_id, etapa))
         except voz.ErroDaVoz as erro:
             return self._cartao(job_id, cartao_id, status=FALHOU, error=erro.codigo)
-        imagem, da_imagem = self._a_imagem(job_id, pedido, config, cartao_id, guid, conteudo)
-        arquivos.update(imagem)
         if self.fila.estado(job_id).get("wiped"):
             raise Apagado()
-        nota = self.motor.nota_do_cartao.campos_da_nota(
-            conteudo, lang, nivel=pedido.get("nivel"), palavra=palavra, audio_da_frase=da_frase, audio_da_palavra=da_palavra, imagem=da_imagem)
         frentes = (nota["campo_da_frente"],) + self.motor.estilos.nomes_da_frente_de_antes()
         tipo, frentes, nota = self._a_nota_no_tipo(pedido, tipo, frentes, nota)
         self._etapa(job_id, "send_to_anki")
