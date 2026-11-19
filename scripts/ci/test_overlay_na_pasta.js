@@ -7,7 +7,7 @@ const { execFileSync } = require('child_process');
 
 const RAIZ = path.join(__dirname, '..', '..');
 const NOMES = ['overlay.css', 'overlay.js'];
-const ANTIGO = /(?<![\w./\\-])overlay\.(css|js)\b/;
+const ANTIGO = /(?<![\w.-])(?<!overlay\/)overlay\.(css|js|\*)/;
 const ESTE_TESTE = 'scripts/ci/test_overlay_na_pasta.js';
 
 for (const nome of NOMES) {
