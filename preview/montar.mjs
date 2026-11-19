@@ -17,7 +17,7 @@ require('../lib/arquivos-da-extensao.js');
 const { arquivosDaExtensao } = globalThis.PerpetualMiner;
 
 const TELAS = [
-  { arquivo: 'popup.html', titulo: 'Popup', largura: '340 px' },
+  { arquivo: 'popup/popup.html', titulo: 'Popup', largura: '340 px' },
   { arquivo: 'painel.html', titulo: 'Painel', largura: 'tela cheia' },
   { arquivo: 'bookreader/bookreader.html', titulo: 'Minerar de uma foto', largura: 'tela cheia' },
 ];
