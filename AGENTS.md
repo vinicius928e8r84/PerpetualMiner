@@ -44,7 +44,7 @@ The Conexão keeps its data in the add-on's `user_files` (`complemento/pasta_de_
 | 4 Page text as text | `html-cru`; `e2e/tests/texto-literal.spec.js` |
 | 5 Language | `idioma-solto` |
 | 6 True status | review |
-| 7 Storage writes | `gravacao-de-frases` (new write sites); a stale copy in an existing one: review |
+| 7 Storage writes | `gravacao-de-frases` (any write of `frases` outside `lib/historico.js`) |
 | 8 e2e tests | `e2e-funcao-interna` (unnamed exceptions; direct internals only, the stored state is the next rule); `e2e-estado-final` (a test that acts reads what was stored after acting and compares it); `relogio-fora-da-fixture` (the test clock is set up only by the `relogioParado` fixture); screen check per variant: review |
 | 9 Python tests | `teste-le-codigo`; `versoes-publicadas` (a `VERSAO` already in `complemento/versoes.json` on the base keeps its hash; a PR does not touch `VERSAO`, `versoes.json` or the `.ankiaddon`: the version is given at the merge by `complemento/versao_no_merge.py`) |
 | 12 Every test runs in CI | `testes-no-portao` |
