@@ -336,13 +336,14 @@ def resolver(pedido, estado):
     return status, no_anki, falharam, duplicadas
 
 
-class Trabalho(CorrecaoDaCriacao, TipoDoEnvio):
+class Trabalho:
     """Faz um Envio: confere o tipo de nota e, Cartão a Cartão, acha a nota no Anki, gera o texto, monta a nota e a grava."""
 
     def __init__(self, fila, colecao, ia, logger, openai_base, parar, espera_do_anki=2.0, esperas_da_openai=(2, 8, 30),
                  voz_base=VOZ_BASE, openverse_base=OPENVERSE_BASE, adaptador_de_imagem=None, espera_do_plano=300, teto=None, espera_do_teto=60):
-        self.fila, self.ia, self.teto = fila, ia, teto
-        self.espera_do_teto, self.espera_do_plano = espera_do_teto, espera_do_plano
+        self.fila, self.ia = fila, ia
+        self.correcao = CorrecaoDaCriacao(fila, colecao, fila.motor, logger)
+        self.da_porta = dict(teto=teto, espera_do_teto=espera_do_teto, espera_do_plano=espera_do_plano)
         self.motor = fila.motor
         self.colecao = colecao
         self.logger = logger
@@ -354,9 +355,6 @@ class Trabalho(CorrecaoDaCriacao, TipoDoEnvio):
     def _dormir(self, segundos):
         if self.parar.wait(segundos):
             raise Interrompido()
-
-    def _dizer_a_espera(self, job_id, espera):
-        dizer_a_espera(self.fila, job_id, espera)
 
     def _etapa(self, job_id, etapa, progress=None, concluida=False):
         def mudanca(estado):
@@ -379,7 +377,7 @@ class Trabalho(CorrecaoDaCriacao, TipoDoEnvio):
                     esperando_desde = self.fila.estado(job_id).get("stage")
                     self.logger.info("Envio %s: esperando o Anki (%s)", job_id, motivo)
                     self._etapa(job_id, "wait_anki")
-                self._dizer_a_espera(job_id, baralhos.espera_pelo_perfil(motivo))
+                dizer_a_espera(self.fila, job_id, baralhos.espera_pelo_perfil(motivo))
                 if str(motivo) == "collection_not_open":
                     self._entrar_no_perfil(job_id)
                 self._dormir(self.espera_do_anki)
@@ -387,7 +385,7 @@ class Trabalho(CorrecaoDaCriacao, TipoDoEnvio):
                     raise Apagado()
                 continue
             if esperando_desde is not None:
-                self._dizer_a_espera(job_id, None)
+                dizer_a_espera(self.fila, job_id, None)
             if esperando_desde not in (None, QUEUED, "wait_anki"):
                 self._etapa(job_id, esperando_desde)
             return resultado
@@ -427,19 +425,19 @@ class Trabalho(CorrecaoDaCriacao, TipoDoEnvio):
             return
         config = configuracao_do_motor(self.motor, self.fila, pedido)
         try:
-            nome, serve = self._o_tipo_do_envio(job_id, pedido)
+            tipo = TipoDoEnvio.conferir(self.colecao, pedido, lambda leitura: self._com_a_colecao(job_id, leitura))
         except Apagado:
             return
-        if not serve:
-            self.logger.warning("Envio %s: o tipo de nota %r não tem os campos do Cartão", job_id, nome)
+        if not tipo.serve:
+            self.logger.warning("Envio %s: o tipo de nota %r não tem os campos do Cartão", job_id, tipo.nome)
             return self._terminar(job_id, pedido, SEM_TIPO_DE_NOTA)
-        ia = IaDoEnvio(self.ia, EsperaDoEnvio(self.fila, job_id, self.parar), self.logger, self.teto, self.espera_do_teto, self.espera_do_plano)
+        ia = IaDoEnvio(self.ia, EsperaDoEnvio(self.fila, job_id, self.parar), self.logger, **self.da_porta)
         try:
-            self._os_cartoes(job_id, pedido, config, ia)
+            self._os_cartoes(job_id, pedido, config, ia, tipo)
         except Apagado:
             self.logger.info("Envio %s: parou, as Frases foram apagadas", job_id)
 
-    def _os_cartoes(self, job_id, pedido, config, ia):
+    def _os_cartoes(self, job_id, pedido, config, ia, tipo):
         parada = None
         total = len(self.fila.estado(job_id)["cards"])
         for cartao_id in list(self.fila.estado(job_id)["cards"]):
@@ -452,12 +450,12 @@ class Trabalho(CorrecaoDaCriacao, TipoDoEnvio):
                 continue
             feitos = sum(1 for c in estado["cards"].values() if c["status"] in NO_ANKI)
             self._etapa(job_id, "generate_cards", progress={"done": feitos, "total": total})
-            parada = self._um_cartao(job_id, pedido, config, ia, cartao_id, cartao, parada) or parada
-        self._corrigir_as_frases(job_id, pedido, config, parada)
+            parada = self._um_cartao(job_id, pedido, config, ia, tipo, cartao_id, cartao, parada) or parada
+        self.correcao.corrigir(job_id, pedido, config, ia, parada)
         self._etapa(job_id, "send_to_anki", concluida=True)
         self._terminar(job_id, pedido, parada)
 
-    def _um_cartao(self, job_id, pedido, config, ia, cartao_id, cartao, parada):
+    def _um_cartao(self, job_id, pedido, config, ia, tipo, cartao_id, cartao, parada):
         """Faz um Cartão: o `guid` antes de tudo (a nota já está: nada se gera nem se paga), depois o texto e a nota.
         Devolve o código que para o Envio, ou None."""
         guid = guid_do_cartao(job_id, cartao_id)
@@ -482,40 +480,40 @@ class Trabalho(CorrecaoDaCriacao, TipoDoEnvio):
                 with self.fila.tranca:
                     _apagar(arquivo)
                 return None
-            self._dizer_a_espera(job_id, None)
+            dizer_a_espera(self.fila, job_id, None)
             if falha:
                 self.logger.warning("Envio %s: o texto do Cartão %s não veio (%s)", job_id, cartao_id, falha)
                 self._cartao(job_id, cartao_id, status=FALHOU, error=falha)
                 return falha if falha in PARA_O_ENVIO else None
             self._cartao(job_id, cartao_id, status=TEXTO, error=None)
         try:
-            self._gravar_a_nota(job_id, pedido, config, ia, cartao_id, guid, arquivo)
+            self._gravar_a_nota(job_id, pedido, config, ia, tipo, cartao_id, guid, arquivo)
         except ParaOEnvio as parada:
             self._cartao(job_id, cartao_id, status=FALHOU, error=parada.codigo)
             return parada.codigo
         return None
 
-    def _gravar_a_nota(self, job_id, pedido, config, ia, cartao_id, guid, arquivo):
+    def _gravar_a_nota(self, job_id, pedido, config, ia, tipo, cartao_id, guid, arquivo):
         envio = self.motor.send_to_anki
-        lang, baralho, tipo = pedido["lang"], pedido["deckName"], config["anki"]["note_type"]
+        lang, baralho = pedido["lang"], pedido["deckName"]
         with open(arquivo, encoding="utf-8") as texto:
             conteudo = texto.read()
         linha = self.fila.linha_do_cartao(job_id, int(cartao_id.rsplit("-", 1)[0]))
         if linha is None:
             return self._cartao(job_id, cartao_id, status=FALHOU, error=FRASE_APAGADA)
         try:
-            do_motor = Cartao(cartao_id, guid, linha, pedido, config, job_id)
-            nota, arquivos = self.motor_do_cartao.montar(do_motor, conteudo, ia, lambda etapa: self._etapa(job_id, etapa))
+            cartao = Cartao(cartao_id, guid, linha, pedido, config, job_id)
+            nota, arquivos = self.motor_do_cartao.montar(cartao, conteudo, ia, lambda etapa: self._etapa(job_id, etapa))
         except voz.ErroDaVoz as erro:
             return self._cartao(job_id, cartao_id, status=FALHOU, error=erro.codigo)
         if self.fila.estado(job_id).get("wiped"):
             raise Apagado()
         frentes = (nota["campo_da_frente"],) + self.motor.estilos.nomes_da_frente_de_antes()
-        tipo, frentes, nota = self._a_nota_no_tipo(pedido, tipo, frentes, nota)
+        nome, frentes, nota = tipo.nota_no_tipo(frentes, nota)
         self._etapa(job_id, "send_to_anki")
         try:
             resultado = self._com_a_colecao(job_id, lambda: self.colecao.gravar_cartao(
-                baralho, tipo, nota["campos"], nota["etiquetas"] + [ETIQUETA_DE_TESTE] * bool(pedido.get("teste")), guid,
+                baralho, nome, nota["campos"], nota["etiquetas"] + [ETIQUETA_DE_TESTE] * bool(pedido.get("teste")), guid,
                 frentes, nota["frente_normalizada"], lambda valor: envio.normalize_front(valor, lang), arquivos))
         except baralhos.TipoDeNotaAusente:
             return self._cartao(job_id, cartao_id, status=FALHOU, error=SEM_TIPO_DE_NOTA)
