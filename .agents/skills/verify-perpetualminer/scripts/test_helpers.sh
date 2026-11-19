@@ -173,6 +173,8 @@ mapa true; muda bookreader/bookreader.js
 confere && falhou "ratchet passed a bookreader/bookreader.js change with nothing" || passou "ratchet fails a bookreader/bookreader.js change"
 mapa true; muda bookreader/bookreader.html
 confere && falhou "ratchet passed a bookreader/bookreader.html change with nothing" || passou "ratchet fails a bookreader/bookreader.html change"
+mapa true; muda overlay/overlay.js
+confere && falhou "ratchet passed an overlay/overlay.js change with nothing" || passou "ratchet fails an overlay/overlay.js change"
 mapa true; muda lib/voz/outro.js e2e/pages/player.html
 confere && passou "ratchet ignores other lib/ files and html below the root" || falhou "ratchet flagged lib/voz/outro.js or e2e/pages/player.html"
 (cd "$repo" && "$AQUI/mapa-de-features.sh" nao-existe >/dev/null 2>&1); [ $? -eq 2 ] && passou "ratchet refuses a base ref that does not exist" || falhou "ratchet accepted an unknown base ref"
