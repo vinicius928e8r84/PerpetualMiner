@@ -6,7 +6,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-require('./lib/arquivos-da-extensao.js');
+require('../lib/arquivos-da-extensao.js');
 const { arquivosDaExtensao } = globalThis.PerpetualMiner;
 
 const saida = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-preview-'));

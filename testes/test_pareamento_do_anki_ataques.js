@@ -2,7 +2,7 @@
 
 const assert = require('assert');
 
-const { ENDERECO, comoValores, criarConexao, resposta, carregarAPagina, lerJson, igual, parear, parearComChaveGuardada } = require('./e2e/pagina-de-mentira-do-pareamento');
+const { ENDERECO, comoValores, criarConexao, resposta, carregarAPagina, lerJson, igual, parear, parearComChaveGuardada } = require('../e2e/pagina-de-mentira-do-pareamento');
 
 async function main() {
   {

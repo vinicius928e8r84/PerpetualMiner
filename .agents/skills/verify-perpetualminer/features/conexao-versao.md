@@ -19,7 +19,7 @@ The Conexão com o Anki updates itself in silence through AnkiWeb (`complemento/
 Preconditions: `doctor.sh` green. `fakes.anki.atualizacao.definir({ versao, versaoNova })` sets the running and AnkiWeb versions; `fakes.anki.definirAtualizacao({ atualizacao: 'instalada' | 'falhou' | 'atualizada', ankiweb: 'com_versao_nova' | 'sem_versao_nova' | 'recusa' })` the stored state and how AnkiWeb answers; `fakes.anki.atualizacao.reinicios()`.
 
 - **The states.** `drive.sh conexao-versao conexao-versao.spec`. Observable: `#painel-conexao-versao`, `pm_conexao_atualizada_vista`, `fakes.abridor.pedidos()`.
-- **The state machine, no browser.** `node test_aviso_da_versao.js`: every state of `AvisoDaVersao` (`painel-conexao-versao-estado.js`), each event it accepts and where it leads.
+- **The state machine, no browser.** `node testes/test_aviso_da_versao.js`: every state of `AvisoDaVersao` (`painel-conexao-versao-estado.js`), each event it accepts and where it leads.
 - **The add-on side.** `python3.9 complemento/test_atualizacao.py`: the AnkiWeb fake (query by id, install, the mark, the Anki that changed inside).
 
 ## Gotchas

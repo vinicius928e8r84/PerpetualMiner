@@ -8,7 +8,7 @@ A Chrome extension (Manifest V3, plain JavaScript, no build) plus the Conexão c
 - **Architecture:** data flow, panel shell, sync and permissions: `docs/arquitetura.md`; the storage keys: `docs/armazenamento.md`; testing the extension: `docs/testes.md`.
 - **Design specs and prototypes:** `docs/design/README.md` (index); domain glossary: `glossary.md`.
 - **Veio identity:** `veio/README.md`. **Envio state machine:** `complemento/envio.py`'s docstring. **Engine:** `engine/CLAUDE.md`. **Device and store tooling:** `scripts/`, `docs/instalar-extensao.md`, `docs/publicar-chrome-web-store.md`.
-- **Tests:** `e2e/` (see `docs/testes.md`), root `test_*.js`, `complemento/test_*.py`, `engine/test_*.py`.
+- **Tests:** `e2e/` (see `docs/testes.md`), `testes/test_*.js`, `complemento/test_*.py`, `engine/test_*.py`.
 - `preview/` only copies files into `preview/dist`; never edit an extension file to make the preview work.
 - **Conexão com o Anki as an Anki add-on:** `complemento/` (standard library only, Python 3.9 and 3.13); its HTTP contract with the extension is `complemento/contrato/exemplos.json`, and `complemento/contrato/LEIA-ME.md` says how a new route enters.
 
@@ -48,9 +48,9 @@ The Conexão keeps its data in the add-on's `user_files` (`complemento/pasta_de_
 | 8 e2e tests | `e2e-funcao-interna` (unnamed exceptions; direct internals only, the stored state is the next rule); `e2e-estado-final` (a test that acts reads what was stored after acting and compares it); `relogio-fora-da-fixture` (the test clock is set up only by the `relogioParado` fixture); screen check per variant: review |
 | 9 Python tests | `teste-le-codigo`; `versoes-publicadas` (a `VERSAO` already in `complemento/versoes.json` on the base keeps its hash; a PR does not touch `VERSAO`, `versoes.json` or the `.ankiaddon`: the version is given at the merge by `complemento/versao_no_merge.py`) |
 | 12 Every test runs in CI | `testes-no-portao` |
-| 13 The contract has every request and answer | `contrato-fechado` (a `fetch` straight to the Conexão); `test_contrato_fechado.js` and the `tearDownModule` of `complemento/test_harness.py` (an example for each request the extension builds and each status the server answers) |
+| 13 The contract has every request and answer | `contrato-fechado` (a `fetch` straight to the Conexão); `testes/test_contrato_fechado.js` and the `tearDownModule` of `complemento/test_harness.py` (an example for each request the extension builds and each status the server answers) |
 | 10 Visual references | review; `aprovacao-visual` (a reference PNG outside a `test.fixme` needs its entry in `e2e/aprovados-visuais.json`) |
-| 11 New files | review; `indice-de-arquivos` (a root, `lib/`, `veio/` or `scripts/` file needs its row in `docs/arquivos/`); `test_empacotar.js` |
+| 11 New files | review; `indice-de-arquivos` (a root, `lib/`, `veio/` or `scripts/` file needs its row in `docs/arquivos/`); `testes/test_empacotar.js` |
 
 A PR that changes a user-facing file (`popup.*`, `painel*`, `manifest.json`, `complemento/servidor.py`, …) also needs `.agents/skills/verify-perpetualminer/features/` updated or "feature map unchanged" in its body: the `Mapa de features` step of `.github/workflows/regras.yml` (PRs only).
 

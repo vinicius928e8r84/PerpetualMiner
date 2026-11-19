@@ -152,16 +152,33 @@ function tamanhosDoIndice(raiz) {
   return entradas.map((e, i) => ({ caminho: e.caminho, tamanho: tamanhos[i], inicio: () => lerBlob(raiz, e.oid) }));
 }
 
+const SIMILARIDADE_DA_RENOMEACAO = '90%';
+
+function renomeacoes(raiz, desde = null) {
+  const saida = git(raiz, desde
+    ? ['diff', '--name-status', '-z', `-M${SIMILARIDADE_DA_RENOMEACAO}`, '--diff-filter=R', desde, 'HEAD']
+    : ['diff', '--cached', '--name-status', '-z', `-M${SIMILARIDADE_DA_RENOMEACAO}`, '--diff-filter=R']);
+  const pedacos = saida.split('\0');
+  const velhoDe = {};
+  for (let i = 0; i + 2 < pedacos.length; i += 3) velhoDe[pedacos[i + 2]] = pedacos[i + 1];
+  return velhoDe;
+}
+
 const NO_GANCHO = { nova: '', velha: 'HEAD', desde: null, titulo: 'Commit barrado' };
 
 function conferirPreparados(raiz, config, problemasDaConfiguracao, comparacao = NO_GANCHO) {
   const preparados = arquivosPreparados(raiz, comparacao.desde);
   const baseDoIndice = lerLinhaDeBase(raiz, config, comparacao.nova) || {};
-  const baseDoHead = lerLinhaDeBaseDoHead(raiz, config, comparacao.velha);
+  const baseDoHeadPuro = lerLinhaDeBaseDoHead(raiz, config, comparacao.velha);
+  const velhoDe = renomeacoes(raiz, comparacao.desde);
+  const baseDoHead = baseDoHeadPuro && { ...baseDoHeadPuro };
+  if (baseDoHead) for (const [novo, velho] of Object.entries(velhoDe)) if (velho in baseDoHead && !(novo in baseDoHead)) baseDoHead[novo] = baseDoHead[velho];
   const consultar = baseDoHead
     ? preparados.map(a => a.caminho).filter(c => c in baseDoIndice)
     : Object.keys(baseDoIndice);
-  const noHead = tamanhosNoHead(raiz, consultar, comparacao.velha);
+  const noHeadDosVelhos = tamanhosNoHead(raiz, consultar.map(c => velhoDe[c] || c), comparacao.velha);
+  const noHead = {};
+  for (const c of consultar) if (noHeadDosVelhos[velhoDe[c] || c] !== undefined) noHead[c] = noHeadDosVelhos[velhoDe[c] || c];
   const afrouxadas = afrouxamentos(baseDoIndice, baseDoHead, noHead, config.limiteDeBytes);
   const linhaDeBase = limitarPeloHead(baseDoIndice, noHead, config.limiteDeBytes);
   const falhas = preparados

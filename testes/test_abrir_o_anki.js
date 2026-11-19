@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-const contrato = require('./complemento/contrato/carregar.js');
+const contrato = require('../complemento/contrato/carregar.js');
 
 const comoValores = async promessa => JSON.parse(JSON.stringify(await promessa));
 
@@ -47,7 +47,7 @@ function carregar({ permissao = true, jaTem = permissao, responder = () => exemp
     ...extras.outros,
   };
   for (const arquivo of arquivos) {
-    vm.runInContext(fs.readFileSync(path.join(__dirname, arquivo), 'utf8'), contexto);
+    vm.runInContext(fs.readFileSync(path.join(__dirname, '..', arquivo), 'utf8'), contexto);
   }
   return { Abridor: contexto.PerpetualMiner.Abridor, AbrirOAnki: contexto.PerpetualMiner.AbrirOAnki, EnvioComOAnkiFechado: contexto.PerpetualMiner.EnvioComOAnkiFechado, chamadas, enviadas, conferencias: () => conferencias };
 }

@@ -7,7 +7,7 @@ const os = require('os');
 const zlib = require('zlib');
 const path = require('path');
 
-const { PASTAS_QUE_NAO_SAO_RUNTIME } = require('./scripts/arquivos-do-pacote.js');
+const { PASTAS_QUE_NAO_SAO_RUNTIME } = require('../scripts/arquivos-do-pacote.js');
 
 const saida = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-pacote-'));
 const versao = JSON.parse(fs.readFileSync('manifest.json', 'utf8')).version;

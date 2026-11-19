@@ -3,9 +3,9 @@
 const assert = require('assert');
 
 globalThis.PerpetualMiner = {};
-require('./lib/pedido-ao-anki.js');
-require('./lib/envio-gravado.js');
-require('./lib/apagar-frases-pendente.js');
+require('../lib/pedido-ao-anki.js');
+require('../lib/envio-gravado.js');
+require('../lib/apagar-frases-pendente.js');
 const { ApagarFrasesPendente, ConversaComOAnki } = globalThis.PerpetualMiner;
 
 const ENDERECO = 'http://127.0.0.1:8766';

@@ -1,6 +1,6 @@
 'use strict';
 
-const { criarSessao, nuvemHttp } = require('./lib/sincronizacao.js');
+const { criarSessao, nuvemHttp } = require('../lib/sincronizacao.js');
 
 const DOCS = 'https://firestore.googleapis.com/v1/projects/perpetualminer-4c219/databases/(default)/documents';
 const RECUSA_DAS_REGRAS = { status: 403, corpo: { error: { status: 'PERMISSION_DENIED', message: 'Missing or insufficient permissions.' } } };

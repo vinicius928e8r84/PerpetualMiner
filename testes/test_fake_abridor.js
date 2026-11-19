@@ -3,8 +3,8 @@
 const assert = require('assert');
 const { spawn } = require('child_process');
 
-const { criarFakeAbridor } = require('./e2e/fakes/abridor');
-const contrato = require('./complemento/contrato/carregar.js');
+const { criarFakeAbridor } = require('../e2e/fakes/abridor');
+const contrato = require('../complemento/contrato/carregar.js');
 
 const ORIGEM = `${contrato.origemDaExtensao}/`;
 

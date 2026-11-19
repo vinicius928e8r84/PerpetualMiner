@@ -14,7 +14,7 @@ Mudar só um lado quebra um teste, que diz o exemplo.
 O contrato também é **fechado**, nos dois sentidos: nenhum pedido nem resposta fica sem exemplo.
 
 - **Os pedidos da extensão**: todo pedido nasce de um construtor de `PerpetualMiner.PedidoAoAnki` (`lib/pedido-ao-anki.js`:
-  `saude`, `comecarOPareamento`, `concluirOPareamento`, `conferirOPareamento`, `baralhos`, `estatisticas`, `vocabulario`, `estadoDoItemDeLogin`, `abrirComOComputador`, `chaveDaOpenAI`, `apagarChaveDaOpenAI`, `estadoDaIA`, `trocarAFrente`, e os do Envio: `criarEnvio`, `ouvirAVoz`, `falarAFrase`, `listarEnvios`, `verEnvio`, `tentarEnvioDeNovo`, `usarAChaveNoEnvio`, `pacoteDeDiagnostico`, `apagarFrasesDosEnvios`, `custosDosEnvios`), e `e2e/variantes-do-pedido-ao-anki.js` os lista. `node test_contrato_fechado.js`
+  `saude`, `comecarOPareamento`, `concluirOPareamento`, `conferirOPareamento`, `baralhos`, `estatisticas`, `vocabulario`, `estadoDoItemDeLogin`, `abrirComOComputador`, `chaveDaOpenAI`, `apagarChaveDaOpenAI`, `estadoDaIA`, `trocarAFrente`, e os do Envio: `criarEnvio`, `ouvirAVoz`, `falarAFrase`, `listarEnvios`, `verEnvio`, `tentarEnvioDeNovo`, `usarAChaveNoEnvio`, `pacoteDeDiagnostico`, `apagarFrasesDosEnvios`, `custosDosEnvios`), e `e2e/variantes-do-pedido-ao-anki.js` os lista. `testes/test_contrato_fechado.js`
   pede ao construtor cada variante e exige um exemplo `daExtensao`
   de cada uma, que o fake do e2e então responde. O nome do Baralho não conta para achar o exemplo; quantos Baralhos, `refresh` e
   `launch` contam. A regra `contrato-fechado` (`node scripts/regras/verificar.js`) acusa um `fetch` direto a uma rota da Conexão.
@@ -68,7 +68,7 @@ O contrato também é **fechado**, nos dois sentidos: nenhum pedido nem resposta
   parada: a fila fica como o exemplo a deixou.
 - `repetivel` e `porque`: todo exemplo `POST` com resposta 2xx (o `200`, e o `201` do Envio criado) é pedido **duas vezes**, e a segunda resposta tem que ser igual à primeira
   (salvo `"<agora>"`) sem mudar nada do que a Conexão guardou (os arquivos de `user_files`, menos o log, e a nuvem). O servidor real
-  (`test_servidor.py`, `test_servidor_repeticao.py`) e o fake do e2e (`test_fake_anki.js`, que repete os exemplos `daExtensao`) seguem a mesma regra. Repetir de
+  (`test_servidor.py`, `test_servidor_repeticao.py`) e o fake do e2e (`testes/test_fake_anki.js`, que repete os exemplos `daExtensao`) seguem a mesma regra. Repetir de
   propósito muda algo? (O pedido leva uma versão que a primeira vez sobe, ou a segunda já não tem o que fazer.) Declare no exemplo
   `"repetivel": false, "porque": "…"`: sem o `porque` o teste falha, e a exceção que, repetida, dá mesmo resposta e mesmo estado também falha
   (está velha: tire-a). Um `POST` novo que muda a resposta ao repetir é um defeito até prova em contrário.
@@ -131,12 +131,12 @@ sem responder, é `503` com o `error` da rota e o `detail` (`collection_not_open
 
 1. Escreva os exemplos dela aqui (o caso feliz, cada erro que a extensão trata e, se muda
    com a situação do Anki, um por `contexto`), **antes** de escrever a rota. Se a extensão a pede, dê-lhe um construtor em
-   `lib/pedido-ao-anki.js` (e as variantes dele em `e2e/variantes-do-pedido-ao-anki.js`): `node test_contrato_fechado.js` exige um exemplo de cada.
+   `lib/pedido-ao-anki.js` (e as variantes dele em `e2e/variantes-do-pedido-ao-anki.js`): `testes/test_contrato_fechado.js` exige um exemplo de cada.
 2. Rode `python3 complemento/test_servidor.py`: o exemplo novo falha até a rota existir
    (`ROTAS` em `servidor.py`).
 3. Rode `cd e2e && npx playwright test contrato-da-conexao`: ele falha até o fake responder.
    O fake responde pelo exemplo (`respostaDoContrato` em `e2e/fakes/resposta-do-contrato.js`; as rotas, uma tabela em `e2e/fakes/anki.js` com um módulo por grupo); só estados novos
-   (um `contexto` novo, uma fila) pedem código no fake; `node test_fake_anki.js` o confere.
+   (um `contexto` novo, uma fila) pedem código no fake; `testes/test_fake_anki.js` o confere.
 
 ## As rotas do Envio (#142)
 
@@ -176,6 +176,6 @@ cada exemplo tem o `contexto` (`anki`: `no_lugar` ou `sumiu`, o Anki no lugar qu
 Chrome entrega e a `resposta` do script. Os três lados leem os mesmos exemplos:
 
 - **o script de verdade**: `complemento/test_abridor.py` roda o `.sh` do Mac com cada exemplo (no Linux, só a CLI do JXA é adaptada para Node, executando o mesmo parser JavaScript; no Mac, `/usr/bin/osascript`), e o `.ps1` do Windows onde houver `pwsh`. A ação é a string principal exata `conferir` ou `abrir`: espaços internos, maiúsculas, ação aninhada e listas voltam `acao_desconhecida` sem abrir nada; os exemplos inválidos são compartilhados entre os dois sistemas;
-- **o fake do e2e**: `e2e/fakes/abridor.js` responde pelos exemplos (`node test_fake_abridor.js` o confere);
-- **a extensão**: cada mensagem nasce de `PerpetualMiner.Abridor` (`lib/abridor.js`), e `node test_contrato_fechado.js` exige um exemplo
+- **o fake do e2e**: `e2e/fakes/abridor.js` responde pelos exemplos (`testes/test_fake_abridor.js` o confere);
+- **a extensão**: cada mensagem nasce de `PerpetualMiner.Abridor` (`lib/abridor.js`), e `testes/test_contrato_fechado.js` exige um exemplo
   `daExtensao` de cada uma de `Abridor.variantes()`. A extensão manda `conferir` (o passo Abrir o Anki sozinho, #147) e `abrir` (o passo Ter o Anki, #146; o Envio com o Anki fechado e o botão Abrir o Anki, #150).

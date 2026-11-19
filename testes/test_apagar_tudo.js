@@ -1,7 +1,7 @@
 'use strict';
 
 const assert = require('assert');
-const { criarSincronizacao } = require('./lib/sincronizacao.js');
+const { criarSincronizacao } = require('../lib/sincronizacao.js');
 
 function areaEmMemoria(dados = {}) {
   return {

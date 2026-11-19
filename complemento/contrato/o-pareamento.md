@@ -32,7 +32,7 @@ HMAC-SHA256(segredo, "pm1\nresposta\n" + sessao + "\n" + nonce + "\n" + status +
 ```
 
 A extensão só entrega a resposta a quem pediu se a prova confere. Os rótulos `pedido`, `resposta` e `servidor` separam os usos. O vetor comum às duas linguagens está em `exemplos-do-pareamento.json`
-(`vetorDeAssinatura`, e `vetorDaRevogacao` para a prova da revogação): `complemento/test_pareamento.py`, `test_pareamento_revogado.py` e `test_pareamento_do_anki.js` os conferem.
+(`vetorDeAssinatura`, e `vetorDaRevogacao` para a prova da revogação): `complemento/test_pareamento.py`, `test_pareamento_revogado.py` e `testes/test_pareamento_do_anki.js` os conferem.
 
 ## As recusas do porteiro
 

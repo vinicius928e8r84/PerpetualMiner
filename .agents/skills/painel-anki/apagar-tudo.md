@@ -1,7 +1,7 @@
 # Apagar tudo and the Envio (`painel-envio.js`, `painel-perigo.js`, `lib/apagar-frases-pendente.js`)
 
 The design, with what is left over, is `docs/design/envio-apagar-tudo.md`. Tests: `e2e/tests/painel-envio-apagar.spec.js` (it also holds the service worker's alarm),
-`test_apagar_frases_pendente.js`, `complemento/test_envio_apagar.py`.
+`testes/test_apagar_frases_pendente.js`, `complemento/test_envio_apagar.py`.
 
 - **The panel ends the tracking.** `Envio.apagarTudo()` (called by `painel.js` after the Zona de perigo confirmed and the Conexão answered) closes the
   progress and the summary, forgets the remessa and writes `pm_envio` as `{ envios: [], apagarFrases: true }`: the Frases of those Envios are gone,

@@ -25,9 +25,9 @@ const jaConferidos = {
   'indice-de-arquivos': ['background.js', 'lib/historico.js', 'veio/tema.js', 'scripts/testar.mjs'],
 };
 const deFora = {
-  'html-cru': ['test_sync.js', 'e2e/fixtures.js', 'scripts/testar.mjs', 'conexao/x.js'],
+  'html-cru': ['testes/test_sync.js', 'e2e/fixtures.js', 'scripts/testar.mjs', 'conexao/x.js'],
   'tokens-veio': ['veio/tokens.css', 'e2e/tests/x.css', 'docs/design/x.html'],
-  'indice-de-arquivos': ['test_sync.js', 'lib/voz/catalogo.js', 'veio/fontes/manrope-latin.woff2', 'e2e/fixtures.js', 'AGENTS.md'],
+  'indice-de-arquivos': ['testes/test_sync.js', 'lib/voz/catalogo.js', 'veio/fontes/manrope-latin.woff2', 'e2e/fixtures.js', 'AGENTS.md'],
 };
 for (const [id, arquivos] of Object.entries(jaConferidos)) {
   for (const arquivo of arquivos) assert.strictEqual(regras[id].seAplica(arquivo), true, `${id} confere ${arquivo}`);
@@ -51,7 +51,7 @@ function funcoesAcusadasNumEvaluate(arquivos) {
   return achados.map(achado => arquivos[achado.linha - 1]);
 }
 assert.deepStrictEqual(
-  funcoesAcusadasNumEvaluate(['background.js', 'lib/historico.js', 'lib/voz/textos.js', 'veio/tema.js', 'test_sync.js', 'e2e/fixtures.js', 'conexao/x.js']),
+  funcoesAcusadasNumEvaluate(['background.js', 'lib/historico.js', 'lib/voz/textos.js', 'veio/tema.js', 'testes/test_sync.js', 'e2e/fixtures.js', 'conexao/x.js']),
   ['background.js', 'lib/historico.js', 'lib/voz/textos.js', 'veio/tema.js'],
   'e2e-funcao-interna conhece as funções da raiz e das pastas da extensão, com as subpastas');
 assert.deepStrictEqual(soDocumentacao(['lib/LEIA-ME.md']), false);

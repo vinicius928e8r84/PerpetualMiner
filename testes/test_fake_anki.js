@@ -3,11 +3,11 @@
 const assert = require('assert');
 const http = require('http');
 const { isDeepStrictEqual } = require('util');
-const { criarFakeAnki, exemploDaExtensao, diferencaDoContrato } = require('./e2e/fakes/anki');
-const { criarFakeGoogle } = require('./e2e/fakes/google');
-const { cabecalhosAssinados } = require('./e2e/pareamento-de-teste');
-const { PAGINA_DO_RETORNO } = require('./e2e/fakes/chatgpt');
-const { subirPortaDaConexaoDeTeste, regrasQueTiramAPortaDoComputador } = require('./e2e/fakes/porta-da-conexao');
+const { criarFakeAnki, exemploDaExtensao, diferencaDoContrato } = require('../e2e/fakes/anki');
+const { criarFakeGoogle } = require('../e2e/fakes/google');
+const { cabecalhosAssinados } = require('../e2e/pareamento-de-teste');
+const { PAGINA_DO_RETORNO } = require('../e2e/fakes/chatgpt');
+const { subirPortaDaConexaoDeTeste, regrasQueTiramAPortaDoComputador } = require('../e2e/fakes/porta-da-conexao');
 
 const fake = criarFakeAnki();
 assert.deepStrictEqual(fake.respostaDoContrato('GET', '/health').json.perfil, 'Usuário 1');
@@ -15,7 +15,7 @@ assert.deepStrictEqual(fake.respostaDoContrato('GET', '/health').json.perfil, 'U
 fake.abrirPerfil('Perfil sem exemplo');
 assert.throws(() => fake.respostaDoContrato('GET', '/health'), /não tem exemplo de GET \/health/);
 
-const contrato = require('./complemento/contrato/carregar');
+const contrato = require('../complemento/contrato/carregar');
 
 async function pedirAoFake(fakeDaConexao, metodo, caminho, corpo = null) {
   let entregue = null;

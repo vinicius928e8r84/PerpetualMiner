@@ -48,7 +48,7 @@ const CONSTROI = 1;
   assert(mostrados.size > 100, 'a lista do que o preview mostra veio vazia');
 
   const naoMostrados = [
-    'complemento/servidor.py', 'engine/CLAUDE.md', 'e2e/tests/popup.spec.js', 'e2e/fixtures.js', 'test_voz.js',
+    'complemento/servidor.py', 'engine/CLAUDE.md', 'e2e/tests/popup.spec.js', 'e2e/fixtures.js', 'testes/test_voz.js',
     'scripts/ci/test_ci.js', 'scripts/testes.json', 'docs/arquivos/testes-e-ferramentas.md', 'AGENTS.md', 'glossary.md',
     '.agents/skills/popup/SKILL.md', '.github/workflows/testes.yml',
   ];

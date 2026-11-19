@@ -6,8 +6,8 @@ const path = require('path');
 const vm = require('vm');
 const { isDeepStrictEqual } = require('util');
 
-const { criarFakeAnki, exemploDaExtensao } = require('./e2e/fakes/anki');
-const contrato = require('./complemento/contrato/carregar');
+const { criarFakeAnki, exemploDaExtensao } = require('../e2e/fakes/anki');
+const contrato = require('../complemento/contrato/carregar');
 
 const enviados = [];
 const comoValores = valor => JSON.parse(JSON.stringify(valor)); // os objetos do `vm` têm outro protótipo
@@ -17,8 +17,8 @@ const contexto = vm.createContext({
   TextEncoder, TextDecoder, Response, JSON,
 });
 contexto.globalThis = contexto;
-vm.runInContext(fs.readFileSync(path.join(__dirname, 'lib', 'pedido-ao-anki.js'), 'utf8'), contexto);
-vm.runInContext(fs.readFileSync(path.join(__dirname, 'e2e', 'variantes-do-pedido-ao-anki.js'), 'utf8'), contexto);
+vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'lib', 'pedido-ao-anki.js'), 'utf8'), contexto);
+vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'e2e', 'variantes-do-pedido-ao-anki.js'), 'utf8'), contexto);
 const { PedidoAoAnki, ConversaComOAnki, VariantesDoPedidoAoAnki } = contexto.PerpetualMiner;
 contexto.PerpetualMiner.PareamentoComOAnki = {
   pedirAssinado: async (endereco, pedido, opcoes, enviar) => {
@@ -102,7 +102,7 @@ async function main() {
 
   const doAbridor = vm.createContext({});
   doAbridor.globalThis = doAbridor;
-  vm.runInContext(fs.readFileSync(path.join(__dirname, 'lib', 'abridor.js'), 'utf8'), doAbridor);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'lib', 'abridor.js'), 'utf8'), doAbridor);
   const { Abridor } = doAbridor.PerpetualMiner;
   assert.strictEqual(Abridor.HOST, contrato.abridor.host, 'a extensão chama o host que a Conexão registra');
   const mensagens = Abridor.variantes();

@@ -4,7 +4,7 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 
-const ler = arquivo => fs.readFileSync(path.join(__dirname, arquivo), 'utf8');
+const ler = arquivo => fs.readFileSync(path.join(__dirname, '..', arquivo), 'utf8');
 
 {
   const linhas = ler('painel.html').split('\n');
