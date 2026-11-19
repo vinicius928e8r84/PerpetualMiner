@@ -4,9 +4,7 @@
     "e2e/vitrine/vitrine.html": 2,
     "painel.css": 2
   },
-  "gravacao-de-frases": {
-    "lib/sincronizacao.js": 2
-  },
+  "gravacao-de-frases": {},
   "idioma-solto": {},
   "teste-le-codigo": {},
   "e2e-funcao-interna": {},
