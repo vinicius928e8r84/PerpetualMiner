@@ -155,7 +155,10 @@ function criarRotasDoEnvio({ estado, modelo }) {
   ];
 
   const api = {
-    apagarAsFrases,
+    apagarAsFrases() {
+      apagarAsFrases();
+      paraAFila.push({ apagarFrases: true });
+    },
     definirCustos(lista) {
       estado.custos = lista.map(linhaDeCustos);
     },

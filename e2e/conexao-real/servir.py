@@ -11,6 +11,7 @@ e fala com o fixture por linhas de JSON: ao ficar pronta escreve `{"porta": N}`;
     {"mudar": {"jobId", "state"}}  o estado que o fake deu ao Envio (`moverEnvio`, `concluirEnvio`), gravado pelo portão `Fila.mudar`:
                               uma transição que a máquina não aceita volta `{"erro": ...}`
     {"criar": {...}}          um Envio que chega sem a extensão (`receberEnvio`), pelo `Fila.criar`
+    {"apagarFrases": true}    o Apagar tudo feito por fora do pedido (`apagarAsFrases`), pelo `Fila.apagar_as_frases`
     {"envios": true}          os Envios que a fila guardou, na ordem: `{jobId, lang, corpo (o pedido como as rotas o mostram), createdAt, state}`
     {"estado": true}          responde o que a Conexão guardou: a cópia da chave, os documentos da nuvem, os pedidos à OpenAI,
                               as falas que a voz de mentira ouviu e a pasta de dados (apagada ao fechar)
@@ -100,6 +101,9 @@ def main():
                     responder({"ok": True})
                 except ValueError as erro:
                     responder({"erro": str(erro)})
+            elif comando.get("apagarFrases"):
+                conexao.fila.apagar_as_frases()
+                responder({"ok": True})
             elif "criar" in comando:
                 status, resposta = conexao.fila.criar(comando["criar"])
                 responder({"status": status, "resposta": resposta} if status < 300 else {"erro": json.dumps(resposta)})
