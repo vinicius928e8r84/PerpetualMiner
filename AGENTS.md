@@ -52,7 +52,7 @@ The Conexão keeps its data in the add-on's `user_files` (`complemento/pasta_de_
 | 10 Visual references | review; `aprovacao-visual` (a reference PNG outside a `test.fixme` needs its entry in `e2e/aprovados-visuais.json`) |
 | 11 New files | review; `indice-de-arquivos` (a root, `lib/`, `veio/` or `scripts/` file needs its row in `docs/arquivos/`); `testes/test_empacotar.js` |
 
-A PR that changes a user-facing file (`popup.*`, `painel*`, `manifest.json`, `complemento/servidor.py`, …) also needs `.agents/skills/verify-perpetualminer/features/` updated or "feature map unchanged" in its body: the `Mapa de features` step of `.github/workflows/regras.yml` (PRs only).
+A PR that changes a user-facing file (`popup/`, `painel*`, `manifest.json`, `complemento/servidor.py`, …) also needs `.agents/skills/verify-perpetualminer/features/` updated or "feature map unchanged" in its body: the `Mapa de features` step of `.github/workflows/regras.yml` (PRs only).
 
 When the same correction comes up twice, add its rule to `docs/CODING_STANDARDS.md` and this table, enforced at the highest level that works.
 

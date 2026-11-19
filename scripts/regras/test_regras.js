@@ -21,7 +21,7 @@ function acusa(id, arquivo, fonte, quantas, porque) {
 
 const nulo = (achados, quantas, porque) => { assert.strictEqual(achados.length, quantas, `${porque}\n${JSON.stringify(achados, null, 2)}`); total++; return achados; };
 
-acusa('tokens-veio', 'overlay.css', '.pm-linha {\n  height: 3px;\n  border-radius: 2px;\n  background: var(--veio-accent);\n}\n', 1,
+acusa('tokens-veio', 'exemplo.css', '.pm-linha {\n  height: 3px;\n  border-radius: 2px;\n  background: var(--veio-accent);\n}\n', 1,
   'raio em px fora dos tokens (8d13cc7)');
 acusa('tokens-veio', 'e2e/vitrine/vitrine.html',
   '<style>\n  .marca span {\n    font-size: 22px;\n  }\n  .icone { border-radius: 7px; }\n</style>\n', 2, 'tamanho e raio soltos na vitrine (0510e37)');
@@ -33,10 +33,10 @@ acusa('tokens-veio', 'popup.js', "el.style.color = '#F5B83D';\n", 1, 'cor solta 
 acusa('tokens-veio', 'painel.css', '.x { --red: #f00; color: var(--red); }\n', 1, 'cor numa variável fora de veio/tokens.css');
 acusa('tokens-veio', 'painel.css', '.y { color: var(--veio-missing, #f00); }\n', 1, 'cor no reserva do var()');
 acusa('tokens-veio', 'painel.css', '.z { --largura: 240px; gap: var(--veio-espaco, 8px); }\n', 0, 'variável local de tamanho não é regra');
-acusa('tokens-veio', 'overlay.css', '.x { color: red; background: rebeccapurple; }\n', 2, 'cores com nome');
-acusa('tokens-veio', 'overlay.css', '.x { --alerta: red; }\n.y { color: var(--veio-missing, Red); }\n', 2, 'cor com nome numa variável e no reserva');
+acusa('tokens-veio', 'exemplo.css', '.x { color: red; background: rebeccapurple; }\n', 2, 'cores com nome');
+acusa('tokens-veio', 'exemplo.css', '.x { --alerta: red; }\n.y { color: var(--veio-missing, Red); }\n', 2, 'cor com nome numa variável e no reserva');
 acusa('tokens-veio', 'popup.js', "el.style.color = 'tomato';\n", 1, 'cor com nome no JS');
-acusa('tokens-veio', 'overlay.css', [
+acusa('tokens-veio', 'exemplo.css', [
   '.red-text { color: currentColor; background: transparent; border-color: inherit; }',
   '.x { --tom-red: var(--veio-accent); animation: piscar-red var(--veio-piscar) steps(2); }',
 ].join('\n'), 0, 'currentColor, transparent, inherit e nomes que só contêm uma cor');
@@ -403,7 +403,7 @@ const RAIO_SOLTO = '.pm-linha {\n  border-radius: 2px;\n}\n';
 git('init', '-q', '-b', 'main');
 git('config', 'user.email', 'regras@teste');
 git('config', 'user.name', 'regras');
-escrever('overlay.css', RAIO_TOKEN);
+escrever('exemplo.css', RAIO_TOKEN);
 escrever('painel.css', '.velho { color: #374151; }\n');
 commit('antes das regras');
 linhaDeBase({ 'painel.css': 1 });
@@ -418,34 +418,34 @@ r = rodar(git('rev-parse', 'HEAD~1'));
 assert.strictEqual(r.status, 0, r.stdout);
 assert.match(r.stdout, /primeira linha de base/);
 
-escrever('overlay.css', RAIO_SOLTO);
+escrever('exemplo.css', RAIO_SOLTO);
 r = rodar('main');
 assert.strictEqual(r.status, 1, 'o raio solto novo falha');
-assert.match(r.stdout, /overlay\.css:2: raio literal/, 'o erro sai no stdout');
+assert.match(r.stdout, /exemplo\.css:2: raio literal/, 'o erro sai no stdout');
 assert.match(r.stdout, /var\(--veio-…\)/, 'a mensagem diz o que usar');
 
 const valida = '.pm-linha {\n  border-radius: 2px; /* exceção tokens-veio até 2099-01-01, aprovada por Vinicius: teste */\n}\n';
-escrever('overlay.css', valida);
+escrever('exemplo.css', valida);
 assert.strictEqual(rodar('main').status, 0, 'a exceção válida na linha passa');
 
-escrever('overlay.css', valida.replace('2099-01-01', '2026-01-01'));
+escrever('exemplo.css', valida.replace('2099-01-01', '2026-01-01'));
 r = rodar('main');
 assert.strictEqual(r.status, 1, 'a exceção vencida falha');
 assert.match(r.stdout, /vencida/);
 
-escrever('overlay.js', 'const idioma = "Russo"; const nota = "exceção idioma-solto até 2099-01-01, aprovada por Vinicius: teste";\n');
-escrever('overlay.css', RAIO_TOKEN);
+escrever('exemplo.js', 'const idioma = "Russo"; const nota = "exceção idioma-solto até 2099-01-01, aprovada por Vinicius: teste";\n');
+escrever('exemplo.css', RAIO_TOKEN);
 r = rodar('main');
 assert.strictEqual(r.status, 1, 'a exceção dentro de uma string não vale');
-assert.match(r.stdout, /idioma-solto — overlay\.js/);
-fs.rmSync(path.join(tmp, 'overlay.js'));
+assert.match(r.stdout, /idioma-solto — exemplo\.js/);
+fs.rmSync(path.join(tmp, 'exemplo.js'));
 
 const EXCECAO_FALSA = 'exceção tokens-veio até 2099-01-01, aprovada por Vinicius: teste';
-escrever('overlay.css', `.x { content: "/* ${EXCECAO_FALSA} */"; color: #f00; }\n`);
+escrever('exemplo.css', `.x { content: "/* ${EXCECAO_FALSA} */"; color: #f00; }\n`);
 r = rodar('main');
 assert.strictEqual(r.status, 1, `a exceção dentro de uma string de CSS não vale:\n${r.stdout}`);
-assert.match(r.stdout, /tokens-veio — overlay\.css/);
-escrever('overlay.css', RAIO_TOKEN);
+assert.match(r.stdout, /tokens-veio — exemplo\.css/);
+escrever('exemplo.css', RAIO_TOKEN);
 escrever('probe.html', `<div data-note="<!-- ${EXCECAO_FALSA} -->" style="color:#f00">x</div>\n`);
 r = rodar('main');
 assert.strictEqual(r.status, 1, `a exceção dentro de um atributo de HTML não vale:\n${r.stdout}`);
@@ -456,8 +456,8 @@ r = rodar('main');
 assert.strictEqual(r.status, 0, `os comentários de verdade, no HTML e no <style>, valem:\n${r.stdout}`);
 fs.rmSync(path.join(tmp, 'probe.html'));
 
-escrever('overlay.css', RAIO_SOLTO);
-linhaDeBase({ 'painel.css': 1, 'overlay.css': 1 });
+escrever('exemplo.css', RAIO_SOLTO);
+linhaDeBase({ 'painel.css': 1, 'exemplo.css': 1 });
 r = rodar('main');
 assert.strictEqual(r.status, 1, 'subir a linha de base falha');
 assert.match(r.stdout, /só desce/);
