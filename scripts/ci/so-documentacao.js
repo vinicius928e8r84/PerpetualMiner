@@ -1,8 +1,10 @@
 'use strict';
 
 const { execFileSync } = require('child_process');
+const { PASTAS_DE_RUNTIME } = require('../arquivos-do-pacote.js');
 
-const CODIGO = [/^e2e\//, /^\.github\//, /^scripts\//, /^lib\//, /^veio\//, /^conexao\//];
+const CODIGO = [/^e2e\//, /^\.github\//, /^scripts\//];
+const naPastaDoPacote = arquivo => PASTAS_DE_RUNTIME.includes(arquivo.split('/')[0]) && arquivo.includes('/');
 
 const LIDOS_PELA_SUITE = [/^docs\/design\/voz\/.*\.(json|html)$/, /^docs\/design\/identidade-veio\//, /^docs\/loja\//, /^docs\/design\/cartao-do-russo\.html$/];
 
@@ -10,7 +12,7 @@ const TEXTO = /\.md$/i;
 const ILUSTRACAO = /\.(png|jpe?g|gif|webp|svg|html)$/i;
 
 function ehDocumentacao(arquivo) {
-  if (CODIGO.some(regra => regra.test(arquivo))) return false;
+  if (naPastaDoPacote(arquivo) || CODIGO.some(regra => regra.test(arquivo))) return false;
   if (LIDOS_PELA_SUITE.some(regra => regra.test(arquivo))) return false;
   if (TEXTO.test(arquivo)) return true;
   return /^docs\//.test(arquivo) && ILUSTRACAO.test(arquivo);
