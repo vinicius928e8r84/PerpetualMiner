@@ -55,7 +55,7 @@ test('recarrega a extensão quando um arquivo da pasta muda', async ({ extensao,
   await esperarPelaPrimeiraLeitura(worker);
   await trocarRecargaPorContador(worker);
 
-  fs.appendFileSync(path.join(pastaDaExtensao, 'popup.css'), '\n/* mudou */\n');
+  fs.appendFileSync(path.join(pastaDaExtensao, 'popup/popup.css'), '\n/* mudou */\n');
   await dispararAlarme(worker);
 
   await expect.poll(() => contarRecargas(worker), { timeout: 15_000 }).toBe(1);
