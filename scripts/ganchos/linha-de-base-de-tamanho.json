@@ -50,7 +50,7 @@
     "engine/test_image_fallback_policy.py": 28977,
     "lib/sincronizacao.js": 29245,
     "lib/voz/catalogo.js": 44483,
-    "overlay.js": 22279,
+    "overlay/overlay.js": 22279,
     "painel/painel-anki-baralhos.js": 30110,
     "painel/painel-anki.js": 29486,
     "painel/painel-boas-vindas.js": 22520,
