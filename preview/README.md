@@ -52,7 +52,7 @@ existe naquela branch.
 O `ignoreCommand` do `vercel.json` roda `preview/ignorar-build.sh`: compara o commit com o último
 deploy bem-sucedido da branch (`VERCEL_GIT_PREVIOUS_SHA`) ou, no primeiro deploy da branch, com o
 ancestral comum com a main, e pula o build quando nada mudou nos caminhos que o preview mostra (as
-telas da raiz, `manifest.json`, `lib/`, `veio/`, `painel/`, `conexao/`, `docs/design/`, `e2e/vitrine/`, `preview/` e
+telas da raiz, `manifest.json`, `lib/`, `veio/`, `popup/`, `painel/`, `conexao/`, `docs/design/`, `e2e/vitrine/`, `preview/` e
 `vercel.json`). Qualquer dúvida (sem a main, commit fora do clone raso) constrói. A integração Git
 continua ligada e não há segredo nenhum. `scripts/ci/test_ignorar_build_da_vitrine.js` falha quando o
 preview passa a mostrar um arquivo que a lista do script não pega.

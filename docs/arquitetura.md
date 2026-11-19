@@ -98,7 +98,7 @@ shortcuts relabelled in PT-BR (`lib/atalhos.js`), `geminiApiKey` masked to its f
 
 ### Surfaces: one skill each
 
-The architecture of each surface lives in a project skill, not here. **Open the skill when your change touches that surface, and when you review a diff that does** (`CODING_STANDARDS.md` says so too).
+The architecture of each surface lives in a project skill, not here. **Open the skill when your change touches that surface, and when you review a diff that does** (`docs/CODING_STANDARDS.md` says so too).
 
 - Boas-vindas and Configuração pela metade: `.claude/skills/boas-vindas/SKILL.md`
 - Configurações: `.claude/skills/configuracoes/SKILL.md`

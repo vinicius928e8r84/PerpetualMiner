@@ -6,7 +6,7 @@
 
 O PerpetualMiner é uma extensão do Chrome para quem estuda inglês ou russo. Você minera uma frase da legenda de um vídeo, de uma página ou da foto de um livro. A extensão guarda a frase num histórico e a envia ao Anki como cartão, com áudio e imagem.
 
-Minerar, aqui, é pôr uma frase no histórico. Os outros termos do projeto estão em [`glossary.md`](glossary.md).
+Minerar, aqui, é pôr uma frase no histórico. Os outros termos do projeto estão em [`docs/glossary.md`](docs/glossary.md).
 
 ## Para quem é
 
@@ -184,7 +184,7 @@ node scripts/testar.mjs e2e -- popup --workers=2
 ### Contribuir
 
 - Problemas e ideias vão nas [issues](https://github.com/vinicius928e8r84/PerpetualMiner/issues).
-- [`CODING_STANDARDS.md`](CODING_STANDARDS.md) lista o que a revisão cobra. `node scripts/regras/verificar.js` confere a parte que um script enxerga.
+- [`docs/CODING_STANDARDS.md`](docs/CODING_STANDARDS.md) lista o que a revisão cobra. `node scripts/regras/verificar.js` confere a parte que um script enxerga.
 - Comportamento novo da extensão ganha teste em `e2e/`.
 - O corpo da PR segue [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md). Confira com `node scripts/ci/corpo-da-pr.js <arquivo.md>` antes de abrir.
 
@@ -198,4 +198,4 @@ Agentes começam por [`AGENTS.md`](AGENTS.md). O papel de cada arquivo está em 
 
 PerpetualMiner is a Chrome extension for people learning English or Russian. It saves sentences from video captions, web pages and photos of book pages, then sends them to Anki as cards with audio and an image. The Anki side is an add-on, [AnkiWeb code 1108882947](https://ankiweb.net/shared/info/1108882947).
 
-The interface is in Brazilian Portuguese only. The contributor docs for agents, [`AGENTS.md`](AGENTS.md) and [`CODING_STANDARDS.md`](CODING_STANDARDS.md), are in English.
+The interface is in Brazilian Portuguese only. The contributor docs for agents, [`AGENTS.md`](AGENTS.md) and [`docs/CODING_STANDARDS.md`](docs/CODING_STANDARDS.md), are in English.

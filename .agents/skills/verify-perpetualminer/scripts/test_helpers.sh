@@ -149,24 +149,24 @@ sleep 0.3
 
 # 11. The feature-map ratchet (mapa-de-features.sh): a surface change needs features/ or the declaration in the PR body.
 repo="$TMP/mapa"; mkdir -p "$repo/.agents/skills/verify-perpetualminer/features"
-(cd "$repo" && git init -q -b main && git config user.email t@t && git config user.name t && echo a > popup.js && echo a > popup.css && echo a > README.md \
+(cd "$repo" && git init -q -b main && git config user.email t@t && git config user.name t && mkdir -p popup && echo a > popup/popup.js && echo a > popup/popup.css && echo a > README.md \
   && echo a > .agents/skills/verify-perpetualminer/features/x.md && git add -A && git commit -qm base)
 mapa() { (cd "$repo" && git checkout -q main && git checkout -q -B pr main && "$@"); }
 muda() { (cd "$repo" && for f in "$@"; do mkdir -p "$(dirname "$f")"; echo "$RANDOM" >> "$f"; done && git add -A && git commit -qm change); }
 confere() { (cd "$repo" && PR_BODY="${PR_BODY:-}" "$AQUI/mapa-de-features.sh" main >/dev/null 2>&1); }
-mapa true; muda popup.js
-confere && falhou "ratchet passed a popup.js change with no features/ and no declaration" || passou "ratchet fails a surface change with no features/ and no declaration"
+mapa true; muda popup/popup.js
+confere && falhou "ratchet passed a popup/popup.js change with no features/ and no declaration" || passou "ratchet fails a surface change with no features/ and no declaration"
 PR_BODY='Feature map unchanged: copy only.' confere && passou "ratchet accepts the declaration in the PR body" || falhou "ratchet ignored the declaration"
-mapa true; muda popup.js .agents/skills/verify-perpetualminer/features/x.md
+mapa true; muda popup/popup.js .agents/skills/verify-perpetualminer/features/x.md
 confere && passou "ratchet accepts a change that updates features/" || falhou "ratchet failed although features/ was updated"
-mapa true; muda popup.css README.md
-confere && passou "ratchet ignores files that are not surfaces (popup.css, README.md)" || falhou "ratchet flagged a non-surface change"
+mapa true; muda popup/popup.css README.md
+confere && passou "ratchet ignores files that are not surfaces (popup/popup.css, README.md)" || falhou "ratchet flagged a non-surface change"
 mapa true; muda painel/painel-shell.js
 confere && falhou "ratchet passed painel/painel-shell.js with nothing" || passou "ratchet fails a painel*.js change"
 mapa true; muda complemento/servidor.py
 confere && falhou "ratchet passed a complemento/servidor.py change with nothing" || passou "ratchet fails a complemento/servidor.py change"
-mapa true; muda abridor.html
-confere && falhou "ratchet passed a root abridor.html change with nothing" || passou "ratchet fails a root *.html change"
+mapa true; muda pagina-qualquer.html
+confere && falhou "ratchet passed a root pagina-qualquer.html change with nothing" || passou "ratchet fails a root *.html change"
 mapa true; muda lib/voz/catalogo.js
 confere && falhou "ratchet passed a lib/voz/catalogo.js change with nothing" || passou "ratchet fails a Voice catalog change"
 mapa true; muda bookreader/bookreader.js

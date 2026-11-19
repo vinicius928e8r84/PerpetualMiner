@@ -58,6 +58,7 @@ const MOVIDOS = Object.fromEntries([
   'painel.html',
   'painel.js',
 ].map(nome => [nome, `painel/${nome}`]));
+Object.assign(MOVIDOS, { 'popup.js': 'popup/popup.js', 'popup.css': 'popup/popup.css', 'popup.html': 'popup/popup.html' });
 
 const CONTEUDO_VIVO = [/^docs\/(?!design\/)/, /^veio\//, /^lib\//, /^background\.js$/, /^glossary\.md$/, /^manifest\.json$/, /^\.agents\/.*\.(sh|js)$/, /^\.agents\/skills\/verify-perpetualminer\/(SKILL|mapa-de-features)\.md$/, /^\.claude\//, /^\.github\//, /^scripts\//, /^e2e\/(?!tests\/|.*\.png$)/, /^preview\//, /^testes\//, /^complemento\/.*\.(py|js|md)$/, /^(AGENTS|CODING_STANDARDS|README)\.md$/, /^package\.json$/];
 const FORA = [/(^|\/)test_[^/]*$/, /^scripts\/ci\/test_caminhos_movidos\.js$/, /^e2e\/tests\/.*\.png$/, /\.png$/];

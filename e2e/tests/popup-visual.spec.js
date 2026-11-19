@@ -29,7 +29,7 @@ async function abrirPopup(page, extensao, { tema = 'escuro' } = {}) {
   await page.clock.setFixedTime(AGORA);
   await page.setViewportSize({ width: 340, height: 600 });
   if (tema !== 'escuro') await extensao.gravarStorage({ pm_tema: tema });
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url('popup/popup.html'));
   await page.evaluate(() => document.fonts.ready);
 }
 

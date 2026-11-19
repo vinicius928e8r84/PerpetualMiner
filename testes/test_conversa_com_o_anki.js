@@ -202,7 +202,7 @@ async function ondeNaoHaConexaoAnki() {
 }
 
 function oEnderecoCarregaAntesDeQuemOLe() {
-  for (const pagina of ['painel/painel.html', 'popup.html']) {
+  for (const pagina of ['painel/painel.html', 'popup/popup.html']) {
     const html = fs.readFileSync(path.join(__dirname, '..', pagina), 'utf8');
     const lugar = arquivo => html.search(new RegExp(`<script src="(?:\\.\\./|/)?lib/${arquivo.replace('.', '\\.')}"></script>`));
     assert.ok(lugar('pedido-ao-anki.js') >= 0 && lugar('pedido-ao-anki.js') < lugar('conexao-anki.js'),

@@ -18,7 +18,7 @@ async function abrirFrases(page, extensao) {
 }
 
 async function abrirPopup(page, extensao) {
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url('popup/popup.html'));
   await expect(page.getByRole('button', { name: 'Abrir painel' })).toBeVisible();
 }
 

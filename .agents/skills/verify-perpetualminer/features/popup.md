@@ -15,11 +15,11 @@ The popup (click the toolbar icon) is the quick door: type a phrase and mine it,
 
 ## How to get to it (user POV)
 
-- Click the PerpetualMiner icon on the toolbar (the harness opens `popup.html` as a page of the extension).
+- Click the PerpetualMiner icon on the toolbar (the harness opens `popup/popup.html` as a page of the extension).
 
 ## Driving it with the Playwright e2e harness
 
-Preconditions: `doctor.sh` green. The popup is opened with `page.goto(extensao.url('popup.html'))`; phrases are seeded with `extensao.gravarStorage({ frases })`; the active tab is read from the service worker (`abaAtiva`).
+Preconditions: `doctor.sh` green. The popup is opened with `page.goto(extensao.url('popup/popup.html'))`; phrases are seeded with `extensao.gravarStorage({ frases })`; the active tab is read from the service worker (`abaAtiva`).
 
 - **Panel door.** `drive.sh popup-painel popup.spec -g "Abrir painel|Ver todas"`. Observable: with a panel tab open, the active tab becomes it, with its address unchanged (`#configuracoes`) and exactly one panel tab; without one, a new panel tab opens; Ver todas makes the open tab `…/painel.html#frases` showing the list.
 - **Last five.** `-g "as 5 últimas, só leitura"`: five items, the first `mark` is `responsibility`, no input or button inside `#ultimas`. `-g "frase minerada em outra aba"`, `-g "carregando \(POP-01\)"` (escaped: unescaped, the parentheses are a regex group and select no test).

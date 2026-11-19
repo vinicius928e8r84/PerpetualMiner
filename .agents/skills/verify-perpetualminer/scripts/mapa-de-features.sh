@@ -3,7 +3,7 @@ set -u
 [ $# -eq 1 ] || { echo 'usage: PR_BODY=... mapa-de-features.sh <base-ref>' >&2; exit 2; }
 git rev-parse --verify --quiet "$1^{commit}" >/dev/null || { echo "base ref '$1' not found" >&2; exit 2; }
 alterados="$(git diff --name-only "$1"...HEAD)" || exit 2
-superficies="$(printf '%s\n' "$alterados" | grep -E '^(manifest\.json|[^/]+\.html|popup\.js|painel/[^/]*\.(html|js)|bookreader/bookreader\.(js|html)|overlay/overlay\.js|content\.js|background\.js|complemento/servidor\.py|lib/voz/catalogo\.js)$')"
+superficies="$(printf '%s\n' "$alterados" | grep -E '^(manifest\.json|[^/]+\.html|popup/popup\.(html|js)|painel/[^/]*\.(html|js)|bookreader/bookreader\.(js|html)|overlay/overlay\.js|content\.js|background\.js|complemento/servidor\.py|lib/voz/catalogo\.js)$')"
 [ -n "$superficies" ] || { echo "feature map: no user-facing surface changed"; exit 0; }
 if printf '%s\n' "$alterados" | grep -q '^\.agents/skills/verify-perpetualminer/features/'; then
   echo "feature map: surfaces changed and features/ was updated"; exit 0
