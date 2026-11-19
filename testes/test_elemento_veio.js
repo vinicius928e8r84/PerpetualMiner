@@ -53,7 +53,7 @@ assert.deepStrictEqual(clique.filhos, ['Ir', filho]);
 
 const COM_FILTRO_PROPRIO = ['painel-conta.js'];
 const copias = [];
-for (const arquivo of [...fs.readdirSync('.'), ...fs.readdirSync('bookreader').map(nome => `bookreader/${nome}`)].filter(nome => /^(popup|painel|bookreader|overlay)[\w-]*\.js$|^bookreader\/bookreader\.js$/.test(nome) && !COM_FILTRO_PROPRIO.includes(nome))) {
+for (const arquivo of [...fs.readdirSync('.'), ...fs.readdirSync('bookreader').map(nome => `bookreader/${nome}`), ...fs.readdirSync('overlay').map(nome => `overlay/${nome}`)].filter(nome => /^(popup|painel|bookreader|overlay)[\w-]*\.js$|^(bookreader\/bookreader|overlay\/overlay)\.js$/.test(nome) && !COM_FILTRO_PROPRIO.includes(nome))) {
   const fonte = fs.readFileSync(arquivo, 'utf8');
   if (/^\s*function (elemento|criar)\(tag, classe/m.test(fonte)) copias.push(`${arquivo}: elemento/criar`);
   if (/^\s*function botao\(variante, \.\.\.filhos\)/m.test(fonte)) copias.push(`${arquivo}: botao`);

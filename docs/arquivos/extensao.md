@@ -8,7 +8,7 @@ A regra `indice-de-arquivos` (`scripts/regras/indice-de-arquivos.js`) exige uma 
 |------|------|
 | `manifest.json` | Permissions, content script registration |
 | `content.js` | Injected into all pages; mines subtitles and selections, and drives the overlay. See “Overlay” in the `overlay` skill |
-| `overlay.js` + `overlay.css` | `PerpetualMiner.Overlay` — the in-page overlay: one Veio component in an open Shadow DOM (the floating button and the feedback pill). See “Overlay” in the `overlay` skill |
+| `overlay/overlay.js` + `overlay/overlay.css` | `PerpetualMiner.Overlay` — the in-page overlay: one Veio component in an open Shadow DOM (the floating button and the feedback pill). See “Overlay” in the `overlay` skill |
 | `background.js` | Service worker; handles `SALVAR_HISTORICO` messages and context menu clicks; writes to `chrome.storage.local` and syncs to Firestore |
 | `lib/sincronizacao.js` | `PerpetualMiner.Sincronizacao` — shared cloud sync. See “Firebase / Firestore Sync” in `docs/arquitetura.md` and the module's doc comments for its API contract |
 | `popup.html/js/css` | The “Cockpit” popup (docs/design/popup/, variant A): the “Configuração pela metade” card (ONB-14), Abrir painel, the Mineração automática tiles, quick mining and the last 5 phrases, read-only. See “Popup (Cockpit)” in the `popup` skill |
