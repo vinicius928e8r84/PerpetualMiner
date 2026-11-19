@@ -55,21 +55,21 @@ function mundo({ chromeSyncJunto, mascara, engoleTombstone }) {
 }
 
 async function executar(passo, pc) {
-  try {
-    if (passo === 'carregar') {
-      const antes = clone(pc.local.frases || []);
-      const r = await pc.s.carregar({ atuais: () => antes });
-      await r.concluida;
-    } else if (passo === 'apagar 1') {
-      pc.local.frases = pc.local.frases.filter(f => f.id !== 1);
-      await pc.s.apagar([1]);
-    } else if (passo === 'apagar tudo') {
-      const ids = pc.local.frases.map(f => f.id);
-      pc.local.frases = [];
-      await pc.s.apagarTudo(ids, AGORA);
-    }
-  } catch {
-    // um pedido que falha derruba só o passo; o resto da sequência segue
+  await executarSemRecusar(passo, pc).catch(() => null);
+}
+
+async function executarSemRecusar(passo, pc) {
+  if (passo === 'carregar') {
+    const antes = clone(pc.local.frases || []);
+    const r = await pc.s.carregar({ atuais: () => antes });
+    await r.concluida;
+  } else if (passo === 'apagar 1') {
+    pc.local.frases = pc.local.frases.filter(f => f.id !== 1);
+    await pc.s.apagar([1]);
+  } else if (passo === 'apagar tudo') {
+    const ids = pc.local.frases.map(f => f.id);
+    pc.local.frases = [];
+    await pc.s.apagarTudo(ids, AGORA);
   }
 }
 
