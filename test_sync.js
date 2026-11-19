@@ -489,7 +489,7 @@ await (async () => {
   await carregarFrases(storageLocalA);
 
   nuvemFalha.apagar = true;
-  const resultado = await de(storageLocalA).sinc.apagarTudo([antes1.id]);
+  const resultado = await de(storageLocalA).sinc.apagarTudo([antes1.id], antesB.id);
   nuvemFalha.apagar = false;
   setLocal(storageLocalA, { frases: [] });
 
@@ -497,7 +497,6 @@ await (async () => {
   assert(getLocal(storageLocalA, { pm_apagar_tudo: null }).pm_apagar_tudo?.uid === 'uid-teste', 'pm_apagar_tudo guardado até a nuvem confirmar');
   assert(idNoFirestore(antes1.id), 'a nuvem ainda tem as frases');
 
-  await new Promise(r => setTimeout(r, 5));
   const depois = await capturarFrase(storageLocalB, 'Minerada depois');
 
   const visA = await carregarFrases(storageLocalA);
@@ -513,7 +512,7 @@ await (async () => {
   resetState();
   const f1 = await capturarFrase(storageLocalA, 'Phrase 1');
   const f2 = await capturarFrase(storageLocalB, 'Phrase 2 de B');
-  const resultado = await de(storageLocalA).sinc.apagarTudo([f1.id]);
+  const resultado = await de(storageLocalA).sinc.apagarTudo([f1.id], f2.id);
   setLocal(storageLocalA, { frases: [] });
 
   assert(resultado.ok,                                    'apagarTudo confirma');

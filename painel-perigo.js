@@ -5,7 +5,7 @@
   const { abrirConfirmacao, montarAviso, elemento, botao } = raiz.Veio;
   const porId = id => document.getElementById(id);
 
-  const estado = { n: null, comConta: false, temChave: false, contaDaChave: '', uid: '' };
+  const estado = { n: null, ids: [], comConta: false, temChave: false, contaDaChave: '', uid: '' };
 
   chrome.storage.local.get({ [ChaveDaOpenAI.MARCA]: null, pm_user_info: null }, dados => {
     estado.temChave = Boolean(dados[ChaveDaOpenAI.MARCA]?.ultimos4);
@@ -31,8 +31,9 @@
   let apagarTudo = () => {};
   let partes = null;
 
-  function mostrarTotal(n) {
-    estado.n = n;
+  function mostrarFrases(frases) {
+    estado.n = frases.length;
+    estado.ids = frases.map(frase => frase.id);
     desenhar();
   }
 
@@ -76,12 +77,12 @@
     else partes.entrada.textContent = textoDaVoz('CFG-24.todas', { n });
   }
 
-  async function apagarSeAConexaoResponde() {
+  async function apagarSeAConexaoResponde(confirmado) {
     tirarARecusa();
-    if (await ConexaoAnki.conferir() !== ConexaoAnki.SITUACAO.DESLIGADA) return apagarTudo();
+    if (await ConexaoAnki.conferir() !== ConexaoAnki.SITUACAO.DESLIGADA) return apagarTudo(confirmado);
     avisoDaRecusa = montarAviso({
       texto: textoDaVoz('CFG-17.conexaoNaoResponde'),
-      acao: { rotulo: textoDaVoz('CFG-35.erroTentarDeNovo'), aoUsar: apagarSeAConexaoResponde },
+      acao: { rotulo: textoDaVoz('CFG-35.erroTentarDeNovo'), aoUsar: () => apagarSeAConexaoResponde(confirmado) },
       detalhes: 'anki_connection_unreachable',
       fechavel: false,
     });
@@ -93,6 +94,7 @@
     if (!estado.n) return;
 
     const outraConta = comConta && estado.contaDaChave && estado.contaDaChave !== estado.uid;
+    const confirmado = { ids: estado.ids, em: Date.now() };
     abrirConfirmacao({
       id: 'cfg-perigo-modal',
       titulo: n === 1 ? textoDaVoz('CFG-17.tituloUma') : textoDaVoz('CFG-17.titulo', { n }),
@@ -102,13 +104,13 @@
       ].join(' '),
       cancelar: textoDaVoz('CFG-17.cancelar'),
       confirmar: textoDaVoz('CFG-17.confirmar', { n }),
-      aoConfirmar: apagarSeAConexaoResponde,
+      aoConfirmar: () => apagarSeAConexaoResponde(confirmado),
     });
   }
 
   raiz.Perigo = {
     aoApagarTudo,
     mostrarConta,
-    mostrarTotal,
+    mostrarFrases,
   };
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});
