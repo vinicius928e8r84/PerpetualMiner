@@ -10,8 +10,8 @@ const regras = Object.fromEntries(require('../regras/verificar').REGRAS.map(regr
 const { selecionar } = require('./selecao-de-testes.js');
 const { soDocumentacao } = require('./so-documentacao.js');
 
-assert.deepStrictEqual(PASTAS_DA_EXTENSAO, ['lib', 'veio', 'bookreader', 'abridor']);
-assert.deepStrictEqual(PASTAS_DE_RUNTIME, ['lib', 'veio', 'bookreader', 'abridor', 'conexao'], 'o pacote leva as pastas da extensão e o .ankiaddon de conexao/');
+assert.deepStrictEqual(PASTAS_DA_EXTENSAO, ['lib', 'veio', 'popup', 'bookreader', 'overlay', 'abridor']);
+assert.deepStrictEqual(PASTAS_DE_RUNTIME, ['lib', 'veio', 'popup', 'bookreader', 'overlay', 'abridor', 'conexao'], 'o pacote leva as pastas da extensão e o .ankiaddon de conexao/');
 
 const casos = [
   ['background.js', true], ['painel.css', true], ['lib/historico.js', true], ['veio/icones/icone.svg', true], ['abridor/ponte.html', true],
@@ -21,7 +21,7 @@ for (const [caminho, esperado] of casos) assert.strictEqual(ehDaExtensao(caminho
 
 const jaConferidos = {
   'html-cru': ['background.js', 'lib/historico.js', 'veio/componentes.js'],
-  'tokens-veio': ['painel.css', 'popup.html', 'veio/componentes.css', 'lib/historico.js'],
+  'tokens-veio': ['painel.css', 'popup/popup.html', 'veio/componentes.css', 'lib/historico.js'],
   'indice-de-arquivos': ['background.js', 'lib/historico.js', 'veio/tema.js', 'scripts/testar.mjs'],
 };
 const deFora = {
@@ -81,7 +81,7 @@ try {
   PASTAS_DA_EXTENSAO.pop();
   PASTAS_DE_RUNTIME.pop();
 }
-assert.deepStrictEqual(PASTAS_DA_EXTENSAO, ['lib', 'veio', 'bookreader', 'abridor']);
-assert.deepStrictEqual(PASTAS_DE_RUNTIME, ['lib', 'veio', 'bookreader', 'abridor', 'conexao']);
+assert.deepStrictEqual(PASTAS_DA_EXTENSAO, ['lib', 'veio', 'popup', 'bookreader', 'overlay', 'abridor']);
+assert.deepStrictEqual(PASTAS_DE_RUNTIME, ['lib', 'veio', 'popup', 'bookreader', 'overlay', 'abridor', 'conexao']);
 
 console.log('ok: uma pasta só em PASTAS_DA_EXTENSAO (scripts/arquivos-do-pacote.js) liga as regras, o índice e a seleção do CI');
