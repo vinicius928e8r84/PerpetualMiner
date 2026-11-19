@@ -1340,7 +1340,7 @@ function escolherModoDeMinerar(modo) {
 }
 
 function abrirMinerarDeUmaFoto() {
-  chrome.tabs.create({ url: chrome.runtime.getURL('bookreader.html') });
+  chrome.tabs.create({ url: 'bookreader/bookreader.html' });
 }
 
 function abrirMinerarFrases(aba) {

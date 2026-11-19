@@ -1,6 +1,6 @@
 # Mine from a photo
 
-`bookreader.html` ("Minerar de uma foto") lets a person upload photos of marked book pages, have Gemini Vision read the marked passages, pick which phrases to keep and mine them into the history with Fonte Livro and the typed book title.
+`bookreader/bookreader.html` ("Minerar de uma foto") lets a person upload photos of marked book pages, have Gemini Vision read the marked passages, pick which phrases to keep and mine them into the history with Fonte Livro and the typed book title.
 
 ## Sub-features
 
@@ -22,7 +22,7 @@
 
 Preconditions:
 
-- `doctor.sh` green. The specs write `geminiApiKey: 'chave-de-teste'`, load `bookreader.html`, upload a 1×1 PNG with `page.locator('#foto-arquivo').setInputFiles(...)` and set what Gemini answers with `fakes.gemini.responderFrases([...])`. Gemini is faked at HTTP; no real vision runs.
+- `doctor.sh` green. The specs write `geminiApiKey: 'chave-de-teste'`, load `bookreader/bookreader.html`, upload a 1×1 PNG with `page.locator('#foto-arquivo').setInputFiles(...)` and set what Gemini answers with `fakes.gemini.responderFrases([...])`. Gemini is faked at HTTP; no real vision runs.
 
 - **One photo, read and mine (`foto-read-one`, `foto-mine`, `foto-book`).** Run `drive.sh foto-uma minerar-foto.spec -g "uma foto: prévia, leitura"`. Observable: after typing `Atomic Habits` in the `Livro` field and uploading `pagina.png`, the preview text `Confira se as marcações aparecem na foto` shows and Gemini was not called yet; `Ler marcações` leaves the item `3 frases`, three checked checkboxes named by their text, button `Minerar 3 frases`; the Gemini fake saw the key `chave-de-teste` in the `x-goog-api-key` header; clicking it shows toast `3 frases mineradas`, and `frases()` has 3 entries with `contexto { fonte: 'livro', titulo: 'Atomic Habits', detalhe: '' }`, `idioma 'Inglês'`. Evidence: `c1-foto-minerada.png`, `c1-foto-minerada.json`.
 - **The key is in the header, not the URL (`foto-read-one`).** `drive.sh foto-chave minerar-foto-chave.spec`. Observable: one Gemini call whose `chave` is `chave-de-teste` and whose `url` is the bare `…gemini-3-flash-preview:generateContent` (no `?key=`), the three phrases mined, `geminiApiKey` unchanged.
