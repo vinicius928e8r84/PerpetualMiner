@@ -60,7 +60,7 @@ def montar(pasta, voz_base, ia, reserva=None):
     pedido = {"lang": "en", "deckName": "Inglês", "jobId": "j1", "tts": tts, "imageSource": "1"}
     fila = SimpleNamespace(dados=SimpleNamespace(raiz=pasta), pasta_dos_textos=lambda job_id: os.path.join(pasta, "textos"),
                            pasta_dos_custos=lambda job_id: os.path.join(pasta, "custos"))
-    config = motor_do_envio.configuracao_do_motor(motor, fila, pedido, None)
+    config = motor_do_envio.configuracao_do_motor(motor, fila, pedido)
     cartao = Cartao(id="7-0", guid="pmguid", linha="gave up : She gave up smoking last year.", pedido=pedido, config=config, pela_chave=True, job_id="j1")
     motor_do_cartao = MotorDoCartao(motor, LOGGER, threading.RLock(), threading.Event(), "http://127.0.0.1:9",
                                     voz_base, "http://127.0.0.1:9", esperas_da_openai=())
