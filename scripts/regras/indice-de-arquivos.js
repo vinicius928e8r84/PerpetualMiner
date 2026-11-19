@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { PASTAS_DA_EXTENSAO } = require('../arquivos-do-pacote');
 
 const id = 'indice-de-arquivos';
 
@@ -10,9 +11,12 @@ const conserto = 'Acrescente uma linha (ou cite o arquivo numa linha que já o e
 
 const PASTA_DO_INDICE = 'docs/arquivos';
 const ehDoIndice = arquivo => arquivo.startsWith(`${PASTA_DO_INDICE}/`) && /^[^/]+\.md$/.test(arquivo.slice(PASTA_DO_INDICE.length + 1));
-const NO_ESCOPO = /^(?:[^/]+|(?:lib|veio|scripts)\/[^/]+)$/;
+const naRaizOuNumaPastaDoIndice = arquivo => {
+  const partes = arquivo.split('/');
+  return partes.length === 1 || (partes.length === 2 && [...PASTAS_DA_EXTENSAO, 'scripts'].includes(partes[0]));
+};
 
-const noEscopo = arquivo => NO_ESCOPO.test(arquivo)
+const noEscopo = arquivo => naRaizOuNumaPastaDoIndice(arquivo)
   && !arquivo.startsWith('.')
   && !/\.md$/.test(arquivo)
   && !/(^|\/)test_[^/]*$/.test(arquivo);

@@ -42,7 +42,7 @@ const TIPOS_MIME = {
   '.svg': 'image/svg+xml',
 };
 
-const PASTAS_DA_EXTENSAO = ['veio', 'lib'];
+const { PASTAS_DA_EXTENSAO } = require('../scripts/arquivos-do-pacote');
 
 function arquivoDoPedido(caminhoPedido) {
   const limpo = path.posix.normalize(decodeURIComponent(caminhoPedido));
