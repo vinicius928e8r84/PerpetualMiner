@@ -23,7 +23,7 @@ _Avoid_: Capturar, salvar, coletar, adicionar
 
 **Minerar de uma foto**:
 A página que lê, com o Gemini, as Marcações de fotos de páginas de livro e deixa escolher quais frases minerar.
-_Nome no código_: `bookreader.html/js/css`
+_Nome no código_: `bookreader/bookreader.html/js/css`
 _Avoid_: BookReader, leitor de livros
 
 **Marcação**:

@@ -21,7 +21,7 @@ const FRASES_2 = [
 async function abrir(page, extensao, { chave = 'chave-de-teste', largura = 1280 } = {}) {
   await extensao.gravarStorage({ bookTitleDefault: LIVRO, ...(chave ? { geminiApiKey: chave } : {}) });
   await page.setViewportSize({ width: largura, height: 800 });
-  await page.goto(extensao.url('bookreader.html'));
+  await page.goto(extensao.url('bookreader/bookreader.html'));
   await expect(page.getByRole('heading', { name: 'Minerar de uma foto' })).toBeVisible();
   await expect(page.getByLabel('Livro')).toHaveValue(LIVRO);
   await page.evaluate(() => document.fonts.ready);

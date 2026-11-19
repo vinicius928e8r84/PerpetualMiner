@@ -178,7 +178,7 @@ Ticket [#140](https://github.com/vinicius928e8r84/PerpetualMiner/issues/140) da 
 - **Minerar legenda gravável** (lista fechada) vira um segundo atalho no mesmo motor do `content.js` (`lib/atalhos.js`), com padrão Alt+S e gravado em `pm_atalho_legenda`. Isso aceita botões do mouse, ao contrário do `chrome.commands`. **Pendência fechada no #27:** o manifest não declara `commands` (nem declarava), então o atalho gravado vale só pelo content script; não há reserva.
 - Os rótulos dos botões do mouse passam a PT-BR (CFG-14). O que já está gravado em inglês é traduzido na exibição.
 - “Restaurar atalhos padrão” grava `{legenda: Alt+S, seleção: nenhum}`.
-- A chave do Gemini sai da barra do Minerar de uma foto (`bookreader.html` / `bookreader.js`); o `geminiApiKey` continua o mesmo.
+- A chave do Gemini sai da barra do Minerar de uma foto (`bookreader/bookreader.html`/`.js`); o `geminiApiKey` continua o mesmo.
 - O tema claro vive em `veio/tokens.css`, nos valores claros da tabela do Veio. Cada página (painel, popup, Minerar de uma foto) aplica o tema gravado antes de pintar, para não piscar o escuro ao abrir no claro, e escuta a mudança em `chrome.storage` para trocar na hora. O overlay não lê essa escolha.
 
 ## Lista fechada
