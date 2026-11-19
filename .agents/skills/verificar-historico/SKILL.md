@@ -1,6 +1,6 @@
 ---
 name: verificar-historico
-description: Use when a change touches how `frases` is read or written (lib/historico.js, salvarFrase or handleAutoMinerCandidate in background.js, carregar/juntarMarcas in lib/sincronizacao.js, the Historico calls in painel.js) or the Web Lock `pm-historico`. Runs an exhaustive interleaving explorer over the real code and checks that every Histórico operation behaves as if it ran whole and alone (no lost Frase, edit or deletion; no duplicate; unique ids).
+description: Use when a change touches how `frases` is read or written (lib/historico.js, salvarFrase or handleAutoMinerCandidate in background.js, carregar/juntarMarcas in lib/sincronizacao.js, the Historico calls in painel/painel.js) or the Web Lock `pm-historico`. Runs an exhaustive interleaving explorer over the real code and checks that every Histórico operation behaves as if it ran whole and alone (no lost Frase, edit or deletion; no duplicate; unique ids).
 ---
 
 # Verificar o Histórico
@@ -84,7 +84,7 @@ Limites: 2 a 4 atores por cenário, uma operação cada (o carregar faz duas), 1
 
 ## Manter em dia
 
-1. `git diff 157bc919528adc321130e9e01467cb7309b0b8ab -- lib/historico.js background.js lib/sincronizacao.js painel.js` e compare com a tabela.
+1. `git diff -M 157bc919528adc321130e9e01467cb7309b0b8ab -- lib/historico.js background.js lib/sincronizacao.js ':(glob)**/painel.js'` e compare com a tabela.
 2. Operação nova em `OPERACOES` ou nome novo no `Historico`: acrescente o caso em `OPS` (o que ela promete, inteira) e um ator que a use num cenário.
 3. Um lugar novo que lê `frases` e grava com base nisso (como a duplicata em background.js:286): um cenário com ele e outro ator.
 4. Mudou um número de linha da tabela: atualize-o.

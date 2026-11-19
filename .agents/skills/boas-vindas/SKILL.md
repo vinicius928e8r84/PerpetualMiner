@@ -1,6 +1,6 @@
 ---
 name: boas-vindas
-description: "Use when changing or reviewing the Boas-vindas (`painel-boas-vindas.js`) or the “Configuração pela metade” reminder (`lib/configuracao.js`, `painel-lembrete.js`). Reviewers: open it when the PR touches that surface. It holds the architecture notes moved out of CLAUDE.md for it (what it shows, the IDs it implements, its storage and its tests)."
+description: "Use when changing or reviewing the Boas-vindas (`painel/painel-boas-vindas.js`) or the “Configuração pela metade” reminder (`lib/configuracao.js`, `painel/painel-lembrete.js`). Reviewers: open it when the PR touches that surface. It holds the architecture notes moved out of CLAUDE.md for it (what it shows, the IDs it implements, its storage and its tests)."
 ---
 
 # Boas-vindas and Configuração pela metade
@@ -10,7 +10,7 @@ Notes from the old `CLAUDE.md` § Architecture. Cross-surface rules: `docs/arqui
 ### Boas-vindas (`painel-boas-vindas.js`, docs/design/painel/boas-vindas/, variant C)
 
 `chrome.runtime.onInstalled` with `reason === 'install'` writes `pm_boas_vindas` (the setup has started) and opens a
-tab at `painel.html#boas-vindas` (an update does neither; the context menu is created as always). `#boas-vindas` is a page of the panel without the sidebar: the shell
+tab at `painel/painel.html#boas-vindas` (an update does neither; the context menu is created as always). `#boas-vindas` is a page of the panel without the sidebar: the shell
 hides `.shell` and shows `#boas-vindas`. Addresses: `#boas-vindas` (the opening: ONB-01, the 9 steps with “opcional”,
 Pular a configuração → `#frases` · Começar), `#boas-vindas/minerar|atalho|conta|anki|ia|automatica|nivel|chave|envio` and
 `#boas-vindas/pronto` (Tudo pronto). Left, the list of the 11 items (`nav` named ONB-03.lista; every item a button,

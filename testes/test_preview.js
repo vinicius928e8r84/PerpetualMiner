@@ -26,7 +26,7 @@ const extensao = path.join(saida, 'extensao');
     const pedidos = [...html.matchAll(/\b(?:src|href)="([^"#?:]+)"/g)].map(m => m[1]).filter(p => !p.startsWith('//'));
     if (pagina !== 'abridor/ponte.html') assert(pedidos.length > 0, `${pagina}: não achei o que ela carrega`);
     for (const pedido of pedidos) {
-      assert(fs.existsSync(path.join(extensao, pedido.startsWith('/') ? pedido.slice(1) : path.posix.join(path.posix.dirname(pagina), pedido))), `${pagina} carrega ${pedido}, que não está no preview`);
+      assert(fs.existsSync(path.join(saida, new URL(pedido, `http://x/extensao/${pagina}`).pathname)), `${pagina} carrega ${pedido}, que não está no preview`);
     }
   }
 
