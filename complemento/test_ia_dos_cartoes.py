@@ -6,6 +6,7 @@ credencial que ela entrega a cada etapa, e o texto do Cartão pedido por ela à 
     python3.9 complemento/test_ia_dos_cartoes.py
 """
 
+import base64
 import json
 import logging
 import os
@@ -23,6 +24,7 @@ from complemento.ia_dos_cartoes import CORRECAO, ETAPAS, IMAGEM, JUIZ, OUVIR, TE
 from complemento.login_do_chatgpt import ACABOU, CONECTADA, SAIU, SEM_LOGIN, ErroDoPlano, LoginDoChatGPT
 from complemento.modelo_dos_cartoes import CHAVE, PARADO, PLANO, ModeloDosCartoes, lista_nossa
 from complemento.test_correcao_de_mentira import COMECO_DO_PROMPT
+from complemento.test_imagens_de_mentira import png_de
 from complemento.test_openai_de_mentira import OpenAIDeMentira
 
 CHAVE_GUARDADA = "sk-test-ia-dos-cartoes-0000"
@@ -121,14 +123,14 @@ class ACredencialDeCadaEtapa(unittest.TestCase):
 
     def test_a_imagem_sem_login_vai_so_pela_chave_presa(self):
         with tempfile.TemporaryDirectory() as pasta:
-            plano, presa = porta(pasta, "sem login").para_a_imagem(False)
-        self.assertEqual((plano, type(presa).__name__), (None, "PelaChave"))
+            juiz, presa = porta(pasta, "sem login").para_a_imagem(False)
+        self.assertEqual((type(juiz).__name__, type(presa).__name__), ("JuizDaImagem", "PelaChave"))
         self.assertNotIn(CHAVE_GUARDADA, repr(presa))
 
     def test_a_imagem_com_usar_a_minha_chave_nao_pede_o_token_do_login_acabado(self):
         with tempfile.TemporaryDirectory() as pasta:
-            plano, presa = porta(pasta, "Usar a minha chave, login acabado").para_a_imagem(True)
-        self.assertEqual((plano, type(presa).__name__), (None, "PelaChave"))
+            juiz, presa = porta(pasta, "Usar a minha chave, login acabado").para_a_imagem(True)
+        self.assertEqual((type(juiz).__name__, type(presa).__name__), ("JuizDaImagem", "PelaChave"))
 
     def test_a_imagem_sem_chave_nao_tem_o_que_a_chave_paga(self):
         with tempfile.TemporaryDirectory() as pasta:
@@ -209,6 +211,51 @@ class AImagemPelaChavePresa(unittest.TestCase):
         self.assertEqual((veredito, openai.triagens), ("C", [("Bearer " + CHAVE_GUARDADA, "bicycle")]))
         self.assertTrue(imagem)
         self.assertEqual(autorizacao_da_imagem, "Bearer " + CHAVE_GUARDADA)
+
+
+FOTO = "data:image/png;base64," + base64.b64encode(png_de("olho")).decode("ascii")
+PEDIDO_AO_JUIZ = ("gpt-4.1-mini", "You are an expert visual selector.", [
+    {"type": "text", "text": "Mode: real_only\nKeyword: eye"}, {"type": "text", "text": "Candidate 0\ntitle=olho\nkind=real"},
+    {"type": "image_url", "image_url": {"url": FOTO}}], "1760000000000-0")
+
+
+def julgar(situacao, preparar=lambda openai: None):
+    """(o veredito, se a chave pagou, quem a OpenAI de mentira viu julgar) de um pedido ao juiz da porta na `situacao`."""
+    with tempfile.TemporaryDirectory() as pasta, OpenAIDeMentira() as openai:
+        preparar(openai)
+        ia, _ = porta_na_openai(pasta, situacao, openai)
+        juiz, _ = ia.para_a_imagem(False)
+        texto, _, pela_chave = juiz.julgar(*PEDIDO_AO_JUIZ)
+        return json.loads(texto), pela_chave, [autorizacao for autorizacao, _, _ in openai.juizes]
+
+
+def recusar_o_juiz_do_plano(status, codigo):
+    def preparar(openai):
+        openai.recusa_do_juiz_do_plano = (status, codigo)
+    return preparar
+
+
+class OJuizDaImagemPelaPorta(unittest.TestCase):
+    def test_com_o_login_o_juiz_vai_pelo_plano_e_a_chave_nao_paga(self):
+        veredito, pela_chave, juizes = julgar("com login")
+        self.assertEqual((veredito["best_index"], pela_chave, juizes), (0, False, ["Bearer acesso-do-teste"]))
+
+    def test_sem_o_login_o_juiz_vai_pela_chave_presa_e_ela_paga(self):
+        _, pela_chave, juizes = julgar("sem login")
+        self.assertEqual((pela_chave, juizes), (True, ["Bearer " + CHAVE_GUARDADA]))
+
+    def test_o_plano_que_recusa_de_passagem_deixa_o_juiz_da_chave_decidir(self):
+        _, pela_chave, juizes = julgar("com login", recusar_o_juiz_do_plano(503, "server_error"))
+        self.assertEqual((pela_chave, juizes[-1]), (True, "Bearer " + CHAVE_GUARDADA))
+
+    def test_o_plano_no_limite_nao_cai_para_a_chave_e_para_o_envio(self):
+        with self.assertRaises(envio.motor_do_complemento().provedores.ErroDoProvedor) as parou:
+            julgar("com login", recusar_o_juiz_do_plano(429, "subscription_sharing_usage_limit_exceeded"))
+        self.assertEqual(parou.exception.codigo, "chatgpt_usage_limit")
+
+    def test_sem_chave_o_plano_que_recusa_de_passagem_nao_tem_para_onde_cair(self):
+        with self.assertRaises(envio.motor_do_complemento().provedores.ErroDoProvedor):
+            julgar("com login, sem chave", recusar_o_juiz_do_plano(503, "server_error"))
 
 
 PEDIDO_DE_CORRECAO = (COMECO_DO_PROMPT + ".", "Word: give up\nExample sentence: She gave up smoking\nLearner's sentence: She give up the job", "")

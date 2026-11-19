@@ -54,9 +54,9 @@ Conexão. A 7 e a 8 estão na seção 3.
 Os da chave ([chave-da-openai.md](../seguranca/chave-da-openai.md)) e os do login ([login-do-chatgpt.md](login-do-chatgpt.md)), sem
 nenhum novo. O texto do Cartão e a correção da Criação a porta pede ela mesma (`pedido_do_texto`: a credencial, o pedido pela camada de
 provedores do motor e o custo no `costs.jsonl` do Envio, no formato de sempre; o da correção à parte), e o motor só recebe a função
-`pedir`. Na imagem, a chave chega ao motor presa (`provedores.PelaChave`: a triagem, a imagem gerada e o juiz sem o plano pedem por
-ela, e o motor não segura o segredo); o juiz pelo plano ainda recebe o token no `config`, e a voz de reserva e o Ouvir recebem a chave
-na chamada.
+`pedir`. Na imagem, a chave chega ao motor presa (`provedores.PelaChave`: a triagem e a imagem gerada pedem por ela) e o juiz chega
+pronto (`JuizDaImagem.julgar`: o plano, ou a chave sem plano ou quando o plano recusa de passagem): o `config` do motor não leva segredo
+nenhum. A voz de reserva e o Ouvir são da Conexão e recebem a chave na chamada.
 
 ## 6. Provas
 
@@ -66,5 +66,4 @@ e os `test_envio*.py`. Não provam o login real nem a OpenAI real.
 
 ## Os próximos passos
 
-Cada um é uma versão da Conexão: o juiz pelo plano pede pela porta (a volta à chave quando o plano recusa de passagem passa para ela) e
-o `config` deixa de levar segredo; somem as opções de lote do motor (um Cartão por vez); o motor passa a ter duas entradas (`escrever` e `montar`), sem a herança do `Trabalho`.
+Cada um é uma versão da Conexão: somem as opções de lote do motor (um Cartão por vez); o motor passa a ter duas entradas (`escrever` e `montar`), sem a herança do `Trabalho`.

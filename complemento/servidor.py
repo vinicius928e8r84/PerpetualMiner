@@ -292,7 +292,7 @@ class Conexao:
         self.modelos = ModeloDosCartoes(os.path.join(dados.raiz, "modelo-dos-cartoes.json"), modelos_da_ia or lista_nossa(), hoje,
                                         logger, self.chatgpt, self.cofre, openai_base,
                                         lambda: motor.config_loader.base_config()["openai"]["chat_model"])
-        self.ia = IaDosCartoes(self.chatgpt, self.cofre, self.modelos, motor=motor, openai_base=openai_base)
+        self.ia = IaDosCartoes(self.chatgpt, self.cofre, self.modelos, motor=motor, openai_base=openai_base, logger=logger)
         self.firestore_base = firestore_base
         self.item_de_login = item_de_login
         self.atualizacao = atualizacao or Atualizacao(
