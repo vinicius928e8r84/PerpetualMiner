@@ -114,17 +114,9 @@ class Credencial(unittest.TestCase):
                 provedores.texto({"provedor": "outro", "segredo": CHAVE, "modelo": "m", "base": openai.base}, "s", "m")
         self.assertEqual((recusa.exception.codigo, openai.pedidos), ("provider_unknown", []))
 
-    def test_o_plano_na_configuracao_vira_a_credencial_do_plano_e_a_chave_leva_o_modelo_escolhido_ou_o_do_motor(self):
-        config = {"openai_api_key": CHAVE, "openai": {"chat_model": "gpt-4o"}}
-        self.assertEqual(provedores.credencial_do_texto(config, "http://x"),
-                         {"provedor": "openai", "segredo": CHAVE, "modelo": "gpt-4o", "base": "http://x"})
-        self.assertEqual(provedores.credencial_do_texto(dict(config, modelo_do_texto="gpt-4.1-mini"))["modelo"], "gpt-4.1-mini")
-        plano = provedores.credencial_do_texto(dict(config, plano_do_chatgpt={"token": TOKEN_DO_PLANO, "modelo": "gpt-6-luna"}))
-        self.assertEqual((plano["via"], plano["segredo"], plano["modelo"]), ("plano", TOKEN_DO_PLANO, "gpt-6-luna"))
-
     def test_o_endereco_so_vem_do_codigo_que_monta_a_credencial_nunca_da_configuracao(self):
         self.assertIs(provedores.ADAPTADORES[provedores.OPENAI], openai_http)
-        self.assertIsNone(provedores.credencial_do_texto({"openai_api_key": CHAVE, "openai": {}, "openai_base": "http://outro"})["base"])
+        self.assertFalse(hasattr(provedores, "credencial_do_texto"), "a credencial vem pronta da Conexão: o motor não a monta de um config")
 
 
 if __name__ == "__main__":

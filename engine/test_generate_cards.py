@@ -4,7 +4,7 @@ from pathlib import Path
 
 import estilos
 import generate_cards
-from parser import MiningEntry, build_card_stem
+from parser import MiningEntry, get_card_jobs
 
 
 BAD_CARD = """Anki Card
@@ -144,11 +144,11 @@ class GenerateCardsKeywordValidationTests(unittest.TestCase):
             entry = MiningEntry(keywords=["exerts himself"], phrase="He exerts himself on brands of his own, if at all.")
             dropped = GOOD_CARD.replace("He *exerts himself* on", "*exerts himself* on")
             pedidos = []
-            saved = generate_cards.run([entry], _config(root), roteiro(dropped, GOOD_CARD, pedidos=pedidos))
+            falha = generate_cards.escrever(get_card_jobs(entry)[0], _config(root), roteiro(dropped, GOOD_CARD, pedidos=pedidos), "5-0")
 
-            self.assertEqual(len(pedidos), 2)
+            self.assertEqual((falha, len(pedidos)), (None, 2))
             self.assertIn("every word", pedidos[1][1])
-            self.assertIn("Front: He *exerts himself* on", (root / "Output" / f"{saved[0]}.txt").read_text(encoding="utf-8"))
+            self.assertIn("Front: He *exerts himself* on", (root / "Output" / "5-0.txt").read_text(encoding="utf-8"))
 
     def test_run_retries_keyword_mismatch_and_saves_corrected_card(self):
         with tempfile.TemporaryDirectory() as td:
@@ -164,15 +164,11 @@ class GenerateCardsKeywordValidationTests(unittest.TestCase):
             )
 
             calls = []
-            saved = generate_cards.run([entry], _config(root), roteiro(BAD_CARD, GOOD_CARD, pedidos=calls))
+            falha = generate_cards.escrever(get_card_jobs(entry)[0], _config(root), roteiro(BAD_CARD, GOOD_CARD, pedidos=calls), "5-0")
 
-            expected_stem = build_card_stem(
-                "exerts himself",
-                "He exerts himself on brands of his own, if at all.",
-            )
             self.assertEqual(len(calls), 2)
-            self.assertEqual(saved, [expected_stem])
-            card_path = root / "Output" / f"{expected_stem}.txt"
+            self.assertIsNone(falha)
+            card_path = root / "Output" / "5-0.txt"
             self.assertTrue(card_path.exists())
             self.assertIn("Back: exerts himself", card_path.read_text(encoding="utf-8"))
 
@@ -188,13 +184,13 @@ class GenerateCardsKeywordValidationTests(unittest.TestCase):
             )
 
             calls = []
-            saved = generate_cards.run([entry], _config(root), roteiro(BAD_CARD, pedidos=calls))
+            falha = generate_cards.escrever(get_card_jobs(entry)[0], _config(root), roteiro(BAD_CARD, pedidos=calls), "5-0")
 
             self.assertEqual(len(calls), 2)
-            self.assertEqual(saved, [])
+            self.assertEqual(falha, "keyword_mismatch")
             self.assertEqual(list((root / "Output").glob("*.txt")), [])
 
-    def test_a_named_card_is_the_only_label_in_the_log_and_in_the_request_and_only_stems_limits_the_run(self):
+    def test_o_nome_do_cartao_e_o_unico_rotulo_no_log_e_no_pedido_e_so_o_cartao_pedido_e_escrito(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             (root / "Output").mkdir()
@@ -203,15 +199,46 @@ class GenerateCardsKeywordValidationTests(unittest.TestCase):
             entry = MiningEntry(keywords=["exerts himself", "toil"], phrase="He exerts himself on brands of his own, if at all.")
             pedidos = []
             with self.assertLogs("perpetualminer.motor", level="INFO") as logged:
-                saved = generate_cards.run(
-                    [entry], _config(root), roteiro(GOOD_CARD, pedidos=pedidos), card_stem=lambda job, index: "77-%d" % index, only_stems={"77-0"}
-                )
+                falha = generate_cards.escrever(get_card_jobs(entry)[0], _config(root), roteiro(GOOD_CARD, pedidos=pedidos), "77-0")
 
-            self.assertEqual(saved, ["77-0"])
+            self.assertIsNone(falha)
             self.assertEqual([rotulo for _, _, rotulo in pedidos], ["77-0"])
             self.assertEqual([path.name for path in (root / "Output").glob("*.txt")], ["77-0.txt"])
             self.assertNotIn("exerts himself", "\n".join(logged.output))
             self.assertNotIn("toil", "\n".join(logged.output))
+
+    def test_escrever_o_mesmo_cartao_duas_vezes_pede_e_paga_uma(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            _write_prompts(root)
+            trabalho = get_card_jobs(MiningEntry(keywords=["exerts himself"], phrase="He exerts himself on brands of his own, if at all."))[0]
+            pedidos = []
+            falhas = [generate_cards.escrever(trabalho, _config(root), roteiro(GOOD_CARD, pedidos=pedidos), "8-0") for _ in range(2)]
+            texto = (root / "Output" / "8-0.txt").read_text(encoding="utf-8")
+
+        self.assertEqual((falhas, len(pedidos)), ([None, None], 1))
+        self.assertIn("Back: exerts himself", texto)
+
+    def test_a_recusa_do_provedor_volta_como_o_codigo_dela_e_nada_fica_no_disco(self):
+        def recusa(sistema, mensagem, rotulo):
+            raise generate_cards.provedores.ErroDoProvedor("openai_key_rejected")
+
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            _write_prompts(root)
+            trabalho = get_card_jobs(MiningEntry(keywords=["toil"], phrase="They toil all day."))[0]
+            falha = generate_cards.escrever(trabalho, _config(root), recusa, "8-0")
+            escritos = list(root.rglob("*.txt*"))
+
+        self.assertEqual(falha, "openai_key_rejected")
+        self.assertEqual([caminho.name for caminho in escritos if caminho.parent.name == "Output"], [])
+
+    def test_a_resposta_vazia_e_empty_response(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            _write_prompts(root)
+            trabalho = get_card_jobs(MiningEntry(keywords=["toil"], phrase="They toil all day."))[0]
+            self.assertEqual(generate_cards.escrever(trabalho, _config(root), roteiro(""), "8-0"), "empty_response")
 
     def test_o_cartao_principal_e_o_gerado_usam_o_mesmo_prompt_com_mensagens_diferentes(self):
         with tempfile.TemporaryDirectory() as td:
@@ -221,10 +248,12 @@ class GenerateCardsKeywordValidationTests(unittest.TestCase):
             _write_prompts(root)
             entry = MiningEntry(keywords=["exerts himself", "toil"], phrase="He exerts himself on brands of his own, if at all.")
             pedidos = []
-            generate_cards.run([entry], _config(root), roteiro(GOOD_CARD, pedidos=pedidos))
+            for posicao, trabalho in enumerate(get_card_jobs(entry)):
+                generate_cards.escrever(trabalho, _config(root), roteiro(GOOD_CARD, pedidos=pedidos), "77-%d" % posicao)
             calls = {}
-            for system_prompt, user_message, keyword in pedidos:
-                calls.setdefault(keyword, (system_prompt, user_message))
+            nomes = {"77-0": "exerts himself", "77-1": "toil"}
+            for system_prompt, user_message, rotulo in pedidos:
+                calls.setdefault(nomes[rotulo], (system_prompt, user_message))
 
             (main_system, main_message), (generated_system, generated_message) = calls["exerts himself"], calls["toil"]
             self.assertEqual(main_system, "en prompt")
@@ -304,30 +333,30 @@ class GenerateCardsByStyleTests(unittest.TestCase):
             (root / "Output").mkdir()
             (root / "log").mkdir()
             pedidos = []
-            saved = generate_cards.run([entry], _com_o_estilo(root, lang), roteiro(resposta, pedidos=pedidos))
+            falha = generate_cards.escrever(get_card_jobs(entry)[0], _com_o_estilo(root, lang), roteiro(resposta, pedidos=pedidos), "3-0")
             enviados = [(sistema, mensagem) for sistema, mensagem, _ in pedidos]
             textos = [path.read_text(encoding="utf-8") for path in (root / "Output").glob("*.txt")]
-        return saved, enviados, textos
+        return falha, enviados, textos
 
     def test_o_cartao_do_ingles_e_pedido_com_o_prompt_do_iniciante_e_so_salva_se_a_palavra_confere(self):
         entry = MiningEntry(keywords=["gave up"], phrase="She gave up smoking last year.")
-        saved, enviados, textos = self._gerar("en", entry, CARTAO_INICIANTE)
+        falha, enviados, textos = self._gerar("en", entry, CARTAO_INICIANTE)
         iniciante = (Path(__file__).resolve().parent / "prompts" / "en_iniciante.txt").read_text(encoding="utf-8").strip()
         self.assertEqual([prompt for prompt, _ in enviados], [iniciante])
-        self.assertEqual(len(saved), 1)
+        self.assertEqual((falha, len(textos)), (None, 1))
         self.assertIn("Literal: Ela desistiu", textos[0])
 
     def test_o_estilo_diz_que_a_linha_russa_e_a_frase_inteira_e_o_prompt_do_iniciante_do_russo_vale(self):
         entry = MiningEntry(keywords=["Я не"], phrase="Я не мальчик!", context_source="Série", file_stem="russa")
-        saved, enviados, textos = self._gerar("ru", entry, CARTAO_RUSSO_INICIANTE)
+        falha, enviados, textos = self._gerar("ru", entry, CARTAO_RUSSO_INICIANTE)
         iniciante = (Path(__file__).resolve().parent / "prompts" / "ru_iniciante.txt").read_text(encoding="utf-8").strip()
-        self.assertEqual(([prompt for prompt, _ in enviados], saved), ([iniciante], ["russa"]))
+        self.assertEqual(([prompt for prompt, _ in enviados], falha, len(textos)), ([iniciante], None, 1))
         self.assertEqual(enviados[0][1], "Я не мальчик!\n[Context: Série]")
 
     def test_um_cartao_russo_sem_a_traducao_em_portugues_nao_e_salvo(self):
         entry = MiningEntry(keywords=["Я не"], phrase="Я не мальчик!", file_stem="russa")
-        saved, _, textos = self._gerar("ru", entry, CARTAO_RUSSO_INICIANTE.replace("Literal:", "Outro:").replace("Natural:", "Mais:"))
-        self.assertEqual((saved, textos), ([], []))
+        falha, _, textos = self._gerar("ru", entry, CARTAO_RUSSO_INICIANTE.replace("Literal:", "Outro:").replace("Natural:", "Mais:"))
+        self.assertEqual((falha, textos), ("invalid_card", []))
 
     def test_o_estilo_do_intermediario_do_russo_traz_o_prompt_dele_e_o_cartao_com_a_definicao_em_ingles_e_salvo(self):
         cartao = "Anki Card\nFront\nОна приходила вчера.\n\nBack\nWord: приходила\n\nDefinition: To come, to arrive.\n\nImage: A door.\n"
@@ -338,12 +367,12 @@ class GenerateCardsByStyleTests(unittest.TestCase):
             pedidos = []
             config = _com_o_estilo(root, "ru")
             config["estilo"] = dict(estilos.estilo("ru", "intermediario"), prompt=str(Path(__file__).resolve().parent / "prompts" / "ru_intermediario.txt"))
-            saved = generate_cards.run(
-                [MiningEntry(keywords=["Она приходила"], phrase="Она приходила вчера.", file_stem="russa")], config, roteiro(cartao, pedidos=pedidos))
+            entrada = MiningEntry(keywords=["Она приходила"], phrase="Она приходила вчера.", file_stem="russa")
+            falha = generate_cards.escrever(get_card_jobs(entrada)[0], config, roteiro(cartao, pedidos=pedidos), "3-0")
             enviados = [(sistema, mensagem) for sistema, mensagem, _ in pedidos]
             textos = [path.read_text(encoding="utf-8") for path in (root / "Output").glob("*.txt")]
         intermediario = (Path(__file__).resolve().parent / "prompts" / "ru_intermediario.txt").read_text(encoding="utf-8").strip()
-        self.assertEqual(([prompt for prompt, _ in enviados], saved), ([intermediario], ["russa"]))
+        self.assertEqual(([prompt for prompt, _ in enviados], falha), ([intermediario], None))
         self.assertIn("Definition: To come", textos[0])
 
 
