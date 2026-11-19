@@ -53,3 +53,16 @@ def avisar_do_que_ficou(logger):
         if logger:
             logger.warning("Envio: não deu para apagar o provisório %s (%s); fica para a próxima subida", os.path.basename(caminho), erro)
     return avisar
+
+
+def limpar_ao_subir(dados, estado_de, logger=None):
+    """O que a Conexão que sobe tira do disco antes de retomar a fila, com a tranca da fila na mão: todo provisório e o texto (`.txt`)
+    de todo Envio apagado. Esse texto chega quando o Apagar tudo cai com a thread esperando a OpenAI e a Conexão morre antes de a
+    thread conferir o `wiped`; nenhuma retenção o tira. `estado_de(job_id)` é o estado guardado do Envio (`{}` se não há)."""
+    apagar_os_provisorios(dados, avisar_do_que_ficou(logger))
+    for nome in sorted(os.listdir(dados.estado)) if os.path.isdir(dados.estado) else []:
+        pasta = os.path.join(dados.estado, nome)
+        if os.path.isdir(pasta) and estado_de(nome).get("wiped"):
+            for arquivo in sorted(os.listdir(pasta)):
+                if arquivo.endswith(".txt"):
+                    apagar(os.path.join(pasta, arquivo))
