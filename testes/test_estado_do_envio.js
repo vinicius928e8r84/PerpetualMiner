@@ -3,7 +3,7 @@
 const assert = require('assert');
 
 globalThis.PerpetualMiner = {};
-require('./painel-envio-estado.js');
+require('../painel-envio-estado.js');
 const { SituacaoDoEnvio, FaseDaRemessa } = globalThis.PerpetualMiner;
 
 // ─── A situação de um Envio ───────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -107,9 +107,9 @@ const { SituacaoDoEnvio, FaseDaRemessa } = globalThis.PerpetualMiner;
   for (const codigo of ['cards_failed', 'novidade', 'toString', null, undefined]) {
     assert.deepStrictEqual(linha(codigo), ['ONB-23.motivoOutro', null, AJUDA.TENTAR, true], String(codigo));
   }
-  require('./lib/voz/catalogo.js');
-  require('./lib/voz/catalogo-nivel.js');
-  require('./lib/voz/texto.js');
+  require('../lib/voz/catalogo.js');
+  require('../lib/voz/catalogo-nivel.js');
+  require('../lib/voz/texto.js');
   const codigos = ['openai_key_missing', 'openai_key_rejected', 'openai_no_credit', 'openai_rate_limited', 'chatgpt_signed_out', 'chatgpt_not_eligible', 'chatgpt_usage_limit', 'note_type_missing', 'anki_write_failed', 'keyword_missing', null];
   for (const codigo of codigos) {
     for (const id of [doCodigo(codigo).fala, doCodigo(codigo).noPainel].filter(Boolean)) assert.ok(globalThis.PerpetualMiner.textoDaVoz(id), id);
@@ -154,7 +154,7 @@ const { SituacaoDoEnvio, FaseDaRemessa } = globalThis.PerpetualMiner;
 
 // ─── O que fica guardado em `pm_envio` ────────────────────────────────────────────────────────────────────────────────────────────
 (async () => {
-  require('./lib/envio-gravado.js');
+  require('../lib/envio-gravado.js');
   const { EnvioGravado } = globalThis.PerpetualMiner;
   const { EVENTO, proximo, criar } = EnvioGravado;
   const ENVIOS = [{ id: 'a', lang: 'en', ids: [1], jobId: 'a' }];

@@ -12,7 +12,7 @@ const { ehArquivoDeTeste, padraoComoRegex, escolherPython, dicaDeModulo, baseDaV
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const testar = (...args) => spawnSync('node', [path.join(RAIZ, 'scripts', 'testar.mjs'), ...args], { cwd: RAIZ, encoding: 'utf8' });
 
-assert.ok(ehArquivoDeTeste('test_sync.js'));
+assert.ok(ehArquivoDeTeste('testes/test_sync.js'));
 assert.ok(ehArquivoDeTeste('scripts/test_testar.mjs'));
 assert.ok(ehArquivoDeTeste('.agents/skills/x/scripts/test_helpers.sh'));
 assert.ok(ehArquivoDeTeste('e2e/tests/sub/algo.spec.js'));
@@ -24,7 +24,7 @@ assert.ok(padraoComoRegex('e2e/tests/**/*.spec.js').test('e2e/tests/sub/algo.spe
 
 const lista = testar('--listar');
 assert.equal(lista.status, 0, lista.stdout + lista.stderr);
-assert.match(lista.stdout, /^node: (?:\S+ )*test_sync\.js(?: \S+)*$/m);
+assert.match(lista.stdout, /^node: (?:\S+ )*testes\/test_sync\.js(?: \S+)*$/m);
 assert.match(lista.stdout, /^e2e \(pesado\): e2e\/tests\/.*\.spec\.js/m);
 assert.match(lista.stdout, /^complemento: (?:\S+ )*complemento\/test_servidor\.py(?: \S+)*$/m);
 
@@ -34,7 +34,7 @@ assert.match(desconhecido.stdout, /grupo desconhecido: inexistente\nhelp: os gru
 
 const ferramentas = testar('node');
 assert.equal(ferramentas.status, 0, ferramentas.stdout + ferramentas.stderr);
-assert.match(ferramentas.stdout, /▶ node: node test_sync\.js/);
+assert.match(ferramentas.stdout, /▶ node: node testes\/test_sync\.js/);
 assert.match(ferramentas.stdout, /testes ok: node/);
 
 const raizComVenv = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-venv-'));

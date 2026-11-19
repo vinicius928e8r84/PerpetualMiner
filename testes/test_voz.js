@@ -4,8 +4,8 @@ const assert = require('assert');
 const fs = require('fs');
 
 const path = require('path');
-const { CAMINHO_DO_HTML, NOTAS_POR_AREA, carregarCatalogo, htmlDoCatalogo, linhasDoHtml } = require('./scripts/voz-do-catalogo.js');
-const { CAMINHO_DO_RETRATO, problemasDaVoz, retratoDoCatalogo, textosDoCatalogo } = require('./scripts/conferir-voz.js');
+const { CAMINHO_DO_HTML, NOTAS_POR_AREA, carregarCatalogo, htmlDoCatalogo, linhasDoHtml } = require('../scripts/voz-do-catalogo.js');
+const { CAMINHO_DO_RETRATO, problemasDaVoz, retratoDoCatalogo, textosDoCatalogo } = require('../scripts/conferir-voz.js');
 
 const CATALOGO_DA_VOZ = carregarCatalogo();
 const retrato = JSON.parse(fs.readFileSync(CAMINHO_DO_RETRATO, 'utf8'));

@@ -56,10 +56,10 @@ The area follows the Conexão state `ConexaoAnki` reports (`acompanhar`):
   inside the Boas-vindas the card has only outlines and the host's Continuar is the primary. The status is a `role="status"` region that
   stays in the DOM (the 1 s clock only redraws the checklist).
   The Conferência line (“Confere sozinho a cada 15 s · última vez há N s”, “Conferindo agora…” while a check is out) follows the
-  shared checks. The card's phase and step 4 are the machines of `painel-anki-primeira-conexao-estado.js` (`node test_primeira_conexao.js`). See the
+  shared checks. The card's phase and step 4 are the machines of `painel-anki-primeira-conexao-estado.js` (`testes/test_primeira_conexao.js`). See the
   [Anki area states](../../../docs/design/painel/anki/README.md#estados) for the **Pronto** moment and the Conexão dropping in step 4.
   Tests: `painel-anki-primeira-conexao.spec.js` (behaviour, download, checklist), `ter-o-anki.spec.js` (first step), `abrir-o-anki-sozinho.spec.js` (the opener step), `boas-vindas.spec.js` (step 4),
-  `complemento/test_pacote.py` and `test_empacotar.js` (the file inside the package).
+  `complemento/test_pacote.py` and `testes/test_empacotar.js`.
 - **Desligada** after it answered once: the F1, and Custos shows the last reading (`pm_anki_custos`) with the BRG-12
   selo (“Anki fechado. Mostrando dados de há 2 h.”, with the code in Detalhes) and the period controls set to that reading's
   period and disabled (no other period to read). **Continuar envio**
@@ -163,7 +163,7 @@ With the Conexão silent, an Enviar the person pressed (or Abrir o Anki) runs `A
 The extension sees “Anki fechado” and “complemento desativado” as the same network error; only the opener tells them apart. BRG-39: success is a toast;
 `sumiu` (or Chrome's “host not found” once connected) is an aviso with **Instalar de novo** (`ConexaoAnki.esquecerQueConectou()` → `#anki`, the first-connection card);
 `falhou` is “Não deu para consertar…” with **Baixar diagnóstico** (`diagnostico-do-conserto.json`). “Conferindo…” shows only past 3 s.
-Tests: `painel-conserto.spec.js`, `painel-conserto-visual.spec.js` (`test.fixme`), `test_abrir_o_anki.js`, `complemento/test_conserto*.py`; no real Anki is closed.
+Tests: `painel-conserto.spec.js`, `painel-conserto-visual.spec.js` (`test.fixme`), `testes/test_abrir_o_anki.js`, `complemento/test_conserto*.py`; no real Anki is closed.
 
 ### Envio ao Anki (`painel-envio.js`)
 

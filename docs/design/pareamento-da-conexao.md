@@ -117,10 +117,10 @@ Falhas, sem exceção:
 |---|---|---|
 | toda rota privada recusa sem assinatura, com assinatura errada e com `sessao` velha; aceita a certa | a matriz `EstadosDeCadaRota` de `test_servidor.py` ganha a coluna “credencial” e roda por todas as rotas de `ROTAS` (rota nova é coberta sem declarar nada) | — |
 | o limite de hoje vira exigência | `test_limite_conhecido_…` em `test_servidor_leitura.py` passa a esperar `401` para o cliente que só forja o `Origin` | uma extensão real com `extraHeaders` |
-| contrato | `test_servidor.py` assina por padrão os exemplos com `origem` da extensão; exemplos novos de `401`, `pairing_*`, `comecar`, `concluir`, `conferir`; `test_contrato_fechado.js` ganha as variantes novas de `PedidoAoAnki` | — |
+| contrato | `test_servidor.py` assina por padrão os exemplos com `origem` da extensão; exemplos novos de `401`, `pairing_*`, `comecar`, `concluir`, `conferir`; `testes/test_contrato_fechado.js` ganha as variantes novas de `PedidoAoAnki` | — |
 | pareamento pelo painel | e2e com o fake (`fakes.anki.pareamento.codigoNoAnki()` lê o código “mostrado”): Conectar → código → ligada; código errado 5× → esgotado; vencido | o diálogo Qt real |
 | impostor (variante 2b) | e2e: um fake impostor na porta; lê o que ele recebeu; o painel diz “não confirmada”; a aba do ChatGPT não abre | um impostor real noutro usuário do sistema |
-| guarda | e2e: a credencial não está em `chrome.storage.local`; `pacote de diagnóstico` e log sem `segredo`; `test_empacotar.js` sem `pareamento.json` | LevelDB em disco |
+| guarda | e2e: a credencial não está em `chrome.storage.local`; `pacote de diagnóstico` e log sem `segredo`; `testes/test_empacotar.js` sem `pareamento.json` | LevelDB em disco |
 | interoperabilidade HMAC | um teste Node + Python com o mesmo vetor (o do relatório) | — |
 | fixtures do e2e | os testes começam pareados: a fixture `extensao` guarda a credencial no IndexedDB e o fake (ou o complemento real) conhece o navegador; `test.use({ pareada: false })` pareia pela tela | — |
 

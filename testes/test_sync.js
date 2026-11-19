@@ -1,7 +1,7 @@
 'use strict';
 
 const { criarSincronizacao, criarSessao, nuvemHttp, armazenamentoDoChrome, paraCampos, deCampos,
-  tombstoneFirestore, tombstonesSync, MOTIVO, PREFIXO_DO_TOMBSTONE } = require('./lib/sincronizacao.js');
+  tombstoneFirestore, tombstonesSync, MOTIVO, PREFIXO_DO_TOMBSTONE } = require('../lib/sincronizacao');
 
 const C = {
   reset: '\x1b[0m', bold: '\x1b[1m',

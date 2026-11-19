@@ -25,7 +25,7 @@ function definicoesDosIds(fontes) {
 const repetidos = achados => Object.entries(achados).filter(([, lugares]) => lugares.length > 1)
   .map(([id, lugares]) => `${id} definido ${lugares.length} vezes: ${lugares.join(' e ')}`);
 
-const fontes = Object.fromEntries(CATALOGOS.map(a => [a, fs.readFileSync(path.join(__dirname, a), 'utf8')]));
+const fontes = Object.fromEntries(CATALOGOS.map(a => [a, fs.readFileSync(path.join(__dirname, '..', a), 'utf8')]));
 const achados = definicoesDosIds(fontes);
 
 assert(Object.keys(achados).length > 100, 'não li os IDs dos catálogos da Voz');

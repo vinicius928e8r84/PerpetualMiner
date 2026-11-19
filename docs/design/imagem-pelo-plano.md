@@ -59,7 +59,7 @@ Conectado e sem chave guardada, a coluna do ChatGPT diz que o cartão sai com fo
 | o plano sem chave: foto real, sem foto que preste, sem foto nenhuma, só a gerada pedida | `test_imagem_pelo_plano.py` | — |
 | o limite de uso no juiz para o Envio, sem pagar o texto de novo, e o Tentar de novo termina o Cartão; a conta que não serve | `test_imagem_pelo_plano.py` | — |
 | a segunda troca recusada com `invalid_grant` diz que o plano não serve | `complemento/test_login_do_chatgpt.py` | uma conta grátis ou Go de verdade |
-| o estado e o Envio parado no contrato, nos dois lados | `exemplos-do-chatgpt.json`, `test_servidor.py`, `test_fake_anki.js`, `test_contrato_fechado.js` | — |
+| o estado e o Envio parado no contrato, nos dois lados | `exemplos-do-chatgpt.json`, `test_servidor.py`, `testes/test_fake_anki.js`, `testes/test_contrato_fechado.js` | — |
 | o modal, a conta grátis ou Go, o plano sem chave | `e2e/tests/configuracoes-chatgpt-plano.spec.js` | a aprovação visual |
 | o limite de uso e a conta que não serve no resumo e no cartão do Envio | `e2e/tests/painel-envio-plano.spec.js` | — |
 | as referências visuais | `configuracoes-chatgpt-visual.spec.js`, `painel-envio-visual.spec.js`: `test.fixme` sem PNG até o dono aprovar | a aprovação |

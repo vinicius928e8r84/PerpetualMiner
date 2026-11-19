@@ -3,9 +3,9 @@
 const assert = require('assert');
 const { webcrypto } = require('crypto');
 
-const { NAVEGADORES, assinaturaDoPedido, provaDaRevogacao } = require('./e2e/pareamento-de-teste');
-const contrato = require('./complemento/contrato/carregar');
-const { ENDERECO, comoValores, criarConexao, resposta, carregarAPagina, lerJson, igual, parear, parearComChaveGuardada } = require('./e2e/pagina-de-mentira-do-pareamento');
+const { NAVEGADORES, assinaturaDoPedido, provaDaRevogacao } = require('../e2e/pareamento-de-teste');
+const contrato = require('../complemento/contrato/carregar');
+const { ENDERECO, comoValores, criarConexao, resposta, carregarAPagina, lerJson, igual, parear, parearComChaveGuardada } = require('../e2e/pagina-de-mentira-do-pareamento');
 
 async function main() {
   {

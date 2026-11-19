@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-const contrato = require('./complemento/contrato/carregar.js');
+const contrato = require('../complemento/contrato/carregar.js');
 
 // Os objetos que saem do `vm` têm outro protótipo: compara-se o valor deles.
 const comoValores = async promessa => JSON.parse(JSON.stringify(await promessa));
@@ -30,7 +30,7 @@ function carregarOAbridor({ responder, permissao = true }) {
     },
   });
   contexto.globalThis = contexto;
-  vm.runInContext(fs.readFileSync(path.join(__dirname, 'lib', 'abridor.js'), 'utf8'), contexto);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'lib', 'abridor.js'), 'utf8'), contexto);
   return { Abridor: contexto.PerpetualMiner.Abridor, enviadas };
 }
 

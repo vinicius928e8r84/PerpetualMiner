@@ -1,6 +1,6 @@
 'use strict';
 
-const { criarSincronizacao, armazenamentoDoChrome, PREFIXO_DO_TOMBSTONE } = require('./lib/sincronizacao.js');
+const { criarSincronizacao, armazenamentoDoChrome, PREFIXO_DO_TOMBSTONE } = require('../lib/sincronizacao.js');
 
 let falhas = 0;
 function assert(condicao, rotulo) {

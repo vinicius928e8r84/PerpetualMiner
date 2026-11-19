@@ -4,7 +4,7 @@ Ticket #4 do mapa Redesign do front-end (#1).
 
 O que está aqui: o **guia de voz e tom** (as regras de qualquer mensagem nova) e as **regras por categoria** (onde cada tipo de mensagem aparece). Só o *conteúdo*: a aparência é da identidade visual, onde cada área mora é do shell do painel e a lógica é da auditoria do front.
 
-O texto de cada estado não está aqui: a fonte é [`lib/voz/catalogo.js`](../../../lib/voz/catalogo.js) e [`catalogo-nivel.js`](../../../lib/voz/catalogo-nivel.js), e texto novo entra primeiro neles. Para ver todos juntos, com o estado, a categoria, o “hoje” e a nota de cada ID (`notas-<área>.json`, que `test_voz.js` exige), abra [`catalogo.html`](catalogo.html), gerado por `node scripts/gerar-catalogo-da-voz.js`.
+O texto de cada estado não está aqui: a fonte é [`lib/voz/catalogo.js`](../../../lib/voz/catalogo.js) e [`catalogo-nivel.js`](../../../lib/voz/catalogo-nivel.js), e texto novo entra primeiro neles. Para ver todos juntos, com o estado, a categoria, o “hoje” e a nota de cada ID (`notas-<área>.json`, que `testes/test_voz.js` exige), abra [`catalogo.html`](catalogo.html), gerado por `node scripts/gerar-catalogo-da-voz.js`.
 
 Os termos seguem [`glossary.md`](../../../glossary.md).
 

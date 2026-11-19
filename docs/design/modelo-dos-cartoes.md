@@ -61,6 +61,6 @@ da pessoa, sem conferir a conta; só a data a derruba. Com o login, a lista que 
 | o quê | teste | o que não prova |
 |---|---|---|
 | o Automático (motor com a chave, primeiro do plano com o login), a escolha, a troca no dia, a que some da conta, ler sem gravar, a lista de texto com foto, a lista nossa | `complemento/test_modelo_dos_cartoes.py`: o servidor real, a thread do Envio, a OpenAI de mentira na fronteira HTTP, o relógio que o teste dá à Conexão | a OpenAI de verdade |
-| o estado e a escolha no contrato, nos dois lados | `complemento/contrato/exemplos-do-modelo.json`, `test_servidor.py`, `test_fake_anki.js`, `contrato-da-conexao.spec.js`, `test_contrato_fechado.js` | — |
+| o estado e a escolha no contrato, nos dois lados | `complemento/contrato/exemplos-do-modelo.json`, `test_servidor.py`, `testes/test_fake_anki.js`, `contrato-da-conexao.spec.js`, `testes/test_contrato_fechado.js` | — |
 | o Avançado, o aviso âmbar, Trocar agora, Escolher outro, a troca no dia pelo Envio e a linha verde (relógio parado) | `e2e/tests/configuracoes-modelo.spec.js` | o Envio de verdade (é o `unittest`) |
 | a referência visual do Avançado, do aviso e da linha verde | `e2e/tests/configuracoes-modelo-visual.spec.js`, `test.fixme` sem PNG até o dono aprovar | a aprovação |
