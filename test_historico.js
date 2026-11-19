@@ -7,6 +7,7 @@ const vm = require('vm');
 globalThis.PerpetualMiner = globalThis.PerpetualMiner || {};
 require('./lib/historico.js');
 const { Historico } = globalThis.PerpetualMiner;
+const { criarSincronizacao } = require('./lib/sincronizacao.js');
 
 const copia = valor => JSON.parse(JSON.stringify(valor));
 
@@ -235,6 +236,65 @@ async function aMarcaExportadaMudaSoAMarcaDasPedidas() {
   assert.deepStrictEqual(exportadas, [dados.frases[1]]);
 }
 
+function nuvemComPortaoNaSubida(frasesDaNuvem, { tombstones = [] } = {}) {
+  let soltar;
+  let chegou;
+  const subindo = new Promise(resolve => { chegou = resolve; });
+  const aberto = new Promise(resolve => { soltar = resolve; });
+  const nuvem = {
+    uid: 'uid-teste',
+    listarFrases: async () => copia(frasesDaNuvem),
+    gravarFrase: async () => { chegou(); await aberto; },
+    gravarFrases: async () => {},
+    apagarFrases: async () => {},
+    lerTombstones: async () => new Map(tombstones.map(id => [id, Date.now()])),
+    gravarTombstones: async () => {},
+  };
+  return { nuvem, subindo, soltar };
+}
+
+function sincronizacaoSobre(area, nuvem) {
+  const sync = { get: async () => ({}), set: async () => {}, remove: async () => {} };
+  return criarSincronizacao({ nuvem, armazenamento: { local: { ...area, remove: async () => {} }, sync } });
+}
+
+async function aFraseDaFotoSalvaEnquantoOCarregarSobeAsOrfasNaoSome() {
+  const orfa = { ...fraseDoPainel, id: 2, texto: 'Let us call it a day.' };
+  const dados = { frases: [orfa, fraseDoPainel] };
+  const { area } = armazenamentoComPortao(dados);
+  const sw = serviceWorker(area);
+  const { nuvem, subindo, soltar } = nuvemComPortaoNaSubida([{ ...fraseDoPainel, status: 'exported' }]);
+
+  const carregar = sincronizacaoSobre(area, nuvem).carregar();
+  await subindo;
+  await salvarFoto(sw, 'The ferry left the harbour.');
+  soltar();
+  await carregar;
+
+  assert.deepStrictEqual(dados.frases.map(f => [f.texto, f.status]),
+    [['The ferry left the harbour.', undefined], [orfa.texto, undefined], [fraseDoPainel.texto, 'exported']],
+    'a Frase da foto ficou, e a marca Enviada da nuvem chegou só à Frase que a tinha');
+}
+
+async function aFraseDaFotoSalvaEnquantoOCarregarTiraAsApagadasNaoSome() {
+  const apagadaNoOutro = { ...fraseDoPainel, id: 2, texto: 'Let us call it a day.' };
+  const dados = { frases: [apagadaNoOutro, fraseDoPainel] };
+  const { area, segurarAProximaLeitura } = armazenamentoComPortao(dados);
+  const sw = serviceWorker(area);
+  const { nuvem } = nuvemComPortaoNaSubida([fraseDoPainel], { tombstones: ['2'] });
+
+  const portao = segurarAProximaLeitura();
+  const carregar = sincronizacaoSobre(area, nuvem).carregar();
+  await portao.leu;
+  const foto = salvarFoto(sw, 'The ferry left the harbour.');
+  await new Promise(resolve => setTimeout(resolve, 5));
+  portao.soltar();
+  await Promise.all([carregar, foto]);
+
+  assert.deepStrictEqual(dados.frases.map(f => f.texto), ['The ferry left the harbour.', fraseDoPainel.texto],
+    'a apagada no outro computador saiu, e a Frase da foto ficou');
+}
+
 async function duasFrasesNoMesmoMilissegundoGanhamIdsDiferentesEFicamAsDuas() {
   const dados = { frases: [] };
   const { area } = armazenamentoComPortao(dados);
@@ -267,6 +327,8 @@ async function duasFrasesNoMesmoMilissegundoGanhamIdsDiferentesEFicamAsDuas() {
     oContextoDeVariasEditadoDuranteUmSalvamentoDeFotoNaoApagaAFoto,
     aMarcaEnviadaDuranteUmSalvamentoDeFotoNaoApagaAFotoNemAPalavra,
     aMarcaExportadaMudaSoAMarcaDasPedidas,
+    aFraseDaFotoSalvaEnquantoOCarregarSobeAsOrfasNaoSome,
+    aFraseDaFotoSalvaEnquantoOCarregarTiraAsApagadasNaoSome,
     duasFrasesNoMesmoMilissegundoGanhamIdsDiferentesEFicamAsDuas,
   ];
   let falhas = 0;
