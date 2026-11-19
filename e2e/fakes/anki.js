@@ -19,6 +19,7 @@ const { criarRotasDaSaude } = require('./rotas-da-saude');
 const { criarRotasDaChave } = require('./rotas-da-chave');
 const { criarRotasDosServicos } = require('./rotas-dos-servicos');
 const { criarRotasDaLeitura } = require('./rotas-da-leitura');
+const { colecaoDoVocabulario } = require('./baralhos');
 const { criarRotasDoEnvio } = require('./rotas-do-envio');
 
 // Fake da Conexão com o Anki: responde na porta dela (127.0.0.1:8766), ligada e com vocabulário vazio. Um teste a desliga ou responde uma rota com `responder`.
@@ -43,6 +44,7 @@ function criarFakeAnki() {
   const estado = {
     ligada: true,
     vocabulario: { en: [], ru: [] },
+    decksDoVocabulario: new Map(),
     rotas: new Map(),
     recusas: new Map(),
     agora: () => new Date(),
@@ -110,7 +112,13 @@ function criarFakeAnki() {
     if (!estado.ligada) return { recusar: true };
     if (estado.muda === true || estado.muda === url.pathname) return { calar: true };
     const roteiro = estado.rotas.get(`${req.method()} ${url.pathname}`);
-    return roteiro ? { roteiro } : {};
+    if (roteiro) return { roteiro };
+    if (estado.vocabularioDefinido && req.method() === 'POST' && url.pathname === '/anki/vocabulary') {
+      const { deck = '', lang } = dadosDoCorpo(corpoDoPedido) || {};
+      estado.decksDoVocabulario.set(deck, lang === 'ru' ? 'ru' : 'en');
+      return { colecao: colecaoDoVocabulario([...estado.decksDoVocabulario].map(([nome, idioma]) => [nome, estado.vocabulario[idioma]])) };
+    }
+    return {};
   }
 
   async function tratar(daPorta) {
