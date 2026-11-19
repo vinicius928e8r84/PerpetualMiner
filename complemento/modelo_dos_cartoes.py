@@ -90,14 +90,15 @@ class ModeloDosCartoes:
         return oferta[0] if oferta else None
 
     def conta(self):
-        """(quem paga, o que ela oferece): `plano` com o login, `chave` com a chave, `None` e `[]` sem nenhum dos dois, ou com o login
-        acabado (ninguém paga até a pessoa escolher)."""
+        """(quem paga, o que ela oferece): quem paga o texto pela tabela (`quem_paga`, a mesma da porta da IA dos cartões): `plano` com o
+        login, `chave` com a chave, `None` e `[]` quando ninguém paga (sem nenhum dos dois, ou com o login acabado, até a pessoa escolher)."""
         try:
-            token = self._login.token()
+            chave = self._cofre.ler("openai")
+            quem, _ = quem_paga(*self._login.situacao(), False, bool(chave))
+            token = self._login.token() if quem == PLANO else None
             if token:
                 return PLANO, self.disponiveis(self._login.modelos(token))
-            chave = self._cofre.ler("openai")
-            return (CHAVE, self.da_chave(chave)) if chave else (None, [])
+            return (CHAVE, self.da_chave(chave)) if quem != PARADO and chave else (None, [])
         except (ErroDoPlano, openai_api.ErroDaChave) as erro:
             if getattr(erro, "codigo", None) == SAIU:
                 return None, []
@@ -201,10 +202,15 @@ def _do_plano(token, modelo):
 
 
 def credencial_da_imagem(login, cofre, plano, modelos, so_a_chave=False):
-    """Com que o Envio escolhe a imagem do próximo Cartão: `(a credencial do plano, chave)`. O juiz vai pelo plano (o token renovado e o
-    Automático da conta, na credencial de `credencial`) quando há login e a pessoa não pediu Usar a minha chave (`so_a_chave`, #158); a triagem e a imagem gerada vão sempre
-    pela chave do cofre (None sem ela). Levanta `ErroDoPlano`."""
-    token = login.token() if login is not None and not so_a_chave else None
+    """Com que o Envio escolhe a imagem do próximo Cartão: `(a credencial do plano, chave)`. Quem paga o juiz sai da tabela (`quem_paga`, a
+    linha do juiz, a mesma do texto): pelo plano (o token renovado e o Automático da conta, na credencial de `credencial`) quando há login e a
+    pessoa não pediu Usar a minha chave (`so_a_chave`, #158); o login acabado para o Envio. A triagem e a imagem gerada vão sempre pela chave
+    do cofre (None sem ela). Levanta `ErroDoPlano`."""
+    chave = cofre.ler("openai") or None
+    quem, motivo = quem_paga(*(login.situacao() if login is not None else (SEM_LOGIN, None)), so_a_chave, bool(chave))
+    if quem == PARADO and motivo != SEM_CHAVE:
+        raise ErroDoPlano(motivo)
+    token = login.token() if quem == PLANO else None
     if token and "automatico" not in plano:
         plano["automatico"] = _oferta_do_plano(login, token, modelos)[0]
-    return (_do_plano(token, plano["automatico"]) if token else None), cofre.ler("openai") or None
+    return (_do_plano(token, plano["automatico"]) if token else None), chave

@@ -61,7 +61,7 @@ const rotaComFalhasNaFrente = (conexao, anki) => {
     const frente = anki.naFrente(req, url);
     if (frente.recusar) return route.abort('connectionrefused');
     if (frente.calar) return new Promise(() => {});
-    if (frente.colecao) await conexao.enviar({ colecao: frente.colecao });
+    if (frente.mundo) await conexao.enviar({ mundo: frente.mundo });
     if (!frente.roteiro) return adiante(route);
     const { status = 200, json = {} } = await frente.roteiro(req, url);
     const corpo = JSON.stringify(json);
