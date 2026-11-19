@@ -71,6 +71,7 @@ test('Tentar de novo no limite pede à Conexão que tente já e o cartão segue 
   await umaVoltaDoEnvio(page);
   await expect(cartao).toContainText('Limite de uso atingido · Faltam 7 cartões');
   expect(fakes.anki.envios).toHaveLength(1);
+  expect(pedidosA(fakes, '/jobs/get')).toEqual([]);
   await estadoFinal(extensao, { pm_envio: { envios: [{ ids: INGLESAS.map(f => f.id), jobId: job.jobId }] } });
 });
 
@@ -90,6 +91,7 @@ test('Usar a minha chave segue o Envio pela chave: a Conexão marca o Envio, o l
   expect(fakes.anki.envios[0].state).toMatchObject({ status: 'running', usingKey: true });
   expect(fakes.anki.envios[0].state.waiting).toBeUndefined();
   expect(retomadas(fakes)).toEqual([]);
+  expect(pedidosA(fakes, '/jobs/get')).toEqual([]);
   await estadoFinal(extensao, { pm_envio: { envios: [{ ids: INGLESAS.map(f => f.id), jobId: job.jobId }] } });
 });
 
