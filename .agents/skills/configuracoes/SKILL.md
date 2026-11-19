@@ -70,10 +70,10 @@ save sets `aria-invalid` and the CFG-16 line linked by `aria-describedby`, and t
 shows the CFG-16 toast and goes back to the summary. `#configuracoes/chave` with the key empty focuses the field. The key
 is not validated.
 
-The Zona de perigo card is drawn from what `painel.js` reports through `PerpetualMiner.Perigo`: `mostrarTotal(n)`,
+The Zona de perigo card is drawn from what `painel.js` reports through `PerpetualMiner.Perigo`: `mostrarFrases(frases)`,
 `mostrarConta(comConta)` and `aoApagarTudo(apagar)`. The outline danger button only opens the Veio modal (CFG-17:
 Cancelar has the initial focus, Esc and a click outside close it); only the filled button inside it calls
-`apagarTudo()`, which clears the history, and with an account the cloud, then shows the CFG-18 toast — only once the
+`apagarTudo({ ids, em })` (what the modal counted when it opened), which clears those phrases, and with an account the cloud, then shows the CFG-18 toast — only once the
 cloud is empty too; a cloud failure shows in the Conta & sync card and the chip instead (Q4). The description (CFG-32),
 the reach line and the modal body say “all computers of your account” only with an account. Until the total arrives,
 the entry row stays hidden, so it never shows “Nenhuma frase para apagar” while the list is still loading. No `confirm()`.
