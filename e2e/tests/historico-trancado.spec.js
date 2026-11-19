@@ -111,3 +111,27 @@ test('com o Histórico trancado, o Apagar tudo espera a vez, apaga as Frases que
   await expect.poll(async () => (await extensao.frases()).map(f => f.texto)).toEqual([NOVA]);
   await expect(page.getByRole('button', { name: 'Apagar 1 frase', exact: true })).toBeVisible();
 });
+
+test('com Conta e o Histórico trancado, o Painel espera a vez para copiar a marca Enviada da nuvem, e a Frase minerada fica', async ({ page, context, extensao, fakes }) => {
+  await extensao.semearSessao({ uid: 'uid-trancado' });
+  await extensao.gravarStorage({ frases: [FICA] });
+  fakes.google.gravarFrases('uid-trancado', [{ ...FICA, status: 'exported' }]);
+  const outra = await context.newPage();
+  await outra.goto(extensao.url('popup.html'));
+  await trancarOHistorico(outra);
+  const minerada = outra.evaluate(texto => chrome.runtime.sendMessage({
+    type: 'SALVAR_HISTORICO', texto, origem: 'manual', idioma: 'Inglês', palavras: ['ferry@2'],
+  }), NOVA);
+  await expect.poll(() => pedidosNaFilaDaTranca(outra)).toBe(1);
+
+  await page.goto(extensao.url('painel.html#frases'));
+  await expect.poll(() => pedidosNaFilaDaTranca(outra)).toBe(2);
+  expect(await extensao.frases()).toEqual([FICA]);
+  await outra.evaluate(() => window.soltarOHistorico());
+
+  expect((await minerada).ok).toBe(true);
+  await expect.poll(async () => (await extensao.frases()).map(f => [f.texto, f.status])).toEqual([
+    [NOVA, undefined],
+    [FICA.texto, 'exported'],
+  ]);
+});

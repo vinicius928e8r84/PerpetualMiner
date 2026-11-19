@@ -9,6 +9,7 @@ const path = require('path');
 const RAIZ = path.resolve(__dirname, '..', '..');
 require(path.join(RAIZ, 'lib', 'arquivos-da-extensao.js'));
 const { arquivosDaExtensao } = globalThis.PerpetualMiner;
+const { PASTAS_DE_RUNTIME } = require(path.join(RAIZ, 'scripts', 'arquivos-do-pacote.js'));
 
 const SCRIPT = path.join(RAIZ, 'preview', 'ignorar-build.sh');
 const lerTexto = arquivo => fs.readFileSync(path.join(RAIZ, arquivo), 'utf8');
@@ -22,7 +23,8 @@ function andar(pasta) {
 
 const vercel = JSON.parse(lerTexto('vercel.json'));
 assert.strictEqual(vercel.ignoreCommand, 'sh preview/ignorar-build.sh', 'o Vercel pula o build pelo script');
-assert(!(vercel.git && vercel.git.deploymentEnabled === false), 'a integração Git do Vercel continua ligada: não há segredo para publicar por fora');
+assert.deepStrictEqual(vercel.git && vercel.git.deploymentEnabled, { '**': false, main: true, 'vitrine/**': true },
+  'o Vercel publica só a main e as branches vitrine/*: cada push de outra branch gastaria o limite de 100 deployments por dia, mesmo pulado pelo ignoreCommand');
 assert(!fs.existsSync(path.join(RAIZ, '.github', 'workflows', 'vitrine.yml')), 'nenhum workflow publica no Vercel: ele pediria um token');
 
 const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-ignorar-'));
@@ -39,7 +41,7 @@ const CONSTROI = 1;
 
 (async () => {
   const mostrados = new Set(await arquivosDaExtensao(async arquivo => lerTexto(arquivo)));
-  for (const dir of ['conexao', 'veio', 'lib', 'docs/design', 'e2e/vitrine', 'preview']) {
+  for (const dir of [...PASTAS_DE_RUNTIME, 'docs/design', 'e2e/vitrine', 'preview']) {
     for (const arquivo of andar(dir)) if (!arquivo.startsWith('preview/dist/')) mostrados.add(arquivo);
   }
   mostrados.add('vercel.json');

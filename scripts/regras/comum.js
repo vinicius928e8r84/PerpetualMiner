@@ -3,6 +3,7 @@
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const { ehDaExtensao } = require('../arquivos-do-pacote');
 
 function arquivosDoRepositorio(raiz) {
   const saida = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '-z'], {
@@ -14,8 +15,7 @@ function arquivosDoRepositorio(raiz) {
 }
 
 function ehJsDaExtensao(arquivo) {
-  if (/^[^/]+\.js$/.test(arquivo)) return !/^test_/.test(arquivo);
-  return /^(lib|veio)\/.+\.js$/.test(arquivo);
+  return arquivo.endsWith('.js') && ehDaExtensao(arquivo) && !/^test_/.test(arquivo);
 }
 
 function linhaDe(texto, indice) {
