@@ -127,7 +127,7 @@ rótulo do × — ele não inventa um.
 
 As três únicas palavras que a base escreve sozinha estão em
 `ROTULOS_DO_PADRAO`, uma constante interna de `componentes.js` (não
-exportada), porque não são estado de tela nenhuma e por isso não têm ID: `palavra:` e `auto:`, travados no glossário (`glossary.md`), e `Detalhes`, o
+exportada), porque não são estado de tela nenhuma e por isso não têm ID: `palavra:` e `auto:`, travados no glossário (`docs/glossary.md`), e `Detalhes`, o
 nome que a regra V3 da Voz dá ao recolhido.
 
 ### Tokens que a spec não nomeia

@@ -126,7 +126,7 @@ test('captura 5: popup da barra com a mineração automática do dia', async ({ 
   await page.setViewportSize({ width: 340, height: 600 });
   const cdp = await context.newCDPSession(page);
   await cdp.send('Emulation.setDeviceMetricsOverride', { width: 340, height: 600, deviceScaleFactor: 2, mobile: false });
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url('popup/popup.html'));
   await expect(page.locator('#ultimas li')).toHaveCount(5);
   await page.evaluate(() => document.fonts.ready);
   const popup = (await page.screenshot()).toString('base64');
