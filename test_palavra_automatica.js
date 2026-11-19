@@ -1,10 +1,5 @@
 'use strict';
 
-// Caracterização da escolha da Palavra automática: a saída para um conjunto fixo
-// de textos em inglês e em russo, gravada ANTES de mover o código para
-// lib/palavra-automatica.js. Tem de passar igual antes e depois da mudança.
-// PALAVRA_GRAVAR=1 imprime a saída atual em vez de comparar.
-
 const assert = require('assert');
 const fs = require('fs');
 const vm = require('vm');
@@ -457,7 +452,6 @@ async function saidaAtual() {
   return JSON.parse(JSON.stringify(saida));
 }
 
-// Depois da mudança, a função pura dá a mesma saída sem passar pelo service worker.
 const plano = valor => JSON.parse(JSON.stringify(valor));
 
 async function escolherDireto() {
