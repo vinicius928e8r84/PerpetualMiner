@@ -28,7 +28,7 @@ Lido sob demanda (não entra em toda sessão). O papel de cada arquivo está em 
    → background.js (contextMenus listener) → salvarFrase
 
 3. Physical book photos
-   bookreader.html → user uploads photo → Gemini Vision API (gemini-3-flash-preview)
+   bookreader/bookreader.html → user uploads photo → Gemini Vision API (gemini-3-flash-preview)
    → parsed passages → Mineracao.gravar → SALVAR_HISTORICO
 
 SALVAR_HISTORICO → background.js → salvarFrase → chrome.storage.local["frases"]
@@ -159,7 +159,7 @@ For the day rollover's scheduling and persistence contract, see `agendarViradaDo
 ## Key Constants
 
 - `ATALHOS_PADRAO` in `lib/atalhos.js` — the factory shortcuts: Minerar legenda on **Alt+S**, Minerar seleção with none
-- `SENTINEL_VAZIO = 'NENHUM_TRECHO'` in `bookreader.js` — returned by Gemini when no marked passages found (the photo is “Sem marcações”, FOT-10)
+- `SENTINEL_VAZIO = 'NENHUM_TRECHO'` in `bookreader/bookreader.js` — returned by Gemini when no marked passages found (the photo is “Sem marcações”, FOT-10)
 - Firebase configuration and Firestore paths: see `lib/sincronizacao.js`
 - `BADGE_COR_DE_FUNDO = '#F5B83D'` / `BADGE_COR_DO_TEXTO = '#1A1204'` in `background.js` — the toolbar badge's Veio colors
 - `ALARME_VIRADA_DO_DIA` in `background.js` — see `agendarViradaDoDia` for the rollover contract
@@ -170,4 +170,4 @@ For the day rollover's scheduling and persistence contract, see `agendarViradaDo
 - `alarms`, `storage`, `unlimitedStorage`, `activeTab`, `tabs`, `contextMenus`, `identity` (for the `alarms` rationale, see [the store guide](publicar-chrome-web-store.md#justificativa-de-cada-permissão); the unpacked-folder auto-reload also uses it)
 - `host_permissions`: the Conexão com o Anki (127.0.0.1/localhost:8766), Gemini API, Firestore, Google OAuth, Firebase token endpoints. No `*.firebaseio.com`/`*.firebaseapp.com` (nothing calls them); `testes/test_empacotar.js` checks that the "Host permission use" block of `docs/publicar-chrome-web-store.md` lists exactly these
 - Content scripts inject into all URLs with `all_frames: true`
-- `painel.html`, `bookreader.html`, `veio/tokens.css`, `veio/componentes.css`, `overlay.css`, `veio/icones/icone.svg` and `veio/fontes/*.woff2` declared as `web_accessible_resources`: the stylesheets, the tile and the fonts are what the in-page overlay loads inside its Shadow DOM
+- `painel.html`, `bookreader/bookreader.html`, `veio/tokens.css`, `veio/componentes.css`, `overlay.css`, `veio/icones/icone.svg` and `veio/fontes/*.woff2` declared as `web_accessible_resources`: the stylesheets, the tile and the fonts are what the in-page overlay loads inside its Shadow DOM

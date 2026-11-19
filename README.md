@@ -136,7 +136,8 @@ A extensão é JavaScript puro em Manifest V3. O complemento do Anki usa só a b
 
 | Caminho | O que tem |
 |---|---|
-| raiz | A extensão: `manifest.json`, `background.js`, `content.js`, `overlay.*`, `popup.*`, `painel*`, `bookreader.*` |
+| raiz | A extensão: `manifest.json`, `background.js`, `content.js`, `overlay.*`, `popup.*`, `painel*` |
+| `bookreader/` | A página Minerar de uma foto |
 | `lib/` | Os módulos que as telas dividem |
 | `veio/` | A identidade visual: tokens, componentes, fontes e ícones |
 | `complemento/` | A Conexão com o Anki, o complemento que roda dentro do Anki |

@@ -19,7 +19,7 @@ const { arquivosDaExtensao } = globalThis.PerpetualMiner;
 const TELAS = [
   { arquivo: 'popup.html', titulo: 'Popup', largura: '340 px' },
   { arquivo: 'painel.html', titulo: 'Painel', largura: 'tela cheia' },
-  { arquivo: 'bookreader.html', titulo: 'Minerar de uma foto', largura: 'tela cheia' },
+  { arquivo: 'bookreader/bookreader.html', titulo: 'Minerar de uma foto', largura: 'tela cheia' },
 ];
 
 const PASTAS_DE_APOIO = ['conexao'];
@@ -162,7 +162,7 @@ async function montar() {
     const origem = path.join(RAIZ, tela.arquivo);
     if (!(await existe(origem))) continue;
     const html = await fs.readFile(origem, 'utf8');
-    await fs.mkdir(path.join(DESTINO, 'extensao'), { recursive: true });
+    await fs.mkdir(path.dirname(path.join(DESTINO, 'extensao', tela.arquivo)), { recursive: true });
     await fs.writeFile(path.join(DESTINO, 'extensao', tela.arquivo), injetarSimulador(html));
     telas.push(tela);
   }
