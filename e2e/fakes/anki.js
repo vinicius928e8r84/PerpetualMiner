@@ -118,12 +118,18 @@ function criarFakeAnki() {
     const [falha, codigo] = { '/anki/vocabulary': [estado.falhaDoVocabulario, 'anki_vocabulary_unavailable'], '/anki/stats/decks': [estado.falhaDosBaralhos, 'anki_stats_unavailable'] }[url.pathname] || [];
     if (falha?.rede) return { recusar: true };
     if (falha) return { roteiro: () => ({ status: falha.status, json: { error: codigo, detail: 'collection_not_open' } }) };
+    if (req.method() === 'POST' && url.pathname === '/jobs') {
+      const recusa = estado.recusas.get((dadosDoCorpo(corpoDoPedido) || {}).lang);
+      if (recusa?.rede) return { recusar: true };
+      if (recusa) return { roteiro: () => ({ status: recusa.status, json: { error: recusa.erro || 'job_failed' } }) };
+    }
     if (estado.vocabularioDefinido && req.method() === 'POST' && url.pathname === '/anki/vocabulary') {
       const { deck = '', lang } = dadosDoCorpo(corpoDoPedido) || {};
       estado.decksDoVocabulario.set(deck, lang === 'ru' ? 'ru' : 'en');
     }
     const mundo = mundoDaReal();
-    return mundo ? { mundo } : {};
+    const perder = Boolean(estado.perdaDoEnvio) && req.method() === 'POST' && url.pathname === '/jobs';
+    return { ...(mundo && { mundo }), ...(perder && { perder }) };
   }
 
   function mundoDaReal() {

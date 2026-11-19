@@ -31,12 +31,13 @@ async function subir() {
 
 const paginaFechada = erro => /closed|disposed|aborted/i.test(erro.message);
 
-const rotaParaAConexaoReal = conexao => async route => {
+const rotaParaAConexaoReal = (conexao, { depois = async () => {}, perder = false } = {}) => async route => {
   const url = new URL(route.request().url());
   url.port = String(conexao.porta);
   try {
     const resposta = await route.fetch({ url: url.toString() });
-    await route.fulfill({ response: resposta });
+    await depois();
+    await (perder ? route.abort('connectionreset') : route.fulfill({ response: resposta }));
   } catch (erro) {
     if (!paginaFechada(erro)) throw erro;
   }
@@ -53,8 +54,11 @@ function cabecalhosDaProva(req, status, corpo) {
   };
 }
 
+const espelharOsEnvios = (conexao, anki) => async () => anki.espelharEnvios((await conexao.enviar({ envios: true })).envios);
+
 const rotaComFalhasNaFrente = (conexao, anki) => {
   const adiante = rotaParaAConexaoReal(conexao);
+  const doEnvio = { depois: espelharOsEnvios(conexao, anki) };
   return async route => {
     const req = route.request();
     const url = new URL(req.url());
@@ -62,7 +66,8 @@ const rotaComFalhasNaFrente = (conexao, anki) => {
     if (frente.recusar) return route.abort('connectionrefused');
     if (frente.calar) return new Promise(() => {});
     if (frente.mundo) await conexao.enviar({ mundo: frente.mundo });
-    if (!frente.roteiro) return adiante(route);
+    if (frente.perder) anki.perdeuAResposta();
+    if (!frente.roteiro) return url.pathname.startsWith('/jobs') ? rotaParaAConexaoReal(conexao, { ...doEnvio, perder: frente.perder })(route) : adiante(route);
     const { status = 200, json = {} } = await frente.roteiro(req, url);
     const corpo = JSON.stringify(json);
     try {

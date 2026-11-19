@@ -8,6 +8,7 @@ e fala com o fixture por linhas de JSON: ao ficar pronta escreve `{"porta": N}`;
     {"colecao": {...}}        abre uma coleção descrita como nos exemplos do contrato (`ColecaoEmMemoria`)
     {"mundo": {"colecao": {...}, "perfil": "..."}}  o mundo que o fake montou (`fakes.anki.naFrente`): a coleção aberta no perfil, ou,
                               com `perfil` null, o Anki na tela de perfis (a coleção fechada)
+    {"envios": true}          os Envios que a fila guardou, na ordem: `{jobId, lang, corpo (o pedido como as rotas o mostram), createdAt, state}`
     {"estado": true}          responde o que a Conexão guardou: a cópia da chave, os documentos da nuvem, os pedidos à OpenAI,
                               as falas que a voz de mentira ouviu e a pasta de dados (apagada ao fechar)
     {"pareamento": "codigo"}  o código que a janela do Anki de mentira mostra agora (ou null); "navegadores": quantos navegadores estão pareados;
@@ -27,7 +28,7 @@ import tempfile
 RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, RAIZ)
 
-from complemento import configuracao, pasta_de_dados, registro, servidor
+from complemento import configuracao, envio, pasta_de_dados, registro, servidor
 from complemento.test_chatgpt_de_mentira import ChatGPTDeMentira
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria
 from complemento.test_imagens_de_mentira import OpenverseDeMentira
@@ -82,11 +83,20 @@ def main():
                 responder({"ok": True})
             elif "colecao" in comando:
                 colecao.atual = ColecaoEmMemoria(comando["colecao"])
+                colecao.atual.fixar_o_perfil(conexao.perfil_fixo)
                 responder({"ok": True})
             elif "mundo" in comando:
                 perfil = comando["mundo"].get("perfil")
                 colecao.atual = ColecaoEmMemoria(comando["mundo"]["colecao"], perfil_aberto=perfil) if perfil else ColecaoEmMemoria.fechada()
+                colecao.atual.fixar_o_perfil(conexao.perfil_fixo)
                 responder({"ok": True})
+            elif comando.get("envios"):
+                lista = []
+                for item in conexao.fila.ordem():
+                    pedido = envio.visao_do_pedido(conexao.fila.pedido(item["jobId"]))
+                    corpo = {chave: valor for chave, valor in pedido.items() if chave != "createdAt"}
+                    lista.append({"jobId": item["jobId"], "lang": pedido["lang"], "corpo": corpo, "createdAt": pedido.get("createdAt"), "state": conexao.fila.estado(item["jobId"])})
+                responder({"envios": lista})
             elif "pareamento" in comando:
                 pedido = comando["pareamento"]
                 if pedido == "desconectar":
