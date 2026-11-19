@@ -3,8 +3,8 @@
 const assert = require('assert');
 
 globalThis.PerpetualMiner = {};
-require('./lib/pedido-ao-anki.js');
-require('./painel-envio-estado.js');
+require('../lib/pedido-ao-anki.js');
+require('../painel-envio-estado.js');
 const { ConversaComOAnki, EnvioAcompanhado, SituacaoDoEnvio } = globalThis.PerpetualMiner;
 const { ESTADO } = SituacaoDoEnvio;
 

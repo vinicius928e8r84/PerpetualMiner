@@ -3,8 +3,8 @@
 const assert = require('assert');
 
 globalThis.PerpetualMiner = {};
-require('./lib/ajustes-de-envio.js');
-require('./lib/quiz-de-nivel.js');
+require('../lib/ajustes-de-envio.js');
+require('../lib/quiz-de-nivel.js');
 const { AjustesDeEnvio, QuizDeNivel } = globalThis.PerpetualMiner;
 const { TIPOS, NAO_SEI, NIVEIS } = QuizDeNivel;
 

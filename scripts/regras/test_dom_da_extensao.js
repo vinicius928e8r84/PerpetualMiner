@@ -33,7 +33,7 @@ acusa('html-cru', 'overlay.js', [
   'Veio.escreverFrase(no, frase.texto, frase.palavra);',
 ].join('\n'), [], 'ler ou comparar o innerHTML, o comentário e o texto como texto passam');
 assert.strictEqual(regras['html-cru'].seAplica('e2e/vitrine/vitrine.js'), false, 'a vitrine do e2e não é a extensão');
-assert.strictEqual(regras['html-cru'].seAplica('test_voz.js'), false);
+assert.strictEqual(regras['html-cru'].seAplica('testes/test_voz.js'), false);
 assert.strictEqual(regras['html-cru'].seAplica('veio/componentes.js'), true);
 total += 3;
 

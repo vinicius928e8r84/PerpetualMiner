@@ -19,7 +19,7 @@ const comLF = texto => texto.replace(/\r\n/g, '\n');
 
 const CADASTRO = JSON.stringify({
   grupos: {
-    node: { executor: 'node', arquivos: ['test_sync.js'] },
+    node: { executor: 'node', arquivos: ['testes/test_sync.js'] },
     complemento: { executor: 'unittest', pasta: 'complemento', padrao: 'test_*.py' },
   },
   fora: [],
@@ -41,7 +41,7 @@ function achados(arquivos, arquivo) {
   }
 }
 const repositorio = (workflow, cadastro = CADASTRO) => ({
-  'scripts/testes.json': cadastro, 'test_sync.js': '', 'complemento/test_servidor.py': '', '.github/workflows/testes.yml': workflow,
+  'scripts/testes.json': cadastro, 'testes/test_sync.js': '', 'complemento/test_servidor.py': '', '.github/workflows/testes.yml': workflow,
 });
 
 let total = 0;

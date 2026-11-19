@@ -4,12 +4,12 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 
-const contrato = require('./complemento/contrato/carregar');
-const { ENDERECO, criarConexao, resposta, carregarAPagina, igual, parearComChaveGuardada } = require('./e2e/pagina-de-mentira-do-pareamento');
+const contrato = require('../complemento/contrato/carregar');
+const { ENDERECO, criarConexao, resposta, carregarAPagina, igual, parearComChaveGuardada } = require('../e2e/pagina-de-mentira-do-pareamento');
 
 globalThis.PerpetualMiner = {};
-require('./lib/pedido-ao-anki.js');
-require('./e2e/variantes-do-pedido-ao-anki.js');
+require('../lib/pedido-ao-anki.js');
+require('../e2e/variantes-do-pedido-ao-anki.js');
 const { PedidoAoAnki, ConversaComOAnki, VariantesDoPedidoAoAnki } = globalThis.PerpetualMiner;
 
 const MOTIVO_NO_CONTRATO = {
@@ -203,7 +203,7 @@ async function ondeNaoHaConexaoAnki() {
 
 function oEnderecoCarregaAntesDeQuemOLe() {
   for (const pagina of ['painel.html', 'popup.html']) {
-    const html = fs.readFileSync(path.join(__dirname, pagina), 'utf8');
+    const html = fs.readFileSync(path.join(__dirname, '..', pagina), 'utf8');
     const lugar = arquivo => html.indexOf(`<script src="lib/${arquivo}"></script>`);
     assert.ok(lugar('pedido-ao-anki.js') >= 0 && lugar('pedido-ao-anki.js') < lugar('conexao-anki.js'),
       `${pagina}: lib/pedido-ao-anki.js (o endereço da Conexão) carrega antes de lib/conexao-anki.js, que o lê ao carregar`);

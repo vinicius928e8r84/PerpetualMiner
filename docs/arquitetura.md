@@ -166,8 +166,8 @@ For the day rollover's scheduling and persistence contract, see `agendarViradaDo
 
 ## Permissions
 
-- `optional_permissions`: only `nativeMessaging` (#147), asked when the person presses Permitir abrir o Anki and never at install, so an update never disables the extension of who already has it (`node test_empacotar.js` checks it; justified in the store guide)
+- `optional_permissions`: only `nativeMessaging` (#147), asked when the person presses Permitir abrir o Anki and never at install, so an update never disables the extension of who already has it (`node testes/test_empacotar.js` checks it; justified in the store guide)
 - `alarms`, `storage`, `unlimitedStorage`, `activeTab`, `tabs`, `contextMenus`, `identity` (for the `alarms` rationale, see [the store guide](publicar-chrome-web-store.md#justificativa-de-cada-permissão); the unpacked-folder auto-reload also uses it)
-- `host_permissions`: the Conexão com o Anki (127.0.0.1/localhost:8766), Gemini API, Firestore, Google OAuth, Firebase token endpoints. No `*.firebaseio.com`/`*.firebaseapp.com` (nothing calls them); `test_empacotar.js` checks that the "Host permission use" block of `docs/publicar-chrome-web-store.md` lists exactly these
+- `host_permissions`: the Conexão com o Anki (127.0.0.1/localhost:8766), Gemini API, Firestore, Google OAuth, Firebase token endpoints. No `*.firebaseio.com`/`*.firebaseapp.com` (nothing calls them); `testes/test_empacotar.js` checks that the "Host permission use" block of `docs/publicar-chrome-web-store.md` lists exactly these
 - Content scripts inject into all URLs with `all_frames: true`
 - `painel.html`, `bookreader.html`, `veio/tokens.css`, `veio/componentes.css`, `overlay.css`, `veio/icones/icone.svg` and `veio/fontes/*.woff2` declared as `web_accessible_resources`: the stylesheets, the tile and the fonts are what the in-page overlay loads inside its Shadow DOM

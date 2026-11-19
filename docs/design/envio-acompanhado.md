@@ -107,8 +107,8 @@ Custos diz o que já dizia em cada um (BRG-31, ENV-07, ENV-24); o que muda é qu
 ## 6. Provas
 
 O módulo em Node, com uma Conexão de mentira em memória que segue o `criar` e o `tentar_de_novo` do `envio.py`:
-`test_envio_acompanhado.js` (dois cliques são um pedido; o 409 vira apagado; a falha diz o pedido; acompanha até o fim e para; o 404 é
-desconhecido; a leitura sem resposta não muda nada; largar ignora a resposta tardia) e `test_envio_acompanhado_criar.js`, que usa a
+`testes/test_envio_acompanhado.js` (dois cliques são um pedido; o 409 vira apagado; a falha diz o pedido; acompanha até o fim e para; o 404 é
+desconhecido; a leitura sem resposta não muda nada; largar ignora a resposta tardia) e `testes/test_envio_acompanhado_criar.js`, que usa a
 mesma Conexão de mentira (do passo 2: o `criar` manda o corpo e acompanha,
 dois `criar` são um pedido, o Envio que terminou sem chegar é tentado de novo sem o fim velho chegar à tela, o que já chegou só é lido,
 o apagado não é lido, a falha do `criar` e a do `retry` dizem o pedido e se houve resposta, a leitura que falha avisa o `aoNaoLer` e segue,
@@ -116,7 +116,7 @@ a tela escolhe o intervalo). As telas: `e2e/tests/painel-anki-continuar.spec.js`
 sozinho, e `pm_anki_custos` guarda o Concluído); os Continuar envio de `painel-anki.spec.js`, as 21 de `boas-vindas-envio.spec.js` e as 2 de `boas-vindas-envio-nota-apagada.spec.js`
 seguem sem mudar. Não provam o Anki real nem a Conexão real.
 
-Passo 3: `test_envio_acompanhado.js` ganha o `usarAChave` (segue pela chave e lê até o fim; dois cliques são um pedido; sem
+Passo 3: `testes/test_envio_acompanhado.js` ganha o `usarAChave` (segue pela chave e lê até o fim; dois cliques são um pedido; sem
 chave dá `semChave` e ninguém lê; o `job_finished` e a falta de resposta dizem o pedido; largar com o pedido no ar não lê; com
 `lerSozinho: false` ninguém lê); na tela, `painel-envio-limite.spec.js` (Usar a minha chave e Tentar de novo no limite, agora também sem
 nenhum `/jobs/get`) e `painel-envio-estados.spec.js` (a causa no formato do módulo). Não provam o Anki real nem a Conexão real.

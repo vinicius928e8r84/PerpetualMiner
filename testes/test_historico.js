@@ -5,9 +5,9 @@ const fs = require('fs');
 const vm = require('vm');
 
 globalThis.PerpetualMiner = globalThis.PerpetualMiner || {};
-require('./lib/historico.js');
+require('../lib/historico.js');
 const { Historico } = globalThis.PerpetualMiner;
-const { criarSincronizacao } = require('./lib/sincronizacao.js');
+const { criarSincronizacao } = require('../lib/sincronizacao.js');
 
 const copia = valor => JSON.parse(JSON.stringify(valor));
 

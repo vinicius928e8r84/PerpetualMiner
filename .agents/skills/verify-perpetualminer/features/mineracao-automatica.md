@@ -27,7 +27,7 @@ Preconditions: `doctor.sh` green. The specs seed `pm_auto_miner_settings` and `p
 - **Day turn (`auto-day-turn`).** `drive.sh auto-virada mineracao-automatica-virada.spec`. Evidence: `virada-aba-antes.png`, `virada-aba-depois.png`, `virada-antes.json`, `virada-depois.json`. Observable: the tab at `3/3` mines nothing (`frases()` empty), then with yesterday's date and the alarm fired `frases()` has exactly the Russian caption, the counter `1/3` and the stored daily `{ date: <today>, en: { count: 0 }, ru: { count: 1 } }`.
 - **Diagnostic write failing (`auto-mining`).** `drive.sh auto-publicacao mineracao-automatica-publicacao.spec`. The spec makes the service worker's `chrome.storage.local.set` throw for the `pm_auto_miner_last_event` write; observable: popup and tab still go from `2/3` to `3/3`.
 - **Off means idle (`auto-idle`).** `drive.sh auto-parada overlay-sem-varredura.spec`. The spec enters the content script's isolated world through the Chromium protocol and records the selectors asked of `querySelectorAll`. Observable: with both languages off only `video` is asked in two rounds; with both on the counter says `0/20` (the English caption's limit).
-- **The accept rule.** `node scripts/testar.mjs node` runs `test_auto_keyword.js` (one new item, deck vocabulary), no browser.
+- **The accept rule.** `node scripts/testar.mjs node` runs `testes/test_auto_keyword.js` (one new item, deck vocabulary), no browser.
 
 ## Gotchas
 

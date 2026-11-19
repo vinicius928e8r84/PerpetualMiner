@@ -1,6 +1,6 @@
 # The Envio's state machines (`painel-envio-estado.js`, `lib/envio-gravado.js`)
 
-Three pure pieces, no screen, proven without a browser by `node test_estado_do_envio.js`; on screen by `e2e/tests/painel-envio-estados.spec.js`. A fourth piece, beside them, follows one Envio (`EnvioAcompanhado`, last item).
+Three pure pieces, no screen, proven without a browser by `node testes/test_estado_do_envio.js`; on screen by `e2e/tests/painel-envio-estados.spec.js`. A fourth piece, beside them, follows one Envio (`EnvioAcompanhado`, last item).
 
 - **What one Envio is now: `SituacaoDoEnvio.situacaoDoEnvio(envio, job, { desconhecido, ankiFechado, agora })`.** One state from a closed list, in
   this order of precedence: `criando` (the `POST /jobs` has no answer yet: the card says “Enviando o pedido”, ENV-24, with no “etapa N de 7”,
@@ -32,8 +32,8 @@ Three pure pieces, no screen, proven without a browser by `node test_estado_do_e
   a read every 1 s, `aoNaoLer` → the Conexão's reason. The progress modal (the remessa) sits on top of it too (step 3): each Envio with a `jobId` has its
   `EnvioAcompanhado` with `lerSozinho: false`, and its **Tentar de novo** and **Usar a minha chave** (`usarAChave()`: `POST /jobs/usar-a-chave`;
   `{ ok }`, `{ semChave }` for `409 openai_key_missing`, `{ falha }`) go through it; the modal still reads all its Envios in one
-  `/jobs/list` every 2 s, so nothing reads `/jobs/get` there. Proven by `node test_envio_acompanhado.js` and
-  `node test_envio_acompanhado_criar.js` (the `criar`),
+  `/jobs/list` every 2 s, so nothing reads `/jobs/get` there. Proven by `node testes/test_envio_acompanhado.js` and
+  `node testes/test_envio_acompanhado_criar.js` (the `criar`),
   `e2e/tests/painel-anki-continuar.spec.js`, `e2e/tests/boas-vindas-envio.spec.js` and the modal's specs (`painel-envio-limite.spec.js`,
   `painel-envio-estados.spec.js`).
 

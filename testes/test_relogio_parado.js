@@ -1,7 +1,7 @@
 'use strict';
 
 const assert = require('assert');
-const relogioParado = require('./e2e/relogio-parado');
+const relogioParado = require('../e2e/relogio-parado');
 
 const MEIO_DIA = new Date('2026-09-18T12:00:00').getTime();
 
