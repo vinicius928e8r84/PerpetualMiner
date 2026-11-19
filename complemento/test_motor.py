@@ -93,15 +93,13 @@ class OMotorComoPacote(unittest.TestCase):
         with tempfile.TemporaryDirectory() as pasta, OpenAIDeMentira() as openai, mock.patch.dict(sys.modules, SEM_AS_BIBLIOTECAS_DE_FORA):
             motor = envio.motor_do_complemento()
             config = configuracao_do_teste(motor, pasta)
-            falhas = {}
-            entrada = motor.parser.parse_mining_line("give up : She gave up smoking")
-            salvos = motor.generate_cards.run(
-                [entrada], config, pela_chave(motor, config, openai.base), failures=falhas, card_stem=lambda trabalho, posicao: "17-%d" % posicao)
+            trabalho = motor.parser.get_card_jobs(motor.parser.parse_mining_line("give up : She gave up smoking"))[0]
+            falha = motor.generate_cards.escrever(trabalho, config, pela_chave(motor, config, openai.base), "17-0")
             with open(os.path.join(pasta, "textos", "17-0.txt"), encoding="utf-8") as arquivo:
                 nota = motor.send_to_anki.card_fields(arquivo.read(), "en")
             with open(os.path.join(pasta, "custos", "costs.jsonl"), encoding="utf-8") as arquivo:
                 custos = arquivo.read()
-        self.assertEqual((salvos, falhas), (["17-0"], {}))
+        self.assertIsNone(falha)
         self.assertIn("<b>gave up</b>", nota["front"])
         self.assertEqual([p[0] for p in openai.chats], ["Bearer sk-proj-chave-do-teste-0000"])
         self.assertIn('"keyword": "17-0"', custos)

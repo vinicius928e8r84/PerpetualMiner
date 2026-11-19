@@ -21,7 +21,7 @@ The Envio (`complemento/envio.py`, `complemento/motor_do_envio.py`) orchestrates
 
 ```
 mining line
-├─ generate_cards.py    → the card text, asked through the `pedir` the add-on gives (`complemento/ia_dos_cartoes.py` pays it and records its cost; the engine never sees the credential)
+├─ generate_cards.py    → the card text, one card per call (`escrever`), asked through the `pedir` the add-on gives (`complemento/ia_dos_cartoes.py` pays it and records its cost; the engine never sees the credential)
 ├─ extract_prompts.py   → the Image: field
 ├─ generate_audio.py    → what the card says and with which accent (`voices()`); the add-on fetches the MP3 (`complemento/voz.py`)
 ├─ image_guard.py       → skip/real/generate decision (heuristics + GPT-4o-mini)
