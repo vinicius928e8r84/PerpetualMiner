@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { PASTAS_DA_EXTENSAO } = require('../arquivos-do-pacote');
 const { comentariosPorLinha, ehJsDaExtensao, fechamento, linhaDe, semComentariosJs } = require('./comum');
 
 const id = 'e2e-funcao-interna';
@@ -20,14 +21,13 @@ function funcoesDaExtensao(raiz) {
   if (globaisPorRaiz.has(raiz)) return globaisPorRaiz.get(raiz);
   const globais = new Set();
   globaisPorRaiz.set(raiz, globais);
-  for (const pasta of ['.', 'lib', 'lib/voz', 'veio']) {
-    if (!fs.existsSync(path.join(raiz, pasta))) continue;
-    for (const nome of fs.readdirSync(path.join(raiz, pasta))) {
-      const arquivo = pasta === '.' ? nome : `${pasta}/${nome}`;
-      if (!ehJsDaExtensao(arquivo)) continue;
-      const fonte = fs.readFileSync(path.join(raiz, arquivo), 'utf8');
-      for (const m of fonte.matchAll(/^(?:async\s+)?function\s*\*?\s*([A-Za-z_$][\w$]*)/gm)) globais.add(m[1]);
-    }
+  const daRaiz = fs.readdirSync(raiz);
+  const dasPastas = PASTAS_DA_EXTENSAO.filter(pasta => fs.existsSync(path.join(raiz, pasta)))
+    .flatMap(pasta => fs.readdirSync(path.join(raiz, pasta), { recursive: true }).map(nome => `${pasta}/${nome.split(path.sep).join('/')}`));
+  for (const arquivo of [...daRaiz, ...dasPastas]) {
+    if (!ehJsDaExtensao(arquivo) || !fs.statSync(path.join(raiz, arquivo)).isFile()) continue;
+    const fonte = fs.readFileSync(path.join(raiz, arquivo), 'utf8');
+    for (const m of fonte.matchAll(/^(?:async\s+)?function\s*\*?\s*([A-Za-z_$][\w$]*)/gm)) globais.add(m[1]);
   }
   return globais;
 }
