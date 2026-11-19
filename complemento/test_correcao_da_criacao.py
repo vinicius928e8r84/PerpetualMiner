@@ -43,7 +43,7 @@ def corrigir(colecao, porta, apagado=False, parada=None):
     pedido = {"lang": "en", "deckName": "Inglês", "jobId": "j1", "tts": {}}
     fila = SimpleNamespace(dados=SimpleNamespace(raiz="sem-pasta-do-dono"), pasta_dos_textos=lambda job_id: "textos",
                            pasta_dos_custos=lambda job_id: "custos", estado=lambda job_id: {"wiped": apagado})
-    config = motor_do_envio.configuracao_do_motor(motor, fila, pedido, None)
+    config = motor_do_envio.configuracao_do_motor(motor, fila, pedido)
     CorrecaoDaCriacao(fila, colecao, motor, LOGGER).corrigir("j1", pedido, config, porta, parada)
 
 
