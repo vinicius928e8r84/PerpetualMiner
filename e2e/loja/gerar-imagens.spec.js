@@ -87,7 +87,7 @@ const FRASES_FOTO_2 = [
 test('captura 3: minerar de uma foto, com as frases lidas', async ({ page, extensao, fakes }) => {
   await extensao.gravarStorage({ bookTitleDefault: LIVRO, geminiApiKey: 'chave-de-teste' });
   await page.setViewportSize(JANELA);
-  await page.goto(extensao.url('bookreader.html'));
+  await page.goto(extensao.url('bookreader/bookreader.html'));
   await expect(page.getByRole('heading', { name: 'Minerar de uma foto' })).toBeVisible();
   fakes.gemini.responderFrases(FRASES_FOTO_1);
   fakes.gemini.responderFrases(FRASES_FOTO_2);

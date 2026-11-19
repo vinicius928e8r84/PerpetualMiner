@@ -10,8 +10,8 @@ const regras = Object.fromEntries(require('../regras/verificar').REGRAS.map(regr
 const { selecionar } = require('./selecao-de-testes.js');
 const { soDocumentacao } = require('./so-documentacao.js');
 
-assert.deepStrictEqual(PASTAS_DA_EXTENSAO, ['abridor', 'lib', 'veio']);
-assert.deepStrictEqual(PASTAS_DE_RUNTIME, ['abridor', 'lib', 'veio', 'conexao'], 'o pacote leva as pastas da extensão e o .ankiaddon de conexao/');
+assert.deepStrictEqual(PASTAS_DA_EXTENSAO, ['lib', 'veio', 'bookreader', 'abridor']);
+assert.deepStrictEqual(PASTAS_DE_RUNTIME, ['lib', 'veio', 'bookreader', 'abridor', 'conexao'], 'o pacote leva as pastas da extensão e o .ankiaddon de conexao/');
 
 const casos = [
   ['background.js', true], ['painel.css', true], ['lib/historico.js', true], ['veio/icones/icone.svg', true], ['abridor/ponte.html', true],
@@ -81,7 +81,7 @@ try {
   PASTAS_DA_EXTENSAO.pop();
   PASTAS_DE_RUNTIME.pop();
 }
-assert.deepStrictEqual(PASTAS_DA_EXTENSAO, ['abridor', 'lib', 'veio']);
-assert.deepStrictEqual(PASTAS_DE_RUNTIME, ['abridor', 'lib', 'veio', 'conexao']);
+assert.deepStrictEqual(PASTAS_DA_EXTENSAO, ['lib', 'veio', 'bookreader', 'abridor']);
+assert.deepStrictEqual(PASTAS_DE_RUNTIME, ['lib', 'veio', 'bookreader', 'abridor', 'conexao']);
 
 console.log('ok: uma pasta só em PASTAS_DA_EXTENSAO (scripts/arquivos-do-pacote.js) liga as regras, o índice e a seleção do CI');

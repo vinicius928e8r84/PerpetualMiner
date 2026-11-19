@@ -49,7 +49,7 @@ Each feature file starts with an H1 and one paragraph of user-visible behavior, 
 - [Boas-vindas (first run)](./boas-vindas.md): the 9-step setup opened by installing the extension, with the level step, the Cartão preview (#164) and the first Envio (#173).
 - [The AI card: the OpenAI key](./ia.md): Configurações › IA dos cartões and Boas-vindas step 5; the key checked by the Conexão, masked, stored out of the content scripts' reach, following the Google account (arrival, Trocar, Apagar chave, Apagar tudo, versioned empty value; #154).
 - [Conta & sync](./conta.md): Configurações › Conta & sync, the states of the card and the chip, first upload, partial sync, signing in and out, deleting from the cloud, the session.
-- [Mine from a photo](./minerar-foto.md): `bookreader.html`, Gemini reading marked book pages.
+- [Mine from a photo](./minerar-foto.md): `bookreader/bookreader.html`, Gemini reading marked book pages.
 - [Automatic mining and the toolbar badge](./mineracao-automatica.md): the popup tiles and limit, the counter on the page, the badge and tooltip, the day turn.
 - [Mining the caption on Max](./legenda-da-max.md): the spoken line, never the episode name.
 - [The toolbar popup](./popup.md): Abrir painel, the last 5, empty states, the shortcut footer, the Anki seal.
