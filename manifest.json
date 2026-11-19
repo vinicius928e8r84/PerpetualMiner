@@ -33,7 +33,7 @@
     "128": "veio/icones/icone-128.png"
   },
   "action": {
-    "default_popup": "popup.html",
+    "default_popup": "popup/popup.html",
     "default_icon": {
       "16": "veio/icones/icone-16.png",
       "32": "veio/icones/icone-32.png",

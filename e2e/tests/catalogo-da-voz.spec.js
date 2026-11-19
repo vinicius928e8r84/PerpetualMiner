@@ -133,7 +133,7 @@ test('o mesmo texto minerado pelo menu, pelo popup e pela foto grava o mesmo idi
     { title: 'Artigo de exemplo', url: 'https://exemplo.dev/artigo' },
   ), FRASE_RUSSA);
 
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url('popup/popup.html'));
   await page.getByRole('textbox', { name: 'Cole ou escreva uma frase' }).fill(FRASE_RUSSA);
   await page.getByRole('button', { name: 'Minerar', exact: true }).click();
 

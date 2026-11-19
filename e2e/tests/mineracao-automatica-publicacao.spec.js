@@ -55,7 +55,7 @@ test('a frase no limite atualiza o popup e a aba mesmo com a gravação do diagn
 
   const popup = await context.newPage();
   await popup.setViewportSize({ width: 340, height: 600 });
-  await popup.goto(extensao.url('popup.html'));
+  await popup.goto(extensao.url('popup/popup.html'));
   const russo = popup.locator('.popup-azulejo[data-idioma="ru"]');
   const contadorDoPopup = russo.locator('.popup-azulejo__contador [aria-hidden="true"]');
   await expect(contadorDoPopup).toHaveText('2/3');

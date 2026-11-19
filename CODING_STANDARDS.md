@@ -10,7 +10,7 @@ The rules that cross surfaces are in `docs/arquitetura.md` and the role of each 
 |------|------|
 | `painel-boas-vindas.js`, `lib/configuracao.js`, `painel-lembrete.js` | `boas-vindas` |
 | `painel-ia.js`, `lib/chave-da-openai.js`, `painel-chave.js`, `painel-perigo.js`, `painel-atalhos.js`, `lib/atalhos.js`, `painel-conta.js`, `painel-abrir-anki.js` | `configuracoes` |
-| `popup.html/js/css` | `popup` |
+| `popup/popup.html/js/css` | `popup` |
 | `painel.js`, `painel.css` (Frases list, Minerar frases) | `painel-frases` |
 | `painel-anki*.js`, `painel-ajustes.js`, `painel-envio.js`, `lib/ajustes-de-envio.js` | `painel-anki` |
 | `bookreader.html/js/css` | `minerar-foto` |
