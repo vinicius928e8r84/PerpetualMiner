@@ -9,6 +9,7 @@ const path = require('path');
 const RAIZ = path.resolve(__dirname, '..', '..');
 require(path.join(RAIZ, 'lib', 'arquivos-da-extensao.js'));
 const { arquivosDaExtensao } = globalThis.PerpetualMiner;
+const { PASTAS_DE_RUNTIME } = require(path.join(RAIZ, 'scripts', 'arquivos-do-pacote.js'));
 
 const SCRIPT = path.join(RAIZ, 'preview', 'ignorar-build.sh');
 const lerTexto = arquivo => fs.readFileSync(path.join(RAIZ, arquivo), 'utf8');
@@ -39,7 +40,7 @@ const CONSTROI = 1;
 
 (async () => {
   const mostrados = new Set(await arquivosDaExtensao(async arquivo => lerTexto(arquivo)));
-  for (const dir of ['conexao', 'veio', 'lib', 'docs/design', 'e2e/vitrine', 'preview']) {
+  for (const dir of [...PASTAS_DE_RUNTIME, 'docs/design', 'e2e/vitrine', 'preview']) {
     for (const arquivo of andar(dir)) if (!arquivo.startsWith('preview/dist/')) mostrados.add(arquivo);
   }
   mostrados.add('vercel.json');

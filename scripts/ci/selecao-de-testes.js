@@ -1,6 +1,7 @@
 'use strict';
 
 const { ehDocumentacao, arquivosMudados } = require('./so-documentacao.js');
+const { ehDaExtensao } = require('../arquivos-do-pacote.js');
 
 const DAS_FERRAMENTAS = [/^scripts\//, /^\.github\//];
 const DO_CONTRATO = [/^complemento\/contrato\//];
@@ -9,7 +10,7 @@ const LIDOS_PELO_COMPLEMENTO = [/^lib\/ankiweb\.js$/, /^docs\/design\/dentro-do-
 const LIDOS_PELO_E2E = [/^complemento\/modelos_da_ia\.json$/, /^conexao\//];
 const TEXTO_DO_PACOTE = /^complemento\/(?!LEIA-ME\.md$)(?!contrato\/)[^/]+\.md$/i;
 const NA_RAIZ_E_OCULTO = /^\.[^/]+$/;
-const DA_EXTENSAO = [/^e2e\//, /^lib\//, /^veio\//, /^preview\//, /^docs\//, /^[^/]+$/];
+const DA_EXTENSAO = [/^e2e\//, /^preview\//, /^docs\//];
 
 const TUDO = { e2e: true, complemento: true };
 const NADA = { e2e: false, complemento: false };
@@ -25,7 +26,7 @@ function selecionar(arquivos) {
     if (casa(LIDOS_PELO_E2E, arquivo)) rodar.e2e = true;
     if (ehDocumentacao(arquivo)) continue;
     if (casa(SO_DO_COMPLEMENTO, arquivo)) rodar.complemento = true;
-    else if (casa(DA_EXTENSAO, arquivo)) rodar.e2e = true;
+    else if (ehDaExtensao(arquivo) || casa(DA_EXTENSAO, arquivo)) rodar.e2e = true;
     else return { ...TUDO };
   }
   return rodar;
