@@ -125,7 +125,7 @@ test('o alarme zera o popup já aberto, sem outra frase nem regravar o diário d
     pm_auto_miner_daily: { date: diaDe(new Date()), en: { count: 0 }, ru: { count: 3 } },
   });
   await page.setViewportSize({ width: 340, height: 600 });
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url('popup/popup.html'));
   const russo = page.locator('.popup-azulejo[data-idioma="ru"]');
   const contadorDoPopup = russo.locator('.popup-azulejo__contador [aria-hidden="true"]');
   await expect(contadorDoPopup).toHaveText('3/3');
