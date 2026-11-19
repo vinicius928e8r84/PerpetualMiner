@@ -44,7 +44,7 @@ def gerar_a_imagem(motor, config, openai_base, cartao, destino):
 def pela_chave(motor, config, openai_base):
     """O `pedir` do texto que a IA dos cartões dá ao motor quando a chave de `config` paga."""
     ia = IaDosCartoes(None, None, None, motor=motor, openai_base=openai_base)
-    return ia.pedido_do_texto(Pagador(CHAVE, {"openai_api_key": config["openai_api_key"], "modelo_do_texto": None}, None), config)
+    return ia.pedido_do_texto(Pagador(CHAVE, {"provedor": "openai", "segredo": config["openai_api_key"], "modelo": None}, None), config)
 
 
 class OMotorComoPacote(unittest.TestCase):
@@ -68,11 +68,12 @@ class OMotorComoPacote(unittest.TestCase):
         with mock.patch.dict(sys.modules, SEM_AS_BIBLIOTECAS_DE_FORA):
             motor = envio.motor_do_complemento()
             pedidos = {lang: {"lang": lang, "deckName": "x", "jobId": "j", "tts": {}} for lang in ("en", "ru")}
-            configs = {lang: motor_do_envio.configuracao_do_motor(motor, fila, pedido, None) for lang, pedido in pedidos.items()}
+            configs = {lang: motor_do_envio.configuracao_do_motor(motor, fila, pedido) for lang, pedido in pedidos.items()}
         self.assertEqual(
             {lang: (c["anki"]["note_type"], c["estilo"]["nivel"], c["estilo"]["entrada"], os.path.basename(c["estilo"]["prompt"])) for lang, c in configs.items()},
             {"en": ("PerpetualMiner Inglês", "iniciante", "palavras", "en_iniciante.txt"), "ru": ("PerpetualMiner Russo", "iniciante", "frase", "ru_iniciante.txt")},
         )
+        self.assertEqual([lang for lang, c in configs.items() if "openai_api_key" in c], [])
 
     def test_uma_linha_com_duas_palavras_tem_dois_cartoes_e_a_linha_russa_um(self):
         motor = envio.motor_do_complemento()
@@ -92,15 +93,13 @@ class OMotorComoPacote(unittest.TestCase):
         with tempfile.TemporaryDirectory() as pasta, OpenAIDeMentira() as openai, mock.patch.dict(sys.modules, SEM_AS_BIBLIOTECAS_DE_FORA):
             motor = envio.motor_do_complemento()
             config = configuracao_do_teste(motor, pasta)
-            falhas = {}
-            entrada = motor.parser.parse_mining_line("give up : She gave up smoking")
-            salvos = motor.generate_cards.run(
-                [entrada], config, pela_chave(motor, config, openai.base), failures=falhas, card_stem=lambda trabalho, posicao: "17-%d" % posicao)
+            trabalho = motor.parser.get_card_jobs(motor.parser.parse_mining_line("give up : She gave up smoking"))[0]
+            falha = motor.generate_cards.escrever(trabalho, config, pela_chave(motor, config, openai.base), "17-0")
             with open(os.path.join(pasta, "textos", "17-0.txt"), encoding="utf-8") as arquivo:
                 nota = motor.send_to_anki.card_fields(arquivo.read(), "en")
             with open(os.path.join(pasta, "custos", "costs.jsonl"), encoding="utf-8") as arquivo:
                 custos = arquivo.read()
-        self.assertEqual((salvos, falhas), (["17-0"], {}))
+        self.assertIsNone(falha)
         self.assertIn("<b>gave up</b>", nota["front"])
         self.assertEqual([p[0] for p in openai.chats], ["Bearer sk-proj-chave-do-teste-0000"])
         self.assertIn('"keyword": "17-0"', custos)

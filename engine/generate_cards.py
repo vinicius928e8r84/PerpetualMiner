@@ -1,7 +1,7 @@
 """
 generate_cards.py - Generate Anki card content via local prompts and the `pedir` its caller gives (who pays and the cost record are the caller's).
 
-One request per keyword (not batched) to prevent keyword hallucination.
+`escrever` writes one card per call, one keyword of a mining line (a request per keyword, never batched, prevents keyword hallucination):
   - keywords[0] -> uses the original phrase from the input
   - keywords[1..N] -> explicit instruction to invent a new sentence
 
@@ -17,11 +17,11 @@ from typing import Callable, Dict, List, Optional, Set
 
 if __package__:  # inside the Anki add-on the engine is the package `complemento.motor`
     from . import provedores
-    from .parser import CardJob, get_card_jobs
+    from .parser import CardJob
     from .prompt_loader import load_prompt
 else:
     import provedores
-    from parser import CardJob, get_card_jobs
+    from parser import CardJob
     from prompt_loader import load_prompt
 
 LOGGER = logging.getLogger("perpetualminer.motor")
@@ -299,123 +299,80 @@ def _write_card(dest: Path, card: str) -> None:
     os.replace(provisorio, dest)
 
 
-def run(
-    entries,
-    config: dict,
-    pedir: Callable[[str, str, str], Optional[str]],
-    *,
-    skip_existing: bool = False,
-    failures: Optional[Dict[str, str]] = None,
-    card_stem: Optional[Callable[[CardJob, int], str]] = None,
-    only_stems: Optional[Set[str]] = None,
-) -> List[str]:
-    """Generate one card .txt per CardJob via local prompts and `pedir`.
+def escrever(job: CardJob, config: dict, pedir: Callable[[str, str, str], Optional[str]], nome: str) -> Optional[str]:
+    """Write one card's text, `<output_dir>/<nome>.txt`, asked through `pedir`; returns None when it is on disk, else the failure code.
 
-    `pedir(system_prompt, message, label)` asks the model for one card's text and returns it (or None); a refusal is an
+    `pedir(system_prompt, message, label)` asks the model for the card's text and returns it (or None); a refusal is an
     `ErroDoProvedor`. Who pays it and its cost record are the caller's: the engine never sees a credential.
 
-    `skip_existing`: a card whose .txt is already there is not asked again (it was paid for).
-    `failures`: when given, gets `{stem: code}` for each card that was not saved (a code of the provider layer,
-    or `empty_response`, `invalid_card`, `keyword_mismatch`, `generation_error`).
-    `card_stem(job, index)`: names each card (`index` is the keyword's position in its entry) instead of the
-    keyword-and-phrase stem; the Anki add-on uses `<phraseId>-<n>`. A named card is also what the log and the cost
-    records say, never the keyword or the phrase (what the person mined is not written outside the Envio's own files).
-    `only_stems`: generate just these cards (after the naming above).
+    A card whose .txt is already there was paid for and is never asked again. `nome` (the Anki add-on's `<phraseId>-<n>`) is
+    what the file, the log and the request's label say, never the keyword or the phrase (what the person mined is not written
+    outside the Envio's own files); an error that is not the provider's is logged by its type alone, since its message may
+    quote the request. The failure codes: one of the provider layer, or `empty_response`, `invalid_card`, `keyword_mismatch`,
+    `generation_error`.
     """
     output_dir = Path(config["paths"]["output_dir"])
     output_dir.mkdir(parents=True, exist_ok=True)
-
-    lang = config.get("lang", "en")
-    failures = failures if failures is not None else {}
-
-    all_jobs: List[tuple] = []
-    for entry in entries:
-        for index, job in enumerate(get_card_jobs(entry)):
-            named = card_stem(job, index) if card_stem else None
-            if only_stems is None or (named or job.filename_stem) in only_stems:
-                all_jobs.append((job, named))
-
-    estilo = config.get("estilo")
-    whole_phrase = estilo["entrada"] == "frase" if estilo else lang == "ru"
-    system_prompt = (
-        Path(estilo["prompt"]).read_text(encoding="utf-8").strip() if estilo else load_prompt(config, "ru_card" if whole_phrase else "en_card"))
-
-    saved: List[str] = []
-
-    def call(message: str, label: str, stem: str) -> Optional[str]:
-        try:
-            return pedir(system_prompt, message, label) or None
-        except provedores.ErroDoProvedor as exc:
-            LOGGER.error("Modelo falhou para '%s': %s", label, exc)
-            failures[stem] = exc.codigo
-        except Exception as exc:
-            # Without the traceback when the card is named: the message of a library error may quote the request.
-            LOGGER.error("Modelo falhou para '%s': %s", label, type(exc).__name__, exc_info=not card_stem)
-            failures[stem] = "generation_error"
+    dest = output_dir / f"{nome}.txt"
+    if dest.exists() and dest.stat().st_size > 0:
         return None
 
-    for job, named in all_jobs:
-        stem = named or job.filename_stem or f"card_{len(saved) + 1}"
-        label = named or job.keyword
-        dest = output_dir / f"{stem}.txt"
-        if skip_existing and dest.exists() and dest.stat().st_size > 0:
-            saved.append(stem)
-            continue
+    estilo = config.get("estilo")
+    whole_phrase = estilo["entrada"] == "frase" if estilo else config.get("lang", "en") == "ru"
+    system_prompt = (
+        Path(estilo["prompt"]).read_text(encoding="utf-8").strip() if estilo else load_prompt(config, "ru_card" if whole_phrase else "en_card"))
+    failure: Dict[str, str] = {}
 
-        LOGGER.info("Gerando card para: '%s'", label)
-        user_message = _build_message_ru(job) if whole_phrase else _build_message(job)
-
-        response = call(user_message, label, stem)
+    def call(message: str) -> Optional[str]:
+        try:
+            response = pedir(system_prompt, message, nome) or None
+        except provedores.ErroDoProvedor as exc:
+            LOGGER.error("Modelo falhou para '%s': %s", nome, exc)
+            failure["code"] = exc.codigo
+            return None
+        except Exception as exc:
+            LOGGER.error("Modelo falhou para '%s': %s", nome, type(exc).__name__)
+            failure["code"] = "generation_error"
+            return None
         if not response:
-            if stem not in failures:
-                LOGGER.error("Resposta vazia para '%s' - pulando.", label)
-                failures[stem] = "empty_response"
-            continue
+            LOGGER.error("Resposta vazia para '%s' - pulando.", nome)
+            failure["code"] = "empty_response"
+        return response
 
-        card = _prepare_card(response)
+    LOGGER.info("Gerando card para: '%s'", nome)
+    user_message = _build_message_ru(job) if whole_phrase else _build_message(job)
+    response = call(user_message)
+    if not response:
+        return failure["code"]
 
-        if whole_phrase and (_looks_like_ru_refusal(card) or not _has_ru_translation(card)):
-            reason = "recusa/erro do modelo" if _looks_like_ru_refusal(card) else "campo Translation/Definition ausente"
-            LOGGER.error("Card russo para '%s' invalido (%s) - skipping.", label, reason)
-            failures[stem] = "invalid_card"
-            continue
+    card = _prepare_card(response)
 
-        clean_phrase = _strip_inline_context(job.entry.phrase)
-        keeps_phrase = whole_phrase or job.is_generated or not (
-            job.keyword.casefold() in clean_phrase.casefold() or _phrase_has_form_of_expression(clean_phrase, job.keyword))
+    if whole_phrase and (_looks_like_ru_refusal(card) or not _has_ru_translation(card)):
+        reason = "recusa/erro do modelo" if _looks_like_ru_refusal(card) else "campo Translation/Definition ausente"
+        LOGGER.error("Card russo para '%s' invalido (%s) - skipping.", nome, reason)
+        return "invalid_card"
 
-        def card_ok(text: str) -> bool:
-            return _validate_keyword(text, job.keyword) and (keeps_phrase or _front_keeps_the_phrase(text, clean_phrase))
+    clean_phrase = _strip_inline_context(job.entry.phrase)
+    keeps_phrase = whole_phrase or job.is_generated or not (
+        job.keyword.casefold() in clean_phrase.casefold() or _phrase_has_form_of_expression(clean_phrase, job.keyword))
 
-        if not whole_phrase and not card_ok(card):
-            LOGGER.warning("Keyword mismatch para '%s' - tentando regenerar uma vez.", label)
-            retry_message = (
-                _build_keyword_retry_message(user_message, job.keyword)
-                if not _validate_keyword(card, job.keyword)
-                else _build_phrase_retry_message(user_message, clean_phrase))
-            retry_response = call(retry_message, label, stem)
-            if not retry_response:
-                if stem not in failures:
-                    LOGGER.error("Retry retornou resposta vazia para '%s' - pulando.", label)
-                    failures[stem] = "empty_response"
-                continue
+    def card_ok(text: str) -> bool:
+        return _validate_keyword(text, job.keyword) and (keeps_phrase or _front_keeps_the_phrase(text, clean_phrase))
 
-            card = _prepare_card(retry_response)
-            if not card_ok(card):
-                LOGGER.error("Keyword mismatch persistente para '%s' - card nao sera salvo.", label)
-                failures[stem] = "keyword_mismatch"
-                continue
+    if not whole_phrase and not card_ok(card):
+        LOGGER.warning("Keyword mismatch para '%s' - tentando regenerar uma vez.", nome)
+        retry_message = (
+            _build_keyword_retry_message(user_message, job.keyword)
+            if not _validate_keyword(card, job.keyword)
+            else _build_phrase_retry_message(user_message, clean_phrase))
+        retry_response = call(retry_message)
+        if not retry_response:
+            return failure["code"]
+        card = _prepare_card(retry_response)
+        if not card_ok(card):
+            LOGGER.error("Keyword mismatch persistente para '%s' - card nao sera salvo.", nome)
+            return "keyword_mismatch"
 
-        _write_card(dest, card)
-        failures.pop(stem, None)
-        saved.append(stem)
-
-        LOGGER.info("Raw Keyword: '%s' -> Final Filename: '%s.txt'", label, stem)
-        if len(stem) < 3:
-            LOGGER.warning("Filename '%s.txt' e muito curto - verifique o card.", stem)
-
-    if not saved:
-        LOGGER.warning("Nenhum card salvo.")
-
-    return saved
-
+    _write_card(dest, card)
+    LOGGER.info("Card salvo: '%s.txt'", nome)
+    return None
