@@ -24,6 +24,20 @@ VARIANTES = {
         "      const lido = armazenamento.get({ frases: [] });\n"
         "      return globalThis.navigator.locks.request(TRANCA, async () => {\n"
         "        const { frases: antes = [] } = await lido;")]),
+    'grava-depois-de-soltar': ('lib/historico.js', [(
+        "      return globalThis.navigator.locks.request(TRANCA, async () => {\n"
+        "        const { frases: antes = [] } = await armazenamento.get({ frases: [] });\n"
+        "        const { frases, resultado } = OPERACOES[operacao.tipo](antes, operacao);\n"
+        "        if (frases !== antes) await armazenamento.set({ frases });\n"
+        "        return resultado;\n"
+        "      });",
+        "      let gravar = null;\n"
+        "      return globalThis.navigator.locks.request(TRANCA, async () => {\n"
+        "        const { frases: antes = [] } = await armazenamento.get({ frases: [] });\n"
+        "        const { frases, resultado } = OPERACOES[operacao.tipo](antes, operacao);\n"
+        "        if (frases !== antes) gravar = frases;\n"
+        "        return resultado;\n"
+        "      }).then(async r => { if (gravar) await armazenamento.set({ frases: gravar }); return r; });")]),
     'sync-grava-a-copia': ('lib/sincronizacao.js', [(
         "      if (marcasDaNuvem.size > 0) await historico.editarVarias(marcasDaNuvem);",
         "      if (marcasDaNuvem.size > 0) await local.set({ frases: locais"

@@ -41,12 +41,13 @@ legenda-e-painel: 222 ordens, 0 contraexemplos → PASSOU
 legenda-repetida: 24 ordens, 22 contraexemplos → FALHOU SÓ COMO O ACHADO CONHECIDO (duplicata)
 ```
 
-`variantes.py` quebra o código real de 5 jeitos, roda o explorador com `--um` e devolve cada arquivo (confira `git status` no fim):
+`variantes.py` quebra o código real de 6 jeitos, roda o explorador com `--um` e devolve cada arquivo (confira `git status` no fim):
 
 | Variante | A quebra | Tem de |
 |---|---|---|
 | `sem-tranca` | `lib/historico.js` `mudar` sem `locks.request` | falhar (perda) em 3 cenários |
 | `le-fora-da-tranca` | o `get` de `frases` antes de pedir a tranca | falhar (perda) em 3 cenários |
+| `grava-depois-de-soltar` | o `set` de `frases` roda depois de a tranca ser solta | falhar (perda) em 3 cenários |
 | `sync-grava-a-copia` | `juntarMarcas` grava a lista lida em `lib/sincronizacao.js:374` (o código de antes da C2 passo 4) | falhar em `carregar-com-conta` |
 | `id-so-pelo-relogio` | `proximoId` devolve só `Date.now()` | falhar (ids repetidos) em `legenda-e-painel` e `legenda-repetida` |
 | `conserto-da-duplicata` | `background.js` confere e acrescenta sob a tranca `pm-automatica` | passar a `legenda-repetida` ("o achado conhecido sumiu") |
