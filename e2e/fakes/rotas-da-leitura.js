@@ -40,7 +40,7 @@ function criarRotasDaLeitura({ estado, contrato, respostaDoContrato }) {
   ];
 
   const api = {
-    definirVocabulario(lang, palavras) { estado.vocabulario[lang] = palavras; },
+    definirVocabulario(lang, palavras) { estado.vocabulario[lang] = palavras; estado.vocabularioDefinido = true; },
     falharVocabulario(falha = { status: 503 }) { estado.falhaDoVocabulario = falha; },
     voltarVocabulario() { estado.falhaDoVocabulario = null; },
 

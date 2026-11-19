@@ -425,7 +425,7 @@ class Trabalho(CorrecaoDaCriacao, TipoDoEnvio):
         pedido = self.fila.pedido(job_id)
         if self.fila.estado_ou_refazer(job_id).get("wiped"):
             return
-        config = configuracao_do_motor(self.motor, self.fila, pedido, None)
+        config = configuracao_do_motor(self.motor, self.fila, pedido)
         try:
             nome, serve = self._o_tipo_do_envio(job_id, pedido)
         except Apagado:
