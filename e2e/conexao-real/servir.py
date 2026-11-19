@@ -13,6 +13,8 @@ e fala com o fixture por linhas de JSON: ao ficar pronta escreve `{"porta": N}`;
     {"mudar": {"jobId", "state"}}  o estado que o fake deu ao Envio (`moverEnvio`, `concluirEnvio`), gravado pelo portão `Fila.mudar`:
                               uma transição que a máquina não aceita volta `{"erro": ...}`
     {"criar": {...}}          um Envio que chega sem a extensão (`receberEnvio`), pelo `Fila.criar`
+    {"chave": {...} | null}   o `chaves/openai.json` que o teste deu à Conexão (`guardarChaveNaConexao`, `guardarRemocaoNaConexao`; null:
+                              `esquecerAChave`), escrito como nos testes do complemento
     {"fila": "nome"}          a fila de um exemplo do contrato (`filas`; `definirFila`), semeada como nos testes do complemento
     {"apagarFrases": true}    o Apagar tudo feito por fora do pedido (`apagarAsFrases`), pelo `Fila.apagar_as_frases`
     {"envios": true}          os Envios que a fila guardou, na ordem: `{jobId, lang, corpo (o pedido como as rotas o mostram), createdAt, state}`
@@ -113,6 +115,15 @@ def main():
                     responder({"ok": True})
                 except ValueError as erro:
                     responder({"erro": str(erro)})
+            elif "chave" in comando:
+                caminho = os.path.join(dados.chaves, "openai.json")
+                if comando["chave"] is None:
+                    if os.path.exists(caminho):
+                        os.remove(caminho)
+                else:
+                    with open(caminho, "w", encoding="utf-8") as arquivo:
+                        json.dump(comando["chave"], arquivo)
+                responder({"ok": True})
             elif "fila" in comando:
                 semear_a_fila(dados.raiz, ler_o_contrato()["filas"][comando["fila"]])
                 responder({"ok": True})
