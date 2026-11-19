@@ -29,10 +29,9 @@ def prompt_do_dono(fila, padrao):
         return padrao
 
 
-def configuracao_do_motor(motor, fila, pedido, chave):
+def configuracao_do_motor(motor, fila, pedido):
     """A base do motor com o idioma, o Baralho, o estilo do idioma e do nível do pedido (o prompt do nível, como a linha se lê), o tipo de nota e os sotaques do pedido."""
     config = motor.config_loader.base_config()
-    config["openai_api_key"] = chave
     config["lang"] = pedido["lang"]
     config["anki"]["deck_name"] = pedido["deckName"]
     pasta_do_motor = os.path.dirname(os.path.abspath(motor.config_loader.__file__))
