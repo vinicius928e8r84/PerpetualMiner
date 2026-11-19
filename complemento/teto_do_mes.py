@@ -3,7 +3,7 @@
 O gasto é o da chave no mês do computador (`custos.resumir`: o texto, o juiz e a triagem da imagem, a imagem gerada e a voz paga; o
 Cartão que o plano do ChatGPT fez custa 0, e a imagem gerada que ele pediu à chave conta). Chegando no teto, o Envio **pausa antes do
 próximo Cartão**: o estado segue `running` e diz `waiting: { reason: "monthly_cap" }`, nada novo é pedido à OpenAI, e a thread de
-trabalho confere de novo a cada `espera_do_teto` s. Quem acorda a espera antes é subir o teto (`POST /custos/teto/definir`); o mês
+trabalho confere de novo a cada `espera_do_teto` s (a espera é da porta presa ao Envio, `ia_do_envio.py`). Quem acorda a espera antes é subir o teto (`POST /custos/teto/definir`); o mês
 virando zera a conta sozinho. O teto fica em `user_files/teto-do-mes.json` (`{ "limitUsd" }`; sem o arquivo vale o padrão).
 Desenho: `docs/design/teto-do-mes.md`.
 """
@@ -14,7 +14,6 @@ import os
 from datetime import date, datetime, timedelta
 
 from . import custos
-from .paradas_do_envio import Apagado, Interrompido
 
 TETO_PADRAO = 10.0
 TETO_MAXIMO = 1_000_000.0
@@ -80,33 +79,3 @@ class TetoDoMes:
 
     def chegou(self):
         return self.gasto() >= self.limite()
-
-
-class PausaPeloTeto:
-    """A parte do `Trabalho` que pausa o Envio no teto do mês. Pede `self.fila`, `self.parar` e `_dizer_a_espera`; `teto` e `espera_do_teto`
-    a Conexão põe depois de montar o `Trabalho` (sem `teto`, nada pausa)."""
-
-    teto = None
-    espera_do_teto = 60
-
-    def _conferir_o_teto(self, job_id):
-        """Antes de gastar a chave com um Cartão: no teto, o estado diz que o Envio espera e a thread dorme até o teto subir ou o mês virar."""
-        if self.teto is None:
-            return
-        pausou = False
-        while True:
-            self.fila.despertador.clear()
-            if not self.teto.chegou():
-                break
-            if not pausou:
-                pausou = True
-                self.logger.info("Envio %s: o gasto do mês chegou no teto; o Envio espera", job_id)
-            self._dizer_a_espera(job_id, dict(NO_TETO))
-            self.fila.despertador.wait(self.espera_do_teto)
-            if self.parar.is_set():
-                raise Interrompido()
-            if self.fila.estado(job_id).get("wiped"):
-                raise Apagado()
-        if pausou:
-            self._dizer_a_espera(job_id, None)
-            self.logger.info("Envio %s: o teto do mês deixou de valer; o Envio continua", job_id)

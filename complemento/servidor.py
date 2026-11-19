@@ -308,8 +308,7 @@ class Conexao:
         self.teto = TetoDoMes(os.path.join(dados.raiz, "teto-do-mes.json"), self.fila, hoje)
         trabalho = envio.Trabalho(self.fila, self.colecao, self.ia, logger, openai_base, threading.Event(),
                                   espera_do_anki=espera_do_anki, esperas_da_openai=esperas_da_openai, espera_do_plano=espera_do_plano, voz_base=voz_base,
-                                  openverse_base=openverse_base, adaptador_de_imagem=adaptador_de_imagem)
-        trabalho.teto, trabalho.espera_do_teto = self.teto, espera_do_teto
+                                  openverse_base=openverse_base, adaptador_de_imagem=adaptador_de_imagem, teto=self.teto, espera_do_teto=espera_do_teto)
         self._trabalhador = trabalhador.Trabalhador(
             trabalho,
             intervalo=intervalo_do_envio, contato=self.contato, espera_do_contato=espera_do_contato,

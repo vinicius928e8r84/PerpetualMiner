@@ -2,7 +2,8 @@
 
 Quando o plano recusa o texto de um Cartão por limite de uso (`chatgpt_usage_limit`), os próximos falhariam igual, mas esperar não
 perde nada: o estado do Envio segue `running` e diz `waiting: { reason: "plan_limit" }`, e a thread de trabalho pede o mesmo texto de
-novo a cada `espera_do_plano` s (um pedido só). Quem acorda a espera antes: **Tentar de novo** (`POST /jobs/retry`), que só pede já;
+novo a cada `espera_do_plano` s (um pedido só). Quem conduz a espera é a porta presa ao Envio (`ia_do_envio.py`); aqui fica o lado do Envio
+dela (`EsperaDoEnvio`) e a rota do Usar a minha chave. Quem acorda a espera antes: **Tentar de novo** (`POST /jobs/retry`), que só pede já;
 **Usar a minha chave** (`POST /jobs/usar-a-chave`), que marca o Envio `usingKey` e faz o que falta pela chave; e o Apagar tudo ou
 parar a Conexão, que a encerram. Um Cartão já no Anki, ou com o texto pago, nunca é pedido de novo. Desenho: `docs/design/login-do-chatgpt.md`.
 """
@@ -11,7 +12,6 @@ from .estado_do_envio import APAGADO, FIM, situacao
 from .ia_dos_cartoes import TEXTO
 from .modelo_dos_cartoes import CHAVE
 from .paradas_do_envio import Apagado, Interrompido
-from .teto_do_mes import PausaPeloTeto
 
 LIMITE_DO_PLANO = "chatgpt_usage_limit"  # o mesmo de `engine/openai_http.LIMITE_DO_PLANO`
 PLANO_NO_LIMITE = {"reason": "plan_limit"}
@@ -23,31 +23,46 @@ def espera_pelo_plano(estado):
     return (estado.get("waiting") or {}).get("reason") == PLANO_NO_LIMITE["reason"]
 
 
-class LimiteDoPlano(PausaPeloTeto):
-    """A parte do `Trabalho` que espera o plano e a que diz ao estado do Envio por que ele espera (e, de `PausaPeloTeto`, o teto do mês)."""
+def dizer_a_espera(fila, job_id, espera):
+    """O estado diz por que o Envio espera (`waiting`, que o painel lê: o plano, o teto, o Anki); só grava se mudou."""
+    if fila.estado(job_id).get("waiting") == espera:
+        return
 
-    def _dizer_a_espera(self, job_id, espera):
-        """O estado diz por que o Envio espera (`waiting`, que o painel lê); só grava se mudou."""
-        if self.fila.estado(job_id).get("waiting") == espera:
-            return
+    def mudanca(estado):
+        if espera:
+            estado["waiting"] = espera
+        else:
+            estado.pop("waiting", None)
 
-        def mudanca(estado):
-            if espera:
-                estado["waiting"] = espera
-            else:
-                estado.pop("waiting", None)
+    fila.mudar(job_id, mudanca)
 
-        self.fila.mudar(job_id, mudanca)
 
-    def _esperar_o_plano(self, job_id):
-        """O plano está no limite: o estado diz que o Envio espera e a thread dorme até a próxima tentativa (ou até a acordarem)."""
+class EsperaDoEnvio:
+    """O lado do Envio das esperas que a porta conduz (`ia_do_envio.IaDoEnvio`: o teto do mês e o limite do plano), e o Usar a minha chave
+    dele, lido do estado a cada vez. `parar` é o evento que para a Conexão."""
+
+    def __init__(self, fila, job_id, parar):
+        self.fila, self.job_id, self.parar = fila, job_id, parar
+
+    def pela_chave(self):
+        return self.fila.estado(self.job_id).get("usingKey", False)
+
+    def dizer(self, espera):
+        dizer_a_espera(self.fila, self.job_id, espera)
+
+    def limpar_o_despertador(self):
         self.fila.despertador.clear()
-        self.logger.info("Envio %s: o plano do ChatGPT está no limite; o Envio espera", job_id)
-        self._dizer_a_espera(job_id, dict(PLANO_NO_LIMITE))
-        self.fila.despertador.wait(self.espera_do_plano)
+
+    def esperar(self, espera, segundos):
+        """O estado diz `espera` e a thread dorme até `segundos` ou até a acordarem. Levanta `Apagado` (as Frases foram apagadas, antes ou
+        durante) e `Interrompido` (a Conexão para)."""
+        if self.fila.estado(self.job_id).get("wiped"):
+            raise Apagado()
+        self.dizer(espera)
+        self.fila.despertador.wait(segundos)
         if self.parar.is_set():
             raise Interrompido()
-        if self.fila.estado(job_id).get("wiped"):
+        if self.fila.estado(self.job_id).get("wiped"):
             raise Apagado()
 
 

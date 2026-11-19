@@ -67,6 +67,7 @@ e os `test_envio*.py`. Não provam o login real nem a OpenAI real.
 ## Os próximos passos
 
 O motor já escreve um Cartão por chamada (`generate_cards.escrever`: o texto que já está no disco não é pedido de novo), sem as opções de lote. O Motor
-do Cartão (`complemento/motor_do_cartao.py`) já tem a entrada `montar(cartao, texto, ia, avisar)`: a voz e a imagem pedem à porta, e o `Trabalho` não
-herda mais o áudio nem a imagem. Falta, cada um numa versão da Conexão: a entrada `escrever` (o texto, com a espera do teto e do limite do plano), e a
-correção da Criação e o tipo de nota fora da herança do `Trabalho`.
+do Cartão (`complemento/motor_do_cartao.py`) tem as duas entradas, `escrever(cartao, ia)` e `montar(cartao, texto, ia, avisar)`, e as duas pedem à
+porta presa ao Envio (`complemento/ia_do_envio.py`): ela lê o Usar a minha chave do Envio a cada pedido e conduz o teto do mês e o limite do plano,
+com o `waiting` do estado pela `limite_do_plano.EsperaDoEnvio`. O `Trabalho` não herda mais o áudio, a imagem, o limite do plano nem o teto. Falta,
+numa versão da Conexão: a correção da Criação e o tipo de nota fora da herança do `Trabalho`.

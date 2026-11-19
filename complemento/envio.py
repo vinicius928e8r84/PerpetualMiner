@@ -36,10 +36,10 @@ from .envios_dos_custos import EnviosDosCustos
 from .gravacao_de_json import apagar as _apagar, apagar_os_provisorios, avisar_do_que_ficou, gravar_json as _gravar_json
 from .configuracao import OPENVERSE_BASE, VOZ_BASE
 from .imagem_do_cartao import ParaOEnvio
-from .limite_do_plano import LIMITE_DO_PLANO, LimiteDoPlano, espera_pelo_plano
+from .ia_do_envio import IaDoEnvio, SemQuemPague
+from .limite_do_plano import EsperaDoEnvio, dizer_a_espera, espera_pelo_plano
 from .login_do_chatgpt import RECUSOU, SAIU
-from .modelo_dos_cartoes import PARADO
-from .palavras_do_cartao import com_as_palavras_fixas, esquecer, fixar_na_entrada, quantos_cartoes
+from .palavras_do_cartao import com_as_palavras_fixas, esquecer, quantos_cartoes
 from .motor_do_cartao import Cartao, MotorDoCartao
 from .motor_do_envio import configuracao_do_motor, motor_do_complemento
 from .paradas_do_envio import Apagado, Interrompido  # noqa: F401  (`envio.Interrompido`)
@@ -56,7 +56,6 @@ SEM_CHAVE = "openai_key_missing"
 SEM_TIPO_DE_NOTA = "note_type_missing"
 FALHA_AO_GRAVAR = "anki_write_failed"
 PARA_O_ENVIO = ("openai_key_rejected", "openai_no_credit", SAIU, "chatgpt_not_eligible", RECUSOU)
-PASSAGEIROS = ("openai_rate_limited", "openai_unreachable", "generation_error", "empty_response")
 
 
 def agora_local():
@@ -337,25 +336,27 @@ def resolver(pedido, estado):
     return status, no_anki, falharam, duplicadas
 
 
-class Trabalho(CorrecaoDaCriacao, LimiteDoPlano, TipoDoEnvio):
+class Trabalho(CorrecaoDaCriacao, TipoDoEnvio):
     """Faz um Envio: confere o tipo de nota e, Cartão a Cartão, acha a nota no Anki, gera o texto, monta a nota e a grava."""
 
     def __init__(self, fila, colecao, ia, logger, openai_base, parar, espera_do_anki=2.0, esperas_da_openai=(2, 8, 30),
-                 voz_base=VOZ_BASE, openverse_base=OPENVERSE_BASE, adaptador_de_imagem=None, espera_do_plano=300):
-        self.fila, self.ia = fila, ia
-        self.espera_do_plano = espera_do_plano
+                 voz_base=VOZ_BASE, openverse_base=OPENVERSE_BASE, adaptador_de_imagem=None, espera_do_plano=300, teto=None, espera_do_teto=60):
+        self.fila, self.ia, self.teto = fila, ia, teto
+        self.espera_do_teto, self.espera_do_plano = espera_do_teto, espera_do_plano
         self.motor = fila.motor
         self.colecao = colecao
         self.logger = logger
         self.parar = parar
         self.espera_do_anki = espera_do_anki
-        self.esperas_da_openai = tuple(esperas_da_openai)
         self.motor_do_cartao = MotorDoCartao(self.motor, logger, fila.tranca, parar, openai_base, voz_base, openverse_base,
             adaptador_de_imagem, esperas_da_openai)
 
     def _dormir(self, segundos):
         if self.parar.wait(segundos):
             raise Interrompido()
+
+    def _dizer_a_espera(self, job_id, espera):
+        dizer_a_espera(self.fila, job_id, espera)
 
     def _etapa(self, job_id, etapa, progress=None, concluida=False):
         def mudanca(estado):
@@ -432,12 +433,13 @@ class Trabalho(CorrecaoDaCriacao, LimiteDoPlano, TipoDoEnvio):
         if not serve:
             self.logger.warning("Envio %s: o tipo de nota %r não tem os campos do Cartão", job_id, nome)
             return self._terminar(job_id, pedido, SEM_TIPO_DE_NOTA)
+        ia = IaDoEnvio(self.ia, EsperaDoEnvio(self.fila, job_id, self.parar), self.logger, self.teto, self.espera_do_teto, self.espera_do_plano)
         try:
-            self._os_cartoes(job_id, pedido, config)
+            self._os_cartoes(job_id, pedido, config, ia)
         except Apagado:
             self.logger.info("Envio %s: parou, as Frases foram apagadas", job_id)
 
-    def _os_cartoes(self, job_id, pedido, config):
+    def _os_cartoes(self, job_id, pedido, config, ia):
         parada = None
         total = len(self.fila.estado(job_id)["cards"])
         for cartao_id in list(self.fila.estado(job_id)["cards"]):
@@ -450,12 +452,12 @@ class Trabalho(CorrecaoDaCriacao, LimiteDoPlano, TipoDoEnvio):
                 continue
             feitos = sum(1 for c in estado["cards"].values() if c["status"] in NO_ANKI)
             self._etapa(job_id, "generate_cards", progress={"done": feitos, "total": total})
-            parada = self._um_cartao(job_id, pedido, config, cartao_id, cartao, parada) or parada
+            parada = self._um_cartao(job_id, pedido, config, ia, cartao_id, cartao, parada) or parada
         self._corrigir_as_frases(job_id, pedido, config, parada)
         self._etapa(job_id, "send_to_anki", concluida=True)
         self._terminar(job_id, pedido, parada)
 
-    def _um_cartao(self, job_id, pedido, config, cartao_id, cartao, parada):
+    def _um_cartao(self, job_id, pedido, config, ia, cartao_id, cartao, parada):
         """Faz um Cartão: o `guid` antes de tudo (a nota já está: nada se gera nem se paga), depois o texto e a nota.
         Devolve o código que para o Envio, ou None."""
         guid = guid_do_cartao(job_id, cartao_id)
@@ -463,7 +465,7 @@ class Trabalho(CorrecaoDaCriacao, LimiteDoPlano, TipoDoEnvio):
             self._cartao(job_id, cartao_id, status=ADICIONADO, error=None, guid=guid)
             self.fila.cartao_chegou(job_id, cartao_id)
             return None
-        self._conferir_o_teto(job_id)
+        ia.conferir_o_teto()
         arquivo = self.fila.arquivo_do_texto(job_id, cartao_id)
         if not os.path.exists(arquivo):
             if parada:
@@ -472,20 +474,14 @@ class Trabalho(CorrecaoDaCriacao, LimiteDoPlano, TipoDoEnvio):
             if linha is None:
                 self._cartao(job_id, cartao_id, status=FALHOU, error=FRASE_APAGADA)
                 return None
-            while True:
-                pela_chave = self.fila.estado(job_id).get("usingKey", False)
-                paga = self.ia.para_o_texto(pela_chave)
-                if paga.quem == PARADO:
-                    return paga.motivo if paga.motivo in PARA_O_ENVIO + (SEM_CHAVE,) else self._cartao(job_id, cartao_id, status=FALHOU, error=paga.motivo)
-                falha = self._gerar_o_texto(job_id, pedido, config, cartao_id, cartao["phraseId"], linha, paga)
-                paga = None
-                if self.fila.estado(job_id).get("wiped"):
-                    with self.fila.tranca:
-                        _apagar(arquivo)
-                    return None
-                if falha != LIMITE_DO_PLANO:
-                    break
-                self._esperar_o_plano(job_id)
+            try:
+                falha = self.motor_do_cartao.escrever(Cartao(cartao_id, guid, linha, pedido, config, job_id), ia)
+            except SemQuemPague as parado:
+                return parado.codigo if parado.codigo in PARA_O_ENVIO + (SEM_CHAVE,) else self._cartao(job_id, cartao_id, status=FALHOU, error=parado.codigo)
+            if self.fila.estado(job_id).get("wiped"):
+                with self.fila.tranca:
+                    _apagar(arquivo)
+                return None
             self._dizer_a_espera(job_id, None)
             if falha:
                 self.logger.warning("Envio %s: o texto do Cartão %s não veio (%s)", job_id, cartao_id, falha)
@@ -493,29 +489,13 @@ class Trabalho(CorrecaoDaCriacao, LimiteDoPlano, TipoDoEnvio):
                 return falha if falha in PARA_O_ENVIO else None
             self._cartao(job_id, cartao_id, status=TEXTO, error=None)
         try:
-            self._gravar_a_nota(job_id, pedido, config, cartao_id, guid, arquivo)
+            self._gravar_a_nota(job_id, pedido, config, ia, cartao_id, guid, arquivo)
         except ParaOEnvio as parada:
             self._cartao(job_id, cartao_id, status=FALHOU, error=parada.codigo)
             return parada.codigo
         return None
 
-    def _gerar_o_texto(self, job_id, pedido, config, cartao_id, phrase_id, linha, paga):
-        """Gera o texto de um Cartão, tentando de novo o que falha por um motivo passageiro; devolve o código da falha, ou None."""
-        entrada = self.motor.parser.parse_line(config["estilo"]["entrada"], linha)
-        if entrada is None:
-            return "invalid_card"
-        fixar_na_entrada(pedido, phrase_id, entrada)
-        trabalho = self.motor.parser.get_card_jobs(entrada)[int(cartao_id.rsplit("-", 1)[1])]
-        codigo = None
-        for espera in (None,) + self.esperas_da_openai:
-            if espera is not None:
-                self._dormir(espera)
-            codigo = self.motor.generate_cards.escrever(trabalho, config, self.ia.pedido_do_texto(paga, config), cartao_id)
-            if codigo not in PASSAGEIROS:
-                break
-        return codigo
-
-    def _gravar_a_nota(self, job_id, pedido, config, cartao_id, guid, arquivo):
+    def _gravar_a_nota(self, job_id, pedido, config, ia, cartao_id, guid, arquivo):
         envio = self.motor.send_to_anki
         lang, baralho, tipo = pedido["lang"], pedido["deckName"], config["anki"]["note_type"]
         with open(arquivo, encoding="utf-8") as texto:
@@ -523,9 +503,9 @@ class Trabalho(CorrecaoDaCriacao, LimiteDoPlano, TipoDoEnvio):
         linha = self.fila.linha_do_cartao(job_id, int(cartao_id.rsplit("-", 1)[0]))
         if linha is None:
             return self._cartao(job_id, cartao_id, status=FALHOU, error=FRASE_APAGADA)
-        do_motor = Cartao(cartao_id, guid, linha, pedido, config, self.fila.estado(job_id).get("usingKey", False), job_id)
         try:
-            nota, arquivos = self.motor_do_cartao.montar(do_motor, conteudo, self.ia, lambda etapa: self._etapa(job_id, etapa))
+            do_motor = Cartao(cartao_id, guid, linha, pedido, config, job_id)
+            nota, arquivos = self.motor_do_cartao.montar(do_motor, conteudo, ia, lambda etapa: self._etapa(job_id, etapa))
         except voz.ErroDaVoz as erro:
             return self._cartao(job_id, cartao_id, status=FALHOU, error=erro.codigo)
         if self.fila.estado(job_id).get("wiped"):
