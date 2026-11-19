@@ -23,7 +23,7 @@ const foto = nome => ({ name: nome, mimeType: 'image/png', buffer: PNG_1X1 });
 
 async function abrirAPagina(page, extensao, { chave = CHAVE } = {}) {
   if (chave) await extensao.gravarStorage({ geminiApiKey: chave });
-  await page.goto(extensao.url('bookreader.html'));
+  await page.goto(extensao.url('bookreader/bookreader.html'));
   await expect(page.getByRole('heading', { name: 'Minerar de uma foto' })).toBeVisible();
 }
 
@@ -170,8 +170,6 @@ for (const caso of [
     await lerUmaFoto(page);
     await expect(botaoMinerar(page)).toHaveText('Minerar 3 frases');
 
-    // Falha na fronteira de mensagens; a tela deve continuar permitindo tentar
-    // de novo. O canal sem receptor produz um runtime.lastError real do Chrome.
     await page.evaluate(({ resposta, falha }) => {
       window.enviarDeVerdade = chrome.runtime.sendMessage.bind(chrome.runtime);
       chrome.runtime.sendMessage = (mensagem, retorno) => {

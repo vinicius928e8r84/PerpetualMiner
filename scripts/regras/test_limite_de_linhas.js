@@ -15,15 +15,15 @@ const linhas = fonte => fonte.split('\n').slice(0, -1);
 let total = 0;
 const prova = (condicao, porque) => { assert.ok(condicao, porque); total++; };
 
-const bookreader = real('bookreader.js');
+const bookreader = real('bookreader/bookreader.js');
 const base = linhas(bookreader);
-assert.ok(base.length > 800 && base.length < regra.LIMITE, `bookreader.js mudou de tamanho (${base.length}); escolha outro arquivo real abaixo do limite`);
-prova(regra.verificar('bookreader.js', bookreader).length === 0, 'o arquivo real abaixo do teto passa');
+assert.ok(base.length > 800 && base.length < regra.LIMITE, `bookreader/bookreader.js mudou de tamanho (${base.length}); escolha outro arquivo real abaixo do limite`);
+prova(regra.verificar('bookreader/bookreader.js', bookreader).length === 0, 'o arquivo real abaixo do teto passa');
 
 const acima = `${[...base, ...base.slice(0, regra.LIMITE + 37 - base.length)].join('\n')}\n`;
 assert.strictEqual(regra.contarLinhas(acima), regra.LIMITE + 37);
-prova(regra.verificar('bookreader.js', acima).length === 37, 'uma ocorrência por linha acima do teto');
-prova(regra.verificar('bookreader.js', acima)[0].linha === regra.LIMITE + 1, 'a primeira ocorrência é a linha 1001');
+prova(regra.verificar('bookreader/bookreader.js', acima).length === 37, 'uma ocorrência por linha acima do teto');
+prova(regra.verificar('bookreader/bookreader.js', acima)[0].linha === regra.LIMITE + 1, 'a primeira ocorrência é a linha 1001');
 
 prova(regra.contarLinhas('') === 0 && regra.contarLinhas('a\n') === 1 && regra.contarLinhas('a\nb') === 2 && regra.contarLinhas('a\n\n') === 2,
   'a contagem de linhas');
@@ -42,7 +42,7 @@ prova(regra.verificar('a.js', `// @generated\n${exatas}y\n`).length === 0, 'a ma
 prova(regra.verificar('a.js', `${exatas}// @generated\n`).length === 1, 'a marca fora do cabeçalho não isenta');
 
 const LIMPO = JSON.stringify({ 'limite-de-linhas': {} });
-const BASE_COM_O_ARQUIVO = excesso => JSON.stringify({ 'limite-de-linhas': { 'bookreader.js': excesso } });
+const BASE_COM_O_ARQUIVO = excesso => JSON.stringify({ 'limite-de-linhas': { 'bookreader/bookreader.js': excesso } });
 function verificar(arquivos) {
   const pasta = repositorioDeTestes(arquivos);
   try {
@@ -54,12 +54,12 @@ function verificar(arquivos) {
     fs.rmSync(pasta, { recursive: true, force: true });
   }
 }
-const comLinhas = (fonte, linhaDeBase) => ({ 'bookreader.js': fonte, 'scripts/regras/linha-de-base.json': linhaDeBase });
+const comLinhas = (fonte, linhaDeBase) => ({ 'bookreader/bookreader.js': fonte, 'scripts/regras/linha-de-base.json': linhaDeBase });
 
 // ANTES: o arquivo real passado de 1.000 linhas, fora da lista, falha com o arquivo, a contagem, o teto e o conserto.
 let r = verificar(comLinhas(acima, LIMPO));
 assert.strictEqual(r.status, 1, r.saida);
-assert.match(r.saida, /✗ limite-de-linhas — bookreader\.js: 1037 linhas; o teto é 1000 \(37 acima\)/);
+assert.match(r.saida, /✗ limite-de-linhas — bookreader\/bookreader\.js: 1037 linhas; o teto é 1000 \(37 acima\)/);
 assert.match(r.saida, /Divida o arquivo por responsabilidade em módulos menores/);
 total += 3;
 // DEPOIS: o mesmo arquivo de volta ao tamanho real passa.
@@ -72,18 +72,18 @@ assert.strictEqual(r.status, 0, `na lista, sem crescer: ${r.saida}`);
 const maisUma = `${acima}${base[0]}\n`;
 r = verificar(comLinhas(maisUma, BASE_COM_O_ARQUIVO(37)));
 assert.strictEqual(r.status, 1, 'uma linha a mais que a linha de base falha');
-assert.match(r.saida, /bookreader\.js: 1038 linhas; o teto é 1000 \(38 acima\)\. Ele já passava do limite quando a regra entrou e a linha de base o deixa em 1037 linhas: não pode crescer/);
+assert.match(r.saida, /bookreader\/bookreader\.js: 1038 linhas; o teto é 1000 \(38 acima\)\. Ele já passava do limite quando a regra entrou e a linha de base o deixa em 1037 linhas: não pode crescer/);
 total += 3;
 const menos = `${[...base, ...base.slice(0, regra.LIMITE + 10 - base.length)].join('\n')}\n`;
 r = verificar(comLinhas(menos, BASE_COM_O_ARQUIVO(37)));
 assert.strictEqual(r.status, 1, 'encolher sem baixar a linha de base falha');
-assert.match(r.saida, /bookreader\.js tem 1010 linhas e a linha de base ainda o deixa em 1037: baixe-a/);
+assert.match(r.saida, /bookreader\/bookreader\.js tem 1010 linhas e a linha de base ainda o deixa em 1037: baixe-a/);
 r = verificar(comLinhas(menos, BASE_COM_O_ARQUIVO(10)));
 assert.strictEqual(r.status, 0, r.saida);
 total += 3;
 r = verificar(comLinhas(bookreader, BASE_COM_O_ARQUIVO(37)));
 assert.strictEqual(r.status, 1, 'o arquivo que voltou ao limite sai da lista');
-assert.match(r.saida, /bookreader\.js ficou em 1000 linhas ou menos: tire-o da linha de base/);
+assert.match(r.saida, /bookreader\/bookreader\.js ficou em 1000 linhas ou menos: tire-o da linha de base/);
 total += 2;
 
 function atualizar(arquivos) {
@@ -100,7 +100,7 @@ function atualizar(arquivos) {
 }
 let a = atualizar(comLinhas(menos, BASE_COM_O_ARQUIVO(37)));
 assert.strictEqual(a.status, 0, `--atualizar com um arquivo da lista encolhido: ${a.saida}`);
-assert.deepStrictEqual(a.gravada, { 'bookreader.js': 10 }, 'a linha de base desce junto com o arquivo');
+assert.deepStrictEqual(a.gravada, { 'bookreader/bookreader.js': 10 }, 'a linha de base desce junto com o arquivo');
 a = atualizar(comLinhas(bookreader, BASE_COM_O_ARQUIVO(37)));
 assert.strictEqual(a.status, 0, `--atualizar com o arquivo de volta ao teto: ${a.saida}`);
 assert.deepStrictEqual(a.gravada, {}, 'o arquivo que voltou ao teto sai da lista');
@@ -123,12 +123,12 @@ function contraAMain(naMain, noRamo) {
 }
 const GRANDE = (n, marca = '') => `${marca}${'x\n'.repeat(n - (marca ? 1 : 0))}`;
 const LISTA = objeto => JSON.stringify({ 'limite-de-linhas': objeto });
-const naMain = { 'grande.js': GRANDE(1100), 'bookreader.js': bookreader, 'scripts/regras/linha-de-base.json': LISTA({ 'grande.js': 100 }) };
+const naMain = { 'grande.js': GRANDE(1100), 'bookreader/bookreader.js': bookreader, 'scripts/regras/linha-de-base.json': LISTA({ 'grande.js': 100 }) };
 const emFolga = `${[...base, ...base.slice(0, regra.LIMITE + 7 - base.length)].join('\n')}\n`;
-r = contraAMain(naMain, { 'grande.js': GRANDE(1090), 'bookreader.js': emFolga, 'scripts/regras/linha-de-base.json': LISTA({ 'grande.js': 90, 'bookreader.js': 7 }) });
+r = contraAMain(naMain, { 'grande.js': GRANDE(1090), 'bookreader/bookreader.js': emFolga, 'scripts/regras/linha-de-base.json': LISTA({ 'grande.js': 90, 'bookreader/bookreader.js': 7 }) });
 assert.strictEqual(r.status, 1, `a folga de um arquivo não passa para outro: ${r.saida}`);
-assert.match(r.saida, /scripts\/regras\/linha-de-base\.json: limite-de-linhas bookreader\.js não está na linha de base de HEAD/);
-r = contraAMain(naMain, { 'bookreader.js': emFolga });
+assert.match(r.saida, /scripts\/regras\/linha-de-base\.json: limite-de-linhas bookreader\/bookreader\.js não está na linha de base de HEAD/);
+r = contraAMain(naMain, { 'bookreader/bookreader.js': emFolga });
 assert.strictEqual(r.status, 1, r.saida);
 const duas = { 'a.js': GRANDE(1050), 'b.js': GRANDE(1050), 'scripts/regras/linha-de-base.json': LISTA({ 'a.js': 50, 'b.js': 50 }) };
 r = contraAMain(duas, { 'a.js': GRANDE(1040), 'b.js': GRANDE(1060), 'scripts/regras/linha-de-base.json': LISTA({ 'a.js': 40, 'b.js': 60 }) });

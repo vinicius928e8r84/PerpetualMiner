@@ -15,7 +15,7 @@ const FRASES = [
 
 test('várias frases mineradas ao mesmo tempo ficam todas no histórico, uma vez cada', async ({ page, extensao, fakes }) => {
   await extensao.semearSessao({ uid: 'uid-paralelo' });
-  await page.goto(extensao.url('bookreader.html'));
+  await page.goto(extensao.url('bookreader/bookreader.html'));
 
   const respostas = await page.evaluate(frases => Promise.all(frases.map(texto =>
     chrome.runtime.sendMessage({
@@ -37,7 +37,7 @@ test('várias frases mineradas ao mesmo tempo ficam todas no histórico, uma vez
 test('a contagem que Minerar de uma foto mostra depois de minerar bate com o que foi gravado', async ({ page, extensao, fakes }) => {
   await extensao.gravarStorage({ geminiApiKey: 'chave-de-teste' });
   fakes.gemini.responderFrases(FRASES);
-  await page.goto(extensao.url('bookreader.html'));
+  await page.goto(extensao.url('bookreader/bookreader.html'));
 
   await page.locator('#foto-arquivo').setInputFiles({ name: 'pagina.png', mimeType: 'image/png', buffer: PNG_1X1 });
   await page.getByRole('button', { name: 'Ler marcações' }).click();
