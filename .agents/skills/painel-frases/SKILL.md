@@ -62,7 +62,7 @@ and opens `bookreader.html` in a new tab, as the menu's Foto does. The PAI-02 em
   (`SALVAR_HISTORICO`) one at a time, so it goes through `Historico.acrescentar` (`lib/historico.js`), and the count moves only when that save
   comes back confirmed; the list shows each one through `chrome.storage.onChanged`. `umaMineracaoPorVez` makes a second
   click (the double click of #9) do nothing — and so does Minerar in Colar while a chosen .txt is still being read.
-- **Cloud:** the panel sends `semNuvem: true` and uploads the new phrases in one `batchWrite` at the end. If that fails, the persistent aviso ADD-06 stays in Frases with Tentar de novo (which
+- **Cloud:** the panel sends `semNuvem: true` and uploads the new phrases in one `:commit` at the end. If that fails, the persistent aviso ADD-06 stays in Frases with Tentar de novo (which
   repeats the upload) and no Detalhes (the owner's call: the cause goes to the Conta & sync card's Detalhes), and the card and the chip say the computer is out of sync — the same exception to
   the “sync problems only in the card” rule as PAI-15. Closing the aviso leaves them only on this computer; the next load uploads them.
 
