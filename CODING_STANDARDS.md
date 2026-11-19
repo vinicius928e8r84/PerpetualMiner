@@ -8,11 +8,11 @@ The rules that cross surfaces are in `docs/arquitetura.md` and the role of each 
 
 | The diff touches | Open |
 |------|------|
-| `painel-boas-vindas.js`, `lib/configuracao.js`, `painel-lembrete.js` | `boas-vindas` |
-| `painel-ia.js`, `lib/chave-da-openai.js`, `painel-chave.js`, `painel-perigo.js`, `painel-atalhos.js`, `lib/atalhos.js`, `painel-conta.js`, `painel-abrir-anki.js` | `configuracoes` |
+| `painel/painel-boas-vindas.js`, `lib/configuracao.js`, `painel/painel-lembrete.js` | `boas-vindas` |
+| `painel/painel-ia.js`, `lib/chave-da-openai.js`, `painel/painel-chave.js`, `painel/painel-perigo.js`, `painel/painel-atalhos.js`, `lib/atalhos.js`, `painel/painel-conta.js`, `painel/painel-abrir-anki.js` | `configuracoes` |
 | `popup.html/js/css` | `popup` |
-| `painel.js`, `painel.css` (Frases list, Minerar frases) | `painel-frases` |
-| `painel-anki*.js`, `painel-ajustes.js`, `painel-envio.js`, `lib/ajustes-de-envio.js` | `painel-anki` |
+| `painel/painel.js`, `painel/painel.css` (Frases list, Minerar frases) | `painel-frases` |
+| `painel/painel-anki*.js`, `painel/painel-ajustes.js`, `painel/painel-envio.js`, `lib/ajustes-de-envio.js` | `painel-anki` |
 | `bookreader.html/js/css` | `minerar-foto` |
 | `veio/componentes.css`, `veio/componentes.js` | `veio-componentes` |
 | `overlay.js`, `overlay.css`, `content.js` (the caption and selection capture and the answer on screen) | `overlay` |

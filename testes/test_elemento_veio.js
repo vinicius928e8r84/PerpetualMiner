@@ -51,7 +51,7 @@ assert.strictEqual(clique.className, 'veio-botao veio-botao--primario');
 assert.strictEqual(clique.type, 'button');
 assert.deepStrictEqual(clique.filhos, ['Ir', filho]);
 
-const COM_FILTRO_PROPRIO = ['painel-conta.js'];
+const COM_FILTRO_PROPRIO = ['painel/painel-conta.js'];
 const copias = [];
 for (const arquivo of fs.readdirSync('.').filter(nome => /^(popup|painel|bookreader|overlay)[\w-]*\.js$/.test(nome) && !COM_FILTRO_PROPRIO.includes(nome))) {
   const fonte = fs.readFileSync(arquivo, 'utf8');

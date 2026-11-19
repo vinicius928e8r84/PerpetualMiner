@@ -1,0 +1,35 @@
+# Arquivos do painel
+
+O papel de cada arquivo de `painel/`, a página do painel e os módulos de cada área. Lido sob demanda, não em toda sessão.
+
+A regra `indice-de-arquivos` (`scripts/regras/indice-de-arquivos.js`) exige uma linha, aqui ou nas outras tabelas de `docs/arquivos/`, para cada arquivo novo de `painel/`.
+
+| File | Role |
+|------|------|
+| `painel/painel.html/js/css` | Full dashboard to view, copy, and delete all saved phrases; Google login and Firestore sync |
+| `painel/painel-shell.js` | The panel's “Ilhas” shell: one page, one area per address (`#frases`, `#anki/<aba>`, `#configuracoes[/<seção>]`), the sidebar indicators (phrase total, Conexão com o Anki dot), the rail below ~1000 px, the F1 strip and the Configurações cards opening and closing. See “Panel shell” in `docs/arquitetura.md` |
+| `painel/painel-conta.js` | The account in the panel: one state drawn in the Configurações › Conta & sync card, its closed-row summary and the sidebar chip (CFG-01…10). See “Account (Conta & sync)” in the `configuracoes` skill |
+| `painel/painel-atalhos.js` | The shortcut recorder (`PerpetualMiner.GravadorDeAtalhos.montar`): records “Minerar legenda” and “Minerar seleção” in their own row (CFG-11…14, 19, 21, 22, 33, 34), mounted in Configurações › Atalhos and in step 2 of the Boas-vindas. See “Shortcuts (Atalhos)” in the `configuracoes` skill |
+| `painel/painel-boas-vindas.js` | The Boas-vindas (`#boas-vindas[/<passo>]`, no sidebar): 11 items, one step per card (step 1 `painel/painel-boas-vindas-minerar.js`, step 4 `PassosDaConexao`; step 7 `painel/painel-boas-vindas-nivel.js` with the level quiz of #170: `lib/quiz-de-nivel.js`, `painel/painel-boas-vindas-quiz.js` + `painel/painel-quiz.css`, its celebration: `lib/festa-do-quiz.js`, `lib/som-do-quiz.js`, `painel/painel-boas-vindas-festa.js`; step 9 `painel/painel-boas-vindas-envio.js`), progress in `pm_boas_vindas`. See the `boas-vindas` skill |
+| `painel/painel-boas-vindas-ranking.js` | The ranking under the quiz result (ONB-24) |
+| `painel/painel-chave.js` | The Configurações › Chave do Gemini card: the saved key masked, with Trocar chave; the empty key's field; `geminiApiKey`. See “Chave do Gemini and Zona de perigo” in the `configuracoes` skill |
+| `painel/painel-ia.js`, `painel/painel-ia-chatgpt.js`, `painel/painel-ia-modelo.js/css` | The Configurações › IA dos cartões card (`PerpetualMiner.CartaoDaIA.montar`, design A of #101): the Chave da OpenAI column (pasted, checked by the Conexão, masked), the Conta do ChatGPT one (login #155), each with its error strip, and the Avançado with the Modelo dos cartões (#157); in Configurações and Boas-vindas. See “IA dos cartões” in the `configuracoes` skill |
+| `painel/painel-perigo.js` | The Configurações › Zona de perigo card: the Apagar tudo entry, its reach with and without an account, and the Veio confirmation modal (CFG-17). See “Chave do Gemini and Zona de perigo” in the `configuracoes` skill |
+| `painel/painel-abrir-anki.js` | The Configurações › Conexão com o Anki card: the “Abrir o Anki com o computador” switch (CFG-36…40, off by default) and the “Perfil do Anki ▾” row (CFG-43, #149). See the `configuracoes` skill |
+| `painel/painel-anki.js` | The Custos tab (BRG-03…04, 12, 22, 25…33), the area's initial Conectando strip and the Ajustes de envio offline note; mounts `PrimeiraConexao`. See “Conexão com o Anki” in the `painel-anki` skill |
+| `painel/painel-anki-primeira-conexao.js`, `painel/painel-anki-primeira-conexao-estado.js` | `PerpetualMiner.PrimeiraConexao` — the ONB-16 card over the tabs (design B, #77) and its Pronto moment; the pure machines `FaseDaPrimeiraConexao` (the card) and `ConversaComOAbridor` (step 4). See “Conexão com o Anki” in the `painel-anki` skill |
+| `painel/painel-conexao-passos.js`, `painel/painel-conexao-arraste.js/css` | `PerpetualMiner.PassosDaConexao` — the steps to put the Conexão in the Anki (Boas-vindas step 4, ONB-16; #99, #145); `DesenhoDoArraste`: the Mac drag drawing (#238). See “Conexão com o Anki” in the `painel-anki` skill. AnkiWeb code: `lib/ankiweb.js` |
+| `painel/painel-anki-plano.js` | `PlanoDosCustos` (the Custos card for the ChatGPT plan, BRG-40) and `SomaDosCustos` (the tab's sums: an Envio's cost parts, #169) |
+| `painel/painel-anki-continuar.js` | `ContinuarEnvioNosCustos`: the Custos detail's Continuar envio (ENV-13/14, BRG-33 tooltip), through `EnvioAcompanhado`; each change of the followed Envio re-reads the costs without the loading look (C3) |
+| `painel/painel-anki-baralhos.js` | `PerpetualMiner.Baralhos` — Baralhos e termos and Vocabulário in the Conexão com o Anki area (BRG-10…14, 19…21, 27, 34, 35, GLB-01). See “Baralhos e termos and Vocabulário” in the `painel-anki` skill |
+| `painel/painel-ajustes.js` | The Ajustes de envio tab: one card per language, its form saved only on Salvar ajustes, the Baralho picked from the Anki's decks, and the stale-tab refusal (#35). See “Ajustes de envio” in the `painel-anki` skill |
+| `painel/painel-anki-estilo.js`, `painel/painel-anki-previa.js`, `painel/painel-anki-tipo-proprio.js`, `painel/painel-previa.css` | Estilo do cartão in Ajustes de envio: level, preview, “Usar um tipo que já tenho” (#162, #164, #165) |
+| `painel/painel-envio.js`, `painel/painel-envio-estado.js` | The Envio ao Anki (ENV-03…15): progress modal, summary; its state machines `SituacaoDoEnvio`, `FaseDaRemessa`, and `EnvioAcompanhado` (one Envio followed: create, retry or use the key, then `POST /jobs/get` every 2 s until it ends; used by the Custos tab and the Boas-vindas' first Envio; the modal asks through it and reads by itself; C3, `docs/design/envio-acompanhado.md`). See `painel-anki` skill |
+| `painel/painel-envio-anki-fechado.js` | `PerpetualMiner.EnvioComOAnkiFechado` — Enviar ao Anki with the Anki closed (#150): the ENV-16 notice, the pending Envio and the Consertar outcome (BRG-39). See “Envio ao Anki” in the `painel-anki` skill |
+| `painel/painel-envio-cartao.js` | `CartaoDoEnvio`: an Envio's card, “Abrir <perfil>” (ENV-17), Esquecer (ENV-23) |
+| `painel/painel-envio-apagar.js` | `EnvioApagarFrases`: the Apagar tudo request (CFG-17) |
+| `painel/painel-envio-parado.js` | `EnvioParado`: the Envio stopped by a closed Anki (#151): ENV-18, Continuar envio |
+| `painel/painel-envio-limite.js` | `EnvioNoLimite`: the Envio waiting for the ChatGPT plan's limit (#158): ENV-19; Usar a minha chave goes through the Envio's `EnvioAcompanhado` |
+| `painel/painel-teto.js`, `painel/painel-teto.css` | `TetoDoMes` and `EnvioNoTeto`: the monthly cap (#160): the 80% warning, the Custos card, the Envio band (ENV-21) |
+| `painel/painel-conexao-versao.js`, `painel/painel-conexao-versao-estado.js` | Painel-top notices: the Conexão version (#177; `AvisoDaVersao`; map `conexao-versao`) and the pairing (#192, BRG-52; map `pareamento`) |
+| `painel/painel-lembrete.js` | The ONB-15 strip at the top of Frases: the progress ring, “N de 9 passos”, Ocultar and Continuar configuração. See “Configuração pela metade” in the `boas-vindas` skill |

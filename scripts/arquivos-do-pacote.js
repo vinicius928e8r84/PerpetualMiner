@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const PASTAS_DA_EXTENSAO = ['lib', 'veio'];
+const PASTAS_DA_EXTENSAO = ['lib', 'veio', 'painel'];
 const PASTAS_DE_RUNTIME = [...PASTAS_DA_EXTENSAO, 'conexao'];
 const FORA_DO_PACOTE = [/^veio\/README\.md$/, /^test_.*\.js$/];
 

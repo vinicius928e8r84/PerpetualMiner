@@ -36,12 +36,12 @@ function registrarMenuDeContexto() {
 
 chrome.runtime.onInstalled.addListener(aoInstalar);
 
-async function aoInstalar(detalhes) {
+async function aoInstalar(evento) {
   registrarMenuDeContexto();
   await chrome.storage.local.remove('pm_pending_sync').catch(() => {});
-  if (detalhes?.reason === 'install') {
+  if (evento?.reason === 'install') {
     await chrome.storage.local.set({ pm_boas_vindas: { agoraNao: [], concluida: false } }).catch(() => {});
-    chrome.tabs.create({ url: chrome.runtime.getURL('painel.html#boas-vindas') });
+    chrome.tabs.create({ url: chrome.runtime.getURL('painel/painel.html#boas-vindas') });
   }
 }
 

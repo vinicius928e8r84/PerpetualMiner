@@ -169,6 +169,14 @@ function linhasNovas(raiz, base, arquivo) {
 
 const COMMIT_VAZIO = /^0+$/;
 
+function renomeacoes(raiz, desde) {
+  const saida = desde ? git(raiz, ['diff', '-M', '--name-status', '--diff-filter=R', '-z', desde]) : null;
+  const partes = (saida || '').split('\0').filter(Boolean);
+  const velhoDe = {};
+  for (let i = 0; i + 2 < partes.length; i += 3) velhoDe[partes[i + 2]] = partes[i + 1];
+  return velhoDe;
+}
+
 function baseDeComparacao(raiz, pedida) {
   const doAmbiente = process.env.REGRAS_BASE || null;
   const ref = pedida || doAmbiente || 'origin/main';
@@ -260,6 +268,7 @@ function main(argv) {
       avisos.push(`${base.ref} ainda não tem ${ARQUIVO_DA_LINHA_DE_BASE}: esta é a primeira linha de base, nada a comparar`);
     } else {
       const antes = lerJson(anterior, `${base.ref}:${ARQUIVO_DA_LINHA_DE_BASE}`);
+      const velhoDe = renomeacoes(raiz, base.desde);
       for (const regra of REGRAS) {
         if (!(regra.id in antes)) {
           avisos.push(`${base.ref} ainda não tem a regra ${regra.id}: esta é a primeira linha de base dela (${total(linhaDeBase[regra.id])})`);
@@ -267,7 +276,7 @@ function main(argv) {
         }
         if (regra.baixarObrigatorio) {
           for (const [arquivo, n] of Object.entries(linhaDeBase[regra.id] || {}).sort()) {
-            const anteriorDoArquivo = (antes[regra.id] || {})[arquivo];
+            const anteriorDoArquivo = (antes[regra.id] || {})[arquivo] ?? (antes[regra.id] || {})[velhoDe[arquivo]];
             if (anteriorDoArquivo === undefined) {
               erros.push(`✗ ${ARQUIVO_DA_LINHA_DE_BASE}: ${regra.id} ${arquivo} não está na linha de base de ${base.ref}. A linha de base só desce: `
                 + 'um arquivo que passa do teto agora tem de ser dividido, não entrar na lista.');
@@ -329,6 +338,6 @@ function rodar(argv) {
   }
 }
 
-module.exports = { REGRAS, coletar, excecaoNaLinha };
+module.exports = { REGRAS, coletar, excecaoNaLinha, renomeacoes };
 
 if (require.main === module) process.exitCode = rodar(process.argv.slice(2));

@@ -2,7 +2,7 @@
   "tokens-veio": {
     "background.js": 2,
     "e2e/vitrine/vitrine.html": 2,
-    "painel.css": 2
+    "painel/painel.css": 2
   },
   "gravacao-de-frases": {},
   "idioma-solto": {},
@@ -60,8 +60,8 @@
   "versoes-publicadas": {},
   "link-de-doc": {},
   "limite-de-linhas": {
-    "painel.css": 2057,
-    "painel.js": 632
+    "painel/painel.css": 2057,
+    "painel/painel.js": 632
   },
   "sem-comentario-novo": {},
   "html-cru": {

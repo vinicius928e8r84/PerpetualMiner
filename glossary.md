@@ -63,7 +63,7 @@ _Avoid_: Plugin, add-on
 
 **Painel**:
 A tela grande da extensão, com três Áreas: Frases, Conexão com o Anki e Configurações.
-_Nome no código_: `painel.html`, `painel*.js`
+_Nome no código_: `painel/painel.html`, `painel/painel*.js`
 _Avoid_: Dashboard, página de opções
 
 **Área**:
@@ -81,7 +81,7 @@ _Avoid_: Botão flutuante (é só uma parte)
 
 **Boas-vindas**:
 A configuração da primeira execução: nove passos, do primeiro minerar ao primeiro Cartão no Anki. Quem para no meio vê o lembrete “Configuração pela metade”. Passo é só o da Boas-vindas; o Envio tem Etapas.
-_Nome no código_: `pm_boas_vindas`, `lib/configuracao.js`, `painel-boas-vindas*.js`; IDs `ONB-`
+_Nome no código_: `pm_boas_vindas`, `lib/configuracao.js`, `painel/painel-boas-vindas*.js`; IDs `ONB-`
 _Avoid_: Onboarding
 
 ## Destino da frase

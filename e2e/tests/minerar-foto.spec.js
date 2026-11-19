@@ -613,13 +613,13 @@ test('“Voltar ao painel” com o painel aberto foca aquela aba, sem abrir outr
   await painel.evaluate(() => { window.continuaAMesmaPagina = true; });
   await abrirAPagina(page, extensao);
   await page.bringToFront();
-  const abasAntes = context.pages().length;
+  const antes = context.pages().length;
 
   await page.getByRole('button', { name: 'Voltar ao painel' }).click();
 
   await expect.poll(() => extensao.serviceWorker.evaluate(async () =>
-    (await chrome.tabs.query({ active: true })).map(aba => new URL(aba.url).pathname))).toEqual(['/painel.html']);
-  expect(context.pages()).toHaveLength(abasAntes);
+    (await chrome.tabs.query({ active: true })).map(aba => new URL(aba.url).pathname))).toEqual(['/painel/painel.html']);
+  expect(context.pages()).toHaveLength(antes);
   expect(await painel.evaluate(() => window.continuaAMesmaPagina)).toBe(true);
 });
 
