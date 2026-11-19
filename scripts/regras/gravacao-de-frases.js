@@ -4,10 +4,10 @@ const { ehJsDaExtensao, fechamento, linhaDe, semComentariosJs } = require('./com
 
 const id = 'gravacao-de-frases';
 
-const conserto = 'Não abra um lugar novo que grava `frases`: quem grava é `PerpetualMiner.Historico` (lib/historico.js), '
-  + 'que lê de novo dentro da tranca `pm-historico` e muda só o que pediram. No service worker e nas páginas da extensão, '
-  + 'chame uma operação dele (`acrescentar`, `editar`, `editarVarias`, `marcarEnviadas`, `marcarExportadas`, `apagar`); falta uma? Ela entra em lib/historico.js. Até todos os lugares '
-  + 'migrarem, nunca grave de volta uma cópia lida antes de um `await` (CODING_STANDARDS.md regra 7).';
+const conserto = 'Não grave `frases` fora de `PerpetualMiner.Historico` (lib/historico.js), que lê de novo dentro da '
+  + 'tranca `pm-historico` e muda só o que pediram. No service worker, nas páginas e em lib/, chame uma operação dele '
+  + '(`acrescentar`, `editar`, `editarVarias`, `marcarEnviadas`, `marcarExportadas`, `apagar`); falta uma? Ela entra em '
+  + 'lib/historico.js. Nunca grave de volta uma cópia lida antes de um `await` (CODING_STANDARDS.md regra 7).';
 
 const CHAVES = /(?:^|[{,\s])(?:frases|['"]frases['"])\s*(?::|,|\})/;
 
