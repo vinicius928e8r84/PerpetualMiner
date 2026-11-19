@@ -25,7 +25,7 @@ class ParaOEnvio(Exception):
 
 
 class ImagemDoCartao:
-    """O que o `Trabalho` faz para o Cartão ganhar imagem; usa `fila`, `motor`, `ia`, `logger`, `openai_base`, `openverse_base`, `adaptador_de_imagem` e `_etapa` dele."""
+    """O que o `Trabalho` faz para o Cartão ganhar imagem; usa `fila`, `motor`, `ia`, `logger`, `openverse_base`, `adaptador_de_imagem` e `_etapa` dele."""
 
     def _usar_o_adaptador_de_imagem(self):
         self.motor.image_utils.usar_adaptador(self.adaptador_de_imagem or AdaptadorQt())
@@ -48,13 +48,12 @@ class ImagemDoCartao:
 
     def _escolher_a_imagem(self, pedido, config, cartao_id, conteudo, so_a_chave):
         """Os bytes do PNG escolhido para o Cartão, ou None se nenhuma imagem serviu. `so_a_chave`: Usar a minha chave (#158), o juiz também."""
-        plano, chave = self.ia.para_a_imagem(so_a_chave)
-        if not (plano or chave) or (pedido["imageSource"] != "1" and not chave):
+        juiz, chave = self.ia.para_a_imagem(so_a_chave)
+        if not juiz or (pedido["imageSource"] != "1" and not chave):
             return None
         motor = self.motor
         self._usar_o_adaptador_de_imagem()
-        configurada = dict(config, pela_chave=chave, plano_do_chatgpt=plano, openai_base=self.openai_base, openverse_base=self.openverse_base,
-                           image_records_by_card=True)
+        configurada = dict(config, pela_chave=chave, juiz_da_imagem=juiz, openverse_base=self.openverse_base, image_records_by_card=True)
         pipeline = motor.image_pipeline.build(configurada, Path(config["paths"]["output_dir"]), pedido["imageSource"], chave, config["paths"]["log_dir"])
         prompt = motor.extract_prompts.card_prompt(conteudo)
         with tempfile.TemporaryDirectory(prefix="perpetualminer_imagem_") as pasta:
