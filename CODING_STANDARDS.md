@@ -31,7 +31,7 @@ A surface not in this table (the panel shell, sync, storage, the service worker)
 
 ## Storage
 
-7. **Reading and rewriting `frases`:** a new write goes through an operation of `PerpetualMiner.Historico` (`lib/historico.js`), in the service worker and on a page; a missing operation is added there (source: `docs/arquitetura.md` § Write Serialization). In a place that still writes on its own, read the current state again after every `await`, before writing; never write back a snapshot taken before an upload or a call to the Conexão. The second half is a reviewer rule; its motivation is the same section's "Not covered by the lock" (the rest of the panel and `lib/sincronizacao.js` write outside the lock, so a stale snapshot loses phrases).
+7. **Reading and rewriting `frases`:** every write goes through an operation of `PerpetualMiner.Historico` (`lib/historico.js`), in the service worker, on a page and in `lib/`; a missing operation is added there, and it reads `frases` again inside the lock and changes only what was asked (source: `docs/arquitetura.md` § Write Serialization). Never write back a snapshot taken before an upload or a call to the Conexão: a stale snapshot loses phrases.
 
 ## Tests
 
