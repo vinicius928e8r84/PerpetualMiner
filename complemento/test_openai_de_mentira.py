@@ -125,7 +125,7 @@ class OpenAIDeMentira(CorrecaoDeMentira):
         self.comportamento = comportamento
         self.pedidos = []
         self.chats = []
-        self.recusas_do_chat = {}
+        self.recusas_do_chat, self.vezes_da_recusa_do_chat = {}, {}
         self.respostas = []
         self.recusa_das_respostas = None
         self.falha_no_stream = None
@@ -178,12 +178,14 @@ class OpenAIDeMentira(CorrecaoDeMentira):
         self.base = "http://127.0.0.1:%d" % self._servidor.server_address[1]
         self._thread = threading.Thread(target=lambda: self._servidor.serve_forever(poll_interval=0.005), daemon=True)
 
-    def recusar_o_chat_de(self, palavra, status, codigo):
-        """O texto da `palavra` (`"*"`: de todas) volta `status` com o erro `codigo`; `status` None volta a aceitar."""
+    def recusar_o_chat_de(self, palavra, status, codigo, vezes=None):
+        """O texto da `palavra` (`"*"`: de todas) volta `status` com o erro `codigo` (só nos `vezes` primeiros pedidos, se dito);
+        `status` None volta a aceitar."""
         if status is None:
             self.recusas_do_chat.pop(palavra, None)
         else:
             self.recusas_do_chat[palavra] = (status, codigo)
+        self.vezes_da_recusa_do_chat[palavra] = vezes
 
     def _fala(self, atendente, autorizacao, corpo):
         """`POST /v1/audio/speech`: o MP3 (bytes, não JSON) do texto na voz pedida, ou a recusa de `recusa_da_fala`."""
@@ -216,8 +218,13 @@ class OpenAIDeMentira(CorrecaoDeMentira):
             self.triagens.append((autorizacao, corpo["messages"][1]["content"]))
             return 200, {"choices": [{"message": {"content": self.triagem}}], "usage": {"prompt_tokens": 80, "completion_tokens": 1}}
         self.chats.append((autorizacao, corpo))
-        recusa = self.recusas_do_chat.get(_palavra_do_pedido(corpo["messages"])) or self.recusas_do_chat.get("*")
-        if recusa:
+        chave = next((c for c in (_palavra_do_pedido(corpo["messages"]), "*") if c in self.recusas_do_chat), None)
+        if chave is not None:
+            recusa, vezes = self.recusas_do_chat[chave], self.vezes_da_recusa_do_chat.get(chave)
+            if vezes == 1:
+                self.recusar_o_chat_de(chave, None, None)
+            elif vezes is not None:
+                self.vezes_da_recusa_do_chat[chave] = vezes - 1
             return _erro(recusa[0], "Incorrect API key provided: %s" % (autorizacao or ""), "x", recusa[1])
         texto = _cartao_de_mentira(corpo["messages"], sistema)
         return 200, {"choices": [{"message": {"role": "assistant", "content": texto}}], "usage": {"prompt_tokens": 1000, "completion_tokens": 200}}

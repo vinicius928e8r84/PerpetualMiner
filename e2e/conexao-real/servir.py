@@ -6,6 +6,8 @@ e fala com o fixture por linhas de JSON: ao ficar pronta escreve `{"porta": N}`;
 
     {"openai": "recusa"}      muda o comportamento da OpenAI de mentira (as chaves de `COMPORTAMENTOS`)
     {"colecao": {...}}        abre uma coleção descrita como nos exemplos do contrato (`ColecaoEmMemoria`)
+    {"mundo": {"colecao": {...}, "perfil": "..."}}  o mundo que o fake montou (`fakes.anki.naFrente`): a coleção aberta no perfil, ou,
+                              com `perfil` null, o Anki na tela de perfis (a coleção fechada)
     {"estado": true}          responde o que a Conexão guardou: a cópia da chave, os documentos da nuvem, os pedidos à OpenAI,
                               as falas que a voz de mentira ouviu e a pasta de dados (apagada ao fechar)
     {"pareamento": "codigo"}  o código que a janela do Anki de mentira mostra agora (ou null); "navegadores": quantos navegadores estão pareados;
@@ -61,7 +63,7 @@ def main():
     semear(os.path.join(pasta, "pareamento.json"), ((CLIENTE, SEGREDO), (OUTRO_CLIENTE, OUTRO_SEGREDO)))
     tela = TelaDeMentira()
     conexao = servidor.Conexao(
-        porta=0, origens_aceitas=configuracao.ORIGENS_ACEITAS, versao=configuracao.VERSAO, perfil_aberto=lambda: "Usuário 1",
+        porta=0, origens_aceitas=configuracao.ORIGENS_ACEITAS, versao=configuracao.VERSAO, perfil_aberto=lambda: colecao.perfil_aberto(),
         logger=logger, dados=dados, colecao=colecao, openai_base=openai.base, firestore_base=firestore.base,
         voz_base=voz.base, openverse_base=openverse.base, chatgpt_base=login.base, intervalo_de_parada=0.005, trabalhando=False,
     )
@@ -80,6 +82,10 @@ def main():
                 responder({"ok": True})
             elif "colecao" in comando:
                 colecao.atual = ColecaoEmMemoria(comando["colecao"])
+                responder({"ok": True})
+            elif "mundo" in comando:
+                perfil = comando["mundo"].get("perfil")
+                colecao.atual = ColecaoEmMemoria(comando["mundo"]["colecao"], perfil_aberto=perfil) if perfil else ColecaoEmMemoria.fechada()
                 responder({"ok": True})
             elif "pareamento" in comando:
                 pedido = comando["pareamento"]
