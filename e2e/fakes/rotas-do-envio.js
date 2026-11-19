@@ -178,6 +178,10 @@ function criarRotasDoEnvio({ estado, modelo }) {
       envios.push({ jobId: corpo.jobId, lang: corpo.lang, entries: corpo.entries, corpo, createdAt: estado.agora().toISOString(), state: novoEstado({ jobId: corpo.jobId }) });
     },
     aceitarEnvios(lang) { estado.recusas.delete(lang); },
+    perdeuAResposta() { estado.perdaDoEnvio = false; },
+    espelharEnvios(daReal) {
+      envios.splice(0, envios.length, ...daReal.map(({ jobId, lang, corpo, createdAt, state }) => ({ jobId, lang, entries: corpo.entries, corpo, createdAt, state })));
+    },
 
     /** @estado-guardado Os Envios criados de um idioma, na ordem. */
     enviosEm(lang) { return envios.filter(e => e.lang === lang); },
