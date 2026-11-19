@@ -425,7 +425,7 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, CorrecaoDaCriacao, LimiteDoPlano, 
         pedido = self.fila.pedido(job_id)
         if self.fila.estado_ou_refazer(job_id).get("wiped"):
             return
-        config = configuracao_do_motor(self.motor, self.fila, pedido, None)
+        config = configuracao_do_motor(self.motor, self.fila, pedido)
         try:
             nome, serve = self._o_tipo_do_envio(job_id, pedido)
         except Apagado:
@@ -506,18 +506,15 @@ class Trabalho(AudioDoCartao, ImagemDoCartao, CorrecaoDaCriacao, LimiteDoPlano, 
         if entrada is None:
             return "invalid_card"
         fixar_na_entrada(pedido, phrase_id, entrada)
-        nome = lambda trabalho, posicao: id_do_cartao(phrase_id, posicao)
-        falhas = {}
+        trabalho = self.motor.parser.get_card_jobs(entrada)[int(cartao_id.rsplit("-", 1)[1])]
+        codigo = None
         for espera in (None,) + self.esperas_da_openai:
             if espera is not None:
                 self._dormir(espera)
-            falhas = {}
-            self.motor.generate_cards.run(
-                [entrada], config, self.ia.pedido_do_texto(paga, config), skip_existing=True, failures=falhas, card_stem=nome, only_stems={cartao_id})
-            codigo = falhas.get(cartao_id)
+            codigo = self.motor.generate_cards.escrever(trabalho, config, self.ia.pedido_do_texto(paga, config), cartao_id)
             if codigo not in PASSAGEIROS:
                 break
-        return falhas.get(cartao_id)
+        return codigo
 
     def _gravar_a_nota(self, job_id, pedido, config, cartao_id, guid, arquivo):
         envio = self.motor.send_to_anki

@@ -149,9 +149,9 @@ class ArquivoDoComplemento(unittest.TestCase):
 
                 with OpenAIDeMentira() as openai, mock.patch.dict(sys.modules, SEM_AS_BIBLIOTECAS_DE_FORA):
                     config = configuracao_do_teste(motor, pasta)
-                    entrada = motor.parser.parse_mining_line("give up : She gave up smoking")
-                    salvos = motor.generate_cards.run([entrada], config, pela_chave(motor, config, openai.base), card_stem=lambda *_: "9-0")
-                self.assertEqual(salvos, ["9-0"])
+                    trabalho = motor.parser.get_card_jobs(motor.parser.parse_mining_line("give up : She gave up smoking"))[0]
+                    falha = motor.generate_cards.escrever(trabalho, config, pela_chave(motor, config, openai.base), "9-0")
+                self.assertIsNone(falha)
                 self.assertTrue(os.path.isfile(os.path.join(pasta, "textos", "9-0.txt")))
                 from pathlib import Path
 
@@ -159,8 +159,8 @@ class ArquivoDoComplemento(unittest.TestCase):
 
                 with OpenAIDeMentira() as openai, mock.patch.dict(sys.modules, SEM_AS_BIBLIOTECAS_DE_FORA):
                     imagem = Path(pasta) / "imagem.png"
-                    concreta = motor.parser.parse_mining_line("bicycle : He rides a bicycle")
-                    motor.generate_cards.run([concreta], config, pela_chave(motor, config, openai.base), card_stem=lambda *_: "9-1")
+                    concreta = motor.parser.get_card_jobs(motor.parser.parse_mining_line("bicycle : He rides a bicycle"))[0]
+                    motor.generate_cards.escrever(concreta, config, pela_chave(motor, config, openai.base), "9-1")
                     resultado = gerar_a_imagem(motor, config, openai.base, "9-1", imagem)
                 self.assertEqual(resultado, "ok")
                 self.assertEqual(imagem.read_bytes(), png_de("gerada"))
