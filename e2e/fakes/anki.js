@@ -19,7 +19,7 @@ const { criarRotasDaSaude } = require('./rotas-da-saude');
 const { criarRotasDaChave } = require('./rotas-da-chave');
 const { criarRotasDosServicos } = require('./rotas-dos-servicos');
 const { criarRotasDaLeitura } = require('./rotas-da-leitura');
-const { colecaoDoVocabulario } = require('./baralhos');
+const { colecaoDoMundo } = require('./baralhos');
 const { criarRotasDoEnvio } = require('./rotas-do-envio');
 
 // Fake da Conexão com o Anki: responde na porta dela (127.0.0.1:8766), ligada e com vocabulário vazio. Um teste a desliga ou responde uma rota com `responder`.
@@ -40,6 +40,8 @@ function dadosDoCorpo(corpo) {
   }
 }
 
+const PERFIL_DE_SEMPRE = 'Usuário 1';
+
 function criarFakeAnki() {
   const estado = {
     ligada: true,
@@ -56,7 +58,7 @@ function criarFakeAnki() {
     falhaDosBaralhos: null,
     falhaDoVocabulario: null,
     baralhosDoAnki: null,
-    contexto: { perfil: 'Usuário 1', falhaNoPerfil: false, openai: 'aceita', itemDeLogin: 'desligado', firebase: 0 },
+    contexto: { perfil: PERFIL_DE_SEMPRE, falhaNoPerfil: false, openai: 'aceita', itemDeLogin: 'desligado', firebase: 0 },
     versaoDaChave: 0,
     contaDaChave: '',
     horaDaChave: 0,
@@ -113,12 +115,31 @@ function criarFakeAnki() {
     if (estado.muda === true || estado.muda === url.pathname) return { calar: true };
     const roteiro = estado.rotas.get(`${req.method()} ${url.pathname}`);
     if (roteiro) return { roteiro };
+    const [falha, codigo] = { '/anki/vocabulary': [estado.falhaDoVocabulario, 'anki_vocabulary_unavailable'], '/anki/stats/decks': [estado.falhaDosBaralhos, 'anki_stats_unavailable'] }[url.pathname] || [];
+    if (falha?.rede) return { recusar: true };
+    if (falha) return { roteiro: () => ({ status: falha.status, json: { error: codigo, detail: 'collection_not_open' } }) };
     if (estado.vocabularioDefinido && req.method() === 'POST' && url.pathname === '/anki/vocabulary') {
       const { deck = '', lang } = dadosDoCorpo(corpoDoPedido) || {};
       estado.decksDoVocabulario.set(deck, lang === 'ru' ? 'ru' : 'en');
-      return { colecao: colecaoDoVocabulario([...estado.decksDoVocabulario].map(([nome, idioma]) => [nome, estado.vocabulario[idioma]])) };
     }
-    return {};
+    const mundo = mundoDaReal();
+    return mundo ? { mundo } : {};
+  }
+
+  function mundoDaReal() {
+    const { colecao, perfil } = estado.contexto;
+    if (!estado.vocabularioDefinido && !estado.baralhosDoAnki && colecao === undefined && perfil === PERFIL_DE_SEMPRE) return null;
+    const mundo = {
+      perfil,
+      colecao: colecaoDoMundo({
+        doContrato: colecao === undefined ? null : contrato.colecoes[colecao], baralhosDoAnki: estado.baralhosDoAnki,
+        vocabularios: [...estado.decksDoVocabulario].map(([nome, idioma]) => [nome, estado.vocabulario[idioma]]),
+      }),
+    };
+    const descrito = JSON.stringify(mundo);
+    if (descrito === estado.mundoNaReal) return null;
+    estado.mundoNaReal = descrito;
+    return mundo;
   }
 
   async function tratar(daPorta) {

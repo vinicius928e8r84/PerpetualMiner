@@ -344,9 +344,8 @@ function finalizarCarregamento() {
 }
 
 function atualizarTotal() {
-  const n = todasFrases.length;
-  Shell.mostrarTotalDeFrases(n);
-  Perigo.mostrarTotal(n);
+  Shell.mostrarTotalDeFrases(todasFrases.length);
+  Perigo.mostrarFrases(todasFrases);
 }
 
 function setupStorageSyncListener() {
@@ -1064,15 +1063,14 @@ async function apagarChaveNoApagarTudo() {
   }
 }
 
-function apagarTudo() {
-  const ids = todasFrases.map(f => String(f.id));
-  todasFrases = [];
-  Object.keys(keywords).forEach(k => delete keywords[k]);
+function apagarTudo({ ids, em }) {
+  todasFrases = todasFrases.filter(f => !ids.includes(f.id));
+  ids.forEach(id => delete keywords[id]);
   selecionadas.clear();
   atualizarContadorSelecao();
   const chaveApagada = apagarChaveNoApagarTudo();
   Envio.apagarTudo();
-  const naNuvem = sincronizacao.apagarTudo(ids).then(({ ok, erro }) => {
+  const naNuvem = sincronizacao.apagarTudo(ids, em).then(({ ok, erro }) => {
     if (!ok) {
       console.error('[Firestore] apagar tudo falhou:', erro);
       mostrarFalhaNaNuvem(erro);
@@ -1151,7 +1149,6 @@ async function marcarComoEnviadas(ids) {
   if (nuvem) nuvem.gravarFrases(marcadas).catch(err => mostrarFalhaNaNuvem(err));
   aplicarFiltro();
 }
-
 
 function configurarModaisDeFrases() {
   for (const botao of document.querySelectorAll('[data-fechar-modal]')) {

@@ -89,6 +89,15 @@ const notasDoVocabulario = palavras => palavras.map(item => {
   return { frente: word, verso: '', cartoes };
 });
 
-const colecaoDoVocabulario = baralhos => ({ baralhos: baralhos.map(([nome, palavras]) => ({ nome, notas: notasDoVocabulario(palavras) })) });
+function colecaoDoMundo({ doContrato, baralhosDoAnki, vocabularios }) {
+  const baralhos = JSON.parse(JSON.stringify(doContrato?.baralhos || []));
+  const baralho = nome => baralhos.find(b => b.nome === nome) || baralhos[baralhos.push({ nome }) - 1];
+  for (const nome of baralhosDoAnki || []) baralho(nome);
+  for (const [nome, palavras] of vocabularios) {
+    const destino = baralho(nome);
+    destino.notas = [...(destino.notas || []), ...notasDoVocabulario(palavras)];
+  }
+  return { ...doContrato, baralhos };
+}
 
-module.exports = { criarBaralhos, colecaoDoVocabulario };
+module.exports = { criarBaralhos, colecaoDoMundo };

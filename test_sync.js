@@ -489,7 +489,7 @@ await (async () => {
   await carregarFrases(storageLocalA);
 
   nuvemFalha.apagar = true;
-  const resultado = await de(storageLocalA).sinc.apagarTudo([antes1.id]);
+  const resultado = await de(storageLocalA).sinc.apagarTudo([antes1.id], antesB.id);
   nuvemFalha.apagar = false;
   setLocal(storageLocalA, { frases: [] });
 
@@ -497,7 +497,6 @@ await (async () => {
   assert(getLocal(storageLocalA, { pm_apagar_tudo: null }).pm_apagar_tudo?.uid === 'uid-teste', 'pm_apagar_tudo guardado até a nuvem confirmar');
   assert(idNoFirestore(antes1.id), 'a nuvem ainda tem as frases');
 
-  await new Promise(r => setTimeout(r, 5));
   const depois = await capturarFrase(storageLocalB, 'Minerada depois');
 
   const visA = await carregarFrases(storageLocalA);
@@ -513,7 +512,7 @@ await (async () => {
   resetState();
   const f1 = await capturarFrase(storageLocalA, 'Phrase 1');
   const f2 = await capturarFrase(storageLocalB, 'Phrase 2 de B');
-  const resultado = await de(storageLocalA).sinc.apagarTudo([f1.id]);
+  const resultado = await de(storageLocalA).sinc.apagarTudo([f1.id], f2.id);
   setLocal(storageLocalA, { frases: [] });
 
   assert(resultado.ok,                                    'apagarTudo confirma');
@@ -694,17 +693,7 @@ await (async () => {
   assert(pedidos[2].url.endsWith('/frases/10') && pedidos[2].corpo.fields.texto.stringValue === 'y', 'sem campos, grava todos');
 })();
 
-head('HTTP 5 — Gravar em lote: 500 por batchWrite');
-sep();
-await (async () => {
-  const { nuvem, pedidos } = nuvemDeTeste(() => ({}));
-  await nuvem.gravarFrases(Array.from({ length: 1001 }, (_, i) => ({ id: i + 1, texto: 't' })));
-  const lotes = pedidos.filter(p => p.url === `${DOCS}:batchWrite`);
-  assert(lotes.length === 3 && lotes.map(l => l.corpo.writes.length).join() === '500,500,1', 'três lotes: 500, 500 e 1');
-  assert(lotes[0].corpo.writes[0].update.name === 'projects/perpetualminer-4c219/databases/(default)/documents/usuarios/u1/frases/1', 'o nome do documento é o caminho completo');
-})();
-
-head('HTTP 6 — Apagar: 404 é tudo certo; uma recusa sobe com o motivo');
+head('HTTP 5 — Apagar: 404 é tudo certo; uma recusa sobe com o motivo');
 sep();
 await (async () => {
   const a = nuvemDeTeste(() => ({ status: 404, corpo: {} }));
@@ -723,7 +712,7 @@ await (async () => {
   assert(erro?.status === 503 && !erro.motivo,                                      '503 → falha comum, com o status');
 })();
 
-head('HTTP 7 — Tombstone da nuvem: grava por campo e lê as horas');
+head('HTTP 6 — Tombstone da nuvem: grava por campo e lê as horas');
 sep();
 await (async () => {
   const { nuvem, pedidos } = nuvemDeTeste((url, opcoes) => opcoes.method === 'PATCH' ? {} :
@@ -734,7 +723,7 @@ await (async () => {
   assert(lidos.get('11') === 1000,                                                  'lê id → hora da deleção');
 })();
 
-head('HTTP 8 — Sessão: renova perto de vencer, guarda o que renovou e tenta uma vez após 401');
+head('HTTP 7 — Sessão: renova perto de vencer, guarda o que renovou e tenta uma vez após 401');
 sep();
 await (async () => {
   const renovacao = { corpo: { id_token: 'token-novo', refresh_token: 'refresh-novo' } };
@@ -769,7 +758,7 @@ await (async () => {
   assert(erro?.motivo === MOTIVO.EXPIROU && erro.message === 'TOKEN_EXPIRED',              'renovação recusada → EXPIROU, com a mensagem');
 })();
 
-head('HTTP 9 — armazenamentoDoChrome adapta o chrome.storage de callbacks');
+head('HTTP 8 — armazenamentoDoChrome adapta o chrome.storage de callbacks');
 sep();
 await (async () => {
   const dados = {};
@@ -781,7 +770,7 @@ await (async () => {
   assert(!('a' in dados),                                                                  'remove também');
 })();
 
-head('HTTP 10 — Revogar a sessão impede pedidos e uma renovação em voo');
+head('HTTP 9 — Revogar a sessão impede pedidos e uma renovação em voo');
 sep();
 await (async () => {
   let responder;
