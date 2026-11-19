@@ -21,13 +21,21 @@ Three pure pieces, no screen, proven without a browser by `node test_estado_do_e
 - **What is stored: `EnvioGravado` (`lib/envio-gravado.js`).** The only writer of `pm_envio`, for the panel and the service worker:
   `proximo(gravado, evento)` over `acompanhar`, `esquecer`, `apagarTudo`, `confirmou`. `confirmou` reads again after the Conexão answered, so
   an Envio created while the Apagar tudo waited stays.
-- **One Envio followed: `EnvioAcompanhado.acompanhar({ jobId })` (C3, [design](../../../docs/design/envio-acompanhado.md)).** What the
-  screens of the Envio share, below the remessa: `tentarDeNovo()` (`POST /jobs/retry`; a second call before the answer is the same request;
+- **One Envio followed: `EnvioAcompanhado.acompanhar({ jobId } | corpo)` (C3, [design](../../../docs/design/envio-acompanhado.md)).** What the
+  screens of the Envio share, below the remessa: `criar()` (with the `corpo`: `POST /jobs`; an Envio the Conexão already had that ended
+  `failed`/`partial` is retried before the first read; `{ ok }`, `{ apagado }`, `{ falha, semResposta, status }`), `tentarDeNovo()` (`POST /jobs/retry`; a second call before the answer is the same request;
   `{ ok }`, `{ apagado }` for `409 job_wiped`, `{ falha }` with the request and the cause), then a `POST /jobs/get` every 2 s until
-  `terminou`, `aoMudar` called when the `SituacaoDoEnvio` changes, `largar()`. Its first user is the Custos tab's **Continuar envio**
+  `terminou`, `aoMudar` called with `(situacao, state)` when the `SituacaoDoEnvio` changes, `aoNaoLer` when a read fails (it keeps
+  reading), `largar()`. Its first user is the Custos tab's **Continuar envio**
   (`painel-anki-continuar.js`): the detail re-reads `/analytics/jobs` at each change without the loading look, so it goes Na fila → the stage
-  → Concluído by itself. Proven by `node test_envio_acompanhado.js` and `e2e/tests/painel-anki-continuar.spec.js`; the Boas-vindas and the
-  modal move to it in the next steps.
+  → Concluído by itself. The second is the Boas-vindas' first Envio (`painel-boas-vindas-envio.js`): `criar` with the frozen request,
+  a read every 1 s, `aoNaoLer` → the Conexão's reason. The progress modal (the remessa) sits on top of it too (step 3): each Envio with a `jobId` has its
+  `EnvioAcompanhado` with `lerSozinho: false`, and its **Tentar de novo** and **Usar a minha chave** (`usarAChave()`: `POST /jobs/usar-a-chave`;
+  `{ ok }`, `{ semChave }` for `409 openai_key_missing`, `{ falha }`) go through it; the modal still reads all its Envios in one
+  `/jobs/list` every 2 s, so nothing reads `/jobs/get` there. Proven by `node test_envio_acompanhado.js` and
+  `node test_envio_acompanhado_criar.js` (the `criar`),
+  `e2e/tests/painel-anki-continuar.spec.js`, `e2e/tests/boas-vindas-envio.spec.js` and the modal's specs (`painel-envio-limite.spec.js`,
+  `painel-envio-estados.spec.js`).
 
 The Conexão's side of the same Envio is its own machine, `complemento/estado_do_envio.py` (the recorded state: `queued → running ⇄ esperando →
 completed | partial | failed → queued`, and `apagado`, terminal; the stored format did not change: `esperando` is `running` with `waiting`, `apagado`

@@ -16,6 +16,7 @@ async function segredosLocais(page) {
   }));
 }
 const NOVA = 'sk-fake-autoridade-segunda-bbbb';
+const umaFrase = relogio => [{ id: '123', text: 'A sentence to study.', lang: 'Inglês', source: 'manual', timestamp: +relogio.instante }];
 const card = page => page.locator('#cfg-ia');
 const resumo = page => card(page).locator('.cfg-resumo');
 const campo = page => card(page).getByRole('textbox', { name: 'Chave da OpenAI' });
@@ -98,7 +99,7 @@ test('K1-delete: dono mudou para B durante o modal de A, confirmar não apaga ne
 
 test('K1-delete: Apagar tudo em A não apaga o dono de B nem a chave da nuvem de A', async ({ page, extensao, fakes, relogioParado }) => {
   const relogio = await relogioParado();
-  const frases = [{ id: '123', text: 'A sentence to study.', lang: 'Inglês', source: 'manual', timestamp: Date.now() }];
+  const frases = umaFrase(relogio);
   await extensao.semearSessao({ uid: 'A' });
   await extensao.gravarStorage({ frases });
   fakes.google.gravarFrases('A', frases);
@@ -164,9 +165,9 @@ test('K1-PC: três reconfirmações idênticas mantêm v1 e não disparam upload
 });
 
 for (const tudo of [false, true]) test(`O1: sair da conta permite ${tudo ? 'Apagar tudo' : 'Apagar chave'} só deste computador, sem apagar nenhuma chave na nuvem`, async ({ page, extensao, fakes, relogioParado }) => {
-  await relogioParado();
+  const relogio = await relogioParado();
   await extensao.semearSessao({ uid: 'A' });
-  const frases = [{ id: '123', text: 'A sentence to study.', lang: 'Inglês', source: 'manual', timestamp: Date.now() }];
+  const frases = umaFrase(relogio);
   await extensao.gravarStorage({ frases });
   fakes.google.gravarFrases('A', frases);
   fakes.google.gravarChaveDaOpenAI('A', { chave: CHAVE, em: 100 });

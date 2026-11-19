@@ -423,7 +423,7 @@ class Trabalho:
         pedido = self.fila.pedido(job_id)
         if self.fila.estado_ou_refazer(job_id).get("wiped"):
             return
-        config = configuracao_do_motor(self.motor, self.fila, pedido, None)
+        config = configuracao_do_motor(self.motor, self.fila, pedido)
         try:
             tipo = TipoDoEnvio.conferir(self.colecao, pedido, lambda leitura: self._com_a_colecao(job_id, leitura))
         except Apagado:
