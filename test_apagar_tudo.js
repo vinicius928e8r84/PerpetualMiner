@@ -60,6 +60,19 @@ async function oApagarTudoPendenteVaiAteOMomentoConfirmado() {
     'a volta seguinte apaga só até o momento confirmado');
 }
 
+async function umaSubidaEmVooDeUmaFraseContadaNaoARessuscitaNoOutroComputador() {
+  const nuvem = nuvemEmMemoria([]);
+  const sincronizacao = criarSincronizacao({ nuvem, armazenamento: { local: areaEmMemoria(), sync: areaEmMemoria() }, agora: () => 5_000 });
+
+  await sincronizacao.apagarTudo(['1000'], 3_000);
+  await nuvem.gravarFrase(frase(1_000, 'He barely made it to the station.'));
+  const outroComputador = criarSincronizacao({ nuvem, armazenamento: { local: areaEmMemoria(), sync: areaEmMemoria() }, agora: () => 6_000 });
+  const { frases } = await outroComputador.carregar();
+
+  assert.deepStrictEqual([...nuvem.apagadas], ['1000'], 'a Frase contada ganha tombstone mesmo antes de chegar à nuvem');
+  assert.deepStrictEqual(frases, [], 'e o outro computador não a vê quando a subida termina');
+}
+
 async function semOMomentoApagaTudoQueEstaNaNuvemAgora() {
   const nuvem = nuvemEmMemoria([frase(1_000, 'One.'), frase(4_000, 'Two.')]);
   const sincronizacao = criarSincronizacao({ nuvem, armazenamento: { local: areaEmMemoria(), sync: areaEmMemoria() }, agora: () => 5_000 });
@@ -73,6 +86,7 @@ async function semOMomentoApagaTudoQueEstaNaNuvemAgora() {
   const casos = [
     comContaApagaDaNuvemSoAsFrasesAteOMomentoConfirmado,
     oApagarTudoPendenteVaiAteOMomentoConfirmado,
+    umaSubidaEmVooDeUmaFraseContadaNaoARessuscitaNoOutroComputador,
     semOMomentoApagaTudoQueEstaNaNuvemAgora,
   ];
   let falhas = 0;
