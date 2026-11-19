@@ -133,7 +133,7 @@ test.describe('com a permissão do abridor', () => {
     await expect(page.locator('.shell-aba[data-aba="baralhos"]')).toContainText('— esperando o Anki');
     await page.locator('label.veio-segmentado__opcao').filter({ hasText: /^Vocabulário$/ }).click();
     await page.getByRole('button', { name: 'Atualizar', exact: true }).click();
-    await page.goto(extensao.url('popup.html'));
+    await page.goto(extensao.url('popup/popup.html'));
     await expect(page.locator('#azulejos')).toBeVisible();
     await page.waitForTimeout(3_500);
 

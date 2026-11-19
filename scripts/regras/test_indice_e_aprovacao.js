@@ -13,7 +13,7 @@ const nulo = (achados, quantas, porque) => { assert.strictEqual(achados.length, 
   const EXTENSAO = [
     '# Arquivos da extensão', '', '| File | Role |', '|---|---|',
     '| `manifest.json` | Permissions |',
-    '| `popup.html/js/css` | The popup |',
+    '| `popup/popup.html/js/css` | The popup |',
     '| `veio/` | Shared identity |',
     '',
   ].join('\n');
@@ -21,7 +21,7 @@ const nulo = (achados, quantas, porque) => { assert.strictEqual(achados.length, 
   const FORA = '| `lib/fora-do-indice.js` | não conta: não é de docs/arquivos/ |\n';
   const repo = (extensao, ferramentas = FERRAMENTAS) => repositorioDeTestes({
     'docs/arquivos/extensao.md': extensao, 'docs/arquivos/ferramentas.md': ferramentas, 'docs/outro.md': FORA,
-    'manifest.json': '{}', 'popup.html': '', 'popup.js': '', 'popup.css': '',
+    'manifest.json': '{}', 'popup/popup.html': '', 'popup/popup.js': '', 'popup/popup.css': '',
     'lib/mineracao.js': '', 'lib/abridor.js': '', 'lib/fora-do-indice.js': '', 'veio/tokens.css': '', 'test_novo.js': '', 'README.md': '', '.gitignore': '' });
   const pasta = repo(EXTENSAO);
   const doIndice = arquivo => regras['indice-de-arquivos'].verificar(arquivo, '', pasta);
@@ -29,7 +29,7 @@ const nulo = (achados, quantas, porque) => { assert.strictEqual(achados.length, 
   nulo(doIndice('lib/fora-do-indice.js'), 1, 'citado só fora de docs/arquivos/ não conta');
   nulo(doIndice('lib/mineracao.js'), 0, 'arquivo citado na segunda tabela');
   nulo(doIndice('manifest.json'), 0, 'arquivo citado na primeira tabela');
-  for (const extensao of ['html', 'js', 'css']) nulo(doIndice(`popup.${extensao}`), 0, `popup.html/js/css cobre popup.${extensao}`);
+  for (const arquivo of ['popup/popup.html', 'popup/popup.js', 'popup/popup.css']) nulo(doIndice(arquivo), 0, `a linha do popup cobre ${arquivo}`);
   assert.match(doIndice('lib/abridor.js')[0].detalhe, /docs\/arquivos\//, 'o achado diz onde a linha entra');
   assert.deepStrictEqual(['lib/abridor.js', 'complemento/servidor.py', 'test_novo.js', '.gitignore', 'README.md', 'scripts/regras/verificar.js', 'CLAUDE.md',
     'docs/arquivos/extensao.md', 'docs/arquivos/ferramentas.md', 'docs/outro.md']

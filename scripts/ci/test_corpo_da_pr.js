@@ -28,13 +28,13 @@ const ramo = (nome, arquivo, texto) => {
 
 git('init', '-q', '-b', 'main');
 escrever(MAPA, fs.readFileSync(path.join(RAIZ, MAPA), 'utf8'));
-escrever('popup.js', "'use strict';\n");
+escrever('popup/popup.js', "'use strict';\n");
 escrever('manifest.json', '{ "permissions": ["storage"] }\n');
 escrever('docs/leia.md', 'um\n');
 git('add', '-A');
 git('commit', '-q', '-m', 'base');
 ramo('so-docs', 'docs/leia.md', 'dois\n');
-ramo('superficie', 'popup.js', "'use strict';\nconst a = 1;\n");
+ramo('superficie', 'popup/popup.js', "'use strict';\nconst a = 1;\n");
 ramo('dados', 'manifest.json', '{ "permissions": ["storage", "history"] }\n');
 
 const MODELO = ['## Summary', '', 'O que mudou.', '', '## Evidence', '', 'Rodei.', '', '## Merge Danger', '', '**Door:** two-way', '', '**Blast Radius:** CI', ''];
@@ -58,7 +58,7 @@ assert.match(faltas('so-docs', COMPLETO.replace('Sem issue', 'Closes #7')).join(
 
 const semMapa = faltas('superficie', COMPLETO);
 assert.strictEqual(semMapa.length, 1, semMapa.join('\n'));
-assert.match(semMapa[0], /feature map: this PR changes user-facing files:\n {2}popup\.js\n[^]*"feature map unchanged"/);
+assert.match(semMapa[0], /feature map: this PR changes user-facing files:\n {2}popup\/popup\.js\n[^]*"feature map unchanged"/);
 assert.deepStrictEqual(faltas('superficie', `${COMPLETO}\n\nfeature map unchanged`), [], 'a declaração do mapa de features no corpo passa');
 
 const semPolitica = faltas('dados', `${COMPLETO}\n\nfeature map unchanged`);

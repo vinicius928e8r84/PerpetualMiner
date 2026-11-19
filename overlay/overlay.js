@@ -4,11 +4,11 @@
   const { elemento } = raiz.Veio;
   const TAG_DO_HOST = 'perpetualminer-overlay';
   const FEEDBACK_SOME_EM_MS = 3500;
-  const ESTILOS = ['veio/tokens.css', 'veio/componentes.css', 'overlay.css'];
+  const ESTILOS = ['veio/tokens.css', 'veio/componentes.css', 'overlay/overlay.css'];
   const PREVIA_CURTA = 32;
   const PALAVRA_PERTO_DO_COMECO = 16;
   const CONTEXTO_ANTES_DA_PALAVRA = 14;
-  const LINHA_ABAIXO_DO_TEXTO = 3;
+  const LINHA_ABAIXO_TEXTO = 3;
   const CHIP_LONGE_DO_TEXTO = 8;
   const MARGEM_DA_JANELA = 8;
   const LETRA = /[\p{L}\p{M}\p{N}]/u;
@@ -349,7 +349,7 @@
     const desenhos = [];
     for (const r of geometria.linhas) {
       const linha = elemento('div', 'pm-linha');
-      posicionarEm(linha, r.left - origem.left, r.bottom - origem.top + LINHA_ABAIXO_DO_TEXTO, r.right - r.left);
+      posicionarEm(linha, r.left - origem.left, r.bottom - origem.top + LINHA_ABAIXO_TEXTO, r.right - r.left);
       desenhos.push(linha);
     }
     for (const r of geometria.grifos) {
@@ -367,7 +367,7 @@
     const esquerda = Math.max(MARGEM_DA_JANELA,
       Math.min(centro - width / 2, window.innerWidth - MARGEM_DA_JANELA - width));
     let cima = topo.top - CHIP_LONGE_DO_TEXTO - height;
-    if (cima < MARGEM_DA_JANELA) cima = fundo.bottom + LINHA_ABAIXO_DO_TEXTO + CHIP_LONGE_DO_TEXTO;
+    if (cima < MARGEM_DA_JANELA) cima = fundo.bottom + LINHA_ABAIXO_TEXTO + CHIP_LONGE_DO_TEXTO;
     posicionarEm(chip, esquerda - origem.left, cima - origem.top);
   }
 
