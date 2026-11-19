@@ -4,6 +4,7 @@ const { test, expect } = require('../fixtures');
 const DEN = 'PerpetualMiner::Inglês', DRU = 'PerpetualMiner::Russo';
 const { fotografar, registrarEstado } = require('../evidencias-mineracao');
 const { leituraDoVocabulario: leitura } = require('../leitura-do-vocabulario');
+const POPUP = 'popup/popup.html';
 
 const HOJE = new Date().toLocaleDateString('pt-BR');
 
@@ -54,8 +55,8 @@ test('com o painel já aberto, Abrir painel foca a aba existente, sem abrir outr
   const painel = await context.newPage();
   await painel.goto(extensao.url('painel.html#configuracoes'));
   await page.bringToFront();
-  await page.goto(extensao.url('popup.html'));
-  await expect.poll(() => abaAtiva(extensao)).toContain('popup.html');
+  await page.goto(extensao.url(POPUP));
+  await expect.poll(() => abaAtiva(extensao)).toContain(POPUP);
 
   await page.getByRole('button', { name: 'Abrir painel' }).click();
 
@@ -64,7 +65,7 @@ test('com o painel já aberto, Abrir painel foca a aba existente, sem abrir outr
 });
 
 test('sem painel aberto, Abrir painel abre uma aba nova do painel', async ({ page, context, extensao }) => {
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url(POPUP));
 
   const nova = context.waitForEvent('page');
   await page.getByRole('button', { name: 'Abrir painel' }).click();
@@ -79,7 +80,7 @@ test('Ver todas leva a aba do painel já aberta para Frases', async ({ page, con
   const painel = await context.newPage();
   await painel.goto(extensao.url('painel.html#configuracoes'));
   await page.bringToFront();
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url(POPUP));
 
   await page.getByRole('button', { name: 'Ver todas' }).click();
 
@@ -90,7 +91,7 @@ test('Ver todas leva a aba do painel já aberta para Frases', async ({ page, con
 
 test('mineração rápida: Minerar só com texto; Enter minera, o campo limpa e a frase entra no topo, sem toast', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: SETE_FRASES });
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url(POPUP));
   await expect(ultimas(page)).toHaveCount(5);
 
   const minerar = page.getByRole('button', { name: 'Minerar', exact: true });
@@ -119,7 +120,7 @@ test('mineração rápida: Minerar só com texto; Enter minera, o campo limpa e 
 });
 
 test('mineração rápida em russo grava o idioma pelo detector único', async ({ page, extensao }) => {
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url(POPUP));
   await campoRapido(page).fill('Тише едешь — дальше будешь.');
   await page.getByRole('button', { name: 'Minerar', exact: true }).click();
 
@@ -129,7 +130,7 @@ test('mineração rápida em russo grava o idioma pelo detector único', async (
 
 test('mineração rápida com o service worker falhando: POP-06 com o alerta, sem Detalhes, e o texto continua no campo', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: SETE_FRASES });
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url(POPUP));
   await expect(ultimas(page)).toHaveCount(5);
 
   await extensao.serviceWorker.evaluate(() => {
@@ -160,7 +161,7 @@ test('mineração rápida com o service worker falhando: POP-06 com o alerta, se
 
 test('as 5 últimas, só leitura: a Palavra grifada e o Contexto; sem checkbox, Deletar, ↻ nem Tudo', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: SETE_FRASES });
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url(POPUP));
 
   await expect(ultimas(page)).toHaveCount(5);
   await expect(ultimas(page).nth(0).locator('mark')).toHaveText('responsibility');
@@ -180,7 +181,7 @@ test('as 5 últimas, só leitura: a Palavra grifada e o Contexto; sem checkbox, 
 
 test('a frase minerada em outra aba aparece no topo na hora', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: SETE_FRASES });
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url(POPUP));
   await expect(ultimas(page)).toHaveCount(5);
 
   await extensao.gravarStorage({ frases: [frase(8, 'Hold your horses.'), ...SETE_FRASES] });
@@ -201,7 +202,7 @@ test('carregando (POP-01): só esqueleto, sem texto', async ({ page, extensao })
       return ler(chaves, callback);
     };
   });
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url(POPUP));
 
   await expect(page.locator('#ultimas .veio-esqueleto')).not.toHaveCount(0);
   await expect(page.locator('#ultimas')).toHaveText('');
@@ -214,7 +215,7 @@ test('carregando (POP-01): só esqueleto, sem texto', async ({ page, extensao })
 
 test('vazio (POP-02) ensina o atalho de legenda gravado', async ({ page, extensao }) => {
   await extensao.gravarStorage({ pm_atalho_legenda: CTRL_SHIFT_L });
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url(POPUP));
 
   const vazio = page.locator('#ultimas');
   await expect(vazio.locator('.veio-vazio__titulo')).toHaveText('Nenhuma frase ainda');
@@ -226,7 +227,7 @@ test('vazio (POP-02) ensina o atalho de legenda gravado', async ({ page, extensa
 
 test('vazio sem atalho gravado: “Defina um atalho…” e Definir atalho, que abre Configurações › Atalhos', async ({ page, context, extensao }) => {
   await extensao.gravarStorage({ pm_atalho_legenda: null });
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url(POPUP));
 
   const vazio = page.locator('#ultimas');
   await expect(vazio.locator('.veio-vazio__titulo')).toHaveText('Nenhuma frase ainda');
@@ -240,7 +241,7 @@ test('vazio sem atalho gravado: “Defina um atalho…” e Definir atalho, que 
 });
 
 test('o rodapé mostra o atalho de legenda gravado, e acompanha a mudança feita em Configurações', async ({ page, extensao }) => {
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url(POPUP));
   const rodape = page.getByRole('contentinfo');
   await expect(rodape).toContainText('Alt+S minera a legenda do vídeo');
   await expect(rodape.locator('kbd')).toHaveText(['Alt', 'S']);
@@ -255,7 +256,7 @@ test('Mudar atalho leva a aba do painel já aberta a Configurações › Atalhos
   const painel = await context.newPage();
   await painel.goto(extensao.url('painel.html#frases'));
   await page.bringToFront();
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url(POPUP));
 
   await page.getByRole('contentinfo').getByRole('button', { name: 'Mudar atalho' }).click();
 
@@ -266,7 +267,7 @@ test('Mudar atalho leva a aba do painel já aberta a Configurações › Atalhos
 
 test('sem atalho gravado, o rodapé diz “Sem atalho” e Definir atalho abre Configurações › Atalhos', async ({ page, context, extensao }) => {
   await extensao.gravarStorage({ pm_atalho_legenda: null });
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url(POPUP));
   const rodape = page.getByRole('contentinfo');
   await expect(rodape.locator('kbd')).toHaveText('Sem atalho');
   await expect(rodape).not.toContainText('minera a legenda');
@@ -281,7 +282,7 @@ test('os azulejos Inglês | Russo mostram o dia, e o toggle e o limite gravam', 
     en: { ligado: true, limite: 20, hoje: 12 },
     ru: { ligado: false, limite: 15, hoje: 0 },
   });
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url(POPUP));
 
   await expect(page.getByRole('heading', { name: 'Mineração automática por dia' })).toBeVisible();
   const en = page.locator('.popup-azulejo[data-idioma="en"]');
@@ -318,7 +319,7 @@ test('Enter no limite grava e o foco do teclado fica no campo', async ({ page, e
     en: { ligado: true, limite: 20, hoje: 12 },
     ru: { ligado: true, limite: 15, hoje: 0 },
   });
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url(POPUP));
 
   const limite = page.getByRole('spinbutton', { name: 'Limite por dia em russo' });
   await limite.fill('30');
@@ -338,7 +339,7 @@ test('o limite atingido enquanto a pessoa está no campo troca o campo por POP-0
     en: { ligado: true, limite: 20, hoje: 19 },
     ru: { ligado: true, limite: 15, hoje: 4 },
   });
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url(POPUP));
   const en = page.locator('.popup-azulejo[data-idioma="en"]');
   await expect(en).toContainText('19 de 20 hoje');
   await page.getByRole('spinbutton', { name: 'Limite por dia em russo' }).focus();
@@ -367,7 +368,7 @@ test('mineração automática carregando: esqueleto nos azulejos, sem texto', as
       return ler(chaves, callback);
     };
   });
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url(POPUP));
 
   const azulejos = page.locator('#azulejos');
   await expect(azulejos.locator('.veio-esqueleto')).not.toHaveCount(0);
@@ -394,7 +395,7 @@ test('mineração automática sem o estado do service worker: POP-16 diz o que f
       return globalThis.lerDeVerdade(chaves, callback);
     };
   });
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url(POPUP));
 
   const erro = page.locator('#azulejos').getByRole('alert');
   await expect(erro).toHaveText('Não deu para carregar a mineração automática. Feche e abra o popup de novo.');
@@ -412,7 +413,7 @@ test('gravar a mineração automática falhando: o toggle volta ao gravado e POP
     en: { ligado: true, limite: 20, hoje: 3 },
     ru: { ligado: false, limite: 15, hoje: 0 },
   });
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url(POPUP));
   const russo = page.getByRole('switch', { name: 'Mineração automática em russo' });
   await expect(russo).not.toBeChecked();
 
@@ -440,7 +441,7 @@ test('limite de hoje atingido: “Limite de hoje atingido” no lugar do campo, 
     en: { ligado: true, limite: 20, hoje: 20 },
     ru: { ligado: true, limite: 15, hoje: 4 },
   });
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url(POPUP));
 
   const en = page.locator('.popup-azulejo[data-idioma="en"]');
   await expect(en.locator('.popup-azulejo__no-limite')).toHaveText('Limite de hoje atingido');
@@ -456,7 +457,7 @@ test('o contador mostra “12/20” como no protótipo, e o leitor de tela ouve 
     en: { ligado: true, limite: 20, hoje: 12 },
     ru: { ligado: false, limite: 15, hoje: 0 },
   });
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url(POPUP));
 
   const contador = page.locator('.popup-azulejo[data-idioma="en"] .popup-azulejo__contador');
   await expect(contador.locator('[aria-hidden="true"]')).toHaveText('12/20');
@@ -470,7 +471,7 @@ test('no campo de limite, clicar seleciona o número: digitar troca o limite int
     en: { ligado: true, limite: 20, hoje: 2 },
     ru: { ligado: false, limite: 15, hoje: 0 },
   });
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url(POPUP));
 
   const limite = page.getByRole('spinbutton', { name: 'Limite por dia em inglês' });
   await limite.click();
@@ -497,7 +498,7 @@ test('com a Conexão desligada e uma leitura de ontem, o azulejo segue contando 
     ru: { ligado: false, limite: 15, hoje: 0 },
   });
   await extensao.gravarStorage({ pm_auto_keyword_vocab_en: leitura(DEN, ontemAs1402()) });
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url(POPUP));
 
   await expect(selo(page)).toHaveText('Vocabulário de ontem, 14:02');
   await expect(page.locator('.popup-azulejo[data-idioma="en"]')).toContainText('12 de 20 hoje');
@@ -515,7 +516,7 @@ test('o selo do popup diz o dia e a hora da leitura mais antiga entre os idiomas
     pm_auto_keyword_vocab_en: leitura(DEN, Date.now() - 60_000),
     pm_auto_keyword_vocab_ru: leitura(DRU, ontemAs1402()),
   });
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url(POPUP));
   await expect(selo(page)).toHaveText('Vocabulário de ontem, 14:02');
 
   await extensao.gravarStorage({ pm_auto_miner_settings: {
@@ -531,7 +532,7 @@ test('com a Conexão respondendo e o Anki aberto, nem o selo nem o esperando apa
     ru: { ligado: true, limite: 15, hoje: 0 },
   });
   await extensao.gravarStorage({ pm_auto_keyword_vocab_en: leitura(DEN, ontemAs1402()) });
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url(POPUP));
   await expect.poll(() => fakes.anki.requisicoes.some(r => r.caminho === '/health')).toBe(true);
   await expect(page.locator('.popup-azulejo')).toHaveCount(2);
 
@@ -545,7 +546,7 @@ test('com a Conexão desligada e nenhuma leitura, o azulejo ligado diz “— es
     en: { ligado: true, limite: 20, hoje: 0 },
     ru: { ligado: false, limite: 15, hoje: 0 },
   });
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url(POPUP));
 
   await expect(esperando(page, 'en')).toBeVisible();
   await expect(page.locator('.popup-azulejo[data-idioma="en"]')).toContainText('Começa depois que o Anki abrir uma vez.');
@@ -560,7 +561,7 @@ test('uma leitura de outro Baralho não vale: o azulejo espera o Anki, e a leitu
     ru: { ligado: false, limite: 15, hoje: 0 },
   });
   await extensao.gravarStorage({ pm_auto_keyword_vocab_en: leitura('Outro baralho', ontemAs1402()) });
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url(POPUP));
   await expect(esperando(page, 'en')).toBeVisible();
   await expect(selo(page)).toBeHidden();
 
@@ -572,7 +573,7 @@ test('uma leitura de outro Baralho não vale: o azulejo espera o Anki, e a leitu
 test('com movimento reduzido, a frase que chega não pisca', async ({ page, extensao }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await extensao.gravarStorage({ frases: SETE_FRASES });
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url(POPUP));
   await expect(ultimas(page)).toHaveCount(5);
 
   await campoRapido(page).fill('Break a leg');
@@ -587,7 +588,7 @@ test('com movimento reduzido, a frase que chega não pisca', async ({ page, exte
 
 test('sem movimento reduzido, a frase que chega ganha o realce breve', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: SETE_FRASES });
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url(POPUP));
   await expect(ultimas(page)).toHaveCount(5);
   await expect(page.locator('.popup-ultima--nova')).toHaveCount(0);
 
@@ -598,7 +599,7 @@ test('sem movimento reduzido, a frase que chega ganha o realce breve', async ({ 
 
 test('todo controle do popup tem nome para o leitor de tela', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: SETE_FRASES });
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url(POPUP));
   await expect(ultimas(page)).toHaveCount(5);
 
   const semNome = await page.evaluate(() => [...document.querySelectorAll('button, input, textarea, a[href]')]
@@ -618,7 +619,7 @@ test('o Tab passa por todos os controles do popup, em ordem, e cada um mostra o 
     ru: { ligado: false, limite: 15, hoje: 0 },
   });
   await extensao.gravarStorage({ frases: SETE_FRASES, pm_atalho_legenda: ALT_S });
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url(POPUP));
   await expect(ultimas(page)).toHaveCount(5);
   await expect(page.locator('.popup-azulejo')).toHaveCount(2);
   await campoRapido(page).fill('Break a leg');

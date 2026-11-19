@@ -264,7 +264,7 @@ test('o contador do idioma da legenda: no limite vira contorno e o leitor de tel
   await expect(contador(page)).toHaveClass(/pm-contador--limite/);
   await expect(botaoFlutuante(page)).toHaveAccessibleDescription('Mineração automática · Russo: limite de hoje atingido');
   const popup = await context.newPage();
-  await popup.goto(extensao.url('popup.html'));
+  await popup.goto(extensao.url('popup/popup.html'));
   await popup.locator('.popup-azulejo[data-idioma="ru"] .veio-toggle__trilho').click();
   await expect(popup.getByRole('switch', { name: 'Mineração automática em russo' })).not.toBeChecked();
   await expect(contador(page)).toBeHidden();

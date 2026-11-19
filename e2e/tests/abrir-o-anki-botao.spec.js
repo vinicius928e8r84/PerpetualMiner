@@ -119,7 +119,7 @@ test.describe('com a permissão do abridor', () => {
       pm_auto_miner_daily: { date: dia, en: { count: 12 }, ru: { count: 0 } },
       pm_auto_keyword_vocab_en: leitura(DEN, ontem.getTime()),
     });
-    await page.goto(extensao.url('popup.html'));
+    await page.goto(extensao.url('popup/popup.html'));
     await expect(page.getByText('Vocabulário de ontem, 14:02')).toBeVisible();
 
     await abrirOAnki(page.locator('#selo-vocabulario')).click();
@@ -139,7 +139,7 @@ test.describe('com a permissão do abridor', () => {
       pm_auto_miner_settings: { en: { enabled: true, dailyLimit: 20 }, ru: { enabled: false, dailyLimit: 15 } },
       pm_auto_miner_daily: { date: dia, en: { count: 0 }, ru: { count: 0 } },
     });
-    await page.goto(extensao.url('popup.html'));
+    await page.goto(extensao.url('popup/popup.html'));
     const espera = page.locator('.popup-azulejo__espera:visible');
     await expect(espera).toContainText('— esperando o Anki');
 
@@ -175,7 +175,7 @@ test.describe('sem a permissão do abridor', () => {
       pm_auto_miner_daily: { date: dia, en: { count: 0 }, ru: { count: 0 } },
       pm_auto_keyword_vocab_en: leitura(DEN, ontem.getTime()),
     });
-    await page.goto(extensao.url('popup.html'));
+    await page.goto(extensao.url('popup/popup.html'));
     await expect(page.locator('#selo-vocabulario')).toBeVisible();
     await expect(page.locator('.popup-azulejo__espera:visible')).toContainText('— esperando o Anki');
 

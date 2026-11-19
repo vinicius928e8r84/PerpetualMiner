@@ -98,7 +98,7 @@ shortcuts relabelled in PT-BR (`lib/atalhos.js`), `geminiApiKey` masked to its f
 
 ### Surfaces: one skill each
 
-The architecture of each surface lives in a project skill, not here. **Open the skill when your change touches that surface, and when you review a diff that does** (`CODING_STANDARDS.md` says so too).
+The architecture of each surface lives in a project skill, not here. **Open the skill when your change touches that surface, and when you review a diff that does** (`docs/CODING_STANDARDS.md` says so too).
 
 - Boas-vindas and Configuração pela metade: `.claude/skills/boas-vindas/SKILL.md`
 - Configurações: `.claude/skills/configuracoes/SKILL.md`
@@ -170,4 +170,4 @@ For the day rollover's scheduling and persistence contract, see `agendarViradaDo
 - `alarms`, `storage`, `unlimitedStorage`, `activeTab`, `tabs`, `contextMenus`, `identity` (for the `alarms` rationale, see [the store guide](publicar-chrome-web-store.md#justificativa-de-cada-permissão); the unpacked-folder auto-reload also uses it)
 - `host_permissions`: the Conexão com o Anki (127.0.0.1/localhost:8766), Gemini API, Firestore, Google OAuth, Firebase token endpoints. No `*.firebaseio.com`/`*.firebaseapp.com` (nothing calls them); `testes/test_empacotar.js` checks that the "Host permission use" block of `docs/publicar-chrome-web-store.md` lists exactly these
 - Content scripts inject into all URLs with `all_frames: true`
-- `painel.html`, `bookreader/bookreader.html`, `veio/tokens.css`, `veio/componentes.css`, `overlay.css`, `veio/icones/icone.svg` and `veio/fontes/*.woff2` declared as `web_accessible_resources`: the stylesheets, the tile and the fonts are what the in-page overlay loads inside its Shadow DOM
+- `painel.html`, `bookreader/bookreader.html`, `veio/tokens.css`, `veio/componentes.css`, `overlay/overlay.css`, `veio/icones/icone.svg` and `veio/fontes/*.woff2` declared as `web_accessible_resources`: the stylesheets, the tile and the fonts are what the in-page overlay loads inside its Shadow DOM
