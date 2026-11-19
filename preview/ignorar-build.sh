@@ -9,7 +9,7 @@ fi
 
 git diff --quiet "$base" HEAD -- \
   ':(glob)*.html' ':(glob)*.css' ':(glob)*.js' ':(exclude,glob)test_*.js' \
-  manifest.json lib veio conexao docs/design e2e/vitrine preview vercel.json
+  manifest.json lib veio bookreader conexao docs/design e2e/vitrine preview vercel.json
 resultado=$?
 
 if [ "$resultado" -eq 0 ]; then
