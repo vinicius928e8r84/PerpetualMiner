@@ -117,7 +117,7 @@ def main():
                 try:
                     conexao.fila.mudar(comando["mudar"]["jobId"], lambda estado: (estado.clear(), estado.update(novo)))
                     responder({"ok": True})
-                except ValueError as erro:
+                except (ValueError, TypeError) as erro:
                     responder({"erro": str(erro)})
             elif "chave" in comando:
                 caminho = os.path.join(dados.chaves, "openai.json")
