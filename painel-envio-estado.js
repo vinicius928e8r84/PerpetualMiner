@@ -110,30 +110,43 @@
   raiz.FaseDaRemessa = Object.freeze({ FASE, EVENTO, PRAZO_DO_PEDIDO_MS, proxima, aceita });
 
   const INTERVALO_DA_LEITURA_MS = 2000;
+  const TERMINOU_SEM_CHEGAR = ['failed', 'partial'];
   const esperarOIntervalo = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-  function acompanhar({ jobId } = {}, { conversa = raiz.ConversaComOAnki, esperar = esperarOIntervalo, intervaloMs = INTERVALO_DA_LEITURA_MS } = {}) {
+  function acompanhar(alvo = {}, { conversa = raiz.ConversaComOAnki, esperar = esperarOIntervalo, intervaloMs = INTERVALO_DA_LEITURA_MS, lerSozinho = true } = {}) {
+    const { jobId } = alvo;
     if (typeof jobId !== 'string' || !jobId) throw new Error('EnvioAcompanhado.acompanhar pede o jobId do Envio');
+    const corpo = Array.isArray(alvo.entries) ? alvo : null;
     const { PedidoAoAnki } = raiz;
     const ouvintes = new Set();
+    const naoLidos = new Set();
+    let criacaoEmCurso = null;
     let situacao = null;
-    let pedidoEmCurso = null;
     let lendo = false;
     let vez = 0;
 
-    function mudarPara(nova) {
+    function mudarPara(nova, lido) {
       const antes = situacao;
       situacao = nova;
       if (JSON.stringify(antes) === JSON.stringify(nova)) return;
-      for (const ouvinte of [...ouvintes]) ouvinte(nova);
+      for (const ouvinte of [...ouvintes]) ouvinte(nova, lido);
     }
+
+    const falhaDe = (pedido, desfecho) => ({
+      falha: `${pedido} ${jobId} · ${desfecho.detalhes}`,
+      semResposta: desfecho.motivo === raiz.ConversaComOAnki.MOTIVO.SEM_RESPOSTA,
+      status: desfecho.status,
+    });
 
     async function ler(minha) {
       const desfecho = await conversa.pedir(PedidoAoAnki.verEnvio(jobId), { formato: dados => Boolean(dados.state) });
       if (minha !== vez) return false;
-      if (desfecho.ok) mudarPara(situacaoDoEnvio({ jobId }, desfecho.dados.state));
-      else if (desfecho.codigo === 'job_not_found') mudarPara(situacaoDoEnvio({ jobId }, null, { desconhecido: true }));
-      else return false;
+      if (desfecho.ok) mudarPara(situacaoDoEnvio({ jobId }, desfecho.dados.state), desfecho.dados.state);
+      else if (desfecho.codigo === 'job_not_found') mudarPara(situacaoDoEnvio({ jobId }, null, { desconhecido: true }), null);
+      else {
+        for (const ouvinte of [...naoLidos]) ouvinte(falhaDe('POST /jobs/get', desfecho));
+        return false;
+      }
       return true;
     }
 
@@ -153,20 +166,42 @@
       }
     }
 
-    async function pedirDeNovo() {
+    async function pedirESeguir(pedido, recusa) {
       const minha = vez;
-      const desfecho = await conversa.pedir(PedidoAoAnki.tentarEnvioDeNovo(jobId));
+      const desfecho = await conversa.pedir(pedido);
       if (desfecho.ok) {
-        if (minha === vez) seguir();
+        if (lerSozinho && minha === vez) seguir();
         return { ok: true };
       }
-      if (desfecho.codigo === 'job_wiped') return { apagado: true };
-      return { falha: `POST /jobs/retry ${jobId} · ${desfecho.detalhes}` };
+      if (desfecho.codigo === recusa.codigo) return { ...recusa.desfecho };
+      return { falha: `${pedido.metodo} ${pedido.caminho} ${jobId} · ${desfecho.detalhes}` };
     }
 
-    function tentarDeNovo() {
-      pedidoEmCurso ||= pedirDeNovo().finally(() => { pedidoEmCurso = null; });
-      return pedidoEmCurso;
+    function umPedidoPorVez(pedir) {
+      let emCurso = null;
+      return () => (emCurso ||= pedir().finally(() => { emCurso = null; }));
+    }
+
+    const tentarDeNovo = umPedidoPorVez(() => pedirESeguir(PedidoAoAnki.tentarEnvioDeNovo(jobId), { codigo: 'job_wiped', desfecho: { apagado: true } }));
+    const usarAChave = umPedidoPorVez(() => pedirESeguir(PedidoAoAnki.usarAChaveNoEnvio(jobId), { codigo: 'openai_key_missing', desfecho: { semChave: true } }));
+
+    async function pedirParaCriar() {
+      const minha = vez;
+      const criado = await conversa.pedir(PedidoAoAnki.criarEnvio(corpo));
+      if (!criado.ok) return falhaDe('POST /jobs', criado);
+      if (TERMINOU_SEM_CHEGAR.includes(criado.dados.status)) {
+        const repetido = await conversa.pedir(PedidoAoAnki.tentarEnvioDeNovo(jobId));
+        if (repetido.codigo === 'job_wiped') return { apagado: true };
+        if (!repetido.ok) return falhaDe('POST /jobs/retry', repetido);
+      }
+      if (minha === vez) seguir();
+      return { ok: true };
+    }
+
+    function criar() {
+      if (!corpo) throw new Error('EnvioAcompanhado.criar pede o corpo do Envio (com as entries) em acompanhar');
+      criacaoEmCurso ||= pedirParaCriar().finally(() => { criacaoEmCurso = null; });
+      return criacaoEmCurso;
     }
 
     function aoMudar(ouvinte) {
@@ -174,12 +209,17 @@
       return () => ouvintes.delete(ouvinte);
     }
 
+    function aoNaoLer(ouvinte) {
+      naoLidos.add(ouvinte);
+      return () => naoLidos.delete(ouvinte);
+    }
+
     function largar() {
       vez += 1;
       lendo = false;
     }
 
-    return Object.freeze({ tentarDeNovo, situacao: () => situacao, aoMudar, largar });
+    return Object.freeze({ criar, tentarDeNovo, usarAChave, situacao: () => situacao, aoMudar, aoNaoLer, largar });
   }
 
   raiz.EnvioAcompanhado = Object.freeze({ INTERVALO_MS: INTERVALO_DA_LEITURA_MS, acompanhar });
