@@ -3,7 +3,7 @@
   "arquivos": {
     ".agents/skills/painel-anki/SKILL.md": 24323,
     "background.js": 41086,
-    "bookreader.js": 35868,
+    "bookreader/bookreader.js": 35868,
     "complemento/contrato/exemplos.json": 108985,
     "complemento/envio.py": 32513,
     "complemento/test_chave_da_openai.py": 38353,
