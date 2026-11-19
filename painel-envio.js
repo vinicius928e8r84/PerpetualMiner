@@ -3,7 +3,7 @@
 (function (raiz) {
   const INTERVALO = 2000;
 
-  const { textoDaVoz, Veio, Shell, ConexaoAnki, ConversaComOAnki, EnvioApagarFrases, ehRussa, AjustesDeEnvio, PedidoAoAnki, CartaoDoEnvio, EnvioComOAnkiFechado, SituacaoDoEnvio, FaseDaRemessa, EnvioGravado } = raiz;
+  const { textoDaVoz, Veio, Shell, ConexaoAnki, ConversaComOAnki, EnvioApagarFrases, ehRussa, AjustesDeEnvio, PedidoAoAnki, CartaoDoEnvio, EnvioComOAnkiFechado, SituacaoDoEnvio, FaseDaRemessa, EnvioGravado, EnvioAcompanhado } = raiz;
   const { ETAPAS, nomeDoIdioma } = CartaoDoEnvio;
   const { FASE, EVENTO } = FaseDaRemessa;
   const { AREAS_DO_PAINEL } = Shell;
@@ -12,6 +12,7 @@
   const porId = id => document.getElementById(id);
   const gravado = EnvioGravado.criar(chrome.storage.local);
   const pedir = (pedido, formato) => ConversaComOAnki.pedir(pedido, { prazoMs: FaseDaRemessa.PRAZO_DO_PEDIDO_MS, formato });
+  const daRemessa = { pedir: (pedido, { formato } = {}) => pedir(pedido, formato) };
   const { montarCartao } = CartaoDoEnvio.criar({
     situacaoDe,
     estadoDoJob,
@@ -19,6 +20,7 @@
     falhaAoRetomar: envio => envio.jobId && falhasAoRetomar.get(envio.jobId),
     tentarCriarDeNovo,
     continuarEnvio,
+    pedirAChave: envio => acompanhado(envio.jobId).usarAChave(),
     redesenhar: () => desenharProgresso(),
   });
 
@@ -28,6 +30,7 @@
   let remessa = null;
   const jobs = new Map();
   const falhasAoRetomar = new Map();
+  const acompanhados = new Map();
   let fase = FASE.PARADA;
   const desconhecidos = new Set();
   const retomando = new Set();
@@ -234,6 +237,8 @@
     jobs.clear();
     desconhecidos.clear();
     falhasAoRetomar.clear();
+    for (const envio of acompanhados.values()) envio.largar();
+    acompanhados.clear();
     pararDeAcompanhar();
   }
 
@@ -297,6 +302,8 @@
     remessa.envios = remessa.envios.filter(e => e !== envio);
     desconhecidos.delete(envio.jobId);
     jobs.delete(envio.jobId);
+    acompanhados.get(envio.jobId)?.largar();
+    acompanhados.delete(envio.jobId);
     assinaturas.delete(envio.id);
     porId('modal-envio-lista').querySelector(`[data-envio="${envio.id}"]`)?.remove();
     if (!remessa.envios.length) return progresso ? progresso.fechar() : aoFecharProgresso();
@@ -345,18 +352,24 @@
     acompanhar();
   }
 
+  function acompanhado(jobId) {
+    if (!acompanhados.has(jobId)) acompanhados.set(jobId, EnvioAcompanhado.acompanhar({ jobId }, { conversa: daRemessa, lerSozinho: false }));
+    return acompanhados.get(jobId);
+  }
+
   async function retomar(envio) {
     const { jobId } = envio;
-    const desfecho = await pedir(PedidoAoAnki.tentarEnvioDeNovo(jobId));
+    const desfecho = await acompanhado(jobId).tentarDeNovo();
     const job = jobs.get(jobId);
-    const naoRetomou = causa => { falhasAoRetomar.set(jobId, causa); return false; };
-    if (desfecho.motivo === MOTIVO.SEM_RESPOSTA) return naoRetomou(desfecho.detalhes);
+    if (desfecho.falha) {
+      falhasAoRetomar.set(jobId, desfecho.falha);
+      return false;
+    }
     falhasAoRetomar.delete(jobId);
-    if (desfecho.codigo === 'job_wiped') {
+    if (desfecho.apagado) {
       jobs.set(jobId, { ...job, state: { ...job?.state, wiped: true } });
       return false;
     }
-    if (!desfecho.ok) return naoRetomou(`POST /jobs/retry ${jobId} → HTTP ${desfecho.status}`);
     if (SituacaoDoEnvio.retomavel(situacaoDe(envio))) jobs.set(jobId, { ...job, status: 'queued', state: { ...job?.state, status: 'queued', stage: 'queued', progress: {}, lastError: null, ankiError: null } });
     return true;
   }
