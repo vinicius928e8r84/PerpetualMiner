@@ -104,7 +104,7 @@ test('o painel já aberto em outra aba troca junto, sem recarregar', async ({ pa
 
 test('o popup segue o tema escolhido, na hora e ao abrir de novo', async ({ page, context, extensao }) => {
   const popup = await context.newPage();
-  await popup.goto(extensao.url('popup.html'));
+  await popup.goto(extensao.url('popup/popup.html'));
   expect(await fundoDaPagina(popup)).toBe(FUNDO.escuro);
 
   await abrirConfiguracoes(page, extensao, '#configuracoes/aparencia');
@@ -191,7 +191,7 @@ test('no claro, a marca do painel e a do popup vão para o azulejo claro',
     await expect.poll(() => imagemDaMarca(marca)).toBe('icone-claro.svg');
 
     const popup = await context.newPage();
-    await popup.goto(extensao.url('popup.html'));
+    await popup.goto(extensao.url('popup/popup.html'));
     expect(await imagemDaMarca(popup.locator('.veio-marca'))).toBe('icone-claro.svg');
     await popup.close();
   });
