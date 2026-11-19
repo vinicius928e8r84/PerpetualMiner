@@ -202,9 +202,10 @@ async function ondeNaoHaConexaoAnki() {
 }
 
 function oEnderecoCarregaAntesDeQuemOLe() {
-  for (const pagina of ['painel.html', 'popup.html']) {
+  for (const pagina of ['painel.html', 'popup/popup.html']) {
     const html = fs.readFileSync(path.join(__dirname, '..', pagina), 'utf8');
-    const lugar = arquivo => html.indexOf(`<script src="lib/${arquivo}"></script>`);
+    const prefixo = pagina.includes('/') ? '../' : '';
+    const lugar = arquivo => html.indexOf(`<script src="${prefixo}lib/${arquivo}"></script>`);
     assert.ok(lugar('pedido-ao-anki.js') >= 0 && lugar('pedido-ao-anki.js') < lugar('conexao-anki.js'),
       `${pagina}: lib/pedido-ao-anki.js (o endereço da Conexão) carrega antes de lib/conexao-anki.js, que o lê ao carregar`);
   }

@@ -128,7 +128,7 @@ test('ligar e desligar um idioma no popup muda o badge na hora', async ({ page, 
   });
   await expect.poll(async () => (await naToolbar(extensao)).badge).toBe('12');
 
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url('popup/popup.html'));
   await page.locator('.popup-azulejo[data-idioma="ru"] .veio-toggle__trilho').click();
 
   await expect.poll(() => naToolbar(extensao)).toEqual({

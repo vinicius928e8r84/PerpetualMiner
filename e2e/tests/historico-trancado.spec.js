@@ -117,7 +117,7 @@ test('com Conta e o Histórico trancado, o Painel espera a vez para copiar a mar
   await extensao.gravarStorage({ frases: [FICA] });
   fakes.google.gravarFrases('uid-trancado', [{ ...FICA, status: 'exported' }]);
   const outra = await context.newPage();
-  await outra.goto(extensao.url('popup.html'));
+  await outra.goto(extensao.url('popup/popup.html'));
   await trancarOHistorico(outra);
   const minerada = outra.evaluate(texto => chrome.runtime.sendMessage({
     type: 'SALVAR_HISTORICO', texto, origem: 'manual', idioma: 'Inglês', palavras: ['ferry@2'],
