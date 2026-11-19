@@ -12,7 +12,7 @@ const PNG_1X1 = Buffer.from(
 test('a chave do Gemini vai no cabeçalho do pedido e a URL não leva a chave nem parâmetro nenhum', async ({ page, extensao, fakes }) => {
   fakes.gemini.responderFrases(FRASES);
   await extensao.gravarStorage({ geminiApiKey: CHAVE });
-  await page.goto(extensao.url('bookreader.html'));
+  await page.goto(extensao.url('bookreader/bookreader.html'));
   await page.locator('#foto-arquivo').setInputFiles([{ name: 'pagina.png', mimeType: 'image/png', buffer: PNG_1X1 }]);
   await page.getByRole('button', { name: 'Ler marcações' }).click();
   await expect(page.getByText('2 frases encontradas')).toBeVisible();

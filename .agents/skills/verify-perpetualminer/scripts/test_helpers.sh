@@ -169,6 +169,10 @@ mapa true; muda abridor.html
 confere && falhou "ratchet passed a root abridor.html change with nothing" || passou "ratchet fails a root *.html change"
 mapa true; muda lib/voz/catalogo.js
 confere && falhou "ratchet passed a lib/voz/catalogo.js change with nothing" || passou "ratchet fails a Voice catalog change"
+mapa true; muda bookreader/bookreader.js
+confere && falhou "ratchet passed a bookreader/bookreader.js change with nothing" || passou "ratchet fails a bookreader/bookreader.js change"
+mapa true; muda bookreader/bookreader.html
+confere && falhou "ratchet passed a bookreader/bookreader.html change with nothing" || passou "ratchet fails a bookreader/bookreader.html change"
 mapa true; muda overlay/overlay.js
 confere && falhou "ratchet passed an overlay/overlay.js change with nothing" || passou "ratchet fails an overlay/overlay.js change"
 mapa true; muda lib/voz/outro.js e2e/pages/player.html
