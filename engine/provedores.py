@@ -1,13 +1,14 @@
 """
 provedores.py - The provider layer: how the engine's stages ask an AI provider for a text or an image (standard library only, Python 3.9+).
 
-A stage never names a provider's protocol. It builds a credential, `{provedor, segredo, modelo}` (plus `via: "plano"` for the ChatGPT plan, and
-`base`, which only code sets: the tests', never the config's or the request's), and calls the two functions below:
+A stage never names a provider's protocol. A credential is `{provedor, segredo, modelo}` (plus `via: "plano"` for the ChatGPT plan, and
+`base`, which only code sets: the tests', never the config's or the request's); in the Anki add-on it comes ready from the Conexão's IA dos
+cartões (`complemento/ia_dos_cartoes.py`), never from the engine's config. The two functions below take it:
 
   texto(cred, sistema, mensagem, json=False, ...)  -> (text, {entrada, saida})   `mensagem` is a text, or the chat's parts (text and base64 `image_url`)
   imagem(cred, prompt, tamanho)                    -> the first image of the answer, `{"b64_json": ...}` or `{"url": ...}` (`{}` if none)
 
-A stage that the key always pays (the image screening, the generated image, the judge without the plan) gets a `PelaChave` instead:
+A stage that the key always pays (the image screening, the generated image) gets a `PelaChave` instead:
 the key bound to its provider, so the stage asks with a model and never holds the secret (the add-on's IA dos cartões makes it).
 
 Each provider is an adapter: a module with the same two functions, listed in `ADAPTADORES`. `openai_http` is the only one so far. A refusal
@@ -35,19 +36,6 @@ def _adaptador(cred):
     if adaptador is None:
         raise ErroDoProvedor(PROVEDOR_DESCONHECIDO)
     return adaptador
-
-
-def modelo_do_texto(config):
-    """The model the key would write the Cards with: the Conexão's choice (#157), else the engine's."""
-    return config.get("modelo_do_texto") or config["openai"].get("chat_model", "gpt-4o")
-
-
-def credencial_do_texto(config, base=None):
-    """The credential of the text stage in `config`: the ChatGPT plan's (`plano_do_chatgpt`), else the key with its model."""
-    plano = config.get("plano_do_chatgpt")
-    if plano:
-        return {"provedor": OPENAI, "via": "plano", "segredo": plano["token"], "modelo": plano["modelo"], "base": base}
-    return {"provedor": OPENAI, "segredo": config["openai_api_key"], "modelo": modelo_do_texto(config), "base": base}
 
 
 def texto(cred, sistema, mensagem, json=False, temperatura=None, max_tokens=None, tempo=None, repeticoes=0):
