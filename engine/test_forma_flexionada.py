@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 
 import generate_cards
-from parser import MiningEntry
+from parser import MiningEntry, get_card_jobs
 from test_generate_cards import GOOD_CARD, _config, _write_prompts, roteiro
 
 
@@ -74,19 +74,20 @@ class InflectedFormTests(unittest.TestCase):
             (root / "Output").mkdir()
             (root / "log").mkdir()
             _write_prompts(root)
-            pedidos, failures = [], {}
-            saved = generate_cards.run([MiningEntry(keywords=[keyword], phrase=phrase)], _config(root), roteiro(*responses, pedidos=pedidos), failures=failures)
+            pedidos = []
+            trabalho = get_card_jobs(MiningEntry(keywords=[keyword], phrase=phrase))[0]
+            falha = generate_cards.escrever(trabalho, _config(root), roteiro(*responses, pedidos=pedidos), "1-0")
             messages = [mensagem for _, mensagem, _ in pedidos]
             texts = [path.read_text(encoding="utf-8") for path in (root / "Output").glob("*.txt")]
-        return saved, messages, texts, failures
+        return falha, messages, texts
 
     def test_run_salva_o_cartao_com_a_frase_minerada_e_a_forma_flexionada_destacada_sem_nova_tentativa(self):
         phrase = "She turned down the job offer because the salary was too low."
         card = self._card_com_front("She *turned down* the job offer because the salary was too low.", "turn down")
 
-        saved, messages, texts, failures = self._rodar("turn down", phrase, [card])
+        falha, messages, texts = self._rodar("turn down", phrase, [card])
 
-        self.assertEqual((len(saved), len(messages), failures), (1, 1, {}))
+        self.assertEqual((falha, len(messages), len(texts)), (None, 1, 1))
         self.assertIn("Front: She *turned down* the job offer because the salary was too low.", texts[0])
 
     def test_run_regenera_o_cartao_que_reescreveu_a_frase_flexionada_para_a_forma_base(self):
@@ -94,9 +95,9 @@ class InflectedFormTests(unittest.TestCase):
         rewritten = self._card_com_front("Don't *put off* your homework until the last minute.", "put off")
         kept = self._card_com_front("Stop *putting off* your homework until the last minute.", "put off")
 
-        saved, messages, texts, failures = self._rodar("put off", phrase, [rewritten, kept])
+        falha, messages, texts = self._rodar("put off", phrase, [rewritten, kept])
 
-        self.assertEqual((len(saved), len(messages), failures), (1, 2, {}))
+        self.assertEqual((falha, len(messages), len(texts)), (None, 2, 1))
         self.assertIn("every word", messages[1])
         self.assertIn("Front: Stop *putting off* your homework", texts[0])
 
@@ -104,9 +105,9 @@ class InflectedFormTests(unittest.TestCase):
         phrase = "Our car broke down in the middle of the highway."
         rewritten = self._card_com_front("Our car *did break down* in the middle of the highway.", "break down")
 
-        saved, messages, texts, failures = self._rodar("break down", phrase, [rewritten, rewritten])
+        falha, messages, texts = self._rodar("break down", phrase, [rewritten, rewritten])
 
-        self.assertEqual((saved, texts, list(failures.values())), ([], [], ["keyword_mismatch"]))
+        self.assertEqual((falha, texts), ("keyword_mismatch", []))
 
     def test_a_nova_tentativa_do_lema_pede_a_forma_da_frase_e_nao_so_a_forma_base(self):
         message = generate_cards._build_keyword_retry_message("put off : Stop putting off", "put off")
