@@ -12,11 +12,11 @@ na linha de base de tamanho (uma tag a mais tem de sair de outro lugar). O Conti
 |---|---|---|
 | 1 | o Continuar envio da aba Custos | o detalhe do Envio retomado anda sozinho até o fim (Na fila → a Etapa → Concluído), sem Atualizar |
 | 2 | o passo do primeiro Envio da Boas-vindas | nada: o laço dela (criar, repetir, ler a cada 1 s) passa ao módulo, que ganha `criar` e `aoNaoLer` |
-| 3 | o modal do Envio (a Remessa) | nada: a Remessa passa a acompanhar cada Envio pelo módulo, que ganha `usarAChave` |
+| 3 | o modal do Envio (a Remessa) | nada: o Tentar de novo e o Usar a minha chave de cada Envio do modal passam pelo módulo, que ganha `usarAChave`; a causa em Detalhes de um Tentar de novo recusado sai no formato do módulo (`POST /jobs/retry <id> · HTTP 500 · internal_error`, antes `… → HTTP 500`) |
 
 ## A interface
 
-`EnvioAcompanhado.acompanhar({ jobId } | corpo, { conversa, esperar, intervaloMs })` devolve (`corpo` é o pedido do `POST /jobs`, com
+`EnvioAcompanhado.acompanhar({ jobId } | corpo, { conversa, esperar, intervaloMs, lerSozinho })` devolve (`corpo` é o pedido do `POST /jobs`, com
 o `jobId` e as `entries`; `intervaloMs` é 2 s, a Boas-vindas passa 1 s):
 
 - `criar()` (passo 2; só com o `corpo`): `POST /jobs` com o corpo congelado pela tela. A Conexão que já tem esse `jobId` devolve o Envio
@@ -25,6 +25,12 @@ o `jobId` e as `entries`; `intervaloMs` é 2 s, a Boas-vindas passa 1 s):
   `{ falha: '<pedido> · <causa>', semResposta, status }`. Dois cliques antes da resposta são um pedido só. Com o `ok`, o módulo passa a ler.
 - `tentarDeNovo()`: `POST /jobs/retry`. Dá `{ ok: true }`, `{ apagado: true }` (409 `job_wiped`) ou `{ falha: '<pedido> · <causa>' }`.
   Dois cliques antes da resposta são um pedido só. Com o `ok`, o módulo passa a ler o Envio.
+- `usarAChave()` (passo 3): `POST /jobs/usar-a-chave`. Dá `{ ok: true }`, `{ semChave: true }` (409 `openai_key_missing`) ou
+  `{ falha: '<pedido> · <causa>' }` (o 409 `job_finished` de um Envio que terminou entra aqui). Dois cliques antes da resposta são um
+  pedido só. Com o `ok`, o módulo passa a ler o Envio.
+- `lerSozinho` (passo 3, padrão `true`): com `false`, o `ok` não faz o módulo ler; quem lê é a tela. É o caso do modal, que lê todos os
+  Envios da Remessa num `POST /jobs/list` só a cada 2 s (o resumo e o “sem notícia” dependem dessa leitura); assim nenhum Envio é lido duas
+  vezes.
 - `situacao()`: a `SituacaoDoEnvio` da última leitura (`painel-envio-estado.js`), ou `null` antes dela.
 - `aoMudar(ouvinte)`: chamado com `(situacao, estado)` quando a situação muda (estado, Etapa, feitos, total); `estado` é o `state` lido da
   Conexão (os Cartões, o `guid`, o `lastError`), `null` no Desconhecido. Devolve a função que tira o ouvinte.
@@ -39,7 +45,8 @@ o `jobId` e as `entries`; `intervaloMs` é 2 s, a Boas-vindas passa 1 s):
 | o estado do Envio (`state`) | a Conexão (`user_files`, `envio.py`) | o módulo guarda a última leitura, só em memória | gravado: o módulo não escreve no `chrome.storage` |
 | o pedido do primeiro Envio (`corpo`, com o `jobId`) | a Boas-vindas (`pm_boas_vindas.primeiroEnvio`, `Configuracao.guardarPrimeiroEnvio`) | o módulo recebe o corpo para o `criar` | montado ou gravado pelo módulo |
 | a linha de custos do Envio | a Conexão (`POST /analytics/jobs`) | `pm_anki_custos`, o retrato da última leitura da aba Custos | decidido pela tela: a aba relê a Conexão quando a situação muda |
-| a Remessa (`pm_envio`) | o modal do Envio (`EnvioGravado`) | nenhum | tocada por este passo |
+| a Remessa (`pm_envio`) | o modal do Envio (`EnvioGravado`) | nenhum | escrita pelo módulo: no passo 3 o modal guarda um módulo por `jobId` só em memória |
+| o `usingKey` do Envio | a Conexão (`limite_do_plano.usar_a_chave`) | ninguém: o cartão do modal lê o `waiting` na próxima leitura | gravado pelo painel |
 
 ## 2. Estados
 
@@ -54,12 +61,14 @@ Custos diz o que já dizia em cada um (BRG-31, ENV-07, ENV-24); o que muda é qu
 | criar | a tela (a Boas-vindas, ao chegar ao passo e no Tentar de novo) | o corpo congelado em `pm_boas_vindas` | a Conexão (`criar`) | o Envio entra na fila; o mesmo corpo de novo devolve o que existe, e o terminado sem chegar é tentado de novo |
 | tentar de novo | a tela (Continuar envio) | nada | a Conexão (`tentar_de_novo`) | o Envio volta à fila; já na fila ou andando, nada |
 | ler o Envio | o módulo, a cada 2 s (Boas-vindas: 1 s) depois do `ok` | — | a Conexão (`POST /jobs/get`) | só a memória do módulo; a tela é avisada se a situação mudou, ou se a leitura falhou |
+| usar a chave (passo 3) | a tela (Usar a minha chave, no modal) | nada | a Conexão (`usar_a_chave`) | o Envio marca `usingKey` e acorda; terminado ou apagado, 409 `job_finished`; sem chave, 409 `openai_key_missing`; repetido, nada é regravado |
 | largar | a tela, ou o módulo num estado final | — | o módulo | nada na Conexão |
 
-- **Pedido repetido:** o `POST /jobs/retry` é idempotente na Conexão (já na fila ou andando, “só diz o estado”), e o módulo nem o repete
-  enquanto o primeiro não respondeu. O `POST /jobs` também: o mesmo corpo devolve o Envio que existe (`envio.py`, `criar`), e um corpo
-  diferente com o mesmo `jobId` é `409 job_conflict`, que a Boas-vindas mostra como “Algo impediu o envio”.
-- **Resposta perdida:** do `retry`, a tela mostra a falha (ENV-14) e o Envio fica como a Conexão o deixou; a próxima leitura da aba diz
+- **Pedido repetido:** o `POST /jobs/retry` é idempotente na Conexão (já na fila ou andando, “só diz o estado”), o `POST /jobs/usar-a-chave`
+  também (com o `usingKey` já marcado, nada é regravado), e o módulo não repete nenhum deles enquanto o primeiro não respondeu. O `POST /jobs`
+  também: o mesmo corpo devolve o Envio que existe (`envio.py`, `criar`), e um corpo diferente com o mesmo `jobId` é `409 job_conflict`, que a
+  Boas-vindas mostra como “Algo impediu o envio”.
+- **Resposta perdida:** do `retry` ou do `usar-a-chave`, a tela mostra a falha (ENV-14) e o Envio fica como a Conexão o deixou; a próxima leitura da aba diz
   o estado verdadeiro, e um novo Continuar envio é o mesmo pedido. Do `criar`, a Boas-vindas mostra “Este cartão não foi” com o motivo da
   Conexão, e o Tentar de novo (ou recarregar a página) manda o mesmo corpo congelado: se a Conexão já o tinha criado, é o mesmo Envio. De
   uma leitura, a aba Custos não muda nada e lê de novo 2 s depois; a Boas-vindas larga o Envio e mostra o motivo da Conexão, como antes.
@@ -87,6 +96,10 @@ Custos diz o que já dizia em cada um (BRG-31, ENV-07, ENV-24); o que muda é qu
 - Uma diferença do laço antigo da Boas-vindas, que não se vê: o `retry` do Envio que terminou sem chegar, recusado com um 4xx que não é
   o 409 (a Conexão esqueceu o Envio entre os dois pedidos), dizia o motivo da Conexão e agora diz “Algo impediu o envio”, como o `criar`
   recusado. Sem resposta ou com 5xx, o motivo segue sendo a Conexão.
+- No passo 3 o modal usa o módulo para pedir, não para ler: a leitura do modal continua um `/jobs/list` para todos os seus Envios (as specs
+  de tela e o resumo dependem dela). Passar a leitura do modal ao módulo (`/jobs/get` por Envio) é um passo à parte, que muda essas specs.
+- O pedido do modal pelo módulo leva o prazo da Remessa (`FaseDaRemessa.PRAZO_DO_PEDIDO_MS`, 10 s); o `usar-a-chave` ia antes com o prazo
+  padrão da conversa (15 s).
 - Duas abas que retomam o mesmo Envio leem cada uma por conta própria (um pedido a cada 2 s por aba); a Conexão é quem guarda o Envio.
 - Não fazer (C3, decisão do dono): levar o acompanhamento ao service worker, criar rota de Remessa na Conexão, fazer a Boas-vindas
   caber na Remessa por opções, cortar arquivo pelo tamanho, apagar specs na mesma PR da troca.
@@ -95,9 +108,15 @@ Custos diz o que já dizia em cada um (BRG-31, ENV-07, ENV-24); o que muda é qu
 
 O módulo em Node, com uma Conexão de mentira em memória que segue o `criar` e o `tentar_de_novo` do `envio.py`:
 `test_envio_acompanhado.js` (dois cliques são um pedido; o 409 vira apagado; a falha diz o pedido; acompanha até o fim e para; o 404 é
-desconhecido; a leitura sem resposta não muda nada; largar ignora a resposta tardia; e, do passo 2, o `criar` manda o corpo e acompanha,
+desconhecido; a leitura sem resposta não muda nada; largar ignora a resposta tardia) e `test_envio_acompanhado_criar.js`, que usa a
+mesma Conexão de mentira (do passo 2: o `criar` manda o corpo e acompanha,
 dois `criar` são um pedido, o Envio que terminou sem chegar é tentado de novo sem o fim velho chegar à tela, o que já chegou só é lido,
 o apagado não é lido, a falha do `criar` e a do `retry` dizem o pedido e se houve resposta, a leitura que falha avisa o `aoNaoLer` e segue,
 a tela escolhe o intervalo). As telas: `e2e/tests/painel-anki-continuar.spec.js` (o detalhe vai de Concluído em parte a Concluído
 sozinho, e `pm_anki_custos` guarda o Concluído); os Continuar envio de `painel-anki.spec.js`, as 21 de `boas-vindas-envio.spec.js` e as 2 de `boas-vindas-envio-nota-apagada.spec.js`
 seguem sem mudar. Não provam o Anki real nem a Conexão real.
+
+Passo 3: `test_envio_acompanhado.js` ganha o `usarAChave` (segue pela chave e lê até o fim; dois cliques são um pedido; sem
+chave dá `semChave` e ninguém lê; o `job_finished` e a falta de resposta dizem o pedido; largar com o pedido no ar não lê; com
+`lerSozinho: false` ninguém lê); na tela, `painel-envio-limite.spec.js` (Usar a minha chave e Tentar de novo no limite, agora também sem
+nenhum `/jobs/get`) e `painel-envio-estados.spec.js` (a causa no formato do módulo). Não provam o Anki real nem a Conexão real.

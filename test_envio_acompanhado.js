@@ -12,7 +12,7 @@ const JOB = 'c7d1e2f3-4a5b-4c6d-8e7f-9a0b1c2d3e4f';
 const vez = () => new Promise(resolve => setImmediate(resolve));
 const FIM = ['completed', 'partial', 'failed'];
 
-function conexaoDeMentira({ status = 'partial', lastError = 'openai_rate_limited', wiped = false, criado = true } = {}) {
+function conexaoDeMentira({ status = 'partial', lastError = 'openai_rate_limited', wiped = false, criado = true, chave = true } = {}) {
   const envios = new Map(criado ? [[JOB, { status, stage: status, progress: {}, lastError, wiped }]] : []);
   const pedidos = [];
   const corpos = [];
@@ -30,11 +30,20 @@ function conexaoDeMentira({ status = 'partial', lastError = 'openai_rate_limited
     }
     if (!estado) return json(404, { error: 'job_not_found' });
     if (caminho === '/jobs/get') return json(200, { job: { jobId }, state: { jobId, ...estado } });
+    if (caminho === '/jobs/usar-a-chave') return usarAChave(jobId, estado);
     if (caminho !== '/jobs/retry') return json(404, { error: 'not_found' });
     if (estado.wiped || estado.lastError === 'frases_apagadas') return json(409, { error: 'job_wiped' });
     if (!FIM.includes(estado.status)) return json(200, { jobId, status: estado.status });
     envios.set(jobId, { ...estado, status: 'queued', stage: 'queued', progress: {}, lastError: null });
     return json(200, { jobId, status: 'queued' });
+  }
+
+  function usarAChave(jobId, estado) {
+    if (FIM.includes(estado.status) || estado.wiped) return json(409, { error: 'job_finished' });
+    if (!chave) return json(409, { error: 'openai_key_missing' });
+    const { waiting, ...resto } = estado;
+    envios.set(jobId, { ...resto, usingKey: true });
+    return json(200, { jobId, status: estado.status });
   }
 
   async function transporte(pedido) {
@@ -52,6 +61,7 @@ function conexaoDeMentira({ status = 'partial', lastError = 'openai_rate_limited
     conversa: ConversaComOAnki.criar({ transporte, sinalDoPrazo: () => undefined }),
     pedidos: caminho => pedidos.filter(c => c === caminho).length,
     corposDe: caminho => corpos.filter(p => p.caminho === caminho).map(p => p.corpo),
+    estado: () => envios.get(JOB),
     mudar: mudanca => envios.set(JOB, { ...envios.get(JOB), ...mudanca }),
     esquecer: () => envios.delete(JOB),
     responderSempre: (caminho, resposta) => respostas.set(caminho, resposta),
@@ -293,111 +303,69 @@ async function oPadraoLeACadaDoisSegundosPelaConversaDoPainel() {
   assert.throws(() => EnvioAcompanhado.acompanhar({}), /jobId/);
 }
 
+const ESPERANDO_O_PLANO = { status: 'running', stage: 'generate_cards', lastError: null, waiting: { reason: 'plan_limit' }, progress: { done: 3, total: 10 } };
 
-const CORPO = Object.freeze({
-  jobId: JOB,
-  lang: 'en',
-  deckName: 'Inglês',
-  imageSource: 'none',
-  entries: [{ phraseId: 1700000000000, line: 'give up : She gave up smoking last year.' }],
-});
-
-async function criarMandaOCorpoEAcompanhaAteOFim() {
-  const conexao = conexaoDeMentira({ criado: false });
-  const { envio, relogio, estados, lidos } = acompanharNaMentira(conexao, CORPO);
-  assert.deepStrictEqual(await envio.criar(), { ok: true });
+async function usarAChaveSegueOEnvioPelaChaveEAcompanhaAteOFim() {
+  const conexao = conexaoDeMentira();
+  conexao.mudar(ESPERANDO_O_PLANO);
+  const { envio, relogio, estados } = acompanharNaMentira(conexao);
+  assert.deepStrictEqual(await envio.usarAChave(), { ok: true });
   await vez();
-  assert.deepStrictEqual(JSON.parse(JSON.stringify(conexao.corposDe('/jobs'))), [CORPO]);
-  assert.deepStrictEqual(estados(), [ESTADO.NA_FILA]);
+  assert.strictEqual(conexao.estado().usingKey, true);
+  assert.strictEqual(conexao.estado().waiting, undefined);
+  assert.deepStrictEqual(estados(), [ESTADO.ANDANDO]);
 
-  conexao.mudar({ status: 'completed', stage: 'completed', cards: { '1700000000000-0': { status: 'added', guid: 'g1' } } });
+  conexao.mudar({ status: 'completed', stage: 'completed', progress: {} });
   await relogio.passar();
-  assert.deepStrictEqual(estados(), [ESTADO.NA_FILA, ESTADO.CONCLUIDO]);
-  assert.strictEqual(lidos.at(-1).cards['1700000000000-0'].guid, 'g1', 'o ouvinte recebe o estado lido da Conexão');
+  assert.deepStrictEqual(estados(), [ESTADO.ANDANDO, ESTADO.CONCLUIDO]);
   assert.strictEqual(relogio.esperando(), 0);
   assert.strictEqual(conexao.pedidos('/jobs/retry'), 0);
 }
 
-async function doisCriarAntesDaRespostaSaoUmPedidoSo() {
-  const conexao = conexaoDeMentira({ criado: false });
-  const { envio } = acompanharNaMentira(conexao, CORPO);
-  const soltar = conexao.segurar('/jobs');
-  const primeiro = envio.criar();
-  const segundo = envio.criar();
+async function doisCliquesEmUsarAChaveSaoUmPedidoSo() {
+  const conexao = conexaoDeMentira();
+  conexao.mudar(ESPERANDO_O_PLANO);
+  const { envio } = acompanharNaMentira(conexao);
+  const soltar = conexao.segurar('/jobs/usar-a-chave');
+  const primeiro = envio.usarAChave();
+  const segundo = envio.usarAChave();
   await vez();
   soltar();
-  assert.deepStrictEqual(await primeiro, { ok: true });
-  assert.deepStrictEqual(await segundo, { ok: true });
-  assert.strictEqual(conexao.pedidos('/jobs'), 1);
+  assert.deepStrictEqual([await primeiro, await segundo], [{ ok: true }, { ok: true }]);
+  assert.strictEqual(conexao.pedidos('/jobs/usar-a-chave'), 1);
   envio.largar();
 }
 
-async function criarDeNovoOEnvioQueTerminouSemChegarOTentaDeNovoSemMostrarOFimVelho() {
-  const conexao = conexaoDeMentira({ status: 'failed', lastError: 'openai_key_rejected' });
-  const { envio, estados } = acompanharNaMentira(conexao, CORPO);
-  assert.deepStrictEqual(await envio.criar(), { ok: true });
+async function usarAChaveSemChaveNaConexaoDizSemChaveESemLeitura() {
+  const conexao = conexaoDeMentira({ chave: false });
+  conexao.mudar(ESPERANDO_O_PLANO);
+  const { envio, relogio } = acompanharNaMentira(conexao);
+  assert.deepStrictEqual(await envio.usarAChave(), { semChave: true });
   await vez();
-  assert.strictEqual(conexao.pedidos('/jobs'), 1);
-  assert.strictEqual(conexao.pedidos('/jobs/retry'), 1);
-  assert.deepStrictEqual(estados(), [ESTADO.NA_FILA], 'o fim velho não chega à tela');
-  envio.largar();
-}
-
-async function criarDeNovoOEnvioQueJaChegouSoLe() {
-  const conexao = conexaoDeMentira({ status: 'completed', lastError: null });
-  const { envio, relogio, estados } = acompanharNaMentira(conexao, CORPO);
-  assert.deepStrictEqual(await envio.criar(), { ok: true });
-  await vez();
-  assert.strictEqual(conexao.pedidos('/jobs/retry'), 0);
-  assert.deepStrictEqual(estados(), [ESTADO.CONCLUIDO]);
-  assert.strictEqual(relogio.esperando(), 0);
-}
-
-async function criarOEnvioComAsFrasesApagadasEApagadoESemLeitura() {
-  const conexao = conexaoDeMentira({ status: 'failed', lastError: 'openai_key_rejected', wiped: true });
-  const { envio, relogio } = acompanharNaMentira(conexao, CORPO);
-  assert.deepStrictEqual(await envio.criar(), { apagado: true });
-  await vez();
+  assert.deepStrictEqual(conexao.estado().waiting, { reason: 'plan_limit' });
+  assert.strictEqual(conexao.estado().usingKey, undefined);
   assert.strictEqual(conexao.pedidos('/jobs/get'), 0);
   assert.strictEqual(relogio.esperando(), 0);
 }
 
-async function aFalhaAoCriarDizOPedidoEQuemNaoRespondeuESemLeitura() {
-  const conexao = conexaoDeMentira({ criado: false });
-  const { envio } = acompanharNaMentira(conexao, CORPO);
-  conexao.responderSempre('/jobs', () => { throw new Error('Failed to fetch'); });
-  assert.deepStrictEqual(await envio.criar(), { falha: `POST /jobs ${JOB} · Failed to fetch`, semResposta: true, status: null });
-
-  conexao.responderSempre('/jobs', () => ({ status: 500, texto: '{"error":"internal_error"}' }));
-  assert.deepStrictEqual(await envio.criar(), { falha: `POST /jobs ${JOB} · HTTP 500 · internal_error`, semResposta: false, status: 500 });
-
-  conexao.responderSempre('/jobs', () => ({ status: 400, texto: '{"error":"invalid_request"}' }));
-  assert.deepStrictEqual(await envio.criar(), { falha: `POST /jobs ${JOB} · HTTP 400 · invalid_request`, semResposta: false, status: 400 });
-  await vez();
-  assert.strictEqual(conexao.pedidos('/jobs/get'), 0);
-}
-
-async function aFalhaAoRepetirOEnvioQueJaTerminouDizOPedidoDoRetry() {
-  const conexao = conexaoDeMentira({ status: 'partial', lastError: 'cards_failed' });
-  conexao.responderSempre('/jobs/retry', () => { throw new Error('Failed to fetch'); });
-  const { envio } = acompanharNaMentira(conexao, CORPO);
-  assert.deepStrictEqual(await envio.criar(), { falha: `POST /jobs/retry ${JOB} · Failed to fetch`, semResposta: true, status: null });
-  await vez();
-  assert.strictEqual(conexao.pedidos('/jobs/get'), 0);
-}
-
-async function criarSoComOJobIdNaoTemOQueMandar() {
-  const conexao = conexaoDeMentira({ criado: false });
+async function usarAChaveNumEnvioQueTerminouEFalhaComOPedidoEACausa() {
+  const conexao = conexaoDeMentira();
   const { envio } = acompanharNaMentira(conexao);
-  assert.throws(() => envio.criar(), /corpo/);
-  assert.strictEqual(conexao.pedidos('/jobs'), 0);
+  assert.deepStrictEqual(await envio.usarAChave(), { falha: `POST /jobs/usar-a-chave ${JOB} · HTTP 409 · job_finished` });
+
+  conexao.responderSempre('/jobs/usar-a-chave', () => { throw new Error('Failed to fetch'); });
+  assert.deepStrictEqual(await envio.usarAChave(), { falha: `POST /jobs/usar-a-chave ${JOB} · Failed to fetch` });
+  await vez();
+  assert.strictEqual(conexao.pedidos('/jobs/get'), 0);
+  assert.strictEqual(conexao.estado().usingKey, undefined);
 }
 
-async function largarComOCriarNoArNaoComecaALer() {
-  const conexao = conexaoDeMentira({ criado: false });
-  const { envio, relogio, estados } = acompanharNaMentira(conexao, CORPO);
-  const soltar = conexao.segurar('/jobs');
-  const pedido = envio.criar();
+async function largarComOUsarAChaveNoArNaoComecaALer() {
+  const conexao = conexaoDeMentira();
+  conexao.mudar(ESPERANDO_O_PLANO);
+  const { envio, relogio, estados } = acompanharNaMentira(conexao);
+  const soltar = conexao.segurar('/jobs/usar-a-chave');
+  const pedido = envio.usarAChave();
   await vez();
   envio.largar();
   soltar();
@@ -408,35 +376,22 @@ async function largarComOCriarNoArNaoComecaALer() {
   assert.strictEqual(relogio.esperando(), 0);
 }
 
-async function aLeituraQueFalhaAvisaQuemPediuESegueLendo() {
-  const conexao = conexaoDeMentira({ criado: false });
-  const { envio, relogio, estados } = acompanharNaMentira(conexao, CORPO);
-  const naoLidas = [];
-  envio.aoNaoLer(falha => naoLidas.push(falha));
-  conexao.responderSempre('/jobs/get', () => ({ status: 500, texto: '{"error":"internal_error"}' }));
-  await envio.criar();
+async function quemLeSozinhoATelaOModuloSoPede() {
+  const conexao = conexaoDeMentira();
+  const { envio, relogio, estados } = acompanharNaMentira(conexao, { jobId: JOB }, { lerSozinho: false });
+  assert.deepStrictEqual(await envio.tentarDeNovo(), { ok: true });
+  conexao.mudar(ESPERANDO_O_PLANO);
+  assert.deepStrictEqual(await envio.usarAChave(), { ok: true });
   await vez();
-  assert.deepStrictEqual(naoLidas, [{ falha: `POST /jobs/get ${JOB} · HTTP 500 · internal_error`, semResposta: false, status: 500 }]);
+  assert.deepStrictEqual([conexao.pedidos('/jobs/retry'), conexao.pedidos('/jobs/usar-a-chave'), conexao.pedidos('/jobs/get')], [1, 1, 0]);
   assert.deepStrictEqual(estados(), []);
-  assert.strictEqual(relogio.esperando(), 1, 'segue lendo');
-
-  conexao.voltar('/jobs/get');
-  conexao.esquecer();
-  await relogio.passar();
-  assert.strictEqual(naoLidas.length, 1, 'o 404 não é leitura que falhou: é o Envio desconhecido');
-  assert.deepStrictEqual(estados(), [ESTADO.DESCONHECIDO]);
+  assert.strictEqual(relogio.esperando(), 0);
+  assert.strictEqual(envio.situacao(), null);
 }
 
-async function aTelaEscolheOIntervaloDaLeitura() {
-  const conexao = conexaoDeMentira({ criado: false });
-  const { envio, relogio } = acompanharNaMentira(conexao, CORPO, { intervaloMs: 1000 });
-  await envio.criar();
-  await vez();
-  assert.deepStrictEqual(relogio.intervalos(), [1000]);
-  envio.largar();
-}
+module.exports = { JOB, vez, conexaoDeMentira, acompanharNaMentira };
 
-(async () => {
+if (require.main === module) (async () => {
   await doisCliquesAntesDaRespostaSaoUmPedidoSo();
   await oEnvioJaNaFilaTambemEOk();
   await o409JobWipedViraApagadoESemLeitura();
@@ -451,17 +406,12 @@ async function aTelaEscolheOIntervaloDaLeitura() {
   await tentarDeNovoDepoisDoFimAcompanhaOutraVez();
   await oSegundoAcompanhamentoComALeituraSemRespostaSegueLendo();
   await oPadraoLeACadaDoisSegundosPelaConversaDoPainel();
-  await criarMandaOCorpoEAcompanhaAteOFim();
-  await doisCriarAntesDaRespostaSaoUmPedidoSo();
-  await criarDeNovoOEnvioQueTerminouSemChegarOTentaDeNovoSemMostrarOFimVelho();
-  await criarDeNovoOEnvioQueJaChegouSoLe();
-  await criarOEnvioComAsFrasesApagadasEApagadoESemLeitura();
-  await aFalhaAoCriarDizOPedidoEQuemNaoRespondeuESemLeitura();
-  await aFalhaAoRepetirOEnvioQueJaTerminouDizOPedidoDoRetry();
-  await criarSoComOJobIdNaoTemOQueMandar();
-  await largarComOCriarNoArNaoComecaALer();
-  await aLeituraQueFalhaAvisaQuemPediuESegueLendo();
-  await aTelaEscolheOIntervaloDaLeitura();
+  await usarAChaveSegueOEnvioPelaChaveEAcompanhaAteOFim();
+  await doisCliquesEmUsarAChaveSaoUmPedidoSo();
+  await usarAChaveSemChaveNaConexaoDizSemChaveESemLeitura();
+  await usarAChaveNumEnvioQueTerminouEFalhaComOPedidoEACausa();
+  await largarComOUsarAChaveNoArNaoComecaALer();
+  await quemLeSozinhoATelaOModuloSoPede();
   console.log('test_envio_acompanhado: ok');
 })().catch(erro => {
   console.error(erro);

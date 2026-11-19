@@ -42,7 +42,8 @@ Tests: `e2e/tests/painel-envio-limite.spec.js` (the card, the three actions, the
   (the Cards of `state.cards` not `added`/`duplicate`; “Falta 1 cartão”) and “Quando o plano liberar, o Envio continua sozinho.”, then three actions in a
   row: **Gerenciar uso** (a link, the main one, to `chatgpt.com/settings/usage` in a new tab), **Usar a minha chave** and **Tentar de novo**. It goes by itself
   when the Conexão drops `waiting`. A closed Anki still wins over it (ENV-18).
-- **Usar a minha chave, in the panel.** On `200` the card drops the limit at once (the next read agrees: no `waiting`); on `409 openai_key_missing` the
+- **Usar a minha chave, in the panel.** The request goes through the Envio's `EnvioAcompanhado` (`usarAChave()`: two clicks are one request; C3,
+  [envio-estados.md](envio-estados.md)). On `200` the card drops the limit at once (the next read agrees: no `waiting`); on `409 openai_key_missing` the
   progress modal closes and the panel goes to `#configuracoes/ia` to paste a key (the Envio keeps waiting for the plan); any other failure says ENV-14's “Não deu para retomar o envio…”.
 - **Driving it** (`drive.sh anki-plano-no-limite painel-envio-limite.spec`): `moverEnvio(jobId, { stage, cartoes, esperando: { reason: 'plan_limit' } })`;
   `guardarChaveNaConexao('9f3a')` gives Usar a minha chave a key. The visual reference `envio-limite-do-plano` waits for the owner (`test.fixme`, no PNG).
