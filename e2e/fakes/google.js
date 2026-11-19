@@ -55,12 +55,15 @@ function criarFakeGoogle() {
     if (caminhoCompleto.startsWith('/ranking/')) return tratarRanking(route, req, caminhoCompleto.slice(1), metodo);
 
     if (caminhoCompleto === ':batchWrite' && metodo === 'POST') {
+      return responderJson(route, 403, { error: { code: 403, status: 'PERMISSION_DENIED', message: 'Missing or insufficient permissions.' } });
+    }
+    if (caminhoCompleto === ':commit' && metodo === 'POST') {
       if (recusarEscritas) return responderJson(route, 503, { error: { message: 'indisponível' } });
       for (const write of req.postDataJSON().writes || []) {
         if (write.update) documentos.set(caminhoDoNome(write.update.name), write.update.fields || {});
         if (write.delete) documentos.delete(caminhoDoNome(write.delete));
       }
-      return responderJson(route, 200, { writeResults: [] });
+      return responderJson(route, 200, { writeResults: [], commitTime: new Date().toISOString() });
     }
 
     const caminho = caminhoCompleto.replace(/^\//, '');
