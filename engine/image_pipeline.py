@@ -4,10 +4,10 @@ the card's prompt. The code runs inside the Anki add-on (`complemento/imagem_do_
 standard library only, no output of its own. `build` returns the functions that do one card; `image_real_first.py` has
 the "real photo first" one.
 
-The key arrives bound (`pela_chave`, a `provedores.PelaChave`, also `config["pela_chave"]` for the generated image), never as a secret.
-Optional keys of `config` are for the add-on: `openai_base` / `openverse_base` (where the plan's judge and the photo search go; without
-them the real addresses), `plano_do_chatgpt` (the judge through the ChatGPT plan) and `image_records_by_card` (the cost records name the card by its stem and keep no search text, because they stay
-on disk after the Frases are erased).
+Nothing that pays arrives as a secret: the key comes bound (`pela_chave`, a `provedores.PelaChave`, also `config["pela_chave"]` for the
+generated image) and the judge comes ready (`config["juiz_da_imagem"]`, whose `julgar` goes by the ChatGPT plan or the key).
+Optional keys of `config` are for the add-on: `openverse_base` (where the photo search goes; without it the real address) and
+`image_records_by_card` (the cost records name the card by its stem and keep no search text, because they stay on disk after the Frases are erased).
 """
 
 import re
@@ -36,14 +36,12 @@ def build(config, output_dir, img_source, pela_chave, log_dir):
     img_sources: dict[str, str] = {}
     by_card = bool(config.get("image_records_by_card"))
     openverse_hosts = {"openverse_base": config["openverse_base"]} if config.get("openverse_base") else {}
-    openai_host = {"openai_base": config["openai_base"]} if config.get("openai_base") else {}
 
     def guard_extra(stem: str) -> dict:
         return {"label": stem} if by_card else {}
 
     def judge_extra(stem: str) -> dict:
-        extra = dict(openai_host, **guard_extra(stem))
-        return dict(extra, plano=config["plano_do_chatgpt"]) if config.get("plano_do_chatgpt") else extra
+        return dict(guard_extra(stem), juiz=config.get("juiz_da_imagem"))
 
     stopwords = {
         "a", "an", "the", "and", "or", "but", "with", "without", "for", "from",
