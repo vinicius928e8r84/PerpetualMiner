@@ -9,19 +9,22 @@ deixam as frases que faltam para o próximo Envio, sem erro. O custo vai ao `cos
 import re
 
 from . import baralhos, tipo_de_nota
+from .ia_do_envio import SemQuemPague
 from .ia_dos_cartoes import CORRECAO
-from .modelo_dos_cartoes import PARADO
 from .motor.openai_http import ErroDaOpenAI
 
 LIMITE_POR_ENVIO = 20
 
 
 class CorrecaoDaCriacao:
-    """A parte do `Trabalho` que corrige as frases da Criação. Pede `self.fila`, `self.colecao`, `self.motor`, `self.ia`,
-    `self.teto` e `self.logger`."""
+    """O que o `Trabalho` chama depois do último Cartão para corrigir as frases da Criação."""
 
-    def _corrigir_as_frases(self, job_id, pedido, config, parada):
-        """Chamado depois do último Cartão com o código que parou o Envio, ou None: a chave que o parou não corrige nada."""
+    def __init__(self, fila, colecao, motor, logger):
+        self.fila, self.colecao, self.motor, self.logger = fila, colecao, motor, logger
+
+    def corrigir(self, job_id, pedido, config, ia, parada):
+        """`ia` é a porta presa ao Envio (`ia_do_envio.IaDoEnvio`: quem paga e o teto); `parada`, o código que parou o Envio, ou None: a chave
+        que o parou não corrige nada."""
         if parada:
             return
         try:
@@ -33,12 +36,12 @@ class CorrecaoDaCriacao:
             return
         verso_em_dia = False
         for nota in notas:
-            if self.fila.estado(job_id).get("wiped") or (self.teto is not None and self.teto.chegou()):
+            if self.fila.estado(job_id).get("wiped") or ia.teto_chegou():
                 return
-            paga = self.ia.para_o_texto(self.fila.estado(job_id).get("usingKey", False))
-            if paga.quem == PARADO:
+            try:
+                pedir = ia.pedido_do_texto(config, CORRECAO)
+            except SemQuemPague:
                 return
-            pedir = self.ia.pedido_do_texto(paga, config, CORRECAO)
             palavra = re.split(r"\s+-\s+/", nota["palavra"])[0]  # o campo traz a pronúncia depois da Palavra
             try:
                 correcao = self.motor.corrigir_frase.corrigir(config, pedir, palavra, nota["frase"], nota["escrita"])

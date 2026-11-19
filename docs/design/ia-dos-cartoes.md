@@ -64,10 +64,11 @@ A tabela, a leitura do que está guardado e o texto pedido pela porta (pela chav
 mentira: `test_quem_paga.py`, `test_imagem_pelo_plano.py`, `test_voz_de_reserva.py`, `test_ouvir_a_voz.py`, `test_limite_do_plano.py`
 e os `test_envio*.py`. Não provam o login real nem a OpenAI real.
 
-## Os próximos passos
+## O que veio depois (C4)
 
 O motor já escreve um Cartão por chamada (`generate_cards.escrever`: o texto que já está no disco não é pedido de novo), sem as opções de lote. O Motor
 do Cartão (`complemento/motor_do_cartao.py`) tem as duas entradas, `escrever(cartao, ia)` e `montar(cartao, texto, ia, avisar)`, e as duas pedem à
 porta presa ao Envio (`complemento/ia_do_envio.py`): ela lê o Usar a minha chave do Envio a cada pedido e conduz o teto do mês e o limite do plano,
-com o `waiting` do estado pela `limite_do_plano.EsperaDoEnvio`. O `Trabalho` não herda mais o áudio, a imagem, o limite do plano nem o teto. Falta,
-numa versão da Conexão: a correção da Criação e o tipo de nota fora da herança do `Trabalho`.
+com o `waiting` do estado pela `limite_do_plano.EsperaDoEnvio`. O `Trabalho` não herda mais nada: a correção da Criação (`CorrecaoDaCriacao.corrigir`)
+pede à mesma porta, e o tipo de nota é um valor do Envio (`TipoDoEnvio.conferir`), conferido uma vez no começo. Com isso o C4 está feito; o que
+ficou de fora é a #11 (outros provedores).
