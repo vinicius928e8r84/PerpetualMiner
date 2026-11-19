@@ -1,7 +1,8 @@
 # Preview do front
 
-O site que o Vercel publica, para olhar a mudança visual sem instalar nada. A pull request que muda
-algo que o preview mostra recebe uma URL própria, comentada pelo bot do Vercel no PR.
+O site que o Vercel publica, para olhar a mudança visual sem instalar nada. O Vercel publica a `main`
+e as branches `vitrine/*`; a pull request de uma branch `vitrine/<nome>` recebe uma URL própria,
+comentada pelo bot do Vercel no PR. As outras branches não criam deployment (veja Limite, abaixo).
 
 | Arquivo | O que é |
 |---|---|
@@ -56,6 +57,9 @@ telas da raiz, `manifest.json`, `lib/`, `veio/`, `conexao/`, `docs/design/`, `e2
 continua ligada e não há segredo nenhum. `scripts/ci/test_ignorar_build_da_vitrine.js` falha quando o
 preview passa a mostrar um arquivo que a lista do script não pega.
 
-Limite: segundo a documentação do Vercel, o build cancelado pelo `ignoreCommand` ainda conta como
-deployment para o limite de 100 por dia do plano Hobby. O que o script garante é não gastar build nem
-URL em PR que não muda o preview; se a contagem do limite cai, só o painel do Vercel mostra.
+Limite: a documentação do Vercel diz que o build cancelado pelo `ignoreCommand` ainda conta como
+deployment para o limite de 100 por dia do plano Hobby, e passado o limite o status `Vercel` de cada
+PR fica vermelho (`Deployment rate limited`). Por isso o `git.deploymentEnabled` do `vercel.json`
+só deixa criar deployment na `main` e nas branches `vitrine/**`; nas outras o Vercel nem começa, e
+o `ignoreCommand` só decide, nessas duas, se vale construir. Quer o preview de uma mudança visual?
+Abra a PR de uma branch `vitrine/<nome>`.
