@@ -135,10 +135,13 @@ function criarFakeAnki() {
   }
 
   function mundoDaReal() {
-    const { colecao, perfil } = estado.contexto;
-    if (!estado.vocabularioDefinido && !estado.baralhosDoAnki && colecao === undefined && perfil === PERFIL_DE_SEMPRE) return null;
+    const { colecao } = estado.contexto;
+    const perfil = perfis.aberto() ?? null;
+    const daLista = perfis.paraAReal();
+    if (!estado.vocabularioDefinido && !estado.baralhosDoAnki && colecao === undefined && perfil === PERFIL_DE_SEMPRE && !daLista) return null;
     const mundo = {
       perfil,
+      ...(daLista && { perfis: daLista }),
       colecao: colecaoDoMundo({
         doContrato: colecao === undefined ? null : contrato.colecoes[colecao], baralhosDoAnki: estado.baralhosDoAnki,
         vocabularios: [...estado.decksDoVocabulario].map(([nome, idioma]) => [nome, estado.vocabulario[idioma]]),
@@ -216,6 +219,7 @@ function criarFakeAnki() {
     ligar() { estado.ligada = true; },
     abrirPerfil(perfil) { estado.contexto = { ...estado.contexto, perfil }; },
     definirPerfis: perfis.definir,
+    espelharPerfis: perfis.espelhar,
     /** @estado-guardado O perfil que a Conexão tem marcado (`null`: nenhum ainda). */
     perfilMarcado: perfis.marcado,
     /** @estado-guardado O perfil que o Anki tem aberto (`null`: a tela de perfis). */
