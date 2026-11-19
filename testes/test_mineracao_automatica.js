@@ -106,9 +106,9 @@ async function legendaInglesaNovaEGravadaContadaPublicadaERegistrada() {
   assert.ok(resultado.evaluation.accept);
   assert.ok(resultado.evaluation.keywords.some(palavra => palavra.startsWith('harbour@')));
   const [, gravada] = p.chamadas.find(([nome]) => nome === 'salvarSeNova');
-  assert.deepStrictEqual(gravada, {
+  assert.deepStrictEqual(plano(gravada), {
     texto: pedido.texto, origem: 'prime', contexto: pedido.contexto, idioma: 'Inglês',
-    extras: { autoMiner: true, autoMinerReason: resultado.evaluation.reason, keywords: resultado.evaluation.keywords, autoKeyword: true },
+    extras: { autoMiner: true, autoMinerReason: resultado.evaluation.reason, keywords: plano(resultado.evaluation.keywords), autoKeyword: true },
   });
   assert.deepStrictEqual(p.chamadas.map(([nome]) => nome), ['vocabulario', 'salvarSeNova', 'contarMais', 'publicar', 'registrar']);
   assert.deepStrictEqual(p.chamadas.find(([nome]) => nome === 'contarMais'), ['contarMais', 'en']);
@@ -179,7 +179,7 @@ async function umTerceiroIdiomaEhUmaLinhaNaTabela() {
 }
 
 async function aTabelaPadraoTemInglesERusso() {
-  assert.deepStrictEqual(MineracaoAutomatica.IDIOMAS.map(idioma => idioma.codigo), ['ru', 'en']);
+  assert.deepStrictEqual(plano(MineracaoAutomatica.IDIOMAS.map(idioma => idioma.codigo)), ['ru', 'en']);
 }
 
 async function avaliarSoAvaliaESoLeOVocabularioQuandoPrecisa() {
