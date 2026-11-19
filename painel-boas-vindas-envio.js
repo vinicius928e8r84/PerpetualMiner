@@ -1,20 +1,17 @@
 'use strict';
 
 (function (raiz) {
-  const { textoDaVoz, Veio, AjustesDeEnvio, ConversaComOAnki, PedidoAoAnki, Configuracao, ehRussa } = raiz;
+  const { textoDaVoz, Veio, AjustesDeEnvio, ConversaComOAnki, PedidoAoAnki, Configuracao, EnvioAcompanhado, ehRussa } = raiz;
   const { elemento } = Veio;
   const ESPERA_DA_LEITURA_MS = 1000;
-  const ETAPAS_DO_FIM = ['completed', 'partial', 'failed'];
   const CONTEXTO_DA_FRASE_DE_TESTE = '[Contexto: Teste - Boas-vindas - Primeiro cartão]';
   const FRASES_DE_TESTE = {
     en: `give up : She gave up smoking last year. ${CONTEXTO_DA_FRASE_DE_TESTE}`,
     ru: `приходила : Она приходила вчера. ${CONTEXTO_DA_FRASE_DE_TESTE}`,
   };
-  const { doCodigo } = raiz.SituacaoDoEnvio;
+  const { ESTADO, doCodigo, terminou } = raiz.SituacaoDoEnvio;
   const DA_CONEXAO = { fala: 'ONB-23.motivoConexao', chave: false };
   const OUTRO = doCodigo(null);
-
-  const esperar = ms => new Promise(resolver => setTimeout(resolver, ms));
 
   function botao(variante, id, aoClicar) {
     const no = elemento('button', `veio-botao veio-botao--${variante}`, textoDaVoz(id));
@@ -35,6 +32,12 @@
     const previas = new Map();
     let retrato = null;
     let vez = 0;
+    let acompanhado = null;
+
+    function largarOEnvio() {
+      acompanhado?.largar();
+      acompanhado = null;
+    }
 
     function mostrarEnviando() {
       lugar.replaceChildren(elemento('p', 'bv-envio__enviando', textoDaVoz('ONB-23.enviando')));
@@ -100,8 +103,20 @@
       };
     }
 
+    async function terminar(minha, corpo, situacao, lido) {
+      if (situacao.estado === ESTADO.CONCLUIDO) {
+        const guid = Object.values(lido.cards || {}).find(cartao => cartao.guid)?.guid || null;
+        await Configuracao.guardarPrimeiroEnvio(() => ({ chegou: true, guid }));
+        return minha === vez ? mostrarPronto({ corpo, guid }) : undefined;
+      }
+      if (situacao.estado === ESTADO.DESCONHECIDO) return mostrarFalha(DA_CONEXAO);
+      if (lido.lastError === 'cards_failed' && !Object.values(lido.cards || {}).some(cartao => cartao.error)) await Configuracao.guardarPrimeiroEnvio(() => ({ corpo: null }));
+      return minha === vez ? mostrarFalha(motivoDoEnvio(lido)) : undefined;
+    }
+
     async function executar() {
       const minha = ++vez;
+      largarOEnvio();
       mostrarEnviando();
       let primeiro = retrato.estado.progresso?.primeiroEnvio;
       if (primeiro?.chegou) return mostrarPronto(primeiro);
@@ -115,43 +130,28 @@
         return minha === vez ? mostrarFalha(OUTRO) : undefined;
       }
       const { corpo } = primeiro;
-      const criado = await ConversaComOAnki.pedir(PedidoAoAnki.criarEnvio(corpo));
-      if (minha !== vez) return undefined;
-      if (!criado.ok) return mostrarFalha(criado.motivo === ConversaComOAnki.MOTIVO.SEM_RESPOSTA || criado.status >= 500 ? DA_CONEXAO : OUTRO);
-      if (['failed', 'partial'].includes(criado.dados.status)) {
-        const outra = await ConversaComOAnki.pedir(PedidoAoAnki.tentarEnvioDeNovo(corpo.jobId));
-        if (minha !== vez) return undefined;
-        if (outra.status === 409) {
-          await Configuracao.guardarPrimeiroEnvio(() => ({ corpo: null }));
-          return minha === vez ? mostrarFalha(OUTRO) : undefined;
-        }
-        if (!outra.ok) return mostrarFalha(DA_CONEXAO);
+      const envio = EnvioAcompanhado.acompanhar(corpo, { intervaloMs: ESPERA_DA_LEITURA_MS });
+      acompanhado = envio;
+      envio.aoNaoLer(() => {
+        if (minha !== vez) return;
+        largarOEnvio();
+        mostrarFalha(DA_CONEXAO);
+      });
+      envio.aoMudar((situacao, lido) => (minha === vez && terminou(situacao) ? terminar(minha, corpo, situacao, lido) : undefined));
+      const desfecho = await envio.criar();
+      if (minha !== vez || desfecho.ok) return undefined;
+      if (desfecho.apagado) {
+        await Configuracao.guardarPrimeiroEnvio(() => ({ corpo: null }));
+        return minha === vez ? mostrarFalha(OUTRO) : undefined;
       }
-
-      for (;;) {
-        const lido = await ConversaComOAnki.pedir(PedidoAoAnki.verEnvio(corpo.jobId), { formato: dados => Boolean(dados.state) });
-        if (minha !== vez) return undefined;
-        if (!lido.ok) return mostrarFalha(DA_CONEXAO);
-        const { state: estado } = lido.dados;
-        if (estado.status === 'completed') {
-          const guid = Object.values(estado.cards || {}).find(cartao => cartao.guid)?.guid || null;
-          await Configuracao.guardarPrimeiroEnvio(() => ({ chegou: true, guid }));
-          return minha === vez ? mostrarPronto({ corpo, guid }) : undefined;
-        }
-        if (ETAPAS_DO_FIM.includes(estado.status)) {
-          if (estado.lastError === 'cards_failed' && !Object.values(estado.cards || {}).some(cartao => cartao.error)) await Configuracao.guardarPrimeiroEnvio(() => ({ corpo: null }));
-          return mostrarFalha(motivoDoEnvio(estado));
-        }
-        await esperar(ESPERA_DA_LEITURA_MS);
-        if (minha !== vez) return undefined;
-      }
+      return mostrarFalha(desfecho.semResposta || desfecho.status >= 500 ? DA_CONEXAO : OUTRO);
     }
 
     let comecou = false;
     function desenhar(novoRetrato, aVista) {
       retrato = novoRetrato;
       if (!aVista) {
-        if (comecou) { vez += 1; comecou = false; }
+        if (comecou) { vez += 1; largarOEnvio(); comecou = false; }
         return;
       }
       if (comecou || !retrato) return;
