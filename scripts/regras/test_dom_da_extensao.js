@@ -25,7 +25,7 @@ acusa('html-cru', 'painel.js', "lista.innerHTML += `<li>${frase.texto}</li>`;\nc
 acusa('html-cru', 'popup.js', "caixa.insertAdjacentHTML('beforeend', html);\ndocument.write(html);\nconst nos = faixa.createContextualFragment(html);\n", [1, 2, 3],
   'as outras portas por onde texto vira HTML');
 assert.match(acusa('html-cru', 'lib/mineracao.js', 'no.innerHTML = texto;\n', [1], 'lib/ também é da extensão')[0].detalhe, /innerHTML/);
-acusa('html-cru', 'overlay.js', [
+acusa('html-cru', 'exemplo.js', [
   'no.textContent = texto;',
   "if (no.innerHTML === '') return;",
   'const vazio = no.innerHTML == null;',

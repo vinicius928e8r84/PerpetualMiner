@@ -112,7 +112,7 @@ test('painel: a primeira resposta ligada grava “já respondeu neste computador
 test('popup: uma porta muda conta como desligada em 3 s e o azulejo passa a esperar o Anki', async ({ page, extensao, fakes }) => {
   await ligarOIngles(extensao);
   fakes.anki.silenciar();
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url('popup/popup.html'));
   await expect(page.locator('.popup-azulejo')).toHaveCount(2);
   await expect(esperaDoPopup(page)).toBeHidden();
   await expect(esperaDoPopup(page)).toBeVisible({ timeout: 4000 });
@@ -125,7 +125,7 @@ test('popup: confere só ao abrir, não a cada 15 s; ao reabrir percebe que a Co
   const numeroDeConferencias = () => fakes.anki.requisicoes.filter(r => r.caminho === '/health').length;
   const antes = numeroDeConferencias();
   const resposta = page.waitForResponse('http://127.0.0.1:8766/health');
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url('popup/popup.html'));
   await resposta;
   await expect(esperaDoPopup(page)).toBeHidden();
   expect(numeroDeConferencias()).toBe(antes + 1);
@@ -146,7 +146,7 @@ test('popup: quem confere grava o fato; o painel aberto depois já sabe que a Co
   await extensao.gravarStorage({ pm_anki_ja_conectou: false });
   expect(await lerJaConectou(extensao)).toBe(false);
   fakes.anki.ligar();
-  await page.goto(extensao.url('popup.html'));
+  await page.goto(extensao.url('popup/popup.html'));
   await expect.poll(() => lerJaConectou(extensao)).toBe(true);
 
   fakes.anki.desligar();
@@ -168,7 +168,7 @@ test('painel aberto percebe quando o popup grava a primeira resposta, sem mostra
   fakes.anki.ligar();
   const popup = await page.context().newPage();
   await popup.setViewportSize({ width: 340, height: 600 });
-  await popup.goto(extensao.url('popup.html'));
+  await popup.goto(extensao.url('popup/popup.html'));
   await expect.poll(() => lerJaConectou(extensao)).toBe(true);
   await fotografar(popup, 'popup-conexao-respondendo.png');
   fakes.anki.desligar();

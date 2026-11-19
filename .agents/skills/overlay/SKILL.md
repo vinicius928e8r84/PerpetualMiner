@@ -1,23 +1,23 @@
 ---
 name: overlay
-description: "Use when changing or reviewing the in-page overlay and what drives it from the page: `overlay.js`, `overlay.css` (the floating button and the feedback pill) and `content.js` (reading the caption and the selection, and the answer on screen). Reviewers: open it when the PR touches that surface. It holds the architecture notes moved out of CLAUDE.md for it (what it shows, the IDs it implements, its storage and its tests)."
+description: "Use when changing or reviewing the in-page overlay and what drives it from the page: `overlay/overlay.js`, `overlay/overlay.css` (the floating button and the feedback pill) and `content.js` (reading the caption and the selection, and the answer on screen). Reviewers: open it when the PR touches that surface. It holds the architecture notes moved out of CLAUDE.md for it (what it shows, the IDs it implements, its storage and its tests)."
 ---
 
 # Overlay
 
 Notes from the old `CLAUDE.md` § Architecture. Cross-surface rules: `docs/arquitetura.md`; files: `docs/arquivos/`.
 
-### Overlay (`overlay.js`, `overlay.css`, docs/design/overlay/, M1)
+### Overlay (`overlay/overlay.js`, `overlay/overlay.css`, docs/design/overlay/, M1)
 
 The overlay is one component in Shadow DOM. The only node it adds to the site's DOM is the host,
 `<perpetualminer-overlay>` (its position rules are inline and `!important`, so the site's CSS cannot hide or
 move it); everything else — the button, the pill and the three stylesheets (`veio/tokens.css`,
-`veio/componentes.css`, `overlay.css`, loaded as `<link>`s inside the shadow and declared in
+`veio/componentes.css`, `overlay/overlay.css`, loaded as `<link>`s inside the shadow and declared in
 `web_accessible_resources`) — lives in the shadow. Its root is `.pm` with `data-tema="escuro"` and `all: initial`: always the dark
 tokens, whatever theme the extension pages use, and nothing the site sets on the host reaches it. Chrome
-ignores `@font-face` inside a shadow root, so `overlay.js` registers the packaged fonts on the site's document
+ignores `@font-face` inside a shadow root, so `overlay/overlay.js` registers the packaged fonts on the site's document
 through the `FontFace` API, as bytes it fetches itself (a `url()` would go through the site's `font-src`), under
-names only the overlay uses (`PerpetualMiner Manrope`, `PerpetualMiner JetBrains Mono`), which `overlay.css`
+names only the overlay uses (`PerpetualMiner Manrope`, `PerpetualMiner JetBrains Mono`), which `overlay/overlay.css`
 points the font tokens to: the site never asks for them, and a site's own Manrope keeps its look. The mouse
 is the site's: the host and the `.pm` root have `pointer-events: none`, and only the pill takes it back (not
 the free pill once closed, so the empty corner never swallows a click). The shadow is open, so

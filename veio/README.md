@@ -127,7 +127,7 @@ rótulo do × — ele não inventa um.
 
 As três únicas palavras que a base escreve sozinha estão em
 `ROTULOS_DO_PADRAO`, uma constante interna de `componentes.js` (não
-exportada), porque não são estado de tela nenhuma e por isso não têm ID: `palavra:` e `auto:`, travados no glossário (`glossary.md`), e `Detalhes`, o
+exportada), porque não são estado de tela nenhuma e por isso não têm ID: `palavra:` e `auto:`, travados no glossário (`docs/glossary.md`), e `Detalhes`, o
 nome que a regra V3 da Voz dá ao recolhido.
 
 ### Tokens que a spec não nomeia
@@ -155,9 +155,9 @@ tokens e só começa depois de um toque; com movimento reduzido sai e fica só a
 ### O overlay redefine as fontes
 
 O Chrome ignora o `@font-face` dentro de uma sombra, então o overlay
-(`overlay.js`) registra as fontes empacotadas no documento do site pela API
+(`overlay/overlay.js`) registra as fontes empacotadas no documento do site pela API
 `FontFace`, com nomes só dele (`PerpetualMiner Manrope`, `PerpetualMiner
-JetBrains Mono`), e o `overlay.css` redefine `--veio-fonte-ui`,
+JetBrains Mono`), e o `overlay/overlay.css` redefine `--veio-fonte-ui`,
 `--veio-fonte-display` e `--veio-fonte-mono` no `.pm` para apontar para esses
 nomes. É a única redefinição de token fora de `tokens.css`: a família é a
 mesma, só o nome com que ela é registrada muda.
