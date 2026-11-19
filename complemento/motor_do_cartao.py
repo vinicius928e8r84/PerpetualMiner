@@ -1,29 +1,36 @@
-"""O Motor do Cartão (C4): o que o Envio chama para fazer um Cartão, no lugar das heranças do `Trabalho`. Desenho: `docs/design/ia-dos-cartoes.md`.
+"""O Motor do Cartão (C4): as duas entradas que o Envio chama para fazer um Cartão, no lugar das heranças do `Trabalho`. Desenho:
+`docs/design/ia-dos-cartoes.md`. As duas recebem `ia`, a porta da IA dos cartões presa ao Envio (`ia_do_envio.IaDoEnvio`).
+
+`escrever(cartao, ia)` escreve o texto do Cartão, pago e guardado no disco (`motor/generate_cards.py`): o que já está lá nunca é pedido de
+novo, a falha passageira é pedida de novo nas esperas da OpenAI e o plano no limite é uma espera da porta.
 
 `montar(cartao, texto, ia, avisar)` faz, do texto pago de um Cartão, a nota e a mídia dela: as vozes (`audio_do_cartao.py`), a imagem
 (`imagem_do_cartao.py`) e os campos no Estilo do cartão (`motor/nota_do_cartao.py`). Pode ser refeito: não grava nada na pasta de dados, e
-o que ele paga (a voz de reserva, o juiz, a triagem, a imagem gerada) a porta da IA dos cartões (`ia`) decide quem paga. `avisar(etapa)`
+o que ele paga (a voz de reserva, o juiz, a triagem, a imagem gerada) a porta decide quem paga. `avisar(etapa)`
 diz ao Envio a Etapa em que o Cartão está. O que fica com o Envio: a fila, o estado, a coleção e o tipo de nota."""
 
 from dataclasses import dataclass
 
 from .audio_do_cartao import AudioDoCartao
 from .imagem_do_cartao import ImagemDoCartao
+from .limite_do_plano import LIMITE_DO_PLANO
+from .palavras_do_cartao import fixar_na_entrada
 from .paradas_do_envio import Interrompido
+
+PASSAGEIROS = ("openai_rate_limited", "openai_unreachable", "generation_error", "empty_response")
 
 
 @dataclass(frozen=True)
 class Cartao:
     """Um Cartão de um Envio como o Motor o vê: `id` é `<phraseId>-<posição da Palavra>`, `guid` o da nota, `linha` a linha minerada,
-    `pedido` o do Envio (o idioma, o nível, as vozes, a fonte da imagem), `config` a do motor para o Envio (`motor_do_envio`),
-    `pela_chave` o Usar a minha chave do Envio e `job_id` só para o log."""
+    `pedido` o do Envio (o idioma, o nível, as Palavras fixadas, as vozes, a fonte da imagem), `config` a do motor para o Envio
+    (`motor_do_envio`) e `job_id` só para o log."""
 
     id: str
     guid: str
     linha: str
     pedido: dict
     config: dict
-    pela_chave: bool = False
     job_id: str = ""
 
 
@@ -31,13 +38,38 @@ class MotorDoCartao:
     """`motor` é o de `engine/` (`motor_do_envio.motor_do_complemento()`), `tranca` a da fila e `parar` o evento que para a Conexão."""
 
     def __init__(self, motor, logger, tranca, parar, openai_base, voz_base, openverse_base, adaptador_de_imagem=None, esperas_da_openai=(2, 8, 30)):
-        self.motor, self.parar = motor, parar
+        self.motor, self.parar, self.esperas_da_openai = motor, parar, tuple(esperas_da_openai)
         self._audio = AudioDoCartao(motor, logger, tranca, self._dormir, openai_base, voz_base, esperas_da_openai)
         self._imagem = ImagemDoCartao(motor, logger, openverse_base, adaptador_de_imagem)
 
     def _dormir(self, segundos):
         if self.parar.wait(segundos):
             raise Interrompido()
+
+    def escrever(self, cartao, ia):
+        """None quando o texto do Cartão está no disco (`<output_dir>/<id>.txt`), senão o código da falha. Levanta `SemQuemPague` (da porta)."""
+        while True:
+            codigo = self._o_texto(cartao, ia.pedido_do_texto(cartao.config))
+            if codigo != LIMITE_DO_PLANO:
+                return codigo
+            ia.esperar_o_plano()
+
+    def _o_texto(self, cartao, pedir):
+        """O texto pelo `pedir` da porta, pedido de novo enquanto falha por um motivo passageiro; devolve o código da falha, ou None."""
+        phrase_id, posicao = cartao.id.rsplit("-", 1)
+        entrada = self.motor.parser.parse_line(cartao.config["estilo"]["entrada"], cartao.linha)
+        if entrada is None:
+            return "invalid_card"
+        fixar_na_entrada(cartao.pedido, int(phrase_id), entrada)
+        trabalho = self.motor.parser.get_card_jobs(entrada)[int(posicao)]
+        codigo = None
+        for espera in (None,) + self.esperas_da_openai:
+            if espera is not None:
+                self._dormir(espera)
+            codigo = self.motor.generate_cards.escrever(trabalho, cartao.config, pedir, cartao.id)
+            if codigo not in PASSAGEIROS:
+                break
+        return codigo
 
     def montar(self, cartao, texto, ia, avisar):
         """`(a nota, {nome: bytes} da mídia)`: a nota é a de `nota_do_cartao.campos_da_nota`. Levanta `voz.ErroDaVoz` (o Cartão falha com o

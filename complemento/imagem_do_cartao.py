@@ -48,10 +48,10 @@ class ImagemDoCartao:
         return {nome: dados}, nome
 
     def _escolher_a_imagem(self, cartao, texto, ia):
-        """Os bytes do PNG escolhido para o Cartão, ou None se nenhuma imagem serviu. Com o Usar a minha chave (#158) do Cartão, o juiz também
-        vai pela chave."""
+        """Os bytes do PNG escolhido para o Cartão, ou None se nenhuma imagem serviu. Com o Usar a minha chave (#158) do Envio, a porta dá o juiz
+        também pela chave."""
         pedido, config = cartao.pedido, cartao.config
-        juiz, chave = ia.para_a_imagem(cartao.pela_chave)
+        juiz, chave = ia.para_a_imagem()
         if not juiz or (pedido["imageSource"] != "1" and not chave):
             return None
         motor = self.motor
