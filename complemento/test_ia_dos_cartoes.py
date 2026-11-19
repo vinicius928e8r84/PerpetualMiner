@@ -113,7 +113,7 @@ class ACredencialDeCadaEtapa(unittest.TestCase):
             with tempfile.TemporaryDirectory() as pasta:
                 pagador = porta(pasta, situacao).para_o_texto(pela_chave)
             with self.subTest(situacao=situacao):
-                self.assertEqual((pagador.quem, pagador.config, pagador.motivo), (PARADO, None, motivo))
+                self.assertEqual((pagador.quem, pagador.credencial, pagador.motivo), (PARADO, None, motivo))
 
     def test_usar_a_minha_chave_sem_chave_guardada_para_o_texto_mesmo_com_o_login(self):
         with tempfile.TemporaryDirectory() as pasta:
@@ -164,6 +164,27 @@ def porta_e_modelos_na_openai(pasta, situacao, openai):
 def custos(config):
     with open(os.path.join(config["paths"]["log_dir"], "costs.jsonl"), encoding="utf-8") as arquivo:
         return [json.loads(linha) for linha in arquivo]
+
+
+class UmFormatoDeCredencial(unittest.TestCase):
+    def test_quem_paga_o_texto_leva_a_credencial_do_provedor_e_nada_de_config(self):
+        vistos = {}
+        for situacao in ("sem login", "com login"):
+            with tempfile.TemporaryDirectory() as pasta, OpenAIDeMentira() as openai:
+                ia, _ = porta_na_openai(pasta, situacao, openai)
+                vistos[situacao] = ia.para_o_texto().credencial
+        self.assertEqual(vistos, {
+            "sem login": {"provedor": "openai", "segredo": CHAVE_GUARDADA, "modelo": None},
+            "com login": {"provedor": "openai", "via": "plano", "segredo": "acesso-do-teste", "modelo": "gpt-6-luna"},
+        })
+
+    def test_o_modelo_que_a_pessoa_escolheu_vai_na_credencial_da_chave(self):
+        with tempfile.TemporaryDirectory() as pasta, OpenAIDeMentira() as openai:
+            ia, config = porta_na_openai(pasta, "sem login", openai)
+            pagador = ia.para_o_texto()
+            ia.pedido_do_texto(pagador._replace(credencial=dict(pagador.credencial, modelo="gpt-4.1-mini")), config)("s", "give up : She gave up", "1-0")
+            [(_, corpo)] = openai.chats
+        self.assertEqual(corpo["model"], "gpt-4.1-mini")
 
 
 class OModeloDosCartoesPelaTabela(unittest.TestCase):

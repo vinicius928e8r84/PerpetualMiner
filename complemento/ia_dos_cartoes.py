@@ -30,7 +30,8 @@ def quem_paga_a_etapa(etapa, login, motivo, pela_chave, tem_chave):
 
 
 class JuizDaImagem:
-    """O juiz da imagem do próximo Cartão: pelo plano do ChatGPT quando há (`plano`: o token renovado e o Automático da conta), senão
+    """O juiz da imagem do próximo Cartão: pelo plano do ChatGPT quando há (`plano`: a credencial dele, com o token renovado e o Automático
+    da conta), senão
     pela chave presa (`presa`). O plano que recusa de passagem deixa a chave decidir; outra recusa dele (o limite, a conta) sobe e para o Envio."""
 
     def __init__(self, provedores, plano, presa, base, logger):
@@ -40,7 +41,7 @@ class JuizDaImagem:
         """`(o JSON do veredito, o uso, se a chave pagou)`. Levanta o `ErroDoProvedor` do motor."""
         p = self._provedores
         if self._plano:
-            credencial = {"provedor": p.OPENAI, "via": "plano", "segredo": self._plano["token"], "modelo": self._plano["modelo"], "base": self._base}
+            credencial = dict(self._plano, base=self._base)
             try:
                 texto, uso = p.texto(credencial, sistema, conteudo, tempo=p.TEMPO_DA_IMAGEM, json=True, repeticoes=p.REPETICOES_DA_IMAGEM)
                 return texto, uso, False
@@ -82,9 +83,10 @@ class IaDosCartoes:
         if etapa not in (TEXTO, CORRECAO):
             raise ValueError(etapa)
         provedores, custos = self._motor.provedores, self._motor.cost_tracker
-        junto = dict(config, **pagador.config)
-        cred = provedores.credencial_do_texto(junto, self._openai_base)
-        modelo_da_chave, pasta = provedores.modelo_do_texto(junto), config["paths"]["log_dir"]
+        modelo_do_motor = config["openai"].get("chat_model", "gpt-4o")
+        cred = dict(pagador.credencial, base=self._openai_base)
+        cred["modelo"] = cred["modelo"] or modelo_do_motor
+        modelo_da_chave, pasta = modelo_do_motor if pagador.quem == PLANO else cred["modelo"], config["paths"]["log_dir"]
 
         def pedir(sistema, mensagem, rotulo):
             if etapa == CORRECAO:
