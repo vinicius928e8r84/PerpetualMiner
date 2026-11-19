@@ -1,5 +1,6 @@
 'use strict';
 
+const { ehDaExtensao } = require('../arquivos-do-pacote');
 const { ehJsDaExtensao, linhaDe, semComentariosCss, semComentariosHtml, semComentariosJs } = require('./comum');
 
 const id = 'tokens-veio';
@@ -11,7 +12,7 @@ const conserto = 'Use um token `var(--veio-…)` de veio/tokens.css (cores: --ve
 
 function seAplica(arquivo) {
   if (arquivo === 'veio/tokens.css') return false;
-  if (/^[^/]+\.(css|html)$/.test(arquivo) || /^veio\/.+\.css$/.test(arquivo)) return true;
+  if (/\.(css|html)$/.test(arquivo) && ehDaExtensao(arquivo)) return true;
   if (arquivo === 'e2e/vitrine/vitrine.html' || /^e2e\/pages\/loja-[^/]+\.html$/.test(arquivo)) return true;
   return ehJsDaExtensao(arquivo);
 }
