@@ -242,7 +242,7 @@
     "lib/pareamento.js": 34,
     "lib/pedido-ao-anki.js": 8,
     "lib/quiz-de-nivel.js": 3,
-    "lib/sincronizacao.js": 11,
+    "lib/sincronizacao.js": 8,
     "lib/vocabulario-da-mineracao.js": 1,
     "lib/voz/texto.js": 1,
     "overlay/overlay.js": 8,

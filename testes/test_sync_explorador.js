@@ -40,7 +40,7 @@ function mundo({ chromeSync, mascara, engoleTombstone }) {
   const caixas = {};
   const passar = () => {
     const n = estado.pedido++;
-    if (estado.comFalhas && n < PEDIDOS_COM_FALHA && mascara.includes(n)) throw new Error('HTTP 503');
+    if (estado.comFalhas && mascara.includes(n)) throw new Error('HTTP 503');
   };
   const daOutra = (oque, ids) => { for (const id of ids) estado.naOutraConta.add(`A mandou para a nuvem da conta u2 ${oque} da Frase ${id}, da lista pendente da u1`); };
   const criarNuvem = (uid, firestore, tombstones, naOutra = () => {}) => ({
@@ -121,22 +121,24 @@ async function executarSemRecusar(passo, pc) {
   }
 }
 
+function frasesFora(lugar, lista, apagadas) {
+  const voltaram = apagadas.filter(id => lista.includes(id)).map(id => `a Frase ${id} apagada voltou em ${lugar}`);
+  if (lugar === 'C') return voltaram;
+  const sumiram = [1, 2].filter(id => !apagadas.includes(id)).filter(id => !lista.includes(id))
+    .map(id => `a Frase ${id} não apagada sumiu de ${lugar}`);
+  return [...voltaram, ...sumiram];
+}
+
+const tombstonesNaoRegravados = pcs => ['A', 'B', 'C'].filter(nome => (pcs[nome].local.pm_tombstone_pendente || []).length)
+  .map(nome => `o tombstone pendente de ${nome} não foi regravado`);
+
 function conferir(m, apagadas) {
   const problemas = [...m.estado.naOutraConta];
   if (m.pcs.A.passouPelaU2) return problemas;
   const ids = lista => (lista || []).map(f => f.id).sort();
   const onde = { nuvem: ids(Object.values(m.firestore)), A: ids(m.pcs.A.local.frases), B: ids(m.pcs.B.local.frases), C: ids(m.pcs.C.local.frases) };
-  for (const [lugar, lista] of Object.entries(onde)) {
-    for (const id of apagadas) if (lista.includes(id)) problemas.push(`a Frase ${id} apagada voltou em ${lugar}`);
-    for (const id of [1, 2].filter(i => !apagadas.includes(i))) {
-      if (lugar !== 'C' && !lista.includes(id)) problemas.push(`a Frase ${id} não apagada sumiu de ${lugar}`);
-    }
-  }
-  const problemasDeOrdem = [...m.estado.tirouCedo];
-  problemas.push(...problemasDeOrdem);
-  for (const nome of ['A', 'B', 'C']) {
-    if ((m.pcs[nome].local.pm_tombstone_pendente || []).length) problemas.push(`o tombstone pendente de ${nome} não foi regravado`);
-  }
+  for (const [lugar, lista] of Object.entries(onde)) problemas.push(...frasesFora(lugar, lista, apagadas));
+  problemas.push(...m.estado.tirouCedo, ...tombstonesNaoRegravados(m.pcs));
   return problemas;
 }
 
@@ -154,14 +156,14 @@ function sequencias(passos) {
   return out;
 }
 
+const pedidosDepois = (anterior, quantos) => Array.from({ length: quantos }, (_, i) => i).filter(n => n > anterior);
+const triplas = (i, j) => pedidosDepois(j, PEDIDOS_COM_TRES_FALHAS).map(k => [i, j, k]);
+
 function mascaras() {
   const out = [[]];
-  for (let i = 0; i < PEDIDOS_COM_FALHA; i++) {
+  for (const i of pedidosDepois(-1, PEDIDOS_COM_FALHA)) {
     out.push([i]);
-    for (let j = i + 1; j < PEDIDOS_COM_FALHA; j++) {
-      out.push([i, j]);
-      if (j < PEDIDOS_COM_TRES_FALHAS) for (let k = j + 1; k < PEDIDOS_COM_TRES_FALHAS; k++) out.push([i, j, k]);
-    }
+    for (const j of pedidosDepois(i, PEDIDOS_COM_FALHA)) out.push([i, j], ...triplas(i, j));
   }
   return out;
 }
@@ -179,34 +181,53 @@ function mostraApagadaEmA(frases, m, apagadas) {
   return apagadas.filter(id => vistas.includes(id));
 }
 
+const APAGAMENTOS = [['apagar 1', [1]], ['apagar tudo', [1, 2]]];
+
+function casos(passos) {
+  const mascarasPossiveis = mascaras();
+  const sequenciasPossiveis = sequencias(passos);
+  return APAGAMENTOS.flatMap(apagar => sequenciasPossiveis.flatMap(seq => mascarasPossiveis.map(mascara => ({ apagar, seq, mascara }))));
+}
+
+const comoFoi = ({ apagar, seq, mascara }) =>
+  `${apagar[0]} em A, depois ${seq.map(descrever).join(', ') || 'nada'}; pedidos que falham: ${mascara.length ? mascara.join(', ') : 'nenhum'}`;
+
+async function apagadasVistasEmA(m, seq, apagadas) {
+  const vistas = [];
+  for (const passo of seq) {
+    const frases = await executarPasso(passo, m);
+    if (passo[1] === 'A') vistas.push(...mostraApagadaEmA(frases, m, apagadas));
+  }
+  return vistas;
+}
+
+async function terminarSemFalhas(m) {
+  m.estado.comFalhas = false;
+  for (let volta = 0; volta < 2; volta++) {
+    await m.entregarSync();
+    for (const c of ['A', 'B', 'C']) await executar('carregar', m.pcs[c]);
+  }
+}
+
+async function problemasDoCaso({ apagar, seq, mascara }, comoEhOMundo) {
+  const m = mundo({ ...comoEhOMundo, mascara });
+  await executar(apagar[0], m.pcs.A);
+  const reapareceram = (await apagadasVistasEmA(m, seq, apagar[1])).map(id => `a Frase ${id} apagada em A apareceu de novo em A`);
+  await terminarSemFalhas(m);
+  return [...reapareceram, ...conferir(m, apagar[1])];
+}
+
+function anotar(achados, problemas, caso) {
+  for (const problema of problemas.filter(p => !achados.has(p))) achados.set(problema, comoFoi(caso));
+}
+
 async function explorar({ chromeSync, engoleTombstone = false, primeiraFalha = false, passos = PASSOS_POR_SYNC[chromeSync] }) {
   const achados = new Map();
   let corridas = 0;
-  const mascarasPossiveis = mascaras();
-  for (const apagar of [['apagar 1', [1]], ['apagar tudo', [1, 2]]]) {
-    for (const seq of sequencias(passos)) {
-      for (const mascara of mascarasPossiveis) {
-        const m = mundo({ chromeSync, mascara, engoleTombstone });
-        const como = () => `${apagar[0]} em A, depois ${seq.map(descrever).join(', ') || 'nada'}; pedidos que falham: ${mascara.length ? mascara.join(', ') : 'nenhum'}`;
-        await executar(apagar[0], m.pcs.A);
-        for (const passo of seq) {
-          const frases = await executarPasso(passo, m);
-          if (passo[1] !== 'A') continue;
-          for (const id of mostraApagadaEmA(frases, m, apagar[1])) {
-            const problema = `a Frase ${id} apagada em A apareceu de novo em A`;
-            if (!achados.has(problema)) achados.set(problema, como());
-          }
-        }
-        m.estado.comFalhas = false;
-        for (let volta = 0; volta < 2; volta++) {
-          await m.entregarSync();
-          for (const c of ['A', 'B', 'C']) await executar('carregar', m.pcs[c]);
-        }
-        corridas++;
-        for (const p of conferir(m, apagar[1])) if (!achados.has(p)) achados.set(p, como());
-        if (primeiraFalha && achados.size) return { corridas, achados };
-      }
-    }
+  for (const caso of casos(passos)) {
+    anotar(achados, await problemasDoCaso(caso, { chromeSync, engoleTombstone }), caso);
+    corridas++;
+    if (primeiraFalha && achados.size) return { corridas, achados };
   }
   return { corridas, achados };
 }
