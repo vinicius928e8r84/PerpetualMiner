@@ -153,12 +153,7 @@ class Fila(EnviosDosCustos):
         diz que já chegaram ao Anki como estavam. Sem a linha (apagada) e sem `noAnki`, a Frase não tem Cartões."""
         cartoes = {}
         for entrada in pedido["entries"]:
-            if entrada.get("noAnki"):
-                for cartao, status in entrada["noAnki"].items():
-                    cartoes[cartao] = {"phraseId": entrada["phraseId"], "status": status, "error": None}
-            elif isinstance(entrada.get("line"), str):
-                for posicao in range(quantos_cartoes(self.motor, pedido["lang"], entrada)):
-                    cartoes[id_do_cartao(entrada["phraseId"], posicao)] = {"phraseId": entrada["phraseId"], "status": PENDENTE, "error": None}
+            cartoes.update(self._cartoes_da_entrada(pedido, entrada))
         apagado = bool(pedido.get("wiped"))
         estado = {
             "jobId": pedido["jobId"], "status": FAILED if apagado else QUEUED, "stage": FAILED if apagado else QUEUED,
@@ -168,6 +163,16 @@ class Fila(EnviosDosCustos):
         if apagado:
             estado["wiped"] = True
         return estado
+
+    def _cartoes_da_entrada(self, pedido, entrada):
+        """Os Cartões que uma entrada do pedido diz: os que chegaram ao Anki (`noAnki`) com o status de lá, senão um `pending` por
+        Palavra da linha; sem a linha e sem `noAnki`, nenhum."""
+        if entrada.get("noAnki"):
+            return {cartao: {"phraseId": entrada["phraseId"], "status": status, "error": None} for cartao, status in entrada["noAnki"].items()}
+        if not isinstance(entrada.get("line"), str):
+            return {}
+        return {id_do_cartao(entrada["phraseId"], posicao): {"phraseId": entrada["phraseId"], "status": PENDENTE, "error": None}
+                for posicao in range(quantos_cartoes(self.motor, pedido["lang"], entrada))}
 
     def estado_ou_refazer(self, job_id):
         """O estado do Envio; se o arquivo falta (ou não se lê), refeito do pedido guardado e gravado. None se nem o pedido existe."""
