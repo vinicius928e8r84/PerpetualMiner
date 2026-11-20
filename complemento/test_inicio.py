@@ -339,8 +339,8 @@ class InicioDeProducaoIsolado(unittest.TestCase):
                 pastas = Pastas(raiz)
                 registro = RegistroDeMentira()
                 injetado = abridor_do_mac(pastas) if sistema == "mac" else abridor.Abridor(
-                    sistema="windows", pasta=pastas.abridor, programa=os.path.join(raiz, "anki.exe"),
-                    onde_registrar={"Chrome": "HKCU-de-mentira"}, registro=registro,
+                    sistema=abridor.NoWindows({"Chrome": "HKCU-de-mentira"}, registro), pasta=pastas.abridor,
+                    programa=os.path.join(raiz, "anki.exe"),
                 )
                 with patch("complemento.inicio.abridores.deste_computador", return_value=injetado) as fabrica:
                     conexao = inicio.iniciar(os.path.join(raiz, "complemento"), lambda: None, porta=0)

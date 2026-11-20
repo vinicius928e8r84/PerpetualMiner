@@ -59,7 +59,7 @@ SCRIPT_DO_MAC = "abrir-o-anki.sh"
 BAT_DO_WINDOWS = "abrir-o-anki.bat"
 PS1_DO_WINDOWS = "abrir-o-anki.ps1"
 
-__all__ = ["Abridor", "AnkiNaoEncontrado", "RegistroDoWindows", "deste_computador", "NOME_DO_HOST"]
+__all__ = ["Abridor", "AnkiNaoEncontrado", "NoMac", "NoWindows", "RegistroDoWindows", "deste_computador", "NOME_DO_HOST"]
 
 
 class RegistroDoWindows:
@@ -72,24 +72,51 @@ class RegistroDoWindows:
             winreg.SetValueEx(aberta, "", 0, winreg.REG_SZ, valor)
 
 
-class Abridor:
-    """O abridor de um `sistema` (`"mac"` ou `"windows"`), escrito em `pasta`, para o Anki em `programa`.
+class NoMac:
+    """O abridor do Mac: o `.sh` e, em cada pasta de hosts de `onde_registrar` (por navegador), o manifesto do host. `abrir_com` é o `open` do
+    Mac e `ler_json_com` o JavaScript do macOS que lê a mensagem (os testes trocam os dois por programas que anotam o que receberam)."""
 
-    `onde_registrar` diz, por navegador, a pasta de hosts (Mac) ou a chave do registro (Windows, gravada
-    por `registro`). `abrir_com` é o `open` do Mac (os testes trocam por um programa que anota o que recebeu).
-    `conserto` (`Conserto`) diz qual Anki o `consertar` pode fechar; sem ele, o script nunca fecha nada.
+    nome = "mac"
+
+    def __init__(self, onde_registrar, abrir_com="/usr/bin/open", ler_json_com="/usr/bin/osascript"):
+        self.onde_registrar, self.abrir_com, self.ler_json_com = onde_registrar, abrir_com, ler_json_com
+
+    def escrever(self, abridor, perfil):
+        script = os.path.join(abridor.pasta, SCRIPT_DO_MAC)
+        _gravar(script, _script_do_mac(abridor, self, perfil).encode("utf-8"), modo=0o700)
+        for pasta_de_hosts in _sem_repetir(self.onde_registrar.values()):
+            os.makedirs(pasta_de_hosts, exist_ok=True)
+            _gravar(os.path.join(pasta_de_hosts, NOME_DO_HOST + ".json"), _manifesto(script))
+
+
+class NoWindows:
+    """O abridor do Windows: o `.bat`, o `.ps1` e o manifesto na pasta do abridor, e o caminho do manifesto na chave do registro de cada
+    navegador de `onde_registrar`, gravada por `registro`."""
+
+    nome = "windows"
+
+    def __init__(self, onde_registrar, registro):
+        self.onde_registrar, self.registro = onde_registrar, registro
+
+    def escrever(self, abridor, perfil):
+        script = os.path.join(abridor.pasta, BAT_DO_WINDOWS)
+        _gravar(os.path.join(abridor.pasta, PS1_DO_WINDOWS), b"\xef\xbb\xbf" + _ps1(abridor, perfil).encode("utf-8"))
+        _gravar(script, _BAT.encode("ascii"))
+        manifesto = os.path.join(abridor.pasta, NOME_DO_HOST + ".json")
+        _gravar(manifesto, _manifesto(script))
+        for chave in _sem_repetir(self.onde_registrar.values()):
+            self.registro.gravar(chave + "\\" + NOME_DO_HOST, manifesto)
+
+
+class Abridor:
+    """O abridor de um `sistema` (`NoMac` ou `NoWindows`: o script dele e onde o host se registra), escrito em `pasta`, para o Anki em
+    `programa`. `conserto` (`Conserto`) diz qual Anki o `consertar` pode fechar; sem ele, o script nunca fecha nada.
     """
 
-    def __init__(self, *, sistema, pasta, programa, onde_registrar, registro=None, abrir_com="/usr/bin/open", ler_json_com="/usr/bin/osascript", conserto=None):
-        if sistema not in ("mac", "windows"):
-            raise ValueError("sistema sem abridor: %r" % (sistema,))
+    def __init__(self, *, sistema, pasta, programa, conserto=None):
         self.sistema = sistema
         self.pasta = pasta
         self.programa = programa
-        self.onde_registrar = onde_registrar
-        self.registro = registro
-        self.abrir_com = abrir_com
-        self.ler_json_com = ler_json_com
         self.conserto = conserto or conserto_do_anki.Conserto()
 
     def escrever(self, perfil):
@@ -100,20 +127,7 @@ class Abridor:
         if not self.programa:
             raise AnkiNaoEncontrado("não se sabe onde o Anki está neste computador")
         os.makedirs(self.pasta, exist_ok=True)
-        if self.sistema == "mac":
-            script = os.path.join(self.pasta, SCRIPT_DO_MAC)
-            _gravar(script, _script_do_mac(self.programa, perfil, self.abrir_com, self.ler_json_com, self.conserto, self.pasta).encode("utf-8"), modo=0o700)
-            for pasta_de_hosts in _sem_repetir(self.onde_registrar.values()):
-                os.makedirs(pasta_de_hosts, exist_ok=True)
-                _gravar(os.path.join(pasta_de_hosts, NOME_DO_HOST + ".json"), _manifesto(script))
-        else:
-            script = os.path.join(self.pasta, BAT_DO_WINDOWS)
-            _gravar(os.path.join(self.pasta, PS1_DO_WINDOWS), b"\xef\xbb\xbf" + _ps1(self.programa, perfil, self.conserto, self.pasta).encode("utf-8"))
-            _gravar(script, _BAT.encode("ascii"))
-            manifesto = os.path.join(self.pasta, NOME_DO_HOST + ".json")
-            _gravar(manifesto, _manifesto(script))
-            for chave in _sem_repetir(self.onde_registrar.values()):
-                self.registro.gravar(chave + "\\" + NOME_DO_HOST, manifesto)
+        self.sistema.escrever(self, perfil)
 
 
 def deste_computador(*, plataforma, ambiente, executavel, pasta, registro=None, existe=os.path.exists, complemento=None):
@@ -129,14 +143,12 @@ def deste_computador(*, plataforma, ambiente, executavel, pasta, registro=None, 
         programa = aplicativo_do_anki_no_mac(ambiente, executavel)
         if programa is None and existe("/Applications/Anki.app"):
             programa = "/Applications/Anki.app"
-        return Abridor(sistema="mac", pasta=pasta, programa=programa, onde_registrar={"Chrome": hosts}, conserto=conserto)
+        return Abridor(sistema=NoMac({"Chrome": hosts}), pasta=pasta, programa=programa, conserto=conserto)
     if plataforma == "win32":
         return Abridor(
-            sistema="windows",
+            sistema=NoWindows(dict(ONDE_REGISTRAR_NO_WINDOWS), registro if registro is not None else RegistroDoWindows()),
             pasta=pasta,
             programa=programa_do_anki_no_windows(ambiente, executavel, existe),
-            onde_registrar=dict(ONDE_REGISTRAR_NO_WINDOWS),
-            registro=registro if registro is not None else RegistroDoWindows(),
             conserto=conserto,
         )
     return None
@@ -247,14 +259,14 @@ def _preencher(modelo, valores):
     return re.sub(r"@([A-Z]+)@", lambda marca: valores[marca.group(1)], modelo)
 
 
-def _script_do_mac(aplicativo, perfil, abrir_com, ler_json_com, conserto, pasta):
+def _script_do_mac(abridor, mac, perfil):
     return _preencher(_MODELO_DO_MAC, {
-        "DADOS": conserto_do_anki.variaveis_do_mac(conserto, pasta),
+        "DADOS": conserto_do_anki.variaveis_do_mac(abridor.conserto, abridor.pasta),
         "FUNCOES": conserto_do_anki.FUNCOES_DO_MAC,
-        "ANKI": shlex.quote(aplicativo),
+        "ANKI": shlex.quote(abridor.programa),
         "PERFIL": shlex.quote(perfil or ""),
-        "ABRIR": shlex.quote(abrir_com),
-        "LERJSON": shlex.quote(ler_json_com),
+        "ABRIR": shlex.quote(mac.abrir_com),
+        "LERJSON": shlex.quote(mac.ler_json_com),
     })
 
 
@@ -341,10 +353,10 @@ def _texto_do_powershell(texto):
     return "'" + texto + "'"
 
 
-def _ps1(programa, perfil, conserto, pasta):
+def _ps1(abridor, perfil):
     return _preencher(_MODELO_DO_PS1, {
-        "DADOS": conserto_do_anki.variaveis_do_ps1(conserto, pasta, _texto_do_powershell),
+        "DADOS": conserto_do_anki.variaveis_do_ps1(abridor.conserto, abridor.pasta, _texto_do_powershell),
         "FUNCOES": conserto_do_anki.FUNCOES_DO_PS1,
-        "ANKI": _texto_do_powershell(programa),
+        "ANKI": _texto_do_powershell(abridor.programa),
         "PERFIL": "$null" if perfil is None else _texto_do_powershell(perfil),
     }).replace("\n", "\r\n")

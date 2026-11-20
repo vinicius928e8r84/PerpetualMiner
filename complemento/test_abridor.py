@@ -114,12 +114,9 @@ class Pastas:
 
 def abridor_do_mac(pastas, programa=None):
     return abridor.Abridor(
-        sistema="mac",
+        sistema=abridor.NoMac({"Chrome": pastas.hosts_do_chrome}, abrir_com=pastas.open.caminho, ler_json_com=pastas.ler_json),
         pasta=pastas.abridor,
         programa=pastas.app if programa is None else programa,
-        onde_registrar={"Chrome": pastas.hosts_do_chrome},
-        abrir_com=pastas.open.caminho,
-        ler_json_com=pastas.ler_json,
     )
 
 
@@ -365,8 +362,8 @@ class DesteComputador(unittest.TestCase):
             plataforma="darwin", ambiente={"HOME": "/Users/maria"},
             executavel="/Applications/Anki.app/Contents/MacOS/anki", pasta="/x/user_files/abridor",
         )
-        self.assertEqual((este.sistema, este.programa), ("mac", "/Applications/Anki.app"))
-        self.assertEqual(este.onde_registrar, {
+        self.assertEqual((este.sistema.nome, este.programa), ("mac", "/Applications/Anki.app"))
+        self.assertEqual(este.sistema.onde_registrar, {
             "Chrome": "/Users/maria/Library/Application Support/Google/Chrome/NativeMessagingHosts",
         })
 
@@ -396,8 +393,8 @@ class DesteComputador(unittest.TestCase):
             plataforma="win32", ambiente={"ANKI_LAUNCHER": ANKI_DO_WINDOWS}, executavel="x", pasta="C:\\x",
             registro=RegistroDeMentira(),
         )
-        self.assertEqual((este.sistema, este.programa), ("windows", ANKI_DO_WINDOWS))
-        self.assertEqual(este.onde_registrar, {
+        self.assertEqual((este.sistema.nome, este.programa), ("windows", ANKI_DO_WINDOWS))
+        self.assertEqual(este.sistema.onde_registrar, {
             "Chrome": ONDE_O_CHROME_PROCURA_NO_WINDOWS,
             "Opera": ONDE_O_OPERA_PROCURA_NO_WINDOWS,
         })
