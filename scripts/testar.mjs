@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 const require = createRequire(import.meta.url);
 const { arquivosDoGrupo, baseDaVersao, dicaDeModulo, escolherPython, lerRegistro, trabalhadoresDoGrupo, tetoEmSegundos, estourouOTeto } = require('./grupos-de-teste.js');
 const { rodarEmParalelo } = require('./unittest-em-paralelo.js');
+const { rodarArquivosEmParalelo } = require('./arquivos-em-paralelo.js');
 const { arquivosDoRepositorio } = require('./regras/comum.js');
 
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -41,6 +42,22 @@ function rodar(comando, argumentos, cwd, copiarErro) {
     filho.on('error', error => resolve({ error, stderr }));
     filho.on('close', status => resolve({ status, stderr }));
   });
+}
+
+function trabalhadoresPara(grupo, extras) {
+  const paralelizavel = ['unittest', 'node'].includes(grupo.executor) && !extras.length;
+  return paralelizavel ? trabalhadoresDoGrupo(grupo, process.env) : 1;
+}
+
+function execucaoEmParalelo(nome, grupo, doGrupo, trabalhadores) {
+  if (grupo.executor === 'node') {
+    const comandos = comandosDoGrupo(grupo, doGrupo, []);
+    const executar = async () => ({ status: (await rodarArquivosEmParalelo({ nome, comandos, trabalhadores })).length ? 1 : 0, stderr: '' });
+    return { paralelo: true, comando: 'node', argumentos: ['<um arquivo por vez>'], executar };
+  }
+  const python = escolherPython(process.env, RAIZ).comando;
+  const executar = () => rodarEmParalelo({ python, pasta: grupo.pasta, arquivos: doGrupo, trabalhadores, cwd: RAIZ });
+  return { paralelo: true, comando: python, argumentos: ['-m', 'unittest', '<um módulo por vez>'], executar };
 }
 
 async function main(argv) {
@@ -87,14 +104,14 @@ async function main(argv) {
       falhas.push(nome);
       continue;
     }
-    const trabalhadores = grupo.executor === 'unittest' && !extras.length ? trabalhadoresDoGrupo(grupo, process.env) : 1;
+    const trabalhadores = trabalhadoresPara(grupo, extras);
     const comandos = trabalhadores > 1
-      ? [{ paralelo: true, comando: escolherPython(process.env, RAIZ).comando, cwd: RAIZ, argumentos: ['-m', 'unittest', '<um módulo por vez>'] }]
+      ? [execucaoEmParalelo(nome, grupo, doGrupo, trabalhadores)]
       : comandosDoGrupo(grupo, doGrupo, extras);
-    for (const { comando, argumentos, cwd, paralelo } of comandos) {
+    for (const { comando, argumentos, cwd, paralelo, executar } of comandos) {
       console.log(`\n▶ ${nome}: ${[comando, ...argumentos].join(' ')}${paralelo ? ` (${trabalhadores} em paralelo)` : ''}`);
       const resultado = paralelo
-        ? await rodarEmParalelo({ python: comando, pasta: grupo.pasta, arquivos: doGrupo, trabalhadores, cwd })
+        ? await executar()
         : await rodar(comando, argumentos, cwd, grupo.executor !== 'playwright');
       if (resultado.error) {
         console.log(`✗ ${nome}: não consegui rodar ${comando} (${resultado.error.message})${grupo.precisa ? `; o grupo precisa de: ${grupo.precisa}` : ''}`);
