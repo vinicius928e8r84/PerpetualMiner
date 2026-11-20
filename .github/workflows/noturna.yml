@@ -97,6 +97,7 @@ jobs:
           tests/painel-conserto.spec.js tests/painel-envio-retido.spec.js tests/painel-envio-anki-fechado.spec.js
           tests/painel-envio-parado.spec.js tests/painel-envio-plano.spec.js tests/painel-envio-copia.spec.js tests/painel-envio-visual.spec.js
           tests/painel-envio-apagar.spec.js tests/painel-anki-continuar.spec.js tests/painel-envio-perfil.spec.js
+          tests/configuracoes-ia-copia-em-voo.spec.js tests/configuracoes-chatgpt-plano.spec.js
           --workers=1
         env:
           PM_CONEXAO: real

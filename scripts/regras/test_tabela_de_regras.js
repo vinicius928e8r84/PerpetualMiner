@@ -8,7 +8,7 @@ const { REGRAS } = require('./verificar');
 const { regrasDaTabela, divergencias } = require('./apoio-da-tabela-de-regras');
 
 const RAIZ = path.resolve(__dirname, '..', '..');
-const SEM_LINHA_NA_TABELA = ['doc-datado', 'link-de-doc', 'limite-de-linhas', 'sem-comentario-novo'];
+const SEM_LINHA_NA_TABELA = ['doc-datado', 'link-de-doc', 'limite-de-linhas', 'sem-comentario-novo', 'saude-do-codigo'];
 
 let total = 0;
 const prova = (achadas, esperadas, porque) => { assert.deepStrictEqual(achadas, esperadas, porque); total++; };
