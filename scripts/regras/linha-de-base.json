@@ -85,7 +85,7 @@
     "complemento/custos.py": 34,
     "complemento/diagnostico.py": 3,
     "complemento/empacotar.py": 3,
-    "complemento/envio.py": 46,
+    "complemento/envio.py": 10,
     "complemento/envios_dos_custos.py": 2,
     "complemento/gravacao_de_json.py": 4,
     "complemento/ia_do_envio.py": 2,
