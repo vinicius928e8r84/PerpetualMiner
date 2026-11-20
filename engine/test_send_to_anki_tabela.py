@@ -440,7 +440,7 @@ def _com_avisos(funcao, *args, **kwargs):
 
 def _nota(texto, lang, midia):
     """A nota de `card_fields`; `midia` é o áudio da frase, o áudio da palavra e a imagem, nessa ordem."""
-    return send_to_anki.card_fields(texto, lang, *midia)
+    return send_to_anki.card_fields(texto, lang, send_to_anki.CardMedia(*midia))
 
 
 class ATabelaDeEntradasESaidas(unittest.TestCase):
