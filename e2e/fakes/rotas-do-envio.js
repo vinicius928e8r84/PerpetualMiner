@@ -16,7 +16,7 @@ const pedidoGuardado = envio => ({ ...envio.corpo, createdAt: envio.createdAt })
 
 function criarRotasDoEnvio({ estado, modelo }) {
   const envios = [];
-  const paraAFila = [];
+  const paraAFila = estado.paraAReal;
   const mudou = envio => paraAFila.push({ mudar: { jobId: envio.jobId, state: envio.state } });
 
   function novoEstado(extra = {}) {
@@ -183,7 +183,6 @@ function criarRotasDoEnvio({ estado, modelo }) {
       envios.push({ jobId: corpo.jobId, lang: corpo.lang, entries: corpo.entries, corpo, createdAt: estado.agora().toISOString(), state: novoEstado({ jobId: corpo.jobId }) });
       paraAFila.push({ criar: corpo });
     },
-    mudancasParaAFila() { return paraAFila.splice(0, paraAFila.length); },
     aceitarEnvios(lang) { estado.recusas.delete(lang); },
     perdeuAResposta() { estado.perdaDoEnvio = false; },
     espelharEnvios(daReal) {

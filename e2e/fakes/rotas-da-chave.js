@@ -105,10 +105,21 @@ function criarRotasDaChave({ estado, respostaDoContrato }) {
     }),
   ];
 
+  const paraAReal = documento => estado.paraAReal.push({ chave: documento });
   const api = {
-    guardarChaveNaConexao(finalDaChave, versao = 0, conta = null, em = 0, naoEnviada = true) { estado.chaveDaOpenAI = `sk-proj-guardada-antes-${finalDaChave}`; estado.versaoDaChave = versao; estado.contaDaChave = conta; estado.horaDaChave = em; estado.chaveNaoEnviada = naoEnviada; },
-    esquecerAChave() { estado.chaveDaOpenAI = null; estado.versaoDaChave = 0; estado.contaDaChave = ''; estado.horaDaChave = 0; },
-    guardarRemocaoNaConexao(versao) { estado.chaveDaOpenAI = null; estado.versaoDaChave = versao; estado.contaDaChave = ''; estado.horaDaChave = 0; },
+    guardarChaveNaConexao(finalDaChave, versao = 0, conta = null, em = 0, naoEnviada = true) {
+      estado.chaveDaOpenAI = `sk-proj-guardada-antes-${finalDaChave}`; estado.versaoDaChave = versao; estado.contaDaChave = conta; estado.horaDaChave = em; estado.chaveNaoEnviada = naoEnviada;
+      paraAReal(conta !== null ? { chave: estado.chaveDaOpenAI, versao, conta, em, naoEnviada } : versao ? { versao, chave: estado.chaveDaOpenAI } : { chave: estado.chaveDaOpenAI });
+    },
+    esquecerAChave() { estado.chaveDaOpenAI = null; estado.versaoDaChave = 0; estado.contaDaChave = ''; estado.horaDaChave = 0; paraAReal(null); },
+    guardarRemocaoNaConexao(versao) {
+      estado.chaveDaOpenAI = null; estado.versaoDaChave = versao; estado.contaDaChave = ''; estado.horaDaChave = 0;
+      paraAReal({ versao, chave: '' });
+    },
+    espelharChave(documento) {
+      const { chave = null, versao = 0, conta = '', em = 0, naoEnviada = false } = documento || {};
+      Object.assign(estado, { chaveDaOpenAI: chave || null, versaoDaChave: versao, contaDaChave: conta, horaDaChave: em, chaveNaoEnviada: naoEnviada });
+    },
     sincronizarCom(google) { estado.google = google; },
     responderFirebase(status) { estado.contexto.firebase = status; },
     falharGravacaoDaChave() { estado.contexto.cofre = 'sem_escrita'; },
