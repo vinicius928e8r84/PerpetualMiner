@@ -15,7 +15,9 @@ const conserto = 'Refatore de verdade a função que piorou: separe decidir de f
   + `${LIMITES.complexidade}, aninhamento até ${LIMITES.aninhamento}, ${LIMITES.blocos} bloco aninhado por função, `
   + `${LIMITES.operadores} operador lógico por condição, ${LIMITES.argumentos} argumentos, ${LIMITES.linhas} linhas por função, `
   + `complexidade média abaixo de ${LIMITES.mediaDoArquivo} e ${LIMITES.linhasDoPython} linhas de código por arquivo Python. `
-  + 'Depois de melhorar um arquivo da linha de base, rode `node scripts/regras/verificar.js --atualizar` e versione scripts/regras/linha-de-base.json.';
+  + 'Depois de melhorar um arquivo da linha de base, rode `node scripts/regras/verificar.js --atualizar` e versione scripts/regras/linha-de-base.json. '
+  + 'Código que sai de um arquivo para um módulo novo leva a folga junto: na mesma PR, passe os pontos do arquivo de origem para o novo '
+  + 'em scripts/regras/linha-de-base.json (o total da regra não pode subir).';
 
 const EXTENSOES = /\.(?:js|mjs|cjs|py)$/;
 const FORA = /(?:^|\/)(?:node_modules|vendor|third_party|dist)\/|\.min\.[^/]+$/;

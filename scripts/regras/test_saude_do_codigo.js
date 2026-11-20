@@ -102,7 +102,8 @@ const MEDIA = js(
   'function a(x) {', '  if (x) return 1;', '  if (x > 1) return 2;', '  return x ? 3 : 4;', '}',
   'function b(x) {', '  if (x) return 1;', '  if (x > 1) return 2;', '  return x ? 3 : 4;', '}',
 );
-prova(pontosDe(medirJs(MEDIA)), ['null media 1'], 'complexidade média 4,0 é um ponto, mais um a cada décimo acima');
+prova(pontosDe(medirJs(MEDIA)), ['null media 1'], 'complexidade média 4,0 é um ponto, como o Overall Code Complexity do CodeScene, uma vez por arquivo');
+prova(pontosDe(medirJs(TODOS_OS_DESVIOS)), ['escolher complexidade 1', 'null media 1'], 'a média 9 de uma função só também é um ponto: dividir o arquivo não multiplica a média');
 prova(pontosDe(medirJs(`${MEDIA}function c(x) {\n  return x;\n}\n`)), [], 'média abaixo de 4 não pontua');
 prova(medirJs('function (').erro !== undefined, true, 'o JavaScript que não se lê vira erro, não silêncio');
 prova(pontosDe(medirJs('function (')), ['null leitura 1'], 'e o arquivo que não se lê pontua');
@@ -195,7 +196,14 @@ gravar({ 'ferramenta/b.py': PY_COM_CINCO, 'ferramenta/nova.js': js('function nov
 r = rodar();
 prova([r.status, /ferramenta\/nova\.js: 1 ponto\(s\)[^]*a linha de base permite 0/.test(r.stdout)], [1, true], `arquivo novo nasce dentro dos limites:\n${r.stdout}`);
 
-gravar({ 'ferramenta/nova.js': null });
+gravar({ [LINHA_DE_BASE]: comPontos({ 'ferramenta/a.js': 1, 'ferramenta/b.py': 1, 'ferramenta/nova.js': 1 }) });
+r = rodar();
+prova([r.status, /ferramenta\/a\.js: 2 ponto\(s\)[^]*a linha de base permite 1/.test(r.stdout)], [1, true], `a folga não sai de um arquivo que ainda a usa:\n${r.stdout}`);
+gravar({ 'ferramenta/a.js': ramos([...OITO_DESVIOS, 'b > 3']) });
+r = rodar();
+prova(r.status, 0, `o código que vai para um módulo novo leva a folga junto, e o total não sobe:\n${r.stdout}`);
+
+gravar({ 'ferramenta/nova.js': null, 'ferramenta/a.js': ramos([...OITO_DESVIOS, 'b > 3', 'a > 4']), [LINHA_DE_BASE]: comPontos({ 'ferramenta/a.js': 2, 'ferramenta/b.py': 1 }) });
 git('mv', 'ferramenta/a.js', 'ferramenta/movida.js');
 r = rodar();
 prova([r.status, /regras ok/.test(r.stdout)], [0, true], `o arquivo movido herda a linha de base do nome antigo:\n${r.stdout}`);

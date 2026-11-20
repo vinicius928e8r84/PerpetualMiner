@@ -33,10 +33,9 @@ function excessosDaFuncao(unidade) {
 
 function excessoDaMedia(unidades) {
   if (!unidades.length) return [];
-  const decimos = Math.floor((10 * unidades.reduce((soma, unidade) => soma + unidade.cc, 0)) / unidades.length);
-  const limite = 10 * LIMITES.mediaDoArquivo;
-  if (decimos < limite) return [];
-  return [{ medida: 'media', pontos: decimos - limite + 1, detalhe: `complexidade média das funções ${(decimos / 10).toFixed(1)} (abaixo de ${LIMITES.mediaDoArquivo})` }];
+  const media = unidades.reduce((soma, unidade) => soma + unidade.cc, 0) / unidades.length;
+  if (media < LIMITES.mediaDoArquivo) return [];
+  return [{ medida: 'media', pontos: 1, detalhe: `complexidade média das funções ${(Math.floor(media * 10) / 10).toFixed(1)} (abaixo de ${LIMITES.mediaDoArquivo})` }];
 }
 
 function excessoDoTamanho(linhasDeCodigo) {
