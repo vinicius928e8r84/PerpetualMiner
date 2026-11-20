@@ -69,6 +69,22 @@ def _preparar(texto):
     return re.sub(re.escape("Esq."), "Esquire", texto, flags=re.IGNORECASE)
 
 
+def _no_ultimo_espaco_que_cabe(trecho):
+    achados = []
+    while True:
+        if trecho.startswith(" "):
+            trecho = trecho[1:]
+        if len(trecho) <= LIMITE_DO_PEDACO:
+            break
+        corte = trecho.rfind(" ", 0, LIMITE_DO_PEDACO)
+        corte = corte if corte >= 0 else LIMITE_DO_PEDACO
+        achados.append(trecho[:corte])
+        trecho = trecho[corte:]
+    if trecho.strip():
+        achados.append(trecho)
+    return achados
+
+
 def pedacos(texto):
     """O texto em pedaços de até 100 letras, como o gTTS: inteiro se cabe; senão cortado na pontuação e, se um trecho ainda
     é comprido, no último espaço que cabe."""
@@ -76,17 +92,7 @@ def pedacos(texto):
     trechos = [texto] if len(texto) <= LIMITE_DO_PEDACO else _CORTES.split(texto)
     achados = []
     for trecho in (t.strip() for t in trechos if not _SO_PONTUACAO_OU_ESPACO.match(t)):
-        while True:
-            if trecho.startswith(" "):
-                trecho = trecho[1:]
-            if len(trecho) <= LIMITE_DO_PEDACO:
-                break
-            corte = trecho.rfind(" ", 0, LIMITE_DO_PEDACO)
-            corte = corte if corte >= 0 else LIMITE_DO_PEDACO
-            achados.append(trecho[:corte])
-            trecho = trecho[corte:]
-        if trecho.strip():
-            achados.append(trecho)
+        achados.extend(_no_ultimo_espaco_que_cabe(trecho))
     return [achado for achado in achados if achado]
 
 
@@ -103,13 +109,21 @@ def _pedir_um_pedaco(base, texto, lang, sotaque):
         raise ErroDaVoz(FORA_DO_AR if erro.code == 429 or erro.code >= 500 else RECUSADA)
     except (urllib.error.URLError, OSError, ValueError):
         raise ErroDaVoz(FORA_DO_AR)
+    return _o_audio_da_resposta(linhas)
+
+
+def _o_audio_da_linha(linha):
+    achou = _AUDIO.search(linha)
+    try:
+        return base64.b64decode(achou.group(1).encode("ascii")) if achou else b""
+    except ValueError:
+        return b""
+
+
+def _o_audio_da_resposta(linhas):
     for linha in linhas:
         if RPC in linha:
-            achou = _AUDIO.search(linha)
-            try:
-                audio = base64.b64decode(achou.group(1).encode("ascii")) if achou else b""
-            except ValueError:
-                audio = b""
+            audio = _o_audio_da_linha(linha)
             if audio:
                 return audio
     raise ErroDaVoz(SEM_AUDIO)
