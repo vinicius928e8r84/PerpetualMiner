@@ -247,7 +247,6 @@
     "lib/voz/texto.js": 1,
     "overlay/overlay.js": 8,
     "painel-abrir-anki.js": 10,
-    "painel-ajustes.js": 5,
     "painel-anki-baralhos.js": 21,
     "painel-anki-estilo.js": 1,
     "painel-anki-plano.js": 2,
@@ -255,7 +254,6 @@
     "painel-anki-primeira-conexao.js": 9,
     "painel-anki-tipo-proprio.js": 3,
     "painel-anki.js": 20,
-    "painel-atalhos.js": 4,
     "painel-boas-vindas-envio.js": 27,
     "painel-boas-vindas-nivel.js": 7,
     "painel-boas-vindas-quiz.js": 2,
@@ -263,7 +261,6 @@
     "painel-conexao-passos.js": 155,
     "painel-conexao-versao-estado.js": 16,
     "painel-conexao-versao.js": 22,
-    "painel-conta.js": 8,
     "painel-envio-anki-fechado.js": 6,
     "painel-envio-apagar.js": 1,
     "painel-envio-cartao.js": 34,
@@ -341,7 +338,6 @@
     "testes/test_quiz_de_nivel.js": 1,
     "testes/test_sync.js": 684,
     "testes/test_sync_explorador.js": 18,
-    "testes/test_verificar_envio.js": 13,
-    "veio/componentes.js": 6
+    "testes/test_verificar_envio.js": 13
   }
 }
