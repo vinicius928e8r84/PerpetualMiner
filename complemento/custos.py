@@ -1,6 +1,6 @@
 """Os custos de cada Envio, como a aba Custos os lê (`POST /analytics/jobs`).
 
-Cada Envio guarda os registros do `cost_tracker` do motor em `custos/<jobId>/costs.jsonl` (`envio.py`). As linhas e o
+Cada Envio guarda os registros do `cost_tracker` do motor em `custos/<jobId>/costs.jsonl` (`fila_do_envio.py`). As linhas e o
 resumo são os que o painel lê: as chaves e as regras (o texto em `cardUsd`; o juiz e a triagem de imagem pela Palavra `[image_judge]`/`[image_guard]`;
 as imagens pelos registros `image` e `image_pipeline`), só com a biblioteca padrão. O Envio que o plano do ChatGPT escreveu
 leva `plan` (`cards`, `wouldCostUsd`: o que a chave teria cobrado, #159); sem Cartão do plano, a linha não tem a chave `plan`.
