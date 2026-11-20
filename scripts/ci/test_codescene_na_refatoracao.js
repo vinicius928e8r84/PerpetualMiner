@@ -39,6 +39,8 @@ const DA_NUVEM = (id, status, conclusion) => ({ ...check(id, status, conclusion)
 prova(situacaoDoCheck([check(1, 'completed', 'success'), DA_NUVEM(2, 'completed', 'failure')]), { estado: 'reprovou', conclusao: 'failure' },
   'os dois apps do CodeScene contam: um em failure reprova, mesmo com o outro em success');
 prova(situacaoDoCheck([check(1, 'completed', 'success'), DA_NUVEM(2, 'in_progress')]).estado, 'rodando', 'com um app ainda rodando, espera');
+prova(situacaoDoCheck([DA_NUVEM(1, 'completed', 'failure'), check(2, 'completed', 'success')]).estado, 'reprovou',
+  'a rodada mais nova de um app não apaga a reprovação do outro');
 prova(situacaoDoCheck([DA_NUVEM(1, 'completed', 'failure'), check(2, 'completed', 'success'), DA_NUVEM(3, 'completed', 'success')]).estado, 'passou',
   'a rodada nova de um app substitui a antiga do mesmo app');
 
