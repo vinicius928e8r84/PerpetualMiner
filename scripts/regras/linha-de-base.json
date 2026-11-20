@@ -275,7 +275,6 @@
     "painel.js": 86,
     "popup/popup.js": 8,
     "preview/chrome-simulado.js": 2,
-    "preview/montar.mjs": 25,
     "scripts/ci/checks-obrigatorios.js": 1,
     "scripts/ci/commit-verde.js": 8,
     "scripts/ci/corpo-da-pr.js": 7,
