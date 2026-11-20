@@ -31,17 +31,19 @@ async function abrirFrases(page, extensao) {
   await page.evaluate(() => document.fonts.ready);
 }
 
-async function enviarTodas(page, fakes, n) {
+async function enviarTodas(page, fakes, n, criados = n) {
   await page.getByRole('checkbox', { name: 'Selecionar página' }).check();
   await page.locator('#frases-barra').getByRole('button', { name: 'Enviar ao Anki', exact: true }).click();
   await expect(progresso(page)).toBeVisible();
   await expect.poll(() => fakes.anki.requisicoes.filter(r => r.metodo === 'POST' && r.caminho === '/jobs').length).toBe(n);
+  await expect.poll(() => fakes.anki.envios.length).toBe(criados);
 }
 
-test('o progresso: um Envio andando, o outro que não começou (ENV-03)', async ({ page, extensao, fakes }) => {
+test('o progresso: um Envio andando, o outro que não começou (ENV-03)', async ({ page, extensao, fakes, conexaoDoTeste }) => {
+  test.skip(Boolean(conexaoDoTeste), 'a Conexão real carimba a hora de cada mudança do Envio (Fila.mudar): só o fake volta o updatedAt no tempo');
   fakes.anki.recusarEnvios('ru');
   await abrirFrases(page, extensao);
-  await enviarTodas(page, fakes, 2);
+  await enviarTodas(page, fakes, 2, 1);
   const [ingles] = fakes.anki.enviosEm('en');
   fakes.anki.moverEnvio(ingles.jobId, {
     stage: 'generate_audio',
@@ -100,7 +102,8 @@ test('Enviar ao Anki indisponível com a Conexão desligada, com o tooltip', asy
   await expect(page).toHaveScreenshot('envio-indisponivel.png');
 });
 
-test('o Envio esperando o Anki: a coleção fechada ou sincronizando, e a Conexão espera', async ({ page, extensao, fakes }) => {
+test('o Envio esperando o Anki: a coleção fechada ou sincronizando, e a Conexão espera', async ({ page, extensao, fakes, conexaoDoTeste }) => {
+  test.skip(Boolean(conexaoDoTeste), 'a Conexão real carimba a hora de cada mudança do Envio (Fila.mudar): só o fake volta o updatedAt no tempo');
   await abrirFrases(page, extensao);
   await enviarTodas(page, fakes, 2);
   const [ingles, russo] = fakes.anki.envios;
@@ -119,7 +122,7 @@ test('o Envio com um código da Conexão: um Cartão não entrou, Tentar de novo
     crypto.randomUUID = () => `00000000-0000-4000-8000-${String(++n).padStart(12, '0')}`;
   });
   await abrirFrases(page, extensao);
-  await enviarTodas(page, fakes, 2);
+  await enviarTodas(page, fakes, 2, 1);
   const [ingles] = fakes.anki.enviosEm('en');
   fakes.anki.concluirEnvio(ingles.jobId, { erro: 'openai_key_missing' });
   await expect(progresso(page).getByRole('button', { name: 'Tentar de novo' })).toBeVisible({ timeout: 10_000 });

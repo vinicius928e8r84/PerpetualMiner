@@ -16,6 +16,8 @@ const pedidoGuardado = envio => ({ ...envio.corpo, createdAt: envio.createdAt })
 
 function criarRotasDoEnvio({ estado, modelo }) {
   const envios = [];
+  const paraAFila = [];
+  const mudou = envio => paraAFila.push({ mudar: { jobId: envio.jobId, state: envio.state } });
 
   function novoEstado(extra = {}) {
     return {
@@ -176,7 +178,9 @@ function criarRotasDoEnvio({ estado, modelo }) {
     perderARespostaDoEnvio() { estado.perdaDoEnvio = true; },
     receberEnvio(corpo) {
       envios.push({ jobId: corpo.jobId, lang: corpo.lang, entries: corpo.entries, corpo, createdAt: estado.agora().toISOString(), state: novoEstado({ jobId: corpo.jobId }) });
+      paraAFila.push({ criar: corpo });
     },
+    mudancasParaAFila() { return paraAFila.splice(0, paraAFila.length); },
     aceitarEnvios(lang) { estado.recusas.delete(lang); },
     perdeuAResposta() { estado.perdaDoEnvio = false; },
     espelharEnvios(daReal) {
@@ -188,6 +192,7 @@ function criarRotasDoEnvio({ estado, modelo }) {
 
     moverEnvio(jobId, { stage, progress = {}, atualizadoEm, esperando, cartoes } = {}) {
       const envio = acharEnvio(jobId);
+      if (envio.state.status === 'queued' && esperando) paraAFila.push({ mudar: { jobId, state: { ...envio.state, status: 'running', stage } } });
       envio.state = {
         ...envio.state,
         status: 'running',
@@ -197,10 +202,12 @@ function criarRotasDoEnvio({ estado, modelo }) {
         ...(cartoes && { cards: cartoesDoEstado(jobId, cartoes) }),
         updatedAt: (atualizadoEm || estado.agora()).toISOString(),
       };
+      mudou(envio);
     },
 
     concluirEnvio(jobId, { duplicadas = [], falhas = [], erro, ankiError = null } = {}) {
       const envio = acharEnvio(jobId);
+      if (envio.state.status === 'queued') paraAFila.push({ mudar: { jobId, state: { ...envio.state, status: 'running', stage: 'generate_cards' } } });
       const pedidas = envio.entries.map(e => Number(e.phraseId));
       const anteriores = envio.state.successfulPhraseIds;
       const sucesso = erro ? anteriores : [...new Set([...anteriores, ...pedidas.filter(id => !falhas.includes(id))])];
@@ -217,6 +224,7 @@ function criarRotasDoEnvio({ estado, modelo }) {
         ankiError,
         updatedAt: estado.agora().toISOString(),
       };
+      mudou(envio);
     },
   };
 

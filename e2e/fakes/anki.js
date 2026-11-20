@@ -129,7 +129,8 @@ function criarFakeAnki() {
     }
     const mundo = mundoDaReal();
     const perder = Boolean(estado.perdaDoEnvio) && req.method() === 'POST' && url.pathname === '/jobs';
-    return { ...(mundo && { mundo }), ...(perder && { perder }) };
+    const fila = apiDoEnvio.mudancasParaAFila();
+    return { ...(mundo && { mundo }), ...(perder && { perder }), ...(fila.length && { fila }) };
   }
 
   function mundoDaReal() {
