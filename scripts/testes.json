@@ -1,6 +1,7 @@
 {
   "grupos": {
     "node": {
+      "paralelo": 4,
       "descricao": "Os testes de Node de testes/: mineração automática, sincronização, pacote da loja, o abridor visto da extensão e os fakes da Conexão com o Anki e do abridor",
       "executor": "node",
       "arquivos": [
@@ -17,6 +18,7 @@
       ]
     },
     "ferramentas": {
+      "paralelo": 4,
       "descricao": "As ferramentas de scripts/: o executor dos grupos, os ganchos (o limite de tamanho dos arquivos e o pre-push), as receitas do mapa de features e os condutores do Mac e do PC",
       "executor": "node",
       "arquivos": [
