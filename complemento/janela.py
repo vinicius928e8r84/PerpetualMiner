@@ -1,6 +1,6 @@
 """O item “PerpetualMiner…” em Ferramentas, a janela dele e os avisos do Envio (#175), sem o Qt.
 
-`Janela` lê o que a Conexão guardou (a fila e o estado de cada Envio, `envio.py`) e o devolve já em texto da Voz (`texto_da_janela.py`):
+`Janela` lê o que a Conexão guardou (a fila e o estado de cada Envio, `fila_do_envio.py`) e o devolve já em texto da Voz (`texto_da_janela.py`):
 `estado()` é o que a janela mostra e `passo()` o rótulo do item e os avisos novos. Nada daqui lê o cofre das chaves nem o pedido
 das Frases: a chave da OpenAI, a Palavra e a Frase não têm por onde chegar à tela do Anki.
 

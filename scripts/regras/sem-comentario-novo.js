@@ -41,10 +41,14 @@ const ATE_A_LINHA_DA_LICENCA = 5;
 const EXCECAO_PROPRIA = new RegExp(`exce[çc][ãa]o\\s+${id}\\b`, 'i');
 const MARCA_DE_TESTE = new RegExp(`^Exceção de teste:\\s*(?:${EXCECOES.join('|')}|sem-estado-guardado)\\b`);
 const MARCA_DO_FAKE = /^@estado-guardado\b/;
-const ARQUIVO_DE_TESTE = /^e2e\/tests\/.+\.spec\.js$/;
-const ARQUIVO_DE_FAKE = /^e2e\/fakes\/.+\.js$/;
+const MARCAS_EM_LINHA_PROPRIA = [
+  { arquivo: /^e2e\/tests\/.+\.spec\.js$/, marca: MARCA_DE_TESTE },
+  { arquivo: /^e2e\/fakes\/.+\.js$/, marca: MARCA_DO_FAKE },
+];
 const COMECO_DO_COMENTARIO = /^\s*(?:\/\/+|\/\*+|<!--|#+|\*+(?!\/))\s*/;
 const FIM_DO_COMENTARIO = /\s*(?:\*\/|-->)\s*$/;
+const CABECALHO_DO_ARQUIVO = /^\+\+\+ b\/(.+)$/;
+const CABECALHO_DO_HUNK = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/;
 
 const corpoDe = (texto, primeira, ultima) => {
   const semInicio = primeira ? texto.replace(COMECO_DO_COMENTARIO, '') : texto.replace(/^\s*\*+(?!\/)\s?/, '');
@@ -67,28 +71,50 @@ function git(raiz, args) {
   });
 }
 
-function linhasAcrescentadas(texto) {
-  const porArquivo = new Map();
-  let atual = null;
-  let nocabecalho = false;
-  for (const linha of texto.split('\n')) {
-    if (linha.startsWith('diff --git ')) {
-      nocabecalho = true;
-      atual = null;
-    } else if (nocabecalho && linha.startsWith('+++ ')) {
-      const arquivo = /^\+\+\+ b\/(.+)$/.exec(linha);
-      atual = arquivo ? new Set() : null;
-      if (arquivo) porArquivo.set(arquivo[1], atual);
-    } else if (linha.startsWith('@@')) {
-      nocabecalho = false;
-      const hunk = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/.exec(linha);
-      if (hunk && atual) {
-        const quantas = hunk[2] === undefined ? 1 : Number(hunk[2]);
-        for (let i = 0; i < quantas; i++) atual.add(Number(hunk[1]) + i);
-      }
-    }
+function linhasDoHunk(cabecalho) {
+  const hunk = CABECALHO_DO_HUNK.exec(cabecalho);
+  if (!hunk) return [];
+  const quantas = hunk[2] === undefined ? 1 : Number(hunk[2]);
+  return Array.from({ length: quantas }, (_, i) => Number(hunk[1]) + i);
+}
+
+class LeitorDoDiff {
+  constructor() {
+    this.porArquivo = new Map();
+    this.atual = null;
+    this.noCabecalho = false;
   }
-  return porArquivo;
+
+  ler(linha) {
+    if (linha.startsWith('diff --git ')) this.abrirArquivo();
+    else if (this.noCabecalho && linha.startsWith('+++ ')) this.nomearArquivo(linha);
+    else if (linha.startsWith('@@')) this.lerHunk(linha);
+  }
+
+  abrirArquivo() {
+    this.noCabecalho = true;
+    this.atual = null;
+  }
+
+  nomearArquivo(linha) {
+    const arquivo = CABECALHO_DO_ARQUIVO.exec(linha);
+    this.atual = null;
+    if (!arquivo) return;
+    this.atual = new Set();
+    this.porArquivo.set(arquivo[1], this.atual);
+  }
+
+  lerHunk(linha) {
+    this.noCabecalho = false;
+    if (!this.atual) return;
+    for (const numero of linhasDoHunk(linha)) this.atual.add(numero);
+  }
+}
+
+function linhasAcrescentadas(texto) {
+  const leitor = new LeitorDoDiff();
+  for (const linha of texto.split('\n')) leitor.ler(linha);
+  return leitor.porArquivo;
 }
 
 const mudancas = new Map();
@@ -111,59 +137,138 @@ function mudancasDesde(raiz, base) {
   return mudancas.get(chave);
 }
 
-function gruposDeComentario(arquivo, fonte) {
+const NENHUMA_LINHA = new Set();
+const TODAS_AS_LINHAS = { has: () => true };
+
+function linhasNovas(arquivo, raiz, base) {
+  if (!base) return NENHUMA_LINHA;
+  const mudou = mudancasDesde(raiz, base);
+  if (mudou.novos.has(arquivo)) return TODAS_AS_LINHAS;
+  return mudou.acrescentadas.get(arquivo) || NENHUMA_LINHA;
+}
+
+function iniciosDasLinhas(fonte) {
   const inicios = [0];
   for (let i = 0; i < fonte.length; i++) if (fonte[i] === '\n') inicios.push(i + 1);
-  const trechos = trechosDeComentario(arquivo, fonte).sort((a, b) => a[0] - b[0]);
-  const grupos = [];
-  for (const [de, ate] of trechos) {
-    const linhaInicial = linhaDe(fonte, de);
-    const linhas = fonte.slice(de, ate).split('\n').map((texto, i, todas) => ({
+  return inicios;
+}
+
+function comentarioEm(fonte, [de, ate], inicios) {
+  const linhaInicial = linhaDe(fonte, de);
+  return {
+    propria: fonte.slice(inicios[linhaInicial - 1], de).trim() === '',
+    shebang: linhaInicial === 1 && fonte.startsWith('#!'),
+    linhas: fonte.slice(de, ate).split('\n').map((texto, i, todas) => ({
       linha: linhaInicial + i,
       corpo: corpoDe(texto, i === 0, i === todas.length - 1),
-    }));
-    const propria = fonte.slice(inicios[linhaInicial - 1], de).trim() === '';
-    const shebang = linhaInicial === 1 && fonte.startsWith('#!');
-    const ultimo = grupos[grupos.length - 1];
-    if (propria && ultimo && ultimo.propria && !ultimo.shebang && ultimo.linhas[ultimo.linhas.length - 1].linha === linhaInicial - 1) {
-      ultimo.linhas.push(...linhas);
-    } else {
-      grupos.push({ propria, shebang, linhas });
-    }
+    })),
+  };
+}
+
+function ultimaLinhaDe(grupo) {
+  return grupo.linhas[grupo.linhas.length - 1].linha;
+}
+
+function aceitaContinuacao(grupo) {
+  return grupo.propria && !grupo.shebang;
+}
+
+function vemLogoDepois(anterior, comentario) {
+  return ultimaLinhaDe(anterior) === comentario.linhas[0].linha - 1;
+}
+
+function continuaOBloco(anterior, comentario) {
+  if (!anterior || !comentario.propria) return false;
+  return aceitaContinuacao(anterior) && vemLogoDepois(anterior, comentario);
+}
+
+function gruposDeComentario(arquivo, fonte) {
+  const inicios = iniciosDasLinhas(fonte);
+  const grupos = [];
+  for (const trecho of trechosDeComentario(arquivo, fonte).sort((a, b) => a[0] - b[0])) {
+    const comentario = comentarioEm(fonte, trecho, inicios);
+    const anterior = grupos[grupos.length - 1];
+    if (continuaOBloco(anterior, comentario)) anterior.linhas.push(...comentario.linhas);
+    else grupos.push(comentario);
   }
   return grupos;
 }
 
+function ehDeclaracaoDeCodificacao(arquivo, corpo) {
+  return arquivo.endsWith('.py') && DECLARACAO_DE_CODIFICACAO.test(corpo);
+}
+
+function ehDiretiva(arquivo, corpo) {
+  return DIRETIVAS.some(d => d.test(corpo)) || ehDeclaracaoDeCodificacao(arquivo, corpo);
+}
+
+function ehLinhaDaLicenca(corpo) {
+  return LINHAS_DA_LICENCA.some(e => e.test(corpo));
+}
+
+function semTexto(bloco) {
+  return bloco.corpos.length === 0;
+}
+
+function ehShebang(bloco) {
+  return bloco.shebang;
+}
+
+function soDiretivas(bloco) {
+  return bloco.corpos.every(corpo => ehDiretiva(bloco.arquivo, corpo));
+}
+
+function ehCabecalhoDeLicenca(bloco) {
+  return bloco.primeiraLinha <= ATE_A_LINHA_DA_LICENCA && bloco.corpos.every(ehLinhaDaLicenca);
+}
+
+function ehExcecaoDeOutraRegra(bloco) {
+  return bloco.excecaoDeOutra.test(bloco.corpos[0]);
+}
+
+function ehMarcaEmLinhaPropria(bloco) {
+  if (!bloco.propria) return false;
+  return MARCAS_EM_LINHA_PROPRIA.some(({ arquivo, marca }) => arquivo.test(bloco.arquivo) && marca.test(bloco.corpos[0]));
+}
+
+const LIBERAM_UMA_LINHA = [ehExcecaoDeOutraRegra, ehMarcaEmLinhaPropria];
+
+function umaLinhaLiberada(bloco) {
+  return bloco.corpos.length === 1 && LIBERAM_UMA_LINHA.some(libera => libera(bloco));
+}
+
+const LIBERAM_O_BLOCO = [semTexto, ehShebang, soDiretivas, ehCabecalhoDeLicenca, umaLinhaLiberada];
+
 function passa(arquivo, grupo, excecaoDeOutra) {
-  const comTexto = grupo.linhas.filter(l => l.corpo);
-  if (comTexto.length === 0 || grupo.shebang) return true;
-  const primeira = comTexto[0].corpo;
-  if (comTexto.every(l => DIRETIVAS.some(d => d.test(l.corpo)) || (arquivo.endsWith('.py') && DECLARACAO_DE_CODIFICACAO.test(l.corpo)))) return true;
-  if (grupo.linhas[0].linha <= ATE_A_LINHA_DA_LICENCA && comTexto.every(l => LINHAS_DA_LICENCA.some(e => e.test(l.corpo)))) return true;
-  if (comTexto.length > 1) return false;
-  if (excecaoDeOutra.test(primeira)) return true;
-  if (!grupo.propria) return false;
-  if (ARQUIVO_DE_TESTE.test(arquivo) && MARCA_DE_TESTE.test(primeira)) return true;
-  return ARQUIVO_DE_FAKE.test(arquivo) && MARCA_DO_FAKE.test(primeira);
+  const bloco = {
+    arquivo,
+    excecaoDeOutra,
+    propria: grupo.propria,
+    shebang: grupo.shebang,
+    primeiraLinha: grupo.linhas[0].linha,
+    corpos: grupo.linhas.map(l => l.corpo).filter(Boolean),
+  };
+  return LIBERAM_O_BLOCO.some(libera => libera(bloco));
+}
+
+function resumo(corpo) {
+  return corpo.length > 70 ? `${corpo.slice(0, 67)}…` : corpo;
+}
+
+function achadosDoGrupo(grupo, acusaveis) {
+  const achados = [];
+  for (const { linha, corpo } of grupo.linhas.filter(l => l.corpo)) {
+    if (acusaveis.has(linha) || EXCECAO_PROPRIA.test(corpo)) achados.push({ linha, detalhe: `comentário novo: “${resumo(corpo)}”` });
+  }
+  return achados;
 }
 
 function verificar(arquivo, fonte, raiz, base) {
-  const comExcecaoPropria = EXCECAO_PROPRIA.test(fonte);
-  const mudou = base ? mudancasDesde(raiz, base) : null;
-  const todas = Boolean(mudou) && mudou.novos.has(arquivo);
-  const acrescentadas = mudou && mudou.acrescentadas.get(arquivo);
-  if (!comExcecaoPropria && !todas && !acrescentadas) return [];
+  const novas = linhasNovas(arquivo, raiz, base);
+  if (novas === NENHUMA_LINHA && !EXCECAO_PROPRIA.test(fonte)) return [];
   const excecaoDeOutra = excecaoDeOutraRegra(arquivo);
-  const achados = [];
-  for (const grupo of gruposDeComentario(arquivo, fonte)) {
-    const livre = passa(arquivo, grupo, excecaoDeOutra);
-    for (const { linha, corpo } of grupo.linhas) {
-      const nova = !livre && (todas || (acrescentadas && acrescentadas.has(linha)));
-      if (!corpo || !(nova || EXCECAO_PROPRIA.test(corpo))) continue;
-      achados.push({ linha, detalhe: `comentário novo: “${corpo.length > 70 ? `${corpo.slice(0, 67)}…` : corpo}”` });
-    }
-  }
-  return achados;
+  return gruposDeComentario(arquivo, fonte)
+    .flatMap(grupo => achadosDoGrupo(grupo, passa(arquivo, grupo, excecaoDeOutra) ? NENHUMA_LINHA : novas));
 }
 
 module.exports = { id, conserto, seAplica, verificar };
