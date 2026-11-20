@@ -197,15 +197,19 @@
     return resultado === Abridor.RESULTADO.ABRIU;
   }
 
+  async function avisarQueOAnkiVaiAbrir(tela) {
+    if (await Abridor.temPermissao().catch(() => false) && tela.resposta.escolha === RESPOSTA.JA_TENHO) {
+      responder(tela, RESPOSTA.JA_TENHO, 'ONB-18.abrindo');
+    }
+  }
+
   async function responderJaTenho(tela) {
     const { resposta } = tela;
     if (resposta.conversando && resposta.escolha === RESPOSTA.JA_TENHO) return;
     responder(tela, RESPOSTA.JA_TENHO);
     if (resposta.conversando) return;
     resposta.conversando = true;
-    if (await Abridor.temPermissao().catch(() => false) && resposta.escolha === RESPOSTA.JA_TENHO) {
-      responder(tela, RESPOSTA.JA_TENHO, 'ONB-18.abrindo');
-    }
+    await avisarQueOAnkiVaiAbrir(tela);
     const abriu = await oAbridorAbreOAnki().finally(() => { resposta.conversando = false; });
     if (resposta.escolha !== RESPOSTA.JA_TENHO) return;
     responder(tela, RESPOSTA.JA_TENHO, abriu ? 'ONB-18.abrindo' : 'ONB-18.manual');
