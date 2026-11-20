@@ -13,7 +13,7 @@ Fatia do mapa [#138](https://github.com/vinicius928e8r84/PerpetualMiner/issues/1
 
 | arquivo | o que faz |
 |---|---|
-| `complemento/janela.py` | `Janela.estado()` (o que a janela lê) e `Janela.passo()` (o rótulo e os avisos novos), só com a fila e o estado do Envio (`envio.py`); `ligar` põe o item, o Config e a conferência (a cada 1,5 s) no Anki por uma fronteira de cinco chamadas (`qt`) |
+| `complemento/janela.py` | `Janela.estado()` (o que a janela lê) e `Janela.passo()` (o rótulo e os avisos novos), só com a fila e o estado do Envio (`fila_do_envio.py`); `ligar` põe o item, o Config e a conferência (a cada 1,5 s) no Anki por uma fronteira de cinco chamadas (`qt`) |
 | `complemento/qt_do_anki.py` | a fronteira de verdade, sobre o `aqt`: `QAction` em `mw.form.menuTools`, `addonManager.setConfigAction`, `tooltip`, `QTimer` e o `QDialog`. Só roda dentro do Anki |
 | `complemento/texto_da_janela.py` | a cópia abaixo, por ID, com os modelos da extensão (`{nome}`, `{n\|singular\|plural}`) |
 | `complemento/no_anki.py` | `ao_carregar` põe o item depois de subir a Conexão, **suba ela ou não** (desligada, a janela diz onde está o motivo) |

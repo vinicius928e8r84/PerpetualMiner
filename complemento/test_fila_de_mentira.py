@@ -13,7 +13,7 @@ from complemento import envio
 
 
 def semear_a_fila(pasta, fila):
-    """Os Envios que a Conexão já tinha (`filas` do contrato): os arquivos de `envio.py`, como a Conexão os deixa.
+    """Os Envios que a Conexão já tinha (`filas` do contrato): os arquivos de `fila_do_envio.py`, como a Conexão os deixa.
 
     Cada Envio é `{ job, state, custos, textos? }` (`textos`: `{ stem: texto }` já pagos)."""
     ordem = []
