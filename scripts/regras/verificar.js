@@ -25,6 +25,7 @@ const REGRAS = [
   require('./sem-comentario-novo'),
   require('./html-cru'),
   require('./dialogo-nativo'),
+  require('./saude-do-codigo'),
 ];
 
 const ARQUIVO_DA_LINHA_DE_BASE = 'scripts/regras/linha-de-base.json';
@@ -36,7 +37,7 @@ está em AGENTS.md § Rules and what enforces them).
 
   (sem bandeira)          confere o repositório; sai com 1 se alguma regra falhar
   --atualizar             depois de um conserto, baixa scripts/regras/linha-de-base.json (nunca sobe)
-  --criar-linha-de-base   cria a linha de base quando ela ainda não existe
+  --criar-linha-de-base   cria a linha de base das regras que ainda não têm a sua (o arquivo, se ele não existe)
   --raiz <pasta>          confere outro repositório (os testes usam)
   --base <ref>            o commit cuja linha de base é o teto (padrão: $REGRAS_BASE, senão origin/main);
                           uma base pedida que não existe é erro
@@ -219,6 +220,14 @@ function linhasNovas(raiz, base, arquivo) {
 
 const COMMIT_VAZIO = /^0+$/;
 
+function renomeacoes(raiz, desde) {
+  const saida = desde ? git(raiz, ['diff', '-M', '--name-status', '--diff-filter=R', '-z', desde]) : null;
+  const partes = (saida || '').split('\0').filter(Boolean);
+  const velhoDe = {};
+  for (let i = 0; i + 2 < partes.length; i += 3) velhoDe[partes[i + 2]] = partes[i + 1];
+  return velhoDe;
+}
+
 function recusarBaseInexistente(pedida, doAmbiente) {
   if (pedida) throw new ErroDeUso(`--base ${pedida}: não é um commit deste repositório`);
   if (doAmbiente) {
@@ -269,6 +278,7 @@ class Catraca {
     this.erros = [...errosDeExcecao];
     this.avisos = [];
     this.podeBaixar = [];
+    this.velhoDe = base ? renomeacoes(raiz, base.desde) : {};
   }
 
   conferir() {
@@ -280,8 +290,13 @@ class Catraca {
     const permitido = this.linhaDeBase[regra.id] || {};
     const arquivos = new Set([...Object.keys(this.agora[regra.id]), ...Object.keys(permitido)]);
     for (const arquivo of [...arquivos].sort()) {
-      this.conferirArquivo(regra, { arquivo, tem: this.agora[regra.id][arquivo] || 0, pode: permitido[arquivo] || 0 });
+      this.conferirArquivo(regra, { arquivo, tem: this.agora[regra.id][arquivo] || 0, pode: this.naBaseDoArquivo(permitido, arquivo) || 0 });
     }
+  }
+
+  naBaseDoArquivo(porArquivo, arquivo) {
+    if (arquivo in porArquivo) return porArquivo[arquivo];
+    return porArquivo[this.velhoDe[arquivo]];
   }
 
   conferirArquivo(regra, contagem) {
@@ -322,7 +337,7 @@ class Catraca {
       this.avisos.push(`${ref} ainda não tem a regra ${regra.id}: esta é a primeira linha de base dela (${total(this.linhaDeBase[regra.id])})`);
       return;
     }
-    if (regra.baixarObrigatorio) this.compararArquivosComABase(regra, antes[regra.id] || {});
+    if (regra.baixarObrigatorio || regra.folgaPresaAoArquivo) this.compararArquivosComABase(regra, antes[regra.id] || {});
     if (total(this.linhaDeBase[regra.id]) > total(antes[regra.id])) {
       this.erros.push(`✗ ${ARQUIVO_DA_LINHA_DE_BASE}: ${regra.id} tem ${total(this.linhaDeBase[regra.id])}, mais que os `
         + `${total(antes[regra.id])} de ${ref}. A linha de base só desce: se ${ref} baixou depois que este ramo `
@@ -333,7 +348,7 @@ class Catraca {
 
   compararArquivosComABase(regra, anteriores) {
     for (const [arquivo, n] of Object.entries(this.linhaDeBase[regra.id] || {}).sort()) {
-      const erro = this.erroDoArquivoNaBase(regra, arquivo, n, anteriores[arquivo]);
+      const erro = this.erroDoArquivoNaBase(regra, arquivo, n, this.naBaseDoArquivo(anteriores, arquivo));
       if (erro) this.erros.push(erro);
     }
   }
@@ -342,7 +357,7 @@ class Catraca {
     const { ref } = this.base;
     if (anterior === undefined) {
       return `✗ ${ARQUIVO_DA_LINHA_DE_BASE}: ${regra.id} ${arquivo} não está na linha de base de ${ref}. A linha de base só desce: `
-        + 'um arquivo que passa do teto agora tem de ser dividido, não entrar na lista.';
+        + (regra.porQueOArquivoNovoNaoEntra || 'um arquivo que passa do teto agora tem de ser dividido, não entrar na lista.');
     }
     if (n > anterior) {
       return `✗ ${ARQUIVO_DA_LINHA_DE_BASE}: ${regra.id} ${arquivo} tem ${n} na linha de base do ramo, mais que os ${anterior} de ${ref}. `
@@ -361,11 +376,15 @@ function raizDoRepositorio(pedida) {
 const comoArquivo = objeto => `${JSON.stringify(objeto, null, 2)}\n`;
 
 function criarLinhaDeBase(caminhoDaBase, agora) {
-  if (fs.existsSync(caminhoDaBase)) {
-    throw new Error(`${ARQUIVO_DA_LINHA_DE_BASE} já existe; a linha de base só desce (--atualizar)`);
+  const existente = fs.existsSync(caminhoDaBase) ? lerJson(fs.readFileSync(caminhoDaBase, 'utf8'), ARQUIVO_DA_LINHA_DE_BASE) : {};
+  const semLinhaDeBase = REGRAS.map(regra => regra.id).filter(regra => !(regra in existente));
+  if (!semLinhaDeBase.length) {
+    throw new Error(`${ARQUIVO_DA_LINHA_DE_BASE} já existe com todas as regras; a linha de base só desce (--atualizar)`);
   }
-  fs.writeFileSync(caminhoDaBase, comoArquivo(agora));
-  console.log(`linha de base criada em ${ARQUIVO_DA_LINHA_DE_BASE}`);
+  const nova = { ...existente };
+  for (const regra of semLinhaDeBase) nova[regra] = emOrdem(agora[regra]);
+  fs.writeFileSync(caminhoDaBase, comoArquivo(nova));
+  console.log(`linha de base criada em ${ARQUIVO_DA_LINHA_DE_BASE} para ${semLinhaDeBase.join(', ')}`);
   return 0;
 }
 
@@ -444,6 +463,6 @@ function rodar(argv) {
   }
 }
 
-module.exports = { REGRAS, coletar, excecaoNaLinha };
+module.exports = { REGRAS, coletar, excecaoNaLinha, renomeacoes };
 
 if (require.main === module) process.exitCode = rodar(process.argv.slice(2));
