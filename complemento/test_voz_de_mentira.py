@@ -21,7 +21,8 @@ class VozDeMentira:
     """`VozDeMentira()` escuta numa porta livre. `pedidos` guarda (sotaque, língua, texto) de cada pedido de áudio, na ordem.
 
     `recusar(sotaque, status)` faz os pedidos daquele sotaque (`"*"`: todos) voltarem `status` (None volta a aceitar);
-    `recusar(..., vezes=n)` só nos n primeiros. `sem_audio()` faz a resposta chegar boa, mas sem áudio dentro.
+    `recusar(..., vezes=n)` só nos n primeiros. `sem_audio()` faz a resposta chegar boa, mas sem áudio dentro;
+    `responder_com(corpo)`, chegar boa com este corpo.
     """
 
     def __init__(self):
@@ -29,6 +30,7 @@ class VozDeMentira:
         self.cabecalhos = []
         self.recusas = {}
         self.responde_sem_audio = False
+        self.corpo_da_resposta = None
         self.antes_de_responder = lambda: None
         dono = self
 
@@ -64,6 +66,9 @@ class VozDeMentira:
     def sem_audio(self):
         self.responde_sem_audio = True
 
+    def responder_com(self, corpo):
+        self.corpo_da_resposta = corpo
+
     def _recusa(self, sotaque):
         for chave in (sotaque, "*"):
             recusa = self.recusas.get(chave)
@@ -88,6 +93,8 @@ class VozDeMentira:
             return status, "{}"
         if self.responde_sem_audio:
             return 200, ")]}'\n\n20\n[[\"di\",12],[\"af.httprm\",12,\"x\",1]]\n"
+        if self.corpo_da_resposta is not None:
+            return 200, self.corpo_da_resposta
         audio = base64.b64encode(audio_de_mentira(sotaque, lang, texto)).decode("ascii")
         linha = json.dumps([["wrb.fr", "jQ1olc", json.dumps([audio]), None, None, None, "generic"]], separators=(",", ":"))
         return 200, ")]}'\n\n%d\n%s\n25\n[[\"di\",10],[\"af.httprm\",9,\"-1\",1]]\n" % (len(linha), linha)

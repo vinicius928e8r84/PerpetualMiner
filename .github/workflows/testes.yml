@@ -70,6 +70,7 @@ jobs:
       - if: env.RODAR_COMPLEMENTO == 'true'
         run: node scripts/testar.mjs complemento
         env:
+          PM_PARALELO: '4'
           PYTHON: python
           EXIGIR_PWSH: '1'
           PM_VERSAO_BASE: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
@@ -78,10 +79,7 @@ jobs:
   e2e:
     name: e2e (${{ matrix.fatia }}/8)
     runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
-    # Um worker por runner de 2 núcleos: com dois, o Chromium de cada teste disputa o
-    # processador e os testes sensíveis a tempo (relógios, transições) falham sem motivo.
-    # Uma fatia leva uns 5 minutos num runner livre; 40 deixa passar um runner carregado e ainda impede que uma travada gaste 45.
-    timeout-minutes: 40
+    timeout-minutes: 20
     env:
       RODAR_E2E: 'true'
     strategy:
@@ -116,11 +114,11 @@ jobs:
         timeout-minutes: 5
         working-directory: e2e
       - if: env.RODAR_E2E == 'true'
-        run: sudo apt-get install -y --no-install-recommends fonts-dejavu-core
+        run: dpkg -s fonts-dejavu-core > /dev/null 2>&1 || sudo apt-get install -y --no-install-recommends fonts-dejavu-core
       # Os specs desta fatia: scripts/ci/fatias-e2e.json, montadas pela duração de cada spec (o --shard do Playwright
       # divide pelo número de testes, e uma fatia levava 9 minutos enquanto outra levava 3).
       - if: env.RODAR_E2E == 'true'
-        run: xvfb-run --auto-servernum node scripts/testar.mjs e2e -- --workers=1 $(node scripts/ci/fatias-e2e.js ${{ matrix.fatia }})
+        run: xvfb-run --auto-servernum node scripts/testar.mjs e2e -- --workers=2 $(node scripts/ci/fatias-e2e.js ${{ matrix.fatia }})
       - name: Testes instáveis
         id: instaveis
         if: ${{ !cancelled() && env.RODAR_E2E == 'true' }}
@@ -167,7 +165,7 @@ jobs:
         timeout-minutes: 5
         working-directory: e2e
       - if: env.RODAR_CONEXAO_REAL == 'true'
-        run: sudo apt-get install -y --no-install-recommends fonts-dejavu-core
+        run: dpkg -s fonts-dejavu-core > /dev/null 2>&1 || sudo apt-get install -y --no-install-recommends fonts-dejavu-core
       - if: env.RODAR_CONEXAO_REAL == 'true'
         run: xvfb-run --auto-servernum node scripts/testar.mjs e2e -- conexao-real pareamento.spec pareamento-ataques --workers=1
         env:

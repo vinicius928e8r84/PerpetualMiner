@@ -8,6 +8,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import baralhos, tipo_de_nota
+from complemento.motor import estilos
 
 MENSAGEM = tipo_de_nota.MENSAGEM_DA_CRIACAO
 INGLES = "PerpetualMiner::Inglês"
@@ -74,6 +75,27 @@ class ContratoDaCorrecao:
         colecao.gravar_frase_escrita("g-ru", "Он мальчик.")
         self.assertEqual([nota["escrita"] for nota in colecao.frases_a_corrigir("ru", 10)], ["Он мальчик."])
         self.assertEqual(colecao.frases_a_corrigir("en", 10), [])
+
+    def test_uma_frase_escrita_so_de_marcas_sem_texto_nao_sai(self):
+        colecao = self.com_notas_gravadas()
+        colecao.adicionar_nota(INGLES, "PerpetualMiner Inglês", {"Frase": "Frase 2", "Palavra": "w2", "Frase escrita": "<b> </b><br>"}, [], "g2")
+        colecao.gravar_frase_escrita("g1", "escrita")
+        self.assertEqual([nota["guid"] for nota in colecao.frases_a_corrigir("en", 10)], ["g1"])
+
+    def test_o_tipo_de_nota_que_perdeu_um_campo_da_criacao_nao_da_nenhuma_frase(self):
+        campos = estilos.idioma("en")["campos"]
+        da_criacao = [campos[chave] for chave in ("frase", "palavra", "frase_escrita", "escrito_antes", "correcao")]
+
+        def guids_com(ficam):
+            colecao = self.adaptador({"baralhos": [{"nome": "Default"}], "tiposDeNota": {"PerpetualMiner Inglês": ficam}})
+            escritos = {nome: "escrita" for nome in ficam if nome != campos["escrito_antes"]}
+            colecao.adicionar_nota("Default", "PerpetualMiner Inglês", escritos, [], "g1")
+            return [nota["guid"] for nota in colecao.frases_a_corrigir("en", 10)]
+
+        self.assertEqual(guids_com(da_criacao), ["g1"])
+        for perdido in da_criacao:
+            with self.subTest(perdido):
+                self.assertEqual(guids_com([nome for nome in da_criacao if nome != perdido]), [])
 
     def test_gravar_a_correcao_de_uma_nota_de_outro_tipo_ou_que_nao_existe_nao_muda_nada(self):
         colecao = self.adaptador(self.DESCRICAO)
