@@ -1,0 +1,8 @@
+{
+  "name": "perpetualminer-analisador",
+  "private": true,
+  "description": "O analisador de JavaScript da regra saude-do-codigo (scripts/regras/saude-do-codigo.js)",
+  "dependencies": {
+    "acorn": "8.19.0"
+  }
+}

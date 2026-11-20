@@ -42,6 +42,14 @@ async function enviosCriados(fakes, n) {
   return fakes.anki.envios;
 }
 
+const pedidosDeCriar = fakes => fakes.anki.requisicoes.filter(r => r.metodo === 'POST' && r.caminho === '/jobs');
+
+async function apagarAFrase(page, texto) {
+  await cartao(page, texto).getByRole('button', { name: 'Apagar frase', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Apagar frase' }).click();
+  await expect(cartao(page, texto)).toHaveCount(0);
+}
+
 async function pedirConferenciaDaConexao(page) {
   await page.locator('#shell-tentar-de-novo').evaluate(el => el.click());
 }
@@ -71,4 +79,4 @@ async function umaVoltaDoEnvio(page, { resposta } = {}) {
   });
 }
 
-module.exports = { cartoesDe, pedirConferenciaDaConexao, umaVoltaDoEnvio, AGORA, HOJE, frase, INGLESAS, RUSSA, SACK, ARM, LATE, abrirPainel, cartao, marcar, enviarAoAnki, progresso, resumo, envio, baralho, toasts, marcarEEnviar, enviosCriados };
+module.exports = { cartoesDe, pedirConferenciaDaConexao, umaVoltaDoEnvio, AGORA, HOJE, frase, INGLESAS, RUSSA, SACK, ARM, LATE, abrirPainel, cartao, marcar, enviarAoAnki, progresso, resumo, envio, baralho, toasts, marcarEEnviar, enviosCriados, pedidosDeCriar, apagarAFrase };

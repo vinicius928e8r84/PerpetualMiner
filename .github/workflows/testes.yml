@@ -28,6 +28,7 @@ jobs:
           cache: pip
           cache-dependency-path: engine/requirements.txt
       - run: pip install -r engine/requirements.txt
+      - run: npm ci --prefix scripts/regras/analisador
       - run: node scripts/testar.mjs node ferramentas engine
         env:
           PYTHON: python
