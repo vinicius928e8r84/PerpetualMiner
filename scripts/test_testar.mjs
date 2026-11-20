@@ -36,6 +36,7 @@ const ferramentas = testar('node');
 assert.equal(ferramentas.status, 0, ferramentas.stdout + ferramentas.stderr);
 assert.match(ferramentas.stdout, /▶ node: node testes\/test_sync\.js/);
 assert.match(ferramentas.stdout, /testes ok: node/);
+assert.match(ferramentas.stdout, /^node: \d+ arquivos, 4 em paralelo; ok$/m);
 
 const raizComVenv = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-venv-'));
 const raizSemVenv = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-sem-venv-'));
@@ -153,6 +154,28 @@ echo "Ran 2 tests in 0.0s" >&2
   assert.equal(comArgumentos.status, 0, comArgumentos.stdout + comArgumentos.stderr);
   assert.match(fs.readFileSync(path.join(pasta, 'serie'), 'utf8'), /discover .*-k algo/, 'argumentos depois de -- usam o discover em série');
   fs.rmSync(pasta, { recursive: true, force: true });
+}
+
+{
+  const { rodarArquivosEmParalelo } = require('./arquivos-em-paralelo.js');
+  const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-arquivos-'));
+  const marca = nome => JSON.stringify(path.join(pasta, nome));
+  const esperarOOutro = (eu, outro) => `const fs = require('fs'); fs.writeFileSync(${marca(eu)}, ''); const fim = Date.now() + 5000;
+while (!fs.existsSync(${marca(outro)})) { if (Date.now() > fim) process.exit(3); Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 20); }\n`;
+  const verde = path.join(pasta, 'test_verde.js');
+  const vermelho = path.join(pasta, 'test_vermelho.js');
+  fs.writeFileSync(verde, `${esperarOOutro('vivo.verde', 'vivo.vermelho')}console.log('o verde passou');\n`);
+  fs.writeFileSync(vermelho, `${esperarOOutro('vivo.vermelho', 'vivo.verde')}console.error('o vermelho quebrou'); process.exit(1);\n`);
+  let escrito = '';
+  const vermelhos = await rodarArquivosEmParalelo({
+    nome: 'grupo', trabalhadores: 2, escrever: pedaco => { escrito += pedaco; },
+    comandos: [verde, vermelho].map(arquivo => ({ comando: 'node', argumentos: [arquivo], cwd: pasta })),
+  });
+  fs.rmSync(pasta, { recursive: true, force: true });
+  assert.deepEqual(vermelhos, [vermelho], 'os dois rodaram ao mesmo tempo (um esperou o outro) e só o vermelho reprova');
+  assert.ok(escrito.includes(`▶ grupo: node ${verde}\no verde passou\n`), escrito);
+  assert.ok(escrito.includes(`▶ grupo: node ${vermelho}\no vermelho quebrou\n`), 'a saída do vermelho aparece, com o stderr');
+  assert.ok(escrito.includes(`grupo: 2 arquivos, 2 em paralelo; falharam: ${vermelho}`), escrito);
 }
 
 {
