@@ -77,6 +77,18 @@ def _tokens(resposta):
     return {"access_token": acesso, "refresh_token": renovacao, "scopes": escopos.split(), "expira_em": time.time() + validade}
 
 
+def _tem_os_tokens(dados):
+    return all(isinstance(dados.get(campo), str) and dados[campo] for campo in ("client_id", "access_token", "refresh_token"))
+
+
+def _o_refresh_nao_serve_mais(status, resposta):
+    return status is not None and status < 500 and resposta.get("error") in oficial.REFRESH_INUTILIZAVEL
+
+
+def _na_lista_da_conta(modelo):
+    return isinstance(modelo, dict) and modelo.get("visibility") == "list" and isinstance(modelo.get("slug"), str) and modelo["slug"]
+
+
 class LoginDoChatGPT:
     """O login do ChatGPT deste computador. `base` é o servidor de login e `api` a API da OpenAI (os testes dão os de mentira)."""
 
@@ -105,8 +117,7 @@ class LoginDoChatGPT:
 
     def _login(self, dados=None):
         dados = dados if dados is not None else self._ler()
-        campos = ("client_id", "access_token", "refresh_token")
-        if dados is None or not all(isinstance(dados.get(campo), str) and dados[campo] for campo in campos):
+        if dados is None or not _tem_os_tokens(dados):
             return None
         return dados if type(dados.get("expira_em")) in (int, float) else None
 
@@ -167,24 +178,30 @@ class LoginDoChatGPT:
         if host != "127.0.0.1:%d" % porta or not estado:
             return
         with self._tranca:
-            tentativa = self._tentativa
-            if tentativa is None or not hmac.compare_digest(estado.encode("utf-8"), tentativa["state"].encode("utf-8")):
-                return
-            self._tentativa = None
-            if time.monotonic() >= tentativa["expira"]:
+            tentativa = self._consumir_a_tentativa(estado)
+            if tentativa is None:
                 return
             self._trocando = True
             try:
-                if consulta.get("error"):
-                    self._falha = SEM_ACESSO if consulta["error"] == "access_denied" else LOGIN_FALHOU
-                else:
-                    self._falha = self._trocar(tentativa, consulta.get("code"), consulta.get("client_id"))
+                self._falha = self._falha_do_retorno(tentativa, consulta)
             except Exception as erro:
                 self.logger.error("Entrar com o ChatGPT: o login não foi guardado (%s)", type(erro).__name__)
                 self._falha = LOGIN_FALHOU
             finally:
                 self._trocando = False
         self.logger.info("Entrar com o ChatGPT: %s", self._falha or "conectado")
+
+    def _consumir_a_tentativa(self, estado):
+        tentativa = self._tentativa
+        if tentativa is None or not hmac.compare_digest(estado.encode("utf-8"), tentativa["state"].encode("utf-8")):
+            return None
+        self._tentativa = None
+        return tentativa if time.monotonic() < tentativa["expira"] else None
+
+    def _falha_do_retorno(self, tentativa, consulta):
+        if consulta.get("error"):
+            return SEM_ACESSO if consulta["error"] == "access_denied" else LOGIN_FALHOU
+        return self._trocar(tentativa, consulta.get("code"), consulta.get("client_id"))
 
     def _trocar(self, tentativa, codigo, cliente):
         if not codigo or not cliente:
@@ -219,20 +236,23 @@ class LoginDoChatGPT:
                 return None
             if time.time() < login["expira_em"] - MARGEM_DA_RENOVACAO:
                 return login["access_token"]
-            status, resposta = self._pedir_token({
-                "grant_type": "refresh_token", "client_id": login["client_id"], "refresh_token": login["refresh_token"],
-                "resource": oficial.RECURSO,
-            })
-            tokens = _tokens(resposta) if status == 200 else None
-            if tokens is not None and oficial.ESCOPO_DO_PLANO in tokens["scopes"]:
-                gravar_so_do_dono(self._caminho(), dict(login, **tokens))
-                return tokens["access_token"]
-            if tokens is not None or (status is not None and status < 500 and resposta.get("error") in oficial.REFRESH_INUTILIZAVEL):
-                gravar_so_do_dono(self._caminho(), {"acabou": SAIU, "em": int(time.time())})
-                self.logger.warning("Entrar com o ChatGPT: o login acabou (HTTP %s); é preciso entrar de novo", status)
-                raise ErroDoPlano(SAIU)
-            self.logger.warning("Entrar com o ChatGPT: a renovação não deu certo (HTTP %s)", status)
-            raise ErroDoPlano(FORA_DO_AR)
+            return self._renovar(login)
+
+    def _renovar(self, login):
+        status, resposta = self._pedir_token({
+            "grant_type": "refresh_token", "client_id": login["client_id"], "refresh_token": login["refresh_token"],
+            "resource": oficial.RECURSO,
+        })
+        tokens = _tokens(resposta) if status == 200 else None
+        if tokens is not None and oficial.ESCOPO_DO_PLANO in tokens["scopes"]:
+            gravar_so_do_dono(self._caminho(), dict(login, **tokens))
+            return tokens["access_token"]
+        if tokens is not None or _o_refresh_nao_serve_mais(status, resposta):
+            gravar_so_do_dono(self._caminho(), {"acabou": SAIU, "em": int(time.time())})
+            self.logger.warning("Entrar com o ChatGPT: o login acabou (HTTP %s); é preciso entrar de novo", status)
+            raise ErroDoPlano(SAIU)
+        self.logger.warning("Entrar com o ChatGPT: a renovação não deu certo (HTTP %s)", status)
+        raise ErroDoPlano(FORA_DO_AR)
 
     def modelos(self, token):
         """Os modelos da lista da conta (`visibility: list`, na ordem do servidor), o primeiro é o Automático. Levanta `ErroDoPlano`."""
@@ -242,7 +262,7 @@ class LoginDoChatGPT:
         if status != 200:
             raise ErroDoPlano(FORA_DO_AR)
         lista = resposta.get("models") if isinstance(resposta.get("models"), list) else []
-        modelos = [m["slug"] for m in lista if isinstance(m, dict) and m.get("visibility") == "list" and isinstance(m.get("slug"), str) and m["slug"]]
+        modelos = [m["slug"] for m in lista if _na_lista_da_conta(m)]
         if not modelos:
             raise ErroDoPlano(SEM_MODELO)
         return modelos
