@@ -12,8 +12,9 @@ const RAIZ = path.resolve(__dirname, '..', '..');
 const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-pre-push-'));
 const remoto = path.join(pasta, 'remoto.git');
 const trabalho = path.join(pasta, 'trabalho');
+const ANALISADOR_INSTALADO = path.join(RAIZ, 'scripts', 'regras', 'analisador', 'node_modules');
 const env = (email = EMAIL_DO_DONO) => ({
-  ...process.env, GIT_AUTHOR_NAME: 'n', GIT_AUTHOR_EMAIL: email, GIT_COMMITTER_NAME: 'n', GIT_COMMITTER_EMAIL: email,
+  ...process.env, NODE_PATH: ANALISADOR_INSTALADO, GIT_AUTHOR_NAME: 'n', GIT_AUTHOR_EMAIL: email, GIT_COMMITTER_NAME: 'n', GIT_COMMITTER_EMAIL: email,
 });
 const git = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8', env: env(), stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 const escrever = (arquivo, texto) => {

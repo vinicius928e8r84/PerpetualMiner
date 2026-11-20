@@ -25,6 +25,10 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 24
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: npm ci --prefix scripts/regras/analisador
       - run: node scripts/testar.mjs regras
       - run: node scripts/regras/verificar.js
         env:

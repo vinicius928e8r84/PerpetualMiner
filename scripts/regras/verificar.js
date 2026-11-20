@@ -25,6 +25,7 @@ const REGRAS = [
   require('./sem-comentario-novo'),
   require('./html-cru'),
   require('./dialogo-nativo'),
+  require('./saude-do-codigo'),
 ];
 
 const ARQUIVO_DA_LINHA_DE_BASE = 'scripts/regras/linha-de-base.json';
@@ -169,6 +170,21 @@ function linhasNovas(raiz, base, arquivo) {
 
 const COMMIT_VAZIO = /^0+$/;
 
+function renomeacoes(raiz, desde) {
+  const saida = desde ? git(raiz, ['diff', '-M', '--name-status', '--diff-filter=R', '-z', desde]) : null;
+  const partes = (saida || '').split('\0').filter(Boolean);
+  const velhoDe = {};
+  for (let i = 0; i + 2 < partes.length; i += 3) velhoDe[partes[i + 2]] = partes[i + 1];
+  return velhoDe;
+}
+
+const renomeacoesDesdeABase = (raiz, base) => renomeacoes(raiz, base && base.desde);
+
+function permitidoPara(permitido, arquivo, velhoDe) {
+  if (arquivo in permitido) return permitido[arquivo];
+  return permitido[velhoDe[arquivo]] || 0;
+}
+
 function baseDeComparacao(raiz, pedida) {
   const doAmbiente = process.env.REGRAS_BASE || null;
   const ref = pedida || doAmbiente || 'origin/main';
@@ -191,6 +207,15 @@ const lerJson = (texto, origem) => {
   }
 };
 
+function criarLinhaDeBase(caminhoDaBase, agora) {
+  if (fs.existsSync(caminhoDaBase)) {
+    throw new Error(`${ARQUIVO_DA_LINHA_DE_BASE} já existe; a linha de base só desce (--atualizar)`);
+  }
+  fs.writeFileSync(caminhoDaBase, `${JSON.stringify(agora, null, 2)}\n`);
+  console.log(`linha de base criada em ${ARQUIVO_DA_LINHA_DE_BASE}`);
+  return 0;
+}
+
 function main(argv) {
   const opcoes = lerArgumentos(argv);
   if (opcoes.ajuda) {
@@ -206,14 +231,7 @@ function main(argv) {
   const { porRegra, errosDeExcecao } = coletar(raiz, hoje, base && base.teto);
   const agora = contagens(porRegra);
 
-  if (opcoes.criar) {
-    if (fs.existsSync(caminhoDaBase)) {
-      throw new Error(`${ARQUIVO_DA_LINHA_DE_BASE} já existe; a linha de base só desce (--atualizar)`);
-    }
-    fs.writeFileSync(caminhoDaBase, `${JSON.stringify(agora, null, 2)}\n`);
-    console.log(`linha de base criada em ${ARQUIVO_DA_LINHA_DE_BASE}`);
-    return 0;
-  }
+  if (opcoes.criar) return criarLinhaDeBase(caminhoDaBase, agora);
 
   if (!fs.existsSync(caminhoDaBase)) {
     throw new Error(`falta ${ARQUIVO_DA_LINHA_DE_BASE}; ela é versionada com as regras (crie com --criar-linha-de-base)`);
@@ -222,13 +240,14 @@ function main(argv) {
   const erros = [...errosDeExcecao];
   const avisos = [];
   const podeBaixar = [];
+  const velhoDe = renomeacoesDesdeABase(raiz, base);
 
   for (const regra of REGRAS) {
     const permitido = linhaDeBase[regra.id] || {};
     const arquivos = new Set([...Object.keys(agora[regra.id]), ...Object.keys(permitido)]);
     for (const arquivo of [...arquivos].sort()) {
       const tem = agora[regra.id][arquivo] || 0;
-      const pode = permitido[arquivo] || 0;
+      const pode = permitidoPara(permitido, arquivo, velhoDe);
       if (tem < pode) {
         if (regra.baixarObrigatorio && !opcoes.atualizar) erros.push(regra.mensagemDeFolga({ arquivo, tem, pode }));
         else podeBaixar.push(`${regra.id} ${arquivo}: ${pode} → ${tem}`);
@@ -329,6 +348,6 @@ function rodar(argv) {
   }
 }
 
-module.exports = { REGRAS, coletar, excecaoNaLinha };
+module.exports = { REGRAS, coletar, excecaoNaLinha, renomeacoes };
 
 if (require.main === module) process.exitCode = rodar(process.argv.slice(2));
