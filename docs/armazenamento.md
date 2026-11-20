@@ -33,6 +33,7 @@ Other storage keys:
 - `pm_pending_sync` — gone (old versions wrote phrase IDs nobody read); `aoInstalar` removes it
 - `pm_deleted_ids` — `string[]` of deleted phrase IDs whose Firestore DELETE hasn't succeeded yet
 - `pm_tombstone_pendente` — `string[]` of deleted phrase IDs whose Firestore tombstone (`meta/deleted`) write has not succeeded yet; `lib/sincronizacao.js` rewrites it on the next `carregar` and keeps the sync tombstone until it lands
+- `pm_listas_pendentes_uid` — the account (`uid`) the two lists above belong to (`ListasPendentes` in `lib/historico.js`). Logging out keeps them, so the same account finishes them; another account discards them without sending them to its cloud
 - `pm_atalho_legenda` — the “Minerar legenda” shortcut. Absent → the default Alt+S; `null` → no caption shortcut
 - `pm_atalho` — the “Minerar seleção” shortcut; `null` or absent → none (the default). Both use `{ type: 'keyboard'|'mouse', code, button, altKey, ctrlKey, shiftKey, label }`
 - `pm_apagar_tudo` — pending Apagar tudo; shape, account matching and cutoff are documented in `lib/sincronizacao.js`

@@ -11,6 +11,8 @@ const CORRIDAS_CONCORRENTES = 3000;
 const PASSOS_COM_ENTREGA = 3;
 const PASSOS_SIMPLES = [['carregar', 'A'], ['carregar', 'B'], ['carregar', 'C']];
 const PASSOS_COM_SYNC_ATRASADO = [...PASSOS_SIMPLES, ['entregar sync', '']];
+const PASSOS_POR_SYNC = { separado: PASSOS_SIMPLES, junto: PASSOS_SIMPLES, atrasado: PASSOS_COM_SYNC_ATRASADO };
+const PASSOS_COM_CONTA = [['carregar', 'A'], ['carregar', 'B'], ['entra em u1', 'A'], ['entra em u2', 'A']];
 
 function area(dados) {
   return {
@@ -33,22 +35,24 @@ function area(dados) {
 function mundo({ chromeSync, mascara, engoleTombstone }) {
   const firestore = { 1: { id: 1, texto: 'um' }, 2: { id: 2, texto: 'dois' } };
   const tombstones = {};
-  const estado = { pedido: 0, comFalhas: true, tirouCedo: new Set() };
+  const estado = { pedido: 0, comFalhas: true, tirouCedo: new Set(), naOutraConta: new Set() };
   const syncDeTodos = {};
   const caixas = {};
   const passar = () => {
     const n = estado.pedido++;
     if (estado.comFalhas && n < PEDIDOS_COM_FALHA && mascara.includes(n)) throw new Error('HTTP 503');
   };
-  const nuvem = {
-    uid: 'u1',
+  const daOutra = (oque, ids) => { for (const id of ids) estado.naOutraConta.add(`A mandou para a nuvem da conta u2 ${oque} da Frase ${id}, da lista pendente da u1`); };
+  const criarNuvem = (uid, firestore, tombstones, naOutra = () => {}) => ({
+    uid,
     async listarFrases() { passar(); return Object.values(firestore).map(clone); },
     async gravarFrase(f) { passar(); firestore[String(f.id)] = clone(f); },
     async gravarFrases(fs) { passar(); for (const f of fs) firestore[String(f.id)] = clone(f); },
-    async apagarFrases(ids) { passar(); for (const id of ids) delete firestore[String(id)]; },
-    async lerTombstones() { return new Map(Object.entries(tombstones).map(([id, em]) => [id, Number(em)])); },
-    async gravarTombstones(ids, em) { estado.aoGravarTombstone?.(); passar(); if (!engoleTombstone) for (const id of ids) tombstones[String(id)] = em; },
-  };
+    async apagarFrases(ids) { naOutra('o DELETE', ids); passar(); for (const id of ids) delete firestore[String(id)]; },
+    async lerTombstones() { passar(); return new Map(Object.entries(tombstones).map(([id, em]) => [id, Number(em)])); },
+    async gravarTombstones(ids, em) { naOutra('o tombstone', ids); estado.aoGravarTombstone?.(); passar(); if (!engoleTombstone) for (const id of ids) tombstones[String(id)] = em; },
+  });
+  const nuvens = { u1: criarNuvem('u1', firestore, tombstones), u2: criarNuvem('u2', {}, {}, daOutra) };
   const sincronizado = (nome, dados, local) => {
     const base = area(dados);
     const avisar = operacao => { for (const outro of Object.keys(caixas)) if (outro !== nome) caixas[outro].push(operacao); };
@@ -64,11 +68,23 @@ function mundo({ chromeSync, mascara, engoleTombstone }) {
     };
   };
   const computador = (nome, frases) => {
-    const local = { frases: clone(frases) };
+    const local = { frases: clone(frases), pm_migrated: 'u1' };
     const sync = chromeSync === 'junto' ? syncDeTodos : {};
     caixas[nome] = [];
-    const s = criarSincronizacao({ nuvem, agora: () => AGORA, armazenamento: { local: area(local), sync: sincronizado(nome, sync, local) } });
-    return { local, sync, s };
+    const armazenamento = { local: area(local), sync: sincronizado(nome, sync, local) };
+    const pc = { local, sync, conta: 'u1' };
+    pc.entrar = async uid => {
+      pc.conta = uid;
+      if (uid === 'u2') pc.passouPelaU2 = true;
+      pc.nuvem = nuvens[uid];
+      pc.s = criarSincronizacao({ nuvem: pc.nuvem, agora: () => AGORA, armazenamento });
+      if (local.pm_migrated === uid) return;
+      await pc.nuvem.gravarFrases(clone(local.frases)).catch(() => null);
+      local.pm_migrated = uid;
+    };
+    pc.nuvem = nuvens.u1;
+    pc.s = criarSincronizacao({ nuvem: pc.nuvem, agora: () => AGORA, armazenamento });
+    return pc;
   };
   const dois = [{ id: 1, texto: 'um' }, { id: 2, texto: 'dois' }];
   const pcs = { A: computador('A', dois), B: computador('B', dois), C: computador('C', []) };
@@ -86,6 +102,10 @@ async function executar(passo, pc) {
 }
 
 async function executarSemRecusar(passo, pc) {
+  if (passo.startsWith('entra em ')) {
+    await pc.entrar(passo.slice('entra em '.length));
+    return executarSemRecusar('carregar', pc);
+  }
   if (passo === 'carregar') {
     const antes = clone(pc.local.frases || []);
     const r = await pc.s.carregar({ atuais: () => antes });
@@ -102,7 +122,8 @@ async function executarSemRecusar(passo, pc) {
 }
 
 function conferir(m, apagadas) {
-  const problemas = [];
+  const problemas = [...m.estado.naOutraConta];
+  if (m.pcs.A.passouPelaU2) return problemas;
   const ids = lista => (lista || []).map(f => f.id).sort();
   const onde = { nuvem: ids(Object.values(m.firestore)), A: ids(m.pcs.A.local.frases), B: ids(m.pcs.B.local.frases), C: ids(m.pcs.C.local.frases) };
   for (const [lugar, lista] of Object.entries(onde)) {
@@ -129,7 +150,7 @@ function sequencias(passos) {
       acrescentar(nova, resto - 1);
     }
   };
-  acrescentar([], passos === PASSOS_COM_SYNC_ATRASADO ? PASSOS_COM_ENTREGA : PASSOS_DE_CARREGAR);
+  acrescentar([], passos === PASSOS_SIMPLES ? PASSOS_DE_CARREGAR : PASSOS_COM_ENTREGA);
   return out;
 }
 
@@ -145,7 +166,7 @@ function mascaras() {
   return out;
 }
 
-const descrever = ([passo, c]) => (passo === 'carregar' ? `abre ${c}` : passo);
+const descrever = ([passo, c]) => (passo === 'carregar' ? `abre ${c}` : c ? `${c} ${passo}` : passo);
 
 async function executarPasso([passo, c], m) {
   if (passo === 'entregar sync') return m.entregarSync();
@@ -153,15 +174,15 @@ async function executarPasso([passo, c], m) {
 }
 
 function mostraApagadaEmA(frases, m, apagadas) {
+  if (m.pcs.A.passouPelaU2) return [];
   const vistas = [...(frases || []), ...(m.pcs.A.local.frases || [])].map(f => f.id);
   return apagadas.filter(id => vistas.includes(id));
 }
 
-async function explorar({ chromeSync, engoleTombstone = false, primeiraFalha = false }) {
+async function explorar({ chromeSync, engoleTombstone = false, primeiraFalha = false, passos = PASSOS_POR_SYNC[chromeSync] }) {
   const achados = new Map();
   let corridas = 0;
   const mascarasPossiveis = mascaras();
-  const passos = chromeSync === 'atrasado' ? PASSOS_COM_SYNC_ATRASADO : PASSOS_SIMPLES;
   for (const apagar of [['apagar 1', [1]], ['apagar tudo', [1, 2]]]) {
     for (const seq of sequencias(passos)) {
       for (const mascara of mascarasPossiveis) {
@@ -252,6 +273,13 @@ async function rodar() {
     mostrar(achados);
     assert(achados.size === 0, 'depois de todos abrirem o Painel sem falha, nenhuma promessa quebrada');
   }
+  console.log('\nSair e entrar: na mesma conta a apagada não volta; outra conta não recebe a lista pendente da anterior (Chrome Sync: não chega)');
+  const inicioDaConta = Date.now();
+  const contas = await explorar({ chromeSync: 'separado', passos: PASSOS_COM_CONTA });
+  console.log(`      ${contas.corridas} corridas em ${((Date.now() - inicioDaConta) / 1000).toFixed(1)} s`);
+  mostrar(contas.achados);
+  assert(contas.achados.size === 0, 'nenhuma promessa quebrada ao sair e entrar na mesma conta ou noutra');
+
   console.log('\nA lista do tombstone pendente não perde um id quando o carregar e o apagar andam juntos');
   let perdidas = 0;
   for (let n = 1; n <= CORRIDAS_CONCORRENTES; n++) if (!(await corridaConcorrente(n))) perdidas++;
