@@ -66,6 +66,7 @@ function criarFakeAnki() {
     google: null,
     filaDaChave: Promise.resolve(),
     chaveDaOpenAI: null,
+    paraAReal: [],
   };
   const pareamento = criarPareamento({ agora: () => estado.agora() });
   pareamento.parear('primeiro');
@@ -130,7 +131,7 @@ function criarFakeAnki() {
     }
     const mundo = mundoDaReal();
     const perder = Boolean(estado.perdaDoEnvio) && req.method() === 'POST' && url.pathname === '/jobs';
-    const fila = apiDoEnvio.mudancasParaAFila();
+    const fila = estado.paraAReal.splice(0, estado.paraAReal.length);
     return { ...(mundo && { mundo }), ...(perder && { perder }), ...(fila.length && { fila }) };
   }
 
