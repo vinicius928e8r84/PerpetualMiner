@@ -1,7 +1,7 @@
 """Quebra o código real de propósito, roda o explorador e devolve o arquivo (git checkout).
 
 Uso: python3 -I .agents/skills/verificar-historico/variantes.py <pasta-de-saida>
-Cada variante deve FALHAR (menos a 'conserto-da-duplicata', que deve passar a legenda-repetida).
+Cada variante deve FALHAR.
 """
 import pathlib
 import subprocess
@@ -45,12 +45,9 @@ VARIANTES = {
     'id-so-pelo-relogio': ('lib/historico.js', [(
         "    return Math.max(Date.now(), maiorId + 1);",
         "    return Date.now() || maiorId;")]),
-    'conserto-da-duplicata': ('background.js', [(
-        "  const data = await chromeGet({ frases: [] });\n  const textKey = autoMinerTextKey(texto);",
-        "  return navigator.locks.request('pm-automatica', async () => {\n"
-        "  const data = await chromeGet({ frases: [] });\n  const textKey = autoMinerTextKey(texto);"), (
-        "  return { action: 'saved', frase, evaluation, state: updatedState };\n}",
-        "  return { action: 'saved', frase, evaluation, state: updatedState };\n  });\n}")]),
+    'duplicata-sem-conferir': ('lib/historico.js', [(
+        "      if (frases.some(jaTem)) return { frases, resultado: null };\n",
+        "")]),
 }
 
 for nome, (arquivo, trocas) in VARIANTES.items():
