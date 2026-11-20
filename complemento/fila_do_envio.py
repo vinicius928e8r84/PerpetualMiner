@@ -58,8 +58,9 @@ def _os_cartoes_da_frase(estado, cartao_id):
     return frase, {c: v["status"] for c, v in cartoes.items() if v["phraseId"] == frase}
 
 
-def _frase_inteira_no_anki(irmaos):
-    return bool(irmaos) and all(status in NO_ANKI for status in irmaos.values())
+def frase_inteira_no_anki(status_dos_cartoes):
+    """Uma Frase está no Anki quando tem Cartões e todos estão lá (`added` ou `duplicate`)."""
+    return bool(status_dos_cartoes) and all(status in NO_ANKI for status in status_dos_cartoes)
 
 
 def _ainda_tem_a_frase(pedido):
@@ -295,7 +296,7 @@ class Fila(EnviosDosCustos):
             _apagar(self.arquivo_do_texto(job_id, cartao_id))
             estado, pedido = self.estado(job_id), self.pedido(job_id)
             frase, irmaos = _os_cartoes_da_frase(estado, cartao_id)
-            if pedido is None or not _frase_inteira_no_anki(irmaos):
+            if pedido is None or not frase_inteira_no_anki(irmaos.values()):
                 return
             entrada = next((e for e in pedido["entries"] if e["phraseId"] == frase and "line" in e), None)
             if entrada is not None:
