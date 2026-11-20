@@ -379,6 +379,18 @@ class DesteComputador(unittest.TestCase):
         )
         self.assertEqual(este.programa, "/Applications/Anki.app")
 
+    def test_sem_o_anki_no_programa_que_roda_ele_e_procurado_onde_o_instalador_o_poe_no_disco(self):
+        no_disco = {"/Applications/Anki.app", "C:\\Users\\maria\\AppData\\Local\\Programs\\Anki\\anki.exe"}
+        achados = [
+            abridor.deste_computador(
+                plataforma=plataforma, ambiente=dict(ambiente, HOME="/Users/maria"), executavel="/usr/bin/python3", pasta="/x",
+                registro=RegistroDeMentira(), existe=existe,
+            ).programa
+            for plataforma, ambiente in (("darwin", {}), ("win32", {"LOCALAPPDATA": "C:\\Users\\maria\\AppData\\Local"}))
+            for existe in (no_disco.__contains__, lambda _: False)
+        ]
+        self.assertEqual(achados, ["/Applications/Anki.app", None, "C:\\Users\\maria\\AppData\\Local\\Programs\\Anki\\anki.exe", None])
+
     def test_no_windows_registra_para_o_chrome_e_para_o_opera_na_chave_do_usuario(self):
         este = abridor.deste_computador(
             plataforma="win32", ambiente={"ANKI_LAUNCHER": ANKI_DO_WINDOWS}, executavel="x", pasta="C:\\x",
