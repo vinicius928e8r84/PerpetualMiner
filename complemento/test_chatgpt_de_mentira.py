@@ -33,7 +33,7 @@ class ChatGPTDeMentira:
     """`ChatGPTDeMentira()` escuta numa porta livre; `base` é o endereço que a Conexão usa no lugar do servidor de login.
 
     `troca` diz como a troca do código responde (`aceita`, `sem_plano`, `invalid_grant`, `fora_do_ar`) e `renovacao` como a
-    renovação responde (`aceita`, `invalid_grant`, `fora_do_ar`). `pedidos` guarda (método, caminho, formulário) de cada pedido;
+    renovação responde (`aceita`, `sem_plano`, `invalid_grant`, `invalid_grant_com_500`, `fora_do_ar`). `pedidos` guarda (método, caminho, formulário) de cada pedido;
     `revogados`, os `refresh_token` revogados; `emitidos`, cada token emitido.
     """
 
@@ -126,10 +126,12 @@ class ChatGPTDeMentira:
     def _renovar(self, formulario):
         if self.renovacao == "fora_do_ar":
             return 503, {"error": "temporarily_unavailable", "error_description": "o token %s" % formulario.get("refresh_token")}
+        if self.renovacao == "invalid_grant_com_500":
+            return 500, {"error": "invalid_grant"}
         client_id = self._renovaveis.pop(formulario.get("refresh_token"), None)
-        if self.renovacao != "aceita" or client_id is None or client_id != formulario.get("client_id"):
+        if self.renovacao not in ("aceita", "sem_plano") or client_id is None or client_id != formulario.get("client_id"):
             return 400, {"error": "invalid_grant", "error_description": "o token %s" % formulario.get("refresh_token")}
-        return 200, self._tokens(client_id)
+        return 200, self._tokens(client_id, escopos="openid profile email offline_access" if self.renovacao == "sem_plano" else ESCOPOS)
 
     def __enter__(self):
         self._thread.start()

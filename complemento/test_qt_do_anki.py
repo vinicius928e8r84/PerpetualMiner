@@ -11,7 +11,7 @@ from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import configuracao, janela, qt_do_anki, registro
+from complemento import configuracao, janela, qt_do_anki, registro, texto_da_janela
 
 
 class _Qualquer:
@@ -19,6 +19,25 @@ class _Qualquer:
 
     def __getattr__(self, nome):
         return self if nome[:1].isupper() else lambda *argumentos, **nomeados: None
+
+
+class _Visivel(_Qualquer):
+    visivel = True
+
+    def setVisible(self, visivel):
+        self.visivel = visivel
+
+
+class _Barra(_Visivel):
+    """A barra do Envio: a faixa e o valor que a janela deu a ela."""
+
+    faixa = valor = None
+
+    def setRange(self, minimo, maximo):
+        self.faixa = (minimo, maximo)
+
+    def setValue(self, valor):
+        self.valor = valor
 
 
 class AqtDeMentira:
@@ -85,7 +104,7 @@ class AqtDeMentira:
             def addRow(self, *campos):
                 self.linhas.append(campos)
 
-        class Rotulo(_Qualquer):
+        class Rotulo(_Visivel):
             def __init__(self, *_):
                 self.texto = ""
                 aqui.rotulos.append(self)
@@ -119,8 +138,7 @@ class AqtDeMentira:
 
         qt = types.SimpleNamespace(
             QDialog=Dialogo, QTimer=Relogio, Qt=_Qualquer(), qconnect=lambda sinal, funcao: sinal.ligados.append(funcao) if isinstance(sinal, Sinal) else None,
-            QFormLayout=Formulario, QLabel=Rotulo, QVBoxLayout=Layout,
-            **{nome: (lambda *_: _Qualquer()) for nome in ("QProgressBar", "QPushButton")})
+            QFormLayout=Formulario, QLabel=Rotulo, QVBoxLayout=Layout, QProgressBar=_Barra, QPushButton=lambda *_: _Qualquer())
         utils = types.SimpleNamespace(tooltip=lambda texto, period=None: self.tooltips.append((texto, period)))
         self.modulos = {"aqt": types.SimpleNamespace(qt=qt, utils=utils), "aqt.qt": qt, "aqt.utils": utils}
 
@@ -131,6 +149,14 @@ class AqtDeMentira:
 
     def __exit__(self, *erro):
         return self._troca.__exit__(*erro)
+
+    def campo(self, chave):
+        """O valor da linha do formulário da janela com o rótulo `chave` do catálogo."""
+        return next(linha[1] for linha in self.formularios[0].linhas if linha[0] == texto_da_janela.texto(chave))
+
+    def sem_rotulo(self):
+        """A barra do Envio e a linha do Baralho, as duas linhas do formulário que não têm rótulo."""
+        return [linha[0] for linha in self.formularios[0].linhas if len(linha) == 1]
 
 
 class AFronteiraComOQtDoAnki(unittest.TestCase):
@@ -203,6 +229,54 @@ class AFronteiraComOQtDoAnki(unittest.TestCase):
             aqt.relogios[0].timeout.ligados[0]()
         self.assertEqual(dialogo.width(), 700)
         self.assertEqual(dialogo.redimensionamentos[-1], (700, 150))
+
+
+class OEnvioNaJanela(unittest.TestCase):
+    def abrir(self, aqt, atual):
+        lidos = []
+
+        def ler_estado():
+            lidos.append(1)
+            return atual[0]
+
+        qt_do_anki.QtDoAnki(registro.silencioso()).abrir_janela(object(), ler_estado)
+        return lidos
+
+    def test_com_um_envio_a_janela_mostra_o_progresso_a_etapa_a_barra_e_o_baralho_e_sem_envio_os_esconde(self):
+        base = janela.Janela(None, lambda: "Usuário 1", configuracao.VERSAO, registro.silencioso()).estado()
+        enviando = base._replace(envio=janela.EnvioNaJanela("3 de 12 cartões", "Enviando", 3, 12, "Inglês <b>"))
+        with AqtDeMentira() as aqt:
+            atual = [base]
+            self.abrir(aqt, atual)
+            barra, baralho = aqt.sem_rotulo()
+            sem_envio = (aqt.campo("ANK-02.envio").texto, barra.visivel, baralho.visivel)
+            atual[0] = enviando
+            aqt.relogios[0].timeout.ligados[0]()
+            com_envio = (aqt.campo("ANK-02.envio").texto, barra.visivel, barra.faixa, barra.valor, baralho.visivel, baralho.texto)
+            atual[0] = base
+            aqt.relogios[0].timeout.ligados[0]()
+            depois = (aqt.campo("ANK-02.envio").texto, barra.visivel, baralho.visivel)
+        self.assertEqual(sem_envio, ("Nenhum Envio ainda", False, False))
+        self.assertEqual(com_envio, ("3 de 12 cartões · Enviando", True, (0, 12), 3, True, "Baralho Inglês <b>"))
+        self.assertEqual(depois, sem_envio)
+
+    def test_o_envio_sem_cartao_nenhum_tem_a_barra_de_0_a_1_e_nunca_a_barra_sem_fim(self):
+        base = janela.Janela(None, lambda: "Usuário 1", configuracao.VERSAO, registro.silencioso()).estado()
+        with AqtDeMentira() as aqt:
+            self.abrir(aqt, [base._replace(envio=janela.EnvioNaJanela("0 de 0 cartões", "Na fila", 0, 0, "Inglês"))])
+            barra, _ = aqt.sem_rotulo()
+        self.assertEqual((barra.faixa, barra.valor), ((0, 1), 0))
+
+    def test_a_janela_fechada_nao_le_o_estado_nem_muda_o_texto(self):
+        base = janela.Janela(None, lambda: "Usuário 1", configuracao.VERSAO, registro.silencioso()).estado()
+        with AqtDeMentira() as aqt:
+            atual = [base]
+            lidos = self.abrir(aqt, atual)
+            aqt.dialogos[0].close()
+            atual[0] = base._replace(ultimo_erro="falhou")
+            aqt.relogios[0].timeout.ligados[0]()
+            erro = aqt.campo("ANK-02.erro").texto
+        self.assertEqual((len(lidos), erro), (1, texto_da_janela.texto("ANK-02.semErro")))
 
 
 if __name__ == "__main__":

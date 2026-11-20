@@ -123,76 +123,101 @@ class QtDoAnki:
             self._relogio_da_janela.start()
             self._mostrar()
             return
-        from aqt.qt import QDialog, QFormLayout, QLabel, QProgressBar, QPushButton, QTimer, Qt, QVBoxLayout, qconnect
+        from aqt.qt import QTimer, qconnect
 
-        dialogo = QDialog(mw)
-        dialogo.setWindowTitle(texto_da_janela.texto("ANK-02.titulo"))
-        dialogo.setMinimumWidth(420)
-        layout = QVBoxLayout(dialogo)
-        formulario = QFormLayout()
-        formulario.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
-        layout.addLayout(formulario)
-
-        def linha(rotulo):
-            valor = QLabel("")
-            valor.setTextFormat(Qt.TextFormat.PlainText)
-            valor.setWordWrap(True)
-            valor.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-            formulario.addRow(texto_da_janela.texto(rotulo), valor)
-            return valor
-
-        conexao, versao, perfil = linha("ANK-02.conexao"), linha("ANK-02.versao"), linha("ANK-02.perfil")
-        envio = linha("ANK-02.envio")
-        barra, baralho = QProgressBar(), QLabel("")
-        barra.setTextVisible(False)
-        baralho.setTextFormat(Qt.TextFormat.PlainText)
-        formulario.addRow(barra)
-        formulario.addRow(baralho)
-        erro = linha("ANK-02.erro")
-        desconectar_botao = None
-        if desconectar is not None:
-            desconectar_botao = QPushButton(texto_da_janela.texto("ANK-02.desconectar"))
-            qconnect(desconectar_botao.clicked, janela.protegido(lambda *_: (desconectar(), mostrar_protegido()), self._logger, "desconectar os navegadores"))
-            layout.addWidget(desconectar_botao)
-        fechar = QPushButton(texto_da_janela.texto("ANK-02.fechar"))
-        qconnect(fechar.clicked, dialogo.close)
-        layout.addWidget(fechar)
-
-        ultima_medida = [None]
-
-        def mostrar():
-            if not dialogo.isVisible():
-                return
-            estado = ler_estado()
-            conexao.setText(estado.conexao)
-            versao.setText(estado.versao)
-            perfil.setText(estado.perfil)
-            atual = estado.envio
-            envio.setText("%s · %s" % (atual.progresso, atual.etapa) if atual else texto_da_janela.texto("ANK-02.semEnvio"))
-            barra.setVisible(atual is not None)
-            baralho.setVisible(atual is not None)
-            if atual:
-                barra.setRange(0, max(atual.total, 1))  # (0, 0) seria a barra sem fim
-                barra.setValue(atual.feitos)
-                baralho.setText(texto_da_janela.texto("ANK-02.baralho", baralho=atual.baralho))
-            erro.setText(estado.ultimo_erro or texto_da_janela.texto("ANK-02.semErro"))
-            medida = (conexao.text(), versao.text(), perfil.text(), envio.text(), erro.text(), baralho.text(), atual is not None)
-            if medida != ultima_medida[0]:
-                ultima_medida[0] = medida
-                largura = dialogo.width()
-                layout.activate()  # sem refazer o layout, o adjustSize() mede o texto anterior e a janela corta por um ciclo
-                dialogo.adjustSize()
-                if largura > dialogo.width():  # o adjustSize() volta à largura do texto: a que a pessoa deu à janela fica
-                    dialogo.resize(largura, max(dialogo.minimumSizeHint().height(), layout.totalHeightForWidth(largura)))
-            if desconectar_botao is not None:
-                desconectar_botao.setEnabled(estado.navegadores > 0)
-
-        mostrar_protegido = janela.protegido(mostrar, self._logger, "atualizar a janela")
-        relogio = QTimer(dialogo)
+        pequena = _JanelaPequena(mw, ler_estado, self._logger, desconectar)
+        relogio = QTimer(pequena.dialogo)
         relogio.setInterval(int(janela.INTERVALO_S * 1000))
-        qconnect(relogio.timeout, mostrar_protegido)
-        qconnect(dialogo.finished, relogio.stop)
+        qconnect(relogio.timeout, pequena.mostrar_protegido)
+        qconnect(pequena.dialogo.finished, relogio.stop)
         relogio.start()
-        dialogo.show()
-        mostrar_protegido()
-        self._aberta, self._mostrar, self._relogio_da_janela = dialogo, mostrar_protegido, relogio
+        pequena.dialogo.show()
+        pequena.mostrar_protegido()
+        self._aberta, self._mostrar, self._relogio_da_janela = pequena.dialogo, pequena.mostrar_protegido, relogio
+
+
+class _JanelaPequena:
+    """A janela pequena do item “PerpetualMiner…”: as linhas que ela mostra e o que cada passo do relógio escreve nelas."""
+
+    def __init__(self, mw, ler_estado, logger, desconectar):
+        from aqt.qt import QDialog, QFormLayout, QLabel, QProgressBar, Qt, QVBoxLayout
+
+        self._ler_estado, self._ultima_medida = ler_estado, None
+        self.dialogo = QDialog(mw)
+        self.dialogo.setWindowTitle(texto_da_janela.texto("ANK-02.titulo"))
+        self.dialogo.setMinimumWidth(420)
+        self.layout = QVBoxLayout(self.dialogo)
+        self._formulario = QFormLayout()
+        self._formulario.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+        self.layout.addLayout(self._formulario)
+        self.conexao, self.versao, self.perfil = self._linha("ANK-02.conexao"), self._linha("ANK-02.versao"), self._linha("ANK-02.perfil")
+        self.envio = self._linha("ANK-02.envio")
+        self.barra, self.baralho = QProgressBar(), QLabel("")
+        self.barra.setTextVisible(False)
+        self.baralho.setTextFormat(Qt.TextFormat.PlainText)
+        self._formulario.addRow(self.barra)
+        self._formulario.addRow(self.baralho)
+        self.erro = self._linha("ANK-02.erro")
+        self.mostrar_protegido = janela.protegido(self.mostrar, logger, "atualizar a janela")
+        self.desconectar_botao = self._botao_desconectar(desconectar, logger)
+        self._botao_fechar()
+
+    def _linha(self, rotulo):
+        from aqt.qt import QLabel, Qt
+
+        valor = QLabel("")
+        valor.setTextFormat(Qt.TextFormat.PlainText)
+        valor.setWordWrap(True)
+        valor.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self._formulario.addRow(texto_da_janela.texto(rotulo), valor)
+        return valor
+
+    def _botao_desconectar(self, desconectar, logger):
+        if desconectar is None:
+            return None
+        from aqt.qt import QPushButton, qconnect
+
+        botao = QPushButton(texto_da_janela.texto("ANK-02.desconectar"))
+        qconnect(botao.clicked, janela.protegido(lambda *_: (desconectar(), self.mostrar_protegido()), logger, "desconectar os navegadores"))
+        self.layout.addWidget(botao)
+        return botao
+
+    def _botao_fechar(self):
+        from aqt.qt import QPushButton, qconnect
+
+        fechar = QPushButton(texto_da_janela.texto("ANK-02.fechar"))
+        qconnect(fechar.clicked, self.dialogo.close)
+        self.layout.addWidget(fechar)
+
+    def mostrar(self):
+        if not self.dialogo.isVisible():
+            return
+        estado = self._ler_estado()
+        self.conexao.setText(estado.conexao)
+        self.versao.setText(estado.versao)
+        self.perfil.setText(estado.perfil)
+        self._mostrar_o_envio(estado.envio)
+        self.erro.setText(estado.ultimo_erro or texto_da_janela.texto("ANK-02.semErro"))
+        self._caber_o_texto_novo(estado.envio is not None)
+        if self.desconectar_botao is not None:
+            self.desconectar_botao.setEnabled(estado.navegadores > 0)
+
+    def _mostrar_o_envio(self, atual):
+        self.envio.setText("%s · %s" % (atual.progresso, atual.etapa) if atual else texto_da_janela.texto("ANK-02.semEnvio"))
+        self.barra.setVisible(atual is not None)
+        self.baralho.setVisible(atual is not None)
+        if atual:
+            self.barra.setRange(0, max(atual.total, 1))
+            self.barra.setValue(atual.feitos)
+            self.baralho.setText(texto_da_janela.texto("ANK-02.baralho", baralho=atual.baralho))
+
+    def _caber_o_texto_novo(self, com_envio):
+        medida = (self.conexao.text(), self.versao.text(), self.perfil.text(), self.envio.text(), self.erro.text(), self.baralho.text(), com_envio)
+        if medida == self._ultima_medida:
+            return
+        self._ultima_medida = medida
+        largura = self.dialogo.width()
+        self.layout.activate()
+        self.dialogo.adjustSize()
+        if largura > self.dialogo.width():
+            self.dialogo.resize(largura, max(self.dialogo.minimumSizeHint().height(), self.layout.totalHeightForWidth(largura)))

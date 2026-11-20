@@ -103,6 +103,20 @@ def a_frase_como_texto(valor):
     return html.unescape(re.sub(r"<[^>]+>", "", re.sub(r"<br\s*/?>", "\n", str(valor or "")))).strip()
 
 
+def _tem_os_campos_da_criacao(nomes, campos):
+    return bool(nomes) and all(campos[chave] in nomes for chave in ("frase", "palavra", "frase_escrita", "escrito_antes", "correcao"))
+
+
+def _a_ia_ainda_nao_leu(nota, campos):
+    escrita = nota.get(campos["frase_escrita"], "")
+    return bool(a_frase_como_texto(escrita)) and escrita != nota.get(campos["escrito_antes"], "")
+
+
+def _frase_a_corrigir(guid, nota, campos):
+    return {"guid": guid, "escrita": a_frase_como_texto(nota.get(campos["frase_escrita"], "")), "frase": a_frase_como_texto(nota.get(campos["frase"])),
+            "palavra": a_frase_como_texto(nota.get(campos["palavra"]))}
+
+
 def frases_a_corrigir(colecao, lang, limite):
     """Na thread principal (o passo de correção do Envio, #169). As notas do tipo de nota do idioma `lang` com uma “Frase escrita” que a IA ainda não leu:
     o campo não está vazio e é diferente do “Escrito antes” (o que foi corrigido da última vez). Até `limite` notas, em texto simples:
@@ -111,15 +125,13 @@ def frases_a_corrigir(colecao, lang, limite):
     tipo = colecao.models.by_name(idioma["tipo_de_nota"])
     nomes = campos_do_tipo(tipo)
     campos = idioma["campos"]
-    if not nomes or any(campos[chave] not in nomes for chave in ("frase", "palavra", "frase_escrita", "escrito_antes", "correcao")):
+    if not _tem_os_campos_da_criacao(nomes, campos):
         return []
     achadas = []
     for guid, valores in colecao.db.all("select guid, flds from notes where mid = ? order by id", tipo["id"]):
         nota = dict(zip(nomes, str(valores or "").split("\x1f")))
-        escrita = nota.get(campos["frase_escrita"], "")
-        if a_frase_como_texto(escrita) and escrita != nota.get(campos["escrito_antes"], ""):
-            achadas.append({"guid": guid, "escrita": a_frase_como_texto(escrita), "frase": a_frase_como_texto(nota.get(campos["frase"])),
-                            "palavra": a_frase_como_texto(nota.get(campos["palavra"]))})
+        if _a_ia_ainda_nao_leu(nota, campos):
+            achadas.append(_frase_a_corrigir(guid, nota, campos))
             if len(achadas) >= limite:
                 break
     return achadas
