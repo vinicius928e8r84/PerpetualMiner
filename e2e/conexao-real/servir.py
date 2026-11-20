@@ -11,6 +11,7 @@ e fala com o fixture por linhas de JSON: ao ficar pronta escreve `{"porta": N}`;
     {"mudar": {"jobId", "state"}}  o estado que o fake deu ao Envio (`moverEnvio`, `concluirEnvio`), gravado pelo portão `Fila.mudar`:
                               uma transição que a máquina não aceita volta `{"erro": ...}`
     {"criar": {...}}          um Envio que chega sem a extensão (`receberEnvio`), pelo `Fila.criar`
+    {"fila": "nome"}          a fila de um exemplo do contrato (`filas`; `definirFila`), semeada como nos testes do complemento
     {"apagarFrases": true}    o Apagar tudo feito por fora do pedido (`apagarAsFrases`), pelo `Fila.apagar_as_frases`
     {"envios": true}          os Envios que a fila guardou, na ordem: `{jobId, lang, corpo (o pedido como as rotas o mostram), createdAt, state}`
     {"estado": true}          responde o que a Conexão guardou: a cópia da chave, os documentos da nuvem, os pedidos à OpenAI,
@@ -35,6 +36,8 @@ sys.path.insert(0, RAIZ)
 from complemento import configuracao, envio, pasta_de_dados, registro, servidor
 from complemento.test_chatgpt_de_mentira import ChatGPTDeMentira
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria
+from complemento.test_fila_de_mentira import semear_a_fila
+from complemento.test_harness import ler_o_contrato
 from complemento.test_imagens_de_mentira import OpenverseDeMentira
 from complemento.test_openai_de_mentira import COMPORTAMENTOS, FirestoreDeMentira, OpenAIDeMentira
 from complemento.test_pareamento_de_mentira import CLIENTE, OUTRO_CLIENTE, OUTRO_SEGREDO, SEGREDO, TelaDeMentira, semear
@@ -101,6 +104,9 @@ def main():
                     responder({"ok": True})
                 except (ValueError, TypeError) as erro:
                     responder({"erro": str(erro)})
+            elif "fila" in comando:
+                semear_a_fila(dados.raiz, ler_o_contrato()["filas"][comando["fila"]])
+                responder({"ok": True})
             elif comando.get("apagarFrases"):
                 conexao.fila.apagar_as_frases()
                 responder({"ok": True})

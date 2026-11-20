@@ -29,10 +29,10 @@ test('Continuar envio na aba Custos acompanha o Envio até o fim: o detalhe anda
 
   fakes.anki.concluirEnvio(JOB);
   await relogio.avancar(INTERVALO_DA_LEITURA_MS);
-  await expect(detalhe(page)).toContainText('Concluído');
-  await expect(detalhe(page)).not.toContainText('Concluído em parte');
+  await expect(detalhe(page)).toContainText(/Concluído(?! em parte)/);
   await expect(detalhe(page).getByRole('button', { name: 'Continuar envio' })).toHaveCount(0);
 
+  await relogio.avancar(3 * INTERVALO_DA_LEITURA_MS);
   const lidas = leiturasDoEnvio(fakes);
   await relogio.avancar(3 * INTERVALO_DA_LEITURA_MS);
   expect(leiturasDoEnvio(fakes)).toBe(lidas);

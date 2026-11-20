@@ -165,6 +165,7 @@ function criarRotasDoEnvio({ estado, modelo }) {
       const fila = contrato.filas[nome];
       if (!fila) throw new Error(`O contrato não tem a fila "${nome}" em filas (complemento/contrato/exemplos.json).`);
       envios.length = 0;
+      paraAFila.push({ fila: nome });
       for (const { job, state, custos } of fila) {
         const { createdAt, ...corpo } = JSON.parse(JSON.stringify(job));
         envios.push({ jobId: job.jobId, lang: job.lang, entries: job.entries, corpo, createdAt, state: JSON.parse(JSON.stringify(state)) });
