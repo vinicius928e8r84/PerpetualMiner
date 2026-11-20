@@ -17,7 +17,8 @@ from urllib.parse import parse_qs, urlencode, urlsplit
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento.test_chatgpt_de_mentira import MARCA
+from complemento.login_do_chatgpt import ErroDoPlano
+from complemento.test_chatgpt_de_mentira import MARCA, situar_o_login
 from complemento.test_harness import ConexaoNoTeste
 
 ESCOPOS = {"openid", "profile", "email", "offline_access", "resource.invoke", "chatgpt.tokens.use.direct"}
@@ -272,6 +273,79 @@ class Sair(unittest.TestCase):
             conexao.servidor_de_login.revogacao = 503
             resposta = json_de(conexao.pedir("POST", "/ia/chatgpt/sair", corpo={}))
             self.assertEqual((resposta, os.path.exists(arquivo_do_login(conexao))), ({"ok": True, "revogada": False}, False))
+
+
+
+def codigo_do_token(conexao):
+    """O que `token()` dá ao próximo pedido: o token, None ou o código do `ErroDoPlano` que ele levanta."""
+    try:
+        return conexao.conexao.chatgpt.token()
+    except ErroDoPlano as erro:
+        return erro.codigo
+
+
+def guardar_o_login(conexao, **campos):
+    with open(arquivo_do_login(conexao), "w", encoding="utf-8") as arquivo:
+        json.dump(dict({"client_id": "oaiapp_x", "access_token": "acesso-x", "refresh_token": "renovacao-x", "expira_em": 4e9}, **campos), arquivo)
+
+
+class ARenovacao(unittest.TestCase):
+    def test_a_renovacao_que_volta_sem_o_uso_do_plano_acaba_o_login_e_o_arquivo_nao_guarda_token(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            conexao.servidor_de_login.validade = 60
+            entrar_e_voltar(conexao)
+            conexao.servidor_de_login.renovacao = "sem_plano"
+            codigo = codigo_do_token(conexao)
+            with open(arquivo_do_login(conexao), encoding="utf-8") as arquivo:
+                guardado = json.load(arquivo)
+            depois = estado(conexao)
+        self.assertEqual(codigo, "chatgpt_signed_out")
+        self.assertEqual(sorted(guardado), ["acabou", "em"])
+        self.assertEqual(depois, {"conectada": False, "entrando": False, "falha": None, "acabou": "chatgpt_signed_out"})
+
+    def test_a_recusa_da_renovacao_com_um_erro_do_servidor_de_login_e_fora_do_ar_e_o_login_continua(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            conexao.servidor_de_login.validade = 60
+            entrar_e_voltar(conexao)
+            conexao.servidor_de_login.renovacao = "invalid_grant_com_500"
+            codigo = codigo_do_token(conexao)
+            depois = estado(conexao)
+        self.assertEqual(codigo, "openai_unreachable")
+        self.assertEqual(depois, {"conectada": True, "entrando": False, "falha": None, "acabou": None})
+
+    def test_com_o_login_acabado_o_token_diz_que_saiu_e_nunca_none_sem_pedir_a_renovacao(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            situar_o_login(conexao.conexao, conexao.servidor_de_login, "acabou")
+            codigo = codigo_do_token(conexao)
+            self.assertEqual((codigo, trocas(conexao)), ("chatgpt_signed_out", []))
+
+    def test_o_token_longe_da_validade_vai_sem_renovar(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            guardar_o_login(conexao)
+            self.assertEqual((codigo_do_token(conexao), trocas(conexao)), ("acesso-x", []))
+
+
+class OArquivoDoLogin(unittest.TestCase):
+    def test_o_arquivo_com_um_token_vazio_ou_sem_a_validade_nao_e_um_login(self):
+        casos = {
+            "access_token vazio": {"access_token": ""}, "refresh_token vazio": {"refresh_token": ""}, "client_id vazio": {"client_id": ""},
+            "sem a validade": {"expira_em": None}, "validade em texto": {"expira_em": "4e9"}, "token que nao e texto": {"access_token": 7},
+        }
+        for nome, campos in casos.items():
+            with self.subTest(nome), tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+                guardar_o_login(conexao, **campos)
+                self.assertEqual((estado(conexao)["conectada"], codigo_do_token(conexao), trocas(conexao)), (False, None, []))
+
+
+class OsModelosDaConta(unittest.TestCase):
+    def test_so_os_modelos_da_lista_com_nome_entram_na_ordem_do_servidor(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            entrar_e_voltar(conexao)
+            login = conexao.conexao.chatgpt
+            do_plano = login.modelos(login.token())
+            conexao.openai.modelos_do_plano = ["", "gpt-6-sol", "gpt-6-luna"]
+            sem_o_vazio = login.modelos(login.token())
+        self.assertEqual((do_plano, sem_o_vazio), (["gpt-6-luna", "gpt-6-sol"], ["gpt-6-sol", "gpt-6-luna"]))
 
 
 if __name__ == "__main__":
