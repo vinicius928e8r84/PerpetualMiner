@@ -35,7 +35,13 @@ test('Apagar tudo tira a Palavra e a Frase do que o painel guarda do Envio e da 
   expect(fakes.anki.envios).toHaveLength(1);
 });
 
-test('Apagar tudo sem a Conexão responder: as Frases saem do painel e o pedido segue marcado até a Conexão responder', async ({ page, extensao, fakes }) => {
+const oApagarTudoTerminar = context => new Promise(resolver => {
+  const visto = pedido => { if (new URL(pedido.url()).pathname === '/jobs/apagar-frases') resolver(pedido.failure() ? 'recusado' : 'respondido'); };
+  context.on('requestfailed', visto);
+  context.on('requestfinished', visto);
+});
+
+test('Apagar tudo sem a Conexão responder: as Frases saem do painel e o pedido segue marcado até a Conexão responder', async ({ page, context, extensao, fakes }) => {
   const sentinela = frase(1_700_000_000_098, `The ${SENTINELA} vat bubbled all night.`, { keywords: [`${SENTINELA}@1`] });
   await extensao.gravarStorage({ frases: [sentinela] });
   await abrirPainel(page, extensao);
@@ -44,12 +50,14 @@ test('Apagar tudo sem a Conexão responder: as Frases saem do painel e o pedido 
   await expect.poll(async () => (await extensao.lerStorage('pm_envio')).pm_envio?.envios?.[0]?.jobId).toBeTruthy();
 
   fakes.anki.falharApagarFrases();
+  const apagarTudo = oApagarTudoTerminar(context);
   await progresso(page).getByRole('button', { name: 'Fechar' }).first().click();
   await page.goto(extensao.url('painel.html#configuracoes/perigo'));
   await page.locator('#cfg-perigo').getByRole('button', { name: 'Apagar 1 frase' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Apagar 1 frase' }).click();
 
   await expect.poll(async () => JSON.stringify(await extensao.lerStorage())).not.toContain(SENTINELA);
+  expect(await apagarTudo).toBe('recusado');
   const { pm_envio: pendente } = await extensao.lerStorage('pm_envio');
   expect(pendente).toStrictEqual({ envios: [], apagarFrases: true });
   expect(JSON.stringify(fakes.anki.envios.map(e => e.corpo))).toContain(SENTINELA);

@@ -189,4 +189,19 @@ async function conferirAPortaDeTeste() {
   }
 }
 
-conferirOsExemplos().then(conferirACopiaDaChave).then(conferirAPortaDeTeste).then(() => console.log('fake anki key tests passed')).catch(erro => { console.error(erro); process.exit(1); });
+function conferirOApagarTudoNaFrenteDaReal() {
+  const pedido = (metodo, caminho) => ({ req: { method: () => metodo, postData: () => '{}' }, url: new URL(`http://127.0.0.1:8766${caminho}`) });
+  const naFrente = (anki, metodo, caminho) => { const { req, url } = pedido(metodo, caminho); return anki.naFrente(req, url); };
+  const apagando = criarFakeAnki();
+  apagando.apagarAsFrases();
+  assert.deepStrictEqual(naFrente(apagando, 'POST', '/jobs/list').fila, [{ apagarFrases: true }], 'apagarAsFrases chega à Conexão real no próximo pedido');
+  assert.strictEqual(naFrente(apagando, 'POST', '/jobs/list').fila, undefined, 'e só uma vez');
+
+  const semResposta = criarFakeAnki();
+  semResposta.falharApagarFrases();
+  assert.deepStrictEqual(naFrente(semResposta, 'POST', '/jobs/apagar-frases'), { recusar: true }, 'falharApagarFrases recusa na frente, nos dois modos');
+  semResposta.voltarApagarFrases();
+  assert.strictEqual(naFrente(semResposta, 'POST', '/jobs/apagar-frases').recusar, undefined);
+}
+
+conferirOsExemplos().then(conferirACopiaDaChave).then(conferirAPortaDeTeste).then(conferirOApagarTudoNaFrenteDaReal).then(() => console.log('fake anki key tests passed')).catch(erro => { console.error(erro); process.exit(1); });
