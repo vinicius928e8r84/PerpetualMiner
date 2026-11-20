@@ -13,7 +13,7 @@
     "ferramentas": {
       "descricao": "As ferramentas de scripts/: o executor dos grupos, os ganchos (o limite de tamanho dos arquivos e o pre-push), as receitas do mapa de features e os condutores do Mac e do PC",
       "executor": "node",
-      "arquivos": ["scripts/test_testar.mjs", "scripts/ganchos/test_limite_de_tokens.js", "scripts/ganchos/test_limite_de_tokens_entrada.js", "scripts/ganchos/test_limite_de_tokens_renomeacao.js", "scripts/ganchos/test_limite_de_tokens_ci.js", "scripts/ganchos/test_configuracao_do_indice.js", ".agents/skills/verify-perpetualminer/scripts/test_receitas.js", ".agents/skills/verify-perpetualminer/scripts/test_remoto.js", "scripts/ganchos/test_pre_push.js"]
+      "arquivos": ["scripts/test_testar.mjs", "scripts/ganchos/test_limite_de_tokens.js", "scripts/ganchos/test_limite_de_tokens_entrada.js", "scripts/ganchos/test_limite_de_tokens_renomeacao.js", "scripts/ganchos/test_limite_de_tokens_ci.js", "scripts/ganchos/test_configuracao_do_indice.js", ".agents/skills/verify-perpetualminer/scripts/test_receitas.js", ".agents/skills/verify-perpetualminer/scripts/test_remoto.js", "scripts/ganchos/test_pre_push.js", "scripts/qualidade/test_segunda_opiniao.js"]
     },
     "complemento": {
       "descricao": "O complemento do Anki; na biblioteca padrão, e o CI roda no Python 3.9 (o do Anki do Mac) e no 3.13. Roda em 2 processos, um módulo por vez de uma fila (scripts/unittest-em-paralelo.js); PM_PARALELO=1 ou argumentos depois de -- voltam ao unittest discover em série",
