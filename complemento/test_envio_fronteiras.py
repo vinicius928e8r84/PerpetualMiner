@@ -25,7 +25,7 @@ from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import envio
+from complemento import envio, fila_do_envio
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria
 from complemento.test_envio import (
     ID, INGLES, LINHA, SENTINELAS, EnvioNoTeste, apagar_as_frases, arquivos_sem_o_log, chats, pedido)
@@ -56,7 +56,7 @@ class Fronteiras:
             self.contadas += 1
 
     def ligadas(self):
-        """Os pontos de gravação do Envio: os arquivos (`_gravar_json`, `_apagar`), o texto do motor e a nota na coleção."""
+        """Os pontos de gravação do Envio: os arquivos (`_gravar_json`, `_apagar`, da Fila e do trabalho), o texto do motor e a nota na coleção."""
         gravar_json, apagar = envio._gravar_json, envio._apagar
         motor = envio.motor_do_complemento().generate_cards
         gravar_texto = motor._write_card
@@ -82,6 +82,7 @@ class Fronteiras:
 
         return [
             mock.patch.object(envio, "_gravar_json", _gravar_json), mock.patch.object(envio, "_apagar", _apagar),
+            mock.patch.object(fila_do_envio, "_gravar_json", _gravar_json), mock.patch.object(fila_do_envio, "_apagar", _apagar),
             mock.patch.object(motor, "_write_card", _write_card), mock.patch.object(ColecaoEmMemoria, "gravar_cartao", gravar),
         ]
 

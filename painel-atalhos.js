@@ -7,6 +7,11 @@
 
   const PARTE_DO_CATALOGO = { [ACOES.LEGENDA]: 'minerarLegenda', [ACOES.SELECAO]: 'minerarSelecao' };
 
+  function ehOEscSozinho(evento) {
+    const semModificador = !evento.altKey && !evento.ctrlKey && !evento.shiftKey && !evento.metaKey;
+    return evento.type === 'keydown' && evento.key === 'Escape' && semModificador;
+  }
+
   function montarGravadorDeAtalhos(corpo, { prefixo, lugar = corpo }) {
     const estado = {
       atalhos: { ...Atalhos.ATALHOS_PADRAO },
@@ -118,8 +123,7 @@
 
     function aoGravar(evento) {
       const acao = estado.gravando;
-      const semModificador = !evento.altKey && !evento.ctrlKey && !evento.shiftKey && !evento.metaKey;
-      if (evento.type === 'keydown' && evento.key === 'Escape' && semModificador) {
+      if (ehOEscSozinho(evento)) {
         evento.preventDefault();
         evento.stopImmediatePropagation();
         pararDeGravar();
