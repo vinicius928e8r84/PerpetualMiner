@@ -33,7 +33,7 @@ from . import baralhos, custos, voz
 from .audio_do_cartao import FRASE_APAGADA
 from .correcao_da_criacao import CorrecaoDaCriacao
 from .envios_dos_custos import EnviosDosCustos
-from .gravacao_de_json import apagar as _apagar, apagar_os_provisorios, avisar_do_que_ficou, gravar_json as _gravar_json
+from .gravacao_de_json import apagar as _apagar, apagar_os_provisorios, gravar_json as _gravar_json, limpar_ao_subir
 from .configuracao import OPENVERSE_BASE, VOZ_BASE
 from .imagem_do_cartao import ParaOEnvio
 from .ia_do_envio import IaDoEnvio, SemQuemPague
@@ -247,7 +247,7 @@ class Fila(EnviosDosCustos):
         """A Conexão subiu: um estado `running` volta a `queued` e o Envio continua de onde parou; um id da fila sem estado
         tem o estado refeito do pedido, e sem pedido sai da fila (o log diz por quê). Um pedido fora da fila **não** entra nela."""
         with self.tranca:
-            apagar_os_provisorios(self.dados, avisar_do_que_ficou(self.logger))
+            limpar_ao_subir(self.dados, self.estado, self.logger)
             ordem = self.ordem()
             ficam = []
             for item in ordem:

@@ -127,7 +127,7 @@ function montar(mundo) {
   const locks = trancas(mundo);
   const sw = contexto(mundo, locks);
   fonte('background.js').script.runInContext(sw);
-  sw.evaluateAutoMinerPhrase = async () => ({ accept: true, reason: 'en_new_item', keywords: ['barely@2'] });
+  sw.getAutoKeywordVocabulary = async () => ({ available: true, words: new Set(['barely']), terms: new Set(), wordInfo: new Map([['barely', { status: 'new' }]]), termInfo: new Map() });
   const pagina = contexto(mundo, locks);
   fonte('lib/historico.js').script.runInContext(pagina);
   fonte('lib/sincronizacao.js').script.runInContext(pagina);
@@ -231,7 +231,7 @@ const foto = { nome: 'SW foto', rodar: ({ sw }) => sw.salvarFrase(FOTO, 'livro',
   { keywords: ['harbour@3'], autoKeyword: false }, { comPalavraAutomatica: false, comNuvem: false }),
 ops: [{ tipo: 'acrescentar', frase: { texto: FOTO, keywords: ['harbour@3'] } }] };
 const legenda = nome => ({ nome, rodar: ({ sw }) => sw.handleAutoMinerCandidate({ texto: LEGENDA, lang: 'en', origem: 'netflix' }),
-  ops: [{ tipo: 'acrescentarSeNova', frase: { texto: LEGENDA, keywords: ['barely@2'] } }] });
+  ops: [{ tipo: 'acrescentarSeNova', frase: { texto: LEGENDA, keywords: ['coming@8', '|', 'never@2'] } }] });
 const palavra = { nome: 'Painel Palavra', rodar: ({ painel }) => painel.Historico.editar(1, { keywords: ['barely@2'] }),
   ops: [{ tipo: 'editar', ids: [1], campos: { keywords: ['barely@2'] } }] };
 const apagar = { nome: 'Painel Apagar', rodar: ({ painel }) => painel.Historico.apagar([2]), ops: [{ tipo: 'apagar', ids: [2] }] };
@@ -254,8 +254,7 @@ const CENARIOS = [
   { nome: 'foto-e-painel', dados: { frases: [f2, f1] }, atores: [foto, palavra, apagar, enviada] },
   { nome: 'carregar-com-conta', dados: { frases: [f2, f1] }, atores: [carregar, foto, palavra] },
   { nome: 'legenda-e-painel', dados: { frases: [f2, f1], ...ajustes }, atores: [legenda('SW legenda'), foto, apagar] },
-  { nome: 'legenda-repetida', dados: { frases: [f1], ...ajustes }, atores: [legenda('SW legenda 1'), legenda('SW legenda 2')],
-    conhecido: 'duplicata' },
+  { nome: 'legenda-repetida', dados: { frases: [f1], ...ajustes }, atores: [legenda('SW legenda 1'), legenda('SW legenda 2')] },
 ];
 
 async function principal() {
