@@ -36,7 +36,7 @@ function criarPerfis(contextoDeAgora) {
       Object.assign(estado, { lista: [...lista], marcado, aberto: opcoes.aberto === undefined ? lista[0] : opcoes.aberto, definido: true });
     },
     paraAReal: () => (estado.definido ? { lista: [...estado.lista], marcado: estado.marcado } : null),
-    espelhar({ lista, marcado, aberto: abertoNaReal }) { Object.assign(estado, { lista, marcado, aberto: abertoNaReal }); },
+    espelhar({ lista, marcado, aberto: abertoNaReal }) { Object.assign(estado, { lista, marcado }, estado.definido && { aberto: abertoNaReal }); },
     marcado: () => estado.marcado,
     aberto,
     saudeCom(resposta) {
