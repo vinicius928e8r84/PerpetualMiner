@@ -74,6 +74,17 @@ class IaDeRoteiro:
         return None, None
 
 
+class ParadaDeRoteiro:
+    """O evento que para a Conexão num teste: nunca para, e guarda quanto cada espera ia dormir."""
+
+    def __init__(self):
+        self.esperas = []
+
+    def wait(self, segundos):
+        self.esperas.append(segundos)
+        return False
+
+
 def cartao_e_motor(pasta, voz_base="http://127.0.0.1:9/{tld}", reserva=None):
     motor = motor_do_envio.motor_do_complemento()
     tts = {} if reserva is None else {"reserva": reserva}
@@ -186,6 +197,22 @@ class Escrever(unittest.TestCase):
             with self.assertRaises(SemQuemPague) as parado:
                 motor_do_cartao.escrever(cartao, ia)
         self.assertEqual((parado.exception.codigo, ia.pedidos), ("openai_key_missing", ["texto"]))
+
+
+class AsEsperasDaOpenai(unittest.TestCase):
+    def test_sem_esperas_dadas_o_texto_e_a_voz_que_falham_por_um_motivo_passageiro_sao_pedidos_de_novo_depois_de_2_8_e_30_s(self):
+        parada = ParadaDeRoteiro()
+        ia = IaDeRoteiro(*[ErroDoProvedor("openai_unreachable")] * 4)
+        with tempfile.TemporaryDirectory() as pasta, VozDeMentira() as voz_do_google:
+            voz_do_google.recusar("*", 503)
+            cartao, _ = cartao_e_motor(pasta, reserva=[])
+            motor_do_cartao = MotorDoCartao(motor_do_envio.motor_do_complemento(), LOGGER, threading.RLock(), parada, "http://127.0.0.1:9",
+                                            voz_do_google.base, "http://127.0.0.1:9")
+            falha = motor_do_cartao.escrever(cartao, ia)
+            with self.assertRaises(voz.ErroDaVoz):
+                motor_do_cartao.montar(cartao, TEXTO, ia, lambda etapa: None)
+            pedidos_a_voz = len(voz_do_google.pedidos)
+        self.assertEqual((falha, parada.esperas, pedidos_a_voz), ("openai_unreachable", [2, 8, 30, 2, 8, 30], 4))
 
 
 if __name__ == "__main__":

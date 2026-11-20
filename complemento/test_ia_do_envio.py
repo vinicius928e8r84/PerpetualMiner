@@ -102,6 +102,12 @@ class AsEsperasPelaPorta(unittest.TestCase):
         IaDoEnvio(IaDeRoteiro(), espera, LOGGER, espera_do_plano=11).esperar_o_plano()
         self.assertEqual(espera.feito, ["limpar", ("esperar", {"reason": "plan_limit"}, 11)])
 
+    def test_sem_esperas_dadas_o_teto_e_conferido_a_cada_60_s_e_o_plano_espera_300_s(self):
+        no_teto, no_plano = EsperaDeRoteiro(), EsperaDeRoteiro()
+        IaDoEnvio(IaDeRoteiro(), no_teto, LOGGER, teto=TetoDeRoteiro(True, False)).conferir_o_teto()
+        IaDoEnvio(IaDeRoteiro(), no_plano, LOGGER).esperar_o_plano()
+        self.assertEqual((no_teto.feito[1], no_plano.feito[1]), (("esperar", {"reason": "monthly_cap"}, 60), ("esperar", {"reason": "plan_limit"}, 300)))
+
 
 if __name__ == "__main__":
     unittest.main()

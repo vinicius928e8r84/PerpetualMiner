@@ -126,6 +126,39 @@ class ALiberacaoDaPorta(unittest.TestCase):
                 self.assertIsNotNone(novamente)
 
 
+class SistemaQueNaoParaOProcesso(SistemaDeMentira):
+    def parar(self, pid):
+        self.eventos.append("processo_parado")
+
+
+class AMarcaDaPassagem(unittest.TestCase):
+    def test_a_marca_anota_o_que_se_copiou_os_envios_passados_e_as_entradas_de_inicio_apagadas(self):
+        with tempfile.TemporaryDirectory() as pasta, uma_conexao_de_hoje(pasta) as antiga:
+            antiga.terminar(ID, [10])
+            with NaPassagem(pasta, antiga, colecao=ColecaoEmMemoria({"baralhos": []}, perfis=("Usuário 1", "Ingles - Ana")), trabalhando=False) as nova:
+                nova.passar()
+                with open(os.path.join(nova.conexao.dados.raiz, passagem.ARQUIVO_DA_MARCA), encoding="utf-8") as arquivo:
+                    marca = json.load(arquivo)
+        self.assertEqual(marca, {
+            "feita": True, "chave": "copiada", "custos": 1, "prompts": ["en_card.txt"], "perfil": "Ingles - Ana", "historico": 2, "fila": 5,
+            "recusados": [], "iniciosApagados": ["tarefa", "run", "perpetualminer-anki-bridge.vbs", "vigia"],
+        })
+
+    def test_a_porta_que_nao_fica_livre_dentro_da_espera_da_porta_deixa_a_passagem_por_fazer(self):
+        with tempfile.TemporaryDirectory() as pasta, uma_conexao_de_hoje(pasta) as antiga:
+            antiga.terminar(ID, [10])
+            with NaPassagem(pasta, antiga, trabalhando=False) as nova:
+                sistema = SistemaQueNaoParaOProcesso(antiga, nova.eventos)
+                nova.passagem = passagem.Passagem(sistema=sistema, porta=antiga.porta, dormir=nova._dormir, intervalo=0, espera_da_porta=0.2)
+                nova.passar()
+                marca = os.path.exists(os.path.join(nova.conexao.dados.raiz, passagem.ARQUIVO_DA_MARCA))
+                no_ar, log, dormiu = nova.no_ar, nova.log(), len(nova.dormiu)
+            self.assertTrue(antiga.no_ar)
+        self.assertEqual((nova.eventos, marca, no_ar), (["inicio_apagado", "processo_parado"], False, False))
+        self.assertIn("a porta %d continua ocupada" % antiga.porta, log)
+        self.assertGreater(dormiu, 1)
+
+
 class ASaidaDaPassagem(unittest.TestCase):
     def test_sem_a_passagem_o_complemento_sobe_como_antes_e_a_conexao_de_hoje_fica_intacta(self):
         with tempfile.TemporaryDirectory() as pasta, uma_conexao_de_hoje(pasta) as antiga:
