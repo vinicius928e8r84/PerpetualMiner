@@ -307,7 +307,6 @@
     "scripts/grupos-de-teste.js": 4,
     "scripts/regras/apoio-da-tabela-de-regras.js": 4,
     "scripts/regras/aprovacao-visual.js": 1,
-    "scripts/regras/comum.js": 83,
     "scripts/regras/contrato-fechado.js": 1,
     "scripts/regras/e2e-estado-final.js": 13,
     "scripts/regras/e2e-funcao-interna.js": 4,
