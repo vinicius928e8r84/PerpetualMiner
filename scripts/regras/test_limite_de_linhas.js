@@ -7,6 +7,7 @@ const path = require('path');
 
 const { repositorioDeTestes } = require('./apoio-de-testes');
 const regra = require('./limite-de-linhas');
+const saude = require('./saude-do-codigo');
 
 const RAIZ = path.resolve(__dirname, '..', '..');
 const real = arquivo => fs.readFileSync(path.join(RAIZ, arquivo), 'utf8');
@@ -54,7 +55,10 @@ function verificar(arquivos) {
     fs.rmSync(pasta, { recursive: true, force: true });
   }
 }
-const comLinhas = (fonte, linhaDeBase) => ({ 'bookreader/bookreader.js': fonte, 'scripts/regras/linha-de-base.json': linhaDeBase });
+const comASaudeDoBookreader = (linhaDeBase, fonte) => JSON.stringify({
+  ...JSON.parse(linhaDeBase), 'saude-do-codigo': { 'bookreader/bookreader.js': saude.verificar('bookreader/bookreader.js', fonte).length },
+});
+const comLinhas = (fonte, linhaDeBase) => ({ 'bookreader/bookreader.js': fonte, 'scripts/regras/linha-de-base.json': comASaudeDoBookreader(linhaDeBase, fonte) });
 
 // ANTES: o arquivo real passado de 1.000 linhas, fora da lista, falha com o arquivo, a contagem, o teto e o conserto.
 let r = verificar(comLinhas(acima, LIMPO));
@@ -122,7 +126,7 @@ function contraAMain(naMain, noRamo) {
   }
 }
 const GRANDE = (n, marca = '') => `${marca}${'x\n'.repeat(n - (marca ? 1 : 0))}`;
-const LISTA = objeto => JSON.stringify({ 'limite-de-linhas': objeto });
+const LISTA = objeto => comASaudeDoBookreader(JSON.stringify({ 'limite-de-linhas': objeto }), bookreader);
 const naMain = { 'grande.js': GRANDE(1100), 'bookreader/bookreader.js': bookreader, 'scripts/regras/linha-de-base.json': LISTA({ 'grande.js': 100 }) };
 const emFolga = `${[...base, ...base.slice(0, regra.LIMITE + 7 - base.length)].join('\n')}\n`;
 r = contraAMain(naMain, { 'grande.js': GRANDE(1090), 'bookreader/bookreader.js': emFolga, 'scripts/regras/linha-de-base.json': LISTA({ 'grande.js': 90, 'bookreader/bookreader.js': 7 }) });
