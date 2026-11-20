@@ -15,6 +15,9 @@ e fala com o fixture por linhas de JSON: ao ficar pronta escreve `{"porta": N}`;
     {"criar": {...}}          um Envio que chega sem a extensão (`receberEnvio`), pelo `Fila.criar`
     {"chave": {...} | null}   o `chaves/openai.json` que o teste deu à Conexão (`guardarChaveNaConexao`, `guardarRemocaoNaConexao`; null:
                               `esquecerAChave`), escrito como nos testes do complemento
+    {"login": "situacao"}     o login do ChatGPT na situação que o teste deu (`chatgpt.definir`): `conectada` (o arquivo dos tokens),
+                              `desconectada` (sem arquivo) ou uma das de `situar_o_login`, contra o servidor de login de mentira daqui
+    {"login": true}           a situação do login agora, nos nomes do fake (`conectada`, `entrando`, `recusou`, `nao_serve`, `acabou`, `desconectada`)
     {"fila": "nome"}          a fila de um exemplo do contrato (`filas`; `definirFila`), semeada como nos testes do complemento
     {"apagarFrases": true}    o Apagar tudo feito por fora do pedido (`apagarAsFrases`), pelo `Fila.apagar_as_frases`
     {"envios": true}          os Envios que a fila guardou, na ordem: `{jobId, lang, corpo (o pedido como as rotas o mostram), createdAt, state}`
@@ -38,7 +41,8 @@ RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, RAIZ)
 
 from complemento import configuracao, envio, pasta_de_dados, registro, servidor
-from complemento.test_chatgpt_de_mentira import ChatGPTDeMentira
+from complemento.login_do_chatgpt import NAO_SERVE, SEM_ACESSO
+from complemento.test_chatgpt_de_mentira import ChatGPTDeMentira, situar_o_login
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria
 from complemento.test_fila_de_mentira import semear_a_fila
 from complemento.test_harness import ler_o_contrato
@@ -123,6 +127,20 @@ def main():
                 else:
                     with open(caminho, "w", encoding="utf-8") as arquivo:
                         json.dump(comando["chave"], arquivo)
+                responder({"ok": True})
+            elif comando.get("login") is True:
+                agora = conexao.chatgpt.estado()
+                falha = {SEM_ACESSO: "recusou", NAO_SERVE: "nao_serve"}.get(agora["falha"])
+                responder({"login": "conectada" if agora["conectada"] else "entrando" if agora["entrando"] else "acabou" if agora["acabou"] else falha or "desconectada"})
+            elif "login" in comando:
+                arquivo = os.path.join(dados.chaves, "chatgpt.json")
+                if os.path.exists(arquivo):
+                    os.remove(arquivo)
+                if comando["login"] == "conectada":
+                    with open(arquivo, "w", encoding="utf-8") as escrito:
+                        json.dump({"client_id": "oaiapp_x", "access_token": "acesso-x", "refresh_token": "renovacao-x", "expira_em": 4e9}, escrito)
+                elif comando["login"] != "desconectada":
+                    situar_o_login(conexao, login, comando["login"])
                 responder({"ok": True})
             elif "fila" in comando:
                 semear_a_fila(dados.raiz, ler_o_contrato()["filas"][comando["fila"]])
