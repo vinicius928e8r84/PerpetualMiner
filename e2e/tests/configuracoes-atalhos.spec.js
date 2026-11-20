@@ -123,6 +123,18 @@ test('Esc sem modificador cancela; só as teclas modificadoras não gravam', asy
   expect(await atalhosGravados(extensao)).toEqual({});
 });
 
+test('Esc com Shift não cancela: Shift+Escape é um atalho como outro e grava', async ({ page, extensao }) => {
+  await abrirAtalhos(page, extensao);
+  await gravar(page, 'Minerar legenda').click();
+  await page.keyboard.press('Shift+Escape');
+
+  await expect(tecla(page, 'Minerar legenda')).toHaveText('Shift+Escape');
+  await expect(gravar(page, 'Minerar legenda')).toBeFocused();
+  expect((await atalhosGravados(extensao)).pm_atalho_legenda).toMatchObject({
+    type: 'keyboard', code: 'Escape', shiftKey: true, altKey: false, ctrlKey: false,
+  });
+});
+
 test('uma tecla sem Ctrl, Alt nem Shift não grava, nem com Meta: a gravação continua', async ({ page, extensao }) => {
   await abrirAtalhos(page, extensao);
   await gravar(page, 'Minerar legenda').click();
