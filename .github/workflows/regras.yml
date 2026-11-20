@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  checks: read
 
 concurrency:
   group: regras-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
@@ -17,7 +18,7 @@ jobs:
   regras:
     name: Regras de revisão
     runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
-    timeout-minutes: 5
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
         with:
@@ -50,6 +51,15 @@ jobs:
         env:
           BASE: ${{ github.base_ref }}
           HEAD: ${{ github.event.pull_request.head.sha }}
+      - name: CodeScene na refatoração
+        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+        run: node scripts/ci/codescene-na-refatoracao.js
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMERO: ${{ github.event.pull_request.number }}
+          PR_TITULO: ${{ github.event.pull_request.title }}
+          PR_ROTULOS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
 
   pr-de-versao:
     name: PR de versão refeita
