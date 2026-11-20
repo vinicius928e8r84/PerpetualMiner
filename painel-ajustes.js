@@ -8,6 +8,7 @@
   const CODIGO_DO_IDIOMA = { en: 'BRG-28.codigoEn', ru: 'BRG-28.codigoRu' };
   const CAMPOS = ['deckName', 'imageSource', 'nivel', 'frente', 'tipoProprio', 'ttsWordTld', 'ttsPhraseTld', 'ttsReserva'];
   const VOZ_DA_RESERVA = { openai: 'BRG-07.reservaOpenai', nenhuma: 'BRG-07.reservaNenhuma' };
+  const ROTULO_DA_VOZ = { ttsWordTld: 'BRG-07.sotaquePalavra', ttsPhraseTld: 'BRG-07.sotaqueFrase', ttsReserva: 'BRG-07.reserva' };
   const porId = id => document.getElementById(id);
 
   const estado = {
@@ -97,25 +98,12 @@
 
   async function salvar(lang) {
     if (estado.salvando || !estado.gravados) return;
-    if (!estado.baralhos && comNivelVazio(estado.rascunhos[lang].deckName)) {
-      estado.erros[lang] = true;
-      desenhar();
-      porId(`ajustes-baralho-${lang}`)?.focus();
-      return;
-    }
+    if (recusouOBaralhoComNivelVazio(lang)) return;
     estado.erros[lang] = false;
     const enviados = copia(estado.rascunhos[lang]);
-    estado.salvando = lang;
-    let resultado, falhaDaFrente;
-    try {
-      ({ frente: enviados.frente, falha: falhaDaFrente } = await raiz.EstiloDoCartao.trocarSeMudou(lang, enviados.frente, estado.gravados[lang].frente));
-      resultado = await AjustesDeEnvio.salvar(lang, enviados, estado.lidos[lang].versao);
-    } catch (erro) {
-      mostrarAviso({ texto: textoDaVoz('BRG-07.naoSalvou'), detalhes: String(erro?.message || erro) });
-      return;
-    } finally {
-      estado.salvando = null;
-    }
+    const gravacao = await gravarOsAjustes(lang, enviados);
+    if (!gravacao) return;
+    const { resultado, falhaDaFrente } = gravacao;
     estado.gravados = resultado.ajustes;
     if (!resultado.ok) {
       mostrarAviso({ texto: textoDaVoz('BRG-07.desatualizada'), acao: { rotulo: textoDaVoz('BRG-07.mostrarNovos'), aoUsar: () => mostrarOsNovos(lang) } });
@@ -129,6 +117,29 @@
     if (falhaDaFrente) return mostrarAviso(raiz.EstiloDoCartao.avisoDaFrente(lang, falhaDaFrente, () => salvar(lang)));
     fecharAviso();
     Veio.mostrarToastDeSucesso(textoDaVoz('BRG-07.salvo'));
+  }
+
+  function recusouOBaralhoComNivelVazio(lang) {
+    if (estado.baralhos || !comNivelVazio(estado.rascunhos[lang].deckName)) return false;
+    estado.erros[lang] = true;
+    desenhar();
+    porId(`ajustes-baralho-${lang}`)?.focus();
+    return true;
+  }
+
+  async function gravarOsAjustes(lang, enviados) {
+    estado.salvando = lang;
+    try {
+      let falhaDaFrente;
+      ({ frente: enviados.frente, falha: falhaDaFrente } = await raiz.EstiloDoCartao.trocarSeMudou(lang, enviados.frente, estado.gravados[lang].frente));
+      const resultado = await AjustesDeEnvio.salvar(lang, enviados, estado.lidos[lang].versao);
+      return { resultado, falhaDaFrente };
+    } catch (erro) {
+      mostrarAviso({ texto: textoDaVoz('BRG-07.naoSalvou'), detalhes: String(erro?.message || erro) });
+      return null;
+    } finally {
+      estado.salvando = null;
+    }
   }
 
   function mostrarOsNovos(lang) {
@@ -291,8 +302,8 @@
         elemento('p', 'ajustes-sotaque-idioma', NOME_DO_IDIOMA[lang]),
         elemento('p', 'anki-apoio', textoDaVoz('BRG-07.sotaque')),
         elemento('div', 'ajustes-sotaques',
-          campoDoSotaque(lang, 'ttsWordTld', 'BRG-07.sotaquePalavra'),
-          campoDoSotaque(lang, 'ttsPhraseTld', 'BRG-07.sotaqueFrase'),
+          campoDoSotaque(lang, 'ttsWordTld'),
+          campoDoSotaque(lang, 'ttsPhraseTld'),
           campoDaReserva(lang))));
     detalhes.id = `ajustes-avancado-${lang}`;
     detalhes.open = aberto;
@@ -302,7 +313,7 @@
     return detalhes;
   }
 
-  function campoDoSotaque(lang, campo, vozDoRotulo) {
+  function campoDoSotaque(lang, campo) {
     const rascunho = estado.rascunhos[lang];
     const dominio = rascunho[campo];
     const opcoes = SOTAQUES[lang].map(([valor, voz]) => opcao(valor, textoDaVoz(voz)));
@@ -311,7 +322,7 @@
     escolha.id = `ajustes-${campo}-${lang}`;
     escolha.value = dominio;
     escolha.addEventListener('change', () => { rascunho[campo] = escolha.value; });
-    return comOuvir(lang, campo, vozDoRotulo, escolha);
+    return comOuvir(lang, campo, escolha);
   }
 
   function campoDaReserva(lang) {
@@ -327,14 +338,14 @@
       nota.textContent = notaDaReserva(lang);
       porId(`ajustes-ouvir-ttsReserva-${lang}`).disabled = semVozParaOuvir(lang, 'ttsReserva');
     });
-    return comOuvir(lang, 'ttsReserva', 'BRG-07.reserva', escolha, nota);
+    return comOuvir(lang, 'ttsReserva', escolha, nota);
   }
 
   const notaDaReserva = lang => textoDaVoz(estado.rascunhos[lang].ttsReserva === 'nenhuma' ? 'BRG-07.reservaNotaNenhuma' : 'BRG-07.reservaNotaOpenai');
   const semVozParaOuvir = (lang, campo) => campo === 'ttsReserva' && estado.rascunhos[lang].ttsReserva === 'nenhuma';
 
-  function comOuvir(lang, campo, vozDoRotulo, escolha, ...embaixo) {
-    const rotulo = elemento('label', 'ajustes-campo__rotulo', textoDaVoz(vozDoRotulo));
+  function comOuvir(lang, campo, escolha, ...embaixo) {
+    const rotulo = elemento('label', 'ajustes-campo__rotulo', textoDaVoz(ROTULO_DA_VOZ[campo]));
     rotulo.htmlFor = escolha.id;
     const botao = elemento('button', 'veio-botao veio-botao--secundario', textoDaVoz('BRG-07.ouvir'));
     botao.type = 'button';
