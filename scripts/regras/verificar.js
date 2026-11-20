@@ -37,7 +37,7 @@ está em AGENTS.md § Rules and what enforces them).
 
   (sem bandeira)          confere o repositório; sai com 1 se alguma regra falhar
   --atualizar             depois de um conserto, baixa scripts/regras/linha-de-base.json (nunca sobe)
-  --criar-linha-de-base   cria a linha de base quando ela ainda não existe
+  --criar-linha-de-base   cria a linha de base das regras que ainda não têm a sua (o arquivo, se ele não existe)
   --raiz <pasta>          confere outro repositório (os testes usam)
   --base <ref>            o commit cuja linha de base é o teto (padrão: $REGRAS_BASE, senão origin/main);
                           uma base pedida que não existe é erro
@@ -208,11 +208,15 @@ const lerJson = (texto, origem) => {
 };
 
 function criarLinhaDeBase(caminhoDaBase, agora) {
-  if (fs.existsSync(caminhoDaBase)) {
-    throw new Error(`${ARQUIVO_DA_LINHA_DE_BASE} já existe; a linha de base só desce (--atualizar)`);
+  const existente = fs.existsSync(caminhoDaBase) ? lerJson(fs.readFileSync(caminhoDaBase, 'utf8'), ARQUIVO_DA_LINHA_DE_BASE) : {};
+  const semLinhaDeBase = REGRAS.map(regra => regra.id).filter(regra => !(regra in existente));
+  if (!semLinhaDeBase.length) {
+    throw new Error(`${ARQUIVO_DA_LINHA_DE_BASE} já existe com todas as regras; a linha de base só desce (--atualizar)`);
   }
-  fs.writeFileSync(caminhoDaBase, `${JSON.stringify(agora, null, 2)}\n`);
-  console.log(`linha de base criada em ${ARQUIVO_DA_LINHA_DE_BASE}`);
+  const nova = { ...existente };
+  for (const regra of semLinhaDeBase) nova[regra] = Object.fromEntries(Object.entries(agora[regra]).sort());
+  fs.writeFileSync(caminhoDaBase, `${JSON.stringify(nova, null, 2)}\n`);
+  console.log(`linha de base criada em ${ARQUIVO_DA_LINHA_DE_BASE} para ${semLinhaDeBase.join(', ')}`);
   return 0;
 }
 
