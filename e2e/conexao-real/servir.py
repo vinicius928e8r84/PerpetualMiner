@@ -6,8 +6,10 @@ e fala com o fixture por linhas de JSON: ao ficar pronta escreve `{"porta": N}`;
 
     {"openai": "recusa"}      muda o comportamento da OpenAI de mentira (as chaves de `COMPORTAMENTOS`)
     {"colecao": {...}}        abre uma coleção descrita como nos exemplos do contrato (`ColecaoEmMemoria`)
-    {"mundo": {"colecao": {...}, "perfil": "..."}}  o mundo que o fake montou (`fakes.anki.naFrente`): a coleção aberta no perfil, ou,
-                              com `perfil` null, o Anki na tela de perfis (a coleção fechada)
+    {"mundo": {"colecao": {...}, "perfil": "...", "perfis": {"lista", "marcado"}}}  o mundo que o fake montou (`fakes.anki.naFrente`):
+                              a coleção aberta no perfil, ou, com `perfil` null, o Anki na tela de perfis (a coleção fechada); com
+                              `perfis`, os perfis do Anki e o marcado (`definirPerfis`; null: a primeira conexão)
+    {"perfis": true}          os perfis como a Conexão os tem agora: `{lista, marcado, aberto}`
     {"mudar": {"jobId", "state"}}  o estado que o fake deu ao Envio (`moverEnvio`, `concluirEnvio`), gravado pelo portão `Fila.mudar`:
                               uma transição que a máquina não aceita volta `{"erro": ...}`
     {"criar": {...}}          um Envio que chega sem a extensão (`receberEnvio`), pelo `Fila.criar`
@@ -93,10 +95,17 @@ def main():
                 colecao.atual.fixar_o_perfil(conexao.perfil_fixo)
                 responder({"ok": True})
             elif "mundo" in comando:
-                perfil = comando["mundo"].get("perfil")
-                colecao.atual = ColecaoEmMemoria(comando["mundo"]["colecao"], perfil_aberto=perfil) if perfil else ColecaoEmMemoria.fechada()
+                perfil, perfis = comando["mundo"].get("perfil"), comando["mundo"].get("perfis")
+                lista = tuple(perfis["lista"]) if perfis else ("Usuário 1",)
+                colecao.atual = ColecaoEmMemoria(comando["mundo"]["colecao"], perfis=lista, perfil_aberto=perfil) if perfil else ColecaoEmMemoria.fechada(perfis=lista)
                 colecao.atual.fixar_o_perfil(conexao.perfil_fixo)
+                if perfis and perfis["marcado"]:
+                    conexao.perfil_fixo.marcar(perfis["marcado"])
+                elif perfis and os.path.exists(conexao.perfil_fixo._caminho):
+                    os.remove(conexao.perfil_fixo._caminho)
                 responder({"ok": True})
+            elif comando.get("perfis"):
+                responder({"perfis": {"lista": list(colecao.perfis()), "marcado": conexao.perfil_fixo.marcado(), "aberto": colecao.perfil_aberto()}})
             elif "mudar" in comando:
                 novo = comando["mudar"]["state"]
                 try:

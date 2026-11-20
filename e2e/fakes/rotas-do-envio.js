@@ -224,6 +224,7 @@ function criarRotasDoEnvio({ estado, modelo }) {
         failedPhraseIds: falhou,
         duplicatePhraseIds: [...new Set([...envio.state.duplicatePhraseIds, ...duplicadas])],
         lastError: status === 'completed' ? null : (erro || 'Falha ao enviar um ou mais cards ao Anki'),
+        waiting: undefined,
         ankiError,
         updatedAt: estado.agora().toISOString(),
       };
