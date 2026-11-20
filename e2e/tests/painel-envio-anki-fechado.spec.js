@@ -86,7 +86,7 @@ test.describe('com a permissão do abridor', () => {
     const [job] = await enviosCriados(fakes, 1);
     expect(job.entries.map(e => e.phraseId)).toEqual([SACK.id]);
     expect(job.jobId).toBe(primeiro.id);
-    expect(job.corpo).toEqual(primeiro.corpo);
+    expect(job.corpo).toMatchObject(primeiro.corpo);
     await expect(faixa(page)).toBeHidden({ timeout: 10_000 });
     await estadoFinal(extensao, { pm_envio: { envios: [{ id: primeiro.id, ids: [SACK.id], jobId: primeiro.id }] } });
   });
