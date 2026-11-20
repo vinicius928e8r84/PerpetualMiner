@@ -1,7 +1,7 @@
 'use strict';
 
-importScripts('lib/voz/catalogo.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/mineracao.js', 'lib/ajustes-de-envio.js', 'lib/mineracao-do-dia.js', 'lib/vocabulario-da-mineracao.js', 'lib/palavra-automatica.js', 'lib/pedido-ao-anki.js', 'lib/pareamento.js', 'lib/envio-gravado.js', 'lib/apagar-frases-pendente.js', 'lib/historico.js', 'lib/sincronizacao.js');
-const { textoDaVoz, detectarIdioma, idiomaDe, IDIOMAS, MineracaoDoDia, Mineracao, VocabularioDaMineracao, PalavraAutomatica, Sincronizacao } = PerpetualMiner;
+importScripts('lib/voz/catalogo.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/mineracao.js', 'lib/ajustes-de-envio.js', 'lib/mineracao-do-dia.js', 'lib/vocabulario-da-mineracao.js', 'lib/palavra-automatica.js', 'lib/mineracao-automatica-decisao.js', 'lib/pedido-ao-anki.js', 'lib/pareamento.js', 'lib/envio-gravado.js', 'lib/apagar-frases-pendente.js', 'lib/historico.js', 'lib/sincronizacao.js');
+const { textoDaVoz, detectarIdioma, idiomaDe, IDIOMAS, MineracaoDoDia, Mineracao, MineracaoAutomatica, VocabularioDaMineracao, PalavraAutomatica, Sincronizacao } = PerpetualMiner;
 
 if (chrome.storage.local.setAccessLevel) {
   chrome.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' })
@@ -124,7 +124,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 const historico = PerpetualMiner.Historico.criar({ armazenamento: { get: chromeGet, set: chromeSet } });
 
 async function salvarFrase(texto, origem, contexto = null, idioma = IDIOMAS.INGLES, extras = {},
-  { comPalavraAutomatica = true, comNuvem = true } = {}) {
+  { comPalavraAutomatica = true, comNuvem = true, soSe = null } = {}) {
   const novaFrase = {
     texto,
     data:      new Date().toLocaleDateString('pt-BR'),
@@ -142,7 +142,8 @@ async function salvarFrase(texto, origem, contexto = null, idioma = IDIOMAS.INGL
     novaFrase.autoKeyword = true;
   }
 
-  const gravada = await historico.acrescentar(novaFrase);
+  const gravada = await (soSe ? historico.acrescentarSe(novaFrase, soSe) : historico.acrescentar(novaFrase));
+  if (!gravada) return null;
 
   if (comNuvem) sincronizarComFirestore(gravada);
   return gravada;
@@ -258,70 +259,26 @@ function autoVocabularyInfo(item) {
   };
 }
 
-async function handleAutoMinerCandidate(request) {
-  const texto = normalizeAutoMinerText(request.texto || '');
-  if (!texto) {
-    await recordAutoMinerEvent({ action: 'skip', reason: 'empty', texto, lang: normalizeAutoMinerLang(request.lang), contexto: request.contexto || null });
-    return { action: 'skip', reason: 'empty' };
-  }
+const mineracaoAutomatica = MineracaoAutomatica.criar({
+  vocabulario: lang => getAutoKeywordVocabulary(lang),
+  historico: {
+    salvarSeNova: ({ texto, origem, contexto, idioma, extras }, jaTem) => salvarFrase(texto, origem, contexto, idioma, extras, { soSe: jaTem }),
+  },
+  ajustes: {
+    ler: () => getAutoMinerState(),
+    contarMais: lang => incrementAutoMinerDaily(lang),
+    publicar: state => publicarEstadoDaAutomatica(state),
+    registrar: evento => chromeSet({ [AUTO_MINER_LAST_EVENT_KEY]: evento }),
+  },
+  relogio: { agora: () => Date.now() },
+});
 
-  const lang = normalizeAutoMinerLang(request.lang || detectarIdioma(texto));
-  const state = await getAutoMinerState();
-  const langSettings = state.settings[lang];
-  if (!langSettings?.enabled) {
-    await recordAutoMinerEvent({ action: 'skip', reason: 'disabled', texto, lang, contexto: request.contexto || null });
-    return { action: 'skip', reason: 'disabled', state };
-  }
-  if (MineracaoDoDia.noLimiteDeHoje(state, lang)) {
-    await recordAutoMinerEvent({ action: 'skip', reason: 'daily_limit', texto, lang, contexto: request.contexto || null });
-    return { action: 'skip', reason: 'daily_limit', state };
-  }
-
-  const evaluation = await evaluateAutoMinerPhrase(texto, lang);
-  if (!evaluation.accept) {
-    await recordAutoMinerEvent({ action: 'skip', reason: evaluation.reason, texto, lang, contexto: request.contexto || null, evaluation });
-    return { action: 'skip', reason: evaluation.reason, state, evaluation };
-  }
-
-  const data = await chromeGet({ frases: [] });
-  const textKey = autoMinerTextKey(texto);
-  if ((data.frases || []).some(frase => autoMinerTextKey(frase.texto) === textKey)) {
-    await recordAutoMinerEvent({ action: 'skip', reason: 'duplicate', texto, lang, contexto: request.contexto || null, evaluation });
-    return { action: 'skip', reason: 'duplicate', state, evaluation };
-  }
-
-  const saveExtras = {
-    autoMiner: true,
-    autoMinerReason: evaluation.reason || 'accepted',
-    ...(lang === 'en' ? { keywords: evaluation.keywords, autoKeyword: true } : {}),
-  };
-  const frase = await salvarFrase(texto, request.origem || 'auto', request.contexto || null, idiomaDe(lang), saveExtras);
-  const updatedState = await incrementAutoMinerDaily(lang);
-  publicarEstadoDaAutomatica(updatedState);
-  await recordAutoMinerEvent({ action: 'saved', reason: evaluation.reason || 'accepted', texto, lang, contexto: request.contexto || null, evaluation, phraseId: frase.id });
-  return { action: 'saved', frase, evaluation, state: updatedState };
+function handleAutoMinerCandidate(request) {
+  return mineracaoAutomatica.candidata(request);
 }
 
-async function recordAutoMinerEvent(event) {
-  const payload = {
-    at: Date.now(),
-    action: event.action || 'skip',
-    reason: event.reason || '',
-    texto: normalizeAutoMinerText(event.texto || ''),
-    lang: normalizeAutoMinerLang(event.lang || detectarIdioma(event.texto || '')),
-    contexto: event.contexto || null,
-    phraseId: event.phraseId || null,
-    evaluation: event.evaluation ? {
-      accept: Boolean(event.evaluation.accept),
-      reason: event.evaluation.reason || '',
-      keywords: event.evaluation.keywords || [],
-    } : null,
-  };
-  await chromeSet({ [AUTO_MINER_LAST_EVENT_KEY]: payload });
-}
-
-async function evaluateAutoMinerPhrase(texto, lang) {
-  return PalavraAutomatica.avaliar(texto, lang, () => getAutoKeywordVocabulary(lang === 'ru' ? 'ru' : 'en'));
+function evaluateAutoMinerPhrase(texto, lang) {
+  return mineracaoAutomatica.avaliar(texto, lang);
 }
 
 async function getAutoMinerState() {
@@ -353,19 +310,6 @@ async function incrementAutoMinerDaily(lang) {
   daily[lang].count += 1;
   await chromeSet({ [AUTO_MINER_DAILY_KEY]: daily });
   return { settings: state.settings, daily };
-}
-
-function normalizeAutoMinerLang(value) {
-  const lang = String(value || '').toLowerCase();
-  return lang.includes('ru') || lang.includes('rus') || lang.includes('рус') ? 'ru' : 'en';
-}
-
-function normalizeAutoMinerText(value) {
-  return PalavraAutomatica.normalizarTexto(value);
-}
-
-function autoMinerTextKey(value) {
-  return normalizeAutoMinerText(value).toLowerCase();
 }
 
 // As cores do badge são as únicas cores escritas fora de `veio/tokens.css`:

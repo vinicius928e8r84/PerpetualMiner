@@ -16,6 +16,8 @@ const pedidoGuardado = envio => ({ ...envio.corpo, createdAt: envio.createdAt })
 
 function criarRotasDoEnvio({ estado, modelo }) {
   const envios = [];
+  const paraAFila = estado.paraAReal;
+  const mudou = envio => paraAFila.push({ mudar: { jobId: envio.jobId, state: envio.state } });
 
   function novoEstado(extra = {}) {
     return {
@@ -125,8 +127,7 @@ function criarRotasDoEnvio({ estado, modelo }) {
       return responder(resposta.status, resposta.json);
     }),
     rota('*', '/jobs/list', ({ responder }) => responder(200, listarEnvios())),
-    rota('*', '/jobs/apagar-frases', ({ route, responder }) => {
-      if (estado.falhaDoApagarFrases?.rede) return route.abort('connectionrefused');
+    rota('*', '/jobs/apagar-frases', ({ responder }) => {
       apagarAsFrases();
       return responder(200, { ok: true });
     }),
@@ -153,7 +154,10 @@ function criarRotasDoEnvio({ estado, modelo }) {
   ];
 
   const api = {
-    apagarAsFrases,
+    apagarAsFrases() {
+      apagarAsFrases();
+      paraAFila.push({ apagarFrases: true });
+    },
     definirCustos(lista) {
       estado.custos = lista.map(linhaDeCustos);
     },
@@ -161,6 +165,7 @@ function criarRotasDoEnvio({ estado, modelo }) {
       const fila = contrato.filas[nome];
       if (!fila) throw new Error(`O contrato não tem a fila "${nome}" em filas (complemento/contrato/exemplos.json).`);
       envios.length = 0;
+      paraAFila.push({ fila: nome });
       for (const { job, state, custos } of fila) {
         const { createdAt, ...corpo } = JSON.parse(JSON.stringify(job));
         envios.push({ jobId: job.jobId, lang: job.lang, entries: job.entries, corpo, createdAt, state: JSON.parse(JSON.stringify(state)) });
@@ -176,14 +181,20 @@ function criarRotasDoEnvio({ estado, modelo }) {
     perderARespostaDoEnvio() { estado.perdaDoEnvio = true; },
     receberEnvio(corpo) {
       envios.push({ jobId: corpo.jobId, lang: corpo.lang, entries: corpo.entries, corpo, createdAt: estado.agora().toISOString(), state: novoEstado({ jobId: corpo.jobId }) });
+      paraAFila.push({ criar: corpo });
     },
     aceitarEnvios(lang) { estado.recusas.delete(lang); },
+    perdeuAResposta() { estado.perdaDoEnvio = false; },
+    espelharEnvios(daReal) {
+      envios.splice(0, envios.length, ...daReal.map(({ jobId, lang, corpo, createdAt, state }) => ({ jobId, lang, entries: corpo.entries, corpo, createdAt, state })));
+    },
 
     /** @estado-guardado Os Envios criados de um idioma, na ordem. */
     enviosEm(lang) { return envios.filter(e => e.lang === lang); },
 
     moverEnvio(jobId, { stage, progress = {}, atualizadoEm, esperando, cartoes } = {}) {
       const envio = acharEnvio(jobId);
+      if (envio.state.status === 'queued' && esperando) paraAFila.push({ mudar: { jobId, state: { ...envio.state, status: 'running', stage } } });
       envio.state = {
         ...envio.state,
         status: 'running',
@@ -193,10 +204,12 @@ function criarRotasDoEnvio({ estado, modelo }) {
         ...(cartoes && { cards: cartoesDoEstado(jobId, cartoes) }),
         updatedAt: (atualizadoEm || estado.agora()).toISOString(),
       };
+      mudou(envio);
     },
 
     concluirEnvio(jobId, { duplicadas = [], falhas = [], erro, ankiError = null } = {}) {
       const envio = acharEnvio(jobId);
+      if (envio.state.status === 'queued') paraAFila.push({ mudar: { jobId, state: { ...envio.state, status: 'running', stage: 'generate_cards' } } });
       const pedidas = envio.entries.map(e => Number(e.phraseId));
       const anteriores = envio.state.successfulPhraseIds;
       const sucesso = erro ? anteriores : [...new Set([...anteriores, ...pedidas.filter(id => !falhas.includes(id))])];
@@ -210,9 +223,11 @@ function criarRotasDoEnvio({ estado, modelo }) {
         failedPhraseIds: falhou,
         duplicatePhraseIds: [...new Set([...envio.state.duplicatePhraseIds, ...duplicadas])],
         lastError: status === 'completed' ? null : (erro || 'Falha ao enviar um ou mais cards ao Anki'),
+        waiting: undefined,
         ankiError,
         updatedAt: estado.agora().toISOString(),
       };
+      mudou(envio);
     },
   };
 

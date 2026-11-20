@@ -42,7 +42,7 @@ o `jobId` e as `entries`; `intervaloMs` é 2 s, a Boas-vindas passa 1 s):
 
 | dado | dono | quem mais guarda | o que a cópia nunca é |
 |---|---|---|---|
-| o estado do Envio (`state`) | a Conexão (`user_files`, `envio.py`) | o módulo guarda a última leitura, só em memória | gravado: o módulo não escreve no `chrome.storage` |
+| o estado do Envio (`state`) | a Conexão (`user_files`, `fila_do_envio.py`) | o módulo guarda a última leitura, só em memória | gravado: o módulo não escreve no `chrome.storage` |
 | o pedido do primeiro Envio (`corpo`, com o `jobId`) | a Boas-vindas (`pm_boas_vindas.primeiroEnvio`, `Configuracao.guardarPrimeiroEnvio`) | o módulo recebe o corpo para o `criar` | montado ou gravado pelo módulo |
 | a linha de custos do Envio | a Conexão (`POST /analytics/jobs`) | `pm_anki_custos`, o retrato da última leitura da aba Custos | decidido pela tela: a aba relê a Conexão quando a situação muda |
 | a Remessa (`pm_envio`) | o modal do Envio (`EnvioGravado`) | nenhum | escrita pelo módulo: no passo 3 o modal guarda um módulo por `jobId` só em memória |
@@ -66,7 +66,7 @@ Custos diz o que já dizia em cada um (BRG-31, ENV-07, ENV-24); o que muda é qu
 
 - **Pedido repetido:** o `POST /jobs/retry` é idempotente na Conexão (já na fila ou andando, “só diz o estado”), o `POST /jobs/usar-a-chave`
   também (com o `usingKey` já marcado, nada é regravado), e o módulo não repete nenhum deles enquanto o primeiro não respondeu. O `POST /jobs`
-  também: o mesmo corpo devolve o Envio que existe (`envio.py`, `criar`), e um corpo diferente com o mesmo `jobId` é `409 job_conflict`, que a
+  também: o mesmo corpo devolve o Envio que existe (`fila_do_envio.py`, `criar`), e um corpo diferente com o mesmo `jobId` é `409 job_conflict`, que a
   Boas-vindas mostra como “Algo impediu o envio”.
 - **Resposta perdida:** do `retry` ou do `usar-a-chave`, a tela mostra a falha (ENV-14) e o Envio fica como a Conexão o deixou; a próxima leitura da aba diz
   o estado verdadeiro, e um novo Continuar envio é o mesmo pedido. Do `criar`, a Boas-vindas mostra “Este cartão não foi” com o motivo da
@@ -106,7 +106,7 @@ Custos diz o que já dizia em cada um (BRG-31, ENV-07, ENV-24); o que muda é qu
 
 ## 6. Provas
 
-O módulo em Node, com uma Conexão de mentira em memória que segue o `criar` e o `tentar_de_novo` do `envio.py`:
+O módulo em Node, com uma Conexão de mentira em memória que segue o `criar` e o `tentar_de_novo` do `fila_do_envio.py`:
 `testes/test_envio_acompanhado.js` (dois cliques são um pedido; o 409 vira apagado; a falha diz o pedido; acompanha até o fim e para; o 404 é
 desconhecido; a leitura sem resposta não muda nada; largar ignora a resposta tardia) e `testes/test_envio_acompanhado_criar.js`, que usa a
 mesma Conexão de mentira (do passo 2: o `criar` manda o corpo e acompanha,

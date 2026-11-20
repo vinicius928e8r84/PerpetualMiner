@@ -18,6 +18,7 @@ preview/dist/
 
 .claude/worktrees/
 dist/
+node_modules/
 
 complemento/user_files/
 

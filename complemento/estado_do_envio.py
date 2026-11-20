@@ -1,5 +1,5 @@
 """O estado gravado de um Envio (`estado/<jobId>.json`) como máquina de estados: a situação que o arquivo diz, a tabela das
-transições e os eventos que mudam a situação. `Fila.mudar` (`envio.py`) é o portão: todo escritor passa por ele, e ele confere aqui.
+transições e os eventos que mudam a situação. `Fila.mudar` (`fila_do_envio.py`) é o portão: todo escritor passa por ele, e ele confere aqui.
 
     queued → running ⇄ esperando → completed | partial | failed → queued        (Tentar de novo)
     qualquer uma → apagado                                                      (Apagar tudo; do apagado não se sai)

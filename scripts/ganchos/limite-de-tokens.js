@@ -76,20 +76,27 @@ function tamanhosNoHead(raiz, caminhos, ref = 'HEAD') {
   return tamanhos;
 }
 
+function passavaDoLimiteNoHead(noHead, caminho, limite) {
+  return noHead[caminho] !== undefined && noHead[caminho] > limite;
+}
+
 function limitarPeloHead(linhaDeBase, noHead, limite = LIMITE_DE_BYTES) {
   const teto = {};
   for (const [caminho, valor] of Object.entries(linhaDeBase)) {
-    if (noHead[caminho] !== undefined && noHead[caminho] > limite) teto[caminho] = Math.min(valor, noHead[caminho]);
+    if (passavaDoLimiteNoHead(noHead, caminho, limite)) teto[caminho] = Math.min(valor, noHead[caminho]);
   }
   return teto;
+}
+
+function tamanhoPermitido(caminho, baseDoHead, noHead, limite) {
+  if (baseDoHead) return baseDoHead[caminho] === undefined ? null : baseDoHead[caminho];
+  return passavaDoLimiteNoHead(noHead, caminho, limite) ? noHead[caminho] : null;
 }
 
 function afrouxamentos(preparada, baseDoHead, noHead, limite = LIMITE_DE_BYTES) {
   const achados = [];
   for (const [caminho, valor] of Object.entries(preparada)) {
-    let permitido = null;
-    if (baseDoHead) permitido = baseDoHead[caminho] === undefined ? null : baseDoHead[caminho];
-    else if (noHead[caminho] !== undefined && noHead[caminho] > limite) permitido = noHead[caminho];
+    const permitido = tamanhoPermitido(caminho, baseDoHead, noHead, limite);
     if (permitido === null || valor > permitido) achados.push({ caminho, valor, permitido });
   }
   return achados;
@@ -166,28 +173,68 @@ function renomeacoes(raiz, desde = null) {
 
 const NO_GANCHO = { nova: '', velha: 'HEAD', desde: null, titulo: 'Commit barrado' };
 
-function conferirPreparados(raiz, config, problemasDaConfiguracao, comparacao = NO_GANCHO) {
+function herdaAEntradaDoNomeVelho(base, novo, velho) {
+  return velho in base && !(novo in base);
+}
+
+function baseSeguindoAsRenomeacoes(baseDoHeadPuro, velhoDe) {
+  if (!baseDoHeadPuro) return baseDoHeadPuro;
+  const base = { ...baseDoHeadPuro };
+  for (const [novo, velho] of Object.entries(velhoDe)) if (herdaAEntradaDoNomeVelho(base, novo, velho)) base[novo] = base[velho];
+  return base;
+}
+
+function caminhosAConsultarNoHead(preparados, baseDoIndice, baseDoHead) {
+  if (!baseDoHead) return Object.keys(baseDoIndice);
+  return preparados.map(a => a.caminho).filter(c => c in baseDoIndice);
+}
+
+function nomeNoHead(caminho, velhoDe) {
+  return velhoDe[caminho] || caminho;
+}
+
+function tamanhosNoHeadPeloNomeVelho(raiz, caminhos, velhoDe, ref) {
+  const noHeadDosVelhos = tamanhosNoHead(raiz, caminhos.map(c => nomeNoHead(c, velhoDe)), ref);
+  const noHead = {};
+  for (const c of caminhos) {
+    const tamanho = noHeadDosVelhos[nomeNoHead(c, velhoDe)];
+    if (tamanho !== undefined) noHead[c] = tamanho;
+  }
+  return noHead;
+}
+
+function barraOCommit(achado) {
+  return achado.estado === 'excede' || achado.estado === 'cresceu';
+}
+
+function conferenciaDeTamanho(raiz, config, comparacao) {
   const preparados = arquivosPreparados(raiz, comparacao.desde);
   const baseDoIndice = lerLinhaDeBase(raiz, config, comparacao.nova) || {};
   const baseDoHeadPuro = lerLinhaDeBaseDoHead(raiz, config, comparacao.velha);
   const velhoDe = renomeacoes(raiz, comparacao.desde);
-  const baseDoHead = baseDoHeadPuro && { ...baseDoHeadPuro };
-  if (baseDoHead) for (const [novo, velho] of Object.entries(velhoDe)) if (velho in baseDoHead && !(novo in baseDoHead)) baseDoHead[novo] = baseDoHead[velho];
-  const consultar = baseDoHead
-    ? preparados.map(a => a.caminho).filter(c => c in baseDoIndice)
-    : Object.keys(baseDoIndice);
-  const noHeadDosVelhos = tamanhosNoHead(raiz, consultar.map(c => velhoDe[c] || c), comparacao.velha);
-  const noHead = {};
-  for (const c of consultar) if (noHeadDosVelhos[velhoDe[c] || c] !== undefined) noHead[c] = noHeadDosVelhos[velhoDe[c] || c];
+  const baseDoHead = baseSeguindoAsRenomeacoes(baseDoHeadPuro, velhoDe);
+  const consultar = caminhosAConsultarNoHead(preparados, baseDoIndice, baseDoHead);
+  const noHead = tamanhosNoHeadPeloNomeVelho(raiz, consultar, velhoDe, comparacao.velha);
   const afrouxadas = afrouxamentos(baseDoIndice, baseDoHead, noHead, config.limiteDeBytes);
   const linhaDeBase = limitarPeloHead(baseDoIndice, noHead, config.limiteDeBytes);
-  const falhas = preparados
-    .map(arquivo => avaliar(arquivo, config, linhaDeBase))
-    .filter(achado => achado.estado === 'excede' || achado.estado === 'cresceu');
-  if (!falhas.length && !afrouxadas.length && !problemasDaConfiguracao.length) return 0;
-  process.stderr.write(`${comparacao.titulo}: ${falhas.length + afrouxadas.length + (problemasDaConfiguracao.length ? 1 : 0)} problema(s) de tamanho (limite ${config.limiteDeBytes} bytes = ${tokensDe(config.limiteDeBytes, config.bytesPorToken)} tokens).\n\n`);
-  const mensagens = [...(problemasDaConfiguracao.length ? [mensagemDeConfiguracao(problemasDaConfiguracao)] : []), ...afrouxadas.map(a => mensagemDeAfrouxamento(a, baseDoHead, config)), ...falhas.map(f => mensagemDeErro(f, config))];
+  const falhas = preparados.map(arquivo => avaliar(arquivo, config, linhaDeBase)).filter(barraOCommit);
+  return { baseDoHead, afrouxadas, falhas };
+}
+
+function mensagensDeTamanho({ baseDoHead, afrouxadas, falhas }, problemasDaConfiguracao, config) {
+  const daConfiguracao = problemasDaConfiguracao.length ? [mensagemDeConfiguracao(problemasDaConfiguracao)] : [];
+  return [...daConfiguracao, ...afrouxadas.map(a => mensagemDeAfrouxamento(a, baseDoHead, config)), ...falhas.map(f => mensagemDeErro(f, config))];
+}
+
+function relatarProblemasDeTamanho(titulo, mensagens, config) {
+  process.stderr.write(`${titulo}: ${mensagens.length} problema(s) de tamanho (limite ${config.limiteDeBytes} bytes = ${tokensDe(config.limiteDeBytes, config.bytesPorToken)} tokens).\n\n`);
   process.stderr.write(`${mensagens.join('\n\n')}\n`);
+}
+
+function conferirPreparados(raiz, config, problemasDaConfiguracao, comparacao = NO_GANCHO) {
+  const mensagens = mensagensDeTamanho(conferenciaDeTamanho(raiz, config, comparacao), problemasDaConfiguracao, config);
+  if (!mensagens.length) return 0;
+  relatarProblemasDeTamanho(comparacao.titulo, mensagens, config);
   return 1;
 }
 
