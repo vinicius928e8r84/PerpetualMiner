@@ -85,8 +85,8 @@
     return no;
   }
 
-  function criar(tag, classe, texto) {
-    const no = document.createElement(tag);
+  function criar(tag, classe, texto, documento = document) {
+    const no = documento.createElement(tag);
     if (classe) no.className = classe;
     if (texto != null) no.textContent = texto;
     return no;
@@ -153,12 +153,7 @@
   }
 
   function abrirConfirmacao({ titulo, corpo, cancelar, confirmar, aoConfirmar, id, confirmarComContorno = false, documento = document }) {
-    const no = (tag, classe, texto) => {
-      const elemento = documento.createElement(tag);
-      elemento.className = classe;
-      if (texto !== undefined) elemento.textContent = texto;
-      return elemento;
-    };
+    const no = (tag, classe, texto) => criar(tag, classe, texto, documento);
     const cabeca = no('h2', 'veio-modal__titulo', titulo);
     cabeca.id = `${id}-titulo`;
     const texto = no('p', 'veio-modal__corpo', corpo);
@@ -213,13 +208,11 @@
     const ultimo = focaveis[focaveis.length - 1];
     const atual = dialogo.ownerDocument.activeElement;
 
-    if (evento.shiftKey && (atual === primeiro || !dialogo.contains(atual))) {
-      evento.preventDefault();
-      focar(ultimo);
-    } else if (!evento.shiftKey && (atual === ultimo || !dialogo.contains(atual))) {
-      evento.preventDefault();
-      focar(primeiro);
-    }
+    const saida = evento.shiftKey ? primeiro : ultimo;
+    const volta = evento.shiftKey ? ultimo : primeiro;
+    if (atual !== saida && dialogo.contains(atual)) return;
+    evento.preventDefault();
+    focar(volta);
   }
 
   function tornarORestoInerte(scrim) {
@@ -286,36 +279,36 @@
     fechavel = true,
     documento = document,
   }) {
-    if (fechavel && !rotuloDeFechar) {
-      throw new Error('O aviso precisa do rótulo de fechar, vindo do catálogo da Voz');
-    }
+    if (fechavel && !rotuloDeFechar) throw new Error('O aviso precisa do rótulo de fechar, vindo do catálogo da Voz');
     if (!TONS_DO_AVISO.includes(tom)) throw new Error(`Tom de aviso fora da Base Veio: ${tom}`);
     const aviso = documento.createElement('div');
     aviso.className = tom === 'info' ? 'veio-aviso veio-aviso--info' : 'veio-aviso';
     aviso.setAttribute('role', tom === 'info' ? 'status' : 'alert');
+    aviso.append(textoDoAviso(texto, abertura, icone, documento), acoesDoAviso(aviso, { acao, fechavel, rotuloDeFechar, aoFechar }, documento));
+    if (detalhes) aviso.append(montarDetalhes(detalhes, documento));
+    return aviso;
+  }
 
+  function textoDoAviso(texto, abertura, icone, documento) {
     const paragrafo = documento.createElement('p');
     paragrafo.className = 'veio-aviso__texto';
     if (icone) paragrafo.append(iconeVeio(icone, documento));
     if (abertura) {
-      const negrito = documento.createElement('strong');
-      negrito.textContent = abertura;
-      paragrafo.append(negrito, ' ');
+      paragrafo.append(criar('strong', '', abertura, documento), ' ');
     }
     paragrafo.append(texto);
+    return paragrafo;
+  }
 
+  function acoesDoAviso(aviso, { acao, fechavel, rotuloDeFechar, aoFechar }, documento) {
     const acoes = documento.createElement('div');
     acoes.className = 'veio-aviso__acoes';
-
     if (acao) {
-      const botao = documento.createElement('button');
+      const botao = criar('button', 'veio-botao veio-botao--contorno', acao.rotulo, documento);
       botao.type = 'button';
-      botao.className = 'veio-botao veio-botao--contorno';
-      botao.textContent = acao.rotulo;
       botao.addEventListener('click', acao.aoUsar);
       acoes.append(botao);
     }
-
     if (fechavel) {
       const fechar = documento.createElement('button');
       fechar.type = 'button';
@@ -328,12 +321,7 @@
       });
       acoes.append(fechar);
     }
-
-    aviso.append(paragrafo, acoes);
-
-    if (detalhes) aviso.append(montarDetalhes(detalhes, documento));
-
-    return aviso;
+    return acoes;
   }
 
   const TONS_DO_AVISO = ['perigo', 'info'];
@@ -341,10 +329,8 @@
   function montarDetalhes(causa, documento = document, rotulo = ROTULOS_DO_PADRAO.detalhes) {
     const recolhido = documento.createElement('details');
     recolhido.className = 'veio-aviso__detalhes';
-    const resumo = documento.createElement('summary');
-    resumo.textContent = rotulo;
-    const texto = documento.createElement('pre');
-    texto.textContent = causa;
+    const resumo = criar('summary', '', rotulo, documento);
+    const texto = criar('pre', '', causa, documento);
     recolhido.append(resumo, texto);
     return recolhido;
   }
