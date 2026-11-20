@@ -7,6 +7,7 @@ manifest.json text eol=lf
 complemento/** text eol=lf
 # O gancho pre-commit é um script de shell sem extensão: com CRLF o sh falha antes de conferir.
 scripts/ganchos/pre-commit text eol=lf
-# As duas tabelas de docs/arquivos/: duas inserções no mesmo ponto não conflitam (a regra indice-de-arquivos acusa a duplicata que isso permite).
+# As tabelas de docs/arquivos/: duas inserções no mesmo ponto não conflitam (a regra indice-de-arquivos acusa a duplicata que isso permite).
 docs/arquivos/extensao.md merge=union
 docs/arquivos/testes-e-ferramentas.md merge=union
+docs/arquivos/conteudo.md merge=union
