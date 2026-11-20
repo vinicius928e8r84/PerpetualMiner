@@ -250,9 +250,7 @@ class NoWindows(unittest.TestCase):
 
     def escrever(self, perfil="Usuário 1", programa=ANKI_DO_WINDOWS):
         abridor.deste_computador(
-            plataforma="win32",
-            ambiente={"ANKI_LAUNCHER": programa},
-            executavel=r"C:\x\python.exe",
+            computador=abridor.Computador(plataforma="win32", ambiente={"ANKI_LAUNCHER": programa}, executavel=r"C:\x\python.exe"),
             pasta=self.pasta,
             registro=self.registro,
         ).escrever(perfil)
@@ -347,8 +345,8 @@ class NoWindows(unittest.TestCase):
     def test_sem_saber_onde_o_anki_esta_nao_escreve_nem_registra_nada(self):
         with self.assertRaises(abridor.AnkiNaoEncontrado):
             abridor.deste_computador(
-                plataforma="win32", ambiente={}, executavel=r"C:\Python39\python.exe",
-                pasta=self.pasta, registro=self.registro, existe=lambda _: False,
+                computador=abridor.Computador(plataforma="win32", ambiente={}, executavel=r"C:\Python39\python.exe", existe=lambda _: False),
+                pasta=self.pasta, registro=self.registro,
             ).escrever("Usuário 1")
         self.assertFalse(os.path.exists(self.pasta))
         self.assertEqual(self.registro.valores, {})
@@ -359,8 +357,9 @@ class DesteComputador(unittest.TestCase):
 
     def test_no_mac_registra_na_pasta_de_hosts_do_chrome_do_usuario(self):
         este = abridor.deste_computador(
-            plataforma="darwin", ambiente={"HOME": "/Users/maria"},
-            executavel="/Applications/Anki.app/Contents/MacOS/anki", pasta="/x/user_files/abridor",
+            computador=abridor.Computador(
+                plataforma="darwin", ambiente={"HOME": "/Users/maria"}, executavel="/Applications/Anki.app/Contents/MacOS/anki"),
+            pasta="/x/user_files/abridor",
         )
         self.assertEqual((este.sistema.nome, este.programa), ("mac", "/Applications/Anki.app"))
         self.assertEqual(este.sistema.onde_registrar, {
@@ -369,9 +368,11 @@ class DesteComputador(unittest.TestCase):
 
     def test_no_mac_com_o_abridor_novo_do_anki_acha_o_aplicativo_dele(self):
         este = abridor.deste_computador(
-            plataforma="darwin",
-            ambiente={"HOME": "/Users/maria", "ANKI_LAUNCHER": "/Applications/Anki.app/Contents/MacOS/launcher"},
-            executavel="/Users/maria/Library/Application Support/AnkiProgramFiles/.venv/bin/python",
+            computador=abridor.Computador(
+                plataforma="darwin",
+                ambiente={"HOME": "/Users/maria", "ANKI_LAUNCHER": "/Applications/Anki.app/Contents/MacOS/launcher"},
+                executavel="/Users/maria/Library/Application Support/AnkiProgramFiles/.venv/bin/python",
+            ),
             pasta="/x",
         )
         self.assertEqual(este.programa, "/Applications/Anki.app")
@@ -380,8 +381,8 @@ class DesteComputador(unittest.TestCase):
         no_disco = {"/Applications/Anki.app", "C:\\Users\\maria\\AppData\\Local\\Programs\\Anki\\anki.exe"}
         achados = [
             abridor.deste_computador(
-                plataforma=plataforma, ambiente=dict(ambiente, HOME="/Users/maria"), executavel="/usr/bin/python3", pasta="/x",
-                registro=RegistroDeMentira(), existe=existe,
+                computador=abridor.Computador(plataforma, dict(ambiente, HOME="/Users/maria"), "/usr/bin/python3", existe), pasta="/x",
+                registro=RegistroDeMentira(),
             ).programa
             for plataforma, ambiente in (("darwin", {}), ("win32", {"LOCALAPPDATA": "C:\\Users\\maria\\AppData\\Local"}))
             for existe in (no_disco.__contains__, lambda _: False)
@@ -390,7 +391,7 @@ class DesteComputador(unittest.TestCase):
 
     def test_no_windows_registra_para_o_chrome_e_para_o_opera_na_chave_do_usuario(self):
         este = abridor.deste_computador(
-            plataforma="win32", ambiente={"ANKI_LAUNCHER": ANKI_DO_WINDOWS}, executavel="x", pasta="C:\\x",
+            computador=abridor.Computador(plataforma="win32", ambiente={"ANKI_LAUNCHER": ANKI_DO_WINDOWS}, executavel="x"), pasta="C:\\x",
             registro=RegistroDeMentira(),
         )
         self.assertEqual((este.sistema.nome, este.programa), ("windows", ANKI_DO_WINDOWS))
@@ -400,7 +401,7 @@ class DesteComputador(unittest.TestCase):
         })
 
     def test_em_outro_sistema_nao_ha_abridor(self):
-        self.assertIsNone(abridor.deste_computador(plataforma="linux", ambiente={}, executavel="/usr/bin/python3", pasta="/x"))
+        self.assertIsNone(abridor.deste_computador(computador=abridor.Computador(plataforma="linux", ambiente={}, executavel="/usr/bin/python3"), pasta="/x"))
 
 
 if __name__ == "__main__":

@@ -90,7 +90,7 @@ class Janela:
         self._conexao = conexao
         self._perfil_aberto = perfil_aberto
         self._versao = versao
-        self._logger = logger
+        self.logger = logger
         self._ultimo_erro_registrado = None
         self._primeiro_passo = True
         self._base = set()
@@ -101,7 +101,7 @@ class Janela:
         marca = (o_que, type(erro).__name__, str(erro))
         if marca != self._ultimo_erro_registrado:
             self._ultimo_erro_registrado = marca
-            self._logger.exception("A janela não leu %s", o_que)
+            self.logger.exception("A janela não leu %s", o_que)
 
     def _perfil(self):
         try:
@@ -239,12 +239,14 @@ class NaTelaDoAnki:
         self._qt.avisar_de_outra_thread(self._mw, texto_da_janela.texto("ANK-05.conectado"))
 
 
-def ligar(mw, janela, qt, modulo, logger):
-    """Põe no Anki o item de Ferramentas, o botão Config do complemento `modulo` e a conferência do Envio, pela fronteira `qt`.
+def ligar(mw, janela, qt, modulo):
+    """Põe no Anki o item de Ferramentas, o botão Config do complemento `modulo` e a conferência do Envio, pela fronteira `qt`; os erros vão
+    ao registro da `janela`.
 
     O item e o Config abrem a mesma janela. Só o Config é opcional: se o Anki não o aceita, o item e a conferência ficam. Se o item
     não entra, `ligar` levanta e quem chamou (`no_anki`) registra o erro e segue sem a janela. Com a Conexão no ar, o código do
     pareamento ganha onde aparecer (`NaTelaDoAnki`)."""
+    logger = janela.logger
     janela.pareamento_na_tela(NaTelaDoAnki(mw, qt))
     abrir = protegido(lambda: qt.abrir_janela(mw, janela.estado, janela.desconectar_navegadores), logger, "abrir a janela")
     item = qt.item_do_menu(mw, texto_da_janela.texto("ANK-01.parado"), abrir)

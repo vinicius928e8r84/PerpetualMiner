@@ -41,6 +41,7 @@ import posixpath
 import re
 import shlex
 import tempfile
+from collections import namedtuple
 
 from . import conserto_do_anki
 from .configuracao import ORIGENS_ACEITAS
@@ -59,7 +60,7 @@ SCRIPT_DO_MAC = "abrir-o-anki.sh"
 BAT_DO_WINDOWS = "abrir-o-anki.bat"
 PS1_DO_WINDOWS = "abrir-o-anki.ps1"
 
-__all__ = ["Abridor", "AnkiNaoEncontrado", "NoMac", "NoWindows", "RegistroDoWindows", "deste_computador", "NOME_DO_HOST"]
+__all__ = ["Abridor", "AnkiNaoEncontrado", "Computador", "NoMac", "NoWindows", "RegistroDoWindows", "deste_computador", "NOME_DO_HOST"]
 
 
 class RegistroDoWindows:
@@ -130,12 +131,18 @@ class Abridor:
         self.sistema.escrever(self, perfil)
 
 
-def deste_computador(*, plataforma, ambiente, executavel, pasta, registro=None, existe=os.path.exists, complemento=None):
-    """O abridor deste computador, escrito em `pasta`; `None` onde não há (só Mac e Windows).
+class Computador(namedtuple("Computador", "plataforma ambiente executavel existe", defaults=(os.path.exists,))):
+    """Este computador como o abridor o lê: a `plataforma` (`sys.platform`), o `ambiente` (`os.environ`), o `executavel`, o programa que roda o
+    Anki (e o complemento) agora, e `existe`, se um caminho existe no disco (os testes passam outro)."""
 
-    `executavel` é o programa que roda o Anki (e o complemento) agora: o `consertar` só fecha processos desse programa. `complemento`
-    é a pasta do complemento, com o `meta.json`.
+
+def deste_computador(*, computador, pasta, complemento=None, registro=None):
+    """O abridor do `computador`, escrito em `pasta`; `None` onde não há (só Mac e Windows).
+
+    O `consertar` só fecha processos do `executavel` do computador. `complemento` é a pasta do complemento, com o `meta.json`; `registro`,
+    o do Windows (sem ele, o `HKEY_CURRENT_USER` de verdade).
     """
+    plataforma, ambiente, executavel, existe = computador
     conserto = conserto_do_anki.Conserto(executavel=executavel, complemento=complemento)
     if plataforma == "darwin":
         casa = ambiente.get("HOME") or os.path.expanduser("~")
