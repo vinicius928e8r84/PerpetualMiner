@@ -17,7 +17,7 @@ let total = 0;
 const prova = (achado, esperado, porque) => { assert.deepStrictEqual(achado, esperado, porque); total++; };
 
 const pr = (numero, titulo, rotulos = []) => ({ numero, titulo, rotulos, head: HEAD });
-const check = (id, status, conclusion = null, name = NOME_DO_CHECK) => ({ id, name, status, conclusion });
+const check = (id, status, conclusion = null) => ({ id, name: NOME_DO_CHECK, status, conclusion, app: 'codescene-local' });
 
 prova(PRIMEIRA_PR_COBRADA, 639, 'a cobrança começa na PR #639, a primeira de refatoração depois da ordem do dono');
 prova(cobranca(pr(638, 'A Fila sai de envio.py (CodeScene, Onda 1)')).cobra, false, 'a PR anterior à #639 fica isenta, mesmo de refatoração');
@@ -27,7 +27,7 @@ prova(cobranca(pr(700, 'O painel lembra o baralho', ['refatoracao'])).cobra, tru
 prova(cobranca(pr(700, 'O painel lembra o baralho', ['bug'])).cobra, false, 'a PR de produto que não é refatoração não é cobrada');
 
 prova(situacaoDoCheck([]), { estado: 'ausente' }, 'sem o check no head: ausente');
-prova(situacaoDoCheck([check(1, 'completed', 'success', 'Regras de revisão')]), { estado: 'ausente' }, 'outro check não conta');
+prova(situacaoDoCheck([{ ...check(1, 'completed', 'success'), name: 'Regras de revisão' }]), { estado: 'ausente' }, 'outro check não conta');
 prova(situacaoDoCheck([check(1, 'in_progress')]), { estado: 'rodando' }, 'o check que ainda roda');
 prova(situacaoDoCheck([check(1, 'completed', 'success')]), { estado: 'passou', conclusao: 'success' }, 'success passa');
 for (const conclusao of ['failure', 'neutral', 'cancelled', 'timed_out', 'action_required', 'skipped']) {
@@ -35,6 +35,12 @@ for (const conclusao of ['failure', 'neutral', 'cancelled', 'timed_out', 'action
 }
 prova(situacaoDoCheck([check(1, 'completed', 'success'), check(2, 'completed', 'failure')]).estado, 'reprovou', 'vale a rodada mais nova do check');
 prova(situacaoDoCheck([check(2, 'completed', 'success'), check(1, 'completed', 'failure')]).estado, 'passou', 'vale a mais nova, em qualquer ordem');
+const DA_NUVEM = (id, status, conclusion) => ({ ...check(id, status, conclusion), app: 'codescene-cloud' });
+prova(situacaoDoCheck([check(1, 'completed', 'success'), DA_NUVEM(2, 'completed', 'failure')]), { estado: 'reprovou', conclusao: 'failure' },
+  'os dois apps do CodeScene contam: um em failure reprova, mesmo com o outro em success');
+prova(situacaoDoCheck([check(1, 'completed', 'success'), DA_NUVEM(2, 'in_progress')]).estado, 'rodando', 'com um app ainda rodando, espera');
+prova(situacaoDoCheck([DA_NUVEM(1, 'completed', 'failure'), check(2, 'completed', 'success'), DA_NUVEM(3, 'completed', 'success')]).estado, 'passou',
+  'a rodada nova de um app substitui a antiga do mesmo app');
 
 function portasCom(respostas) {
   const relogio = { agora: 0, lidas: 0, avisos: [] };
@@ -108,10 +114,13 @@ function provarOComando() {
   prova(r.status, 1, `o check reprovado sai com 1: ${r.saida}`);
   r = rodarComGhFalso('echo "HTTP 401: Bad credentials" >&2; exit 1');
   prova([r.status, r.saida.includes('segredo-do-token')], [1, false], `o erro do GitHub reprova e não mostra o token: ${r.saida}`);
+  prova(r.chamadas.includes('app: .app.slug'), true, `pede o app de cada rodada: ${r.chamadas}`);
   r = rodarComGhFalso(sucesso, { PR_HEAD: 'curto' });
   prova([r.status, /PR_HEAD não é um SHA inteiro/.test(r.saida), r.chamadas], [1, true, ''], `ambiente errado é erro, não passe: ${r.saida}`);
   r = rodarComGhFalso('exit 1', { PR_NUMERO: '600' });
   prova([r.status, /isenta/.test(r.saida)], [0, true], `a PR anterior à #639 passa sem perguntar: ${r.saida}`);
+  r = rodarComGhFalso(sucesso, { PR_NUMERO: '64a' });
+  prova([r.status, /PR_NUMERO inválido/.test(r.saida)], [1, true], `número da PR inválido é erro: ${r.saida}`);
 }
 
 function provarOWorkflow() {

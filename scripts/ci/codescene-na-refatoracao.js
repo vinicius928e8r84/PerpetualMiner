@@ -13,7 +13,8 @@ const AJUDA = `uso: PR_NUMERO=… PR_TITULO=… PR_ROTULOS='["…"]' PR_HEAD=<sh
 
 O passo "CodeScene na refatoração" do job "Regras de revisão": uma PR de número ${PRIMEIRA_PR_COBRADA} ou maior que é de
 refatoração (o título cita "CodeScene" ou "refatora", ou a PR tem o rótulo ${ROTULO_DE_REFATORACAO}) só passa com o check
-"${NOME_DO_CHECK}" do head em success. As PRs anteriores à #${PRIMEIRA_PR_COBRADA} ficam isentas.
+"${NOME_DO_CHECK}" do head em success. As PRs anteriores à #${PRIMEIRA_PR_COBRADA} ficam isentas. Há dois apps
+do CodeScene com esse check (o antigo e o desta máquina): vale a rodada mais nova de cada um, e todas têm de estar em success.
 
 O job pode rodar antes de o CodeScene reportar: o passo espera o check terminar, conferindo a cada ${INTERVALO_S} s, por até
 PM_PRAZO_CODESCENE_S segundos (padrão ${PRAZO_PADRAO_S}). Sem o check terminado no prazo, falha dizendo isso: nunca passa sem
@@ -32,12 +33,18 @@ function cobranca(pr) {
   return { cobra: true, motivo: `a PR #${pr.numero} é de refatoração` };
 }
 
+function ultimaRodadaPorApp(checkRuns) {
+  const ultimas = new Map();
+  for (const check of checkRuns.filter(c => c.name === NOME_DO_CHECK).sort((a, b) => a.id - b.id)) ultimas.set(check.app, check);
+  return [...ultimas.values()];
+}
+
 function situacaoDoCheck(checkRuns) {
-  const doCheck = checkRuns.filter(check => check.name === NOME_DO_CHECK).sort((a, b) => b.id - a.id);
-  if (!doCheck.length) return { estado: 'ausente' };
-  const [ultimo] = doCheck;
-  if (ultimo.status !== 'completed') return { estado: 'rodando' };
-  return { estado: ultimo.conclusion === 'success' ? 'passou' : 'reprovou', conclusao: ultimo.conclusion };
+  const ultimas = ultimaRodadaPorApp(checkRuns);
+  if (!ultimas.length) return { estado: 'ausente' };
+  if (ultimas.some(check => check.status !== 'completed')) return { estado: 'rodando' };
+  const reprovada = ultimas.find(check => check.conclusion !== 'success');
+  return reprovada ? { estado: 'reprovou', conclusao: reprovada.conclusion } : { estado: 'passou', conclusao: 'success' };
 }
 
 const SEM_RESPOSTA = {
@@ -78,16 +85,20 @@ async function conferir(pr, portas, prazoS = PRAZO_PADRAO_S) {
 
 function lerChecksPeloGh(repo) {
   return sha => execFileSync('gh', ['api', `repos/${repo}/commits/${sha}/check-runs?check_name=${encodeURIComponent(NOME_DO_CHECK)}&per_page=100`,
-    '--jq', '.check_runs[] | {id, name, status, conclusion}'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+    '--jq', '.check_runs[] | {id, name, status, conclusion, app: .app.slug}'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
     .split('\n').filter(Boolean).map(linha => JSON.parse(linha));
 }
 
+function problemaDoAmbiente(env) {
+  if (!/^[1-9][0-9]*$/.test(env.PR_NUMERO || '')) return `PR_NUMERO inválido: ${env.PR_NUMERO}`;
+  if (!/^[0-9a-f]{40}$/.test(env.PR_HEAD || '')) return `PR_HEAD não é um SHA inteiro: ${env.PR_HEAD}`;
+  return env.GITHUB_REPOSITORY ? null : 'falta GITHUB_REPOSITORY';
+}
+
 function prDoAmbiente(env) {
-  const pr = { numero: Number(env.PR_NUMERO), titulo: env.PR_TITULO || '', rotulos: JSON.parse(env.PR_ROTULOS || '[]'), head: env.PR_HEAD || '' };
-  if (!Number.isInteger(pr.numero) || pr.numero <= 0) throw new Error(`PR_NUMERO inválido: ${env.PR_NUMERO}`);
-  if (!/^[0-9a-f]{40}$/.test(pr.head)) throw new Error(`PR_HEAD não é um SHA inteiro: ${env.PR_HEAD}`);
-  if (!env.GITHUB_REPOSITORY) throw new Error('falta GITHUB_REPOSITORY');
-  return pr;
+  const problema = problemaDoAmbiente(env);
+  if (problema) throw new Error(problema);
+  return { numero: Number(env.PR_NUMERO), titulo: env.PR_TITULO || '', rotulos: JSON.parse(env.PR_ROTULOS || '[]'), head: env.PR_HEAD };
 }
 
 async function principal(argv, env) {
