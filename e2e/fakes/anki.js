@@ -66,11 +66,12 @@ function criarFakeAnki() {
     google: null,
     filaDaChave: Promise.resolve(),
     chaveDaOpenAI: null,
+    paraAReal: [],
   };
   const pareamento = criarPareamento({ agora: () => estado.agora() });
   pareamento.parear('primeiro');
   const requisicoes = [];
-  const chatgpt = criarFakeChatGPT();
+  const chatgpt = criarFakeChatGPT({ paraAReal: comando => estado.paraAReal.push(comando) });
   const voz = criarFakeVoz();
   const perfis = criarPerfis(() => estado.contexto);
   const teto = criarTeto({ registros: () => [...estado.registrosDeCusto.values()].flat(), linhas: () => estado.custos, agora: () => estado.agora() });
@@ -130,15 +131,18 @@ function criarFakeAnki() {
     }
     const mundo = mundoDaReal();
     const perder = Boolean(estado.perdaDoEnvio) && req.method() === 'POST' && url.pathname === '/jobs';
-    const fila = apiDoEnvio.mudancasParaAFila();
+    const fila = estado.paraAReal.splice(0, estado.paraAReal.length);
     return { ...(mundo && { mundo }), ...(perder && { perder }), ...(fila.length && { fila }) };
   }
 
   function mundoDaReal() {
-    const { colecao, perfil } = estado.contexto;
-    if (!estado.vocabularioDefinido && !estado.baralhosDoAnki && colecao === undefined && perfil === PERFIL_DE_SEMPRE) return null;
+    const { colecao } = estado.contexto;
+    const perfil = perfis.aberto() ?? null;
+    const daLista = perfis.paraAReal();
+    if (!estado.vocabularioDefinido && !estado.baralhosDoAnki && colecao === undefined && perfil === PERFIL_DE_SEMPRE && !daLista) return null;
     const mundo = {
       perfil,
+      ...(daLista && { perfis: daLista }),
       colecao: colecaoDoMundo({
         doContrato: colecao === undefined ? null : contrato.colecoes[colecao], baralhosDoAnki: estado.baralhosDoAnki,
         vocabularios: [...estado.decksDoVocabulario].map(([nome, idioma]) => [nome, estado.vocabulario[idioma]]),
@@ -216,6 +220,7 @@ function criarFakeAnki() {
     ligar() { estado.ligada = true; },
     abrirPerfil(perfil) { estado.contexto = { ...estado.contexto, perfil }; },
     definirPerfis: perfis.definir,
+    espelharPerfis: perfis.espelhar,
     /** @estado-guardado O perfil que a Conexão tem marcado (`null`: nenhum ainda). */
     perfilMarcado: perfis.marcado,
     /** @estado-guardado O perfil que o Anki tem aberto (`null`: a tela de perfis). */

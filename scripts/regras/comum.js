@@ -28,6 +28,14 @@ function apagar(trecho) {
   return trecho.replace(/[^\n]/g, ' ');
 }
 
+function ehAspa(c) {
+  return c === '"' || c === "'";
+}
+
+function ehAspaJs(c) {
+  return ehAspa(c) || c === '`';
+}
+
 function fimDaString(texto, i) {
   const aspa = texto[i];
   let j = i + 1;
@@ -35,78 +43,102 @@ function fimDaString(texto, i) {
   return Math.min(j, texto.length - 1);
 }
 
-function separarJs(fonte) {
-  let codigo = '';
+function fimDaLinha(fonte, i) {
+  const fim = fonte.indexOf('\n', i);
+  return fim < 0 ? fonte.length : fim;
+}
+
+function fimDoBloco(fonte, i, abre, fecha) {
+  const fim = fonte.indexOf(fecha, i + abre.length);
+  return fim < 0 ? fonte.length : fim + fecha.length;
+}
+
+function lerComentarios(fonte, linguagem) {
   const comentarios = [];
+  let i = 0;
+  while (i < fonte.length) {
+    const fimDoComentario = linguagem.fimDoComentario(fonte, i);
+    if (fimDoComentario >= 0) {
+      comentarios.push([i, fimDoComentario]);
+      i = fimDoComentario;
+    } else i = linguagem.depoisDoCodigo(fonte, i, comentarios);
+  }
+  return comentarios;
+}
+
+function fimDoComentarioJs(fonte, i) {
+  if (fonte.startsWith('//', i)) return fimDaLinha(fonte, i);
+  if (fonte.startsWith('/*', i)) return fimDoBloco(fonte, i, '/*', '*/');
+  return -1;
+}
+
+const OPERADORES_ANTES_DA_REGEX = '(,=:[!&|?{};+-*%<>~^';
+const PALAVRA_ANTES_DA_REGEX = /\b(return|typeof|case|in|of)\s*$/;
+
+function ehComecoDeExpressao(anterior) {
+  return anterior === '' || OPERADORES_ANTES_DA_REGEX.includes(anterior);
+}
+
+function comecaRegex(c, anterior, codigo) {
+  if (c !== '/') return false;
+  return ehComecoDeExpressao(anterior) || PALAVRA_ANTES_DA_REGEX.test(codigo);
+}
+
+function fimDaRegex(fonte, i) {
+  let naClasse = false;
+  let j = i + 1;
+  while (j < fonte.length && fonte[j] !== '\n') {
+    const c = fonte[j];
+    if (c === '/' && !naClasse) return j;
+    if (c === '\\') j++;
+    else if (c === '[' || c === ']') naClasse = c === '[';
+    j++;
+  }
+  return j;
+}
+
+function depoisDoCodigoJs(fonte, i, anterior, codigo) {
+  if (ehAspaJs(fonte[i])) return fimDaString(fonte, i) + 1;
+  if (comecaRegex(fonte[i], anterior, codigo)) return fimDaRegex(fonte, i) + 1;
+  return i + 1;
+}
+
+function separarJs(fonte) {
+  const comentarios = [];
+  let codigo = '';
   let anterior = '';
   let i = 0;
-  const comentario = ate => {
-    comentarios.push([i, ate]);
-    codigo += apagar(fonte.slice(i, ate));
-    i = ate;
-  };
   while (i < fonte.length) {
-    const c = fonte[i];
-    const d = fonte[i + 1];
-    if (c === '/' && d === '/') {
-      const fim = fonte.indexOf('\n', i);
-      comentario(fim < 0 ? fonte.length : fim);
+    const fimDoComentario = fimDoComentarioJs(fonte, i);
+    if (fimDoComentario >= 0) {
+      comentarios.push([i, fimDoComentario]);
+      codigo += apagar(fonte.slice(i, fimDoComentario));
+      i = fimDoComentario;
       continue;
     }
-    if (c === '/' && d === '*') {
-      const fim = fonte.indexOf('*/', i + 2);
-      comentario(fim < 0 ? fonte.length : fim + 2);
-      continue;
-    }
-    if (c === '"' || c === "'" || c === '`') {
-      const fim = fimDaString(fonte, i);
-      codigo += fonte.slice(i, fim + 1);
-      anterior = c;
-      i = fim + 1;
-      continue;
-    }
-    const comecaRegex = c === '/' && (anterior === '' || '(,=:[!&|?{};+-*%<>~^'.includes(anterior)
-      || /\b(return|typeof|case|in|of)\s*$/.test(codigo));
-    if (comecaRegex) {
-      let j = i + 1;
-      let naClasse = false;
-      while (j < fonte.length && fonte[j] !== '\n') {
-        if (fonte[j] === '\\') { j += 2; continue; }
-        if (fonte[j] === '[') naClasse = true;
-        else if (fonte[j] === ']') naClasse = false;
-        else if (fonte[j] === '/' && !naClasse) break;
-        j++;
-      }
-      codigo += fonte.slice(i, j + 1);
-      anterior = '/';
-      i = j + 1;
-      continue;
-    }
-    codigo += c;
-    if (!/\s/.test(c)) anterior = c;
-    i++;
+    const fim = depoisDoCodigoJs(fonte, i, anterior, codigo);
+    codigo += fonte.slice(i, fim);
+    if (!/\s/.test(fonte[i])) anterior = fonte[i];
+    i = fim;
   }
   return { codigo, comentarios };
+}
+
+function comentariosJs(fonte) {
+  return separarJs(fonte).comentarios;
 }
 
 function semComentariosJs(fonte) {
   return separarJs(fonte).codigo;
 }
 
+const CSS = {
+  fimDoComentario: (fonte, i) => (fonte.startsWith('/*', i) ? fimDoBloco(fonte, i, '/*', '*/') : -1),
+  depoisDoCodigo: (fonte, i) => (ehAspa(fonte[i]) ? fimDaString(fonte, i) + 1 : i + 1),
+};
+
 function comentariosCss(fonte) {
-  const comentarios = [];
-  let i = 0;
-  while (i < fonte.length) {
-    const c = fonte[i];
-    if (c === '/' && fonte[i + 1] === '*') {
-      const fim = fonte.indexOf('*/', i + 2);
-      const ate = fim < 0 ? fonte.length : fim + 2;
-      comentarios.push([i, ate]);
-      i = ate;
-    } else if (c === '"' || c === "'") i = fimDaString(fonte, i) + 1;
-    else i++;
-  }
-  return comentarios;
+  return lerComentarios(fonte, CSS);
 }
 
 function semTrechos(fonte, trechos) {
@@ -125,197 +157,256 @@ function semComentariosCss(fonte) {
 
 const mover = (trechos, deslocamento) => trechos.map(([de, ate]) => [de + deslocamento, ate + deslocamento]);
 
+const ABERTURA_DE_TAG = /^<([a-zA-Z][\w-]*)/;
+const COMENTARIOS_DO_MIOLO = new Map([['style', comentariosCss], ['script', comentariosJs]]);
+
+function depoisDoCaractereDaTag(fonte, j) {
+  if (!ehAspa(fonte[j])) return j + 1;
+  const aspa = fonte.indexOf(fonte[j], j + 1);
+  return aspa < 0 ? fonte.length : aspa + 1;
+}
+
+function fimDaTagForaDasAspas(fonte, j) {
+  while (j < fonte.length && fonte[j] !== '>') j = depoisDoCaractereDaTag(fonte, j);
+  return j;
+}
+
+function fimDoMiolo(fonte, i, nome) {
+  const fecha = fonte.slice(i).search(new RegExp(`</${nome}\\s*>`, 'i'));
+  return fecha < 0 ? fonte.length : i + fecha;
+}
+
+function depoisDaTag(fonte, i, comentarios) {
+  const tag = fonte[i] === '<' && ABERTURA_DE_TAG.exec(fonte.slice(i, i + 40));
+  if (!tag) return i + 1;
+  const miolo = fimDaTagForaDasAspas(fonte, i + tag[0].length) + 1;
+  const nome = tag[1].toLowerCase();
+  const comentariosDoMiolo = COMENTARIOS_DO_MIOLO.get(nome);
+  if (!comentariosDoMiolo) return miolo;
+  const ate = fimDoMiolo(fonte, miolo, nome);
+  comentarios.push(...mover(comentariosDoMiolo(fonte.slice(miolo, ate)), miolo));
+  return ate;
+}
+
+const HTML = {
+  fimDoComentario: (fonte, i) => (fonte.startsWith('<!--', i) ? fimDoBloco(fonte, i, '<!--', '-->') : -1),
+  depoisDoCodigo: depoisDaTag,
+};
+
 function comentariosHtml(fonte) {
-  const comentarios = [];
-  let i = 0;
-  while (i < fonte.length) {
-    if (fonte.startsWith('<!--', i)) {
-      const fim = fonte.indexOf('-->', i + 4);
-      const ate = fim < 0 ? fonte.length : fim + 3;
-      comentarios.push([i, ate]);
-      i = ate;
-      continue;
-    }
-    const tag = fonte[i] === '<' && /^<([a-zA-Z][\w-]*)/.exec(fonte.slice(i, i + 40));
-    if (!tag) { i++; continue; }
-    // A tag vai até o `>` fora das aspas: um `<!--` num atributo não é comentário.
-    let j = i + tag[0].length;
-    while (j < fonte.length && fonte[j] !== '>') {
-      const aspa = fonte[j] === '"' || fonte[j] === "'" ? fonte.indexOf(fonte[j], j + 1) : -2;
-      j = aspa === -1 ? fonte.length : aspa === -2 ? j + 1 : aspa + 1;
-    }
-    i = j + 1;
-    const nome = tag[1].toLowerCase();
-    if (nome !== 'style' && nome !== 'script') continue;
-    const fecha = fonte.slice(i).search(new RegExp(`</${nome}\\s*>`, 'i'));
-    const ate = fecha < 0 ? fonte.length : i + fecha;
-    const miolo = fonte.slice(i, ate);
-    comentarios.push(...mover(nome === 'style' ? comentariosCss(miolo) : separarJs(miolo).comentarios, i));
-    i = ate;
-  }
-  return comentarios;
+  return lerComentarios(fonte, HTML);
 }
 
 function semComentariosHtml(fonte) {
   return semTrechos(fonte, comentariosHtml(fonte));
 }
 
+function continuaNaStringCurtaPy(fonte, j, aspa) {
+  return j < fonte.length && fonte[j] !== aspa && fonte[j] !== '\n';
+}
+
+function fimDaStringPy(fonte, i) {
+  const tripla = fonte[i].repeat(3);
+  if (fonte.startsWith(tripla, i)) return fimDoBloco(fonte, i, tripla, tripla);
+  let j = i + 1;
+  while (continuaNaStringCurtaPy(fonte, j, fonte[i])) j += fonte[j] === '\\' ? 2 : 1;
+  return j + 1;
+}
+
+const PYTHON = {
+  fimDoComentario: (fonte, i) => (fonte[i] === '#' ? fimDaLinha(fonte, i) : -1),
+  depoisDoCodigo: (fonte, i) => (ehAspa(fonte[i]) ? fimDaStringPy(fonte, i) : i + 1),
+};
+
 function comentariosPy(fonte) {
-  const comentarios = [];
-  let i = 0;
-  while (i < fonte.length) {
-    const c = fonte[i];
-    if (c === '#') {
-      const fim = fonte.indexOf('\n', i);
-      const ate = fim < 0 ? fonte.length : fim;
-      comentarios.push([i, ate]);
-      i = ate;
-    } else if (c === '"' || c === "'") {
-      const tripla = fonte.slice(i, i + 3) === c.repeat(3);
-      if (tripla) {
-        const fim = fonte.indexOf(c.repeat(3), i + 3);
-        i = fim < 0 ? fonte.length : fim + 3;
-      } else {
-        let j = i + 1;
-        while (j < fonte.length && fonte[j] !== c && fonte[j] !== '\n') j += fonte[j] === '\\' ? 2 : 1;
-        i = j + 1;
-      }
-    } else i++;
+  return lerComentarios(fonte, PYTHON);
+}
+
+const ABERTURAS_NO_CODIGO_SH = ["'", '"', "$'", '$(', '`'];
+const CONTEXTOS_SH = {
+  normal: { fecha: null, escapa: true, abre: ABERTURAS_NO_CODIGO_SH, codigo: true, contaParenteses: false },
+  comando: { fecha: null, escapa: true, abre: ABERTURAS_NO_CODIGO_SH, codigo: true, contaParenteses: true },
+  crase: { fecha: '`', escapa: true, abre: ABERTURAS_NO_CODIGO_SH, codigo: true, contaParenteses: false },
+  simples: { fecha: "'", escapa: false, abre: [], codigo: false, contaParenteses: false },
+  ansi: { fecha: "'", escapa: true, abre: [], codigo: false, contaParenteses: false },
+  dupla: { fecha: '"', escapa: true, abre: ['$(', '`'], codigo: false, contaParenteses: false },
+};
+const CONTEXTO_DA_ABERTURA_SH = new Map([
+  ["'", CONTEXTOS_SH.simples], ['"', CONTEXTOS_SH.dupla], ["$'", CONTEXTOS_SH.ansi], ['$(', CONTEXTOS_SH.comando], ['`', CONTEXTOS_SH.crase],
+]);
+const HEREDOC = /^<<-?\s*(?:'([^']+)'|"([^"]+)"|\\?([A-Za-z_]\w*))/;
+
+class LeitorDeShell {
+  constructor(fonte) {
+    this.fonte = fonte;
+    this.i = 0;
+    this.pilha = [{ contexto: CONTEXTOS_SH.normal, fundo: 0 }];
+    this.comentarios = [];
+    this.delimitadores = [];
   }
-  return comentarios;
+
+  ler() {
+    while (this.i < this.fonte.length) this.i = this.depoisDoCaractere(this.pilha[this.pilha.length - 1]);
+    return this.comentarios;
+  }
+
+  depoisDoCaractere(topo) {
+    const { contexto } = topo;
+    const c = this.fonte[this.i];
+    if (contexto.escapa && c === '\\') return this.i + 2;
+    if (c === contexto.fecha) {
+      this.pilha.pop();
+      return this.i + 1;
+    }
+    const abertura = this.aberturaAqui(c);
+    if (contexto.abre.includes(abertura)) {
+      this.pilha.push({ contexto: CONTEXTO_DA_ABERTURA_SH.get(abertura), fundo: 0 });
+      return this.i + abertura.length;
+    }
+    return contexto.codigo ? this.depoisDoCodigo(topo, c) : this.i + 1;
+  }
+
+  aberturaAqui(c) {
+    return c === '$' ? this.fonte.slice(this.i, this.i + 2) : c;
+  }
+
+  depoisDoCodigo(topo, c) {
+    if (topo.contexto.contaParenteses && '()'.includes(c)) return this.depoisDoParentese(topo, c);
+    if (c === '#' && this.comecaPalavra()) return this.depoisDoComentario();
+    if (c === '<' && this.fonte[this.i + 1] === '<') return this.depoisDoRedirecionamento();
+    if (c === '\n') return this.depoisDaQuebraDeLinha();
+    return this.i + 1;
+  }
+
+  depoisDoParentese(comando, c) {
+    if (c === '(') comando.fundo++;
+    else if (comando.fundo === 0) this.pilha.pop();
+    else comando.fundo--;
+    return this.i + 1;
+  }
+
+  comecaPalavra() {
+    return this.i === 0 || /[\s;&|()]/.test(this.fonte[this.i - 1]);
+  }
+
+  depoisDoComentario() {
+    const ate = fimDaLinha(this.fonte, this.i);
+    this.comentarios.push([this.i, ate]);
+    return ate;
+  }
+
+  depoisDoRedirecionamento() {
+    if (this.fonte[this.i + 2] === '<') return this.i + 3;
+    const heredoc = HEREDOC.exec(this.fonte.slice(this.i, this.i + 120));
+    if (!heredoc) return this.i + 2;
+    if (!this.naAritmetica()) this.delimitadores.push(heredoc[1] || heredoc[2] || heredoc[3]);
+    return this.i + heredoc[0].length;
+  }
+
+  naAritmetica() {
+    const linhaAteAqui = this.fonte.slice(this.fonte.lastIndexOf('\n', this.i) + 1, this.i);
+    return linhaAteAqui.lastIndexOf('((') > linhaAteAqui.lastIndexOf('))');
+  }
+
+  depoisDaQuebraDeLinha() {
+    if (this.delimitadores.length === 0) return this.i + 1;
+    return depoisDosHeredocs(this.fonte, this.i + 1, this.delimitadores.splice(0));
+  }
 }
 
 function comentariosSh(fonte) {
-  const comentarios = [];
-  const delimitadores = [];
-  const pilha = [{ tipo: 'normal' }];
-  const comecaPalavra = j => j === 0 || /[\s;&|()]/.test(fonte[j - 1]);
-  let i = 0;
-  while (i < fonte.length) {
-    const c = fonte[i];
-    const topo = pilha[pilha.length - 1];
-    if (topo.tipo === 'simples') {
-      if (c === "'") pilha.pop();
-      i++;
-    } else if (topo.tipo === 'ansi') {
-      if (c === '\\') i++;
-      else if (c === "'") pilha.pop();
-      i++;
-    } else if (topo.tipo === 'dupla') {
-      if (c === '\\') i += 2;
-      else if (c === '"') { pilha.pop(); i++; }
-      else if (c === '$' && fonte[i + 1] === '(') { pilha.push({ tipo: 'comando', fundo: 0 }); i += 2; }
-      else if (c === '`') { pilha.push({ tipo: 'crase' }); i++; }
-      else i++;
-    } else if (c === '\\') {
-      i += 2;
-    } else if (c === "'" || c === '"') {
-      pilha.push({ tipo: c === "'" ? 'simples' : 'dupla' });
-      i++;
-    } else if (c === '$' && fonte[i + 1] === "'") {
-      pilha.push({ tipo: 'ansi' });
-      i += 2;
-    } else if (c === '$' && fonte[i + 1] === '(') {
-      pilha.push({ tipo: 'comando', fundo: 0 });
-      i += 2;
-    } else if (c === '`') {
-      if (topo.tipo === 'crase') pilha.pop();
-      else pilha.push({ tipo: 'crase' });
-      i++;
-    } else if (topo.tipo === 'comando' && c === '(') {
-      topo.fundo++;
-      i++;
-    } else if (topo.tipo === 'comando' && c === ')') {
-      if (topo.fundo === 0) pilha.pop();
-      else topo.fundo--;
-      i++;
-    } else if (c === '#' && comecaPalavra(i)) {
-      const fim = fonte.indexOf('\n', i);
-      const ate = fim < 0 ? fonte.length : fim;
-      comentarios.push([i, ate]);
-      i = ate;
-    } else if (c === '<' && fonte[i + 1] === '<' && fonte[i + 2] === '<') {
-      i += 3;
-    } else if (c === '<' && fonte[i + 1] === '<') {
-      const m = /^<<-?\s*(?:'([^']+)'|"([^"]+)"|\\?([A-Za-z_]\w*))/.exec(fonte.slice(i, i + 120));
-      const linhaAteAqui = fonte.slice(fonte.lastIndexOf('\n', i) + 1, i);
-      const naAritmetica = linhaAteAqui.lastIndexOf('((') > linhaAteAqui.lastIndexOf('))');
-      if (m && !naAritmetica) delimitadores.push(m[1] || m[2] || m[3]);
-      i += m ? m[0].length : 2;
-    } else if (c === '\n' && delimitadores.length) {
-      i = depoisDosHeredocs(fonte, i + 1, delimitadores.splice(0));
-    } else {
-      i++;
-    }
-  }
-  return comentarios;
+  return new LeitorDeShell(fonte).ler();
 }
 
-function depoisDosHeredocs(fonte, inicio, delimitadores) {
+function depoisDoHeredoc(fonte, inicio, delimitador) {
   let i = inicio;
-  for (const delimitador of delimitadores) {
-    while (i < fonte.length) {
-      const fim = fonte.indexOf('\n', i);
-      const linha = fonte.slice(i, fim < 0 ? fonte.length : fim);
-      i = fim < 0 ? fonte.length : fim + 1;
-      if (linha.replace(/^\t+/, '') === delimitador) break;
-    }
+  while (i < fonte.length) {
+    const fim = fimDaLinha(fonte, i);
+    const linha = fonte.slice(i, fim);
+    i = Math.min(fim + 1, fonte.length);
+    if (linha.replace(/^\t+/, '') === delimitador) break;
   }
   return i;
 }
 
+function depoisDosHeredocs(fonte, inicio, delimitadores) {
+  return delimitadores.reduce((i, delimitador) => depoisDoHeredoc(fonte, i, delimitador), inicio);
+}
+
+function depoisDeSeparador(linha, i, separador) {
+  return i === 0 || separador.test(linha[i - 1]);
+}
+
+function abreAspaYaml(linha, i) {
+  return ehAspa(linha[i]) && depoisDeSeparador(linha, i, /[\s:,\[{?-]/);
+}
+
+function comecaComentarioYaml(linha, i) {
+  return linha[i] === '#' && depoisDeSeparador(linha, i, /\s/);
+}
+
+function fimDaAspaYaml(linha, i) {
+  const aspa = linha[i];
+  let j = i + 1;
+  while (j < linha.length && linha[j] !== aspa) j += aspa === '"' && linha[j] === '\\' ? 2 : 1;
+  return j;
+}
+
 function comentarioDaLinhaYaml(linha) {
-  let aspa = null;
   for (let i = 0; i < linha.length; i++) {
-    const c = linha[i];
-    if (aspa) {
-      if (c === '\\' && aspa === '"') i++;
-      else if (c === aspa) aspa = null;
-    } else if ((c === '"' || c === "'") && (i === 0 || /[\s:,\[{?-]/.test(linha[i - 1]))) {
-      aspa = c;
-    } else if (c === '#' && (i === 0 || /\s/.test(linha[i - 1]))) {
-      return i;
-    }
+    if (abreAspaYaml(linha, i)) i = fimDaAspaYaml(linha, i);
+    else if (comecaComentarioYaml(linha, i)) return i;
   }
   return -1;
 }
 
 const BLOCO_DE_TEXTO_YAML = /^(\s*(?:-\s+)*)([^\s:#'"][^:#]*|"[^"]*"|'[^']*'):\s*[|>][+-]?\d*\s*$/;
 
+function blocoDeTextoQueAbre(codigo, de) {
+  const abre = BLOCO_DE_TEXTO_YAML.exec(codigo);
+  return abre && { coluna: abre[1].length, shell: abre[2].trim() === 'run', de };
+}
+
+function continuaNoBloco(bloco, linha) {
+  if (!bloco) return false;
+  return linha.trim() === '' || linha.search(/\S/) > bloco.coluna;
+}
+
+function comentariosDoShellDoBloco(fonte, bloco, ate) {
+  if (!(bloco && bloco.shell)) return [];
+  return mover(comentariosSh(fonte.slice(bloco.de, ate)), bloco.de);
+}
+
 function comentariosYaml(fonte) {
   const comentarios = [];
   let bloco = null;
   let deslocamento = 0;
-  const fecharBloco = ate => {
-    if (bloco && bloco.shell) {
-      for (const [de, fim] of comentariosSh(fonte.slice(bloco.de, ate))) comentarios.push([bloco.de + de, bloco.de + fim]);
-    }
-    bloco = null;
-  };
   for (const linhaComCr of fonte.split('\n')) {
     const linha = linhaComCr.replace(/\r$/, '');
     const inicio = deslocamento;
     deslocamento += linhaComCr.length + 1;
-    if (bloco && (linha.trim() === '' || linha.search(/\S/) > bloco.coluna)) continue;
-    fecharBloco(inicio);
+    if (continuaNoBloco(bloco, linha)) continue;
+    comentarios.push(...comentariosDoShellDoBloco(fonte, bloco, inicio));
     const marca = comentarioDaLinhaYaml(linha);
     if (marca >= 0) comentarios.push([inicio + marca, inicio + linha.length]);
-    const codigo = marca >= 0 ? linha.slice(0, marca) : linha;
-    const abre = BLOCO_DE_TEXTO_YAML.exec(codigo);
-    if (abre) bloco = { coluna: abre[1].length, shell: abre[2].trim() === 'run', de: inicio + linhaComCr.length + 1 };
+    bloco = blocoDeTextoQueAbre(marca >= 0 ? linha.slice(0, marca) : linha, deslocamento);
   }
-  fecharBloco(fonte.length);
+  comentarios.push(...comentariosDoShellDoBloco(fonte, bloco, fonte.length));
   return comentarios;
 }
 
+const LEITORES_DE_COMENTARIO = [
+  [/\.(js|mjs|cjs|jsx|ts|tsx)$/, comentariosJs],
+  [/\.css$/, comentariosCss],
+  [/\.py$/, comentariosPy],
+  [/\.html$/, comentariosHtml],
+  [/\.sh$|^scripts\/ganchos\/[^./]+$/, comentariosSh],
+  [/\.ya?ml$/, comentariosYaml],
+];
+
 function trechosDeComentario(arquivo, fonte) {
-  if (/\.(js|mjs|cjs|jsx|ts|tsx)$/.test(arquivo)) return separarJs(fonte).comentarios;
-  if (arquivo.endsWith('.css')) return comentariosCss(fonte);
-  if (arquivo.endsWith('.py')) return comentariosPy(fonte);
-  if (arquivo.endsWith('.html')) return comentariosHtml(fonte);
-  if (/\.sh$|^scripts\/ganchos\/[^./]+$/.test(arquivo)) return comentariosSh(fonte);
-  if (/\.ya?ml$/.test(arquivo)) return comentariosYaml(fonte);
-  return [];
+  const leitor = LEITORES_DE_COMENTARIO.find(([padrao]) => padrao.test(arquivo));
+  return leitor ? leitor[1](fonte) : [];
 }
 
 function comentariosPorLinha(arquivo, fonte) {
@@ -335,20 +426,31 @@ function comentariosPorLinha(arquivo, fonte) {
   return porLinha;
 }
 
+const FECHO_DE = { '(': ')', '{': '}', '[': ']' };
+
+function ehPar(c) {
+  return Boolean(FECHO_DE[c]) || c === ')' || c === '}' || c === ']';
+}
+
+function proximoPar(texto, i) {
+  while (i < texto.length && !ehPar(texto[i])) i = ehAspaJs(texto[i]) ? fimDaString(texto, i) + 1 : i + 1;
+  return i;
+}
+
+function desfechoDoPar(pilha, c, i) {
+  if (FECHO_DE[c]) {
+    pilha.push(FECHO_DE[c]);
+    return null;
+  }
+  if (pilha.pop() !== c) return -1;
+  return pilha.length === 0 ? i : null;
+}
+
 function fechamento(texto, abre) {
-  const par = { '(': ')', '{': '}', '[': ']' };
   const pilha = [];
-  for (let i = abre; i < texto.length; i++) {
-    const c = texto[i];
-    if (c === '"' || c === "'" || c === '`') {
-      i = fimDaString(texto, i);
-      continue;
-    }
-    if (par[c]) pilha.push(par[c]);
-    else if (c === ')' || c === '}' || c === ']') {
-      if (pilha.pop() !== c) return -1;
-      if (pilha.length === 0) return i;
-    }
+  for (let i = proximoPar(texto, abre); i < texto.length; i = proximoPar(texto, i + 1)) {
+    const desfecho = desfechoDoPar(pilha, texto[i], i);
+    if (desfecho !== null) return desfecho;
   }
   return -1;
 }

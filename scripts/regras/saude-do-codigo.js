@@ -16,8 +16,10 @@ const conserto = 'Refatore de verdade a função que piorou: separe decidir de f
   + `${LIMITES.operadores} operador lógico por condição, ${LIMITES.argumentos} argumentos, ${LIMITES.linhas} linhas por função, `
   + `complexidade média abaixo de ${LIMITES.mediaDoArquivo} e ${LIMITES.linhasDoPython} linhas de código por arquivo Python. `
   + 'Depois de melhorar um arquivo da linha de base, rode `node scripts/regras/verificar.js --atualizar` e versione scripts/regras/linha-de-base.json. '
-  + 'Código que sai de um arquivo para um módulo novo leva a folga junto: na mesma PR, passe os pontos do arquivo de origem para o novo '
-  + 'em scripts/regras/linha-de-base.json (o total da regra não pode subir).';
+  + 'A folga é de cada arquivo: código que sai para um módulo novo chega lá dentro dos limites (um arquivo movido com `git mv` leva a sua).';
+
+const porQueOArquivoNovoNaoEntra = 'arquivo novo nasce dentro dos limites, e a folga de um arquivo não passa para outro '
+  + '(só um arquivo movido com `git mv` leva a sua).';
 
 const EXTENSOES = /\.(?:js|mjs|cjs|py)$/;
 const FORA = /(?:^|\/)(?:node_modules|vendor|third_party|dist)\/|\.min\.[^/]+$/;
@@ -101,4 +103,4 @@ function mensagem({ arquivo, tem, pode, achados }) {
   ].join('\n');
 }
 
-module.exports = { id, conserto, seAplica, verificar, mensagem, LIMITES };
+module.exports = { id, conserto, seAplica, verificar, mensagem, LIMITES, folgaPresaAoArquivo: true, porQueOArquivoNovoNaoEntra };

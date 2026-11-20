@@ -43,7 +43,8 @@ prova(medidaJs(TODOS_OS_DESVIOS, 'escolher', 'cc'), 9, 'if, ?:, &&, ??, ?., laç
 prova(pontosDasFuncoes(medirJs(TODOS_OS_DESVIOS)), ['escolher complexidade 1'], 'complexidade 9 passa um ponto do limite 8');
 prova(medidaJs(js('function f(lista) {', '  return lista.map(x => {', '    if (x) return 1;', '    return x ? 2 : 3;', '  });', '}'), 'f', 'cc'), 3,
   'o callback anônimo conta dentro da função que o contém');
-prova(medirJs(js('const dobro = x => x * 2;', 'const soma = (a, b) =>', '  a + b;')).unidades, [], 'a seta de uma ou duas linhas não é função à parte');
+prova(medirJs(js('function f(l) {', '  const dobro = x => (x ? 2 : 0);', '  const soma = (a, b) =>', '    a + b;', '  return l.map(dobro).reduce(soma);', '}')).unidades.map(({ nome, cc }) => [nome, cc]), [['f', 2]],
+  'dentro de uma função, a seta de uma ou duas linhas não é função à parte');
 
 const ANINHADA = js('function fora() {', '  function dentro(a) {', '    if (a) return 1;', '    return 2;', '  }', '  return dentro;', '}');
 prova(medirJs(ANINHADA).unidades.map(({ nome, cc, linhas }) => [nome, cc, linhas]), [['fora', 1, 3], ['dentro', 2, 4]],
@@ -96,7 +97,7 @@ const NOMES = js(
   '  return [noModulo, Fila, objeto];',
   '})();',
 );
-prova(medirJs(NOMES).unidades.map(unidade => unidade.nome), ['noModulo', 'andar', 'guardar', 'ler'],
+prova(medirJs(NOMES).unidades.map(unidade => unidade.nome), ['noModulo', 'andar', 'guardar', 'objeto.ler'],
   'o invólucro (function () { … })() do módulo é transparente; métodos e funções atribuídas levam o nome');
 const MEDIA = js(
   'function a(x) {', '  if (x) return 1;', '  if (x > 1) return 2;', '  return x ? 3 : 4;', '}',
@@ -196,17 +197,23 @@ gravar({ 'ferramenta/b.py': PY_COM_CINCO, 'ferramenta/nova.js': js('function nov
 r = rodar();
 prova([r.status, /ferramenta\/nova\.js: 1 ponto\(s\)[^]*a linha de base permite 0/.test(r.stdout)], [1, true], `arquivo novo nasce dentro dos limites:\n${r.stdout}`);
 
-gravar({ [LINHA_DE_BASE]: comPontos({ 'ferramenta/a.js': 1, 'ferramenta/b.py': 1, 'ferramenta/nova.js': 1 }) });
+gravar({ 'ferramenta/a.js': ramos([...OITO_DESVIOS, 'b > 3']), [LINHA_DE_BASE]: comPontos({ 'ferramenta/a.js': 1, 'ferramenta/b.py': 1, 'ferramenta/nova.js': 1 }) });
 r = rodar();
-prova([r.status, /ferramenta\/a\.js: 2 ponto\(s\)[^]*a linha de base permite 1/.test(r.stdout)], [1, true], `a folga não sai de um arquivo que ainda a usa:\n${r.stdout}`);
-gravar({ 'ferramenta/a.js': ramos([...OITO_DESVIOS, 'b > 3']) });
+prova([r.status, /saude-do-codigo ferramenta\/nova\.js não está na linha de base de main[^]*a folga de um arquivo não passa para outro/.test(r.stdout)], [1, true],
+  `a folga que sobrou num arquivo não vai para um arquivo novo, mesmo com o total igual:\n${r.stdout}`);
+gravar({ 'ferramenta/nova.js': null, 'ferramenta/b.py': py('def gravar(a, b, c, d, e, f):', '    return a'), [LINHA_DE_BASE]: comPontos({ 'ferramenta/a.js': 1, 'ferramenta/b.py': 2 }) });
 r = rodar();
-prova(r.status, 0, `o código que vai para um módulo novo leva a folga junto, e o total não sobe:\n${r.stdout}`);
+prova([r.status, /saude-do-codigo ferramenta\/b\.py tem 2 na linha de base do ramo, mais que os 1 de main/.test(r.stdout)], [1, true],
+  `nem de um arquivo para outro que já está na linha de base:\n${r.stdout}`);
 
-gravar({ 'ferramenta/nova.js': null, 'ferramenta/a.js': ramos([...OITO_DESVIOS, 'b > 3', 'a > 4']), [LINHA_DE_BASE]: comPontos({ 'ferramenta/a.js': 2, 'ferramenta/b.py': 1 }) });
+gravar({ 'ferramenta/b.py': PY_COM_CINCO, 'ferramenta/a.js': ramos([...OITO_DESVIOS, 'b > 3', 'a > 4']), [LINHA_DE_BASE]: comPontos({ 'ferramenta/a.js': 2, 'ferramenta/b.py': 1 }) });
 git('mv', 'ferramenta/a.js', 'ferramenta/movida.js');
 r = rodar();
 prova([r.status, /regras ok/.test(r.stdout)], [0, true], `o arquivo movido herda a linha de base do nome antigo:\n${r.stdout}`);
+gravar({ [LINHA_DE_BASE]: comPontos({ 'ferramenta/movida.js': 2, 'ferramenta/b.py': 1 }) });
+r = rodar();
+prova([r.status, /regras ok/.test(r.stdout)], [0, true], `e a linha de base pode seguir o nome novo:\n${r.stdout}`);
+gravar({ [LINHA_DE_BASE]: comPontos({ 'ferramenta/a.js': 2, 'ferramenta/b.py': 1 }) });
 git('mv', 'ferramenta/movida.js', 'ferramenta/a.js');
 
 const EXCECAO = '// exceção saude-do-codigo até 2099-01-01, aprovada por Vinicius: teste';

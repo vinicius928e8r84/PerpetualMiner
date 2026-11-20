@@ -9,7 +9,10 @@ const ENCADEAVEIS = new Set(['MemberExpression', 'CallExpression']);
 const MANTEM_O_TOPO = new Set(['Program', 'ExpressionStatement', 'CallExpression', 'UnaryExpression', 'BlockStatement']);
 const EMBRULHOS_DE_IIFE = new Set(['ExpressionStatement', 'UnaryExpression']);
 const E_OU = new Set(['&&', '||']);
+const ATRIBUICOES_LOGICAS = new Set(['||=', '&&=', '??=']);
 const FORA_DA_ARVORE = new Set(['loc', 'start', 'end']);
+
+const { nomeDaUnidade } = require('./nomes-js');
 
 const COMO_INSTALAR = 'npm ci --prefix scripts/regras/analisador';
 
@@ -41,33 +44,19 @@ function operadoresLogicos(no) {
 function contaComoDesvio(no) {
   if (DESVIOS.has(no.type)) return true;
   if (no.type === 'SwitchCase') return Boolean(no.test);
+  if (no.type === 'AssignmentExpression') return ATRIBUICOES_LOGICAS.has(no.operator);
   return ENCADEAVEIS.has(no.type) && no.optional === true;
-}
-
-const nomeDaChave = chave => String(chave.name || chave.value || '(metodo)');
-
-function nomeAtribuido(no, pai) {
-  if (pai.right !== no || no.type !== 'FunctionExpression') return null;
-  const alvo = pai.left;
-  return alvo.type === 'MemberExpression' && alvo.property.name ? alvo.property.name : null;
-}
-
-const NOME_PELO_PAI = {
-  VariableDeclarator: (no, pai) => (pai.init === no && pai.id.type === 'Identifier' ? pai.id.name : null),
-  MethodDefinition: (no, pai) => nomeDaChave(pai.key),
-  Property: (no, pai) => (pai.value === no && pai.method ? nomeDaChave(pai.key) : null),
-  AssignmentExpression: nomeAtribuido,
-};
-
-function nomeDaFuncao(no, pai) {
-  if (no.type === 'FunctionDeclaration' && no.id) return no.id.name;
-  const pelaPosicao = pai && NOME_PELO_PAI[pai.type];
-  return pelaPosicao ? pelaPosicao(no, pai) : null;
 }
 
 const ehSetaDeUmaLinha = no => no.type === 'ArrowFunctionExpression'
   && no.body.type !== 'BlockStatement'
   && no.loc.end.line - no.loc.start.line < 2;
+
+function viraUnidade(no, { nome, anonima }, foraDeFuncaoComNome) {
+  if (!nome) return false;
+  if (!ehSetaDeUmaLinha(no)) return true;
+  return foraDeFuncaoComNome && !anonima;
+}
 
 function ehChamadaDireta(no, pai) {
   if (!pai || pai.type !== 'CallExpression') return false;
@@ -84,9 +73,9 @@ function ehSenaoSe(no, pai) {
   return pai.type === 'IfStatement' && pai.alternate === no;
 }
 
-function novaUnidade(nome, no) {
+function novaUnidade(nome, no, anonima) {
   return {
-    nome, linha: no.loc.start.line, total: no.loc.end.line - no.loc.start.line + 1,
+    nome, anonima, linha: no.loc.start.line, total: no.loc.end.line - no.loc.start.line + 1,
     argumentos: no.params.length, cc: 1, aninhamento: 0, blocos: 0, condicoes: [], aninhadas: 0,
   };
 }
@@ -119,7 +108,7 @@ function medirNo(no, posicao) {
 class Medicao {
   constructor() {
     this.unidades = [];
-    this.global = { nome: '(global)', cc: 1, aninhamento: 0, blocos: 0, condicoes: [], aninhadas: 0 };
+    this.global = { nome: '(topo do arquivo)', linha: 1, cc: 1, aninhamento: 0, blocos: 0, condicoes: [], aninhadas: 0, anonima: true };
   }
 
   visitar(no, posicao) {
@@ -147,12 +136,12 @@ class Medicao {
       for (const { filho } of filhosDe(no.body)) this.visitar(filho, { ...posicao, pai: no.body, avo: no });
       return;
     }
-    const nome = nomeDaFuncao(no, posicao.pai);
-    if (!nome || ehSetaDeUmaLinha(no)) {
+    const { nome, anonima } = nomeDaUnidade(no, posicao.pai, posicao.unidade.anonima);
+    if (!viraUnidade(no, { nome, anonima }, posicao.unidade.anonima)) {
       this.visitarDentroDaFuncao(no, posicao);
       return;
     }
-    const unidade = novaUnidade(nome, no);
+    const unidade = novaUnidade(nome, no, anonima);
     this.unidades.push(unidade);
     if (posicao.unidade !== this.global) posicao.unidade.aninhadas += unidade.total;
     this.visitarDentroDaFuncao(no, { unidade, prof: 0, bloco: null, topo: false });
@@ -179,8 +168,9 @@ function medirJs(fonte) {
   }
   const medicao = new Medicao();
   medicao.visitar(arvore, { pai: null, avo: null, unidade: medicao.global, prof: 0, bloco: null, topo: true });
-  const unidades = medicao.unidades.map(({ total, aninhadas, ...medidas }) => ({ ...medidas, linhas: total - aninhadas }));
-  return { unidades };
+  const unidades = medicao.unidades.map(({ total, aninhadas, anonima, ...medidas }) => ({ ...medidas, linhas: total - aninhadas }));
+  const { nome, linha, cc, aninhamento, blocos, condicoes } = medicao.global;
+  return { unidades, topo: { nome, linha, cc, aninhamento, blocos, condicoes } };
 }
 
 module.exports = { medirJs, COMO_INSTALAR };
