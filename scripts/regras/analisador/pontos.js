@@ -19,8 +19,10 @@ const MEDIDAS_DA_FUNCAO = [
   { medida: 'linhas', campo: 'linhas', nome: 'linhas' },
 ];
 
-function excessosDaFuncao(unidade) {
-  const excessos = MEDIDAS_DA_FUNCAO
+const MEDIDAS_DO_TOPO = MEDIDAS_DA_FUNCAO.filter(({ medida }) => !['argumentos', 'linhas'].includes(medida));
+
+function excessosDaFuncao(unidade, medidas = MEDIDAS_DA_FUNCAO) {
+  const excessos = medidas
     .filter(({ medida, campo }) => unidade[campo] > LIMITES[medida])
     .map(({ medida, campo, nome }) => ({
       medida, pontos: unidade[campo] - LIMITES[medida], detalhe: `${nome} ${unidade[campo]} (limite ${LIMITES[medida]})`,
@@ -47,9 +49,11 @@ function pontuar(medicao) {
   if (medicao.erro) return [{ unidade: null, linha: 1, medida: 'leitura', pontos: 1, detalhe: `não deu para medir o arquivo: ${medicao.erro}` }];
   const daFuncao = medicao.unidades.flatMap(unidade => excessosDaFuncao(unidade)
     .map(excesso => ({ unidade: unidade.nome, linha: unidade.linha, ...excesso })));
+  const doTopo = excessosDaFuncao(medicao.topo, MEDIDAS_DO_TOPO)
+    .map(excesso => ({ unidade: medicao.topo.nome, linha: medicao.topo.linha, ...excesso }));
   const doArquivo = [...excessoDaMedia(medicao.unidades), ...excessoDoTamanho(medicao.linhasDeCodigo)]
     .map(excesso => ({ unidade: null, linha: 1, ...excesso }));
-  return [...daFuncao, ...doArquivo];
+  return [...daFuncao, ...doTopo, ...doArquivo];
 }
 
 module.exports = { LIMITES, pontuar };

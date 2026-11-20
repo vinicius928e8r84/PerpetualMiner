@@ -59,7 +59,7 @@ class Posicao:
 class Medicao:
     def __init__(self):
         self.unidades = []
-        self.global_ = nova_unidade('(global)', ast.parse('def f(): pass').body[0])
+        self.global_ = nova_unidade('(topo do arquivo)', ast.parse('def f(): pass').body[0])
 
     def visitar_todos(self, nos, posicao):
         for no in nos:
@@ -136,7 +136,8 @@ def medir(fonte):
         return dict(erro=str(erro))
     medicao = Medicao()
     medicao.visitar_todos(arvore.body, Posicao(medicao.global_))
-    return dict(unidades=medicao.unidades, linhasDeCodigo=linhas_de_codigo(fonte))
+    topo = {campo: medicao.global_[campo] for campo in ('nome', 'linha', 'cc', 'aninhamento', 'blocos', 'condicoes')}
+    return dict(unidades=medicao.unidades, topo=topo, linhasDeCodigo=linhas_de_codigo(fonte))
 
 
 def principal():

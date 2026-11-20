@@ -180,6 +180,17 @@ function renomeacoes(raiz, desde) {
 
 const renomeacoesDesdeABase = (raiz, base) => renomeacoes(raiz, base && base.desde);
 
+const comparaArquivoAArquivo = regra => regra.baixarObrigatorio || regra.folgaPresaAoArquivo;
+
+function anteriorNaBase(anteriores = {}, arquivo, velhoDe) {
+  if (arquivo in anteriores) return anteriores[arquivo];
+  return anteriores[velhoDe[arquivo]];
+}
+
+function porQueOArquivoNovoNaoEntra(regra) {
+  return regra.porQueOArquivoNovoNaoEntra || 'um arquivo que passa do teto agora tem de ser dividido, não entrar na lista.';
+}
+
 function permitidoPara(permitido, arquivo, velhoDe) {
   if (arquivo in permitido) return permitido[arquivo];
   return permitido[velhoDe[arquivo]] || 0;
@@ -288,12 +299,12 @@ function main(argv) {
           avisos.push(`${base.ref} ainda não tem a regra ${regra.id}: esta é a primeira linha de base dela (${total(linhaDeBase[regra.id])})`);
           continue;
         }
-        if (regra.baixarObrigatorio) {
+        if (comparaArquivoAArquivo(regra)) {
           for (const [arquivo, n] of Object.entries(linhaDeBase[regra.id] || {}).sort()) {
-            const anteriorDoArquivo = (antes[regra.id] || {})[arquivo];
+            const anteriorDoArquivo = anteriorNaBase(antes[regra.id], arquivo, velhoDe);
             if (anteriorDoArquivo === undefined) {
               erros.push(`✗ ${ARQUIVO_DA_LINHA_DE_BASE}: ${regra.id} ${arquivo} não está na linha de base de ${base.ref}. A linha de base só desce: `
-                + 'um arquivo que passa do teto agora tem de ser dividido, não entrar na lista.');
+                + porQueOArquivoNovoNaoEntra(regra));
             } else if (n > anteriorDoArquivo) {
               erros.push(`✗ ${ARQUIVO_DA_LINHA_DE_BASE}: ${regra.id} ${arquivo} tem ${n} na linha de base do ramo, mais que os ${anteriorDoArquivo} de ${base.ref}. `
                 + 'A linha de base só desce, arquivo a arquivo: a folga de um não passa para outro.');
