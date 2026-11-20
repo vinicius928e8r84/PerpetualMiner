@@ -1,4 +1,4 @@
-"""Gravar e apagar os arquivos do Envio (`envio._gravar_json`, `envio._apagar`), onde `test_envio_fronteiras.py` mata a Conexão."""
+"""Gravar e apagar os arquivos do Envio (`_gravar_json` e `_apagar` em `fila_do_envio.py` e em `envio.py`), onde `test_envio_fronteiras.py` mata a Conexão."""
 
 import json
 import os

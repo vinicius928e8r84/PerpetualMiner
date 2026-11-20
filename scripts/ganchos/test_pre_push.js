@@ -12,8 +12,9 @@ const RAIZ = path.resolve(__dirname, '..', '..');
 const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-pre-push-'));
 const remoto = path.join(pasta, 'remoto.git');
 const trabalho = path.join(pasta, 'trabalho');
+const ANALISADOR_INSTALADO = path.join(RAIZ, 'scripts', 'regras', 'analisador', 'node_modules');
 const env = (email = EMAIL_DO_DONO) => ({
-  ...process.env, GIT_AUTHOR_NAME: 'n', GIT_AUTHOR_EMAIL: email, GIT_COMMITTER_NAME: 'n', GIT_COMMITTER_EMAIL: email,
+  ...process.env, NODE_PATH: ANALISADOR_INSTALADO, GIT_AUTHOR_NAME: 'n', GIT_AUTHOR_EMAIL: email, GIT_COMMITTER_NAME: 'n', GIT_COMMITTER_EMAIL: email,
 });
 const git = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8', env: env(), stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 const escrever = (arquivo, texto) => {
@@ -80,7 +81,8 @@ assert(/docs\/pre-push-grande\.md: 21000 bytes/.test(saida(r)) && /acima do limi
 assert(!noRemoto('arquivo-grande'), 'nada chegou ao remoto');
 
 const passosDoCI = lerYaml(fs.readFileSync(path.join(RAIZ, '.github', 'workflows', 'regras.yml'), 'utf8')).jobs.regras.steps;
-const conferenciasDoCI = passosDoCI.filter(passo => passo.run && !(passo.env && 'PR_BODY' in passo.env))
+const leAPR = passo => Boolean(passo.env) && ('PR_BODY' in passo.env || 'PR_NUMERO' in passo.env);
+const conferenciasDoCI = passosDoCI.filter(passo => passo.run && !leAPR(passo))
   .map(passo => /^node (scripts\/\S+)/.exec(passo.run)).filter(Boolean).map(achado => achado[1]).filter(script => script !== 'scripts/testar.mjs');
 const gancho = fs.readFileSync(path.join(__dirname, 'pre-push'), 'utf8');
 assert.deepStrictEqual(conferenciasDoCI, ['scripts/regras/verificar.js', 'scripts/ganchos/limite-de-tokens.js', 'scripts/ci/autoria.js']);
