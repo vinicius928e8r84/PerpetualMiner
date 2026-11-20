@@ -55,10 +55,12 @@ function cabecalhosDaProva(req, status, corpo) {
 }
 
 const espelharOsEnvios = (conexao, anki) => async () => anki.espelharEnvios((await conexao.enviar({ envios: true })).envios);
+const espelharOsPerfis = (conexao, anki) => async () => anki.espelharPerfis((await conexao.enviar({ perfis: true })).perfis);
 
 const rotaComFalhasNaFrente = (conexao, anki) => {
   const adiante = rotaParaAConexaoReal(conexao);
   const doEnvio = { depois: espelharOsEnvios(conexao, anki) };
+  const doPerfil = { depois: espelharOsPerfis(conexao, anki) };
   return async route => {
     const req = route.request();
     const url = new URL(req.url());
@@ -71,6 +73,7 @@ const rotaComFalhasNaFrente = (conexao, anki) => {
       if (erro) throw new Error(`A fila da Conexão real recusou o que o fake fez com o Envio: ${erro}`);
     }
     if (frente.perder) anki.perdeuAResposta();
+    if (!frente.roteiro && url.pathname.startsWith('/anki/profile')) return rotaParaAConexaoReal(conexao, doPerfil)(route);
     if (!frente.roteiro) return url.pathname.startsWith('/jobs') ? rotaParaAConexaoReal(conexao, { ...doEnvio, perder: frente.perder })(route) : adiante(route);
     const { status = 200, json = {} } = await frente.roteiro(req, url);
     const corpo = JSON.stringify(json);
