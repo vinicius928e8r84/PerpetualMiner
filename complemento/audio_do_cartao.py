@@ -19,26 +19,31 @@ def aplicar_os_sotaques(config, lang, tts):
             perfil.setdefault("lang", lang)
 
 
-class AudioDoCartao:
-    """As vozes de um Cartão. `tranca` é a da fila (o custo da voz de reserva é gravado sob ela); `dormir(segundos)` é a espera do Envio, que
-    levanta `Interrompido` se a Conexão para."""
+class VozDoGoogle:
+    """A voz do Google em `base`. `esperas` são as `motor_do_cartao.EsperasDaOpenai` do Envio, que levantam `Interrompido` se a Conexão para."""
 
-    def __init__(self, motor, logger, tranca, dormir, openai_base, voz_base, esperas_da_openai):
-        self.motor, self.logger, self.tranca, self.dormir = motor, logger, tranca, dormir
-        self.openai_base, self.voz_base, self.esperas_da_openai = openai_base, voz_base, tuple(esperas_da_openai)
+    def __init__(self, base, esperas):
+        self.base, self.esperas = base, esperas
 
-    def _a_voz(self, texto, lang, sotaque, reserva, cartao, ia):
-        """O áudio de um texto: o do Google e, se ele falha, o da primeira voz de reserva que fala; sem nenhuma, a falha é a do Google."""
-        try:
-            return self._a_voz_do_google(texto, lang, sotaque)
-        except voz.ErroDaVoz:
-            for nome in reserva:
-                audio = self._a_reserva(nome, texto, cartao, ia)
-                if audio:
-                    return audio
-            raise
+    def audio(self, texto, lang, sotaque):
+        """O áudio do Google, pedido de novo (nas esperas da OpenAI) enquanto a voz falha por um motivo passageiro."""
+        for _ in self.esperas.tentativas():
+            try:
+                return voz.pedir_o_audio(self.base, texto, lang, sotaque)
+            except voz.ErroDaVoz as erro:
+                if erro.codigo not in voz.PASSAGEIROS:
+                    raise
+                ultimo = erro
+        raise ultimo
 
-    def _a_reserva(self, nome, texto, cartao, ia):
+
+class VozDeReserva:
+    """A voz da OpenAI em `base`, quando a do Google falha. `tranca` é a da fila: o custo da voz de reserva é gravado sob ela."""
+
+    def __init__(self, base, tranca, logger):
+        self.base, self.tranca, self.logger = base, tranca, logger
+
+    def audio(self, nome, texto, cartao, ia):
         """O áudio da voz de reserva `nome`, ou None se ela não existe aqui, não tem com que falar ou falhou (o log diz só o código)."""
         if nome != "openai":
             return None
@@ -46,7 +51,7 @@ class AudioDoCartao:
         if not chave:
             return None
         try:
-            audio = voz_da_openai.pedir_o_audio(self.openai_base, chave, texto)
+            audio = voz_da_openai.pedir_o_audio(self.base, chave, texto)
         except voz.ErroDaVoz as erro:
             self.logger.warning("Envio %s: a voz de reserva (%s) do Cartão %s falhou (%s)", cartao.job_id, nome, cartao.id, erro.codigo)
             return None
@@ -55,18 +60,25 @@ class AudioDoCartao:
         self.logger.info("Envio %s: o áudio do Cartão %s veio da voz de reserva (%s)", cartao.job_id, cartao.id, nome)
         return audio
 
-    def _a_voz_do_google(self, texto, lang, sotaque):
-        """O áudio do Google, pedido de novo (nas esperas da OpenAI) enquanto a voz falha por um motivo passageiro."""
-        for espera in (None,) + self.esperas_da_openai:
-            if espera is not None:
-                self.dormir(espera)
-            try:
-                return voz.pedir_o_audio(self.voz_base, texto, lang, sotaque)
-            except voz.ErroDaVoz as erro:
-                if erro.codigo not in voz.PASSAGEIROS:
-                    raise
-                ultimo = erro
-        raise ultimo
+
+class AudioDoCartao:
+    """As vozes de um Cartão: a do Google (`VozDoGoogle`) e, quando ela falha, a de reserva (`VozDeReserva`)."""
+
+    def __init__(self, motor, logger, voz_do_google, voz_de_reserva):
+        self.motor, self.logger, self.voz_do_google, self.voz_de_reserva = motor, logger, voz_do_google, voz_de_reserva
+
+    def _a_voz(self, fala, reserva, cartao, ia):
+        """O áudio de uma `fala` (`(texto, lang, sotaque)`, de `generate_audio.voices`): o do Google e, se ele falha, o da primeira voz da lista
+        `reserva` que fala; sem nenhuma, a falha é a do Google."""
+        texto, lang, sotaque = fala
+        try:
+            return self.voz_do_google.audio(texto, lang, sotaque)
+        except voz.ErroDaVoz:
+            for nome in reserva:
+                audio = self.voz_de_reserva.audio(nome, texto, cartao, ia)
+                if audio:
+                    return audio
+            raise
 
     def vozes(self, cartao, texto, ia, avisar):
         """O áudio da Palavra e o da Frase do `cartao` (`motor_do_cartao.Cartao`) com o `texto` dele: ({nome: bytes}, nome do da Frase, nome do
@@ -80,9 +92,9 @@ class AudioDoCartao:
         avisar("generate_audio")
         da_palavra, da_frase = cartao.guid + "_word.mp3", cartao.guid + "_phrase.mp3"
         arquivos = {}
-        for nome, (fala, lang, sotaque) in ((da_palavra, palavra), (da_frase, frase)):
+        for nome, fala in ((da_palavra, palavra), (da_frase, frase)):
             try:
-                arquivos[nome] = self._a_voz(fala, lang, sotaque, reserva, cartao, ia)
+                arquivos[nome] = self._a_voz(fala, reserva, cartao, ia)
             except voz.ErroDaVoz as erro:
                 self.logger.warning("Envio %s: o áudio do Cartão %s não veio (%s)", cartao.job_id, cartao.id, erro.codigo)
                 raise

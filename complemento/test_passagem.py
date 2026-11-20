@@ -149,7 +149,7 @@ class AMarcaDaPassagem(unittest.TestCase):
             antiga.terminar(ID, [10])
             with NaPassagem(pasta, antiga, trabalhando=False) as nova:
                 sistema = SistemaQueNaoParaOProcesso(antiga, nova.eventos)
-                nova.passagem = passagem.Passagem(sistema=sistema, porta=antiga.porta, dormir=nova._dormir, intervalo=0, espera_da_porta=0.2)
+                nova.passagem = passagem.Passagem(sistema=sistema, porta=antiga.porta, esperas=passagem.EsperasDaPassagem(dormir=nova._dormir, intervalo=0, da_porta=0.2))
                 nova.passar()
                 marca = os.path.exists(os.path.join(nova.conexao.dados.raiz, passagem.ARQUIVO_DA_MARCA))
                 no_ar, log, dormiu = nova.no_ar, nova.log(), len(nova.dormiu)
@@ -175,7 +175,7 @@ class ASaidaDaPassagem(unittest.TestCase):
             sistema = SistemaDeMentira(antiga, eventos)
             conexao = inicio.iniciar(
                 os.path.join(pasta, "anki"), lambda: "Usuário 1", porta=antiga.porta, abridor=None,
-                passagem=passagem.Passagem(sistema=sistema, porta=antiga.porta, intervalo=0, espera_da_porta=5), colecao=ColecaoEmMemoria({"baralhos": []}))
+                passagem=passagem.Passagem(sistema=sistema, porta=antiga.porta, esperas=passagem.EsperasDaPassagem(intervalo=0, da_porta=5)), colecao=ColecaoEmMemoria({"baralhos": []}))
             try:
                 conexao._thread_da_passagem.join(timeout=30)
                 ligacao = http.client.HTTPConnection("127.0.0.1", antiga.porta, timeout=5)

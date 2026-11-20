@@ -17,7 +17,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from complemento import motor_do_envio, voz
 from complemento.ia_do_envio import SemQuemPague
 from complemento.motor.provedores import ErroDoProvedor
-from complemento.motor_do_cartao import Cartao, MotorDoCartao
+from complemento.audio_do_cartao import AudioDoCartao, VozDeReserva, VozDoGoogle
+from complemento.imagem_do_cartao import ImagemDoCartao
+from complemento.motor_do_cartao import Cartao, EsperasDaOpenai, MotorDoCartao
 from complemento.test_voz_de_mentira import VozDeMentira, audio_de_mentira
 
 TEXTO = """Front: She *gave up* smoking last year.
@@ -85,6 +87,11 @@ class ParadaDeRoteiro:
         return False
 
 
+def o_motor_do_cartao(motor, voz_base, esperas):
+    audio = AudioDoCartao(motor, LOGGER, VozDoGoogle(voz_base, esperas), VozDeReserva("http://127.0.0.1:9", threading.RLock(), LOGGER))
+    return MotorDoCartao(motor, esperas, audio, ImagemDoCartao(motor, LOGGER, "http://127.0.0.1:9"))
+
+
 def cartao_e_motor(pasta, voz_base="http://127.0.0.1:9/{tld}", reserva=None):
     motor = motor_do_envio.motor_do_complemento()
     tts = {} if reserva is None else {"reserva": reserva}
@@ -95,8 +102,7 @@ def cartao_e_motor(pasta, voz_base="http://127.0.0.1:9/{tld}", reserva=None):
                            pasta_dos_custos=lambda job_id: os.path.join(pasta, "custos"))
     config = motor_do_envio.configuracao_do_motor(motor, fila, pedido)
     cartao = Cartao(id="7-0", guid="pmguid", linha=linha, pedido=pedido, config=config, job_id="j1")
-    return cartao, MotorDoCartao(motor, LOGGER, threading.RLock(), threading.Event(), "http://127.0.0.1:9", voz_base, "http://127.0.0.1:9",
-                                 esperas_da_openai=(0,))
+    return cartao, o_motor_do_cartao(motor, voz_base, EsperasDaOpenai(threading.Event(), (0,)))
 
 
 def arquivos_da(pasta):
@@ -206,8 +212,7 @@ class AsEsperasDaOpenai(unittest.TestCase):
         with tempfile.TemporaryDirectory() as pasta, VozDeMentira() as voz_do_google:
             voz_do_google.recusar("*", 503)
             cartao, _ = cartao_e_motor(pasta, reserva=[])
-            motor_do_cartao = MotorDoCartao(motor_do_envio.motor_do_complemento(), LOGGER, threading.RLock(), parada, "http://127.0.0.1:9",
-                                            voz_do_google.base, "http://127.0.0.1:9")
+            motor_do_cartao = o_motor_do_cartao(motor_do_envio.motor_do_complemento(), voz_do_google.base, EsperasDaOpenai(parada))
             falha = motor_do_cartao.escrever(cartao, ia)
             with self.assertRaises(voz.ErroDaVoz):
                 motor_do_cartao.montar(cartao, TEXTO, ia, lambda etapa: None)
