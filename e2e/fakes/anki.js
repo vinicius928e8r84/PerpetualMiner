@@ -118,6 +118,7 @@ function criarFakeAnki() {
     const [falha, codigo] = { '/anki/vocabulary': [estado.falhaDoVocabulario, 'anki_vocabulary_unavailable'], '/anki/stats/decks': [estado.falhaDosBaralhos, 'anki_stats_unavailable'] }[url.pathname] || [];
     if (falha?.rede) return { recusar: true };
     if (falha) return { roteiro: () => ({ status: falha.status, json: { error: codigo, detail: 'collection_not_open' } }) };
+    if (url.pathname === '/jobs/apagar-frases' && estado.falhaDoApagarFrases?.rede) return { recusar: true };
     if (req.method() === 'POST' && url.pathname === '/jobs') {
       const recusa = estado.recusas.get((dadosDoCorpo(corpoDoPedido) || {}).lang);
       if (recusa?.rede) return { recusar: true };

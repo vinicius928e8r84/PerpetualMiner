@@ -96,6 +96,7 @@ jobs:
           tests/boas-vindas-nivel.spec.js tests/painel-envio-desconhecido.spec.js
           tests/painel-conserto.spec.js tests/painel-envio-retido.spec.js tests/painel-envio-anki-fechado.spec.js
           tests/painel-envio-parado.spec.js tests/painel-envio-plano.spec.js tests/painel-envio-copia.spec.js tests/painel-envio-visual.spec.js
+          tests/painel-envio-apagar.spec.js
           --workers=1
         env:
           PM_CONEXAO: real

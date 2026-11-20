@@ -127,8 +127,7 @@ function criarRotasDoEnvio({ estado, modelo }) {
       return responder(resposta.status, resposta.json);
     }),
     rota('*', '/jobs/list', ({ responder }) => responder(200, listarEnvios())),
-    rota('*', '/jobs/apagar-frases', ({ route, responder }) => {
-      if (estado.falhaDoApagarFrases?.rede) return route.abort('connectionrefused');
+    rota('*', '/jobs/apagar-frases', ({ responder }) => {
       apagarAsFrases();
       return responder(200, { ok: true });
     }),
@@ -155,7 +154,10 @@ function criarRotasDoEnvio({ estado, modelo }) {
   ];
 
   const api = {
-    apagarAsFrases,
+    apagarAsFrases() {
+      apagarAsFrases();
+      paraAFila.push({ apagarFrases: true });
+    },
     definirCustos(lista) {
       estado.custos = lista.map(linhaDeCustos);
     },
