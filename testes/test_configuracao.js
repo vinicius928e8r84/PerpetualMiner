@@ -83,6 +83,7 @@ const LEITURAS = [
   ['mineração automática sem idioma', { pm_auto_miner_settings: { en: null } }, { automatica: { en: false, ru: false } }],
   ['nível salvo só em inglês', { [CHAVE_DO_NIVEL]: { en: { versao: 2 }, ru: { versao: 0 } } }, { nivelSalvo: { en: true, ru: false } }],
   ['nível salvo pela versão em texto', { [CHAVE_DO_NIVEL]: { ru: { versao: '3' } } }, { nivelSalvo: { en: false, ru: true } }],
+  ['nível com versão zero em inglês', { [CHAVE_DO_NIVEL]: { en: { versao: 0 } } }, { nivelSalvo: { en: false, ru: false } }],
   ['nível com versão negativa', { [CHAVE_DO_NIVEL]: { en: { versao: -1 } } }, { nivelSalvo: { en: false, ru: false } }],
   ['a chave do Gemini', { geminiApiKey: 'AIza-chave' }, { chave: 'AIza-chave' }],
   ['a chave do Gemini nula', { geminiApiKey: null }, { chave: '' }],

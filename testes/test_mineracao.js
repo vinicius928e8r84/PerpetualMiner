@@ -80,6 +80,7 @@ const PALAVRAS_QUE_FICAM = [
   [['cat@0'], 'dog', []],
   [['give@0', '|', 'up@0'], 'up then give', ['give@4', '|', 'up@0']],
   [['|', '|'], 'x', []],
+  [['cat@12'], 'the black cat', ['cat@4']],
 ];
 function ficamOsGruposQueAindaEstaoNoTexto() {
   for (const [palavras, texto, ficam] of PALAVRAS_QUE_FICAM) {
