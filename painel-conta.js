@@ -204,14 +204,7 @@
       elemento('div', 'cfg-acoes', entrar),
     )];
 
-    if (estado.falhaNoLogin) {
-      partes.push(montarAviso({
-        texto: textoDaVoz('CFG-07.aviso'),
-        acao: { rotulo: textoDaVoz('CFG-07.tentarDeNovo'), aoUsar: () => pedidos.entrar() },
-        detalhes: estado.falhaNoLogin,
-        fechavel: false,
-      }));
-    }
+    if (estado.falhaNoLogin) partes.push(avisoDoCard('CFG-07.aviso', 'CFG-07.tentarDeNovo', () => pedidos.entrar(), estado.falhaNoLogin));
     return partes;
   }
 
@@ -221,31 +214,42 @@
     desenharAvatar(avatar);
 
     const status = situacao ? linhaDeStatus((situacao.status || situacao.chip)(situacao.dados)) : null;
+    const principal = linha(
+      elemento('div', 'cfg-conta', avatar, elemento('div', 'cfg-quem',
+        elemento('b', 'cfg-nome', nomeVisivel()), status)),
+      acoesDaConta(situacao),
+    );
+    if (!situacao?.erro) principal.append(elemento('p', 'cfg-nota cfg-nota--linha', textoDaVoz('CFG-26')));
+
+    const aviso = avisoDaSituacao(situacao);
+    return aviso ? [principal, aviso] : [principal];
+  }
+
+  function acoesDaConta(situacao) {
     const acoes = elemento('div', 'cfg-acoes');
     if (situacao?.entrar) acoes.append(botao('primario', textoDaVoz('CFG-08.entrar'), () => pedidos.entrar()));
     const estiloDoSair = situacao ? situacao.sair : 'fantasma';
     if (estiloDoSair) acoes.append(botao(estiloDoSair, textoDaVoz('CFG-23'), () => pedidos.sair()));
+    return acoes;
+  }
 
-    const principal = linha(
-      elemento('div', 'cfg-conta', avatar, elemento('div', 'cfg-quem',
-        elemento('b', 'cfg-nome', nomeVisivel()), status)),
-      acoes,
-    );
-    if (!situacao?.erro) principal.append(elemento('p', 'cfg-nota cfg-nota--linha', textoDaVoz('CFG-26')));
-
-    const partes = [principal];
+  function avisoDaSituacao(situacao) {
     const detalhes = situacao?.dados.detalhes;
     if (situacao?.aviso) {
-      partes.push(montarAviso({
-        texto: textoDaVoz(situacao.aviso.texto),
-        acao: { rotulo: textoDaVoz(situacao.aviso.acao), aoUsar: situacao.aviso.aoUsar || (() => pedidos.tentarDeNovo()) },
-        detalhes,
-        fechavel: false,
-      }));
-    } else if (situacao?.erro && detalhes) {
-      partes.push(montarDetalhes(detalhes));
+      const { texto, acao, aoUsar } = situacao.aviso;
+      return avisoDoCard(texto, acao, aoUsar || (() => pedidos.tentarDeNovo()), detalhes);
     }
-    return partes;
+    if (situacao?.erro && detalhes) return montarDetalhes(detalhes);
+    return null;
+  }
+
+  function avisoDoCard(vozDoTexto, vozDaAcao, aoUsar, detalhes) {
+    return montarAviso({
+      texto: textoDaVoz(vozDoTexto),
+      acao: { rotulo: textoDaVoz(vozDaAcao), aoUsar },
+      detalhes,
+      fechavel: false,
+    });
   }
 
   function linhaDeStatus(texto) {

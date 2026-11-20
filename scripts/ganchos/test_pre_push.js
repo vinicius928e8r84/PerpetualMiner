@@ -80,7 +80,8 @@ assert(/docs\/pre-push-grande\.md: 21000 bytes/.test(saida(r)) && /acima do limi
 assert(!noRemoto('arquivo-grande'), 'nada chegou ao remoto');
 
 const passosDoCI = lerYaml(fs.readFileSync(path.join(RAIZ, '.github', 'workflows', 'regras.yml'), 'utf8')).jobs.regras.steps;
-const conferenciasDoCI = passosDoCI.filter(passo => passo.run && !(passo.env && 'PR_BODY' in passo.env))
+const leAPR = passo => Boolean(passo.env) && ('PR_BODY' in passo.env || 'PR_NUMERO' in passo.env);
+const conferenciasDoCI = passosDoCI.filter(passo => passo.run && !leAPR(passo))
   .map(passo => /^node (scripts\/\S+)/.exec(passo.run)).filter(Boolean).map(achado => achado[1]).filter(script => script !== 'scripts/testar.mjs');
 const gancho = fs.readFileSync(path.join(__dirname, 'pre-push'), 'utf8');
 assert.deepStrictEqual(conferenciasDoCI, ['scripts/regras/verificar.js', 'scripts/ganchos/limite-de-tokens.js', 'scripts/ci/autoria.js']);
