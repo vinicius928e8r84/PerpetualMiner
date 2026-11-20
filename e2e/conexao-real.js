@@ -55,22 +55,36 @@ function cabecalhosDaProva(req, status, corpo) {
 }
 
 const espelharOsEnvios = (conexao, anki) => async () => anki.espelharEnvios((await conexao.enviar({ envios: true })).envios);
+const espelharOsPerfis = (conexao, anki) => async () => anki.espelharPerfis((await conexao.enviar({ perfis: true })).perfis);
+const espelharAChave = (conexao, anki) => async () => anki.espelharChave((await conexao.enviar({ estado: true })).cofre);
+const espelharOLogin = (conexao, anki) => async () => anki.chatgpt.espelhar((await conexao.enviar({ login: true })).login);
 
 const rotaComFalhasNaFrente = (conexao, anki) => {
   const adiante = rotaParaAConexaoReal(conexao);
   const doEnvio = { depois: espelharOsEnvios(conexao, anki) };
+  const doPerfil = { depois: espelharOsPerfis(conexao, anki) };
+  const daChave = { depois: espelharAChave(conexao, anki) };
+  const doLogin = { depois: espelharOLogin(conexao, anki) };
+  let mundoAplicado = Promise.resolve();
+  const aplicar = async ({ mundo, fila = [] }) => {
+    if (mundo) await conexao.enviar({ mundo });
+    for (const comando of fila) {
+      const { erro } = await conexao.enviar(comando);
+      if (erro) throw new Error(`A fila da Conexão real recusou o que o fake fez com o Envio: ${erro}`);
+    }
+  };
   return async route => {
     const req = route.request();
     const url = new URL(req.url());
     const frente = anki.naFrente(req, url);
     if (frente.recusar) return route.abort('connectionrefused');
     if (frente.calar) return new Promise(() => {});
-    if (frente.mundo) await conexao.enviar({ mundo: frente.mundo });
-    for (const comando of frente.fila || []) {
-      const { erro } = await conexao.enviar(comando);
-      if (erro) throw new Error(`A fila da Conexão real recusou o que o fake fez com o Envio: ${erro}`);
-    }
+    if (frente.mundo || frente.fila) mundoAplicado = mundoAplicado.then(() => aplicar(frente));
+    await mundoAplicado;
     if (frente.perder) anki.perdeuAResposta();
+    if (!frente.roteiro && url.pathname.startsWith('/anki/profile')) return rotaParaAConexaoReal(conexao, doPerfil)(route);
+    if (!frente.roteiro && url.pathname.startsWith('/ia/openai/')) return rotaParaAConexaoReal(conexao, daChave)(route);
+    if (!frente.roteiro && url.pathname.startsWith('/ia/chatgpt/')) return rotaParaAConexaoReal(conexao, doLogin)(route);
     if (!frente.roteiro) return url.pathname.startsWith('/jobs') ? rotaParaAConexaoReal(conexao, { ...doEnvio, perder: frente.perder })(route) : adiante(route);
     const { status = 200, json = {} } = await frente.roteiro(req, url);
     const corpo = JSON.stringify(json);

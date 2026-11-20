@@ -51,5 +51,31 @@ def avisar_do_que_ficou(logger):
     """O `ao_falhar` da subida: o log diz qual provisório ficou (só o nome do arquivo e o erro, nunca o conteúdo) e a próxima subida tenta de novo."""
     def avisar(caminho, erro):
         if logger:
-            logger.warning("Envio: não deu para apagar o provisório %s (%s); fica para a próxima subida", os.path.basename(caminho), erro)
+            logger.warning("Envio: não deu para apagar o arquivo %s (%s); fica para a próxima subida", os.path.basename(caminho), erro)
     return avisar
+
+
+def limpar_ao_subir(dados, estado_de, logger=None):
+    """O que a Conexão que sobe tira do disco antes de retomar a fila, com a tranca da fila na mão: todo provisório e o texto (`.txt`)
+    de todo Envio apagado. Esse texto chega quando o Apagar tudo cai com a thread esperando a OpenAI e a Conexão morre antes de a
+    thread conferir o `wiped`; nenhuma retenção o tira. `estado_de(job_id)` é o estado guardado do Envio (`{}` se não há)."""
+    avisar = avisar_do_que_ficou(logger)
+    apagar_os_provisorios(dados, avisar)
+    try:
+        nomes = sorted(os.listdir(dados.estado)) if os.path.isdir(dados.estado) else []
+    except OSError as erro:
+        return avisar(dados.estado, erro)
+    for nome in nomes:
+        pasta = os.path.join(dados.estado, nome)
+        if not (os.path.isdir(pasta) and estado_de(nome).get("wiped")):
+            continue
+        try:
+            textos = sorted(arquivo for arquivo in os.listdir(pasta) if arquivo.endswith(".txt"))
+        except OSError as erro:
+            avisar(pasta, erro)
+            continue
+        for arquivo in textos:
+            try:
+                apagar(os.path.join(pasta, arquivo))
+            except OSError as erro:
+                avisar(os.path.join(pasta, arquivo), erro)

@@ -25,7 +25,7 @@ from datetime import datetime
 from . import custos, estado_do_envio
 from .envios_dos_custos import EnviosDosCustos
 from .estado_do_envio import APAGADO, FAILED, FIM, QUEUED, RUNNING, STATUS, situacao
-from .gravacao_de_json import apagar as _apagar, apagar_os_provisorios, avisar_do_que_ficou, gravar_json as _gravar_json
+from .gravacao_de_json import apagar as _apagar, apagar_os_provisorios, gravar_json as _gravar_json, limpar_ao_subir
 from .limite_do_plano import espera_pelo_plano
 from .palavras_do_cartao import com_as_palavras_fixas, esquecer, quantos_cartoes
 from .pedido_do_envio import id_que_serve_de_caminho, id_valido, impressao, validar_pedido
@@ -264,7 +264,7 @@ class Fila(EnviosDosCustos):
         """A Conexão subiu: um estado `running` volta a `queued` e o Envio continua de onde parou; um id da fila sem estado
         tem o estado refeito do pedido, e sem pedido sai da fila (o log diz por quê). Um pedido fora da fila **não** entra nela."""
         with self.tranca:
-            apagar_os_provisorios(self.dados, avisar_do_que_ficou(self.logger))
+            limpar_ao_subir(self.dados, self.estado, self.logger)
             ordem = self.ordem()
             ficam = []
             for item in ordem:
