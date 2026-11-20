@@ -48,7 +48,8 @@ test('depois do Entendi, o modal não volta, nem ao recarregar o painel', async 
   await estadoFinal(extensao, { [AVISADO]: true });
 });
 
-test('entrar com o ChatGPT pela primeira vez abre o modal ao voltar da aba, e Esc também o dispensa', async ({ page, context, extensao }) => {
+test('entrar com o ChatGPT pela primeira vez abre o modal ao voltar da aba, e Esc também o dispensa', async ({ page, context, extensao, conexaoDoTeste }) => {
+  test.skip(Boolean(conexaoDoTeste), 'o login pelo navegador cruza dois servidores de login de mentira, o do navegador e o da Conexão real (opção C do dono)');
   await abrirIA(page, extensao);
   await Promise.all([context.waitForEvent('page'), coluna(page).getByRole('button', { name: 'Continuar com o ChatGPT' }).click()]);
 
