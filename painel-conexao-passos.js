@@ -1,43 +1,14 @@
 'use strict';
 
 (function (raiz) {
-  const PASSOS = [
-    { id: 'anki', titulo: 'ONB-18.titulo', texto: 'ONB-18.texto' },
-    { id: 'colocar', titulo: 'ONB-16.passo1Titulo', texto: 'ONB-16.passo1Texto' },
-    { id: 'reiniciar', titulo: 'ONB-16.passo2Titulo', texto: 'ONB-16.passo2Texto' },
-    { id: 'abridor', titulo: 'ONB-17.titulo', texto: 'ONB-17.texto' },
-  ];
-  const PASSO_DO_ANKI = 'anki';
-  const PASSO_DO_ARQUIVO = 'colocar';
-  const PASSO_DO_TENTAR = 'reiniciar';
-  const PASSO_DO_ABRIDOR = 'abridor';
-  const ARQUIVO_DA_CONEXAO = 'conexao/perpetualminer.ankiaddon';
-  const NOME_DO_ARQUIVO = 'perpetualminer.ankiaddon';
-  // “Não tenho” (#146) leva à página de download do Anki, que existe sempre e mostra o arquivo de cada
-  // sistema: não há endereço fixo de instalador (um por processador, com a versão no nome; o download
-  // direto é o #232). O que muda por sistema é o que fazer depois do download.
-  const PAGINA_DO_ANKI = 'https://apps.ankiweb.net/';
-  const DEPOIS_DO_DOWNLOAD = Object.freeze({
-    mac: 'ONB-18.depoisNoMac',
-    windows: 'ONB-18.depoisNoWindows',
-    outro: 'ONB-18.depois',
-  });
   const RESPOSTA = Object.freeze({ JA_TENHO: 'ja', NAO_TENHO: 'nao' });
-  const SEM_RESPOSTA_MS = 2 * 60 * 1000;
   const INTERVALO_DO_TIQUE = 1000;
-  const ITENS_DO_CHECKLIST = ['ONB-16.confira1', 'ONB-16.confira2', 'ONB-16.confira3'];
 
-  const { textoDaVoz, Veio, ConexaoAnki, ConexaoNaTela, Configuracao, Abridor, ConversaComOAbridor } = raiz;
+  const { textoDaVoz, Veio, ConexaoAnki, ConexaoNaTela, Configuracao, Abridor, ConversaComOAbridor, RetratoDosPassos, PecasDosPassos } = raiz;
   const { elemento } = Veio;
   const { SITUACAO: CONEXAO } = ConexaoAnki;
   const { SITUACAO } = Configuracao;
-
-  function depoisDoDownloadDestaPessoa() {
-    const plataforma = navigator.userAgentData?.platform ?? navigator.userAgent;
-    if (/mac/i.test(plataforma)) return DEPOIS_DO_DOWNLOAD.mac;
-    if (/win/i.test(plataforma)) return DEPOIS_DO_DOWNLOAD.windows;
-    return DEPOIS_DO_DOWNLOAD.outro;
-  }
+  const { PASSO, PASSOS } = RetratoDosPassos;
 
   const { FASE, EVENTO } = ConversaComOAbridor;
   let abridor = ConversaComOAbridor.inicial();
@@ -93,379 +64,225 @@
     ].filter(Boolean).join(' · ');
   }
 
-  const PONTO_DA_FASE = Object.freeze({
-    [FASE.PEDINDO]: CONEXAO.CONECTANDO,
-    [FASE.PROCURANDO]: CONEXAO.CONECTANDO,
-    [FASE.ACHOU]: CONEXAO.LIGADA,
-    [FASE.NAO_ACHOU]: CONEXAO.DESLIGADA,
-    [FASE.SEM_ABRIDOR]: CONEXAO.DESLIGADA,
+  const comoEstaAConexao = tela => ({
+    ...tela.estado,
+    situacao: ConexaoAnki.situacao(),
+    jaConectou: ConexaoAnki.jaConectou(),
   });
-  const TEXTO_DA_FASE = Object.freeze({
-    [FASE.PEDINDO]: 'ONB-17.pedindo',
-    [FASE.PROCURANDO]: 'ONB-17.procurando',
-    [FASE.ACHOU]: 'ONB-17.achou',
-    [FASE.NAO_ACHOU]: 'ONB-17.naoAchou',
-    [FASE.SEM_ABRIDOR]: 'ONB-17.semAbridor',
-  });
+
+  const indiceAberto = tela => RetratoDosPassos.cartaoAberto(comoEstaAConexao(tela)).aberto;
+
+  function abrirPasso(tela, passoId) {
+    tela.estado.escolha = passoId;
+    desenhar(tela);
+    tela.cabecalho.titulo.focus();
+  }
+
+  const focoAoSair = tela => tela.opcoes.aoSairOBotao?.() ?? tela.cabecalho.titulo;
+
+  function desenharAEspera(tela) {
+    const ligada = ConexaoAnki.situacao() === CONEXAO.LIGADA;
+    const { escondida, ...espera } = RetratoDosPassos.espera(tela.estado, { ligada, agora: Date.now() });
+    Object.assign(tela.estado, espera);
+    tela.semResposta.hidden = escondida;
+  }
+
+  function desenharAsMarcas(tela, retrato) {
+    RetratoDosPassos.marcasDosPassos(retrato).forEach(({ situacao, atual, leitor }, i) => {
+      const { botao: item, marca, leitor: falado } = tela.marcas[i];
+      if (atual) item.setAttribute('aria-current', 'step');
+      else item.removeAttribute('aria-current');
+      marca.dataset.situacao = situacao;
+      marca.classList.toggle('bv-marca--atual', atual);
+      marca.replaceChildren(...(situacao === SITUACAO.FEITO ? [Veio.iconeVeio('certo')] : []));
+      falado.textContent = leitor ? `, ${textoDaVoz(leitor)}` : '';
+    });
+  }
+
+  function desenharOTitulo(tela, { aberto, passo, pronto }) {
+    const { sobretitulo, titulo, texto } = tela.cabecalho;
+    sobretitulo.textContent = pronto ? textoDaVoz('ONB-16.pronto')
+      : `${textoDaVoz('ONB-16.passos')} · ${textoDaVoz('ONB-03.passo', { n: aberto + 1, total: PASSOS.length })}`;
+    titulo.textContent = pronto ? ConexaoNaTela.texto(CONEXAO.LIGADA) : textoDaVoz(passo.titulo);
+    texto.textContent = pronto ? textoDaVoz('ONB-16.prontoApoio') : textoDaVoz(passo.texto);
+  }
+
+  function desenharOStatus(tela, retrato) {
+    const { bloco, status, ponto, texto, tentar } = tela.conexao;
+    bloco.hidden = retrato.passo.id === PASSO.ANKI;
+    const { esperando, exibida, mostrada, tentarSai } = RetratoDosPassos.statusDaConexao(retrato);
+    status.classList.toggle('pc-status--espera', esperando);
+    ConexaoNaTela.pintarPonto(ponto, esperando ? '' : mostrada);
+    if (esperando) texto.textContent = textoDaVoz('ONB-16.esperando');
+    else texto.textContent = mostrada === CONEXAO.LIGADA ? textoDeAchei() : ConexaoNaTela.texto(mostrada);
+    ConexaoNaTela.pintarTentarDeNovo(tentar, exibida, { sai: tentarSai, focoPara: () => focoAoSair(tela) });
+  }
+
+  function falar(regiao, texto, lugar = regiao) {
+    lugar.textContent = texto || '';
+    regiao.classList.toggle('veio-so-leitor', !texto);
+  }
+
+  function desenharOAnki(tela, { passo, pronto }) {
+    const { bloco, jaTenho, naoTenho, doDownload, resultado } = tela.anki;
+    bloco.hidden = pronto || passo.id !== PASSO.ANKI;
+    if (bloco.hidden) return;
+    const { escolha, doAbridor } = tela.resposta;
+    jaTenho.setAttribute('aria-pressed', String(escolha === RESPOSTA.JA_TENHO));
+    naoTenho.setAttribute('aria-pressed', String(escolha === RESPOSTA.NAO_TENHO));
+    doDownload.hidden = escolha !== RESPOSTA.NAO_TENHO;
+    falar(resultado, doAbridor && textoDaVoz(doAbridor));
+  }
+
+  function trocarOAvisoDoAbridor(tela, { causa, texto }) {
+    const doAbridor = tela.abridor;
+    if (doAbridor.aviso?.dataset.causa === causa) return;
+    doAbridor.aviso?.remove();
+    doAbridor.aviso = null;
+    doAbridor.tentar = null;
+    if (!causa) return;
+    doAbridor.aviso = Veio.montarAviso({
+      texto: textoDaVoz(texto), detalhes: causa, fechavel: false,
+      acao: { rotulo: textoDaVoz('ENV-01.tentarDeNovo'), aoUsar: () => despacharAoAbridor(EVENTO.TENTAR) },
+    });
+    doAbridor.aviso.dataset.causa = causa;
+    doAbridor.tentar = doAbridor.aviso.querySelector('button');
+    doAbridor.tentar.id = tela.id('abridor-tentar');
+    doAbridor.bloco.insertBefore(doAbridor.aviso, doAbridor.acoes);
+  }
+
+  function desenharOAbridor(tela, retrato) {
+    const { bloco, status, ponto, texto, permitir, agoraNao, acoes, tentar } = tela.abridor;
+    const noCard = RetratoDosPassos.abridorNoCard(abridor, retrato);
+    bloco.hidden = noCard.escondido;
+    falar(status, noCard.falado && textoDaVoz(noCard.falado), texto);
+    ponto.dataset.estado = noCard.ponto;
+
+    const { botoes } = noCard;
+    const comFoco = [permitir, tentar, agoraNao].find(cada => cada === document.activeElement);
+    permitir.hidden = !botoes.permitir;
+    permitir.setAttribute('aria-disabled', String(botoes.ocupado));
+    if (tentar) tentar.hidden = !botoes.tentar;
+    agoraNao.hidden = !botoes.agoraNao;
+    acoes.hidden = permitir.hidden && agoraNao.hidden;
+    if (comFoco?.hidden && !bloco.hidden) focoAoSair(tela).focus();
+
+    trocarOAvisoDoAbridor(tela, noCard);
+  }
+
+  function desenhar(tela, { pronto = tela.estado.pronto } = {}) {
+    tela.estado.pronto = pronto;
+    const conexao = comoEstaAConexao(tela);
+    const retrato = { ...conexao, ...RetratoDosPassos.cartaoAberto(conexao), conversa: abridor };
+    desenharAsMarcas(tela, retrato);
+    desenharOTitulo(tela, retrato);
+    tela.doArquivo.hidden = pronto || retrato.passo.id !== PASSO.ARQUIVO;
+    desenharOAnki(tela, retrato);
+    desenharOStatus(tela, retrato);
+    desenharOAbridor(tela, retrato);
+    const { rodape, voltar, continuar } = tela.navegacao;
+    rodape.hidden = !tela.opcoes.navegacao || pronto;
+    voltar.hidden = retrato.aberto <= 0;
+    continuar.hidden = retrato.aberto >= PASSOS.length - 1;
+    desenharAEspera(tela);
+  }
+
+  function responder(tela, escolha, doAbridor = null) {
+    Object.assign(tela.resposta, { escolha, doAbridor });
+    desenhar(tela);
+  }
+
+  async function oAbridorAbreOAnki() {
+    const { resultado } = await Abridor.abrirOAnki().catch(() => ({ resultado: null }));
+    return resultado === Abridor.RESULTADO.ABRIU;
+  }
+
+  async function responderJaTenho(tela) {
+    const { resposta } = tela;
+    if (resposta.conversando && resposta.escolha === RESPOSTA.JA_TENHO) return;
+    responder(tela, RESPOSTA.JA_TENHO);
+    if (resposta.conversando) return;
+    resposta.conversando = true;
+    if (await Abridor.temPermissao().catch(() => false) && resposta.escolha === RESPOSTA.JA_TENHO) {
+      responder(tela, RESPOSTA.JA_TENHO, 'ONB-18.abrindo');
+    }
+    const abriu = await oAbridorAbreOAnki().finally(() => { resposta.conversando = false; });
+    if (resposta.escolha !== RESPOSTA.JA_TENHO) return;
+    responder(tela, RESPOSTA.JA_TENHO, abriu ? 'ONB-18.abrindo' : 'ONB-18.manual');
+  }
+
+  function aoMudarAConexao(tela, situacao) {
+    const { estado } = tela;
+    if (situacao === CONEXAO.LIGADA && estado.ultimaSituacao !== CONEXAO.LIGADA) {
+      estado.ligou = true;
+      if (!abridorResolvido()) estado.escolha = null;
+      Object.assign(tela.resposta, { escolha: null, doAbridor: null });
+      despacharAoAbridor(EVENTO.LIGOU);
+    }
+    estado.ultimaSituacao = situacao;
+    desenhar(tela);
+  }
+
+  function aoMudarOAbridor(tela) {
+    desenhar(tela);
+    const resolvido = abridorResolvido();
+    if (resolvido && !tela.estado.resolvido) tela.opcoes.aoResolverOAbridor?.();
+    tela.estado.resolvido = resolvido;
+  }
+
+  function estadoInicial() {
+    return {
+      ultimaSituacao: null, ligou: false, resolvido: abridorResolvido(), escolha: null, pronto: false,
+      visivel: false, conferindo: ConexaoAnki.conferindo(), esperandoDesde: null, semResposta: false,
+    };
+  }
+
+  function montarAsPecas(tela, destaque) {
+    const { id, estado } = tela;
+    Object.assign(tela, PecasDosPassos.montarALista(passoId => abrirPasso(tela, passoId)));
+    tela.cabecalho = PecasDosPassos.montarOTitulo(id);
+    tela.anki = PecasDosPassos.montarOAnki(id, destaque);
+    tela.doArquivo = PecasDosPassos.montarOArquivo(destaque, () => { if (estado.esperandoDesde === null) estado.esperandoDesde = Date.now(); });
+    tela.conexao = PecasDosPassos.montarAConexao(id, destaque, () => {
+      estado.escolha = PASSO.TENTAR;
+      ConexaoAnki.tentarDeNovo();
+    });
+    tela.abridor = PecasDosPassos.montarOAbridor(id, destaque, { aoPermitir: pedirAPermissao, aoDizerAgoraNao: dizerAgoraNao });
+    tela.semResposta = PecasDosPassos.montarSemResposta();
+    tela.navegacao = PecasDosPassos.montarANavegacao(id, passos => abrirPasso(tela, PASSOS[indiceAberto(tela) + passos].id));
+  }
 
   function montar(lugar, { prefixo, navegacao = true, empilhado = false, aoSairOBotao = null, aoResolverOAbridor = null }) {
     iniciarOAbridor();
-    const id = parte => `${prefixo}-${parte}`;
-    const estado = {
-      ultimaSituacao: null,
-      ligou: false,
-      resolvido: abridorResolvido(),
-      escolha: null,
-      pronto: false,
-      visivel: false,
-      conferindo: ConexaoAnki.conferindo(),
-      esperandoDesde: null,
-      semResposta: false,
+    const tela = {
+      id: parte => `${prefixo}-${parte}`,
+      opcoes: { navegacao, aoSairOBotao, aoResolverOAbridor },
+      estado: estadoInicial(),
+      resposta: { escolha: null, doAbridor: null, conversando: false },
     };
-    const marcas = [];
+    montarAsPecas(tela, navegacao ? 'veio-botao--primario' : 'veio-botao--contorno');
+    tela.anki.jaTenho.addEventListener('click', () => responderJaTenho(tela));
+    tela.anki.naoTenho.addEventListener('click', () => responder(tela, RESPOSTA.NAO_TENHO));
+    tela.navegacao.rodape.hidden = !navegacao;
 
-    const itens = elemento('ol', 'bv-lista__itens');
-    PASSOS.forEach((passo, i) => {
-      const marca = elemento('span', 'bv-marca');
-      marca.setAttribute('aria-hidden', 'true');
-      marca.dataset.numero = String(i + 1);
-      const leitor = elemento('span', 'veio-so-leitor');
-      const botao = elemento('button', 'bv-lista__item', marca, elemento('span', null, textoDaVoz(passo.titulo)), leitor);
-      botao.type = 'button';
-      botao.addEventListener('click', () => abrirPasso(passo.id));
-      marcas.push({ botao, marca, leitor });
-      itens.append(elemento('li', null, botao));
-    });
-    const lista = elemento('nav', 'pc-lista', itens);
-    lista.setAttribute('aria-label', textoDaVoz('ONB-16.passos'));
+    const { sobretitulo, titulo, texto } = tela.cabecalho;
+    const controle = elemento('div', 'pc-controle', tela.anki.bloco, tela.doArquivo, tela.conexao.bloco, tela.abridor.bloco, tela.semResposta);
+    const card = elemento('div', 'pc-card', sobretitulo, titulo, texto, controle, tela.navegacao.rodape);
+    lugar.append(elemento('div', empilhado ? 'pc pc--empilhado' : 'pc', tela.lista, card));
 
-    const sobretitulo = elemento('p', 'bv-sobretitulo');
-    const titulo = elemento('h3', 'bv-titulo');
-    titulo.id = id('passo-titulo');
-    titulo.tabIndex = -1;
-    const texto = elemento('p', 'bv-texto');
-
-    const destaque = navegacao ? 'veio-botao--primario' : 'veio-botao--contorno';
-    const botaoDeLink = (rotulo, endereco, classe = `veio-botao ${destaque}`) => {
-      const link = elemento('a', classe, rotulo);
-      link.href = endereco;
-      return link;
-    };
-    /** O arquivo da Conexão vem do próprio pacote da extensão (o Chrome não pede permissão). */
-    const botaoDoArquivo = (rotulo, classe) => {
-      const link = botaoDeLink(rotulo, chrome.runtime.getURL(ARQUIVO_DA_CONEXAO), classe);
-      link.download = NOME_DO_ARQUIVO;
-      return link;
-    };
-    const baixar = botaoDoArquivo(textoDaVoz('ONB-16.baixar'));
-    baixar.addEventListener('click', () => { if (estado.esperandoDesde === null) estado.esperandoDesde = Date.now(); });
-
-    const dialogoDoAnki = comOClique => {
-      const quadro = elemento('div', `pc-animacao__quadro${comOClique ? ' pc-animacao__quadro--clique' : ''}`);
-      quadro.setAttribute('aria-hidden', 'true');
-      const botoes = elemento('div', 'pc-dialogo__botoes',
-        elemento('span', 'pc-dialogo__botao pc-dialogo__botao--sim', textoDaVoz('ONB-19.sim')),
-        elemento('span', 'pc-dialogo__botao', textoDaVoz('ONB-19.nao')));
-      quadro.append(elemento('div', 'pc-dialogo',
-        elemento('p', 'pc-dialogo__titulo', textoDaVoz('ONB-19.janela')),
-        elemento('p', 'pc-dialogo__texto', textoDaVoz('ONB-19.aviso')), botoes));
-      return quadro;
-    };
-    const aAnimacao = elemento('figure', 'pc-animacao',
-      elemento('div', 'pc-animacao__quadros', dialogoDoAnki(false), dialogoDoAnki(true)),
-      elemento('figcaption', 'pc-animacao__legenda', textoDaVoz('ONB-19.legenda')));
-
-    const codigo = raiz.AnkiWeb?.codigo ?? null;
-    const detalhes = Veio.montarDetalhes(
-      codigo === null ? textoDaVoz('ONB-16.codigoEmBreve') : textoDaVoz('ONB-16.codigoDoAnkiWeb', { codigo }),
-      document, textoDaVoz('ONB-16.arquivoNaoAbriu'));
-    const doArquivo = elemento('div', 'pc-arquivo', aAnimacao, baixar, detalhes);
-
-    const perguntaDoAnki = elemento('p', 'pc-anki__pergunta', textoDaVoz('ONB-18.pergunta'));
-    const botaoDeResposta = (rotulo, parte) => {
-      const botao = elemento('button', 'veio-botao veio-botao--contorno veio-botao--compacto', textoDaVoz(rotulo));
-      botao.id = id(parte);
-      botao.type = 'button';
-      return botao;
-    };
-    const jaTenho = botaoDeResposta('ONB-18.jaTenho', 'anki-ja-tenho');
-    const naoTenho = botaoDeResposta('ONB-18.naoTenho', 'anki-nao-tenho');
-    const respostasDoAnki = elemento('div', 'pc-anki__respostas', jaTenho, naoTenho);
-
-    const baixarOAnki = botaoDeLink(textoDaVoz('ONB-18.baixar'), PAGINA_DO_ANKI);
-    baixarOAnki.id = id('anki-baixar');
-    baixarOAnki.target = '_blank';
-    baixarOAnki.rel = 'noopener';
-    const depoisDoDownload = elemento('p', 'pc-anki__depois', textoDaVoz(depoisDoDownloadDestaPessoa()));
-    const doDownloadDoAnki = elemento('div', 'pc-anki__download', baixarOAnki, depoisDoDownload);
-    if (depoisDoDownloadDestaPessoa() === DEPOIS_DO_DOWNLOAD.mac) depoisDoDownload.before(raiz.DesenhoDoArraste.montar());
-
-    const resultadoDoAnki = elemento('p', 'pc-anki__resultado');
-    resultadoDoAnki.id = id('anki-resultado');
-    resultadoDoAnki.setAttribute('aria-live', 'polite');
-    const blocoDoAnki = elemento('div', 'pc-anki', perguntaDoAnki, respostasDoAnki, doDownloadDoAnki, resultadoDoAnki);
-    doDownloadDoAnki.hidden = true;
-
-    const anki = { escolha: null, doAbridor: null };
-    const definirResposta = (escolha, doAbridor = null) => Object.assign(anki, { escolha, doAbridor });
-
-    async function oAbridorAbreOAnki() {
-      const { resultado } = await Abridor.abrirOAnki().catch(() => ({ resultado: null }));
-      return resultado === Abridor.RESULTADO.ABRIU;
-    }
-
-    let conversandoComOAbridor = false;
-
-    async function responderJaTenho() {
-      if (conversandoComOAbridor && anki.escolha === RESPOSTA.JA_TENHO) return;
-      definirResposta(RESPOSTA.JA_TENHO);
-      desenhar();
-      if (conversandoComOAbridor) return;
-      conversandoComOAbridor = true;
-      if (await Abridor.temPermissao().catch(() => false) && anki.escolha === RESPOSTA.JA_TENHO) {
-        definirResposta(RESPOSTA.JA_TENHO, 'ONB-18.abrindo');
-        desenhar();
-      }
-      const abriu = await oAbridorAbreOAnki().finally(() => { conversandoComOAbridor = false; });
-      if (anki.escolha !== RESPOSTA.JA_TENHO) return;
-      definirResposta(RESPOSTA.JA_TENHO, abriu ? 'ONB-18.abrindo' : 'ONB-18.manual');
-      desenhar();
-    }
-
-    function responderNaoTenho() {
-      definirResposta(RESPOSTA.NAO_TENHO);
-      desenhar();
-    }
-
-    jaTenho.addEventListener('click', responderJaTenho);
-    naoTenho.addEventListener('click', responderNaoTenho);
-
-    const ponto = elemento('span', 'bv-ponto');
-    ponto.id = id('ponto');
-    ponto.setAttribute('aria-hidden', 'true');
-    const textoDoStatus = elemento('span');
-    textoDoStatus.id = id('status-texto');
-    const status = elemento('p', 'bv-status', ponto, textoDoStatus);
-    status.id = id('status');
-    status.setAttribute('role', 'status');
-    const tentar = elemento('button', `veio-botao ${destaque} veio-botao--compacto`, textoDaVoz('ENV-01.tentarDeNovo'));
-    tentar.id = id('tentar');
-    tentar.type = 'button';
-    ConexaoNaTela.ligarTentarDeNovo(tentar, () => {
-      estado.escolha = PASSO_DO_TENTAR;
-      ConexaoAnki.tentarDeNovo();
-    });
-    const conexao = elemento('div', 'bv-conexao', status, tentar);
-
-    const pontoDoAbridor = elemento('span', 'bv-ponto');
-    pontoDoAbridor.setAttribute('aria-hidden', 'true');
-    const textoDoAbridor = elemento('span');
-    const statusDoAbridor = elemento('p', 'bv-status', pontoDoAbridor, textoDoAbridor);
-    statusDoAbridor.id = id('abridor-status');
-    statusDoAbridor.setAttribute('aria-live', 'polite');
-    const botaoDoAbridor = (parte, classe, rotulo, aoApertar) => {
-      const botao = elemento('button', `veio-botao ${classe} veio-botao--compacto`, rotulo);
-      botao.id = id(parte);
-      botao.type = 'button';
-      botao.addEventListener('click', () => { if (botao.getAttribute('aria-disabled') !== 'true') aoApertar(); });
-      return botao;
-    };
-    const permitir = botaoDoAbridor('permitir', destaque, textoDaVoz('ONB-17.permitir'), pedirAPermissao);
-    let tentarOAbridor = null;
-    const agoraNao = botaoDoAbridor('agora-nao', 'veio-botao--contorno', textoDaVoz('ONB-04.agoraNao'), dizerAgoraNao);
-    const acoesDoAbridor = elemento('div', 'pc-abridor__acoes', permitir, agoraNao);
-    let avisoDoAbridor = null;
-    const blocoDoAbridor = elemento('div', 'pc-abridor', statusDoAbridor, acoesDoAbridor);
-
-    const baixarDeNovo = botaoDoArquivo(textoDaVoz('ONB-16.baixarDeNovo'),
-      'veio-botao veio-botao--contorno veio-botao--compacto');
-    const checklist = elemento('ul', 'pc-checklist', ...ITENS_DO_CHECKLIST.map(item => elemento('li', null, textoDaVoz(item))));
-    const semResposta = elemento('div', 'pc-sem-resposta',
-      elemento('p', 'pc-sem-resposta__texto', textoDaVoz('ONB-16.semResposta')), checklist, baixarDeNovo);
-    semResposta.hidden = true;
-
-    const controle = elemento('div', 'pc-controle', blocoDoAnki, doArquivo, conexao, blocoDoAbridor, semResposta);
-
-    const voltar = elemento('button', 'veio-botao veio-botao--contorno', textoDaVoz('ONB-04.voltar'));
-    voltar.id = id('voltar');
-    voltar.type = 'button';
-    voltar.addEventListener('click', () => abrirPasso(PASSOS[indiceAberto() - 1].id));
-    const continuar = elemento('button', 'veio-botao veio-botao--contorno', textoDaVoz('ONB-04.continuar'));
-    continuar.id = id('continuar');
-    continuar.type = 'button';
-    continuar.addEventListener('click', () => abrirPasso(PASSOS[indiceAberto() + 1].id));
-    const rodape = elemento('div', 'pc-navegacao', voltar, continuar);
-    rodape.hidden = !navegacao;
-
-    const card = elemento('div', 'pc-card', sobretitulo, titulo, texto, controle, rodape);
-    lugar.append(elemento('div', empilhado ? 'pc pc--empilhado' : 'pc', lista, card));
-
-    const indice = passoId => PASSOS.findIndex(p => p.id === passoId);
-
-    function passoAberto() {
-      if (estado.pronto) return PASSOS[PASSOS.length - 1].id;
-      if (estado.escolha !== null) return estado.escolha;
-      const situacao = ConexaoAnki.situacao();
-      if (situacao === CONEXAO.LIGADA) return PASSO_DO_ABRIDOR;
-      if (situacao === CONEXAO.CONECTANDO) return PASSO_DO_TENTAR;
-      return estado.ligou || ConexaoAnki.jaConectou() ? PASSO_DO_TENTAR : PASSOS[0].id;
-    }
-    const indiceAberto = () => indice(passoAberto());
-
-    function abrirPasso(passoId) {
-      estado.escolha = passoId;
-      desenhar();
-      titulo.focus();
-    }
-
-    function desenharAEspera() {
-      const ligada = ConexaoAnki.situacao() === CONEXAO.LIGADA;
-      if (ligada) {
-        estado.esperandoDesde = null;
-        estado.semResposta = false;
-      } else {
-        if (estado.visivel && estado.esperandoDesde === null) estado.esperandoDesde = Date.now();
-        if (estado.esperandoDesde !== null && Date.now() - estado.esperandoDesde >= SEM_RESPOSTA_MS) estado.semResposta = true;
-      }
-      semResposta.hidden = !estado.semResposta || estado.pronto || ligada;
-    }
-
-    function desenhar({ pronto = estado.pronto } = {}) {
-      estado.pronto = pronto;
-      const aberto = pronto ? -1 : indiceAberto();
-      const passoDoCard = PASSOS[pronto ? indice(PASSO_DO_ABRIDOR) : aberto];
-      const situacao = ConexaoAnki.situacao();
-      const conectando = situacao === CONEXAO.CONECTANDO;
-      const exibida = estado.conferindo && situacao === CONEXAO.DESLIGADA && passoDoCard.id === PASSO_DO_TENTAR
-        ? CONEXAO.CONECTANDO : situacao;
-      const conectou = pronto || situacao === CONEXAO.LIGADA;
-      const situacaoDoPasso = passo => {
-        if (passo.id !== PASSO_DO_ABRIDOR) return conectou ? SITUACAO.FEITO : '';
-        if (abridor.fase === FASE.ACHOU) return SITUACAO.FEITO;
-        return abridor.agoraNao ? SITUACAO.AGORA_NAO : '';
-      };
-      const LEITOR = { [SITUACAO.FEITO]: 'ONB-13.feito', [SITUACAO.AGORA_NAO]: 'ONB-13.agoraNao' };
-
-      marcas.forEach(({ botao, marca, leitor }, i) => {
-        const doPasso = situacaoDoPasso(PASSOS[i]);
-        if (i === aberto) botao.setAttribute('aria-current', 'step');
-        else botao.removeAttribute('aria-current');
-        marca.dataset.situacao = doPasso;
-        marca.classList.toggle('bv-marca--atual', i === aberto);
-        marca.replaceChildren(...(doPasso === SITUACAO.FEITO ? [Veio.iconeVeio('certo')] : []));
-        leitor.textContent = doPasso ? `, ${textoDaVoz(LEITOR[doPasso])}` : '';
-      });
-
-      sobretitulo.textContent = pronto ? textoDaVoz('ONB-16.pronto')
-        : `${textoDaVoz('ONB-16.passos')} · ${textoDaVoz('ONB-03.passo', { n: aberto + 1, total: PASSOS.length })}`;
-      titulo.textContent = pronto ? ConexaoNaTela.texto(CONEXAO.LIGADA) : textoDaVoz(passoDoCard.titulo);
-      texto.textContent = pronto ? textoDaVoz('ONB-16.prontoApoio') : textoDaVoz(passoDoCard.texto);
-      doArquivo.hidden = pronto || passoDoCard.id !== PASSO_DO_ARQUIVO;
-      desenharOAnki(passoDoCard, pronto);
-
-      conexao.hidden = passoDoCard.id === PASSO_DO_ANKI;
-
-      const esperando = !pronto && passoDoCard.id === PASSO_DO_ARQUIVO && situacao === CONEXAO.DESLIGADA;
-      status.classList.toggle('pc-status--espera', esperando);
-      const mostrada = pronto && !conectando ? CONEXAO.LIGADA : exibida;
-      ConexaoNaTela.pintarPonto(ponto, esperando ? '' : mostrada);
-      textoDoStatus.textContent = esperando ? textoDaVoz('ONB-16.esperando')
-        : mostrada === CONEXAO.LIGADA ? textoDeAchei() : ConexaoNaTela.texto(mostrada);
-
-      ConexaoNaTela.pintarTentarDeNovo(tentar, exibida, {
-        sai: pronto || situacao === CONEXAO.LIGADA || passoDoCard.id !== PASSO_DO_TENTAR,
-        focoPara: () => aoSairOBotao?.() ?? titulo,
-      });
-
-      desenharOAbridor(passoDoCard, pronto, situacao);
-
-      rodape.hidden = !navegacao || pronto;
-      voltar.hidden = aberto <= 0;
-      continuar.hidden = aberto >= PASSOS.length - 1;
-      desenharAEspera();
-    }
-
-    /** Região viva: nunca `hidden` (o leitor não fala o que chega com ela); vazia, só sai da vista. */
-    function falar(regiao, texto, lugar = regiao) {
-      lugar.textContent = texto || '';
-      regiao.classList.toggle('veio-so-leitor', !texto);
-    }
-
-    function desenharOAnki(passoDoCard, pronto) {
-      blocoDoAnki.hidden = pronto || passoDoCard.id !== PASSO_DO_ANKI;
-      if (blocoDoAnki.hidden) return;
-      jaTenho.setAttribute('aria-pressed', String(anki.escolha === RESPOSTA.JA_TENHO));
-      naoTenho.setAttribute('aria-pressed', String(anki.escolha === RESPOSTA.NAO_TENHO));
-      doDownloadDoAnki.hidden = anki.escolha !== RESPOSTA.NAO_TENHO;
-      falar(resultadoDoAnki, anki.doAbridor && textoDaVoz(anki.doAbridor));
-    }
-
-    function desenharOAbridor(passoDoCard, pronto, situacao) {
-      const { fase } = abridor;
-      blocoDoAbridor.hidden = passoDoCard.id !== PASSO_DO_ABRIDOR || fase === FASE.ANTES || fase === FASE.LENDO
-        || (!pronto && situacao !== CONEXAO.LIGADA);
-
-      const semPermissao = fase === FASE.PEDIR && (abridor.agoraNao || abridor.recusada);
-      const textoAgora = TEXTO_DA_FASE[fase] ?? (semPermissao ? 'ONB-17.semPermissao' : null);
-      const problema = fase === FASE.NAO_ACHOU || fase === FASE.SEM_ABRIDOR;
-      falar(statusDoAbridor, textoAgora && !problema && textoDaVoz(textoAgora), textoDoAbridor);
-      pontoDoAbridor.dataset.estado = PONTO_DA_FASE[fase] ?? '';
-
-      const botoes = ConversaComOAbridor.acoes(abridor);
-      const comFoco = [permitir, tentarOAbridor, agoraNao].find(botao => botao === document.activeElement);
-      permitir.hidden = pronto || !botoes.permitir;
-      permitir.setAttribute('aria-disabled', String(botoes.ocupado));
-      if (tentarOAbridor) tentarOAbridor.hidden = pronto || !botoes.tentar;
-      agoraNao.hidden = pronto || !botoes.agoraNao;
-      acoesDoAbridor.hidden = permitir.hidden && agoraNao.hidden;
-      if (comFoco?.hidden && !blocoDoAbridor.hidden) (aoSairOBotao?.() ?? titulo).focus();
-
-      const causa = problema && !pronto
-        ? (fase === FASE.NAO_ACHOU ? '{"achou":false}' : abridor.detalhe) : '';
-      if (avisoDoAbridor?.dataset.causa !== causa) {
-        avisoDoAbridor?.remove();
-        avisoDoAbridor = null;
-        tentarOAbridor = null;
-        if (causa) {
-          avisoDoAbridor = Veio.montarAviso({
-            texto: textoDaVoz(textoAgora), detalhes: causa, fechavel: false,
-            acao: { rotulo: textoDaVoz('ENV-01.tentarDeNovo'), aoUsar: () => despacharAoAbridor(EVENTO.TENTAR) },
-          });
-          avisoDoAbridor.dataset.causa = causa;
-          tentarOAbridor = avisoDoAbridor.querySelector('button');
-          tentarOAbridor.id = id('abridor-tentar');
-          blocoDoAbridor.insertBefore(avisoDoAbridor, acoesDoAbridor);
-        }
-      }
-    }
-
-    ConexaoAnki.acompanhar(situacao => {
-      if (situacao === CONEXAO.LIGADA && estado.ultimaSituacao !== CONEXAO.LIGADA) {
-        estado.ligou = true;
-        if (!abridorResolvido()) estado.escolha = null;
-        definirResposta(null);
-        despacharAoAbridor(EVENTO.LIGOU);
-      }
-      estado.ultimaSituacao = situacao;
-      desenhar();
-    });
-    ouvintesDoAbridor.add(() => {
-      desenhar();
-      const resolvido = abridorResolvido();
-      if (resolvido && !estado.resolvido) aoResolverOAbridor?.();
-      estado.resolvido = resolvido;
-    });
+    ConexaoAnki.acompanhar(situacao => aoMudarAConexao(tela, situacao));
+    ouvintesDoAbridor.add(() => aoMudarOAbridor(tela));
     ConexaoAnki.aoConferir(conferindo => {
-      estado.conferindo = conferindo;
-      if (conferindo) desenhar();
+      tela.estado.conferindo = conferindo;
+      if (conferindo) desenhar(tela);
     });
-    setInterval(() => { if (estado.visivel) desenharAEspera(); }, INTERVALO_DO_TIQUE);
+    setInterval(() => { if (tela.estado.visivel) desenharAEspera(tela); }, INTERVALO_DO_TIQUE);
 
     return {
-      desenhar,
+      desenhar: opcoes => desenhar(tela, opcoes),
       mostrar(visivel) {
-        estado.visivel = visivel;
-        if (visivel) desenharAEspera();
+        tela.estado.visivel = visivel;
+        if (visivel) desenharAEspera(tela);
       },
       focarTitulo: () => titulo.focus(),
       abridorResolvido,
