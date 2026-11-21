@@ -314,7 +314,6 @@
     "scripts/regras/versoes-publicadas.js": 7,
     "scripts/yaml-de-workflow.js": 37,
     "testes/test_abridor.js": 22,
-    "testes/test_abrir_o_anki.js": 140,
     "testes/test_apagar_frases_pendente.js": 3,
     "testes/test_aviso_da_versao.js": 3,
     "testes/test_envio_acompanhado.js": 3,
