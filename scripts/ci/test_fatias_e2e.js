@@ -95,4 +95,13 @@ const medidas = duracoesDosLogs([log]);
 assert.deepStrictEqual(Object.keys(medidas).sort(), ['outro.spec.js', 'popup.spec.js']);
 assert(Math.abs(medidas['popup.spec.js'] - 2) < 1e-9 && Math.abs(medidas['outro.spec.js'] - 72) < 1e-9, JSON.stringify(medidas));
 
+const rodar = (...argumentos) => spawnSync(process.execPath, [path.join(__dirname, 'fatias-e2e.js'), ...argumentos], { encoding: 'utf8' });
+const foraDoIntervalo = rodar(String(NUMERO_DE_FATIAS + 1));
+assert.deepStrictEqual([foraDoIntervalo.status, foraDoIntervalo.stdout, foraDoIntervalo.stderr], [2, '', `fatia ${NUMERO_DE_FATIAS + 1} não existe: são ${NUMERO_DE_FATIAS}\n`], 'uma fatia que não existe sai com 2 e diz quantas são');
+assert.strictEqual(rodar('0').status, 2, 'a fatia 0 não existe');
+for (const sobrado of [[], ['--medir'], ['qualquer']]) {
+  const uso = rodar(...sobrado);
+  assert.deepStrictEqual([uso.status, uso.stdout, uso.stderr], [2, '', 'uso: node scripts/ci/fatias-e2e.js <N> | --medir <log>...\n'], `pedido inválido (${sobrado.join(' ') || 'nenhum'}) mostra o uso`);
+}
+
 console.log('fatias e2e ok');
