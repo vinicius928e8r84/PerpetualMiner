@@ -34,6 +34,8 @@ const cardDaBoasVindas = page => page.locator('.bv-card');
 const statusDoPasso4 = page => cardDaBoasVindas(page).getByRole('status');
 const pontoDoPasso4 = page => cardDaBoasVindas(page).locator('#bv4-ponto');
 const tentarDoPasso4 = page => cardDaBoasVindas(page).getByRole('button', { name: 'Tentar de novo', exact: true });
+const passosDaConexao = page => cardDaBoasVindas(page).getByRole('navigation', { name: 'Como ligar' });
+const baixarDoPasso4 = page => cardDaBoasVindas(page).getByRole('link', { name: 'Baixar a Conexão com o Anki' });
 const irParaReiniciar = page => cardDaBoasVindas(page).getByRole('button', { name: 'Reiniciar o Anki', exact: true }).click();
 
 function segurarOHealth(fakes, status = 503) {
@@ -249,4 +251,27 @@ test.describe('o foco ao ligar não cai no <body>', () => {
     await expect.poll(async () => (await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou).toBe(true);
     await fotografar(page, 'a3-passo4-ligada-foco.png');
   });
+});
+
+test('quem já tinha a área Conexão com o Anki aberta sem conexão vê o mesmo passo da Boas-vindas', async ({ page, extensao, fakes }) => {
+  fakes.anki.desligar();
+  await page.goto(extensao.url('painel.html#anki/custos'));
+  const naArea = page.getByRole('region', { name: 'Ainda não houve conexão neste computador' });
+  await expect(naArea).toBeVisible();
+  await naArea.getByRole('navigation', { name: 'Como ligar' }).getByRole('button', { name: 'Pôr a Conexão no Anki' }).click();
+  const daArea = {
+    lista: await naArea.getByRole('navigation', { name: 'Como ligar' }).getByRole('button').allTextContents(),
+    texto: await naArea.locator('.pc-card .bv-texto').textContent(),
+    sobretitulo: await naArea.locator('.pc-card .bv-sobretitulo').textContent(),
+    arquivo: await naArea.getByRole('link', { name: 'Baixar a Conexão com o Anki' }).getAttribute('href'),
+  };
+
+  await page.goto(extensao.url('painel.html#boas-vindas/anki'));
+  await expect(cardDaBoasVindas(page).getByRole('heading', { level: 2 })).toBeVisible();
+  await passosDaConexao(page).getByRole('button', { name: 'Pôr a Conexão no Anki' }).click();
+  expect(await passosDaConexao(page).getByRole('button').allTextContents()).toEqual(daArea.lista);
+  expect(await cardDaBoasVindas(page).locator('.pc-card .bv-texto').textContent()).toBe(daArea.texto);
+  expect(await cardDaBoasVindas(page).locator('.pc-card .bv-sobretitulo').textContent()).toBe(daArea.sobretitulo);
+  await expect(baixarDoPasso4(page)).toHaveAttribute('href', daArea.arquivo);
+  expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
 });
