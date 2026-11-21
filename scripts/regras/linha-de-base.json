@@ -81,7 +81,6 @@
     "complemento/test_colecao_em_memoria.py": 15,
     "complemento/test_comparar_com_o_contrato.py": 12,
     "complemento/test_conexao_antiga_de_mentira.py": 5,
-    "complemento/test_conserto.py": 3,
     "complemento/test_conserto_arvore_windows.py": 4,
     "complemento/test_contexto_da_conexao.py": 3,
     "complemento/test_contrato_da_previa.py": 2,
