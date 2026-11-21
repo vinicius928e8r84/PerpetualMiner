@@ -29,19 +29,44 @@ const semMarcacao = texto => texto.replace(/[*_`]/g, '').replace(/^[\s-]+|[\s.!]
 const semCaixaNemAcento = texto => texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 const igual = (a, b) => semCaixaNemAcento(a) === semCaixaNemAcento(b);
 
-function linhasQueValem(markdown) {
-  const saida = [];
+function marcaDaCerca(linha) {
+  const abre = CERCA.exec(linha);
+  return abre ? abre[1] : null;
+}
+
+function marcaQueFecha(marca, cerca) {
+  return marca[0] === cerca[0] && marca.length >= cerca.length;
+}
+
+function fechaACerca(linha, marca, cerca) {
+  return marcaQueFecha(marca, cerca) && linha.trim() === marca;
+}
+
+function cercaDepoisDa(linha, cerca) {
+  const marca = marcaDaCerca(linha);
+  if (!marca) return cerca;
+  if (!cerca) return marca;
+  return fechaACerca(linha, marca, cerca) ? null : cerca;
+}
+
+function indicesForaDoCodigo(linhas) {
+  const fora = [];
   let cerca = null;
-  for (const linha of String(markdown || '').replace(/<!--[^]*?(?:-->|$)/g, '').split(/\r?\n/)) {
-    const abre = CERCA.exec(linha);
-    if (abre && !cerca) cerca = abre[1];
-    else if (abre && abre[1][0] === cerca[0] && abre[1].length >= cerca.length && linha.trim() === abre[1]) cerca = null;
-    else if (!cerca && !CITACAO.test(linha)) {
-      const titulo = TITULO.exec(linha);
-      saida.push({ texto: semMarcacao(titulo ? titulo[2] : linha), nivel: titulo ? titulo[1].length : 0, puro: TEXTO_PURO.test(linha) });
-    }
-  }
-  return saida;
+  linhas.forEach((linha, indice) => {
+    if (!cerca && !marcaDaCerca(linha)) fora.push(indice);
+    cerca = cercaDepoisDa(linha, cerca);
+  });
+  return fora;
+}
+
+function linhaQueVale(linha) {
+  const titulo = TITULO.exec(linha);
+  return { texto: semMarcacao(titulo ? titulo[2] : linha), nivel: titulo ? titulo[1].length : 0, puro: TEXTO_PURO.test(linha) };
+}
+
+function linhasQueValem(markdown) {
+  const linhas = String(markdown || '').replace(/<!--[^]*?(?:-->|$)/g, '').split(/\r?\n/);
+  return indicesForaDoCodigo(linhas).map(indice => linhas[indice]).filter(linha => !CITACAO.test(linha)).map(linhaQueVale);
 }
 
 function secao(linhas, nome) {
@@ -171,34 +196,52 @@ function conferir({ corpo, rotulos, registros, head, repositorio, headsEquivalen
   };
 }
 
-async function lerDoGitHub(env, headConferido) {
-  const ler = async caminho => {
-    const resposta = await fetch(`${env.GITHUB_API_URL || 'https://api.github.com'}/repos/${env.GITHUB_REPOSITORY}/${caminho}`, {
-      headers: { accept: 'application/vnd.github+json', ...(env.GITHUB_TOKEN ? { authorization: `Bearer ${env.GITHUB_TOKEN}` } : {}) },
-    });
-    if (!resposta.ok) throw new Error(`o GitHub respondeu ${resposta.status} a ${caminho}`);
-    return resposta.json();
-  };
-  const todas = async caminho => {
-    const itens = [];
-    for (let pagina = 1; ; pagina++) {
-      const lote = await ler(`${caminho}?per_page=100&page=${pagina}`);
-      itens.push(...lote);
-      if (lote.length < 100) return itens;
-    }
-  };
-  const pr = await ler(`pulls/${env.PR}`);
-  const registros = [...await todas(`issues/${env.PR}/comments`), ...await todas(`pulls/${env.PR}/reviews`)]
+async function lerDaApi(env, caminho) {
+  const resposta = await fetch(`${env.GITHUB_API_URL || 'https://api.github.com'}/repos/${env.GITHUB_REPOSITORY}/${caminho}`, {
+    headers: { accept: 'application/vnd.github+json', ...(env.GITHUB_TOKEN ? { authorization: `Bearer ${env.GITHUB_TOKEN}` } : {}) },
+  });
+  if (!resposta.ok) throw new Error(`o GitHub respondeu ${resposta.status} a ${caminho}`);
+  return resposta.json();
+}
+
+async function lerTodasAsPaginas(env, caminho) {
+  const itens = [];
+  for (let pagina = 1; ; pagina++) {
+    const lote = await lerDaApi(env, `${caminho}?per_page=100&page=${pagina}`);
+    itens.push(...lote);
+    if (lote.length < 100) return itens;
+  }
+}
+
+function registroDatado(registro) {
+  return { corpo: registro.body || '', quando: registro.submitted_at || registro.created_at || '' };
+}
+
+function registrosPorData(comentariosERevisoes) {
+  return comentariosERevisoes
     .filter(registro => QUEM_REGISTRA.includes(registro.author_association))
-    .map(registro => ({ corpo: registro.body || '', quando: registro.submitted_at || registro.created_at || '' }))
+    .map(registroDatado)
     .sort((a, b) => a.quando.localeCompare(b.quando)).map(registro => registro.corpo);
+}
+
+async function lerDoGitHub(env, headConferido) {
+  const pr = await lerDaApi(env, `pulls/${env.PR}`);
+  const registros = registrosPorData([...await lerTodasAsPaginas(env, `issues/${env.PR}/comments`), ...await lerTodasAsPaginas(env, `pulls/${env.PR}/reviews`)]);
   const headsEquivalentes = headsSoComMergeDaMain(registros, headConferido || pr.head.sha, pr.base && pr.base.ref, env.RAIZ_DO_GIT || process.cwd());
   return { corpo: pr.body, rotulos: pr.labels.map(rotulo => rotulo.name), registros, head: pr.head.sha, repositorio: env.GITHUB_REPOSITORY, headsEquivalentes };
 }
 
+function headDoAmbiente(env) {
+  return String(env.HEAD || '').trim().toLowerCase();
+}
+
+function ambienteDizAPr(env) {
+  return Boolean(env.GITHUB_REPOSITORY) && /^\d+$/.test(env.PR || '');
+}
+
 async function main(env) {
-  const head = String(env.HEAD || '').trim().toLowerCase();
-  if (!env.GITHUB_REPOSITORY || !/^\d+$/.test(env.PR || '') || !SHA_INTEIRO.test(head)) {
+  const head = headDoAmbiente(env);
+  if (!ambienteDizAPr(env) || !SHA_INTEIRO.test(head)) {
     console.log('uso: GITHUB_TOKEN=… GITHUB_REPOSITORY=<dono/repo> PR=<número> HEAD=<SHA inteiro do head> node scripts/ci/registro-da-pr.js');
     return 2;
   }
@@ -218,4 +261,4 @@ async function main(env) {
 
 if (require.main === module) main(process.env).then(codigo => { process.exitCode = codigo; });
 
-module.exports = { FRASE, ROTULO_DE_RISCO_ALTO, SECAO_DA_PROVA, conferir, faltaDaProva, faltaDaRevisao, faltasDoCorpo, lerDoGitHub, linhasQueValem };
+module.exports = { FRASE, ROTULO_DE_RISCO_ALTO, SECAO_DA_PROVA, conferir, faltaDaProva, faltaDaRevisao, faltasDoCorpo, indicesForaDoCodigo, lerDoGitHub, linhasQueValem };

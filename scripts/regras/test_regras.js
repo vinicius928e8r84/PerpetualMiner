@@ -12,35 +12,45 @@ const RAIZ = path.resolve(__dirname, '..', '..');
 const { repositorioDeTestes } = require('./apoio-de-testes');
 
 let total = 0;
-function acusa(id, arquivo, fonte, quantas, porque) {
-  const achados = regras[id].verificar(arquivo, fonte, RAIZ);
-  assert.strictEqual(achados.length, quantas, `${id} em ${arquivo}: ${porque}\n${JSON.stringify(achados, null, 2)}`);
-  total++;
-  return achados;
+function provaDa(id) {
+  return function acusa(arquivo, fonte, quantas, porque) {
+    const achados = regras[id].verificar(arquivo, fonte, RAIZ);
+    assert.strictEqual(achados.length, quantas, `${id} em ${arquivo}: ${porque}\n${JSON.stringify(achados, null, 2)}`);
+    total++;
+    return achados;
+  };
 }
+
+const tokensVeio = provaDa('tokens-veio');
+const gravacaoDeFrases = provaDa('gravacao-de-frases');
+const idiomaSolto = provaDa('idioma-solto');
+const testeLeCodigo = provaDa('teste-le-codigo');
+const e2eFuncaoInterna = provaDa('e2e-funcao-interna');
+const e2eEstadoFinal = provaDa('e2e-estado-final');
+const contratoFechado = provaDa('contrato-fechado');
 
 const nulo = (achados, quantas, porque) => { assert.strictEqual(achados.length, quantas, `${porque}\n${JSON.stringify(achados, null, 2)}`); total++; return achados; };
 
-acusa('tokens-veio', 'exemplo.css', '.pm-linha {\n  height: 3px;\n  border-radius: 2px;\n  background: var(--veio-accent);\n}\n', 1,
+tokensVeio('exemplo.css', '.pm-linha {\n  height: 3px;\n  border-radius: 2px;\n  background: var(--veio-accent);\n}\n', 1,
   'raio em px fora dos tokens (8d13cc7)');
-acusa('tokens-veio', 'e2e/vitrine/vitrine.html',
+tokensVeio('e2e/vitrine/vitrine.html',
   '<style>\n  .marca span {\n    font-size: 22px;\n  }\n  .icone { border-radius: 7px; }\n</style>\n', 2, 'tamanho e raio soltos na vitrine (0510e37)');
-acusa('tokens-veio', 'painel.css', '.marca-nome {\n  font-size: 1.35rem;\n}\n', 1, 'tamanho em rem no painel (0510e37)');
-acusa('tokens-veio', 'painel.css', '.ilha h2 { font-size: 16px; }\n.ilha p { font-size: 12px; }\n', 2, 'tipo do shell (b1a3664)');
-acusa('tokens-veio', 'painel.js', "Object.assign(toast.style, {\n  background: '#7c3aed', borderRadius: '8px',\n  fontSize: '13px', transition: 'opacity 0.3s',\n});\n", 4,
+tokensVeio('painel.css', '.marca-nome {\n  font-size: 1.35rem;\n}\n', 1, 'tamanho em rem no painel (0510e37)');
+tokensVeio('painel.css', '.ilha h2 { font-size: 16px; }\n.ilha p { font-size: 12px; }\n', 2, 'tipo do shell (b1a3664)');
+tokensVeio('painel.js', "Object.assign(toast.style, {\n  background: '#7c3aed', borderRadius: '8px',\n  fontSize: '13px', transition: 'opacity 0.3s',\n});\n", 4,
   'objeto de estilo com cor, raio, letra e duração soltos');
-acusa('tokens-veio', 'popup.js', "el.style.color = '#F5B83D';\n", 1, 'cor solta no JS');
-acusa('tokens-veio', 'painel.css', '.x { --red: #f00; color: var(--red); }\n', 1, 'cor numa variável fora de veio/tokens.css');
-acusa('tokens-veio', 'painel.css', '.y { color: var(--veio-missing, #f00); }\n', 1, 'cor no reserva do var()');
-acusa('tokens-veio', 'painel.css', '.z { --largura: 240px; gap: var(--veio-espaco, 8px); }\n', 0, 'variável local de tamanho não é regra');
-acusa('tokens-veio', 'exemplo.css', '.x { color: red; background: rebeccapurple; }\n', 2, 'cores com nome');
-acusa('tokens-veio', 'exemplo.css', '.x { --alerta: red; }\n.y { color: var(--veio-missing, Red); }\n', 2, 'cor com nome numa variável e no reserva');
-acusa('tokens-veio', 'popup.js', "el.style.color = 'tomato';\n", 1, 'cor com nome no JS');
-acusa('tokens-veio', 'exemplo.css', [
+tokensVeio('popup.js', "el.style.color = '#F5B83D';\n", 1, 'cor solta no JS');
+tokensVeio('painel.css', '.x { --red: #f00; color: var(--red); }\n', 1, 'cor numa variável fora de veio/tokens.css');
+tokensVeio('painel.css', '.y { color: var(--veio-missing, #f00); }\n', 1, 'cor no reserva do var()');
+tokensVeio('painel.css', '.z { --largura: 240px; gap: var(--veio-espaco, 8px); }\n', 0, 'variável local de tamanho não é regra');
+tokensVeio('exemplo.css', '.x { color: red; background: rebeccapurple; }\n', 2, 'cores com nome');
+tokensVeio('exemplo.css', '.x { --alerta: red; }\n.y { color: var(--veio-missing, Red); }\n', 2, 'cor com nome numa variável e no reserva');
+tokensVeio('popup.js', "el.style.color = 'tomato';\n", 1, 'cor com nome no JS');
+tokensVeio('exemplo.css', [
   '.red-text { color: currentColor; background: transparent; border-color: inherit; }',
   '.x { --tom-red: var(--veio-accent); animation: piscar-red var(--veio-piscar) steps(2); }',
 ].join('\n'), 0, 'currentColor, transparent, inherit e nomes que só contêm uma cor');
-acusa('tokens-veio', 'painel.css', [
+tokensVeio('painel.css', [
   '.pm-linha { border-radius: var(--veio-raio-linha); font-size: var(--veio-tam-pagina); }',
   'a:hover { color: var(--veio-text); }',
   '.ponto { border-radius: 50%; transition: none; animation: piscar var(--veio-piscar) steps(2) infinite; }',
@@ -48,17 +58,17 @@ acusa('tokens-veio', 'painel.css', [
   '/* font-size: 22px no comentário não conta */',
 ].join('\n'), 0, 'tokens, 50%, 0 e comentários');
 
-acusa('gravacao-de-frases', 'lib/sincronizacao.js', [
+gravacaoDeFrases('lib/sincronizacao.js', [
   'async function sincronizar(local) {',
   '  if (localPrecisaAtualizar) await local.set({ frases: localAtualizado });',
   '}',
 ].join('\n'), 1, 'a escrita que a B2 levou para fora da fila (b2188a1)');
-acusa('gravacao-de-frases', 'painel.js',
+gravacaoDeFrases('painel.js',
   'if (restantes.length !== frases.length) await chromeSet({ frases: restantes });\n', 1, 'chromeSet da página (0ade3d1)');
-acusa('gravacao-de-frases', 'background.js', "await chrome.storage.local.remove('pm_pending_sync');\n", 0, 'a limpeza da chave antiga');
-acusa('gravacao-de-frases', 'painel.js', "chrome.storage.local.set({\n  frases: todasFrases,\n}, () => {});\nchrome.storage.local.remove('frases');\n", 2,
+gravacaoDeFrases('background.js', "await chrome.storage.local.remove('pm_pending_sync');\n", 0, 'a limpeza da chave antiga');
+gravacaoDeFrases('painel.js', "chrome.storage.local.set({\n  frases: todasFrases,\n}, () => {});\nchrome.storage.local.remove('frases');\n", 2,
   'objeto em várias linhas e remove');
-acusa('gravacao-de-frases', 'background.js', [
+gravacaoDeFrases('background.js', [
   'async function salvarFrase(nova) {',
   '  await naFilaDeGravacao(async () => {',
   '    await chromeSet({ frases: [nova] });',
@@ -69,11 +79,11 @@ acusa('gravacao-de-frases', 'background.js', [
 ].join('\n'), 1, 'só a fila, sem tranca; o Historico e outra chave não');
 assert.strictEqual(regras['gravacao-de-frases'].seAplica('lib/historico.js'), false, 'o dono');
 
-acusa('idioma-solto', 'popup.js', "  const idioma = /[\\u0400-\\u04FF]/.test(texto) ? 'Russo' : 'Inglês';\n", 3, 'o detector copiado (bf640d9)');
-acusa('idioma-solto', 'painel.js', "const classe = (f.idioma === 'Russo' || detectarIdioma(f.texto || '') === 'Russo') ? ' frase-ru' : '';\n", 2,
+idiomaSolto('popup.js', "  const idioma = /[\\u0400-\\u04FF]/.test(texto) ? 'Russo' : 'Inglês';\n", 3, 'o detector copiado (bf640d9)');
+idiomaSolto('painel.js', "const classe = (f.idioma === 'Russo' || detectarIdioma(f.texto || '') === 'Russo') ? ' frase-ru' : '';\n", 2,
   'o nome solto que a segunda revisão tirou (73163ce)');
-acusa('idioma-solto', 'painel-anki-baralhos.js', "const label = deck.lang === 'ru' ? 'Russo' : 'Ingles';\n", 2, "'Ingles' sem acento (f9a8821)");
-acusa('idioma-solto', 'painel.js', [
+idiomaSolto('painel-anki-baralhos.js', "const label = deck.lang === 'ru' ? 'Russo' : 'Ingles';\n", 2, "'Ingles' sem acento (f9a8821)");
+idiomaSolto('painel.js', [
   "const { IDIOMAS, detectarIdioma, ehRussa } = PerpetualMiner;",
   'const lang = ehRussa(frase) ? "ru" : "en";',
   "// 'Russo' no comentário não conta",
@@ -91,13 +101,13 @@ const LEITOR = [
   '',
   'class T(unittest.TestCase):',
 ].join('\n');
-acusa('teste-le-codigo', 'bridge/test_anki_launcher.py', `${LEITOR}
+testeLeCodigo('bridge/test_anki_launcher.py', `${LEITOR}
     def test_duplicate_is_reported(self) -> None:
         process_fn = _function_source("_process_job")
         self.assertIn("results.get(stem) == send_mod.DUPLICATE", process_fn)
 `, 1, 'o teste que lê o código (656690d)');
-acusa('teste-le-codigo', 'engine/test_qualquer.py', 'import inspect\n\ndef test_x():\n    assert "foo" in inspect.getsource(bar)\n', 1, 'getsource direto');
-acusa('teste-le-codigo', 'bridge/test_anki_launcher.py', `${LEITOR}
+testeLeCodigo('engine/test_qualquer.py', 'import inspect\n\ndef test_x():\n    assert "foo" in inspect.getsource(bar)\n', 1, 'getsource direto');
+testeLeCodigo('bridge/test_anki_launcher.py', `${LEITOR}
     def test_repair_route(self) -> None:
         response = bridge.app.test_client().post("/anki/repair")
         config = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
@@ -113,35 +123,35 @@ const MENU = [
   '  { selecao, pageUrl, titulo },',
   ');',
 ].join('\n');
-acusa('e2e-funcao-interna', 'e2e/tests/mineracao-unica.spec.js', MENU, 1, 'o callback do menu sem a exceção nomeada (86b8bff)');
-acusa('e2e-funcao-interna', 'e2e/tests/componentes-veio.spec.js',
+e2eFuncaoInterna('e2e/tests/mineracao-unica.spec.js', MENU, 1, 'o callback do menu sem a exceção nomeada (86b8bff)');
+e2eFuncaoInterna('e2e/tests/componentes-veio.spec.js',
   'const rotulos = await page.evaluate(() => PerpetualMiner.Veio.ROTULOS_DO_PADRAO);\n', 1, 'constante interna (d2ab0da)');
-acusa('e2e-funcao-interna', 'e2e/tests/mineracao-unica.spec.js',
+e2eFuncaoInterna('e2e/tests/mineracao-unica.spec.js',
   `// Exceção de teste: chrome-nativo (docs/testes.md).\n// O Playwright não abre o menu de contexto nativo do Chrome.\n${MENU}`, 0, 'a exceção nomeada');
-acusa('e2e-funcao-interna', 'e2e/tests/review-probe.spec.js',
+e2eFuncaoInterna('e2e/tests/review-probe.spec.js',
   'const texto = await page.evaluate(() => { const nota = "Exceção de teste: catálogo"; return PerpetualMiner.textoDaVoz("PAI-05", { n: 2 }); });\n',
   1, 'a marca numa string');
-acusa('e2e-funcao-interna', 'e2e/tests/review-probe.spec.js',
+e2eFuncaoInterna('e2e/tests/review-probe.spec.js',
   'const nota = "// Exceção de teste: catálogo";\nconst texto = await page.evaluate(() => PerpetualMiner.textoDaVoz("PAI-05"));\n',
   1, 'a marca numa string da linha de cima');
-const [segunda] = acusa('e2e-funcao-interna', 'e2e/tests/review-probe.spec.js', [
+const [segunda] = e2eFuncaoInterna('e2e/tests/review-probe.spec.js', [
   '// Exceção de teste: catálogo (docs/testes.md).',
   'const texto = await page.evaluate(() => PerpetualMiner.textoDaVoz("PAI-05"));',
   'const ligado = await page.evaluate(() => PerpetualMiner.ConexaoAnki.conferir());',
 ].join('\n'), 1, 'a chamada seguinte, sem exceção própria');
 assert.strictEqual(segunda.linha, 3);
 total++;
-acusa('e2e-funcao-interna', 'e2e/tests/componentes-veio.spec.js', [
+e2eFuncaoInterna('e2e/tests/componentes-veio.spec.js', [
   '// Exceção de teste: componente-base (docs/testes.md).',
   "const texto = '<b>Hold</b> the line.';",
   'await page.evaluate(texto => PerpetualMiner.Veio.escreverFrase(corpo, texto), texto);',
 ].join('\n'), 1, 'a marca acima de outra instrução');
-acusa('e2e-funcao-interna', 'e2e/tests/componentes-veio.spec.js', [
+e2eFuncaoInterna('e2e/tests/componentes-veio.spec.js', [
   '// Exceção de teste: componente-base (docs/testes.md).',
   'const texto = await page',
   '  .evaluate(() => PerpetualMiner.Veio.escreverFrase(corpo, "x"));',
 ].join('\n'), 0, 'a marca acima da mesma instrução, quebrada em linhas');
-acusa('e2e-funcao-interna', 'e2e/tests/popup.spec.js', [
+e2eFuncaoInterna('e2e/tests/popup.spec.js', [
   "const texto = await extensao.serviceWorker.evaluate(() => chrome.action.getBadgeText({}));",
   "const frases = await page.evaluate(() => document.querySelectorAll('.veio-frase').length);",
 ].join('\n'), 0, 'chrome.* e o DOM não são código da extensão');
@@ -160,19 +170,19 @@ const SO_AS_FOTOS = [
   "  await fotografar(page, 'vocabulario-da-colecao-do-contrato.png');",
   '});',
 ].join('\n');
-const [semEstado] = acusa('e2e-estado-final', 'e2e/tests/painel-anki-baralhos.spec.js', SO_AS_FOTOS, 1, 'o cenário que termina na foto (7996b48)');
+const [semEstado] = e2eEstadoFinal('e2e/tests/painel-anki-baralhos.spec.js', SO_AS_FOTOS, 1, 'o cenário que termina na foto (7996b48)');
 assert.strictEqual(semEstado.linha, 1);
 total++;
-acusa('e2e-estado-final', 'e2e/tests/painel-anki-baralhos.spec.js', SO_AS_FOTOS.replace(/\n\}\);$/, [
+e2eEstadoFinal('e2e/tests/painel-anki-baralhos.spec.js', SO_AS_FOTOS.replace(/\n\}\);$/, [
   '',
   "  const gravado = await extensao.lerStorage(['pm_anki_baralhos', 'pm_anki_vocabulario']);",
   "  expect(gravado.pm_anki_baralhos.nomes).toEqual({ en: 'Inglês', ru: 'Alemão' });",
   "  expect(gravado.pm_anki_vocabulario.dados.en).toMatchObject({ deckName: 'Inglês', total: 12, source: 'colecao' });",
   '});',
 ].join('\n')), 0, 'o mesmo cenário conferindo os dois caches (05b7eb8)');
-acusa('e2e-estado-final', 'e2e/tests/painel-anki-baralhos.spec.js', SO_AS_FOTOS.replace(/\n\}\);$/, "\n  await extensao.lerStorage(['pm_anki_baralhos']);\n});"), 1,
+e2eEstadoFinal('e2e/tests/painel-anki-baralhos.spec.js', SO_AS_FOTOS.replace(/\n\}\);$/, "\n  await extensao.lerStorage(['pm_anki_baralhos']);\n});"), 1,
   'a leitura sem comparar com nada');
-acusa('e2e-estado-final', 'e2e/tests/painel-anki-baralhos.spec.js',
+e2eEstadoFinal('e2e/tests/painel-anki-baralhos.spec.js',
   SO_AS_FOTOS.replace("  const azulejos", "  expect((await extensao.lerStorage(['pm_anki_baralhos'])).pm_anki_baralhos).toBeUndefined();\n  const azulejos").replace("await aba(page, 'Vocabulário').click();", "await aba(page, 'Vocabulário').hover();"),
   0, 'sem ação nenhuma o teste só mostra: não é um cenário que grava');
 const SO_O_INTERRUPTOR = [
@@ -188,7 +198,7 @@ const SO_O_INTERRUPTOR = [
   '  await expect(interruptor(page)).toBeChecked();',
   '});',
 ].join('\n');
-acusa('e2e-estado-final', 'e2e/tests/configuracoes-abrir-anki.spec.js', SO_O_INTERRUPTOR, 1, 'o interruptor sem o item que a Conexão tem (5c391cb)');
+e2eEstadoFinal('e2e/tests/configuracoes-abrir-anki.spec.js', SO_O_INTERRUPTOR, 1, 'o interruptor sem o item que a Conexão tem (5c391cb)');
 const raizComFake = marcado => {
   const pasta = repositorioDeTestes({
     'e2e/fakes/anki.js': `return {\n  ${marcado ? '/** @estado-guardado O item de login que a Conexão tem. */\n  ' : ''}itemInstalado() { return item; },\n  /** @estado-guardado A chave da OpenAI que a Conexão guardou. */\n  chaveNaConexao() { return chave; },\n};\n`,
@@ -212,9 +222,9 @@ nulo(comOFake(true, 'e2e/tests/configuracoes-ia.spec.js', [
   "  expect(fakes.anki.chaveNaConexao()).toBe('sk-teste');",
   '});',
 ].join('\n')), 0, 'o leitor da PR 191, declarado pelo fake');
-acusa('e2e-estado-final', 'e2e/tests/configuracoes-abrir-anki.spec.js',
+e2eEstadoFinal('e2e/tests/configuracoes-abrir-anki.spec.js',
   SO_O_INTERRUPTOR.replace(/\n\}\);$/, '\n  await estadoFinalEm(\'o item de login\', () => fakes.anki.itemInstalado(), true);\n});'), 0, 'o helper estadoFinalEm');
-acusa('e2e-estado-final', 'e2e/tests/painel-anki-baralhos.spec.js', [
+e2eEstadoFinal('e2e/tests/painel-anki-baralhos.spec.js', [
   "const lerGravado = async (extensao, chave) => (await extensao.lerStorage(chave))[chave];",
   "test('salvar grava o baralho', async ({ page, extensao }) => {",
   "  await page.getByRole('button', { name: 'Salvar ajustes' }).click();",
@@ -255,12 +265,12 @@ nulo(achadosDoEstado(NO_ESTADO("  await estadoFinalInalterado(extensao, ['pm_tem
   'o helper de estado inalterado lê e compara depois da ação que ele executa');
 nulo(achadosDoEstado(NO_ESTADO("  await estadoFinalInalterado(extensao, ['pm_tema'], async () => {});", '  await botao.click();')), 1,
   'o helper antes da ação não é o estado final');
-acusa('e2e-estado-final', 'e2e/tests/painel-anki-baralhos.spec.js',
+e2eEstadoFinal('e2e/tests/painel-anki-baralhos.spec.js',
   `// Exceção de teste: sem-estado-guardado — a aba só muda o que a tela mostra.\n${SO_AS_FOTOS}`, 0, 'a exceção nomeada');
 assert.strictEqual(regras['e2e-estado-final'].seAplica('e2e/tests/painel-anki-baralhos-visual.spec.js'), false);
 total++;
 
-acusa('contrato-fechado', 'painel-anki-baralhos.js', [
+contratoFechado('painel-anki-baralhos.js', [
   '  async function pedirJson(caminho, corpo) {',
   '    const resposta = await fetch(`${ENDERECO_DA_CONEXAO}${caminho}`, {',
   "      method: 'POST',",
@@ -270,19 +280,19 @@ acusa('contrato-fechado', 'painel-anki-baralhos.js', [
   '    return resposta.json();',
   '  }',
 ].join('\n'), 1, 'o POST com o caminho numa variável (7996b48)');
-const [saude] = acusa('contrato-fechado', 'lib/conexao-anki.js',
+const [saude] = contratoFechado('lib/conexao-anki.js',
   "const resposta = await fetch(`${ENDERECO}/health`, { signal: AbortSignal.timeout(TEMPO_DA_RESPOSTA) });\n", 1, 'a saúde por fetch direto');
 assert.match(saude.detalhe, /fetch direto a GET \/health, que o contrato tem: peça por ConversaComOAnki\.pedir/);
 total++;
-const [retomar] = acusa('contrato-fechado', 'painel-envio.js',
+const [retomar] = contratoFechado('painel-envio.js',
   "const resposta = await fetch(`${ENDERECO_DA_CONEXAO}/jobs/${encodeURIComponent(jobId)}/retry`, { method: 'POST' });\n", 1, 'rota fora do contrato');
 assert.match(retomar.detalhe, /POST \/jobs\/:id\/retry: a rota não tem exemplo no contrato/);
 total++;
-acusa('contrato-fechado', 'background.js', "await fetch('http://127.0.0.1:8766/health');\n", 1, 'o endereço por extenso');
-acusa('contrato-fechado', 'painel-ajustes.js',
+contratoFechado('background.js', "await fetch('http://127.0.0.1:8766/health');\n", 1, 'o endereço por extenso');
+contratoFechado('painel-ajustes.js',
   'const desfecho = await raiz.ConversaComOAnki.pedir(raiz.PedidoAoAnki.baralhos());\n', 0, 'o construtor');
-acusa('contrato-fechado', 'lib/sincronizacao.js', "const r = await fetch(`${URL_DO_FIRESTORE}/documents/frases`, { method: 'POST' });\n", 0, 'outro servidor');
-acusa('contrato-fechado', 'background.js', "// fetch(`${BRIDGE_URL}/jobs`)\n", 0, 'um comentário');
+contratoFechado('lib/sincronizacao.js', "const r = await fetch(`${URL_DO_FIRESTORE}/documents/frases`, { method: 'POST' });\n", 0, 'outro servidor');
+contratoFechado('background.js', "// fetch(`${BRIDGE_URL}/jobs`)\n", 0, 'um comentário');
 
 function achadosDoPortao(arquivos, arquivo) {
   const pasta = repositorioDeTestes(arquivos);
@@ -302,38 +312,37 @@ const CADASTRO = JSON.stringify({
 const TESTES = { 'test_sync.js': '', 'test_fake_anki.js': '', 'test_gemini.js': '', 'complemento/test_servidor.py': '' };
 const CHAMA_TUDO = 'on:\n  pull_request:\njobs:\n  a:\n    steps:\n      - run: node scripts/testar.mjs node\n      - run: node scripts/testar.mjs complemento\n';
 const comOPortao = (extra = {}) => ({ 'scripts/testes.json': CADASTRO, ...TESTES, '.github/workflows/testes.yml': CHAMA_TUDO, ...extra });
-const achadosDe = (arquivos, arquivo) => achadosDoPortao(arquivos, arquivo);
 
-nulo(achadosDe(comOPortao(), 'scripts/testes.json'), 0, 'o cadastro em dia');
-nulo(achadosDe(comOPortao(), '.github/workflows/testes.yml'), 0, 'o workflow que só chama o executor');
-nulo(achadosDe(comOPortao(), 'test_gemini.js'), 0, 'um arquivo em `fora`, com o motivo');
-nulo(achadosDe(comOPortao(), 'complemento/test_servidor.py'), 0, 'um teste descoberto pela pasta do grupo');
+nulo(achadosDoPortao(comOPortao(), 'scripts/testes.json'), 0, 'o cadastro em dia');
+nulo(achadosDoPortao(comOPortao(), '.github/workflows/testes.yml'), 0, 'o workflow que só chama o executor');
+nulo(achadosDoPortao(comOPortao(), 'test_gemini.js'), 0, 'um arquivo em `fora`, com o motivo');
+nulo(achadosDoPortao(comOPortao(), 'complemento/test_servidor.py'), 0, 'um teste descoberto pela pasta do grupo');
 
-nulo(achadosDe(comOPortao({ 'scripts/test_divisao_do_claude_md.mjs': '' }), 'scripts/test_divisao_do_claude_md.mjs'), 1,
+nulo(achadosDoPortao(comOPortao({ 'scripts/test_divisao_do_claude_md.mjs': '' }), 'scripts/test_divisao_do_claude_md.mjs'), 1,
   'um teste sem grupo (0de5d66)');
-nulo(achadosDe(comOPortao({ 'complemento/test_novo.py': '' }), 'complemento/test_novo.py'), 0, 'um teste novo da pasta de um grupo');
+nulo(achadosDoPortao(comOPortao({ 'complemento/test_novo.py': '' }), 'complemento/test_novo.py'), 0, 'um teste novo da pasta de um grupo');
 
 const WORKFLOW_DO_83FDA05 = [
   'on:', '  pull_request:', 'jobs:', '  node:', '    steps:',
   '      - run: node test_auto_keyword.js', '      - run: node test_sync.js', '      - run: node test_empacotar.js',
   '  bridge:', '    steps:', '      - run: python -m unittest discover -s bridge -p "test_*.py"', '',
 ].join('\n');
-const doWorkflow = nulo(achadosDe(comOPortao({ '.github/workflows/testes.yml': WORKFLOW_DO_83FDA05 }), '.github/workflows/testes.yml'), 4,
+const doWorkflow = nulo(achadosDoPortao(comOPortao({ '.github/workflows/testes.yml': WORKFLOW_DO_83FDA05 }), '.github/workflows/testes.yml'), 4,
   'os testes rodados por fora do executor (83fda05)');
 assert.match(doWorkflow[0].detalhe, /roda um teste por fora do executor.*node scripts\/testar\.mjs <grupo>/);
 total++;
-const semOComplemento = nulo(achadosDe(comOPortao({
+const semOComplemento = nulo(achadosDoPortao(comOPortao({
   '.github/workflows/testes.yml': CHAMA_TUDO.replace('      - run: node scripts/testar.mjs complemento\n', ''),
 }), 'scripts/testes.json'), 1, 'um grupo que nenhum workflow chama (o job do complemento que faltava)');
 assert.match(semOComplemento[0].detalhe, /grupo complemento: nenhum workflow de PR chama `node scripts\/testar\.mjs complemento`/);
 total++;
-nulo(achadosDe(comOPortao({ '.github/workflows/testes.yml': CHAMA_TUDO.replace('pull_request', 'workflow_dispatch') }), 'scripts/testes.json'), 2,
+nulo(achadosDoPortao(comOPortao({ '.github/workflows/testes.yml': CHAMA_TUDO.replace('pull_request', 'workflow_dispatch') }), 'scripts/testes.json'), 2,
   'workflow que não roda em PR não conta');
-nulo(achadosDe(comOPortao({ '.github/workflows/testes.yml': 'on:\n  pull_request:\n# node scripts/testar.mjs node\n# node scripts/testar.mjs complemento\n' }), 'scripts/testes.json'), 2,
+nulo(achadosDoPortao(comOPortao({ '.github/workflows/testes.yml': 'on:\n  pull_request:\n# node scripts/testar.mjs node\n# node scripts/testar.mjs complemento\n' }), 'scripts/testes.json'), 2,
   'o comentário não chama grupo');
 const JOB = (extra = '', passo = '      - run: node scripts/testar.mjs complemento\n') => `on:\n  pull_request:\njobs:\n  node:\n    steps:\n      - run: node scripts/testar.mjs node\n  complemento:\n${extra}    steps:\n${passo}`;
 const semOComplementoNoPortao = (workflow, quantos, porque) => {
-  const achados = achadosDe(comOPortao({ '.github/workflows/testes.yml': workflow }), 'scripts/testes.json');
+  const achados = achadosDoPortao(comOPortao({ '.github/workflows/testes.yml': workflow }), 'scripts/testes.json');
   nulo(achados.filter(a => /grupo complemento/.test(a.detalhe)), quantos, porque);
 };
 semOComplementoNoPortao(JOB(), 0, 'o job que executa o grupo');
@@ -366,16 +375,16 @@ semOComplementoNoPortao(JOB('    env:\n      RODAR: false\n', PASSO_RODAR), 1, '
 semOComplementoNoPortao(JOB('    env:\n      RODAR: true\n', PASSO_RODAR), 0, 'o env fixo em true');
 semOComplementoNoPortao(JOB('', PASSO_RODAR), 1, 'um env que o job não define não conta');
 semOComplementoNoPortao(JOB("    env:\n      RODAR: ${{ github.ref == 'refs/heads/main' }}\n", PASSO_RODAR), 1, 'um env decidido por outra coisa que não o resultado de um job não conta');
-const doEcho = nulo(achadosDe(comOPortao({ '.github/workflows/testes.yml': JOB('', '      - run: echo node scripts/testar.mjs complemento\n') }), '.github/workflows/testes.yml'), 1,
+const doEcho = nulo(achadosDoPortao(comOPortao({ '.github/workflows/testes.yml': JOB('', '      - run: echo node scripts/testar.mjs complemento\n') }), '.github/workflows/testes.yml'), 1,
   'o passo que só cita o executor');
 assert.match(doEcho[0].detalhe, /não executa o grupo \(só imprime, não executa\)/);
 total++;
-nulo(achadosDe(comOPortao({ '.github/workflows/testes.yml': JOB('    if: false\n') }), '.github/workflows/testes.yml'), 1, 'o job desligado que chama o executor');
+nulo(achadosDoPortao(comOPortao({ '.github/workflows/testes.yml': JOB('    if: false\n') }), '.github/workflows/testes.yml'), 1, 'o job desligado que chama o executor');
 
-nulo(achadosDe(comOPortao({ 'scripts/testes.json': CADASTRO.replace('"test_gemini.js"', '"test_inexistente.js"') }), 'scripts/testes.json'), 1, 'fora com um arquivo que não existe');
-nulo(achadosDe(comOPortao({ 'scripts/testes.json': CADASTRO.replace('um script avulso, não um teste', ' ') }), 'scripts/testes.json'), 1, 'fora sem motivo');
-nulo(achadosDe(comOPortao({ 'scripts/testes.json': CADASTRO.replace('test_*.py', 'prova_*.py') }), 'scripts/testes.json'), 1, 'grupo cujo padrão não casa com nada');
-nulo(achadosDe(comOPortao({ '.github/workflows/testes.yml': `${CHAMA_TUDO}      - run: node scripts/testar.mjs engine\n` }), '.github/workflows/testes.yml'), 1,
+nulo(achadosDoPortao(comOPortao({ 'scripts/testes.json': CADASTRO.replace('"test_gemini.js"', '"test_inexistente.js"') }), 'scripts/testes.json'), 1, 'fora com um arquivo que não existe');
+nulo(achadosDoPortao(comOPortao({ 'scripts/testes.json': CADASTRO.replace('um script avulso, não um teste', ' ') }), 'scripts/testes.json'), 1, 'fora sem motivo');
+nulo(achadosDoPortao(comOPortao({ 'scripts/testes.json': CADASTRO.replace('test_*.py', 'prova_*.py') }), 'scripts/testes.json'), 1, 'grupo cujo padrão não casa com nada');
+nulo(achadosDoPortao(comOPortao({ '.github/workflows/testes.yml': `${CHAMA_TUDO}      - run: node scripts/testar.mjs engine\n` }), '.github/workflows/testes.yml'), 1,
   'workflow que chama um grupo que o cadastro não tem');
 
 const HOJE = '2026-10-04';

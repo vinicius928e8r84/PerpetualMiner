@@ -29,24 +29,25 @@ def base_config() -> dict:
 
 def _ler_env(caminho: Path) -> dict:
     """KEY=VALUE lines of a .env file (comments, blank lines, `export ` and surrounding quotes allowed)."""
-    valores = {}
     try:
         linhas = caminho.read_text(encoding="utf-8").splitlines()
     except OSError:
-        return valores
-    for linha in linhas:
-        linha = linha.strip()
-        if not linha or linha.startswith("#") or "=" not in linha:
-            continue
-        nome, valor = linha.split("=", 1)
-        nome = nome.strip()
-        if nome.startswith("export "):
-            nome = nome[len("export "):].strip()
-        valor = valor.strip()
-        if len(valor) >= 2 and valor[0] == valor[-1] and valor[0] in "'\"":
-            valor = valor[1:-1]
-        valores[nome] = valor
-    return valores
+        return {}
+    return dict(atribuicao for atribuicao in map(_atribuicao, linhas) if atribuicao)
+
+
+def _atribuicao(linha: str):
+    """`(nome, valor)` of one `.env` line, or None for a blank line, a comment or a line without `=`."""
+    linha = linha.strip()
+    if linha.startswith("#") or "=" not in linha:
+        return None
+    nome, valor = linha.split("=", 1)
+    return nome.strip().removeprefix("export ").strip(), _sem_o_par_de_aspas(valor.strip())
+
+
+def _sem_o_par_de_aspas(valor: str) -> str:
+    """`valor` without the quotes around it, when it starts and ends with the same one (`'` or `"`)."""
+    return valor[1:-1] if len(valor) >= 2 and valor[0] + valor[-1] in ("''", '""') else valor
 
 
 def load_config(openai_api_key=None, env_file=None) -> dict:

@@ -20,10 +20,10 @@ from typing import Any
 
 if __package__:  # inside the Anki add-on the engine is the package `complemento.motor`
     from . import openai_http
-    from .image_utils import UnsupportedImageFormatError, normalize_image_bytes
+    from .image_utils import normalize_image_bytes
 else:
     import openai_http
-    from image_utils import UnsupportedImageFormatError, normalize_image_bytes
+    from image_utils import normalize_image_bytes
 
 
 _HEADERS = {
@@ -33,6 +33,7 @@ _HEADERS = {
 OPENVERSE_BASE = "https://api.openverse.org"
 TEMPO_DO_PEDIDO = 20
 LIMITE_DA_FOTO = 25 * 1024 * 1024
+DADO_QUE_FALTA = {"title": "", "creator": "", "width": 0, "height": 0, "license": ""}
 
 
 def _ler(url: str, limite: int) -> bytes | None:
@@ -58,49 +59,51 @@ def search_candidates(query: str, limit: int = 8, openverse_base: str = OPENVERS
         corpo = _ler(openverse_base + "/v1/images/?" + busca, 5 * 1024 * 1024)
         if corpo is None:
             return []
-
-        data = json.loads(corpo.decode("utf-8"))
-        out: list[dict[str, Any]] = []
-        for item in data.get("results", []):
-            url = item.get("url") or item.get("thumbnail")
-            thumb = item.get("thumbnail") or url
-            if not url:
-                continue
-            out.append({
-                "url": url,
-                "thumbnail": thumb,
-                "title": item.get("title") or "",
-                "creator": item.get("creator") or "",
-                "source": "openverse",
-                "query": query,
-                "width": item.get("width") or 0,
-                "height": item.get("height") or 0,
-                "license": item.get("license") or "",
-            })
-        return out
+        resultados = json.loads(corpo.decode("utf-8")).get("results", [])
+        return [candidata for candidata in (_candidata(item, query) for item in resultados) if candidata]
     except Exception:
         return []
 
 
+def _candidata(item: dict[str, Any], query: str) -> dict[str, Any] | None:
+    """The candidate one Openverse result makes, or None when it has neither an address nor a thumbnail."""
+    url = item.get("url") or item.get("thumbnail")
+    if not url:
+        return None
+    return {
+        "url": url,
+        "thumbnail": item.get("thumbnail") or url,
+        "title": _dado(item, "title"),
+        "creator": _dado(item, "creator"),
+        "source": "openverse",
+        "query": query,
+        "width": _dado(item, "width"),
+        "height": _dado(item, "height"),
+        "license": _dado(item, "license"),
+    }
+
+
+def _dado(item: dict[str, Any], campo: str) -> Any:
+    """The `campo` of an Openverse result, or what it is worth when Openverse leaves it out or empty (`DADO_QUE_FALTA`)."""
+    return item.get(campo) or DADO_QUE_FALTA[campo]
+
+
 def download_candidate(candidate: dict[str, Any], dest: Path) -> bool:
     """Download one candidate image to *dest* as normalized PNG bytes."""
-    for key in ("url", "thumbnail"):
-        url = candidate.get(key)
-        if not url:
-            continue
-        try:
-            content = _ler(url, LIMITE_DA_FOTO)
-            if content is None or len(content) < 32:
-                continue
-            try:
-                data, _ = normalize_image_bytes(content, target_format="PNG")
-            except UnsupportedImageFormatError:
-                continue
-            dest.write_bytes(data)
-            return True
-        except Exception:
-            continue
-    return False
+    return any(_gravou_a_foto(url, dest) for url in map(candidate.get, ("url", "thumbnail")) if url)
+
+
+def _gravou_a_foto(url: str, dest: Path) -> bool:
+    """Whether the photo at `url` came, is a raster image of at least 32 bytes and was written to `dest` as PNG.
+    Anything that fails on the way (the request, the conversion, the write) is a photo not had."""
+    try:
+        conteudo = _ler(url, LIMITE_DA_FOTO)
+        if conteudo is None or len(conteudo) < 32:
+            return False
+        dest.write_bytes(normalize_image_bytes(conteudo, target_format="PNG")[0])
+        return True
+    except Exception:
+        return False
 
 
 def fetch(query: str, dest: Path) -> bool:
