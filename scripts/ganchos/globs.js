@@ -6,17 +6,11 @@ function expandirChaves(glob) {
   return chaves[1].split(',').flatMap(opcao => expandirChaves(glob.slice(0, chaves.index) + opcao + glob.slice(chaves.index + chaves[0].length)));
 }
 
+const REGEX_DO_CURINGA = new Map([['**/', '(?:.*/)?'], ['**', '.*'], ['*', '[^/]*'], ['?', '[^/]']]);
+const CURINGA_OU_CARACTERE_DE_REGEX = /\*\*\/|\*\*|\*|\?|[.+^$()|[\]\\]/g;
+
 function corpoDoGlob(glob) {
-  let regex = '';
-  for (let i = 0; i < glob.length; i++) {
-    const c = glob[i];
-    if (c === '*' && glob[i + 1] === '*') {
-      if (glob[i + 2] === '/') { regex += '(?:.*/)?'; i += 2; } else { regex += '.*'; i += 1; }
-    } else if (c === '*') regex += '[^/]*';
-    else if (c === '?') regex += '[^/]';
-    else regex += c.replace(/[.+^$()|[\]\\]/g, '\\$&');
-  }
-  return regex;
+  return glob.replace(CURINGA_OU_CARACTERE_DE_REGEX, pedaco => REGEX_DO_CURINGA.get(pedaco) ?? `\\${pedaco}`);
 }
 
 function globParaRegex(glob) {
