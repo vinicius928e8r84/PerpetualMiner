@@ -144,7 +144,6 @@
     "engine/provedores.py": 4,
     "engine/rodar_imagens.py": 5,
     "engine/send_to_anki.py": 78,
-    "engine/test_prompt_contracts.py": 1,
     "lib/abrir-o-anki.js": 7,
     "lib/ajustes-de-envio.js": 14,
     "lib/arquivos-da-extensao.js": 17,
