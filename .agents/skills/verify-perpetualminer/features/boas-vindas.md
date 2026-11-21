@@ -1,6 +1,6 @@
 # Boas-vindas (first run)
 
-Installing the extension opens `painel.html#boas-vindas`, a page without the panel's sidebar. It lists 9 steps (5 optional) and walks a person through them one card at a time: mine a first phrase, choose the selection shortcut, sign in with Google, connect Anki, configure the AI (the OpenAI key), turn on automatic mining, choose the level of each language with the Cartão preview, add the Gemini key, send the first Cartão to Anki. A step is done by the real stored state. "Tudo pronto" summarizes and Abrir painel goes to Frases.
+Installing the extension opens `painel/painel.html#boas-vindas`, a page without the panel's sidebar. It lists 9 steps (5 optional) and walks a person through them one card at a time: mine a first phrase, choose the selection shortcut, sign in with Google, connect Anki, configure the AI (the OpenAI key), turn on automatic mining, choose the level of each language with the Cartão preview, add the Gemini key, send the first Cartão to Anki. A step is done by the real stored state. "Tudo pronto" summarizes and Abrir painel goes to Frases.
 
 ## Sub-features
 

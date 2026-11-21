@@ -14,7 +14,7 @@ Configurações › **Conexão com o Anki** holds one switch, **Abrir o Anki com
 
 ## How to get to it (user POV)
 
-- Sidebar › **Configurações** › card **Conexão com o Anki**, or open `painel.html#configuracoes/anki` (the card opens by itself).
+- Sidebar › **Configurações** › card **Conexão com o Anki**, or open `painel/painel.html#configuracoes/anki` (the card opens by itself).
 
 ## Driving it with the Playwright e2e harness
 
