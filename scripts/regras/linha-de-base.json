@@ -139,7 +139,7 @@
     "lib/envio-gravado.js": 5,
     "lib/mineracao-automatica-decisao.js": 9,
     "lib/palavra-automatica.js": 20,
-    "lib/pedido-ao-anki.js": 8,
+    "lib/pedido-ao-anki.js": 1,
     "lib/sincronizacao.js": 8,
     "painel/painel-abrir-anki.js": 10,
     "painel/painel-anki-primeira-conexao-estado.js": 25,
