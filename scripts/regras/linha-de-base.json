@@ -52,7 +52,6 @@
   },
   "dialogo-nativo": {},
   "saude-do-codigo": {
-    ".agents/skills/verificar-historico/variantes.py": 1,
     "background.js": 41,
     "complemento/atualizacao.py": 1,
     "complemento/chaves.py": 29,
