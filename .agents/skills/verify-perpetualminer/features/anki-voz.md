@@ -13,7 +13,7 @@ In **Ajustes de envio**, the card **Avançado · voz e sotaque do áudio** (#174
 
 ## How to get to it (user POV)
 
-- Sidebar › **Conexão com o Anki** › **Ajustes de envio** (`painel.html#anki/ajustes`), a language card, **Avançado**. The reserve at work is visible only in the Card: the audio of a Cartão sent while Google fails.
+- Sidebar › **Conexão com o Anki** › **Ajustes de envio** (`painel/painel.html#anki/ajustes`), a language card, **Avançado**. The reserve at work is visible only in the Card: the audio of a Cartão sent while Google fails.
 
 ## Driving it with the Playwright e2e harness
 
