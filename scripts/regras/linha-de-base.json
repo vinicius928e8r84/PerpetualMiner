@@ -139,7 +139,6 @@
     "engine/cost_tracker.py": 4,
     "engine/extract_prompts.py": 5,
     "engine/image_judge.py": 6,
-    "engine/image_queries.py": 1,
     "engine/nota_do_cartao.py": 3,
     "engine/openai_http.py": 13,
     "engine/prompt_loader.py": 1,
