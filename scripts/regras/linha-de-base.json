@@ -94,7 +94,6 @@
     "complemento/test_modelos_em_memoria.py": 3,
     "complemento/test_openai_de_mentira.py": 11,
     "complemento/test_pareamento_de_mentira.py": 6,
-    "complemento/test_passagem_cartoes.py": 1,
     "complemento/test_plano_do_chatgpt.py": 2,
     "complemento/test_qt_do_anki.py": 29,
     "complemento/test_qt_do_anki_pareamento.py": 13,

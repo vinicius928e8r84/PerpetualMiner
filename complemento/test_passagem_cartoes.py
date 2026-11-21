@@ -100,6 +100,12 @@ class APassagemCopiaSemMoverNada(unittest.TestCase):
             self.assertNotEqual(nova.conexao.perfil_fixo.marcado(), "Perfil que sumiu")
 
 
+def a_fila_que_passou(fila):
+    """A ordem dos Envios na fila da Conexão nova, com o pedido e o estado de cada um."""
+    ordem = [item["jobId"] for item in fila.ordem()]
+    return ordem, {i: fila.pedido(i) for i in ordem}, {i: fila.estado(i)["status"] for i in ordem}
+
+
 class APassagemPassaOsEnvios(unittest.TestCase):
     def test_a_fila_que_nao_comecou_passa_sem_refazer_os_cartoes_prontos_e_o_que_terminou_vira_historico(self):
         with tempfile.TemporaryDirectory() as pasta, uma_conexao_de_hoje(pasta) as antiga:
@@ -107,9 +113,7 @@ class APassagemPassaOsEnvios(unittest.TestCase):
             antiga.envio(TERCEIRO_ID, "queued", [(30, "keep : They keep going")], criado="2026-10-01T10:02:00-03:00")
             with NaPassagem(pasta, antiga, trabalhando=False) as nova:
                 nova.passar()
-                ordem = [item["jobId"] for item in nova.conexao.fila.ordem()]
-                pedidos = {i: nova.conexao.fila.pedido(i) for i in ordem}
-                estados = {i: nova.conexao.fila.estado(i)["status"] for i in ordem}
+                ordem, pedidos, estados = a_fila_que_passou(nova.conexao.fila)
         self.assertEqual(estados[OUTRO_ID], "queued")
         self.assertEqual([e["phraseId"] for e in pedidos[OUTRO_ID]["entries"]], [20], "a Frase 21, pronta, não volta")
         self.assertEqual(pedidos[OUTRO_ID]["entries"][0]["line"], "late : She is late")
