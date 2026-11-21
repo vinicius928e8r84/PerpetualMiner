@@ -19,11 +19,12 @@
     },
     "ferramentas": {
       "paralelo": 4,
-      "descricao": "As ferramentas de scripts/: o executor dos grupos, os ganchos (o limite de tamanho dos arquivos e o pre-push), as receitas do mapa de features, os condutores do Mac e do PC e o relatório do explorador do Histórico",
+      "descricao": "As ferramentas de scripts/: o executor dos grupos, os ganchos (o limite de tamanho dos arquivos e o pre-push), as receitas do mapa de features, os ajudantes da verificação (test_helpers.sh, que roda no bash), os condutores do Mac e do PC e o relatório do explorador do Histórico",
       "executor": "node",
       "arquivos": [
         ".agents/skills/verificar-historico/test_*.js",
         ".agents/skills/verify-perpetualminer/scripts/test_*.js",
+        ".agents/skills/verify-perpetualminer/scripts/test_*.sh",
         "scripts/ganchos/test_*.js",
         "scripts/qualidade/test_*.js",
         "scripts/test_testar.mjs",

@@ -99,7 +99,9 @@ function estourouOTeto(segundos, teto) {
   return teto !== null && segundos > teto;
 }
 
+const interpreteDoArquivo = arquivo => (arquivo.endsWith('.sh') ? 'bash' : 'node');
+
 module.exports = {
   tetoEmSegundos, estourouOTeto, trabalhadoresDoGrupo, ARQUIVO_DO_REGISTRO, ehArquivoDeTeste, padraoComoRegex, arquivosDoGrupo, lerRegistro, grupoDoArquivo,
-  escolherPython, dicaDeModulo, baseDaVersao,
+  escolherPython, dicaDeModulo, baseDaVersao, interpreteDoArquivo,
 };

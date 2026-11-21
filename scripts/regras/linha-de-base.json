@@ -1,26 +1,15 @@
 {
   "tokens-veio": {
     "background.js": 2,
-    "e2e/vitrine/vitrine.html": 2,
     "painel/painel.css": 2
   },
   "gravacao-de-frases": {},
   "idioma-solto": {},
   "teste-le-codigo": {},
   "e2e-funcao-interna": {},
-  "testes-no-portao": {
-    ".agents/skills/verify-perpetualminer/scripts/test_helpers.sh": 1
-  },
+  "testes-no-portao": {},
   "contrato-fechado": {},
   "e2e-estado-final": {
-    "e2e/tests/badge-da-toolbar.spec.js": 1,
-    "e2e/tests/base-veio.spec.js": 4,
-    "e2e/tests/boas-vindas.spec.js": 10,
-    "e2e/tests/componentes-veio.spec.js": 11,
-    "e2e/tests/conexao-anki.spec.js": 1,
-    "e2e/tests/conexao-na-tela.spec.js": 2,
-    "e2e/tests/configuracoes-atalhos.spec.js": 7,
-    "e2e/tests/configuracoes-chave-perigo.spec.js": 4,
     "e2e/tests/configuracoes-tema.spec.js": 6,
     "e2e/tests/lembrete-configuracao.spec.js": 3,
     "e2e/tests/overlay-marca.spec.js": 4,

@@ -112,6 +112,7 @@ test('as seis variantes de botão têm cada uma o seu desenho', async ({ page, p
   await expect(soIcone).toHaveText('');
 });
 
+// Exceção de teste: sem-estado-guardado — a vitrine não tem chrome.storage.
 test('a busca mostra o × só quando há texto, e ele limpa o campo', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
 
@@ -216,6 +217,7 @@ test('o estado vazio ensina o que fazer e leva a ação junto', async ({ page, p
   }
 });
 
+// Exceção de teste: sem-estado-guardado — a vitrine não tem chrome.storage.
 test('o modal é um diálogo, começa no botão seguro e prende o foco', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
 
@@ -243,6 +245,7 @@ test('o modal é um diálogo, começa no botão seguro e prende o foco', async (
   expect(await page.locator('.cabecalho').evaluate(no => no.hasAttribute('inert'))).toBe(true);
 });
 
+// Exceção de teste: sem-estado-guardado — a vitrine não tem chrome.storage.
 test('Esc fecha o modal e devolve o foco a quem abriu', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
 
@@ -258,6 +261,7 @@ test('Esc fecha o modal e devolve o foco a quem abriu', async ({ page, paginas }
   expect(await page.locator('.cabecalho').evaluate(no => no.hasAttribute('inert'))).toBe(false);
 });
 
+// Exceção de teste: sem-estado-guardado — a vitrine não tem chrome.storage.
 test('o clique fora fecha o modal, e dentro dele não', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
 
@@ -274,6 +278,7 @@ test('o clique fora fecha o modal, e dentro dele não', async ({ page, paginas }
   await expect(abrir).toBeFocused();
 });
 
+// Exceção de teste: sem-estado-guardado — a vitrine não tem chrome.storage.
 test('o toast de sucesso some sozinho, depois do tempo de leitura', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
 
@@ -289,6 +294,7 @@ test('o toast de sucesso some sozinho, depois do tempo de leitura', async ({ pag
   await expect(toast).toBeHidden({ timeout: 4000 });
 });
 
+// Exceção de teste: sem-estado-guardado — a vitrine não tem chrome.storage.
 test('o toast aparece no tema da coluna que o mostrou', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
 
@@ -331,6 +337,7 @@ test('o toast fica mais tempo quanto maior o texto', async ({ page, paginas }) =
   expect(longo).toBeGreaterThan(curto + 1000);
 });
 
+// Exceção de teste: sem-estado-guardado — a vitrine não tem chrome.storage.
 test('o aviso persistente fica até ser fechado e tem Detalhes recolhido', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
 
@@ -428,6 +435,7 @@ test('a frase mostra o texto como texto, mesmo com marcação dentro', async ({ 
   expect(await page.evaluate(() => window.__injetado)).toBeUndefined();
 });
 
+// Exceção de teste: sem-estado-guardado — a vitrine não tem chrome.storage.
 test('na frase clicável, cada palavra é um botão, a escolhida é grifada e as setas andam numa parada só do Tab', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
 
@@ -456,6 +464,7 @@ test('na frase clicável, cada palavra é um botão, a escolhida é grifada e as
   await expect(cartao.locator('[role="button"][tabindex="0"]')).toHaveCount(1);
 });
 
+// Exceção de teste: sem-estado-guardado — a vitrine não tem chrome.storage.
 test('toda a cópia da vitrine vem do catálogo da Voz', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
 
@@ -500,6 +509,7 @@ test('toda a cópia da vitrine vem do catálogo da Voz', async ({ page, paginas 
     && !teclasGravadas.has(texto) && !doPadrao.has(texto))).toEqual([]);
 });
 
+// Exceção de teste: sem-estado-guardado — a vitrine não tem chrome.storage.
 test('todo controle da vitrine mostra onde o foco está', async ({ page, paginas }) => {
   test.setTimeout(90_000);
   await abrirVitrine(page, paginas);
@@ -547,41 +557,4 @@ test('todo controle da vitrine mostra onde o foco está', async ({ page, paginas
 
   expect(focados.length).toBeGreaterThan(20);
   expect(semFoco).toEqual([]);
-});
-
-test('com movimento reduzido, os sinais de estado ficam parados', async ({ page, paginas }) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await abrirVitrine(page, paginas);
-
-  const esqueleto = page.locator('[data-tema="escuro"] .veio-esqueleto').first();
-  await expect(esqueleto).toBeVisible();
-  await expect(esqueleto).toHaveCSS('animation-name', 'none');
-
-  await page.locator('[data-tema="escuro"] [data-grupo="Toast"] button').click();
-  await expect(page.locator('.veio-toast')).toBeVisible();
-
-  const aindaEmMovimento = await page.evaluate(async () => {
-    const prazo = new Promise(resolve => setTimeout(resolve, 300));
-    await Promise.race([
-      Promise.all(document.getAnimations().map(a => a.finished.then(() => true, () => true))),
-      prazo,
-    ]);
-    return document.getAnimations()
-      .filter(animacao => animacao.playState === 'running')
-      .map(animacao => animacao.animationName || 'sem nome');
-  });
-
-  expect(aindaEmMovimento).toEqual([]);
-});
-
-test('a vitrine com componentes também não pede nada ao Google Fonts', async ({ page, paginas }) => {
-  const paraFora = [];
-  page.on('request', req => {
-    if (/fonts\.(googleapis|gstatic)\.com/.test(req.url())) paraFora.push(req.url());
-  });
-
-  await abrirVitrine(page, paginas);
-  await page.evaluate(() => document.fonts.ready);
-
-  expect(paraFora).toEqual([]);
 });

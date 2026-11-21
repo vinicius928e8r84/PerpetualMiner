@@ -7,7 +7,7 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
-const { arquivosDoGrupo, baseDaVersao, dicaDeModulo, escolherPython, lerRegistro, trabalhadoresDoGrupo, tetoEmSegundos, estourouOTeto } = require('./grupos-de-teste.js');
+const { arquivosDoGrupo, baseDaVersao, dicaDeModulo, escolherPython, interpreteDoArquivo, lerRegistro, trabalhadoresDoGrupo, tetoEmSegundos, estourouOTeto } = require('./grupos-de-teste.js');
 const { rodarEmParalelo } = require('./unittest-em-paralelo.js');
 const { rodarArquivosEmParalelo } = require('./arquivos-em-paralelo.js');
 const { arquivosDoRepositorio } = require('./regras/comum.js');
@@ -20,7 +20,7 @@ Roda os grupos de teste de scripts/testes.json. Sem grupo, roda os leves (o e2e 
 O Python é o de $PYTHON, senão o do .venv (scripts/preparar-python.sh o cria), senão python3.`;
 
 const COMANDOS_DO_EXECUTOR = {
-  node: (grupo, arquivos) => arquivos.map(arquivo => ({ comando: 'node', argumentos: [arquivo], cwd: RAIZ })),
+  node: (grupo, arquivos) => arquivos.map(arquivo => ({ comando: interpreteDoArquivo(arquivo), argumentos: [arquivo], cwd: RAIZ })),
   unittest: (grupo, arquivos, extras) => [{
     comando: escolherPython(process.env, RAIZ).comando,
     argumentos: ['-m', 'unittest', 'discover', '-s', grupo.pasta, '-p', grupo.padrao, ...extras],
