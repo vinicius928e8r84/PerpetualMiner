@@ -8,7 +8,13 @@ import subprocess
 import sys
 
 AQUI = pathlib.Path(__file__).resolve().parent
-RAIZ = next(d for d in AQUI.parents if (d / 'background.js').exists() and (d / 'lib/historico.js').exists())
+
+
+def e_a_raiz(pasta):
+    return (pasta / 'background.js').exists() and (pasta / 'lib/historico.js').exists()
+
+
+RAIZ = next(filter(e_a_raiz, AQUI.parents))
 SAIDA = pathlib.Path(sys.argv[1])
 SAIDA.mkdir(parents=True, exist_ok=True)
 
@@ -50,21 +56,36 @@ VARIANTES = {
         "")]),
 }
 
-for nome, (arquivo, trocas) in VARIANTES.items():
-    caminho = RAIZ / arquivo
-    original = caminho.read_text()
-    texto = original
+
+def quebrado(nome, texto, trocas):
     for antes, depois in trocas:
         assert texto.count(antes) == 1, (nome, antes)
         texto = texto.replace(antes, depois)
-    caminho.write_text(texto)
+    return texto
+
+
+def resumo_da_exploracao(saida):
+    return [l for l in saida.splitlines() if not l.startswith(' ')]
+
+
+def explorar_o_quebrado(nome, arquivo):
+    diff = subprocess.run(['git', '-C', str(RAIZ), 'diff', '--', arquivo], capture_output=True, text=True).stdout
+    rodada = subprocess.run(['node', str(AQUI / 'explorar.js'), '--um'], capture_output=True, text=True, timeout=600)
+    (SAIDA / f'{nome}.txt').write_text(f'{diff}\n--- saída {rodada.returncode}\n{rodada.stdout}{rodada.stderr}')
+    print(f'== {nome} (saída {rodada.returncode})')
+    print('\n'.join(resumo_da_exploracao(rodada.stdout)))
+
+
+def provar_a_variante(nome, arquivo, trocas):
+    caminho = RAIZ / arquivo
+    original = caminho.read_text()
+    caminho.write_text(quebrado(nome, original, trocas))
     try:
-        diff = subprocess.run(['git', '-C', str(RAIZ), 'diff', '--', arquivo], capture_output=True, text=True).stdout
-        rodada = subprocess.run(['node', str(AQUI / 'explorar.js'), '--um'], capture_output=True, text=True, timeout=600)
-        (SAIDA / f'{nome}.txt').write_text(f'{diff}\n--- saída {rodada.returncode}\n{rodada.stdout}{rodada.stderr}')
-        resumo = [l for l in rodada.stdout.splitlines() if not l.startswith(' ')]
-        print(f'== {nome} (saída {rodada.returncode})')
-        print('\n'.join(resumo))
+        explorar_o_quebrado(nome, arquivo)
     finally:
         caminho.write_text(original)
+
+
+for nome, (arquivo, trocas) in VARIANTES.items():
+    provar_a_variante(nome, arquivo, trocas)
 print('git status:', subprocess.run(['git', '-C', str(RAIZ), 'status', '--short'], capture_output=True, text=True).stdout or 'limpo')

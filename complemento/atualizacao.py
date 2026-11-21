@@ -52,18 +52,13 @@ class AnkiWebAusente:
         return False
 
 
-class Atualizacao:
-    """A atualização desta Conexão. `anki_web` é a fronteira (ver `atualizacao_do_anki.AnkiWebDoAnki`); `arquivo`, o `atualizacao.json`."""
+class RegistroDaAtualizacao:
+    """O `atualizacao.json` da Conexão que roda na versão `versao`: o que a atualização fez e o `estado()` que sai disso."""
 
-    def __init__(self, *, arquivo, anki_web, versao, logger, ligada=False):
-        self.arquivo, self.anki_web, self.versao, self.logger = arquivo, anki_web, versao, logger
-        self.ligada = ligada
-        self._trava = threading.Lock()
-        self._parar = threading.Event()
-        self._thread = None
-        self._anotar_a_subida()
+    def __init__(self, arquivo, versao, logger):
+        self.arquivo, self.versao, self.logger = arquivo, versao, logger
 
-    def _ler(self):
+    def ler(self):
         try:
             with open(self.arquivo, encoding="utf-8") as lido:
                 guardado = json.load(lido)
@@ -71,8 +66,8 @@ class Atualizacao:
         except (OSError, ValueError):
             return {}
 
-    def _guardar(self, **mudancas):
-        guardado = {"rodava": self.versao, **self._ler(), **mudancas}
+    def guardar(self, **mudancas):
+        guardado = {"rodava": self.versao, **self.ler(), **mudancas}
         try:
             os.makedirs(os.path.dirname(self.arquivo), exist_ok=True)
             provisorio = self.arquivo + ".novo.%d" % threading.get_ident()
@@ -82,17 +77,17 @@ class Atualizacao:
         except OSError as erro:
             self.logger.warning("A atualização não guardou o que fez: %s", erro)
 
-    def _anotar_a_subida(self):
+    def anotar_a_subida(self):
         """`atualizada` é a versão de agora quando a anterior era outra; a versão de agora vira a que "rodava". Sem nada guardado ainda (nunca
         consultou nem foi pedida), não há o que anotar: o arquivo nasce na primeira consulta."""
-        guardado = self._ler()
+        guardado = self.ler()
         antes = guardado.get("rodava")
         if antes is None or antes == self.versao:
             return
-        self._guardar(rodava=self.versao, atualizada=self.versao)
+        self.guardar(rodava=self.versao, atualizada=self.versao)
 
     def estado(self):
-        guardado = self._ler()
+        guardado = self.ler()
         no_disco = guardado.get("instalada")
         atualizada = guardado.get("atualizada") if guardado.get("atualizada") == self.versao else None
         if no_disco and _numeros(no_disco) > _numeros(self.versao):
@@ -101,17 +96,33 @@ class Atualizacao:
             return {"estado": "falhou", "versao": self.versao, "atualizada": atualizada}
         return {"estado": "em_dia", "versao": self.versao, "atualizada": atualizada}
 
+
+class Atualizacao:
+    """A atualização desta Conexão. `anki_web` é a fronteira (ver `atualizacao_do_anki.AnkiWebDoAnki`); `registro`, o `atualizacao.json`
+    (`RegistroDaAtualizacao`)."""
+
+    def __init__(self, *, registro, anki_web, logger, ligada=False):
+        self.registro, self.anki_web, self.logger = registro, anki_web, logger
+        self.ligada = ligada
+        self._trava = threading.Lock()
+        self._parar = threading.Event()
+        self._thread = None
+        self.registro.anotar_a_subida()
+
+    def estado(self):
+        return self.registro.estado()
+
     def ajustar_a_marca(self):
         """A marca (a atualização automática do Anki desligada) só existe enquanto a Conexão sabe atualizar sozinha: desligada, ou com o
         Anki que mudou as funções internas, ela é desfeita e o diálogo do Anki volta. Nada levanta erro."""
         try:
             pode = self.ligada and self.anki_web.id() is not None and self.anki_web.pronto()
-            if pode and not self._ler().get("marcou"):
+            if pode and not self.registro.ler().get("marcou"):
                 self.anki_web.marcar(True)
-                self._guardar(marcou=True)
-            elif not pode and self._ler().get("marcou"):
+                self.registro.guardar(marcou=True)
+            elif not pode and self.registro.ler().get("marcou"):
                 self.anki_web.marcar(False)
-                self._guardar(marcou=False)
+                self.registro.guardar(marcou=False)
         except Exception:
             self.logger.exception("A marca da atualização automática não foi ajustada")
 
@@ -124,7 +135,7 @@ class Atualizacao:
                 self._consultar_e_instalar(a_pedido)
             except Exception:
                 self.logger.exception("A atualização da Conexão falhou")
-                self._guardar(falha=True)
+                self.registro.guardar(falha=True)
             return self.estado()
 
     def _consultar_e_instalar(self, a_pedido):
@@ -134,19 +145,19 @@ class Atualizacao:
         self.ajustar_a_marca()
         if not self.anki_web.pronto():
             self.logger.warning("As funções do Anki que a atualização usa mudaram: fica o diálogo do Anki")
-            self._guardar(falha=True)
+            self.registro.guardar(falha=True)
             return
         if not self.anki_web.ha_versao_nova(id_):
-            self._guardar(falha=None)
+            self.registro.guardar(falha=None)
             return
         if not self.anki_web.instalar(id_):
             self.logger.warning("O AnkiWeb não entregou a versão nova")
-            self._guardar(falha=True)
+            self.registro.guardar(falha=True)
             return
         instalada = self.anki_web.versao_instalada()
         if self.ligada:
             self.anki_web.marcar(True)
-        self._guardar(falha=None, instalada=instalada)
+        self.registro.guardar(falha=None, instalada=instalada)
         self.logger.info("A Conexão %s ficou instalada; vale na próxima vez que o Anki abrir", instalada)
 
     def na_saude(self):

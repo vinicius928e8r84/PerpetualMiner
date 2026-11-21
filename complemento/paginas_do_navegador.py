@@ -15,11 +15,14 @@ ROTAS_DO_CHATGPT = {
 PAGINAS = {("GET", chatgpt_oficial.CAMINHO_DO_RETORNO): retorno_do_login}
 
 
+def _consulta_do_endereco(caminho):
+    busca = parse_qs(caminho.split("?", 1)[1] if "?" in caminho else "")
+    return {nome: valores[0] for nome, valores in busca.items() if len(valores) == 1}
+
+
 def responder_a_pagina(atendente, pagina):
     """Uma página para o navegador: sem cache, sem referenciador e sem nada a carregar ou executar."""
-    busca = parse_qs(atendente.path.split("?", 1)[1] if "?" in atendente.path else "")
-    consulta = {nome: valores[0] for nome, valores in busca.items() if len(valores) == 1}
-    corpo = pagina(atendente.conexao, consulta, atendente.headers.get("Host"))
+    corpo = pagina(atendente.conexao, _consulta_do_endereco(atendente.path), atendente.headers.get("Host"))
     atendente.send_response(200)
     for nome, valor in (("Content-Type", "text/html; charset=utf-8"), ("Content-Length", str(len(corpo))), ("Cache-Control", "no-store"),
                         ("Referrer-Policy", "no-referrer"), ("Content-Security-Policy", "default-src 'none'"),

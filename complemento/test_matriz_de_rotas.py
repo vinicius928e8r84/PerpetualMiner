@@ -63,7 +63,10 @@ MATRIZ = {
         "corpo": {"decks": [{"deckName": "Inglês", "lang": "en"}]},
         "le_a_colecao": True,
         "le_o_perfil": False,
-        "recusas": [({}, 400, "decks_required")],
+        "recusas": [
+            ({}, 400, "decks_required"), ({"decks": []}, 400, "decks_required"), ({"decks": ["Inglês"]}, 400, "decks_required"),
+            ({"decks": {"deckName": "Inglês", "lang": "en"}}, 400, "decks_required"),
+        ],
     },
     ("POST", "/ia/estado"): {"corpo": {}, **SEM_LEITURA, "recusas": []},
     ("POST", "/ia/chatgpt/estado"): {"corpo": {}, **SEM_LEITURA, "recusas": []},
