@@ -113,6 +113,10 @@ class SemReservaQueSirva(unittest.TestCase):
         estado, falas, _ = self.falha_do_google_com(com_reserva(["outro-provedor", "openai"]))
         self.assertEqual((estado["status"], len(falas)), ("completed", 1))
 
+    def test_so_com_reservas_que_a_conexao_nao_conhece_a_openai_nao_e_pedida_e_vale_a_falha_do_google(self):
+        estado, falas, notas = self.falha_do_google_com(com_reserva(["outro-provedor", "elevenlabs"]))
+        self.assertEqual((estado["status"], estado["lastError"], falas, notas), ("failed", "tts_rejected", [], []))
+
     def test_a_openai_que_recusa_a_chave_deixa_o_cartao_falho_com_o_codigo_do_google_e_a_chave_nao_vai_ao_log(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
             conexao.voz.recusar("com", 400)

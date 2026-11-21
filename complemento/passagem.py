@@ -20,6 +20,7 @@ import json
 import os
 import socket
 import time
+from collections import namedtuple
 
 from . import envio, passagem_das_copias as copias
 from .passagem_do_windows import PassagemFalhou, SistemaDoWindows
@@ -29,6 +30,9 @@ ARQUIVO_DA_MARCA = "passagem.json"
 INTERVALO_S = 0.25
 ESPERA_DA_PORTA_S = 10.0
 OUTRAS_VEZES = 5
+
+EsperasDaPassagem = namedtuple("EsperasDaPassagem", "dormir intervalo da_porta", defaults=(time.sleep, INTERVALO_S, ESPERA_DA_PORTA_S))
+OQueSeCopiou = namedtuple("OQueSeCopiou", "chave custos prompts perfil fila")
 
 
 def achar_a_antiga(porta=PORTA, espera=1.0):
@@ -56,9 +60,8 @@ def _porta_ocupada(porta):
 
 
 class Passagem:
-    def __init__(self, *, sistema, porta=PORTA, dormir=time.sleep, intervalo=INTERVALO_S, espera_da_porta=ESPERA_DA_PORTA_S):
-        self.sistema, self.porta, self.dormir = sistema, porta, dormir
-        self.intervalo, self.espera_da_porta = intervalo, espera_da_porta
+    def __init__(self, *, sistema, porta=PORTA, esperas=EsperasDaPassagem()):
+        self.sistema, self.porta, self.esperas = sistema, porta, esperas
         self.antiga = None
 
     def pendente(self, conexao):
@@ -81,7 +84,7 @@ class Passagem:
             while self._ativa(antiga):
                 if cancelado():
                     raise PassagemFalhou("o Anki fechou durante a espera")
-                self.dormir(self.intervalo)
+                self.esperas.dormir(self.esperas.intervalo)
         finally:
             conexao.situacao_da_passagem = None
 
@@ -113,12 +116,7 @@ class Passagem:
         logger = conexao.logger
         logger.info("Passagem: a Conexão de hoje (processo %d) está na porta %d", antiga.pid, self.porta)
         self._esperar_o_envio_de_agora(antiga, conexao, cancelado)
-        chave = copias.copiar_a_chave(antiga, conexao.cofre)
-        custos = copias.copiar_os_custos(antiga, conexao.fila)
-        prompts = copias.copiar_os_prompts_editados(antiga, os.path.join(conexao.dados.raiz, "prompts"))
-        perfil = self._marcar_o_perfil(antiga, conexao)
-        fila = self._passar_a_fila(antiga, conexao)
-        logger.info("Passagem: chave %s, custos de %d Envios, prompts %s, perfil %s, Envios %s", chave, custos, prompts, perfil, {k: v for k, v in fila.items() if k != "recusados"})
+        copiado = self._copiar(antiga, conexao)
         apagados = self.sistema.apagar_o_inicio_automatico()
         agora = achar_a_antiga(self.porta)
         if agora is not None and agora.pid != antiga.pid:
@@ -126,20 +124,34 @@ class Passagem:
         if agora is not None:
             self.sistema.parar(antiga.pid)
         self._esperar_a_porta()
-        self._anotar(conexao, chave, custos, prompts, perfil, fila, apagados)
+        self._anotar(conexao, copiado, apagados)
         logger.info("Passagem: a Conexão de hoje saiu e a porta %d está livre", self.porta)
         return True
 
+    def _copiar(self, antiga, conexao):
+        """A chave, os custos, os prompts editados, o perfil marcado e os Envios de hoje, copiados para esta Conexão (`OQueSeCopiou`)."""
+        copiado = OQueSeCopiou(
+            chave=copias.copiar_a_chave(antiga, conexao.cofre),
+            custos=copias.copiar_os_custos(antiga, conexao.fila),
+            prompts=copias.copiar_os_prompts_editados(antiga, os.path.join(conexao.dados.raiz, "prompts")),
+            perfil=self._marcar_o_perfil(antiga, conexao),
+            fila=self._passar_a_fila(antiga, conexao),
+        )
+        conexao.logger.info("Passagem: chave %s, custos de %d Envios, prompts %s, perfil %s, Envios %s", copiado.chave, copiado.custos, copiado.prompts,
+                            copiado.perfil, {k: v for k, v in copiado.fila.items() if k != "recusados"})
+        return copiado
+
     def _esperar_a_porta(self):
-        fim = time.monotonic() + self.espera_da_porta
+        fim = time.monotonic() + self.esperas.da_porta
         while _porta_ocupada(self.porta):
             if time.monotonic() >= fim:
                 raise PassagemFalhou("a porta %d continua ocupada" % self.porta)
-            self.dormir(self.intervalo)
+            self.esperas.dormir(self.esperas.intervalo)
 
-    def _anotar(self, conexao, chave, custos, prompts, perfil, fila, apagados):
+    def _anotar(self, conexao, copiado, apagados):
+        fila = copiado.fila
         envio._gravar_json(os.path.join(conexao.dados.raiz, ARQUIVO_DA_MARCA), {
-            "feita": True, "chave": chave, "custos": custos, "prompts": prompts, "perfil": perfil,
+            "feita": True, "chave": copiado.chave, "custos": copiado.custos, "prompts": copiado.prompts, "perfil": copiado.perfil,
             "historico": fila["historico"], "fila": fila["fila"], "recusados": fila["recusados"], "iniciosApagados": apagados,
         })
 
