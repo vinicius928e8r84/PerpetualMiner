@@ -22,12 +22,17 @@ from complemento.test_pareamento_de_mentira import pedir_como_o_exemplo
 from test_harness import tearDownModule
 
 
+def grava_onde_a_pasta_e_so_de_leitura():
+    """Quem é root, ou o Windows, grava mesmo numa pasta só de leitura."""
+    return os.name == "nt" or os.geteuid() == 0
+
+
 class ContratoDaConexao(unittest.TestCase):
     def test_cada_exemplo_do_contrato_tem_a_resposta_combinada(self):
         for exemplo in exemplos_do_contrato():
             with self.subTest(exemplo["nome"]), tempfile.TemporaryDirectory() as pasta:
                 contexto = exemplo["contexto"]
-                if contexto.get("cofre") == "sem_escrita" and (os.name == "nt" or os.geteuid() == 0):
+                if contexto.get("cofre") == "sem_escrita" and grava_onde_a_pasta_e_so_de_leitura():
                     self.skipTest("quem é root, ou o Windows, grava onde a pasta é só de leitura")
                 with conexao_do_exemplo(pasta, exemplo) as conexao:
                     pedido = exemplo["pedido"]

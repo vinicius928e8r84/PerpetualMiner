@@ -98,7 +98,6 @@
     "complemento/test_qt_do_anki.py": 29,
     "complemento/test_qt_do_anki_pareamento.py": 13,
     "complemento/test_retencao_dos_envios.py": 3,
-    "complemento/test_servidor.py": 1,
     "complemento/test_servidor_repeticao.py": 3,
     "complemento/test_voz_de_mentira.py": 2,
     "complemento/teto_do_mes.py": 1,
