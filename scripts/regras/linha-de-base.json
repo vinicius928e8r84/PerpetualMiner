@@ -84,7 +84,6 @@
     "complemento/test_envio_fronteiras.py": 4,
     "complemento/test_envio_imagem.py": 4,
     "complemento/test_estado_guardado.py": 3,
-    "complemento/test_fila_de_mentira.py": 2,
     "complemento/test_harness.py": 61,
     "complemento/test_modelos_em_memoria.py": 3,
     "complemento/test_openai_de_mentira.py": 11,
