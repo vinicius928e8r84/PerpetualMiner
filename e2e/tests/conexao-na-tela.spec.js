@@ -159,6 +159,7 @@ test.describe('Tentar de novo indisponível enquanto confere', () => {
     liberar();
     await expect(sidebar(page)).toHaveText(TEXTO.desligada);
     await expect(tentarDaF1(page)).not.toHaveAttribute('aria-disabled', 'true');
+    expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou).toBe(true);
   });
 
   test('ONB-16: o retry do card fica aria-disabled sem perder o foco nem repetir a conferência', async ({ page, extensao, fakes }) => {
@@ -229,6 +230,7 @@ test.describe('o foco ao ligar não cai no <body>', () => {
     await expect(tentarDaF1(page)).toBeHidden();
     await expect(page.getByRole('radio', { name: 'Custos' })).toBeFocused();
     await fotografar(page, 'a3-f1-ligada-foco.png');
+    expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou).toBe(true);
   });
 
   test('passo 4: o botão sai e o foco vai para o título do passo', async ({ page, extensao, fakes }) => {
