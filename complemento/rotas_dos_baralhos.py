@@ -17,9 +17,13 @@ def _baralhos_do_anki(conexao, corpo):
     return _lendo_a_colecao("anki_decks_unavailable", lambda: {"decks": baralhos.nomes_dos_baralhos(conexao.colecao)})
 
 
+def _lista_de_pedidos(pedidos):
+    return isinstance(pedidos, list) and bool(pedidos) and all(isinstance(pedido, dict) for pedido in pedidos)
+
+
 def _numeros_dos_baralhos(conexao, corpo):
     pedidos = corpo.get("decks")
-    if not isinstance(pedidos, list) or not pedidos or not all(isinstance(pedido, dict) for pedido in pedidos):
+    if not _lista_de_pedidos(pedidos):
         return 400, {"error": "decks_required"}
     return _lendo_a_colecao("anki_stats_unavailable", lambda: baralhos.numeros_dos_baralhos(conexao.colecao, pedidos))
 
