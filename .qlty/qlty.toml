@@ -1,0 +1,30 @@
+config_version = "0"
+
+exclude_patterns = [
+  "**/node_modules/**",
+  "**/vendor/**",
+  "**/third_party/**",
+  "**/dist/**",
+  "**/*.min.*",
+]
+
+test_patterns = []
+
+[smells]
+mode = "comment"
+
+[smells.function_complexity]
+threshold = 9
+
+[smells.function_parameters]
+threshold = 5
+
+[smells.nested_control_flow]
+threshold = 4
+
+[smells.boolean_logic]
+threshold = 2
+
+[[source]]
+name = "default"
+default = true

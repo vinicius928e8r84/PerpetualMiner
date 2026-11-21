@@ -24,6 +24,7 @@
       "arquivos": [
         ".agents/skills/verify-perpetualminer/scripts/test_*.js",
         "scripts/ganchos/test_*.js",
+        "scripts/qualidade/test_*.js",
         "scripts/test_testar.mjs"
       ]
     },
