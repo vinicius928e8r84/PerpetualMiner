@@ -17,8 +17,8 @@ const provaCom = (...linhas) => ['', '## Prova real', '', ...linhas, '', '## Kno
 const BAIXA = corpoCom('**Atenção:** BAIXA');
 const ALTA = corpoCom('**Atenção:** ALTA', ...provaCom(FRASE, `Head: ${HEAD}`, 'Rodei o envio no Anki de verdade.'));
 const altaCom = (...linhas) => corpoCom('**Atenção:** ALTA', ...provaCom(...linhas));
-const revisao = ({ veredito = 'CLEAN', head = HEAD, autor = 'sessão do autor', revisor = 'sessão da revisão' } = {}) =>
-  ['## Code review', '', `Veredito: ${veredito}`, `Head: ${head}`, `Autor: ${autor}`, `Revisor: ${revisor}`].join('\n');
+const revisao = ({ veredito = 'CLEAN', head = HEAD, autor = 'sessão do autor', revisor = 'sessão da revisão', risco = 'BAIXA' } = {}) =>
+  ['## Code review', '', `Veredito: ${veredito}`, `Head: ${head}`, `Autor: ${autor}`, `Revisor: ${revisor}`, `Risco: ${risco}`].join('\n');
 
 const resultado = pr => conferir({ corpo: BAIXA, rotulos: [], registros: [revisao()], head: HEAD, ...pr });
 const passa = (pr, caso) => {
@@ -109,7 +109,7 @@ recusa({ corpo: altaCom('```', FRASE, `Head: ${HEAD}`, '```') }, /não tem a lin
 {
   const modelo = fs.readFileSync(path.join(RAIZ, '.github', 'PULL_REQUEST_TEMPLATE.md'), 'utf8');
   recusa({ corpo: modelo, registros: [modelo] }, /campo de atenção preenchido[^]*nenhum comentário ou revisão/, 'o modelo sem preencher');
-  const exemplo = /<!--([^]*?)-->/.exec(modelo)[1].replace(/<SHA[^>]*>/g, HEAD).replace(/<quem escreveu[^>]*>/, 'a').replace(/<quem revisou[^>]*>/, 'b').replace(/<URL[^>]*>/g, 'https://github.com/dono/repo/issues/12').replace(/<o que falta[^>]*>/, 'o envio real');
+  const exemplo = /<!--([^]*?)-->/.exec(modelo)[1].replace(/<SHA[^>]*>/g, HEAD).replace(/<quem escreveu[^>]*>/, 'a').replace(/<quem revisou[^>]*>/, 'b').replace(/<BAIXA, MÉDIA ou ALTA[^>]*>/, 'BAIXA').replace(/<URL[^>]*>/g, 'https://github.com/dono/repo/issues/12').replace(/<o que falta[^>]*>/, 'o envio real');
   recusa({ corpo: modelo.replace('**Atenção:**', '**Atenção:** BAIXA'), registros: [exemplo] }, /falta o campo "Door:" preenchido, o campo "Blast Radius:" preenchido, o campo "Política:" preenchido\n/, 'o modelo só com a atenção');
   const preenchido = modelo.replace('**Door:**', '**Door:** two-way').replace('**Blast Radius:**', '**Blast Radius:** CI').replace('**Política:**', '**Política:** sem mudança').replace('**Atenção:**', '**Atenção:** ALTA');
   recusa({ corpo: preenchido, registros: [exemplo] }, /o corpo não tem a seção "Prova real"/, 'ALTA no modelo, ainda sem a prova');
