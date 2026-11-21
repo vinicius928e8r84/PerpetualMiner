@@ -257,7 +257,7 @@ class QtDeMentira:
 class OItemNoMenuDoAnki(unittest.TestCase):
     def ligado(self, conexao, qt=None, perfil="Usuário 1"):
         qt = qt or QtDeMentira()
-        janela.ligar(object(), a_janela(conexao, perfil=perfil), qt, "perpetualminer", conexao.logger)
+        janela.ligar(object(), a_janela(conexao, perfil=perfil), qt, "perpetualminer")
         return qt
 
     def test_um_item_so_com_o_nome_do_programa_abre_a_janela_com_o_estado_de_agora(self):

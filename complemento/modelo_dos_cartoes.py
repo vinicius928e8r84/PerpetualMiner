@@ -27,6 +27,17 @@ Pagador = namedtuple("Pagador", "quem credencial motivo")
 LISTA_NOSSA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "modelos_da_ia.json")
 
 
+class Conta(namedtuple("Conta", "login cofre")):
+    """Quem pode pagar um pedido: o login do ChatGPT (`LoginDoChatGPT`; None: sem login) e o cofre, com a chave da OpenAI."""
+
+    def situacao(self):
+        """A `situacao()` do login; sem login, `(SEM_LOGIN, None)`."""
+        return self.login.situacao() if self.login is not None else (SEM_LOGIN, None)
+
+    def chave(self):
+        return self.cofre.ler("openai")
+
+
 class ModelosIndisponiveis(Exception):
     """A lista de modelos da conta não veio (a OpenAI fora do ar, o login que acabou, a chave recusada)."""
 
@@ -60,7 +71,7 @@ class ModeloDosCartoes:
             with open(self._arquivo, encoding="utf-8") as arquivo:
                 guardado = json.load(arquivo)
             escolha, trocou, paga = guardado["escolha"], guardado.get("trocou"), guardado.get("paga")
-            if isinstance(escolha, str) and escolha and (trocou is None or isinstance(trocou.get("de"), str)):
+            if _e_um_modelo(escolha) and _troca_legivel(trocou):
                 return escolha, trocou, paga if paga in (PLANO, CHAVE) else None
         except (OSError, ValueError, KeyError, AttributeError):
             pass
@@ -146,6 +157,15 @@ class ModeloDosCartoes:
         return automatico if efetivo == AUTOMATICO else efetivo
 
 
+def _e_um_modelo(escolha):
+    return isinstance(escolha, str) and escolha != ""
+
+
+def _troca_legivel(trocou):
+    """Nada trocado, ou a troca diz de que modelo veio (`{ de }`)."""
+    return trocou is None or isinstance(trocou.get("de"), str)
+
+
 def _oferta_do_plano(login, token, modelos):
     lista = login.modelos(token)
     return modelos.disponiveis(lista) or lista
@@ -171,19 +191,19 @@ def quem_paga(login, motivo, pela_chave, tem_chave):
     return (CHAVE, None) if tem_chave else (PARADO, SEM_CHAVE)
 
 
-def credencial(login, cofre, plano, modelos, so_a_chave=False):
+def credencial(conta, plano, modelos, so_a_chave=False):
     """O `Pagador` do texto do próximo Cartão, lido antes de cada pedido e só para ele (`quem_paga`). A `credencial` é a da camada de
     provedores do motor, sem o endereço (`{provedor, segredo, modelo}`; pelo plano também `via: "plano"`, com o token renovado); pela chave,
     o modelo None é o do motor; parado, ela é None e fica o `motivo`: falta a chave, o login acabou, ou o plano não serve agora (o código de `ErroDoPlano`). O modelo é lido uma vez por Envio,
     o do plano e o da chave cada um à parte (ficam em `plano`); um modelo que caiu não para o Envio: troca para o Automático."""
-    chave = cofre.ler("openai")
-    quem, motivo = quem_paga(*(login.situacao() if login is not None else (SEM_LOGIN, None)), so_a_chave, bool(chave))
+    chave = conta.chave()
+    quem, motivo = quem_paga(*conta.situacao(), so_a_chave, bool(chave))
     if quem == PLANO:
         try:
-            token = login.token()
+            token = conta.login.token()
             if not token:
-                return credencial(None, cofre, plano, modelos, so_a_chave)
-            return Pagador(PLANO, _do_plano(token, _modelo_do_plano(login, token, plano, modelos)), None)
+                return credencial(conta._replace(login=None), plano, modelos, so_a_chave)
+            return Pagador(PLANO, _do_plano(token, _modelo_do_plano(conta.login, token, plano, modelos)), None)
         except ErroDoPlano as erro:
             return Pagador(PARADO, None, erro.codigo)
     if quem == PARADO:
@@ -201,16 +221,16 @@ def _do_plano(token, modelo):
     return {"provedor": PROVEDOR, "via": "plano", "segredo": token, "modelo": modelo}
 
 
-def credencial_da_imagem(login, cofre, plano, modelos, so_a_chave=False):
+def credencial_da_imagem(conta, plano, modelos, so_a_chave=False):
     """Com que o Envio escolhe a imagem do próximo Cartão: `(a credencial do plano, chave)`. Quem paga o juiz sai da tabela (`quem_paga`, a
     linha do juiz, a mesma do texto): pelo plano (o token renovado e o Automático da conta, na credencial de `credencial`) quando há login e a
     pessoa não pediu Usar a minha chave (`so_a_chave`, #158); o login acabado para o Envio. A triagem e a imagem gerada vão sempre pela chave
     do cofre (None sem ela). Levanta `ErroDoPlano`."""
-    chave = cofre.ler("openai") or None
-    quem, motivo = quem_paga(*(login.situacao() if login is not None else (SEM_LOGIN, None)), so_a_chave, bool(chave))
+    chave = conta.chave() or None
+    quem, motivo = quem_paga(*conta.situacao(), so_a_chave, bool(chave))
     if quem == PARADO and motivo != SEM_CHAVE:
         raise ErroDoPlano(motivo)
-    token = login.token() if quem == PLANO else None
+    token = conta.login.token() if quem == PLANO else None
     if token and "automatico" not in plano:
-        plano["automatico"] = _oferta_do_plano(login, token, modelos)[0]
+        plano["automatico"] = _oferta_do_plano(conta.login, token, modelos)[0]
     return (_do_plano(token, plano["automatico"]) if token else None), chave

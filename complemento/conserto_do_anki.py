@@ -44,6 +44,7 @@ script do Mac com programas de mentira, e o `.ps1` do Windows só se confere por
 """
 
 import shlex
+from collections import namedtuple
 
 from .configuracao import ENDERECO, ORIGENS_ACEITAS, PORTA
 from .conserto_do_anki_windows import FUNCOES_DO_PS1  # noqa: F401
@@ -61,19 +62,9 @@ PROGRAMAS_DO_MAC = {
 NOME_DA_COPIA = "meta.json.antes"
 
 
-class Conserto:
-    """O que o abridor precisa saber do Anki que o escreveu para consertá-lo. Sem `executavel`, ele nunca fecha nada.
-
-    `espera_s` é a espera sem resposta antes de fechar à força (os testes passam menos, com o relógio de mentira);
-    `programas` troca `ps`, `curl`, `kill`, `sleep`, `date`, `lsof` e `id` do Mac (os testes passam os de mentira).
-    """
-
-    def __init__(self, *, executavel=None, complemento=None, porta=PORTA, espera_s=ESPERA_PADRAO_S, programas=None):
-        self.executavel = executavel
-        self.complemento = complemento
-        self.porta = porta
-        self.espera_s = espera_s
-        self.programas = dict(PROGRAMAS_DO_MAC, **(programas or {}))
+class ConexaoEsperada(namedtuple("ConexaoEsperada", "porta espera_s", defaults=(PORTA, ESPERA_PADRAO_S))):
+    """A Conexão que o `consertar` espera responder: a `porta` em que ela ouve e `espera_s`, a espera sem resposta antes de fechar à força
+    (os testes passam menos, com o relógio de mentira)."""
 
     @property
     def url(self):
@@ -84,16 +75,30 @@ class Conserto:
         return ORIGENS_ACEITAS[0]
 
 
+class Conserto:
+    """O que o abridor precisa saber do Anki que o escreveu para consertá-lo. Sem `executavel`, ele nunca fecha nada.
+
+    `conexao` é a `ConexaoEsperada` (a porta e a espera);
+    `programas` troca `ps`, `curl`, `kill`, `sleep`, `date`, `lsof` e `id` do Mac (os testes passam os de mentira).
+    """
+
+    def __init__(self, *, executavel=None, complemento=None, conexao=ConexaoEsperada(), programas=None):
+        self.executavel = executavel
+        self.complemento = complemento
+        self.conexao = conexao
+        self.programas = dict(PROGRAMAS_DO_MAC, **(programas or {}))
+
+
 def variaveis_do_mac(conserto, pasta_do_abridor):
     """As linhas `NOME=valor` do script do Mac."""
     valores = [
         ("EXECUTAVEL", conserto.executavel or ""),
         ("COMPLEMENTO", conserto.complemento or ""),
         ("COPIA", pasta_do_abridor + "/" + NOME_DA_COPIA),
-        ("URL", conserto.url),
-        ("ORIGEM", conserto.origem),
-        ("ESPERA", str(int(conserto.espera_s))),
-        ("PORTA", str(int(conserto.porta))),
+        ("URL", conserto.conexao.url),
+        ("ORIGEM", conserto.conexao.origem),
+        ("ESPERA", str(int(conserto.conexao.espera_s))),
+        ("PORTA", str(int(conserto.conexao.porta))),
     ] + [(nome.upper(), caminho) for nome, caminho in sorted(conserto.programas.items())]
     return "\n".join("%s=%s" % (nome, shlex.quote(valor)) for nome, valor in valores) + '\nMETA="$COMPLEMENTO/meta.json"'
 
@@ -210,8 +215,8 @@ def variaveis_do_ps1(conserto, pasta_do_abridor, texto_do_powershell):
         "$programaDoAnki = " + texto_do_powershell(conserto.executavel or ""),
         "$complemento = " + texto_do_powershell(conserto.complemento or ""),
         "$copia = " + texto_do_powershell(pasta_do_abridor + "\\" + NOME_DA_COPIA),
-        "$url = " + texto_do_powershell(conserto.url),
-        "$origem = " + texto_do_powershell(conserto.origem),
-        "$espera = " + str(int(conserto.espera_s)),
-        "$porta = " + str(int(conserto.porta)),
+        "$url = " + texto_do_powershell(conserto.conexao.url),
+        "$origem = " + texto_do_powershell(conserto.conexao.origem),
+        "$espera = " + str(int(conserto.conexao.espera_s)),
+        "$porta = " + str(int(conserto.conexao.porta)),
     ])

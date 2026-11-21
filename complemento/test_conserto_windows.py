@@ -25,7 +25,7 @@ class NoWindows(unittest.TestCase):
         self.pasta = os.path.join(self._raiz.name, "user_files", "abridor")
         self.complemento = r"C:\Users\Maria\AppData\Roaming\Anki2\addons21\perpetualminer"
         abridor.deste_computador(
-            plataforma="win32", ambiente={"ANKI_LAUNCHER": ANKI_DO_WINDOWS}, executavel=r"C:\Anki\pythonw.exe",
+            computador=abridor.Computador(plataforma="win32", ambiente={"ANKI_LAUNCHER": ANKI_DO_WINDOWS}, executavel=r"C:\Anki\pythonw.exe"),
             pasta=self.pasta, registro=RegistroDeMentira(), complemento=self.complemento,
         ).escrever("Usuário 1")
         with open(os.path.join(self.pasta, "abrir-o-anki.ps1"), "rb") as arquivo:

@@ -82,15 +82,6 @@ class PerfilSumiu(ColecaoIndisponivel):
         self.marcado, self.aberto = marcado, aberto
 
 
-def espera_pelo_perfil(motivo):
-    """O que o estado do Envio diz da espera quando o motivo é o perfil (#149); None para qualquer outro motivo."""
-    if isinstance(motivo, OutroPerfil):
-        return {"reason": "other_profile", "profile": motivo.aberto, "marked": motivo.marcado}
-    if isinstance(motivo, PerfilSumiu):
-        return {"reason": "profile_missing", "profile": motivo.aberto, "marked": motivo.marcado}
-    return None
-
-
 class PerfilIlegivel(ColecaoIndisponivel):
     """O arquivo do perfil marcado existe e não se lê (#149): não vale por “nenhum perfil marcado”, e nada é marcado nem gravado por cima."""
 
@@ -177,17 +168,29 @@ def _numeros_de_um_baralho(colecao, nome, idioma):
     }
 
 
+def _baralho_pedido(pedido):
+    return str(pedido.get("deckName") or "").strip(), str(pedido.get("lang") or "en").strip().lower()
+
+
+def _pedido_que_se_le(nome, idioma):
+    return bool(nome) and idioma in estilos.idiomas()
+
+
+def _pedidos_sem_repetir(pedidos):
+    vistos = set()
+    for nome, idioma in map(_baralho_pedido, pedidos):
+        chave = (nome.casefold(), idioma)
+        if _pedido_que_se_le(nome, idioma) and chave not in vistos:
+            vistos.add(chave)
+            yield nome, idioma
+
+
 def numeros_dos_baralhos(colecao, pedidos):
     """Os números dos Baralhos pedidos (`[{ deckName, lang }]`), na ordem, sem repetir. Um Baralho que o Anki
     não tem volta como `missing`, com tudo zerado."""
     existentes = set(colecao.nomes_dos_baralhos())
-    linhas, vistos = [], set()
-    for pedido in pedidos:
-        nome = str(pedido.get("deckName") or "").strip()
-        idioma = str(pedido.get("lang") or "en").strip().lower()
-        if not nome or idioma not in estilos.idiomas() or (nome.casefold(), idioma) in vistos:
-            continue
-        vistos.add((nome.casefold(), idioma))
+    linhas = []
+    for nome, idioma in _pedidos_sem_repetir(pedidos):
         if nome in existentes:
             linhas.append(_numeros_de_um_baralho(colecao, nome, idioma))
         else:
@@ -207,35 +210,50 @@ def _inteiro(valor, padrao, minimo, maximo):
         return padrao
 
 
+def _escolha(valor, aceitas):
+    escolhida = str(valor or "all").strip().lower()
+    return escolhida if escolhida in aceitas else "all"
+
+
+def _bate(escolha, palavra, campo):
+    return escolha == "all" or palavra[campo] == escolha
+
+
+class _FiltrosDoVocabulario:
+    def __init__(self, filtros):
+        self.situacao = _escolha(filtros.get("status"), SITUACOES)
+        self.tipo = _escolha(filtros.get("type"), TIPOS)
+        self.busca = str(filtros.get("q") or "").strip().casefold()
+        self.limite = _inteiro(filtros.get("limit") or LIMITE_PADRAO, LIMITE_PADRAO, 1, LIMITE_MAXIMO)
+        self.deslocamento = _inteiro(filtros.get("offset") or 0, 0, 0, 10**9)
+
+    def _achada_pela_busca(self, palavra):
+        return not self.busca or self.busca in palavra["word"].casefold()
+
+    def aceita(self, palavra):
+        return _bate(self.situacao, palavra, "status") and _bate(self.tipo, palavra, "type") and self._achada_pela_busca(palavra)
+
+    def pagina(self, palavras):
+        return palavras[self.deslocamento:self.deslocamento + self.limite]
+
+    def lidos(self):
+        return {"status": self.situacao, "type": self.tipo, "q": self.busca, "limit": self.limite, "offset": self.deslocamento}
+
+
 def vocabulario(colecao, nome, idioma, filtros=None):
     """O vocabulário do Baralho (as Palavras e os Termos do verso dos Cartões), com os filtros da aba aplicados.
     Um Baralho que o Anki não tem tem vocabulário vazio."""
-    filtros = filtros or {}
-    situacao = str(filtros.get("status") or "all").strip().lower()
-    tipo = str(filtros.get("type") or "all").strip().lower()
-    busca = str(filtros.get("q") or "").strip().casefold()
-    limite = _inteiro(filtros.get("limit") or LIMITE_PADRAO, LIMITE_PADRAO, 1, LIMITE_MAXIMO)
-    deslocamento = _inteiro(filtros.get("offset") or 0, 0, 0, 10**9)
-    if situacao not in SITUACOES:
-        situacao = "all"
-    if tipo not in TIPOS:
-        tipo = "all"
-
+    escolhidos = _FiltrosDoVocabulario(filtros or {})
     cartoes = _cartoes_para_leitura(colecao, nome) if nome in set(colecao.nomes_dos_baralhos()) else []
     palavras = normalizacao.front_vocabulary_rows_from_cards(cartoes, idioma, normalizacao.normalizar_frase_ru)
-    if situacao != "all":
-        palavras = [palavra for palavra in palavras if palavra["status"] == situacao]
-    if tipo != "all":
-        palavras = [palavra for palavra in palavras if palavra["type"] == tipo]
-    if busca:
-        palavras = [palavra for palavra in palavras if busca in palavra["word"].casefold()]
+    palavras = [palavra for palavra in palavras if escolhidos.aceita(palavra)]
     return {
         "generatedAt": _agora(),
         "deckName": nome,
         "lang": idioma,
         "source": FONTE,
         "totalCards": len(cartoes),
-        "filters": {"status": situacao, "type": tipo, "q": busca, "limit": limite, "offset": deslocamento},
+        "filters": escolhidos.lidos(),
         "totalWords": len(palavras),
-        "words": palavras[deslocamento:deslocamento + limite],
+        "words": escolhidos.pagina(palavras),
     }
