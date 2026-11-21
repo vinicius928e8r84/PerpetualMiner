@@ -91,7 +91,6 @@
     "complemento/test_estado_guardado.py": 3,
     "complemento/test_fila_de_mentira.py": 2,
     "complemento/test_harness.py": 61,
-    "complemento/test_leitura_dos_arquivos.py": 1,
     "complemento/test_modelos_de_mentira.py": 1,
     "complemento/test_modelos_em_memoria.py": 3,
     "complemento/test_motor.py": 1,
