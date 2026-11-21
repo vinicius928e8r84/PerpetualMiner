@@ -15,19 +15,29 @@
 
   function iniciar() {
     configuracoes = montar(porId('cfg-chave-corpo'), { prefixo: 'cfg' });
-    chrome.storage.local.get({ geminiApiKey: '' }, dados => {
-      estado.chave = dados.geminiApiKey || '';
-      lugares.forEach(desenhar);
-      if (estado.focarAoLer) focarOCampoSeVazia();
-    });
-    chrome.storage.onChanged.addListener((mudancas, area) => {
-      if (area !== 'local' || !('geminiApiKey' in mudancas)) return;
-      const nova = mudancas.geminiApiKey.newValue || '';
-      if (nova === estado.chave) return;
-      estado.chave = nova;
-      for (const lugar of lugares) if (!lugar.trocando) desenhar(lugar);
-    });
+    chrome.storage.local.get({ geminiApiKey: '' }, lerAChaveGuardada);
+    chrome.storage.onChanged.addListener(seguirAChaveGuardada);
     raiz.Shell.aoAbrirASecao('chave', focarOCampoSeVazia);
+  }
+
+  function lerAChaveGuardada(dados) {
+    estado.chave = dados.geminiApiKey || '';
+    lugares.forEach(desenhar);
+    if (estado.focarAoLer) focarOCampoSeVazia();
+  }
+
+  const mudouAChaveDoGemini = (mudancas, area) => area === 'local' && 'geminiApiKey' in mudancas;
+
+  function seguirAChaveGuardada(mudancas, area) {
+    if (!mudouAChaveDoGemini(mudancas, area)) return;
+    const nova = mudancas.geminiApiKey.newValue || '';
+    if (nova === estado.chave) return;
+    estado.chave = nova;
+    desenharOsQueNaoEstaoTrocando();
+  }
+
+  function desenharOsQueNaoEstaoTrocando() {
+    for (const lugar of lugares) if (!lugar.trocando) desenhar(lugar);
   }
 
   function montar(corpo, { prefixo }) {
@@ -130,7 +140,7 @@
     chrome.storage.local.set({ geminiApiKey: chave }, () => {
       estado.chave = chave;
       lugar.trocando = false;
-      for (const outro of lugares) if (!outro.trocando) desenhar(outro);
+      desenharOsQueNaoEstaoTrocando();
       porId(idDe(lugar, 'trocar')).focus();
       mostrarToastDeSucesso(textoDaVoz('CFG-16.salva'));
     });
