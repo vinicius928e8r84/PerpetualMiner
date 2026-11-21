@@ -318,3 +318,43 @@ test('a vitrine também não pede nada ao Google Fonts', async ({ page, paginas 
 
   expect(paraFora).toEqual([]);
 });
+
+// Exceção de teste: sem-estado-guardado — a vitrine não tem chrome.storage.
+test('com movimento reduzido, os sinais de estado ficam parados', async ({ page, paginas }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto(paginas.url('vitrine.html'));
+  await expect(page.locator('[data-grupo="Botões"]').first()).toBeVisible();
+
+  const esqueleto = page.locator('[data-tema="escuro"] .veio-esqueleto').first();
+  await expect(esqueleto).toBeVisible();
+  await expect(esqueleto).toHaveCSS('animation-name', 'none');
+
+  await page.locator('[data-tema="escuro"] [data-grupo="Toast"] button').click();
+  await expect(page.locator('.veio-toast')).toBeVisible();
+
+  const aindaEmMovimento = await page.evaluate(async () => {
+    const prazo = new Promise(resolve => setTimeout(resolve, 300));
+    await Promise.race([
+      Promise.all(document.getAnimations().map(a => a.finished.then(() => true, () => true))),
+      prazo,
+    ]);
+    return document.getAnimations()
+      .filter(animacao => animacao.playState === 'running')
+      .map(animacao => animacao.animationName || 'sem nome');
+  });
+
+  expect(aindaEmMovimento).toEqual([]);
+});
+
+test('a vitrine com componentes também não pede nada ao Google Fonts', async ({ page, paginas }) => {
+  const paraFora = [];
+  page.on('request', req => {
+    if (/fonts\.(googleapis|gstatic)\.com/.test(req.url())) paraFora.push(req.url());
+  });
+
+  await page.goto(paginas.url('vitrine.html'));
+  await expect(page.locator('[data-grupo="Botões"]').first()).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
+
+  expect(paraFora).toEqual([]);
+});
