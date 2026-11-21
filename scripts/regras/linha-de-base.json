@@ -138,7 +138,6 @@
     "engine/corrigir_frase.py": 2,
     "engine/cost_tracker.py": 4,
     "engine/extract_prompts.py": 5,
-    "engine/image_judge.py": 6,
     "engine/nota_do_cartao.py": 3,
     "engine/openai_http.py": 13,
     "engine/provedores.py": 4,

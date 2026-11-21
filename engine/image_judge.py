@@ -139,33 +139,29 @@ def _invalid_image_format_fallback(mode: str, valid_index_map: list[int]) -> dic
     }
 
 
-def rank_candidates(
-    *,
-    juiz,
-    model: str,
-    log_dir: str,
-    keyword: str,
-    phrase: str,
-    context: str,
-    card_text: str,
-    candidates: list[dict[str, Any]],
-    mode: str,
-    label: str | None = None,
-) -> dict[str, Any]:
-    """`juiz` asks the verdict: `juiz.julgar(model, system, content, label)` -> (the JSON text, the usage, whether the key paid it). In the
+@dataclass(frozen=True)
+class TheJudge:
+    juiz: Any
+    model: str
+    log_dir: str
+    label: str | None = None
+
+
+def rank_candidates(card: CardForTheJudge, judge: TheJudge, candidates: list[dict[str, Any]], mode: str) -> dict[str, Any]:
+    """`judge.juiz` asks the verdict: `juiz.julgar(model, system, content, label)` -> (the JSON text, the usage, whether the key paid it). In the
     add-on it is the IA dos cartões' `JuizDaImagem` (the ChatGPT plan, or the key's `model`); the engine never sees who pays nor the secret.
-    `label` is what the cost record says the call was for (the keyword by default; the add-on passes the card's id); only the key's verdict
+    `judge.label` is what the cost record says the call was for (the keyword by default; the add-on passes the card's id); only the key's verdict
     has a cost record."""
-    card_part = _CardForTheJudge(keyword, phrase, context, card_text).part(mode)
+    card_part = card.part(mode)
     photos = _PhotosForTheJudge(candidates)
     if not photos.valid_index_map:
         return _no_supported_candidates(mode)
-    judging = _Judging(juiz, model, mode, label or keyword)
-    return judging.verdict([card_part] + photos.content, photos.valid_index_map, log_dir)
+    judging = _Judging(judge.juiz, judge.model, mode, judge.label or card.keyword)
+    return judging.verdict([card_part] + photos.content, photos.valid_index_map, judge.log_dir)
 
 
 @dataclass
-class _CardForTheJudge:
+class CardForTheJudge:
     keyword: str
     phrase: str
     context: str

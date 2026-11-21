@@ -34,9 +34,9 @@ def julgar(pasta, openai, juiz=None, **mais):
     imagem.write_bytes(PNG_BYTES)
     (raiz / "log").mkdir(exist_ok=True)
     return image_judge.rank_candidates(
-        juiz=juiz or juiz_pela_chave(openai.base), model="mock-judge", log_dir=str(raiz / "log"), keyword="saw", phrase="I saw it happen.", context="test",
-        card_text="Front: I saw it happen.", candidates=[{"path": str(imagem), "meta": {"query": "eye", "source": "openverse"}}],
-        mode="real_only", **mais)
+        image_judge.CardForTheJudge("saw", "I saw it happen.", "test", "Front: I saw it happen."),
+        image_judge.TheJudge(juiz or juiz_pela_chave(openai.base), "mock-judge", str(raiz / "log"), **mais),
+        [{"path": str(imagem), "meta": {"query": "eye", "source": "openverse"}}], "real_only")
 
 
 def veredito(**campos):
