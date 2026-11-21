@@ -12,21 +12,42 @@ const seAplica = arquivo => arquivo.endsWith('.md');
 
 const branco = texto => texto.replace(/[^\n]/g, ' ');
 
+const ABRE_A_CERCA = /^ {0,3}(`{3,}|~{3,})/;
+const SO_A_MARCA_DA_CERCA = /^ {0,3}[`~]+\s*$/;
+const CODIGO_EM_LINHA = /(`+)(?!`)[\s\S]*?[^`]\1(?!`)/g;
+
+function fechaACerca(linha, marca, aberta) {
+  return marca[0] === aberta[0] && marca.length >= aberta.length && SO_A_MARCA_DA_CERCA.test(linha);
+}
+
+class CercaDeCodigo {
+  constructor() {
+    this.aberta = null;
+  }
+
+  contem(linha) {
+    const abre = ABRE_A_CERCA.exec(linha);
+    if (this.aberta) return this.continuaAberta(linha, abre);
+    if (abre) this.aberta = abre[1];
+    return Boolean(abre);
+  }
+
+  continuaAberta(linha, abre) {
+    if (abre && fechaACerca(linha, abre[1], this.aberta)) this.aberta = null;
+    return true;
+  }
+}
+
+function semCodigoEmLinha(linha, manterCrases) {
+  return manterCrases ? linha : linha.replace(CODIGO_EM_LINHA, trecho => branco(trecho));
+}
+
 function semCodigo(fonte, { manterCrases = false } = {}) {
-  let cerca = null;
+  const cerca = new CercaDeCodigo();
   // Um clone com core.autocrlf=true (Git for Windows) entrega o Markdown com CRLF: o `\r` não pode ficar no fim da linha.
-  return fonte.replace(/\r\n/g, '\n').split('\n').map(linha => {
-    const abre = /^ {0,3}(`{3,}|~{3,})/.exec(linha);
-    if (cerca) {
-      if (abre && abre[1][0] === cerca[0] && abre[1].length >= cerca.length && /^ {0,3}[`~]+\s*$/.test(linha)) cerca = null;
-      return branco(linha);
-    }
-    if (abre) {
-      cerca = abre[1];
-      return branco(linha);
-    }
-    return manterCrases ? linha : linha.replace(/(`+)(?!`)[\s\S]*?[^`]\1(?!`)/g, trecho => branco(trecho));
-  }).join('\n');
+  return fonte.replace(/\r\n/g, '\n').split('\n')
+    .map(linha => (cerca.contem(linha) ? branco(linha) : semCodigoEmLinha(linha, manterCrases)))
+    .join('\n');
 }
 
 const sinalDeEsquema = /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i;
@@ -60,28 +81,49 @@ function ancoraDoTitulo(titulo) {
     .replace(/\s/g, '-');
 }
 
+const TITULO_ATX = /^ {0,3}#{1,6}[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$/;
+const SUBLINHADO_SETEXT = /^ {0,3}(?:=+|-+)[ \t]*$/;
+const NAO_E_PARAGRAFO = /^ {0,3}(?:#|>|[-*+] |\d+[.)] |\||$)/;
+const ID_OU_NAME = /<[a-z][^>]*?\b(?:id|name)=(?:"([^"]+)"|'([^']+)')/gi;
+
+function ehParagrafo(linha) {
+  return /\S/.test(linha) && !NAO_E_PARAGRAFO.test(linha);
+}
+
+function sublinhaOParagrafoAnterior(linhas, i) {
+  return i > 0 && SUBLINHADO_SETEXT.test(linhas[i]) && ehParagrafo(linhas[i - 1]);
+}
+
+function tituloDaLinha(linhas, i) {
+  const atx = TITULO_ATX.exec(linhas[i]);
+  if (atx) return atx[1];
+  return sublinhaOParagrafoAnterior(linhas, i) ? linhas[i - 1].trim() : null;
+}
+
+function titulosDe(linhas) {
+  return linhas.map((_, i) => tituloDaLinha(linhas, i)).filter(titulo => titulo !== null);
+}
+
+function ancorasDosTitulos(titulos) {
+  const vistos = new Map();
+  return titulos.map(titulo => {
+    const base = ancoraDoTitulo(titulo);
+    const repeticao = vistos.get(base) || 0;
+    vistos.set(base, repeticao + 1);
+    return { ancora: repeticao ? `${base}-${repeticao}` : base, titulo };
+  });
+}
+
 function ancorasDe(fonte) {
   // Os títulos leem o código em linha (o GitHub tira só as crases e mantém o texto); os `id=` não.
   const limpo = semCodigo(fonte);
   const linhas = semCodigo(fonte, { manterCrases: true }).split('\n');
-  const titulos = [];
-  linhas.forEach((linha, i) => {
-    const atx = /^ {0,3}#{1,6}[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$/.exec(linha);
-    if (atx) titulos.push(atx[1]);
-    else if (i > 0 && /^ {0,3}(?:=+|-+)[ \t]*$/.test(linha) && /\S/.test(linhas[i - 1]) && !/^ {0,3}(?:#|>|[-*+] |\d+[.)] |\||$)/.test(linhas[i - 1])) {
-      titulos.push(linhas[i - 1].trim());
-    }
-  });
-  const vistos = new Map();
-  const ancoras = [];
-  for (const titulo of titulos) {
-    const base = ancoraDoTitulo(titulo);
-    const n = vistos.get(base) || 0;
-    vistos.set(base, n + 1);
-    ancoras.push({ ancora: n ? `${base}-${n}` : base, titulo });
-  }
-  const explicitas = [...limpo.matchAll(/<[a-z][^>]*?\b(?:id|name)=(?:"([^"]+)"|'([^']+)')/gi)].map(m => (m[1] ?? m[2]).toLowerCase());
-  return { ancoras, explicitas };
+  const explicitas = [...limpo.matchAll(ID_OU_NAME)].map(m => (m[1] ?? m[2]).toLowerCase());
+  return { ancoras: ancorasDosTitulos(titulosDe(linhas)), explicitas };
+}
+
+function temAncora({ ancoras, explicitas }, ancora) {
+  return ancoras.some(a => a.ancora === ancora) || explicitas.includes(ancora);
 }
 
 function parecidas(pedida, ancoras) {
@@ -97,42 +139,86 @@ function decodificar(texto) {
   }
 }
 
-function verificar(arquivo, fonte, raiz) {
-  const achados = [];
-  const doDestino = new Map();
-  const ancorasDoArquivo = caminho => {
-    if (!doDestino.has(caminho)) doDestino.set(caminho, ancorasDe(caminho === arquivo ? fonte : fs.readFileSync(path.join(raiz, caminho), 'utf8')));
-    return doDestino.get(caminho);
-  };
-  semCodigo(fonte).split('\n').forEach((linha, i) => {
-    for (const { alvo, texto } of linksDaLinha(linha)) {
-      if (sinalDeEsquema.test(alvo)) continue;
-      const jogo = /^([^#?]*)(?:\?[^#]*)?(?:#(.*))?$/.exec(alvo);
-      const caminhoBruto = decodificar(jogo[1]);
-      const ancora = jogo[2] === undefined ? null : decodificar(jogo[2]).toLowerCase();
-      let destino = arquivo;
-      if (caminhoBruto) {
-        destino = caminhoBruto.startsWith('/')
-          ? path.posix.normalize(caminhoBruto.slice(1))
-          : path.posix.normalize(path.posix.join(path.posix.dirname(arquivo), caminhoBruto));
-        if (destino.startsWith('..') || !fs.existsSync(path.join(raiz, destino))) {
-          const fora = destino.startsWith('..');
-          const pasta = path.posix.dirname(arquivo);
-          achados.push({ linha: i + 1, detalhe: `o link ${texto} (relativo a \`${pasta === '.' ? './' : `${pasta}/`}\`) aponta para `
-            + `\`${fora ? caminhoBruto : destino}\`, ${fora ? 'que está fora do repositório' : 'que não existe'}; conserte o link em ${arquivo}` });
-          continue;
-        }
-      }
-      if (!ancora || /^l\d+(?:-l\d+)?$/.test(ancora) || !destino.endsWith('.md')
-        || (destino !== arquivo && !fs.statSync(path.join(raiz, destino)).isFile())) continue;
-      const { ancoras, explicitas } = ancorasDoArquivo(destino);
-      if (ancoras.some(a => a.ancora === ancora) || explicitas.includes(ancora)) continue;
-      const sugestao = parecidas(ancora, ancoras);
-      achados.push({ linha: i + 1, detalhe: `o link ${texto} aponta para a âncora \`#${ancora}\`, que ${destino === arquivo ? 'este arquivo' : `\`${destino}\``} não tem`
-        + `${sugestao.length ? ` (títulos parecidos: ${sugestao.join(', ')})` : ''}; conserte o link em ${arquivo}` });
+const PARTES_DO_ALVO = /^([^#?]*)(?:\?[^#]*)?(?:#(.*))?$/;
+const ANCORA_DE_LINHA = /^l\d+(?:-l\d+)?$/;
+
+function partesDoAlvo(alvo) {
+  const jogo = PARTES_DO_ALVO.exec(alvo);
+  return { caminho: decodificar(jogo[1]), ancora: jogo[2] === undefined ? null : decodificar(jogo[2]).toLowerCase() };
+}
+
+function destinoDoCaminho(arquivo, caminho) {
+  return caminho.startsWith('/')
+    ? path.posix.normalize(caminho.slice(1))
+    : path.posix.normalize(path.posix.join(path.posix.dirname(arquivo), caminho));
+}
+
+function ehAncoraDeTitulo(ancora) {
+  return Boolean(ancora) && !ANCORA_DE_LINHA.test(ancora);
+}
+
+function pastaDoLink(arquivo) {
+  const pasta = path.posix.dirname(arquivo);
+  return pasta === '.' ? './' : `${pasta}/`;
+}
+
+function comSugestao(sugestao) {
+  return sugestao.length ? ` (títulos parecidos: ${sugestao.join(', ')})` : '';
+}
+
+class LinksDoDocumento {
+  constructor(arquivo, fonte, raiz) {
+    this.arquivo = arquivo;
+    this.fonte = fonte;
+    this.raiz = raiz;
+    this.doDestino = new Map();
+  }
+
+  problemaDe({ alvo, texto }) {
+    if (sinalDeEsquema.test(alvo)) return null;
+    const { caminho, ancora } = partesDoAlvo(alvo);
+    const link = { texto, caminho, ancora, destino: caminho ? destinoDoCaminho(this.arquivo, caminho) : this.arquivo };
+    if (caminho && !this.existe(link.destino)) return this.caminhoQuebrado(link);
+    return this.ancoraQueFalta(link);
+  }
+
+  existe(destino) {
+    return !destino.startsWith('..') && fs.existsSync(path.join(this.raiz, destino));
+  }
+
+  ehDocumento(destino) {
+    return destino.endsWith('.md') && (destino === this.arquivo || fs.statSync(path.join(this.raiz, destino)).isFile());
+  }
+
+  ancorasDoDestino(destino) {
+    if (!this.doDestino.has(destino)) {
+      this.doDestino.set(destino, ancorasDe(destino === this.arquivo ? this.fonte : fs.readFileSync(path.join(this.raiz, destino), 'utf8')));
     }
-  });
-  return achados;
+    return this.doDestino.get(destino);
+  }
+
+  caminhoQuebrado({ texto, caminho, destino }) {
+    const fora = destino.startsWith('..');
+    return `o link ${texto} (relativo a \`${pastaDoLink(this.arquivo)}\`) aponta para `
+      + `\`${fora ? caminho : destino}\`, ${fora ? 'que está fora do repositório' : 'que não existe'}; conserte o link em ${this.arquivo}`;
+  }
+
+  ancoraQueFalta({ texto, ancora, destino }) {
+    if (!ehAncoraDeTitulo(ancora) || !this.ehDocumento(destino)) return null;
+    const doDestino = this.ancorasDoDestino(destino);
+    if (temAncora(doDestino, ancora)) return null;
+    const onde = destino === this.arquivo ? 'este arquivo' : `\`${destino}\``;
+    return `o link ${texto} aponta para a âncora \`#${ancora}\`, que ${onde} não tem`
+      + `${comSugestao(parecidas(ancora, doDestino.ancoras))}; conserte o link em ${this.arquivo}`;
+  }
+}
+
+function verificar(arquivo, fonte, raiz) {
+  const links = new LinksDoDocumento(arquivo, fonte, raiz);
+  return semCodigo(fonte).split('\n').flatMap((linha, i) => linksDaLinha(linha)
+    .map(link => links.problemaDe(link))
+    .filter(Boolean)
+    .map(detalhe => ({ linha: i + 1, detalhe })));
 }
 
 module.exports = { id, conserto, seAplica, verificar };
