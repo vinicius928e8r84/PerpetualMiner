@@ -109,26 +109,38 @@ function opcoes(argumentos) {
   return achado;
 }
 
+function conferirNaLinhaDeComando(o) {
+  const { ok, mensagem } = conferir({ raiz: o.raiz, modo: o.modo || modoDoAmbiente() });
+  if (mensagem) (ok && /é um commit verde/.test(mensagem) ? console.log : console.error)(mensagem);
+  return ok ? 0 : 1;
+}
+
+function ehShaInteiro(sha) {
+  return /^[0-9a-f]{40}$/.test(sha || '');
+}
+
+async function marcarNaLinhaDeComando(o) {
+  const sha = (o.soltos || [])[0];
+  const repo = process.env.GITHUB_REPOSITORY;
+  if (!ehShaInteiro(sha) || !repo) {
+    console.error('uso: GITHUB_REPOSITORY=dono/repo node scripts/ci/commit-verde.js marcar <sha inteiro> [--esperar <minutos>] [--ignorar <nome do check>]');
+    return 2;
+  }
+  const r = await marcar({ sha, repo, esperarMinutos: o.esperar || 0, ignorar: o.ignorar });
+  console.log(r.marcou ? `${r.nome}: tag ${r.resultado} em ${sha}` : `${sha.slice(0, 7)} não foi marcado: ${r.motivo}`);
+  return 0;
+}
+
+const COMANDOS = new Map([['conferir', conferirNaLinhaDeComando], ['marcar', marcarNaLinhaDeComando]]);
+
 async function principal([comando, ...resto]) {
   const o = opcoes(resto);
-  if (comando === 'conferir') {
-    const { ok, mensagem } = conferir({ raiz: o.raiz, modo: o.modo || modoDoAmbiente() });
-    if (mensagem) (ok && /é um commit verde/.test(mensagem) ? console.log : console.error)(mensagem);
-    return ok ? 0 : 1;
+  const executar = COMANDOS.get(comando);
+  if (!executar) {
+    console.error('uso: node scripts/ci/commit-verde.js conferir [--exigir] | marcar <sha>');
+    return 2;
   }
-  if (comando === 'marcar') {
-    const sha = (o.soltos || [])[0];
-    const repo = process.env.GITHUB_REPOSITORY;
-    if (!/^[0-9a-f]{40}$/.test(sha || '') || !repo) {
-      console.error('uso: GITHUB_REPOSITORY=dono/repo node scripts/ci/commit-verde.js marcar <sha inteiro> [--esperar <minutos>] [--ignorar <nome do check>]');
-      return 2;
-    }
-    const r = await marcar({ sha, repo, esperarMinutos: o.esperar || 0, ignorar: o.ignorar });
-    console.log(r.marcou ? `${r.nome}: tag ${r.resultado} em ${sha}` : `${sha.slice(0, 7)} não foi marcado: ${r.motivo}`);
-    return 0;
-  }
-  console.error('uso: node scripts/ci/commit-verde.js conferir [--exigir] | marcar <sha>');
-  return 2;
+  return executar(o);
 }
 
 module.exports = { PREFIXO, nomeDaTag, avaliar, esperados, conferir, modoDoAmbiente };
