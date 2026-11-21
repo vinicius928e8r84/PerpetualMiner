@@ -51,7 +51,7 @@ class NaPassagem:
         self.conexao = self.novo.conexao
         self.conexao.porta = antiga.porta
         self.sistema = SistemaDeMentira(antiga, self.eventos, ao_parar=lambda: self.fotografias.append(self.fotografar()), falha_em=falha_em)
-        self.passagem = passagem.Passagem(sistema=self.sistema, porta=antiga.porta, dormir=self._dormir, intervalo=0, espera_da_porta=5)
+        self.passagem = passagem.Passagem(sistema=self.sistema, porta=antiga.porta, esperas=passagem.EsperasDaPassagem(dormir=self._dormir, intervalo=0, da_porta=5))
         self.a_cada_espera = lambda vez: None
 
     def _dormir(self, _segundos):

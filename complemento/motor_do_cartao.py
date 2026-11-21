@@ -11,8 +11,6 @@ diz ao Envio a Etapa em que o Cartão está. O que fica com o Envio: a fila, o e
 
 from dataclasses import dataclass
 
-from .audio_do_cartao import AudioDoCartao
-from .imagem_do_cartao import ImagemDoCartao
 from .limite_do_plano import LIMITE_DO_PLANO
 from .palavras_do_cartao import fixar_na_entrada
 from .paradas_do_envio import Interrompido
@@ -34,17 +32,31 @@ class Cartao:
     job_id: str = ""
 
 
-class MotorDoCartao:
-    """`motor` é o de `engine/` (`motor_do_envio.motor_do_complemento()`), `tranca` a da fila e `parar` o evento que para a Conexão."""
+class EsperasDaOpenai:
+    """As esperas antes de pedir de novo o que falhou por um motivo passageiro (o texto à OpenAI, a voz ao Google): `segundos`, uma por
+    tentativa nova. `parar` é o evento que para a Conexão: a espera que ele corta levanta `Interrompido`."""
 
-    def __init__(self, motor, logger, tranca, parar, openai_base, voz_base, openverse_base, adaptador_de_imagem=None, esperas_da_openai=(2, 8, 30)):
-        self.motor, self.parar, self.esperas_da_openai = motor, parar, tuple(esperas_da_openai)
-        self._audio = AudioDoCartao(motor, logger, tranca, self._dormir, openai_base, voz_base, esperas_da_openai)
-        self._imagem = ImagemDoCartao(motor, logger, openverse_base, adaptador_de_imagem)
+    def __init__(self, parar, segundos=(2, 8, 30)):
+        self.parar, self.segundos = parar, tuple(segundos)
 
     def _dormir(self, segundos):
         if self.parar.wait(segundos):
             raise Interrompido()
+
+    def tentativas(self):
+        """Uma volta por tentativa: a primeira logo, cada outra depois da sua espera."""
+        yield
+        for segundos in self.segundos:
+            self._dormir(segundos)
+            yield
+
+
+class MotorDoCartao:
+    """`motor` é o de `engine/` (`motor_do_envio.motor_do_complemento()`), `esperas` as `EsperasDaOpenai` do Envio, `audio` o
+    `audio_do_cartao.AudioDoCartao` e `imagem` o `imagem_do_cartao.ImagemDoCartao`."""
+
+    def __init__(self, motor, esperas, audio, imagem):
+        self.motor, self.esperas, self._audio, self._imagem = motor, esperas, audio, imagem
 
     def escrever(self, cartao, ia):
         """None quando o texto do Cartão está no disco (`<output_dir>/<id>.txt`), senão o código da falha. Levanta `SemQuemPague` (da porta)."""
@@ -63,9 +75,7 @@ class MotorDoCartao:
         fixar_na_entrada(cartao.pedido, int(phrase_id), entrada)
         trabalho = self.motor.parser.get_card_jobs(entrada)[int(posicao)]
         codigo = None
-        for espera in (None,) + self.esperas_da_openai:
-            if espera is not None:
-                self._dormir(espera)
+        for _ in self.esperas.tentativas():
             codigo = self.motor.generate_cards.escrever(trabalho, cartao.config, pedir, cartao.id)
             if codigo not in PASSAGEIROS:
                 break
