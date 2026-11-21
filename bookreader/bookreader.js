@@ -488,16 +488,16 @@ To be or not to be, that is the question`;
    * para aplicar o endereço de novo (e focar o campo da chave, por exemplo).
    */
   function abrirPainel(endereco = '') {
-    const painel = chrome.runtime.getURL('painel.html');
+    const alvo = chrome.runtime.getURL('painel/painel.html');
     chrome.tabs.query({}, abas => {
-      const aba = abas.find(a => a.url && a.url.split('#')[0] === painel);
+      const aba = abas.find(a => a.url && a.url.split('#')[0] === alvo);
       if (!aba) {
-        chrome.tabs.create({ url: painel + endereco });
+        chrome.tabs.create({ url: alvo + endereco });
         return;
       }
-      chrome.tabs.update(aba.id, endereco ? { active: true, url: painel + endereco } : { active: true });
+      chrome.tabs.update(aba.id, endereco ? { active: true, url: alvo + endereco } : { active: true });
       chrome.windows.update(aba.windowId, { focused: true });
-      if (endereco && aba.url === painel + endereco) {
+      if (endereco && aba.url === alvo + endereco) {
         chrome.runtime.sendMessage({ type: 'PAINEL_REAPLICAR_ENDERECO' }, () => void chrome.runtime.lastError);
       }
     });

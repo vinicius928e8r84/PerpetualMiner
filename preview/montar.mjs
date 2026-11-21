@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SAIDA = process.argv.indexOf('--saida');
 const DESTINO = SAIDA > 0 ? path.resolve(process.argv[SAIDA + 1]) : path.join(RAIZ, 'preview', 'dist');
+const EXTENSAO = path.join(DESTINO, 'extensao');
 
 const require = createRequire(import.meta.url);
 require('../lib/arquivos-da-extensao.js');
@@ -18,7 +19,7 @@ const { arquivosDaExtensao } = globalThis.PerpetualMiner;
 
 const TELAS = [
   { arquivo: 'popup/popup.html', titulo: 'Popup', largura: '340 px' },
-  { arquivo: 'painel.html', titulo: 'Painel', largura: 'tela cheia' },
+  { arquivo: 'painel/painel.html', titulo: 'Painel', largura: 'tela cheia' },
   { arquivo: 'bookreader/bookreader.html', titulo: 'Minerar de uma foto', largura: 'tela cheia' },
 ];
 
@@ -70,11 +71,28 @@ const TITULOS = {
   'auditoria/auditoria-front.html': 'Auditoria do front',
 };
 
-function capa({ telas, prototipos, temVitrine, temVeio, git }) {
-  const linha = (href, titulo, detalhe) =>
-    `      <li><a href="${href}"><span>${titulo}</span><small>${detalhe}</small></a></li>`;
+const itemDaLista = (href, titulo, detalhe) =>
+  `      <li><a href="${href}"><span>${titulo}</span><small>${detalhe}</small></a></li>`;
 
-  return `<!DOCTYPE html>
+const itemDaTela = tela => itemDaLista(`/extensao/${tela.arquivo}`, tela.titulo, tela.largura);
+
+const enderecoDoPrototipo = rel => `/design/${rel}${rel.includes('identidade') ? '?variant=F' : ''}`;
+
+const itemDoPrototipo = rel => itemDaLista(enderecoDoPrototipo(rel), TITULOS[rel] || rel, rel.split('/')[0]);
+
+function itemDaVitrine(temVitrine) {
+  if (temVitrine) return itemDaLista('/vitrine.html', 'Vitrine: tokens, escala de tipo, raios, cirílico e os componentes base', 'nos dois temas');
+  return '      <li><a><span>Vitrine ainda não existe nesta branch</span><small>e2e/vitrine</small></a></li>';
+}
+
+function marcaDoTopo(temVeio) {
+  const nome = 'Perpetual<b>Miner</b>';
+  if (!temVeio) return `    <span class="veio-nome">${nome}</span>`;
+  return `    <img class="veio-marca" src="/veio/icones/icone.svg" width="40" height="40" alt="">
+    <span class="veio-nome">${nome}<span class="veio-cursor"></span></span>`;
+}
+
+const CABECA_DA_CAPA = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -110,34 +128,37 @@ function capa({ telas, prototipos, temVitrine, temVeio, git }) {
   .veio-nome b { font-weight: 800; }
   .rodape { margin-top: 36px; font-family: var(--veio-fonte-mono); font-size: 11.5px; color: var(--veio-muted); overflow-wrap: anywhere; }
 </style>
-</head>
+</head>`;
+
+function capa({ telas, prototipos, temVitrine, temVeio, git }) {
+  return `${CABECA_DA_CAPA}
 <body>
 <main>
   <div class="topo">
-${temVeio ? '    <img class="veio-marca" src="/veio/icones/icone.svg" width="40" height="40" alt="">\n' : ''}    <span class="veio-nome">Perpetual<b>Miner</b>${temVeio ? '<span class="veio-cursor"></span>' : ''}</span>
+${marcaDoTopo(temVeio)}
   </div>
   <h1>Preview do front</h1>
   <p>Como esta branch fica na tela. Publicado pelo Vercel quando a mudança toca o que o preview mostra.</p>
 
   <h2>O app</h2>
   <ul>
-${linha('/sobre/', 'PerpetualMiner: página inicial do app', 'o que é e o que faz')}
+${itemDaLista('/sobre/', 'PerpetualMiner: página inicial do app', 'o que é e o que faz')}
   </ul>
 
   <h2>Telas da extensão</h2>
   <div class="aviso">Fora do Chrome não existe <code>chrome.*</code>, então o preview injeta um simulador com dados de exemplo: o visual é o de verdade, o conteúdo é inventado e o que depende do navegador (login, atalho, envio ao Anki) não funciona.</div>
   <ul>
-${telas.map(tela => linha(`/extensao/${tela.arquivo}`, tela.titulo, tela.largura)).join('\n')}
+${telas.map(itemDaTela).join('\n')}
   </ul>
 
   <h2>Base Veio</h2>
   <ul>
-${temVitrine ? linha('/vitrine.html', 'Vitrine: tokens, escala de tipo, raios, cirílico e os componentes base', 'nos dois temas') : '      <li><a><span>Vitrine ainda não existe nesta branch</span><small>e2e/vitrine</small></a></li>'}
+${itemDaVitrine(temVitrine)}
   </ul>
 
   <h2>Protótipos travados</h2>
   <ul>
-${prototipos.map(rel => linha(`/design/${rel}${rel.includes('identidade') ? '?variant=F' : ''}`, TITULOS[rel] || rel, rel.split('/')[0])).join('\n')}
+${prototipos.map(itemDoPrototipo).join('\n')}
   </ul>
 
   <p class="rodape">${git}</p>
@@ -147,48 +168,45 @@ ${prototipos.map(rel => linha(`/design/${rel}${rel.includes('identidade') ? '?va
 `;
 }
 
-async function montar() {
-  await fs.rm(DESTINO, { recursive: true, force: true });
-  await fs.mkdir(DESTINO, { recursive: true });
+async function copiarSeExistir(caminho, destinos) {
+  const origem = path.join(RAIZ, caminho);
+  if (!(await existe(origem))) return false;
+  for (const destino of destinos) await copiar(origem, path.join(destino, caminho));
+  return true;
+}
 
-  const temVeio = await existe(path.join(RAIZ, 'veio'));
-  if (temVeio) {
-    await copiar(path.join(RAIZ, 'veio'), path.join(DESTINO, 'veio'));
-    await copiar(path.join(RAIZ, 'veio'), path.join(DESTINO, 'extensao', 'veio'));
-  }
+async function copiarTela(tela) {
+  const origem = path.join(RAIZ, tela.arquivo);
+  if (!(await existe(origem))) return false;
+  const html = await fs.readFile(origem, 'utf8');
+  await fs.mkdir(path.dirname(path.join(EXTENSAO, tela.arquivo)), { recursive: true });
+  await fs.writeFile(path.join(EXTENSAO, tela.arquivo), injetarSimulador(html));
+  return true;
+}
 
+async function copiarTelas() {
   const telas = [];
   for (const tela of TELAS) {
-    const origem = path.join(RAIZ, tela.arquivo);
-    if (!(await existe(origem))) continue;
-    const html = await fs.readFile(origem, 'utf8');
-    await fs.mkdir(path.dirname(path.join(DESTINO, 'extensao', tela.arquivo)), { recursive: true });
-    await fs.writeFile(path.join(DESTINO, 'extensao', tela.arquivo), injetarSimulador(html));
-    telas.push(tela);
+    if (await copiarTela(tela)) telas.push(tela);
   }
+  return telas;
+}
+
+async function copiarArquivosDaExtensao() {
   const daTela = new Set(TELAS.map(tela => tela.arquivo));
   const lerTexto = caminho => fs.readFile(path.join(RAIZ, caminho), 'utf8');
-  for (const nome of await arquivosDaExtensao(lerTexto)) {
-    if (daTela.has(nome)) continue;
-    const origem = path.join(RAIZ, nome);
-    if (await existe(origem)) await copiar(origem, path.join(DESTINO, 'extensao', nome));
-  }
-  for (const pasta of PASTAS_DE_APOIO) {
-    const origem = path.join(RAIZ, pasta);
-    if (await existe(origem)) await copiar(origem, path.join(DESTINO, 'extensao', pasta));
-  }
-  for (const pasta of ['lib']) {
-    const origem = path.join(RAIZ, pasta);
-    if (!(await existe(origem))) continue;
-    await copiar(origem, path.join(DESTINO, 'extensao', pasta));
-    await copiar(origem, path.join(DESTINO, pasta));
-  }
-  await copiar(path.join(RAIZ, 'preview', 'chrome-simulado.js'), path.join(DESTINO, 'preview-chrome-simulado.js'));
+  const arquivos = (await arquivosDaExtensao(lerTexto)).filter(nome => !daTela.has(nome));
+  for (const nome of arquivos) await copiarSeExistir(nome, [EXTENSAO]);
+}
 
+async function copiarVitrine() {
   const vitrine = path.join(RAIZ, 'e2e', 'vitrine');
   const temVitrine = await existe(path.join(vitrine, 'vitrine.html'));
   if (temVitrine) await copiar(vitrine, DESTINO);
+  return temVitrine;
+}
 
+async function copiarSite() {
   await fs.mkdir(path.join(DESTINO, 'site'), { recursive: true });
   await fs.copyFile(path.join(RAIZ, 'preview', 'site', 'site.css'), path.join(DESTINO, 'site', 'site.css'));
   for (const { arquivo, enderecos } of PAGINAS_PUBLICAS) {
@@ -196,21 +214,49 @@ async function montar() {
       await copiar(path.join(RAIZ, 'preview', 'site', arquivo), path.join(DESTINO, endereco, 'index.html'));
     }
   }
+}
 
+async function copiarPrototipos() {
   const prototipos = await acharPrototipos();
   if (prototipos.length) await copiar(path.join(RAIZ, 'docs', 'design'), path.join(DESTINO, 'design'));
+  return prototipos;
+}
 
-  const git = [
-    process.env.VERCEL_GIT_COMMIT_REF && `branch ${process.env.VERCEL_GIT_COMMIT_REF}`,
-    process.env.VERCEL_GIT_COMMIT_SHA && `commit ${process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 7)}`,
-    process.env.VERCEL_GIT_COMMIT_MESSAGE && process.env.VERCEL_GIT_COMMIT_MESSAGE.split('\n')[0],
-  ].filter(Boolean).join(' · ') || 'build local';
+const DADOS_DO_GIT = [
+  ['VERCEL_GIT_COMMIT_REF', ref => `branch ${ref}`],
+  ['VERCEL_GIT_COMMIT_SHA', sha => `commit ${sha.slice(0, 7)}`],
+  ['VERCEL_GIT_COMMIT_MESSAGE', mensagem => mensagem.split('\n')[0]],
+];
 
-  await fs.writeFile(path.join(DESTINO, 'index.html'), capa({ telas, prototipos, temVitrine, temVeio, git }));
+function rodapeDoGit(env) {
+  return DADOS_DO_GIT
+    .map(([variavel, descrever]) => env[variavel] && descrever(env[variavel]))
+    .filter(Boolean).join(' · ') || 'build local';
+}
 
+function relatarMontagem({ telas, temVitrine, prototipos }) {
   console.log(`preview montado em ${path.relative(process.cwd(), DESTINO)}`);
   console.log(`  telas: ${telas.map(t => t.arquivo).join(', ') || 'nenhuma'}`);
   console.log(`  vitrine: ${temVitrine ? 'sim' : 'não'} · protótipos: ${prototipos.length}`);
+}
+
+async function montar() {
+  await fs.rm(DESTINO, { recursive: true, force: true });
+  await fs.mkdir(DESTINO, { recursive: true });
+
+  const temVeio = await copiarSeExistir('veio', [DESTINO, EXTENSAO]);
+  const telas = await copiarTelas();
+  await copiarArquivosDaExtensao();
+  for (const pasta of PASTAS_DE_APOIO) await copiarSeExistir(pasta, [EXTENSAO]);
+  await copiarSeExistir('lib', [EXTENSAO, DESTINO]);
+  await copiar(path.join(RAIZ, 'preview', 'chrome-simulado.js'), path.join(DESTINO, 'preview-chrome-simulado.js'));
+
+  const temVitrine = await copiarVitrine();
+  await copiarSite();
+  const prototipos = await copiarPrototipos();
+
+  await fs.writeFile(path.join(DESTINO, 'index.html'), capa({ telas, prototipos, temVitrine, temVeio, git: rodapeDoGit(process.env) }));
+  relatarMontagem({ telas, temVitrine, prototipos });
 }
 
 const TIPOS_MIME = {

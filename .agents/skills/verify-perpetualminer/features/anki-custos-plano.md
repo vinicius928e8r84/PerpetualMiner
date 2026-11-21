@@ -12,7 +12,7 @@ The Custos tab (Conexão com o Anki › Custos) reads the costs from the Conexã
 
 ## How to get to it (user POV)
 
-- Sidebar › **Conexão com o Anki** › **Custos** (`painel.html#anki/custos`); **Enviar ao Anki** in Frases for the Envio screens.
+- Sidebar › **Conexão com o Anki** › **Custos** (`painel/painel.html#anki/custos`); **Enviar ao Anki** in Frases for the Envio screens.
 
 ## Driving it with the Playwright e2e harness
 
