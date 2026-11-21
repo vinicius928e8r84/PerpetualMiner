@@ -203,7 +203,6 @@
     "engine/provedores.py": 4,
     "engine/rodar_imagens.py": 5,
     "engine/send_to_anki.py": 78,
-    "engine/test_image_fallback_policy.py": 41,
     "engine/test_image_judge_invalid_format.py": 1,
     "engine/test_prompt_contracts.py": 1,
     "lib/abridor.js": 2,
