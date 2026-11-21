@@ -76,7 +76,6 @@
     "complemento/rotas_do_pareamento.py": 5,
     "complemento/servidor.py": 30,
     "complemento/test_anki_de_mentira.py": 3,
-    "complemento/test_chatgpt_de_mentira.py": 7,
     "complemento/test_colecao_em_memoria.py": 15,
     "complemento/test_comparar_com_o_contrato.py": 12,
     "complemento/test_conexao_antiga_de_mentira.py": 5,
