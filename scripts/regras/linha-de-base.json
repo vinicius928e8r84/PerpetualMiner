@@ -196,7 +196,6 @@
     "scripts/regras/aprovacao-visual.js": 1,
     "scripts/regras/contrato-fechado.js": 1,
     "scripts/regras/e2e-estado-final.js": 13,
-    "scripts/regras/e2e-funcao-interna.js": 4,
     "scripts/regras/indice-de-arquivos.js": 3,
     "scripts/regras/limite-de-linhas.js": 1,
     "scripts/regras/relogio-fora-da-fixture.js": 9,
