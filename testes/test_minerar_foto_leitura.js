@@ -124,6 +124,13 @@ cenario('um arquivo que não é foto recebe o FOT-04 com os nomes, e só as foto
   assert.deepStrictEqual(nada.retrato().avisos, []);
 });
 
+cenario('o tipo que o navegador dá vale antes da extensão, e é o que o Gemini recebe', async () => {
+  const pagina = await abrirPagina();
+  await pagina.soltar([foto('colada', 'image/png'), foto('foto.jpg', 'image/webp')]);
+  assert.deepStrictEqual(pagina.registro.pedidos.map(pedido => pedido.corpo.contents[0].parts[0].inlineData.mimeType), ['image/png', 'image/webp']);
+  assert.deepStrictEqual(pagina.retrato().avisos, []);
+});
+
 cenario('fotos lidas do disco depois de um Recomeçar são descartadas', async () => {
   const pagina = await abrirPagina();
   pagina.documento.disparar('drop', { dataTransfer: { files: [foto('a.jpg'), foto('b.jpg')] } });
