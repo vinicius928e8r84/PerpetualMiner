@@ -208,7 +208,7 @@
     "lib/palavra-automatica.js": 20,
     "lib/pareamento.js": 34,
     "lib/pedido-ao-anki.js": 8,
-    "lib/sincronizacao.js": 12,
+    "lib/sincronizacao.js": 8,
     "lib/vocabulario-da-mineracao.js": 1,
     "lib/voz/texto.js": 1,
     "painel/painel-abrir-anki.js": 10,
@@ -272,7 +272,6 @@
     "testes/test_preview.js": 4,
     "testes/test_primeira_conexao.js": 13,
     "testes/test_quiz_de_nivel.js": 1,
-    "testes/test_sync_explorador.js": 18,
     "testes/test_verificar_envio.js": 13
   }
 }
