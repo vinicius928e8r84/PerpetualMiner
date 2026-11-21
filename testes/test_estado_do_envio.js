@@ -3,7 +3,7 @@
 const assert = require('assert');
 
 globalThis.PerpetualMiner = {};
-require('../painel-envio-estado.js');
+require('../painel/painel-envio-estado.js');
 const { SituacaoDoEnvio, FaseDaRemessa } = globalThis.PerpetualMiner;
 
 // ─── A situação de um Envio ───────────────────────────────────────────────────────────────────────────────────────────────────────
