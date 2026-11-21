@@ -61,7 +61,7 @@ class IaDosCartoes:
     (`envio.motor_do_complemento()`), `openai_base` o endereço da OpenAI e `logger` o da Conexão."""
 
     def __init__(self, login, cofre, modelos, motor=None, openai_base=None, logger=None):
-        self._conta, self._modelos = Conta(login, cofre), modelos
+        self._conta, self._modelos = Conta(login, cofre, openai_base), modelos
         self._motor, self._openai_base = motor, openai_base
         self._logger = logger or logging.getLogger(NOME_DO_LOGGER)
         self._do_envio = {}

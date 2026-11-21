@@ -22,7 +22,7 @@ from complemento import envio
 from complemento.chaves import Cofre
 from complemento.ia_dos_cartoes import CORRECAO, ETAPAS, IMAGEM, JUIZ, OUVIR, TEXTO, VOZ, IaDosCartoes, Situacao, quem_paga_a_etapa
 from complemento.login_do_chatgpt import ACABOU, CONECTADA, SAIU, SEM_LOGIN, ErroDoPlano, LoginDoChatGPT
-from complemento.modelo_dos_cartoes import CHAVE, PARADO, PLANO, ModeloDosCartoes, lista_nossa
+from complemento.modelo_dos_cartoes import CHAVE, PARADO, PLANO, Conta, ListaDosModelos, ModeloDosCartoes, lista_nossa
 from complemento.test_correcao_de_mentira import COMECO_DO_PROMPT
 from complemento.test_imagens_de_mentira import png_de
 from complemento.test_openai_de_mentira import OpenAIDeMentira
@@ -154,8 +154,8 @@ def porta_e_modelos_na_openai(pasta, situacao, openai):
     """(a porta, o `ModeloDosCartoes` dela, o config do motor), como em `porta_na_openai`."""
     motor = envio.motor_do_complemento()
     login, cofre = guardar(pasta, SITUACOES[situacao][0], SITUACOES[situacao][3], api=openai.base)
-    modelos = ModeloDosCartoes(os.path.join(pasta, "modelo-dos-cartoes.json"), lista_nossa(), date.today, logging.getLogger("teste"), login, cofre,
-                               openai.base, lambda: motor.config_loader.base_config()["openai"]["chat_model"])
+    lista = ListaDosModelos(lista_nossa(), date.today, lambda: motor.config_loader.base_config()["openai"]["chat_model"], logging.getLogger("teste"))
+    modelos = ModeloDosCartoes(os.path.join(pasta, "modelo-dos-cartoes.json"), lista, Conta(login, cofre, openai.base), logging.getLogger("teste"))
     config = motor.config_loader.base_config()
     config["paths"]["log_dir"] = os.path.join(pasta, "custos")
     return IaDosCartoes(login, cofre, modelos, motor=motor, openai_base=openai.base), modelos, config

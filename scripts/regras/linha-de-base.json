@@ -62,7 +62,6 @@
     "complemento/envios_dos_custos.py": 2,
     "complemento/ia_dos_cartoes.py": 2,
     "complemento/inicio.py": 16,
-    "complemento/modelo_dos_cartoes.py": 4,
     "complemento/no_anki.py": 28,
     "complemento/nuvem_da_chave.py": 2,
     "complemento/openai_api.py": 4,
