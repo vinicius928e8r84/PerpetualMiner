@@ -108,12 +108,16 @@ def _pedir(base, metodo, caminho, codigo):
         conexao.close()
 
 
+def _hora_do_upload(t):
+    return t.isdigit() and int(t) > 0
+
+
 def _redirect_do_download(codigo, base):
     """O `mod` e o caminho do zip que o AnkiWeb serve para a página `codigo`: o `t=` e a Location do redirect do download (HEAD).
     O AnkiWeb só dá o redirect a um Anki que ele aceita (`v=2.1` e `p=` o ponto da versão, 250900 é o 25.09); fora disso vem 400/404."""
     status, local, _ = _pedir(base, "HEAD", "/shared/download/%s?%s" % (codigo, CONSULTA_QUE_O_ANKIWEB_ACEITA_NO_DOWNLOAD), codigo)
     t = urllib.parse.parse_qs(urllib.parse.urlsplit(local).query).get("t", [""])[0]
-    if status not in (301, 302, 303, 307, 308) or not t.isdigit() or int(t) <= 0:
+    if status not in (301, 302, 303, 307, 308) or not _hora_do_upload(t):
         raise ErroDoAnkiWeb("o AnkiWeb não deu a hora da página %s (status %s, Location %r): ela já está no ar?" % (codigo, status, local))
     return int(t), local
 
@@ -148,23 +152,37 @@ def refazer_com_o_mod_do_ankiweb(destino, base=ANKIWEB):
     mod, bytes_do_zip = arquivo_do_ankiweb(codigo, base)
     entradas = _entradas_do_zip(bytes_do_zip, "o que o AnkiWeb serviu para a página " + codigo)
     do_ankiweb = dict(entradas)
-    try:
-        manifesto = json.loads(do_ankiweb["manifest.json"])
-    except (KeyError, ValueError):
-        raise ErroDoAnkiWeb("o arquivo da página %s no AnkiWeb não tem manifest.json" % codigo)
+    manifesto = _manifesto_do_ankiweb(do_ankiweb, codigo)
     if mod < int(manifesto.get("mod", 0)):
         raise ErroDoAnkiWeb("o AnkiWeb dá a hora %d à página %s, antes do mod %s do arquivo dela: não é a hora de um upload" % (mod, codigo, manifesto.get("mod")))
-    if os.path.exists(destino):
-        versionado = dict(_entradas_do_zip(_ler(destino), destino))
-        diferentes = sorted(nome for nome in set(versionado) | set(do_ankiweb) if nome != "manifest.json" and versionado.get(nome) != do_ankiweb.get(nome))
-        if diferentes:
-            raise ErroDoAnkiWeb("o arquivo do AnkiWeb não leva o mesmo código que %s (%s): o upload deste arquivo já aconteceu?" % (destino, ", ".join(diferentes[:5])))
+    _conferir_que_o_versionado_e_o_do_ankiweb(destino, do_ankiweb)
     manifesto["mod"] = mod
+    _gravar_com_o_manifesto(destino, entradas, manifesto)
+    return destino
+
+
+def _manifesto_do_ankiweb(do_ankiweb, codigo):
+    try:
+        return json.loads(do_ankiweb["manifest.json"])
+    except (KeyError, ValueError):
+        raise ErroDoAnkiWeb("o arquivo da página %s no AnkiWeb não tem manifest.json" % codigo)
+
+
+def _conferir_que_o_versionado_e_o_do_ankiweb(destino, do_ankiweb):
+    """Um `destino` que já existe tem de levar, fora o manifest.json, os mesmos arquivos que o AnkiWeb serviu."""
+    if not os.path.exists(destino):
+        return
+    versionado = dict(_entradas_do_zip(_ler(destino), destino))
+    diferentes = sorted(nome for nome in set(versionado) | set(do_ankiweb) if nome != "manifest.json" and versionado.get(nome) != do_ankiweb.get(nome))
+    if diferentes:
+        raise ErroDoAnkiWeb("o arquivo do AnkiWeb não leva o mesmo código que %s (%s): o upload deste arquivo já aconteceu?" % (destino, ", ".join(diferentes[:5])))
+
+
+def _gravar_com_o_manifesto(destino, entradas, manifesto):
     os.makedirs(os.path.dirname(os.path.abspath(destino)), exist_ok=True)
     with zipfile.ZipFile(destino, "w", zipfile.ZIP_DEFLATED) as pacote:
         for nome, conteudo in entradas:
             pacote.writestr(_entrada(nome), json.dumps(manifesto, indent=2) + "\n" if nome == "manifest.json" else conteudo)
-    return destino
 
 
 def _ler(caminho):
