@@ -22,17 +22,33 @@ function linhaDaChave(texto, chave) {
   return indice < 0 ? null : indice + 1;
 }
 
+function linhaAntesDe(texto, indice) {
+  return texto.slice(0, indice).split('\n').length;
+}
+
+function linhaDoErroDoJson(texto, mensagem) {
+  const posicao = /position (\d+)/.exec(mensagem);
+  if (posicao) return { linha: linhaAntesDe(texto, Number(posicao[1])), aproximada: false };
+  const trecho = /, (?:\.\.\.)?"(.+?)"(?:\.\.\.)? is not valid JSON/s.exec(mensagem);
+  const inicio = trecho ? texto.indexOf(trecho[1]) : -1;
+  return { linha: inicio < 0 ? null : linhaAntesDe(texto, inicio), aproximada: true };
+}
+
 function lerJson(texto, onde) {
   try {
     return JSON.parse(texto);
   } catch (erro) {
-    const posicao = /position (\d+)/.exec(erro.message);
-    if (posicao) throw new ErroDeEntrada(onde, `não é um JSON válido (${erro.message})`, texto.slice(0, Number(posicao[1])).split('\n').length);
-    const trecho = /, (?:\.\.\.)?"(.+?)"(?:\.\.\.)? is not valid JSON/s.exec(erro.message);
-    const inicio = trecho ? texto.indexOf(trecho[1]) : -1;
-    const linha = inicio < 0 ? null : texto.slice(0, inicio).split('\n').length;
-    throw new ErroDeEntrada(onde, `não é um JSON válido (${erro.message})`, linha, true);
+    const { linha, aproximada } = linhaDoErroDoJson(texto, erro.message);
+    throw new ErroDeEntrada(onde, `não é um JSON válido (${erro.message})`, linha, aproximada);
   }
+}
+
+function primeiroTamanhoInvalido(arquivos) {
+  return Object.entries(arquivos).find(([, valor]) => !ehNumeroDeBytes(valor));
+}
+
+function erroDeTamanhoInvalido(texto, onde, [caminho, valor]) {
+  return new ErroDeEntrada(onde, `o tamanho de ${JSON.stringify(caminho)} tem de ser um número de bytes (achou ${JSON.stringify(valor)})`, linhaDaChave(texto, caminho));
 }
 
 function lerLinhaDeBaseDoTexto(texto, onde) {
@@ -40,9 +56,8 @@ function lerLinhaDeBaseDoTexto(texto, onde) {
   if (!ehObjeto(dados)) throw new ErroDeEntrada(onde, 'esperava um objeto com a chave "arquivos"', 1);
   if (dados.arquivos === undefined) return {};
   if (!ehObjeto(dados.arquivos)) throw new ErroDeEntrada(onde, '"arquivos" tem de ser um objeto { caminho: bytes }', linhaDaChave(texto, 'arquivos'));
-  for (const [caminho, valor] of Object.entries(dados.arquivos)) {
-    if (!ehNumeroDeBytes(valor)) throw new ErroDeEntrada(onde, `o tamanho de ${JSON.stringify(caminho)} tem de ser um número de bytes (achou ${JSON.stringify(valor)})`, linhaDaChave(texto, caminho));
-  }
+  const invalido = primeiroTamanhoInvalido(dados.arquivos);
+  if (invalido) throw erroDeTamanhoInvalido(texto, onde, invalido);
   return dados.arquivos;
 }
 
