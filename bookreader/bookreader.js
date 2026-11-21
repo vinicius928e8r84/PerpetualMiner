@@ -3,31 +3,7 @@
 (function (raiz) {
   const { textoDaVoz, Mineracao } = raiz;
   const { iconeVeio, montarAviso, mostrarToastDeSucesso, refletirSelecao, abrirConfirmacao, elemento, botao } = raiz.Veio;
-
-  const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent';
-
-  const SENTINEL_VAZIO = 'NENHUM_TRECHO';
-
-  const PROMPT = `Analise a foto desta página de livro ou texto impresso.
-
-TAREFA: encontre e transcreva APENAS os trechos que foram marcados manualmente pelo leitor.
-
-Tipos de marcação a identificar:
-1. Texto entre barras oblíquas → /texto marcado aqui/
-2. Texto entre underscores → _texto marcado aqui_
-3. Texto com sublinhado físico desenhado à mão abaixo das palavras
-4. Texto circulado, entre colchetes [] ou com marcação lateral
-
-REGRAS — siga à risca:
-- Retorne APENAS o texto limpo de cada trecho, sem os símbolos de marcação
-- Um trecho por linha, sem numeração, sem bullet points, sem explicações
-- Preserve a frase exatamente como está, incluindo pontuação e capitalização
-- Se não houver absolutamente nenhum trecho marcado, responda exatamente: ${SENTINEL_VAZIO}
-
-Exemplo de saída correta (para uma página com 3 trechos marcados):
-The quick brown fox jumps over the lazy dog
-All that glitters is not gold
-To be or not to be, that is the question`;
+  const { lerAsMarcacoes, classificarFalha } = raiz.LeituraDoGemini;
 
   const TITULO_SEM_LIVRO = 'Físico/Livro';
 
@@ -182,26 +158,36 @@ To be or not to be, that is the question`;
   async function receberArquivos(arquivos) {
     if (!estado.chaveGemini || !arquivos.length) return;
 
-    const recusados = arquivos.filter(arquivo => !tipoDaFoto(arquivo));
-    if (recusados.length) {
-      mostrarAviso({
-        texto: textoDaVoz('FOT-04'),
-        detalhes: recusados.map(arquivo => arquivo.name).join('\n'),
-      });
-    }
+    avisarDosRecusados(arquivos.filter(arquivo => !tipoDaFoto(arquivo)));
 
     const aceitos = arquivos.filter(arquivo => tipoDaFoto(arquivo));
     if (!aceitos.length) return;
-    const sessao = estado.sessao;
-    const novas = await Promise.all(aceitos.map(lerArquivo));
-    if (sessao !== estado.sessao) {
-      for (const foto of novas) URL.revokeObjectURL(foto.url);
-      return;
-    }
+    const novas = await lerNaMesmaSessao(aceitos);
+    if (novas) entrarNaFila(novas);
+  }
 
-    const primeiraVez = estado.fotos.length === 0;
-    const comPrevia = fotosCom(STATUS.PRONTA).length > 0;
-    const status = (primeiraVez && novas.length === 1) || comPrevia ? STATUS.PRONTA : STATUS.NA_FILA;
+  function avisarDosRecusados(recusados) {
+    if (!recusados.length) return;
+    mostrarAviso({
+      texto: textoDaVoz('FOT-04'),
+      detalhes: recusados.map(arquivo => arquivo.name).join('\n'),
+    });
+  }
+
+  async function lerNaMesmaSessao(arquivos) {
+    const sessao = estado.sessao;
+    const novas = await Promise.all(arquivos.map(lerArquivo));
+    if (sessao === estado.sessao) return novas;
+    for (const foto of novas) URL.revokeObjectURL(foto.url);
+    return null;
+  }
+
+  const ehAPrimeiraFotoSozinha = novas => estado.fotos.length === 0 && novas.length === 1;
+  const haPrevia = () => fotosCom(STATUS.PRONTA).length > 0;
+  const entramNaPrevia = novas => ehAPrimeiraFotoSozinha(novas) || haPrevia();
+
+  function entrarNaFila(novas) {
+    const status = entramNaPrevia(novas) ? STATUS.PRONTA : STATUS.NA_FILA;
     for (const foto of novas) estado.fotos.push({ ...foto, status });
 
     desenhar();
@@ -243,7 +229,7 @@ To be or not to be, that is the question`;
       let textos = null;
       let falha = null;
       try {
-        textos = await chamarGemini(estado.chaveGemini, foto, leitura.controlador.signal);
+        textos = await lerAsMarcacoes(estado.chaveGemini, foto, leitura.controlador.signal);
       } catch (erro) {
         falha = erro;
       }
@@ -327,55 +313,6 @@ To be or not to be, that is the question`;
     porId('foto-escolher').focus();
   }
 
-  async function chamarGemini(chave, foto, sinal) {
-    let resposta;
-    try {
-      resposta = await fetch(GEMINI_URL, {
-        method: 'POST',
-        signal: sinal,
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': chave },
-        body: JSON.stringify({
-          contents: [{ parts: [
-            { inlineData: { mimeType: foto.tipo, data: foto.base64 } },
-            { text: PROMPT },
-          ] }],
-          generationConfig: { temperature: 0.1, maxOutputTokens: 2048 },
-        }),
-      });
-    } catch (causa) {
-      const erro = new Error(causa.message);
-      erro.semRede = true;
-      throw erro;
-    }
-
-    if (!resposta.ok) {
-      const corpo = await resposta.json().catch(() => ({}));
-      const erro = new Error(corpo?.error?.message || `HTTP ${resposta.status}`);
-      erro.status = resposta.status;
-      erro.estadoDaApi = corpo?.error?.status;
-      throw erro;
-    }
-
-    // Só o sentinel diz “sem marcações”. Uma resposta sem texto (pedido
-    // bloqueado, corte por tamanho) é falha da leitura, não da página.
-    const dados = await resposta.json();
-    const texto = dados?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
-    if (!texto) throw new Error(JSON.stringify(dados));
-    return texto
-      .split('\n')
-      .map(linha => linha.trim())
-      .filter(linha => linha.length > 0 && !linha.startsWith(SENTINEL_VAZIO));
-  }
-
-  function classificarFalha(erro) {
-    const chaveRecusada = erro.status === 401 || erro.status === 403 || /api[ _]?key/i.test(erro.message);
-    let causa = textoDaVoz('GLB-01');
-    if (erro.semRede) causa = textoDaVoz('FOT-11.causaRede');
-    else if (erro.status === 429 || erro.estadoDaApi === 'RESOURCE_EXHAUSTED') causa = textoDaVoz('FOT-11.causaLimite');
-    else if (chaveRecusada) causa = textoDaVoz('FOT-11.causaChave');
-    return { causa, chaveRecusada };
-  }
-
   function numeroDaFoto(foto) {
     return estado.fotos.indexOf(foto) + 1;
   }
@@ -447,24 +384,27 @@ To be or not to be, that is the question`;
     desenharLista();
 
     const sessao = estado.sessao;
+    const n = await gravarAsFrases(alvo);
+
+    estado.minerando = false;
+    desenharLista();
+    avisarDaMineracao(alvo, n, sessao !== estado.sessao);
+  }
+
+  async function gravarAsFrases(frases) {
     const titulo = porId('foto-livro').value.trim() || TITULO_SEM_LIVRO;
-    const deuCerto = await Promise.all(alvo.map(frase => salvarNoHistorico(frase.texto.trim(), titulo)));
-    alvo.forEach((frase, i) => {
+    const deuCerto = await Promise.all(frases.map(frase => salvarNoHistorico(frase.texto.trim(), titulo)));
+    frases.forEach((frase, i) => {
       if (!deuCerto[i]) return;
       frase.texto = frase.texto.trim();
       frase.minerada = true;
     });
+    return deuCerto.filter(Boolean).length;
+  }
 
-    estado.minerando = false;
-    desenharLista();
-
-    const n = deuCerto.filter(Boolean).length;
-    if (sessao !== estado.sessao) {
+  function avisarDaMineracao(alvo, n, recomecou) {
+    if (recomecou || n === alvo.length) {
       if (n) mostrarToastDeSucesso(textoDaVoz('FOT-14', { n }));
-      return;
-    }
-    if (n === alvo.length) {
-      mostrarToastDeSucesso(textoDaVoz('FOT-14', { n }));
       return;
     }
     const falharam = alvo.filter(frase => !frase.minerada);
@@ -514,41 +454,51 @@ To be or not to be, that is the question`;
   const lendoOuNaFila = () => fotosCom(STATUS.LENDO, STATUS.NA_FILA);
 
   function desenharFila() {
+    desenharEnvio();
+    desenharProgresso();
+    for (const foto of estado.fotos) atualizarCartaoDaFoto(cartaoDaFoto(foto), foto);
+  }
+
+  function desenharEnvio() {
     const comChave = !!estado.chaveGemini;
     porId('foto-sem-chave').hidden = comChave;
     porId('foto-envio').hidden = !comChave;
     porId('foto-fotos-total').textContent = estado.fotos.length || '';
-
-    const naFila = fotosCom(STATUS.NA_FILA).length;
-    porId('foto-envio-texto').textContent = !estado.fotos.length
-      ? textoDaVoz('FOT-02.titulo')
-      : naFila
-        ? textoDaVoz('FOT-08', { n: naFila })
-        : textoDaVoz('FOT-23.maisFotos');
+    porId('foto-envio-texto').textContent = textoDoEnvio();
     porId('foto-envio-formatos').hidden = !comChave || estado.fotos.length > 0;
     porId('foto-envio').classList.toggle('foto-envio--lendo', estado.lendo);
+  }
 
+  function textoDoEnvio() {
+    if (!estado.fotos.length) return textoDaVoz('FOT-02.titulo');
+    const naFila = fotosCom(STATUS.NA_FILA).length;
+    return naFila ? textoDaVoz('FOT-08', { n: naFila }) : textoDaVoz('FOT-23.maisFotos');
+  }
+
+  function desenharProgresso() {
     const ocupadas = lendoOuNaFila().length;
-    const total = estado.fotos.length - fotosCom(STATUS.PRONTA, STATUS.CANCELADA).length;
     porId('foto-progresso').hidden = ocupadas === 0;
     const cancelar = porId('foto-cancelar');
     if (!ocupadas && document.activeElement === cancelar) porId('foto-escolher').focus();
     cancelar.hidden = ocupadas === 0;
-    if (ocupadas) {
-      const lidas = total - ocupadas;
-      porId('foto-progresso-texto').textContent = textoDaVoz('FOT-20', { n: lidas, total });
-      porId('foto-progresso-barra').style.width = `${Math.round((lidas / total) * 100)}%`;
-    }
+    if (ocupadas) desenharAsLidas(ocupadas);
+  }
 
-    for (const foto of estado.fotos) {
-      let cartao = desenhado.cartoes.get(foto.id);
-      if (!cartao) {
-        cartao = montarCartaoDaFoto(foto);
-        desenhado.cartoes.set(foto.id, cartao);
-        porId('foto-fila').append(cartao);
-      }
-      atualizarCartaoDaFoto(cartao, foto);
+  function desenharAsLidas(ocupadas) {
+    const total = estado.fotos.length - fotosCom(STATUS.PRONTA, STATUS.CANCELADA).length;
+    const lidas = total - ocupadas;
+    porId('foto-progresso-texto').textContent = textoDaVoz('FOT-20', { n: lidas, total });
+    porId('foto-progresso-barra').style.width = `${Math.round((lidas / total) * 100)}%`;
+  }
+
+  function cartaoDaFoto(foto) {
+    let cartao = desenhado.cartoes.get(foto.id);
+    if (!cartao) {
+      cartao = montarCartaoDaFoto(foto);
+      desenhado.cartoes.set(foto.id, cartao);
+      porId('foto-fila').append(cartao);
     }
+    return cartao;
   }
 
   function montarCartaoDaFoto(foto) {
@@ -617,28 +567,55 @@ To be or not to be, that is the question`;
   }
 
   function estadoDaColuna() {
-    if (!estado.chaveGemini) return { id: 'semChave', montar: montarSemChave };
-    if (!estado.fotos.length) return { id: 'inicio', montar: montarInicio };
-
-    const pronta = fotosCom(STATUS.PRONTA)[0];
-    if (pronta) return { id: `previa:${pronta.id}`, montar: () => montarPrevia(pronta) };
-    if (estado.frases.length) return { id: 'lista' };
-
-    const lendo = fotosCom(STATUS.LENDO)[0];
-    if (lendo || lendoOuNaFila().length) {
-      const total = estado.fotos.length;
-      const n = lendo ? numeroDaFoto(lendo) : 1;
-      return { id: `lendo:${n}/${total}`, montar: () => montarLendo(n, total) };
+    for (const colunaSeVale of COLUNAS_EM_ORDEM) {
+      const coluna = colunaSeVale();
+      if (coluna) return coluna;
     }
-    const falhas = fotosCom(STATUS.FALHOU);
-    if (falhas.length) {
-      return { id: `falhas:${falhas.map(foto => foto.id)}`, montar: () => montarFalhas(falhas) };
-    }
-    const lidas = fotosCom(STATUS.LIDA).length;
-    if (lidas) return { id: `semMarcacoes:${lidas}`, montar: () => montarSemMarcacoes(lidas) };
-    if (fotosCom(STATUS.CANCELADA).length) return { id: ID_DA_COLUNA_CANCELADA, montar: montarCancelada };
     return { id: 'nada' };
   }
+
+  function colunaSemChave() {
+    return estado.chaveGemini ? null : { id: 'semChave', montar: montarSemChave };
+  }
+
+  function colunaDoInicio() {
+    return estado.fotos.length ? null : { id: 'inicio', montar: montarInicio };
+  }
+
+  function colunaDaPrevia() {
+    const pronta = fotosCom(STATUS.PRONTA)[0];
+    return pronta ? { id: `previa:${pronta.id}`, montar: () => montarPrevia(pronta) } : null;
+  }
+
+  function colunaDaLista() {
+    return estado.frases.length ? { id: 'lista' } : null;
+  }
+
+  function colunaDaLeitura() {
+    const lendo = fotosCom(STATUS.LENDO)[0];
+    if (!lendo && !lendoOuNaFila().length) return null;
+    const total = estado.fotos.length;
+    const n = lendo ? numeroDaFoto(lendo) : 1;
+    return { id: `lendo:${n}/${total}`, montar: () => montarLendo(n, total) };
+  }
+
+  function colunaDasFalhas() {
+    const falhas = fotosCom(STATUS.FALHOU);
+    return falhas.length ? { id: `falhas:${falhas.map(foto => foto.id)}`, montar: () => montarFalhas(falhas) } : null;
+  }
+
+  function colunaSemMarcacoes() {
+    const lidas = fotosCom(STATUS.LIDA).length;
+    return lidas ? { id: `semMarcacoes:${lidas}`, montar: () => montarSemMarcacoes(lidas) } : null;
+  }
+
+  function colunaCancelada() {
+    return fotosCom(STATUS.CANCELADA).length ? { id: ID_DA_COLUNA_CANCELADA, montar: montarCancelada } : null;
+  }
+
+  const COLUNAS_EM_ORDEM = [
+    colunaSemChave, colunaDoInicio, colunaDaPrevia, colunaDaLista, colunaDaLeitura, colunaDasFalhas, colunaSemMarcacoes, colunaCancelada,
+  ];
 
   function vazio(icone, ...partes) {
     return elemento('div', 'veio-vazio foto-vazio', iconeVeio(icone), ...partes);
@@ -725,33 +702,47 @@ To be or not to be, that is the question`;
     porId('foto-lista').hidden = estado.frases.length === 0;
     if (!estado.frases.length) return;
 
-    for (const foto of estado.fotos) {
-      const frasesDaFoto = estado.frases.filter(frase => frase.fotoId === foto.id);
-      if (!frasesDaFoto.length) continue;
-      let grupo = desenhado.grupos.get(foto.id);
-      if (!grupo) {
-        grupo = montarGrupo(foto);
-        desenhado.grupos.set(foto.id, grupo);
-        porId('foto-grupos').append(grupo);
-      }
-      for (const frase of frasesDaFoto) {
-        let linha = desenhado.linhas.get(frase.id);
-        if (!linha) {
-          linha = montarLinha(frase);
-          desenhado.linhas.set(frase.id, linha);
-          grupo.querySelector('.foto-grupo__frases').append(linha);
-        }
-        atualizarLinha(linha, frase);
-      }
-    }
+    for (const foto of estado.fotos) desenharGrupo(foto, estado.frases.filter(frase => frase.fotoId === foto.id));
+    desenharSelecao();
+    desenharBotaoDeMinerar();
+  }
 
+  function desenharGrupo(foto, frasesDaFoto) {
+    if (!frasesDaFoto.length) return;
+    const grupo = grupoDaFoto(foto);
+    for (const frase of frasesDaFoto) atualizarLinha(linhaDaFrase(frase, grupo), frase);
+  }
+
+  function grupoDaFoto(foto) {
+    let grupo = desenhado.grupos.get(foto.id);
+    if (!grupo) {
+      grupo = montarGrupo(foto);
+      desenhado.grupos.set(foto.id, grupo);
+      porId('foto-grupos').append(grupo);
+    }
+    return grupo;
+  }
+
+  function linhaDaFrase(frase, grupo) {
+    let linha = desenhado.linhas.get(frase.id);
+    if (!linha) {
+      linha = montarLinha(frase);
+      desenhado.linhas.set(frase.id, linha);
+      grupo.querySelector('.foto-grupo__frases').append(linha);
+    }
+    return linha;
+  }
+
+  function desenharSelecao() {
     const aindaNao = pendentes();
     const marcadas = aindaNao.filter(frase => frase.marcada);
     const todas = porId('foto-todas');
     refletirSelecao(todas, marcadas.length, aindaNao.length);
     todas.disabled = aindaNao.length === 0;
     porId('foto-contagem').textContent = textoDaVoz('FOT-09', { n: estado.frases.length });
+  }
 
+  function desenharBotaoDeMinerar() {
     const n = paraMinerar().length;
     const botao = porId('foto-minerar');
     botao.disabled = estado.minerando || n === 0;
