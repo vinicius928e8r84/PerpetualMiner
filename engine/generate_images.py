@@ -63,17 +63,23 @@ def _log_failure(config: dict, stem: str, exc: Exception) -> str:
 
 def _save_from_response(item: dict, dest: Path) -> bool:
     """Persist one image result to *dest*, handling both b64 and URL payloads."""
-    # gpt-image-1 (and gpt-image-* family) return base64-encoded bytes directly.
     b64 = item.get("b64_json")
     if b64:
-        try:
-            dest.write_bytes(base64.b64decode(b64))
-            return True
-        except Exception:
-            return False
+        return _save_gpt_image_base64(b64, dest)
+    return _download_legacy_dall_e_url(item.get("url"), dest)
 
-    # Legacy dall-e path: download from the returned URL.
-    url = item.get("url")
+
+def _save_gpt_image_base64(b64: str, dest: Path) -> bool:
+    """gpt-image-* models return the image's bytes in base64."""
+    try:
+        dest.write_bytes(base64.b64decode(b64))
+        return True
+    except Exception:
+        return False
+
+
+def _download_legacy_dall_e_url(url: Optional[str], dest: Path) -> bool:
+    """dall-e models return a URL to download the image from."""
     if url and url.startswith(("http://", "https://")):
         try:
             with urllib.request.urlopen(urllib.request.Request(url), timeout=60, context=openai_http.contexto_tls()) as r:

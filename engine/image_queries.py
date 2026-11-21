@@ -5,6 +5,7 @@ Pure text functions (standard library only), used by the image pipeline (`image_
 """
 
 import re
+from dataclasses import dataclass
 
 
 _IMAGE_QUERY_STOPWORDS = {
@@ -163,18 +164,20 @@ def _image_field_value(content: str, pattern: str) -> str:
     return match.group(1).strip().rstrip("*").strip()
 
 
-def _build_card_google_queries(
-    card_text: str,
-    stem: str = "",
-    prompt: str = "",
-    lang: str = "en",
-    max_queries: int = 8,
-) -> list[str]:
+@dataclass(frozen=True)
+class CardToSearch:
+    """What a card gives its photo searches: its text, its stem and the prompt of its generated image."""
+    text: str
+    stem: str = ""
+    prompt: str = ""
+
+
+def _build_card_google_queries(card: CardToSearch, lang: str = "en", max_queries: int = 8) -> list[str]:
     is_ru = lang == "ru"
-    queries = _extract_multiline_image_queries(card_text) + _search_field_queries(card_text)
+    queries = _extract_multiline_image_queries(card.text) + _search_field_queries(card.text)
     if len(queries) < max_queries:
-        queries += _queries_from_the_meaning(card_text, is_ru) + _queries_from_the_words(card_text, stem, is_ru)
-        queries += _english_query_variants_from_text(prompt)
+        queries += _queries_from_the_meaning(card.text, is_ru) + _queries_from_the_words(card.text, card.stem, is_ru)
+        queries += _english_query_variants_from_text(card.prompt)
     return _unique_ignoring_case([_normalize_image_query(query.strip(" -*\t\r\n")) for query in queries])[:max_queries]
 
 
