@@ -28,7 +28,7 @@
     "e2e/tests/boas-vindas.spec.js": 31863,
     "e2e/tests/chave-autoridade.spec.js": 32854,
     "e2e/tests/componentes-veio.spec.js": 27946,
-    "e2e/tests/configuracoes-chave-perigo.spec.js": 23283,
+    "e2e/tests/configuracoes-chave-perigo.spec.js": 21413,
     "e2e/tests/configuracoes-conta.spec.js": 24964,
     "e2e/tests/configuracoes-ia.spec.js": 51879,
     "e2e/tests/configuracoes-visual.spec.js": 22563,
