@@ -1,6 +1,6 @@
 # The Estilo do cartão: the level and the front of each language
 
-In **Ajustes de envio** (`painel.html#anki/ajustes`), every language card has **Estilo do cartão** after the Imagens (#162, BRG-42): a segmented control **Iniciante · Intermediário · Avançado**, and under the chosen level its text (the ones of the level quiz of #134, with the language: “Entendo o inglês explicado em inglês”). Under the control is the **prévia do cartão** (#164, BRG-43): the example Cartão of the level on screen, drawn by the Anki, with **Frente · Verso**. It only writes on **Salvar ajustes**, and the next Envio asks the Conexão for the saved level. What the Card looks like in the Anki is `features/anki-cartao.md`. Under the level there is **Frente** (#166, BRG-44): **Frase com áudio · Ouvir primeiro · Lacuna · Produção · Ditado** per language, with its text under it (“A frase sem a palavra, com uma dica e sem áudio”). On **Salvar ajustes** a changed front is asked of the Conexão (`POST /anki/card-front`), which only rewrites the Card model of the language's note type. What the Card looks like in the Anki is `features/anki-cartao.md`.
+In **Ajustes de envio** (`painel/painel.html#anki/ajustes`), every language card has **Estilo do cartão** after the Imagens (#162, BRG-42): a segmented control **Iniciante · Intermediário · Avançado**, and under the chosen level its text (the ones of the level quiz of #134, with the language: “Entendo o inglês explicado em inglês”). Under the control is the **prévia do cartão** (#164, BRG-43): the example Cartão of the level on screen, drawn by the Anki, with **Frente · Verso**. It only writes on **Salvar ajustes**, and the next Envio asks the Conexão for the saved level. What the Card looks like in the Anki is `features/anki-cartao.md`. Under the level there is **Frente** (#166, BRG-44): **Frase com áudio · Ouvir primeiro · Lacuna · Produção · Ditado** per language, with its text under it (“A frase sem a palavra, com uma dica e sem áudio”). On **Salvar ajustes** a changed front is asked of the Conexão (`POST /anki/card-front`), which only rewrites the Card model of the language's note type. What the Card looks like in the Anki is `features/anki-cartao.md`.
 
 ## Sub-features
 
@@ -22,7 +22,7 @@ In **Ajustes de envio** (`painel.html#anki/ajustes`), every language card has **
 
 ## How to get to it (user POV)
 
-- Sidebar › **Conexão com o Anki** › **Ajustes de envio** (`painel.html#anki/ajustes`), a language card, **Estilo do cartão**. Then Frases › tick a phrase › **Enviar ao Anki**.
+- Sidebar › **Conexão com o Anki** › **Ajustes de envio** (`painel/painel.html#anki/ajustes`), a language card, **Estilo do cartão**. Then Frases › tick a phrase › **Enviar ao Anki**.
 
 ## Driving it with the Playwright e2e harness
 

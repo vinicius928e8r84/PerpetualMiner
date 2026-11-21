@@ -12,7 +12,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento.ia_do_envio import IaDoEnvio, SemQuemPague
+from complemento.ia_do_envio import EsperasDaPorta, IaDoEnvio, SemQuemPague
 from complemento.modelo_dos_cartoes import CHAVE, PARADO, PLANO, Pagador
 
 LOGGER = logging.getLogger("test_ia_do_envio")
@@ -87,20 +87,26 @@ class QuemPaga(unittest.TestCase):
 class AsEsperasPelaPorta(unittest.TestCase):
     def test_no_teto_a_porta_espera_ate_ele_deixar_de_valer_e_depois_o_estado_deixa_de_dizer_que_espera(self):
         espera = EsperaDeRoteiro()
-        IaDoEnvio(IaDeRoteiro(), espera, LOGGER, teto=TetoDeRoteiro(True, True, False), espera_do_teto=7).conferir_o_teto()
+        IaDoEnvio(IaDeRoteiro(), espera, LOGGER, EsperasDaPorta(teto=TetoDeRoteiro(True, True, False), do_teto=7)).conferir_o_teto()
         no_teto = ("esperar", {"reason": "monthly_cap"}, 7)
         self.assertEqual(espera.feito, ["limpar", no_teto, "limpar", no_teto, "limpar", ("dizer", None)])
 
     def test_abaixo_do_teto_ou_sem_teto_nada_espera_nem_muda_no_estado(self):
         abaixo, sem_teto = EsperaDeRoteiro(), EsperaDeRoteiro()
-        IaDoEnvio(IaDeRoteiro(), abaixo, LOGGER, teto=TetoDeRoteiro(False)).conferir_o_teto()
+        IaDoEnvio(IaDeRoteiro(), abaixo, LOGGER, EsperasDaPorta(teto=TetoDeRoteiro(False))).conferir_o_teto()
         IaDoEnvio(IaDeRoteiro(), sem_teto, LOGGER).conferir_o_teto()
         self.assertEqual((abaixo.feito, sem_teto.feito), (["limpar"], []))
 
     def test_o_plano_no_limite_e_uma_espera_que_o_estado_diz_e_dura_a_espera_do_plano(self):
         espera = EsperaDeRoteiro()
-        IaDoEnvio(IaDeRoteiro(), espera, LOGGER, espera_do_plano=11).esperar_o_plano()
+        IaDoEnvio(IaDeRoteiro(), espera, LOGGER, EsperasDaPorta(do_plano=11)).esperar_o_plano()
         self.assertEqual(espera.feito, ["limpar", ("esperar", {"reason": "plan_limit"}, 11)])
+
+    def test_sem_esperas_dadas_o_teto_e_conferido_a_cada_60_s_e_o_plano_espera_300_s(self):
+        no_teto, no_plano = EsperaDeRoteiro(), EsperaDeRoteiro()
+        IaDoEnvio(IaDeRoteiro(), no_teto, LOGGER, EsperasDaPorta(teto=TetoDeRoteiro(True, False))).conferir_o_teto()
+        IaDoEnvio(IaDeRoteiro(), no_plano, LOGGER).esperar_o_plano()
+        self.assertEqual((no_teto.feito[1], no_plano.feito[1]), (("esperar", {"reason": "monthly_cap"}, 60), ("esperar", {"reason": "plan_limit"}, 300)))
 
 
 if __name__ == "__main__":

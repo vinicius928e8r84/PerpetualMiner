@@ -12,7 +12,7 @@ Configurações › Atalhos is where a person records the key combination (or an
 
 ## How to get to it (user POV)
 
-- Sidebar › **Configurações** › **Atalhos** (`painel.html#configuracoes/atalhos`).
+- Sidebar › **Configurações** › **Atalhos** (`painel/painel.html#configuracoes/atalhos`).
 - The popup footer's **Mudar atalho** (or **Definir atalho** when none) opens the same card.
 
 ## Driving it with the Playwright e2e harness

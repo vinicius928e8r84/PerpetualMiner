@@ -10,7 +10,7 @@ The cap on what the key spends per month comes on by default at US$ 10 and is pe
 
 ## How to get to it (user POV)
 
-- Sidebar › **Conexão com o Anki** › **Custos** (`painel.html#anki/custos`) for the card; the warning shows in every area; **Enviar ao Anki** in Frases for the Envio card.
+- Sidebar › **Conexão com o Anki** › **Custos** (`painel/painel.html#anki/custos`) for the card; the warning shows in every area; **Enviar ao Anki** in Frases for the Envio card.
 
 ## Driving it with the Playwright e2e harness
 
