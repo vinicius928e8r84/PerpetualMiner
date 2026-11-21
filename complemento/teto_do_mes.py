@@ -20,9 +20,14 @@ TETO_MAXIMO = 1_000_000.0
 NO_TETO = {"reason": "monthly_cap"}
 
 
+def _e_um_numero(valor):
+    """`bool` não é número aqui."""
+    return isinstance(valor, (int, float)) and not isinstance(valor, bool)
+
+
 def _valor_do_teto(valor):
-    """O teto em dólares com dois decimais, ou None se não é um número positivo que sirva (`bool` não é número aqui)."""
-    if isinstance(valor, bool) or not isinstance(valor, (int, float)) or not math.isfinite(valor):
+    """O teto em dólares com dois decimais, ou None se não é um número positivo que sirva."""
+    if not _e_um_numero(valor) or not math.isfinite(valor):
         return None
     teto = round(float(valor), 2)
     return teto if 0 < teto <= TETO_MAXIMO else None

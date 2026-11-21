@@ -18,7 +18,7 @@ def _run_images(config, prompt_lines, output_dir, img_source, pela_chave, log_di
         if dest.exists() and dest.stat().st_size > 0:
             img_files.append(dest.name)
         elif img_source == "1":
-            if pipeline.real_first(stem, prompt, dest, generation_policy="normal", paid_generation_blocked_by_guard=False):
+            if pipeline.real_first(stem, prompt, dest, generation_policy="normal"):
                 img_files.append(dest.name)
         else:
             outcome = pipeline.generate_direct(stem, prompt, dest)

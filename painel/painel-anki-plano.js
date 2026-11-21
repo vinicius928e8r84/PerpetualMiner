@@ -34,6 +34,13 @@
     return p;
   }
 
+  function somarAsImagensDoEnvio(soma, envio, origens) {
+    for (const origem of origens) {
+      soma[origem.chave] += numero(envio.images?.[origem.chave]);
+      soma.imagens += numero(envio.images?.[origem.chave]);
+    }
+  }
+
   function somar(envios, origens) {
     const soma = { ...Object.fromEntries(Object.keys(PARTES).map(parte => [parte, 0])), total: 0, economia: 0,
       pedidas: 0, enviadas: 0, concluidos: 0, n: envios.length, imagens: 0 };
@@ -45,10 +52,7 @@
       soma.pedidas += numero(envio.requestedCards);
       soma.enviadas += numero(envio.successfulCards);
       if (envio.status === 'completed') soma.concluidos += 1;
-      for (const origem of origens) {
-        soma[origem.chave] += numero(envio.images?.[origem.chave]);
-        soma.imagens += numero(envio.images?.[origem.chave]);
-      }
+      somarAsImagensDoEnvio(soma, envio, origens);
     }
     return soma;
   }

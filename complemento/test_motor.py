@@ -34,17 +34,23 @@ def configuracao_do_teste(motor, pasta):
     return config
 
 
-def gerar_a_imagem(motor, config, openai_base, cartao, destino):
-    """A imagem gerada do `cartao` pelo pipeline do motor, paga pela chave de `config`, presa como a IA dos cartões a entrega."""
-    presa = motor.provedores.PelaChave(config["openai_api_key"], openai_base)
-    escolha = motor.image_pipeline.build(dict(config, pela_chave=presa), Path(config["paths"]["output_dir"]), "2", presa, config["paths"]["log_dir"])
-    return escolha.generate_direct(cartao, "a bicycle", destino)
+class MotorPelaChave:
+    """O `motor` com a `config` do teste, pago pela chave dela contra a OpenAI de `openai_base`, como a IA dos cartões o entrega."""
 
+    def __init__(self, motor, config, openai_base):
+        self.motor, self.config, self.openai_base = motor, config, openai_base
 
-def pela_chave(motor, config, openai_base):
-    """O `pedir` do texto que a IA dos cartões dá ao motor quando a chave de `config` paga."""
-    ia = IaDosCartoes(None, None, None, motor=motor, openai_base=openai_base)
-    return ia.pedido_do_texto(Pagador(CHAVE, {"provedor": "openai", "segredo": config["openai_api_key"], "modelo": None}, None), config)
+    def pedido_do_texto(self):
+        """O `pedir` do texto que a IA dos cartões dá ao motor quando a chave de `config` paga."""
+        ia = IaDosCartoes(None, None, None, motor=self.motor, openai_base=self.openai_base)
+        return ia.pedido_do_texto(Pagador(CHAVE, {"provedor": "openai", "segredo": self.config["openai_api_key"], "modelo": None}, None), self.config)
+
+    def gerar_a_imagem(self, cartao, destino):
+        """A imagem gerada do `cartao` pelo pipeline do motor, paga pela chave de `config`, presa como a IA dos cartões a entrega."""
+        config = self.config
+        presa = self.motor.provedores.PelaChave(config["openai_api_key"], self.openai_base)
+        escolha = self.motor.image_pipeline.build(dict(config, pela_chave=presa), Path(config["paths"]["output_dir"]), "2", presa, config["paths"]["log_dir"])
+        return escolha.generate_direct(cartao, "a bicycle", destino)
 
 
 class OMotorComoPacote(unittest.TestCase):
@@ -94,7 +100,7 @@ class OMotorComoPacote(unittest.TestCase):
             motor = envio.motor_do_complemento()
             config = configuracao_do_teste(motor, pasta)
             trabalho = motor.parser.get_card_jobs(motor.parser.parse_mining_line("give up : She gave up smoking"))[0]
-            falha = motor.generate_cards.escrever(trabalho, config, pela_chave(motor, config, openai.base), "17-0")
+            falha = motor.generate_cards.escrever(trabalho, config, MotorPelaChave(motor, config, openai.base).pedido_do_texto(), "17-0")
             with open(os.path.join(pasta, "textos", "17-0.txt"), encoding="utf-8") as arquivo:
                 nota = motor.send_to_anki.card_fields(arquivo.read(), "en")
             with open(os.path.join(pasta, "custos", "costs.jsonl"), encoding="utf-8") as arquivo:

@@ -53,15 +53,14 @@ def _heuristic(keyword: str) -> Optional[bool]:
     if kw.endswith(_ABSTRACT_SUFFIXES):
         return False
 
-    for pat in _ABSTRACT_PATTERNS:
-        if re.search(pat, kw, re.IGNORECASE):
-            return False
-
-    words = kw.split()
-    if len(words) >= 3:
-        return None
+    if _matches_an_abstract_pattern(kw):
+        return False
 
     return None
+
+
+def _matches_an_abstract_pattern(kw: str) -> bool:
+    return any(re.search(pat, kw, re.IGNORECASE) for pat in _ABSTRACT_PATTERNS)
 
 
 _SYSTEM = (
@@ -83,10 +82,8 @@ def should_generate_image(
     """`pela_chave` is the key bound to its provider (`provedores.PelaChave`). `label` is what the cost record says the call was for
     (the word by default; the add-on passes the card's id)."""
     fast = _heuristic(keyword)
-    if fast is False:
-        return False
-    if fast is True:
-        return True
+    if fast is not None:
+        return fast
 
     try:
         verdict, usage = pela_chave.texto(
@@ -98,15 +95,19 @@ def should_generate_image(
             repeticoes=provedores.REPETICOES_DA_IMAGEM,
         )
 
-        if usage:
-            cost_tracker.record_tokens(
-                log_dir,
-                model="gpt-4o-mini",
-                input_tokens=usage.get("entrada", 0),
-                output_tokens=usage.get("saida", 0),
-                keyword=f"[image_guard] {label or keyword}",
-            )
+        _record_the_check(log_dir, usage, label or keyword)
 
         return verdict.upper() == "C"
     except Exception:
         return True
+
+
+def _record_the_check(log_dir: str, usage: dict, label: str) -> None:
+    if usage:
+        cost_tracker.record_tokens(
+            log_dir,
+            model="gpt-4o-mini",
+            input_tokens=usage.get("entrada", 0),
+            output_tokens=usage.get("saida", 0),
+            keyword=f"[image_guard] {label}",
+        )
