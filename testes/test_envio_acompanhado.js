@@ -12,38 +12,56 @@ const JOB = 'c7d1e2f3-4a5b-4c6d-8e7f-9a0b1c2d3e4f';
 const vez = () => new Promise(resolve => setImmediate(resolve));
 const FIM = ['completed', 'partial', 'failed'];
 
+const json = (code, corpo) => ({ status: code, texto: JSON.stringify(corpo) });
+const acabou = estado => FIM.includes(estado.status);
+const foiApagado = estado => estado.wiped || estado.lastError === 'frases_apagadas';
+
+function criarOEnvio(envios, jobId) {
+  const estado = envios.get(jobId);
+  if (estado) return json(201, { jobId, status: estado.status });
+  envios.set(jobId, { status: 'queued', stage: 'queued', progress: {}, lastError: null, wiped: false });
+  return json(201, { jobId, status: 'queued' });
+}
+
+function tentarDeNovoNoEnvio(envios, jobId, estado) {
+  if (foiApagado(estado)) return json(409, { error: 'job_wiped' });
+  if (!acabou(estado)) return json(200, { jobId, status: estado.status });
+  envios.set(jobId, { ...estado, status: 'queued', stage: 'queued', progress: {}, lastError: null });
+  return json(200, { jobId, status: 'queued' });
+}
+
+function usarAChaveNoEnvio(envios, jobId, estado, chave) {
+  if (acabou(estado) || estado.wiped) return json(409, { error: 'job_finished' });
+  if (!chave) return json(409, { error: 'openai_key_missing' });
+  const { waiting, ...resto } = estado;
+  envios.set(jobId, { ...resto, usingKey: true });
+  return json(200, { jobId, status: estado.status });
+}
+
+const ROTAS_DE_UM_ENVIO = {
+  '/jobs/get': (_envios, jobId, estado) => json(200, { job: { jobId }, state: { jobId, ...estado } }),
+  '/jobs/usar-a-chave': usarAChaveNoEnvio,
+  '/jobs/retry': tentarDeNovoNoEnvio,
+};
+
+function responderComoAConexao(envios, caminho, jobId, chave) {
+  if (caminho === '/jobs') return criarOEnvio(envios, jobId);
+  const estado = envios.get(jobId);
+  if (!estado) return json(404, { error: 'job_not_found' });
+  const rota = ROTAS_DE_UM_ENVIO[caminho];
+  return rota ? rota(envios, jobId, estado, chave) : json(404, { error: 'not_found' });
+}
+
 function conexaoDeMentira({ status = 'partial', lastError = 'openai_rate_limited', wiped = false, criado = true, chave = true } = {}) {
   const envios = new Map(criado ? [[JOB, { status, stage: status, progress: {}, lastError, wiped }]] : []);
   const pedidos = [];
   const corpos = [];
   const seguradas = new Map();
   const respostas = new Map();
-  const json = (code, corpo) => ({ status: code, texto: JSON.stringify(corpo) });
 
   function responder(caminho, { jobId }) {
-    const estado = envios.get(jobId);
     if (respostas.has(caminho)) return respostas.get(caminho)();
-    if (caminho === '/jobs') {
-      if (estado) return json(201, { jobId, status: estado.status });
-      envios.set(jobId, { status: 'queued', stage: 'queued', progress: {}, lastError: null, wiped: false });
-      return json(201, { jobId, status: 'queued' });
-    }
-    if (!estado) return json(404, { error: 'job_not_found' });
-    if (caminho === '/jobs/get') return json(200, { job: { jobId }, state: { jobId, ...estado } });
-    if (caminho === '/jobs/usar-a-chave') return usarAChave(jobId, estado);
-    if (caminho !== '/jobs/retry') return json(404, { error: 'not_found' });
-    if (estado.wiped || estado.lastError === 'frases_apagadas') return json(409, { error: 'job_wiped' });
-    if (!FIM.includes(estado.status)) return json(200, { jobId, status: estado.status });
-    envios.set(jobId, { ...estado, status: 'queued', stage: 'queued', progress: {}, lastError: null });
-    return json(200, { jobId, status: 'queued' });
-  }
-
-  function usarAChave(jobId, estado) {
-    if (FIM.includes(estado.status) || estado.wiped) return json(409, { error: 'job_finished' });
-    if (!chave) return json(409, { error: 'openai_key_missing' });
-    const { waiting, ...resto } = estado;
-    envios.set(jobId, { ...resto, usingKey: true });
-    return json(200, { jobId, status: estado.status });
+    return responderComoAConexao(envios, caminho, jobId, chave);
   }
 
   async function transporte(pedido) {
@@ -102,16 +120,39 @@ function acompanharNaMentira(conexao, alvo = { jobId: JOB }, opcoes = {}) {
   return { envio, relogio, vistas, lidos, estados: () => vistas.map(s => s.estado) };
 }
 
+async function acompanharJaNaFila(conexao) {
+  const acompanhado = acompanharNaMentira(conexao);
+  await acompanhado.envio.tentarDeNovo();
+  await vez();
+  return acompanhado;
+}
+
+async function doisPedidosComOPrimeiroNoAr(conexao, rota, pedir) {
+  const soltar = conexao.segurar(rota);
+  const primeiro = pedir();
+  const segundo = pedir();
+  await vez();
+  soltar();
+  return [await primeiro, await segundo];
+}
+
+async function largarComOPedidoNoAr(conexao, envio, rota, pedir) {
+  const soltar = conexao.segurar(rota);
+  const pedido = pedir();
+  await vez();
+  envio.largar();
+  soltar();
+  return pedido;
+}
+
+const SEM_RESPOSTA = () => { throw new Error('Failed to fetch'); };
+
 async function doisCliquesAntesDaRespostaSaoUmPedidoSo() {
   const conexao = conexaoDeMentira();
   const { envio } = acompanharNaMentira(conexao);
-  const soltar = conexao.segurar('/jobs/retry');
-  const primeiro = envio.tentarDeNovo();
-  const segundo = envio.tentarDeNovo();
-  await vez();
-  soltar();
-  assert.deepStrictEqual(await primeiro, { ok: true });
-  assert.deepStrictEqual(await segundo, { ok: true });
+  const [primeiro, segundo] = await doisPedidosComOPrimeiroNoAr(conexao, '/jobs/retry', () => envio.tentarDeNovo());
+  assert.deepStrictEqual(primeiro, { ok: true });
+  assert.deepStrictEqual(segundo, { ok: true });
   assert.strictEqual(conexao.pedidos('/jobs/retry'), 1);
   envio.largar();
 }
@@ -141,7 +182,7 @@ async function aFalhaDizOPedidoEACausaESemLeitura() {
   const { envio } = acompanharNaMentira(conexao);
   assert.deepStrictEqual(await envio.tentarDeNovo(), { falha: `POST /jobs/retry ${JOB} · HTTP 500 · retry_failed` });
 
-  conexao.responderSempre('/jobs/retry', () => { throw new Error('Failed to fetch'); });
+  conexao.responderSempre('/jobs/retry', SEM_RESPOSTA);
   assert.deepStrictEqual(await envio.tentarDeNovo(), { falha: `POST /jobs/retry ${JOB} · Failed to fetch` });
   await vez();
   assert.strictEqual(conexao.pedidos('/jobs/get'), 0);
@@ -179,9 +220,7 @@ async function acompanhaAteOFimEPara() {
 
 async function asFrasesApagadasNoMeioTerminamComoApagado() {
   const conexao = conexaoDeMentira();
-  const { envio, relogio, estados } = acompanharNaMentira(conexao);
-  await envio.tentarDeNovo();
-  await vez();
+  const { envio, relogio, estados } = await acompanharJaNaFila(conexao);
   conexao.mudar({ status: 'failed', stage: 'failed', lastError: 'frases_apagadas', wiped: true });
   await relogio.passar();
   assert.deepStrictEqual(estados(), [ESTADO.NA_FILA, ESTADO.APAGADO]);
@@ -190,9 +229,7 @@ async function asFrasesApagadasNoMeioTerminamComoApagado() {
 
 async function oEnvioQueAConexaoNaoConheceEDesconhecidoEPara() {
   const conexao = conexaoDeMentira();
-  const { envio, relogio, estados } = acompanharNaMentira(conexao);
-  await envio.tentarDeNovo();
-  await vez();
+  const { envio, relogio, estados } = await acompanharJaNaFila(conexao);
   conexao.esquecer();
   await relogio.passar();
   assert.deepStrictEqual(estados(), [ESTADO.NA_FILA, ESTADO.DESCONHECIDO]);
@@ -201,10 +238,8 @@ async function oEnvioQueAConexaoNaoConheceEDesconhecidoEPara() {
 
 async function aLeituraSemRespostaNaoMudaNadaELeDeNovo() {
   const conexao = conexaoDeMentira();
-  const { envio, relogio, estados } = acompanharNaMentira(conexao);
-  await envio.tentarDeNovo();
-  await vez();
-  conexao.responderSempre('/jobs/get', () => { throw new Error('Failed to fetch'); });
+  const { envio, relogio, estados } = await acompanharJaNaFila(conexao);
+  conexao.responderSempre('/jobs/get', SEM_RESPOSTA);
   await relogio.passar();
   await relogio.passar();
   assert.deepStrictEqual(estados(), [ESTADO.NA_FILA]);
@@ -218,9 +253,7 @@ async function aLeituraSemRespostaNaoMudaNadaELeDeNovo() {
 
 async function largarIgnoraARespostaTardiaEPara() {
   const conexao = conexaoDeMentira();
-  const { envio, relogio, estados } = acompanharNaMentira(conexao);
-  await envio.tentarDeNovo();
-  await vez();
+  const { envio, relogio, estados } = await acompanharJaNaFila(conexao);
   const soltar = conexao.segurar('/jobs/get');
   conexao.mudar({ status: 'completed', stage: 'completed' });
   await relogio.passar();
@@ -234,11 +267,7 @@ async function largarIgnoraARespostaTardiaEPara() {
 async function largarComOPedidoNoArNaoComecaALer() {
   const conexao = conexaoDeMentira();
   const { envio, relogio, estados } = acompanharNaMentira(conexao);
-  const soltar = conexao.segurar('/jobs/retry');
-  const pedido = envio.tentarDeNovo();
-  await vez();
-  envio.largar();
-  soltar();
+  const pedido = largarComOPedidoNoAr(conexao, envio, '/jobs/retry', () => envio.tentarDeNovo());
   assert.deepStrictEqual(await pedido, { ok: true });
   await vez();
   assert.strictEqual(conexao.pedidos('/jobs/get'), 0);
@@ -263,9 +292,7 @@ async function tirarOOuvinteParaDeAvisar() {
 
 async function tentarDeNovoDepoisDoFimAcompanhaOutraVez() {
   const conexao = conexaoDeMentira();
-  const { envio, relogio, estados } = acompanharNaMentira(conexao);
-  await envio.tentarDeNovo();
-  await vez();
+  const { envio, relogio, estados } = await acompanharJaNaFila(conexao);
   conexao.mudar({ status: 'partial', stage: 'partial', lastError: 'cards_failed' });
   await relogio.passar();
   assert.strictEqual(relogio.esperando(), 0);
@@ -279,14 +306,12 @@ async function tentarDeNovoDepoisDoFimAcompanhaOutraVez() {
 
 async function oSegundoAcompanhamentoComALeituraSemRespostaSegueLendo() {
   const conexao = conexaoDeMentira();
-  const { envio, relogio, estados } = acompanharNaMentira(conexao);
-  await envio.tentarDeNovo();
-  await vez();
+  const { envio, relogio, estados } = await acompanharJaNaFila(conexao);
   conexao.mudar({ status: 'partial', stage: 'partial', lastError: 'cards_failed' });
   await relogio.passar();
   assert.strictEqual(relogio.esperando(), 0);
 
-  conexao.responderSempre('/jobs/get', () => { throw new Error('Failed to fetch'); });
+  conexao.responderSempre('/jobs/get', SEM_RESPOSTA);
   assert.deepStrictEqual(await envio.tentarDeNovo(), { ok: true });
   await vez();
   assert.strictEqual(relogio.esperando(), 1, 'a situação do fim anterior não encerra o novo acompanhamento');
@@ -326,12 +351,8 @@ async function doisCliquesEmUsarAChaveSaoUmPedidoSo() {
   const conexao = conexaoDeMentira();
   conexao.mudar(ESPERANDO_O_PLANO);
   const { envio } = acompanharNaMentira(conexao);
-  const soltar = conexao.segurar('/jobs/usar-a-chave');
-  const primeiro = envio.usarAChave();
-  const segundo = envio.usarAChave();
-  await vez();
-  soltar();
-  assert.deepStrictEqual([await primeiro, await segundo], [{ ok: true }, { ok: true }]);
+  const respostas = await doisPedidosComOPrimeiroNoAr(conexao, '/jobs/usar-a-chave', () => envio.usarAChave());
+  assert.deepStrictEqual(respostas, [{ ok: true }, { ok: true }]);
   assert.strictEqual(conexao.pedidos('/jobs/usar-a-chave'), 1);
   envio.largar();
 }
@@ -353,7 +374,7 @@ async function usarAChaveNumEnvioQueTerminouEFalhaComOPedidoEACausa() {
   const { envio } = acompanharNaMentira(conexao);
   assert.deepStrictEqual(await envio.usarAChave(), { falha: `POST /jobs/usar-a-chave ${JOB} · HTTP 409 · job_finished` });
 
-  conexao.responderSempre('/jobs/usar-a-chave', () => { throw new Error('Failed to fetch'); });
+  conexao.responderSempre('/jobs/usar-a-chave', SEM_RESPOSTA);
   assert.deepStrictEqual(await envio.usarAChave(), { falha: `POST /jobs/usar-a-chave ${JOB} · Failed to fetch` });
   await vez();
   assert.strictEqual(conexao.pedidos('/jobs/get'), 0);
@@ -364,11 +385,7 @@ async function largarComOUsarAChaveNoArNaoComecaALer() {
   const conexao = conexaoDeMentira();
   conexao.mudar(ESPERANDO_O_PLANO);
   const { envio, relogio, estados } = acompanharNaMentira(conexao);
-  const soltar = conexao.segurar('/jobs/usar-a-chave');
-  const pedido = envio.usarAChave();
-  await vez();
-  envio.largar();
-  soltar();
+  const pedido = largarComOPedidoNoAr(conexao, envio, '/jobs/usar-a-chave', () => envio.usarAChave());
   assert.deepStrictEqual(await pedido, { ok: true });
   await vez();
   assert.strictEqual(conexao.pedidos('/jobs/get'), 0);
