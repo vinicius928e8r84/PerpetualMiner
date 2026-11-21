@@ -26,7 +26,6 @@ tentativa não deu certo) e `rodava` (a versão que rodava na última subida, de
 import json
 import os
 import threading
-import time
 
 INTERVALO_S = 6 * 60 * 60
 ESPERA_INICIAL_S = 20
@@ -56,9 +55,9 @@ class AnkiWebAusente:
 class Atualizacao:
     """A atualização desta Conexão. `anki_web` é a fronteira (ver `atualizacao_do_anki.AnkiWebDoAnki`); `arquivo`, o `atualizacao.json`."""
 
-    def __init__(self, *, arquivo, anki_web, versao, logger, ligada=False, agora=time.time):
+    def __init__(self, *, arquivo, anki_web, versao, logger, ligada=False):
         self.arquivo, self.anki_web, self.versao, self.logger = arquivo, anki_web, versao, logger
-        self.ligada, self.agora = ligada, agora
+        self.ligada = ligada
         self._trava = threading.Lock()
         self._parar = threading.Event()
         self._thread = None

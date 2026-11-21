@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import envio
 from complemento.chaves import Cofre
-from complemento.ia_dos_cartoes import CORRECAO, ETAPAS, IMAGEM, JUIZ, OUVIR, TEXTO, VOZ, IaDosCartoes, quem_paga_a_etapa
+from complemento.ia_dos_cartoes import CORRECAO, ETAPAS, IMAGEM, JUIZ, OUVIR, TEXTO, VOZ, IaDosCartoes, Situacao, quem_paga_a_etapa
 from complemento.login_do_chatgpt import ACABOU, CONECTADA, SAIU, SEM_LOGIN, ErroDoPlano, LoginDoChatGPT
 from complemento.modelo_dos_cartoes import CHAVE, PARADO, PLANO, ModeloDosCartoes, lista_nossa
 from complemento.test_correcao_de_mentira import COMECO_DO_PROMPT
@@ -72,11 +72,11 @@ class ATabelaDeQuemPaga(unittest.TestCase):
         for etapa, esperados in TABELA.items():
             for situacao, esperado in zip(SITUACOES, esperados):
                 with self.subTest(etapa=etapa, situacao=situacao):
-                    self.assertEqual(quem_paga_a_etapa(etapa, *SITUACOES[situacao]), esperado)
+                    self.assertEqual(quem_paga_a_etapa(etapa, Situacao(*SITUACOES[situacao])), esperado)
 
     def test_uma_etapa_fora_da_tabela_e_recusada(self):
         with self.assertRaises(ValueError):
-            quem_paga_a_etapa("legenda", SEM_LOGIN, None, False, True)
+            quem_paga_a_etapa("legenda", Situacao(SEM_LOGIN, None, False, True))
 
 
 class APortaLeOQueEstaGuardado(unittest.TestCase):

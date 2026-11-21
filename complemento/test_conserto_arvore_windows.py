@@ -91,7 +91,7 @@ function Start-Sleep { param($Seconds) }
 
 def _modelo(executavel):
     """O trecho do `.ps1` com as variáveis e as funções (sem a leitura do Native Messaging), para o `pwsh` rodar."""
-    conserto = conserto_do_anki.Conserto(executavel=executavel, complemento="C:\\nada", porta=8766, espera_s=0)
+    conserto = conserto_do_anki.Conserto(executavel=executavel, complemento="C:\\nada", conexao=conserto_do_anki.ConexaoEsperada(porta=8766, espera_s=0))
     variaveis = conserto_do_anki.variaveis_do_ps1(conserto, "C:\\nada\\abridor", abridor._texto_do_powershell)
     return variaveis, conserto_do_anki.FUNCOES_DO_PS1
 
