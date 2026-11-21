@@ -173,7 +173,6 @@
     "scripts/ci/checks-obrigatorios.js": 1,
     "scripts/ci/corpo-da-pr.js": 7,
     "scripts/ci/fatias-e2e.js": 7,
-    "scripts/ci/instaveis.js": 2,
     "scripts/ci/pr-de-versao.js": 1,
     "scripts/ci/selecao-de-testes.js": 7,
     "scripts/ci/so-merge-da-main.js": 6,
