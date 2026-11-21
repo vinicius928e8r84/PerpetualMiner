@@ -38,9 +38,10 @@ def _adaptador(cred):
     return adaptador
 
 
-def texto(cred, sistema, mensagem, json=False, temperatura=None, max_tokens=None, tempo=None, repeticoes=0):
-    """Ask `cred`'s provider for a text. `repeticoes`: how many times a passing refusal is asked again. Returns (text, {entrada, saida})."""
-    return _adaptador(cred).texto(cred, sistema, mensagem, json, temperatura, max_tokens, tempo, repeticoes)
+def texto(cred, sistema, mensagem, **opcoes):
+    """Ask `cred`'s provider for a text, with the adapter's options (`json`, `temperatura`, `max_tokens`, `tempo`, `repeticoes`: how many
+    times a passing refusal is asked again). Returns (text, {entrada, saida})."""
+    return _adaptador(cred).texto(cred, sistema, mensagem, **opcoes)
 
 
 def imagem(cred, prompt, tamanho):
