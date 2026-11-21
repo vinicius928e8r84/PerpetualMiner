@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from complemento.test_atualizacao import atualizacao_do_exemplo
 from complemento import configuracao, pasta_de_dados, registro, servidor
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria
-from complemento.test_contexto_da_conexao import chave_guardada_antes, item_de_login_do_contexto
+from complemento.test_contexto_da_conexao import ChaveGuardadaAntes, item_de_login_do_contexto
 from complemento.test_fila_de_mentira import semear_a_fila
 from complemento.test_imagens_de_mentira import OpenverseDeMentira
 from complemento.test_openai_de_mentira import OpenAIDeMentira, FirestoreDeMentira
@@ -164,7 +164,7 @@ class ConexaoNoTeste:
         self.logs, self.chaves = self.dados.logs, self.dados.chaves
         for pasta_ in self.dados[1:]:
             os.makedirs(pasta_, exist_ok=True)
-        antes = chave_guardada_antes(chave_na_conexao, versao_na_conexao, chave_apagada, conta_na_conexao, hora_na_conexao, nao_enviada)
+        antes = ChaveGuardadaAntes(chave_na_conexao, versao_na_conexao, chave_apagada, conta_na_conexao, hora_na_conexao, nao_enviada).no_arquivo()
         if antes is not None:
             with open(os.path.join(self.chaves, "openai.json"), "w", encoding="utf-8") as arquivo:
                 json.dump(antes, arquivo)
