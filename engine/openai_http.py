@@ -71,16 +71,24 @@ def contexto_tls():
 
 
 def _classificar(status, detalhe):
-    if status == 400 and detalhe.get("code") == "invalid_image_format":
+    if _imagem_invalida(status, detalhe):
         return IMAGEM_INVALIDA
-    if status == 401 or status == 403:
+    if status in (401, 403):
         return RECUSADA
     if status in (402, 429):
-        codigo = str(detalhe.get("code") or detalhe.get("type") or "")
-        return SEM_CREDITO if status == 402 or "quota" in codigo or "billing" in codigo else LIMITE_DE_USO
+        return SEM_CREDITO if status == 402 or _fala_da_cobranca(detalhe) else LIMITE_DE_USO
     if status >= 500:
         return FORA_DO_AR
     return PEDIDO_RECUSADO
+
+
+def _imagem_invalida(status, detalhe):
+    return status == 400 and detalhe.get("code") == "invalid_image_format"
+
+
+def _fala_da_cobranca(detalhe):
+    codigo = str(detalhe.get("code") or detalhe.get("type") or "")
+    return "quota" in codigo or "billing" in codigo
 
 
 def _detalhe_do_erro(erro):
@@ -95,43 +103,114 @@ def _classificar_do_plano(status, detalhe):
     codigo = _DO_PLANO.get(str(detalhe.get("code") or ""))
     if codigo:
         return codigo
-    if status == 400 and detalhe.get("code") == "invalid_image_format":
+    if _imagem_invalida(status, detalhe):
         return IMAGEM_INVALIDA
     if status in (401, 403):
         return PLANO_RECUSOU
     return FORA_DO_AR if status >= 500 else (LIMITE_DE_USO if status == 429 else PEDIDO_RECUSADO)
 
 
-def _responder_uma_vez(base, token, modelo, instrucoes, mensagem, tempo, formato_json):
+class _Pedido:
+    """A POST of a JSON body to OpenAI, with the key or the plan's token as the bearer."""
+
+    def __init__(self, url, segredo, corpo, tempo):
+        self.url, self.segredo, self.corpo, self.tempo = url, segredo, corpo, tempo
+
+    def _http(self, aceita=None):
+        pedido = urllib.request.Request(self.url, data=json.dumps(self.corpo).encode("utf-8"), method="POST")
+        pedido.add_header("Authorization", "Bearer " + self.segredo)
+        pedido.add_header("Content-Type", "application/json")
+        if aceita:
+            pedido.add_header("Accept", aceita)
+        return pedido
+
+    def _abrir(self, pedido):
+        return urllib.request.urlopen(pedido, timeout=self.tempo, context=contexto_tls())
+
+    def resposta(self):
+        pedido = self._http()
+        try:
+            with self._abrir(pedido) as resposta:
+                return json.loads(resposta.read().decode("utf-8"))
+        except urllib.error.HTTPError as erro:
+            detalhe = _detalhe_do_erro(erro)
+            erro.close()
+            raise ErroDaOpenAI(_classificar(erro.code, detalhe), erro.code) from None
+        except (urllib.error.URLError, OSError, ValueError):
+            raise ErroDaOpenAI(FORA_DO_AR) from None
+
+    def stream(self):
+        pedido = self._http(aceita="text/event-stream")
+        try:
+            with self._abrir(pedido) as resposta:
+                return _LeituraDoStream().ate_o_fim(resposta)
+        except urllib.error.HTTPError as erro:
+            raise ErroDaOpenAI(_classificar_do_plano(erro.code, _detalhe_do_erro(erro)), erro.code) from None
+        except (urllib.error.URLError, OSError, ValueError):
+            raise ErroDaOpenAI(FORA_DO_AR) from None
+
+
+class _LeituraDoStream:
+    def __init__(self):
+        self.pedacos = []
+
+    def ate_o_fim(self, linhas):
+        for linha in linhas:
+            if not linha.startswith(b"data:"):
+                continue
+            evento = json.loads(linha[5:].decode("utf-8"))
+            ler = _LEITORES_DO_EVENTO.get(_tipo_do_evento(evento))
+            fim = ler(self, evento) if ler else None
+            if fim is not None:
+                return fim
+        raise ErroDaOpenAI(FORA_DO_AR)
+
+    def pedaco(self, evento):
+        self.pedacos.append(str(evento.get("delta") or ""))
+
+    def concluida(self, evento):
+        return "".join(self.pedacos).strip(), (evento.get("response") or {}).get("usage") or {}
+
+    def falhou(self, evento):
+        erro = (evento.get("response") or {}).get("error") or evento.get("error") or evento
+        raise ErroDaOpenAI(_classificar_do_plano(500, erro if isinstance(erro, dict) else {}))
+
+    def incompleta(self, evento):
+        raise ErroDaOpenAI(RESPOSTA_INCOMPLETA)
+
+
+_LEITORES_DO_EVENTO = {
+    "response.output_text.delta": _LeituraDoStream.pedaco,
+    "response.completed": _LeituraDoStream.concluida,
+    "response.failed": _LeituraDoStream.falhou,
+    "error": _LeituraDoStream.falhou,
+    "response.incomplete": _LeituraDoStream.incompleta,
+}
+
+
+def _tipo_do_evento(evento):
+    tipo = evento.get("type") if isinstance(evento, dict) else None
+    return tipo if isinstance(tipo, str) else None
+
+
+def _com_repeticoes(enviar, repeticoes):
+    """`enviar()` once, and again `repeticoes` times after a passing refusal, waiting twice as long each time."""
+    espera = ESPERA_ENTRE_TENTATIVAS
+    for tentativa in range(repeticoes + 1):
+        try:
+            return enviar()
+        except ErroDaOpenAI as recusa:
+            if tentativa == repeticoes or not passageira(recusa.codigo, recusa.status):
+                raise
+        time.sleep(espera)
+        espera *= 2
+
+
+def _corpo_da_responses(modelo, instrucoes, mensagem, formato_json):
     corpo = {"model": modelo, "instructions": instrucoes, "input": [{"role": "user", "content": mensagem}], "store": False, "stream": True}
     if formato_json:
         corpo["text"] = {"format": {"type": "json_object"}}
-    pedido = urllib.request.Request(base + "/v1/responses", data=json.dumps(corpo).encode("utf-8"), method="POST")
-    pedido.add_header("Authorization", "Bearer " + token)
-    pedido.add_header("Content-Type", "application/json")
-    pedido.add_header("Accept", "text/event-stream")
-    pedacos = []
-    try:
-        with urllib.request.urlopen(pedido, timeout=tempo, context=contexto_tls()) as resposta:
-            for linha in resposta:
-                if not linha.startswith(b"data:"):
-                    continue
-                evento = json.loads(linha[5:].decode("utf-8"))
-                tipo = evento.get("type") if isinstance(evento, dict) else None
-                if tipo == "response.output_text.delta":
-                    pedacos.append(str(evento.get("delta") or ""))
-                elif tipo == "response.completed":
-                    return "".join(pedacos).strip(), (evento.get("response") or {}).get("usage") or {}
-                elif tipo in ("response.failed", "error"):
-                    erro = (evento.get("response") or {}).get("error") or evento.get("error") or evento
-                    raise ErroDaOpenAI(_classificar_do_plano(500, erro if isinstance(erro, dict) else {}))
-                elif tipo == "response.incomplete":
-                    raise ErroDaOpenAI(RESPOSTA_INCOMPLETA)
-    except urllib.error.HTTPError as erro:
-        raise ErroDaOpenAI(_classificar_do_plano(erro.code, _detalhe_do_erro(erro)), erro.code) from None
-    except (urllib.error.URLError, OSError, ValueError):
-        raise ErroDaOpenAI(FORA_DO_AR) from None
-    raise ErroDaOpenAI(FORA_DO_AR)
+    return corpo
 
 
 def responder(base, token, modelo, instrucoes, mensagem, tempo=TEMPO_PADRAO, formato_json=False, repeticoes=0):
@@ -140,15 +219,8 @@ def responder(base, token, modelo, instrucoes, mensagem, tempo=TEMPO_PADRAO, for
     (`input_text` and `input_image`, the image judge); `formato_json` asks for a JSON object by `text.format`. Returns (text, usage)
     only after `response.completed`; anything else is `ErroDaOpenAI` with a code, never what the plan wrote. A passing refusal
     (`passageira`) is asked again `repeticoes` times."""
-    espera = ESPERA_ENTRE_TENTATIVAS
-    for tentativa in range(repeticoes + 1):
-        try:
-            return _responder_uma_vez(base, token, modelo, instrucoes, mensagem, tempo, formato_json)
-        except ErroDaOpenAI as recusa:
-            if tentativa == repeticoes or not passageira(recusa.codigo, recusa.status):
-                raise
-        time.sleep(espera)
-        espera *= 2
+    pedido = _Pedido(base + "/v1/responses", token, _corpo_da_responses(modelo, instrucoes, mensagem, formato_json), tempo)
+    return _com_repeticoes(pedido.stream, repeticoes)
 
 
 def passageira(codigo, status):
@@ -156,57 +228,28 @@ def passageira(codigo, status):
     return codigo == FORA_DO_AR or codigo == LIMITE_DE_USO or status in (408, 409)
 
 
-def _pedir_uma_vez(base, caminho, chave, corpo, tempo):
-    pedido = urllib.request.Request(base + caminho, data=json.dumps(corpo).encode("utf-8"), method="POST")
-    pedido.add_header("Authorization", "Bearer " + chave)
-    pedido.add_header("Content-Type", "application/json")
-    try:
-        with urllib.request.urlopen(pedido, timeout=tempo, context=contexto_tls()) as resposta:
-            return json.loads(resposta.read().decode("utf-8"))
-    except urllib.error.HTTPError as erro:
-        try:
-            detalhe = json.loads(erro.read(65536).decode("utf-8")).get("error") or {}
-        except (ValueError, AttributeError, OSError):
-            detalhe = {}
-        erro.close()
-        raise ErroDaOpenAI(_classificar(erro.code, detalhe if isinstance(detalhe, dict) else {}), erro.code) from None
-    except (urllib.error.URLError, OSError, ValueError):
-        raise ErroDaOpenAI(FORA_DO_AR) from None
+def _opcoes_do_chat(temperatura, formato_json, max_tokens):
+    opcoes = {}
+    if temperatura is not None:
+        opcoes["temperature"] = temperatura
+    if formato_json:
+        opcoes["response_format"] = {"type": "json_object"}
+    if max_tokens is not None:
+        opcoes["max_tokens"] = max_tokens
+    return opcoes
 
 
-def _pedir(base, caminho, chave, corpo, tempo, repeticoes=0):
-    """POST `corpo` (JSON) to `base + caminho`; returns the answer as a dict. A refusal is an `ErroDaOpenAI`; a passing one is asked again `repeticoes` times."""
-    espera = ESPERA_ENTRE_TENTATIVAS
-    for tentativa in range(repeticoes + 1):
-        try:
-            return _pedir_uma_vez(base, caminho, chave, corpo, tempo)
-        except ErroDaOpenAI as recusa:
-            if tentativa == repeticoes or not passageira(recusa.codigo, recusa.status):
-                raise
-        time.sleep(espera)
-        espera *= 2
+def _texto_da_primeira_escolha(dados):
+    escolha = (dados.get("choices") or [{}])[0] or {}
+    return ((escolha.get("message") or {}).get("content") or "").strip()
 
 
 def completar(base, chave, modelo, mensagens, temperatura=None, tempo=TEMPO_PADRAO, formato_json=False, max_tokens=None, repeticoes=0):
     """POST /v1/chat/completions. Returns (text, usage): the first choice's text ('' if none) and the `usage` dict."""
     corpo = {"model": modelo, "messages": mensagens}
-    if temperatura is not None:
-        corpo["temperature"] = temperatura
-    if formato_json:
-        corpo["response_format"] = {"type": "json_object"}
-    if max_tokens is not None:
-        corpo["max_tokens"] = max_tokens
-    dados = _pedir(base, "/v1/chat/completions", chave, corpo, tempo, repeticoes)
-    escolha = (dados.get("choices") or [{}])[0] or {}
-    texto = ((escolha.get("message") or {}).get("content") or "").strip()
-    return texto, dados.get("usage") or {}
-
-
-def gerar_imagem(base, chave, modelo, prompt, tamanho, tempo=TEMPO_DA_IMAGEM):
-    """POST /v1/images/generations. Returns the first image of the answer: `{"b64_json": ...}` or `{"url": ...}` (`{}` if none)."""
-    dados = _pedir(base, "/v1/images/generations", chave, {"model": modelo, "prompt": prompt, "n": 1, "size": tamanho}, tempo, REPETICOES_DA_IMAGEM)
-    primeira = (dados.get("data") or [{}])[0]
-    return primeira if isinstance(primeira, dict) else {}
+    corpo.update(_opcoes_do_chat(temperatura, formato_json, max_tokens))
+    dados = _com_repeticoes(_Pedido(base + "/v1/chat/completions", chave, corpo, tempo).resposta, repeticoes)
+    return _texto_da_primeira_escolha(dados), dados.get("usage") or {}
 
 
 def _partes_da_responses(partes):
@@ -239,5 +282,9 @@ def texto(cred, sistema, mensagem, json=False, temperatura=None, max_tokens=None
 
 
 def imagem(cred, prompt, tamanho):
-    """The provider layer's `imagem` for OpenAI: the first image of the answer, `{"b64_json": ...}` or `{"url": ...}` (`{}` if none)."""
-    return gerar_imagem(cred.get("base") or OPENAI_BASE, cred["segredo"], cred["modelo"], prompt, tamanho)
+    """The provider layer's `imagem` for OpenAI, POST /v1/images/generations: the first image of the answer, `{"b64_json": ...}` or
+    `{"url": ...}` (`{}` if none)."""
+    url, segredo = (cred.get("base") or OPENAI_BASE) + "/v1/images/generations", cred["segredo"]
+    pedido = _Pedido(url, segredo, {"model": cred["modelo"], "prompt": prompt, "n": 1, "size": tamanho}, TEMPO_DA_IMAGEM)
+    primeira = (_com_repeticoes(pedido.resposta, REPETICOES_DA_IMAGEM).get("data") or [{}])[0]
+    return primeira if isinstance(primeira, dict) else {}
