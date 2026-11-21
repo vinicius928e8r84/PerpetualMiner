@@ -54,7 +54,7 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "painel.html", "bookreader/bookreader.html",
+        "painel/painel.html", "bookreader/bookreader.html",
         "veio/tokens.css", "veio/componentes.css", "overlay/overlay.css", "veio/icones/icone.svg", "veio/fontes/*.woff2"
       ],
       "matches": ["<all_urls>"]

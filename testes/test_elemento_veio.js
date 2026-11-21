@@ -51,9 +51,10 @@ assert.strictEqual(clique.className, 'veio-botao veio-botao--primario');
 assert.strictEqual(clique.type, 'button');
 assert.deepStrictEqual(clique.filhos, ['Ir', filho]);
 
-const COM_FILTRO_PROPRIO = ['painel-conta.js'];
+const COM_FILTRO_PROPRIO = ['painel/painel-conta.js'];
 const copias = [];
-for (const arquivo of [...fs.readdirSync('.'), ...fs.readdirSync('bookreader').map(nome => `bookreader/${nome}`), ...fs.readdirSync('overlay').map(nome => `overlay/${nome}`)].filter(nome => /^(popup|painel|bookreader|overlay)[\w-]*\.js$|^(bookreader\/bookreader|overlay\/overlay)\.js$/.test(nome) && !COM_FILTRO_PROPRIO.includes(nome))) {
+const PASTAS_DAS_TELAS = ['popup', 'painel', 'bookreader', 'overlay'];
+for (const arquivo of PASTAS_DAS_TELAS.flatMap(pasta => fs.readdirSync(pasta).filter(nome => nome.endsWith('.js')).map(nome => `${pasta}/${nome}`)).filter(nome => !COM_FILTRO_PROPRIO.includes(nome))) {
   const fonte = fs.readFileSync(arquivo, 'utf8');
   if (/^\s*function (elemento|criar)\(tag, classe/m.test(fonte)) copias.push(`${arquivo}: elemento/criar`);
   if (/^\s*function botao\(variante, \.\.\.filhos\)/m.test(fonte)) copias.push(`${arquivo}: botao`);
