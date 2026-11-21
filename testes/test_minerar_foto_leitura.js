@@ -244,6 +244,8 @@ cenario('durante a leitura, o envio, o progresso e a coluna contam as fotos', as
   assert.deepStrictEqual(retrato.cartoes.map(cartao => cartao.selo), [
     'veio-selo veio-selo--lendo|FOT-19.lendo', 'veio-selo|FOT-19.naFila', 'veio-selo|FOT-19.naFila',
   ]);
+  const seloLendo = pagina.cartoes()[0].querySelector('.foto-cartao__status').nos()[0];
+  assert.deepStrictEqual(seloLendo.nos().map(no => no.className), ['veio-selo__ponto']);
 
   pendentes[0].resolver(respostaDoGemini('NENHUM_TRECHO'));
   await pagina.soltar([foto('d.jpg')]);
