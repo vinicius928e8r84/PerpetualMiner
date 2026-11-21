@@ -7,9 +7,9 @@ const path = require('path');
 const ler = arquivo => fs.readFileSync(path.join(__dirname, '..', arquivo), 'utf8');
 
 {
-  const linhas = ler('painel.html').split('\n');
+  const linhas = ler('painel/painel.html').split('\n');
   const juntas = linhas.map((linha, i) => ({ linha, n: i + 1 })).filter(({ linha }) => (linha.match(/<script\b/g) || []).length > 1);
-  assert.deepStrictEqual(juntas, [], `painel.html: uma tag <script> por linha (a ordem atual fica); juntas em: ${juntas.map(j => j.n).join(', ')}`);
+  assert.deepStrictEqual(juntas, [], `painel/painel.html: uma tag <script> por linha (a ordem atual fica); juntas em: ${juntas.map(j => j.n).join(', ')}`);
 }
 
 {

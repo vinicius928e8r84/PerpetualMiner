@@ -9,25 +9,33 @@ const { raizTemporaria } = require('./apoio-sem-comentario');
 
 let total = 0;
 
-function achadosDoDiff(antes, depois, arquivo, { semCommit = false } = {}) {
+function achadosDaMudanca(mudanca) {
   const { raiz, git, gravar, commit } = raizTemporaria();
   try {
-    gravar({ 'LEIAME.md': 'x\n', ...antes });
+    gravar({ 'LEIAME.md': 'x\n', ...mudanca.antes });
     const base = commit('base');
     git('checkout', '-q', '-b', 'mudanca');
-    gravar(depois);
-    if (!semCommit) commit('mudanca');
-    return regra.verificar(arquivo, fs.readFileSync(path.join(raiz, arquivo), 'utf8'), raiz, base);
+    gravar(mudanca.depois);
+    if (!mudanca.semCommit) commit('mudanca');
+    return regra.verificar(mudanca.arquivo, fs.readFileSync(path.join(raiz, mudanca.arquivo), 'utf8'), raiz, base);
   } finally {
     fs.rmSync(raiz, { recursive: true, force: true });
   }
 }
 
-function acusa(antes, depois, arquivo, linhas, porque, opcoes) {
-  const achados = achadosDoDiff(antes, depois, arquivo, opcoes);
-  assert.deepStrictEqual(achados.map(a => a.linha), linhas, `${arquivo}: ${porque}\n${JSON.stringify(achados, null, 2)}`);
+function acusa(mudanca, linhas, porque) {
+  const achados = achadosDaMudanca(mudanca);
+  assert.deepStrictEqual(achados.map(a => a.linha), linhas, `${mudanca.arquivo}: ${porque}\n${JSON.stringify(achados, null, 2)}`);
   total++;
   return achados;
+}
+
+const alterado = (arquivo, antes, depois) => ({ antes: { [arquivo]: antes }, depois: { [arquivo]: depois }, arquivo });
+const novo = (arquivo, texto) => ({ antes: {}, depois: { [arquivo]: texto }, arquivo });
+
+function confereSeAplica(arquivo, esperado) {
+  assert.strictEqual(regra.seAplica(arquivo), esperado);
+  total++;
 }
 
 const juntar = (...linhas) => `${linhas.join('\n')}\n`;
@@ -39,10 +47,10 @@ const ENVIO_ANTES = juntar(
   '        return self',
 );
 const ENVIO_DEPOIS = ENVIO_ANTES.replace('self.logger))\n', 'self.logger))  # os `.novo` da morte\n');
-const [daMorte] = acusa({ 'complemento/envio.py': ENVIO_ANTES }, { 'complemento/envio.py': ENVIO_DEPOIS }, 'complemento/envio.py', [3],
+const [daMorte] = acusa(alterado('complemento/envio.py', ENVIO_ANTES, ENVIO_DEPOIS), [3],
   'e36a3a7a: o comentário no fim da linha que a #442 acrescentou');
 assert.match(daMorte.detalhe, /comentário novo: “os `\.novo` da morte”/);
-acusa({ 'complemento/envio.py': ENVIO_ANTES }, { 'complemento/envio.py': ENVIO_ANTES }, 'complemento/envio.py', [], 'o mesmo arquivo sem o comentário passa');
+acusa(alterado('complemento/envio.py', ENVIO_ANTES, ENVIO_ANTES), [], 'o mesmo arquivo sem o comentário passa');
 
 const PROVISORIOS = juntar(
   'import unittest',
@@ -55,12 +63,12 @@ const PROVISORIOS = juntar(
   '        # Um arquivo aberto por outro programa (o Windows recusa apagar) levanta `PermissionError`.',
   '        self.assertTrue(True)',
 );
-acusa({}, { 'complemento/test_envio_provisorios.py': PROVISORIOS }, 'complemento/test_envio_provisorios.py', [6, 7, 8],
+acusa(novo('complemento/test_envio_provisorios.py', PROVISORIOS), [6, 7, 8],
   'e36a3a7a: o arquivo novo, cada linha do comentário é acusada e o noqa passa');
-acusa({}, { 'complemento/test_envio_provisorios.py': PROVISORIOS }, 'complemento/test_envio_provisorios.py', [6, 7, 8],
-  'o mesmo arquivo ainda sem commit (fora do índice)', { semCommit: true });
-acusa({}, { 'complemento/test_envio_provisorios.py': PROVISORIOS.split('\n').filter(l => !/^ {8}# /.test(l)).join('\n') },
-  'complemento/test_envio_provisorios.py', [], 'sem o comentário, só o noqa fica e passa');
+acusa({ ...novo('complemento/test_envio_provisorios.py', PROVISORIOS), semCommit: true }, [6, 7, 8],
+  'o mesmo arquivo ainda sem commit (fora do índice)');
+acusa(novo('complemento/test_envio_provisorios.py', PROVISORIOS.split('\n').filter(l => !/^ {8}# /.test(l)).join('\n')),
+  [], 'sem o comentário, só o noqa fica e passa');
 
 const REGRAS_ANTES = juntar(
   'jobs:',
@@ -75,7 +83,7 @@ const REGRAS_DEPOIS = REGRAS_ANTES.replace('      - name: Autoria', juntar(
   '      # dono, e nenhuma linha Co-authored-by da mensagem traz outro e-mail.',
   '      - name: Autoria',
 ).slice(0, -1));
-acusa({ '.github/workflows/regras.yml': REGRAS_ANTES }, { '.github/workflows/regras.yml': REGRAS_DEPOIS }, '.github/workflows/regras.yml', [4, 5],
+acusa(alterado('.github/workflows/regras.yml', REGRAS_ANTES, REGRAS_DEPOIS), [4, 5],
   'b5899631: o bloco de comentário que o PR #436 pôs no workflow');
 
 const REGISTRAR = juntar(
@@ -91,26 +99,22 @@ const REGISTRAR = juntar(
   '  return head;',
   '}',
 );
-acusa({}, { 'scripts/ci/registrar-na-pr.js': REGISTRAR }, 'scripts/ci/registrar-na-pr.js', [2, 3, 4, 7, 9],
+acusa(novo('scripts/ci/registrar-na-pr.js', REGISTRAR), [2, 3, 4, 7, 9],
   'f4bbbde5: a linha 1 #! passa; o cabeçalho de três linhas, o JSDoc e o comentário de dentro da função não');
-acusa({}, { 'scripts/ci/registrar-na-pr.js': REGISTRAR.split('\n').filter(l => !/^\s*(\/\/|\/\*\*)/.test(l)).join('\n') },
-  'scripts/ci/registrar-na-pr.js', [], 'sem os comentários só o #! fica, e passa');
+acusa(novo('scripts/ci/registrar-na-pr.js', REGISTRAR.split('\n').filter(l => !/^\s*(\/\/|\/\*\*)/.test(l)).join('\n')),
+  [], 'sem os comentários só o #! fica, e passa');
 
-acusa({ 'painel.js': juntar('// uma nota que já estava lá', 'function a() {}') },
-  { 'painel.js': juntar('// uma nota que já estava lá', 'function a() {}', 'function b() {}') }, 'painel.js', [],
+const NOTA_VELHA = juntar('// uma nota que já estava lá', 'function a() {}');
+acusa(alterado('painel.js', NOTA_VELHA, juntar('// uma nota que já estava lá', 'function a() {}', 'function b() {}')), [],
   'o comentário que já existia na base não bloqueia');
-acusa({ 'painel.js': juntar('// uma nota que já estava lá', 'function a() {}') },
-  { 'painel.js': juntar('// uma nota que já estava lá', '// e mais uma', 'function a() {}') }, 'painel.js', [2],
+acusa(alterado('painel.js', NOTA_VELHA, juntar('// uma nota que já estava lá', '// e mais uma', 'function a() {}')), [2],
   'estender um comentário velho acusa a linha acrescentada');
-acusa({ 'painel.js': juntar('function a() {}', '', 'function b() {}') },
-  { 'painel.js': juntar('function b() {}', '', 'function a() {}') }, 'painel.js', [], 'trocar o código de lugar sem comentário passa');
-acusa({ 'lib/velho.js': juntar('// uma nota que já estava lá', 'function a() { return 1; }', 'function b() { return 2; }') }, {
-  'lib/velho.js': null,
-  'lib/novo.js': juntar('// uma nota que já estava lá', 'function a() { return 1; }', 'function b() { return 2; }'),
-}, 'lib/novo.js', [], 'mover o arquivo com o comentário que ele já tinha não conta como comentário novo');
+acusa(alterado('painel.js', juntar('function a() {}', '', 'function b() {}'), juntar('function b() {}', '', 'function a() {}')), [], 'trocar o código de lugar sem comentário passa');
+const COM_NOTA = juntar('// uma nota que já estava lá', 'function a() { return 1; }', 'function b() { return 2; }');
+acusa({ antes: { 'lib/velho.js': COM_NOTA }, depois: { 'lib/velho.js': null, 'lib/novo.js': COM_NOTA }, arquivo: 'lib/novo.js' }, [], 'mover o arquivo com o comentário que ele já tinha não conta como comentário novo');
 
-const sem = (arquivo, texto, porque) => acusa({}, { [arquivo]: texto }, arquivo, [], porque);
-const com = (arquivo, texto, linhas, porque) => acusa({}, { [arquivo]: texto }, arquivo, linhas, porque);
+const sem = (arquivo, texto, porque) => acusa(novo(arquivo, texto), [], porque);
+const com = (arquivo, texto, linhas, porque) => acusa(novo(arquivo, texto), linhas, porque);
 
 sem('painel.js', juntar('// eslint-disable-next-line no-console', 'console.log(1);', '/* eslint-disable no-alert */', '/* eslint-env browser */'), 'eslint');
 sem('painel.js', juntar('// @ts-check', '// @ts-ignore', 'x();', '// @ts-expect-error', 'y();'), '@ts-*');
@@ -173,35 +177,37 @@ com('scripts/a.sh', juntar('#!/usr/bin/env bash', 'cat <<EOF', '  EOF', '# no he
 com('scripts/a.sh', juntar('#!/usr/bin/env bash', '(( n++ )); cat <<EOF', '# texto do heredoc', 'EOF', '# depois'), [5], 'a aritmética fechada não impede o heredoc');
 com('scripts/a.sh', juntar('#!/usr/bin/env bash', 'case "$x" in', '  a)# escolhe a', '  ;;', 'esac'), [3], 'o # logo depois do ) é comentário');
 
-assert.strictEqual(regra.seAplica('docs/design/protótipo.html'), false);
-assert.strictEqual(regra.seAplica('.claude/skills/x/scripts/a.sh'), false);
-assert.strictEqual(regra.seAplica('README.md'), false);
-assert.strictEqual(regra.seAplica('e2e/fontconfig/fonts.conf'), false);
-assert.strictEqual(regra.seAplica('.github/workflows/regras.yml'), true);
-assert.strictEqual(regra.seAplica('scripts/ganchos/pre-push'), true);
-assert.strictEqual(regra.seAplica('scripts/ci/classificar.sh'), true);
-assert.strictEqual(regra.seAplica('complemento/envio.py'), true);
-assert.strictEqual(regra.seAplica('painel.html'), true);
-total += 9;
+confereSeAplica('docs/design/protótipo.html', false);
+confereSeAplica('.claude/skills/x/scripts/a.sh', false);
+confereSeAplica('README.md', false);
+confereSeAplica('e2e/fontconfig/fonts.conf', false);
+confereSeAplica('.github/workflows/regras.yml', true);
+confereSeAplica('scripts/ganchos/pre-push', true);
+confereSeAplica('scripts/ci/classificar.sh', true);
+confereSeAplica('complemento/envio.py', true);
+confereSeAplica('painel.html', true);
 
 sem('painel.js', juntar("const url = 'https://exemplo.com/a';", 'const re = /\\/\\/ x/;', 'const t = `// não é comentário`;'), 'barras dentro de string, regex e template');
 sem('scripts/a.sh', juntar('#!/usr/bin/env bash', 'n=${#lista[@]}', 'if [ $# -eq 0 ]; then x=$(echo "a" | wc -c); fi', 'cat <<EOF', '# texto do heredoc', 'EOF', 'y="$(printf "%s" "${x#a}")"'), 'shell: $#, ${#}, heredoc e aspas dentro de $( )');
 sem('.github/workflows/a.yml', juntar('a:', '  b: |', '    # texto de um bloco que não é shell', '  c: "x # y"'), 'YAML: # de dentro de bloco de texto e de aspas');
-total += 3;
 
 assert.strictEqual(regra.verificar('painel.js', '// x\n', '/tmp', null).length, 0, 'sem base não há o que comparar');
 total++;
 
-{
-  const sem = raizTemporaria();
-  sem.gravar({ 'painel.js': 'x();\n' });
-  sem.commit('principal');
-  sem.git('checkout', '-q', '--orphan', 'outra');
-  const orfao = sem.commit('história sem ancestral comum');
-  sem.git('checkout', '-q', 'main');
-  assert.throws(() => regra.verificar('painel.js', '// x\n', sem.raiz, orfao), /não têm um ancestral comum/, 'sem ancestral comum a regra falha em vez de passar calada');
-  fs.rmSync(sem.raiz, { recursive: true, force: true });
-  total++;
+function semAncestralComum() {
+  const repositorio = raizTemporaria();
+  try {
+    repositorio.gravar({ 'painel.js': 'x();\n' });
+    repositorio.commit('principal');
+    repositorio.git('checkout', '-q', '--orphan', 'outra');
+    const orfao = repositorio.commit('história sem ancestral comum');
+    repositorio.git('checkout', '-q', 'main');
+    assert.throws(() => regra.verificar('painel.js', '// x\n', repositorio.raiz, orfao), /não têm um ancestral comum/, 'sem ancestral comum a regra falha em vez de passar calada');
+    total++;
+  } finally {
+    fs.rmSync(repositorio.raiz, { recursive: true, force: true });
+  }
 }
+semAncestralComum();
 
 console.log(`sem-comentario-novo: ${total} provas passaram`);

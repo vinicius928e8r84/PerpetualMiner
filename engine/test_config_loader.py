@@ -56,6 +56,74 @@ class ConfiguracaoDoMotor(unittest.TestCase):
                 config = config_loader.load_config(openai_api_key="sk-x")
         self.assertEqual(config, {"openai": {"image_model": "m"}, "openai_api_key": "sk-x"})
 
+    def test_o_env_le_cada_nome_e_valor_sem_export_sem_espacos_e_sem_o_par_de_aspas_e_o_ultimo_vale(self):
+        linhas = [
+            "",
+            "   ",
+            "# OPENAI_API_KEY=sk-comentada",
+            "   # COMENTARIO=com espacos antes",
+            "SEM_IGUAL",
+            "SIMPLES=valor",
+            "  ESPACOS  =  com espacos  ",
+            "export EXPORTADA=e1",
+            "  export    EXPORTADA_COM_ESPACOS  = e2",
+            "exportJUNTO=e3",
+            "export=e4",
+            'DUPLAS="entre aspas"',
+            "SIMPLES_ASPAS='entre aspas simples'",
+            "MISTURADAS=\"abre e fecha outra'",
+            "UMA_ASPA='",
+            'SO_DUAS=""',
+            "ASPAS_DENTRO=a'b'c",
+            "IGUAL_NO_VALOR=a=b=c",
+            "VAZIA=",
+            "=sem nome",
+            "REPETIDA=primeira",
+            "REPETIDA=segunda",
+            "COM_HASH=valor # nao e comentario",
+        ]
+        with tempfile.TemporaryDirectory() as pasta:
+            env = Path(pasta) / ".env"
+            env.write_text("\n".join(linhas) + "\n", encoding="utf-8")
+            lido = config_loader._ler_env(env)
+        self.assertEqual(lido, {
+            "SIMPLES": "valor",
+            "ESPACOS": "com espacos",
+            "EXPORTADA": "e1",
+            "EXPORTADA_COM_ESPACOS": "e2",
+            "exportJUNTO": "e3",
+            "export": "e4",
+            "DUPLAS": "entre aspas",
+            "SIMPLES_ASPAS": "entre aspas simples",
+            "MISTURADAS": "\"abre e fecha outra'",
+            "UMA_ASPA": "'",
+            "SO_DUAS": "",
+            "ASPAS_DENTRO": "a'b'c",
+            "IGUAL_NO_VALOR": "a=b=c",
+            "VAZIA": "",
+            "": "sem nome",
+            "REPETIDA": "segunda",
+            "COM_HASH": "valor # nao e comentario",
+        })
+
+    def test_um_env_que_nao_existe_ou_nao_e_arquivo_nao_tem_nada(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            self.assertEqual((config_loader._ler_env(Path(pasta) / "falta.env"), config_loader._ler_env(Path(pasta))), ({}, {}))
+
+    def test_a_chave_vazia_ou_entre_aspas_vazias_no_env_e_chave_que_falta(self):
+        for linha in ("OPENAI_API_KEY=", 'OPENAI_API_KEY=""', "export OPENAI_API_KEY=''"):
+            with self.subTest(linha=linha), tempfile.TemporaryDirectory() as pasta, mock.patch.dict(os.environ, {}, clear=True):
+                env = Path(pasta) / ".env"
+                env.write_text(linha + "\n", encoding="utf-8")
+                with self.assertRaisesRegex(EnvironmentError, "OPENAI_API_KEY"):
+                    config_loader.load_config(env_file=env)
+
+    def test_a_chave_exportada_e_entre_aspas_simples_no_env_vale(self):
+        with tempfile.TemporaryDirectory() as pasta, mock.patch.dict(os.environ, {}, clear=True):
+            env = Path(pasta) / ".env"
+            env.write_text("  export  OPENAI_API_KEY = 'sk-exportada'  \n", encoding="utf-8")
+            self.assertEqual(config_loader.load_config(env_file=env)["openai_api_key"], "sk-exportada")
+
     def test_cada_leitura_e_uma_copia_nova(self):
         primeira = config_loader.base_config()
         primeira["anki"]["deck_name"] = "mudado"

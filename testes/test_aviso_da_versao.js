@@ -3,7 +3,7 @@
 const assert = require('assert');
 
 globalThis.PerpetualMiner = {};
-require('../painel-conexao-versao-estado.js');
+require('../painel/painel-conexao-versao-estado.js');
 const { AvisoDaVersao } = globalThis.PerpetualMiner;
 const { ESTADO, EVENTO, inicial, proxima } = AvisoDaVersao;
 
