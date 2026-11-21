@@ -235,7 +235,6 @@
     "lib/mineracao-do-dia.js": 1,
     "lib/mineracao.js": 6,
     "lib/palavra-automatica.js": 20,
-    "lib/pareamento.js": 34,
     "lib/pedido-ao-anki.js": 8,
     "lib/quiz-de-nivel.js": 3,
     "lib/sincronizacao.js": 12,
