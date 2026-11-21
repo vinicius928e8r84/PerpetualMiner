@@ -171,7 +171,6 @@
     "painel/painel-envio-parado.js": 2,
     "painel/painel-envio.js": 54,
     "painel/painel-ia-chatgpt.js": 2,
-    "painel/painel-ia-modelo.js": 4,
     "painel/painel-perigo.js": 2,
     "painel/painel-shell.js": 8,
     "painel/painel.js": 86,
