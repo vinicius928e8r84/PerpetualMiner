@@ -28,6 +28,15 @@ The quick brown fox jumps over the lazy dog
 All that glitters is not gold
 To be or not to be, that is the question`;
 
+  const TIPO_POR_EXTENSAO = {
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    webp: 'image/webp',
+    heic: 'image/heic',
+  };
+  const TIPOS_ACEITOS = new Set(Object.values(TIPO_POR_EXTENSAO));
+
   const STATUS_DA_CHAVE_RECUSADA = new Set([401, 403]);
 
   const ehChaveRecusada = erro => STATUS_DA_CHAVE_RECUSADA.has(erro.status) || /api[ _]?key/i.test(erro.message);
@@ -41,6 +50,12 @@ To be or not to be, that is the question`;
     { aplica: ehChaveRecusada, id: 'FOT-11.causaChave' },
     { aplica: qualquerOutra, id: 'GLB-01' },
   ];
+
+  function tipoDaFoto(arquivo) {
+    if (TIPOS_ACEITOS.has(arquivo.type)) return arquivo.type;
+    const extensao = arquivo.name.split('.').pop().toLowerCase();
+    return TIPO_POR_EXTENSAO[extensao] || null;
+  }
 
   function pedidoDaFoto(chave, foto, sinal) {
     return {
@@ -101,5 +116,5 @@ To be or not to be, that is the question`;
     return { causa: textoDaVoz(id), chaveRecusada: ehChaveRecusada(erro) };
   }
 
-  raiz.LeituraDoGemini = Object.freeze({ lerAsMarcacoes, classificarFalha });
+  raiz.LeituraDoGemini = Object.freeze({ tipoDaFoto, lerAsMarcacoes, classificarFalha });
 })(globalThis.PerpetualMiner);

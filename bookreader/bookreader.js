@@ -3,26 +3,13 @@
 (function (raiz) {
   const { textoDaVoz, Mineracao } = raiz;
   const { iconeVeio, montarAviso, mostrarToastDeSucesso, refletirSelecao, abrirConfirmacao, elemento, botao } = raiz.Veio;
-  const { lerAsMarcacoes, classificarFalha } = raiz.LeituraDoGemini;
+  const { tipoDaFoto, lerAsMarcacoes, classificarFalha } = raiz.LeituraDoGemini;
 
   const TITULO_SEM_LIVRO = 'Físico/Livro';
 
   const FONTE = 'livro';
 
   const ENDERECO_DA_CHAVE = '#configuracoes/chave';
-
-  /**
-   * Os formatos que a página anuncia (FOT-02) e aceita. O Chrome no Windows
-   * entrega o HEIC sem tipo, então a extensão do arquivo também vale.
-   */
-  const TIPO_POR_EXTENSAO = {
-    jpg: 'image/jpeg',
-    jpeg: 'image/jpeg',
-    png: 'image/png',
-    webp: 'image/webp',
-    heic: 'image/heic',
-  };
-  const TIPOS_ACEITOS = new Set(Object.values(TIPO_POR_EXTENSAO));
 
   const STATUS = {
     PRONTA: 'pronta',
@@ -58,11 +45,9 @@
     cartoes: new Map(),
     grupos: new Map(),
     linhas: new Map(),
-    avisoDaLeitura: null,
-    falhasDoAviso: '',
+    avisoDaLeitura: { fotos: '', no: null },
     avisoDoEnvio: null,
-    avisoDoCancelamento: null,
-    canceladasDoAviso: '',
+    avisoDoCancelamento: { fotos: '', no: null },
   });
   let desenhado = nadaDesenhado();
 
@@ -149,12 +134,6 @@
     });
   }
 
-  function tipoDaFoto(arquivo) {
-    if (TIPOS_ACEITOS.has(arquivo.type)) return arquivo.type;
-    const extensao = arquivo.name.split('.').pop().toLowerCase();
-    return TIPO_POR_EXTENSAO[extensao] || null;
-  }
-
   async function receberArquivos(arquivos) {
     if (!estado.chaveGemini || !arquivos.length) return;
 
@@ -225,31 +204,37 @@
     while ((foto = fotosCom(STATUS.NA_FILA)[0])) {
       foto.status = STATUS.LENDO;
       desenhar();
-      leitura.controlador = new AbortController();
-      let textos = null;
-      let falha = null;
-      try {
-        textos = await lerAsMarcacoes(estado.chaveGemini, foto, leitura.controlador.signal);
-      } catch (erro) {
-        falha = erro;
-      }
+      const resultado = await lerAFoto(foto, leitura);
       if (leitura.interrompida) return;
-      if (falha) {
-        foto.status = STATUS.FALHOU;
-        foto.falha = classificarFalha(falha);
-      } else {
-        for (const texto of textos) {
-          estado.frases.push({ id: proximoId++, fotoId: foto.id, texto, marcada: true, minerada: false });
-        }
-        foto.achadas = textos.length;
-        foto.status = STATUS.LIDA;
-      }
+      guardarOResultado(foto, resultado);
       desenhar();
     }
 
     estado.lendo = false;
     estado.leitura = null;
     desenhar();
+  }
+
+  async function lerAFoto(foto, leitura) {
+    leitura.controlador = new AbortController();
+    try {
+      return { textos: await lerAsMarcacoes(estado.chaveGemini, foto, leitura.controlador.signal) };
+    } catch (erro) {
+      return { falha: erro };
+    }
+  }
+
+  function guardarOResultado(foto, { textos, falha }) {
+    if (falha) {
+      foto.status = STATUS.FALHOU;
+      foto.falha = classificarFalha(falha);
+      return;
+    }
+    for (const texto of textos) {
+      estado.frases.push({ id: proximoId++, fotoId: foto.id, texto, marcada: true, minerada: false });
+    }
+    foto.achadas = textos.length;
+    foto.status = STATUS.LIDA;
   }
 
   function interromperLeitura() {
@@ -326,20 +311,27 @@
     };
   }
 
+  const idsDas = fotos => fotos.map(foto => foto.id).join(',');
+
+  function refazerOAvisoSeAsFotosMudaram(aviso, fotos, montar) {
+    if (fotos === aviso.fotos) return;
+    aviso.fotos = fotos;
+    aviso.no?.remove();
+    aviso.no = fotos ? montar() : null;
+  }
+
   function desenharAvisoDaLeitura() {
     const falhas = fotosCom(STATUS.FALHOU);
-    const ids = estado.frases.length ? falhas.map(foto => foto.id).join(',') : '';
-    if (ids === desenhado.falhasDoAviso) return;
-    desenhado.falhasDoAviso = ids;
-    desenhado.avisoDaLeitura?.remove();
-    desenhado.avisoDaLeitura = null;
-    if (!ids) return;
+    const fotos = estado.frases.length ? idsDas(falhas) : '';
+    refazerOAvisoSeAsFotosMudaram(desenhado.avisoDaLeitura, fotos, () => mostrarAvisoDasFalhas(falhas));
+  }
 
+  function mostrarAvisoDasFalhas(falhas) {
     const { causa, chaveRecusada } = resumoDasFalhas(falhas);
     const abertura = falhas.length === 1
       ? textoDaVoz('FOT-11.aviso', { n: numeroDaFoto(falhas[0]) })
       : textoDaVoz('FOT-11.avisoVarias', { n: falhas.length });
-    desenhado.avisoDaLeitura = mostrarAviso({
+    return mostrarAviso({
       abertura,
       texto: causa,
       icone: 'perigo',
@@ -350,18 +342,16 @@
   function desenharAvisoDoCancelamento() {
     const canceladas = fotosCom(STATUS.CANCELADA);
     const colunaJaDiz = estadoDaColuna().id === ID_DA_COLUNA_CANCELADA;
-    const ids = colunaJaDiz ? '' : canceladas.map(foto => foto.id).join(',');
-    if (ids === desenhado.canceladasDoAviso) return;
-    desenhado.canceladasDoAviso = ids;
-    desenhado.avisoDoCancelamento?.remove();
-    desenhado.avisoDoCancelamento = null;
-    if (!ids) return;
+    const fotos = colunaJaDiz ? '' : idsDas(canceladas);
+    refazerOAvisoSeAsFotosMudaram(desenhado.avisoDoCancelamento, fotos, () => mostrarAvisoDoCancelamento(canceladas.length));
+  }
 
-    desenhado.avisoDoCancelamento = mostrarAviso({
+  function mostrarAvisoDoCancelamento(n) {
+    return mostrarAviso({
       tom: 'info',
       icone: 'info',
       abertura: textoDaVoz('FOT-21.abertura'),
-      texto: textoDaVoz('FOT-21.aviso', { n: canceladas.length }),
+      texto: textoDaVoz('FOT-21.aviso', { n }),
     });
   }
 
