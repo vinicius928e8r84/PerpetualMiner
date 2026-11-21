@@ -138,7 +138,6 @@
     "engine/corrigir_frase.py": 2,
     "engine/cost_tracker.py": 4,
     "engine/extract_prompts.py": 5,
-    "engine/generate_images.py": 1,
     "engine/image_guard.py": 1,
     "engine/image_judge.py": 6,
     "engine/image_pipeline.py": 1,
