@@ -67,20 +67,20 @@ Advanced preference that belongs to the panel, not to the catalog.
 The content script loads the whole catalog into every frame: the overlay reads its copy from it
 (`MIN-01`…`MIN-10`, and `PAI-29.web` for the selection's meta) like every other surface.
 
-### Panel shell (`painel-shell.js`)
+### Panel shell (`painel/painel-shell.js`)
 
-`painel.html` is one page with three areas (plus the Boas-vindas, `#boas-vindas`, which hides the whole shell); the shell (`docs/design/painel/shell/`, variant B) only swaps the view, so
-nothing reloads when switching areas — filters, page, selection, sync and the Envio tracking in `painel-envio.js` stay as
+`painel/painel.html` is one page with three areas (plus the Boas-vindas, `#boas-vindas`, which hides the whole shell); the shell (`docs/design/painel/shell/`, variant B) only swaps the view, so
+nothing reloads when switching areas — filters, page, selection, sync and the Envio tracking in `painel/painel-envio.js` stay as
 they are. Addresses: `#frases` (default, and anything unknown), `#anki/custos|baralhos|vocabulario|ajustes`
 (`#anki` alone opens Custos; the sidebar link reopens the last tab seen), `#configuracoes[/conta|atalhos|ia|chave|anki|aparencia|perigo]`
 (opens the card, scrolls to it and flashes its border; bare `#configuracoes` shows every card closed). The Anki tabs are the Veio segmented control; picking one sets the hash,
 so the browser's back button walks through areas and tabs.
 
-The shell owns the sidebar and `painel.js` reports to it through `PerpetualMiner.Shell`:
+The shell owns the sidebar and `painel/painel.js` reports to it through `PerpetualMiner.Shell`:
 `mostrarTotalDeFrases(n)`, `aoEntrarNaArea(area, fn)` (the Anki area refreshes on entry), `areaAtual()`, `AREAS_DO_PAINEL` (the areas with the sidebar). The shell starts the 15 s `/health` checks and uses `ConexaoNaTela` for the sidebar indicator and the F1 retry at the top of the Anki area. Edge cases: [shell](design/painel/shell/README.md#casos-de-borda); the common retry: [Boas-vindas § F1](design/painel/boas-vindas/README.md#conexão-com-o-anki-como-ligar-f1). Others listen to `ConexaoAnki` directly.
 
 The shell's fixed copy comes from the catalog through `data-voz`, `data-voz-aria` and `data-voz-title` attributes in
-`painel.html`, which `painel-shell.js` fills on load. The sidebar and the content island are both the height of the window
+`painel/painel.html`, which `painel/painel-shell.js` fills on load. The sidebar and the content island are both the height of the window
 and start and end together; the content scrolls inside its island (entering an area scrolls it back to the top). Below 1000 px the sidebar becomes a 76 px rail: labels leave
 the screen but stay as the links' names (visually hidden, not `display: none`) and become tooltips.
 
@@ -112,13 +112,13 @@ The architecture of each surface lives in a project skill, not here. **Open the 
 
 ### Firebase / Firestore Sync
 
-Phrases are synced to Firestore under `usuarios/{uid}/frases/{frase.id}` when the user is logged in. `lib/sincronizacao.js` owns the shared session implementation, Firestore codec and merge logic, using the **Firestore REST API directly** (no SDK: MV3 CSP). The panel loads it before `painel.js`; the service worker, with `importScripts`. For the `nuvem` seam and the sync API, read the module's doc comments.
+Phrases are synced to Firestore under `usuarios/{uid}/frases/{frase.id}` when the user is logged in. `lib/sincronizacao.js` owns the shared session implementation, Firestore codec and merge logic, using the **Firestore REST API directly** (no SDK: MV3 CSP). The panel loads it before `painel/painel.js`; the service worker, with `importScripts`. For the `nuvem` seam and the sync API, read the module's doc comments.
 
-Authentication in `painel.js` uses `chrome.identity.launchWebAuthFlow` (OAuth2 with Google) — **no Firebase Auth SDK**. Stored credentials are described under Firebase auth session in `docs/armazenamento.md`; see `criarSessao`'s doc comment for token renewal and revocation.
+Authentication in `painel/painel.js` uses `chrome.identity.launchWebAuthFlow` (OAuth2 with Google) — **no Firebase Auth SDK**. Stored credentials are described under Firebase auth session in `docs/armazenamento.md`; see `criarSessao`'s doc comment for token renewal and revocation.
 
 A capture is saved locally, then sent by `salvarFrase` / `sincronizarComFirestore` in `background.js`; a failed upload leaves no record. There is no retry queue: `carregar` in `lib/sincronizacao.js` uploads the local phrases the cloud lacks.
 
-`criarSincronizacao` owns deletion, tombstones and a pending Apagar tudo; the panel clears its visible/local history and delegates cloud work to the module, while the popup does not delete. For tombstone storage and the offline wipe's account/cutoff rules, read the module's doc comments. The Firestore field-path escaping requirement is documented at `tombstoneFirestore`.
+`criarSincronizacao` owns deletion, tombstones and a pending Apagar tudo; the panel clears its visible/local history and delegates cloud work to the module, while the popup does not delete. For tombstone storage and the offline wipe's account/cutoff rules, read the module's doc comments. The Firestore field-path escaping requirement is documented at `tombstoneFirestore`. A `404` on `meta/deleted` means no tombstones yet; any other failure to read it makes `carregar` reject before it uploads or removes anything, as a failed listing does, and the next opening retries.
 
 The OpenAI key follows the account (#154): the versioned Conexão owner replicates `usuarios/{uid}/segredos/openai` (`{ chave, em }`, empty value for deletion). The extension sends transient UID/token requests on opening/login/visibility/key changes and reads only the owner's public summary. Invariants, legacy migration, ordering limits and P6 owner rule-publication gate: `docs/seguranca/chave-da-openai.md`.
 
@@ -138,7 +138,7 @@ The capture shortcuts and the floating button only react to trusted events (`eve
 
 ### Write Serialization (lib/historico.js)
 
-`PerpetualMiner.Historico` owns the writes of `frases`. Each operation (`acrescentar`, `editar`, `editarVarias`, `marcarEnviadas`, `marcarExportadas`, `apagar`) takes the Web Lock `pm-historico`, reads `frases` again inside it, changes only what was asked and writes; the lock is the same for the service worker and every extension page, so a save in one never overwrites a change from another. The service worker's `salvarFrase` goes through `acrescentar` (e.g. BookReader saving many passages at once), and phrase ids are assigned inside the lock, unique even within the same millisecond. In the panel, Apagar (one phrase, the selection, or Tirar do histórico after an Envio) goes through `apagar`; marking a Palavra, Editar texto and Editar contexto (one phrase or the selection) go through `editar` and `editarVarias`, which write only the fields the person changed; Exportar .txt and the Enviada ao Anki mark at the end of an Envio go through `marcarExportadas` and `marcarEnviadas`. Apagar tudo goes through `apagar` with the ids of the phrases the confirmation counted, taken when the dialog opens (`painel-perigo.js`); with a Conta, `sincronizacao.apagarTudo(ids, em)` deletes from the cloud those ids (with a tombstone even if their upload has not arrived yet) and every phrase with an id up to that moment (also the cutoff `ate` of a pending wipe), so a phrase mined after the dialog opened stays, here and in the cloud, with no tombstone. The cutoff compares ids, which are the clock of the computer that mined them: a computer with its clock far ahead or behind can fall on the wrong side.
+`PerpetualMiner.Historico` owns the writes of `frases`. Each operation (`acrescentar`, `editar`, `editarVarias`, `marcarEnviadas`, `marcarExportadas`, `apagar`) takes the Web Lock `pm-historico`, reads `frases` again inside it, changes only what was asked and writes; the lock is the same for the service worker and every extension page, so a save in one never overwrites a change from another. The service worker's `salvarFrase` goes through `acrescentar` (e.g. BookReader saving many passages at once), and phrase ids are assigned inside the lock, unique even within the same millisecond. In the panel, Apagar (one phrase, the selection, or Tirar do histórico after an Envio) goes through `apagar`; marking a Palavra, Editar texto and Editar contexto (one phrase or the selection) go through `editar` and `editarVarias`, which write only the fields the person changed; Exportar .txt and the Enviada ao Anki mark at the end of an Envio go through `marcarExportadas` and `marcarEnviadas`. Apagar tudo goes through `apagar` with the ids of the phrases the confirmation counted, taken when the dialog opens (`painel/painel-perigo.js`); with a Conta, `sincronizacao.apagarTudo(ids, em)` deletes from the cloud those ids (with a tombstone even if their upload has not arrived yet) and every phrase with an id up to that moment (also the cutoff `ate` of a pending wipe), so a phrase mined after the dialog opened stays, here and in the cloud, with no tombstone. The cutoff compares ids, which are the clock of the computer that mined them: a computer with its clock far ahead or behind can fall on the wrong side.
 
 When the panel loads with a Conta, `lib/sincronizacao.js` drops the phrases deleted on another computer through `apagar` (the tombstone ids) and copies the Enviada/Exportada marks from the cloud through `editarVarias`.
 
@@ -170,4 +170,4 @@ For the day rollover's scheduling and persistence contract, see `agendarViradaDo
 - `alarms`, `storage`, `unlimitedStorage`, `activeTab`, `tabs`, `contextMenus`, `identity` (for the `alarms` rationale, see [the store guide](publicar-chrome-web-store.md#justificativa-de-cada-permissão); the unpacked-folder auto-reload also uses it)
 - `host_permissions`: the Conexão com o Anki (127.0.0.1/localhost:8766), Gemini API, Firestore, Google OAuth, Firebase token endpoints. No `*.firebaseio.com`/`*.firebaseapp.com` (nothing calls them); `testes/test_empacotar.js` checks that the "Host permission use" block of `docs/publicar-chrome-web-store.md` lists exactly these
 - Content scripts inject into all URLs with `all_frames: true`
-- `painel.html`, `bookreader/bookreader.html`, `veio/tokens.css`, `veio/componentes.css`, `overlay/overlay.css`, `veio/icones/icone.svg` and `veio/fontes/*.woff2` declared as `web_accessible_resources`: the stylesheets, the tile and the fonts are what the in-page overlay loads inside its Shadow DOM
+- `painel/painel.html`, `bookreader/bookreader.html`, `veio/tokens.css`, `veio/componentes.css`, `overlay/overlay.css`, `veio/icones/icone.svg` and `veio/fontes/*.woff2` declared as `web_accessible_resources`: the stylesheets, the tile and the fonts are what the in-page overlay loads inside its Shadow DOM

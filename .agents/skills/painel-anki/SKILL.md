@@ -1,6 +1,6 @@
 ---
 name: painel-anki
-description: "Use when changing or reviewing the Conexão com o Anki area of the panel: Custos, first connection, Baralhos e termos, Vocabulário, the Consertar sozinho, Ajustes de envio and the Envio ao Anki (`painel-anki*.js`, `painel-ajustes.js`, `painel-envio.js`, `lib/ajustes-de-envio.js`). Reviewers: open it when the PR touches that surface. It holds the architecture notes moved out of CLAUDE.md for it (what it shows, the IDs it implements, its storage and its tests)."
+description: "Use when changing or reviewing the Conexão com o Anki area of the panel: Custos, first connection, Baralhos e termos, Vocabulário, the Consertar sozinho, Ajustes de envio and the Envio ao Anki (`painel/painel-{anki*,ajustes,envio}.js`, `lib/ajustes-de-envio.js`). Reviewers: open it when the PR touches that surface. It holds the architecture notes moved out of CLAUDE.md for it (what it shows, the IDs it implements, its storage and its tests)."
 ---
 
 # Conexão com o Anki area

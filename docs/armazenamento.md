@@ -33,6 +33,7 @@ Other storage keys:
 - `pm_pending_sync` — gone (old versions wrote phrase IDs nobody read); `aoInstalar` removes it
 - `pm_deleted_ids` — `string[]` of deleted phrase IDs whose Firestore DELETE hasn't succeeded yet
 - `pm_tombstone_pendente` — `string[]` of deleted phrase IDs whose Firestore tombstone (`meta/deleted`) write has not succeeded yet; `lib/sincronizacao.js` rewrites it on the next `carregar` and keeps the sync tombstone until it lands
+- `pm_listas_pendentes_uid` — the account (`uid`) the two lists above belong to (`ListasPendentes` in `lib/historico.js`). Logging out keeps them, so the same account finishes them; another account discards them without sending them to its cloud
 - `pm_atalho_legenda` — the “Minerar legenda” shortcut. Absent → the default Alt+S; `null` → no caption shortcut
 - `pm_atalho` — the “Minerar seleção” shortcut; `null` or absent → none (the default). Both use `{ type: 'keyboard'|'mouse', code, button, altKey, ctrlKey, shiftKey, label }`
 - `pm_apagar_tudo` — pending Apagar tudo; shape, account matching and cutoff are documented in `lib/sincronizacao.js`
@@ -44,9 +45,9 @@ Other storage keys:
 - `pm_boas_vindas` — `{ agoraNao: string[], concluida: boolean, lembreteOculto?: true, primeiroEnvio? }`: written by the install; the steps the person answered “Agora não” to, whether they reached Abrir painel in the Boas-vindas, whether they hid the “Configuração pela metade” reminder and the first Cartão's Envio (`primeiroEnvio`, shape in `lib/configuracao.js`); everything else about a step is read from its real state. Absent (an update, not an install) → no reminder
 - `pm_abridor` — `{ agoraNao: boolean }`: the answer to step 3 of the first connection, Abrir o Anki sozinho (#147). `true` after Agora não; `false` once the extension finds the optional `nativeMessaging` granted (the permission itself is Chrome's, not stored here). Absent → never answered. Written only by `lib/abridor.js`
 - `pm_envio` — `{ envios: [{ id, lang, ids, baralho, jobId, criadoEm, falhaAoCriar, corpo }], apagarFrases?: true }` (`id`: a `crypto.randomUUID()`, the card's key and `jobId`; `corpo`: the `POST /jobs` body, saved before the first request, resent unchanged until answered; `apagarFrases`: an Apagar tudo not yet confirmed by `POST /jobs/apagar-frases`, resent until it is, also every 30 s by the worker): the Envios tracked until the summary is answered; see “Envio ao Anki” in the `painel-anki` skill
-- `pm_anki_abridor_pendente` — `boolean`: the permission prompt of Abrir o Anki sozinho is waiting for an answer, so the wait survives a reload (`painel-anki-primeira-conexao.js`)
+- `pm_anki_abridor_pendente` — `boolean`: the permission prompt of Abrir o Anki sozinho is waiting for an answer, so the wait survives a reload (`painel/painel-anki-primeira-conexao.js`)
 - `pm_auto_miner_settings` — `{ en: { enabled, dailyLimit }, ru }` and `pm_auto_miner_daily` — `{ date, en: { count }, ru }` (a count only holds on its day): the Mineração automática's settings and counter, which the service worker watches through `chrome.storage.onChanged` (`lib/mineracao-do-dia.js`); `pm_auto_miner_state_view` — `{ settings, daily, updatedAt }`, the picture of the state the popup and the panel read; `pm_auto_miner_last_event` — the diagnostic of the last caption evaluated (`content.js`)
-- `pm_conexao_atualizada_vista` — the Conexão version whose “atualizada” notice the person has seen (`painel-conexao-versao.js`)
-- `pm_migrated` — the uid whose phrases were already moved to Firestore; a different uid migrates again (`painel.js`)
-- `pm_plano_do_chatgpt_avisado` — `boolean`: the first-time notice of the ChatGPT plan was given on this computer (`painel-ia-chatgpt.js`)
+- `pm_conexao_atualizada_vista` — the Conexão version whose “atualizada” notice the person has seen (`painel/painel-conexao-versao.js`)
+- `pm_migrated` — the uid whose phrases were already moved to Firestore; a different uid migrates again (`painel/painel.js`)
+- `pm_plano_do_chatgpt_avisado` — `boolean`: the first-time notice of the ChatGPT plan was given on this computer (`painel/painel-ia-chatgpt.js`)
 - `pm_auto_recarregar_hash` — in `chrome.storage.session`, not `local`: the hash of the unpacked extension's files, so `lib/auto-recarregar.js` reloads it only when they change

@@ -1,7 +1,7 @@
 'use strict';
 
 (function (raiz) {
-  const { textoDaVoz, ChaveDaOpenAI, ConexaoAnki } = raiz;
+  const { textoDaVoz, ChaveDaOpenAI, ConexaoAnki, RetratoDaChave } = raiz;
   const { mostrarToastDeSucesso, montarAviso, abrirConfirmacao, elemento } = raiz.Veio;
   const porId = id => document.getElementById(id);
 
@@ -28,51 +28,69 @@
   function iniciar() {
     configuracoes = montar(porId('cfg-ia-corpo'), { prefixo: 'cfg' });
     leituraInicial = ChaveDaOpenAI.conferirACopia().catch(() => null);
-    leituraInicial.then(tem => {
-      estado.copia = conexaoLigada ? tem : null;
-      chrome.storage.local.get({ [ChaveDaOpenAI.MARCA]: null, pm_user_info: null }, dados => {
-        estado.ultimos4 = dados[ChaveDaOpenAI.MARCA]?.ultimos4 || '';
-        estado.comConta = Boolean(dados.pm_user_info);
-        estado.uid = dados.pm_user_info?.uid || '';
-        estado.contaDaChave = dados[ChaveDaOpenAI.MARCA]?.conta === undefined ? '' : dados[ChaveDaOpenAI.MARCA].conta;
-        desenharResumo();
-        lugares.forEach(desenhar);
-        if (estado.focarAoLer) focarOCampoSeVazio();
-      });
-    });
-    chrome.storage.onChanged.addListener((mudancas, area) => {
-      if (area !== 'local') return;
-      if ('pm_user_info' in mudancas) {
-        estado.comConta = Boolean(mudancas.pm_user_info.newValue);
-        estado.uid = mudancas.pm_user_info.newValue?.uid || '';
-        for (const lugar of lugares) if (!lugar.trocando && !lugar.conferindo) desenhar(lugar);
-      }
-      if (!(ChaveDaOpenAI.MARCA in mudancas)) return;
-      estado.contaDaChave = mudancas[ChaveDaOpenAI.MARCA].newValue?.conta === undefined ? '' : mudancas[ChaveDaOpenAI.MARCA].newValue.conta;
-      estado.ultimos4 = mudancas[ChaveDaOpenAI.MARCA].newValue?.ultimos4 || '';
-      rodada += 1;
-      estado.copia = null;
-      desenharResumo();
-      for (const lugar of lugares) if (!lugar.trocando && !lugar.conferindo) desenhar(lugar);
-      if (conexaoLigada) conferirACopia();
-    });
-    ConexaoAnki.acompanhar(situacao => {
-      if (situacao === ConexaoAnki.SITUACAO.CONECTANDO) return;
-      const ligada = situacao === ConexaoAnki.SITUACAO.LIGADA;
-      conexaoLigada = ligada;
-      if (ligada && ConexaoAnki.apresentada() === ConexaoAnki.SITUACAO.LIGADA) {
-        for (const lugar of lugares) {
-          if (lugar.erro?.motivo === 'a_parear' && !lugar.conferindo) { lugar.erro = null; desenhar(lugar); }
-        }
-      }
-      if (ligada) {
-        conferirACopia();
-      } else {
-        rodada += 1;
-        mudarACopia(null);
-      }
-    });
+    leituraInicial.then(lerOQueEstaGuardado);
+    chrome.storage.onChanged.addListener(aoMudarOGuardado);
+    ConexaoAnki.acompanhar(aoMudarAConexao);
     raiz.Shell.aoAbrirASecao('ia', focarOCampoSeVazio);
+  }
+
+  function lerOQueEstaGuardado(tem) {
+    estado.copia = conexaoLigada ? tem : null;
+    chrome.storage.local.get({ [ChaveDaOpenAI.MARCA]: null, pm_user_info: null }, dados => {
+      Object.assign(estado, RetratoDaChave.daMarca(dados[ChaveDaOpenAI.MARCA]), RetratoDaChave.daConta(dados.pm_user_info));
+      desenharResumo();
+      lugares.forEach(desenhar);
+      if (estado.focarAoLer) focarOCampoSeVazio();
+    });
+  }
+
+  const livre = lugar => !lugar.trocando && !lugar.conferindo;
+
+  function redesenharOsLivres() {
+    for (const lugar of lugares) if (livre(lugar)) desenhar(lugar);
+  }
+
+  function redesenharOsQueNaoConferem() {
+    for (const lugar of lugares) if (!lugar.conferindo) desenhar(lugar);
+  }
+
+  function aoMudarOGuardado(mudancas, area) {
+    if (area !== 'local') return;
+    if ('pm_user_info' in mudancas) aoMudarAConta(mudancas.pm_user_info.newValue);
+    if (ChaveDaOpenAI.MARCA in mudancas) aoMudarAChave(mudancas[ChaveDaOpenAI.MARCA].newValue);
+  }
+
+  function aoMudarAConta(usuario) {
+    Object.assign(estado, RetratoDaChave.daConta(usuario));
+    redesenharOsLivres();
+  }
+
+  function aoMudarAChave(marca) {
+    Object.assign(estado, RetratoDaChave.daMarca(marca));
+    rodada += 1;
+    estado.copia = null;
+    desenharResumo();
+    redesenharOsLivres();
+    if (conexaoLigada) conferirACopia();
+  }
+
+  function aoMudarAConexao(situacao) {
+    if (situacao === ConexaoAnki.SITUACAO.CONECTANDO) return;
+    const ligada = situacao === ConexaoAnki.SITUACAO.LIGADA;
+    conexaoLigada = ligada;
+    if (ligada && ConexaoAnki.apresentada() === ConexaoAnki.SITUACAO.LIGADA) esquecerOAParear();
+    if (ligada) {
+      conferirACopia();
+    } else {
+      rodada += 1;
+      mudarACopia(null);
+    }
+  }
+
+  function esquecerOAParear() {
+    for (const lugar of lugares) {
+      if (lugar.erro?.motivo === 'a_parear' && !lugar.conferindo) { lugar.erro = null; desenhar(lugar); }
+    }
   }
 
   function montar(corpo, { prefixo }) {
@@ -104,7 +122,7 @@
   function mudarACopia(tem) {
     if (tem === estado.copia) return;
     estado.copia = tem;
-    for (const lugar of lugares) if (!lugar.trocando && !lugar.conferindo) desenhar(lugar);
+    redesenharOsLivres();
   }
 
   function desenharResumo() {
@@ -158,12 +176,11 @@
     const apagar = botao('perigo', textoDaVoz('CFG-35.chaveApagar'), () => confirmarApagar(lugar));
     apagar.id = idDe(lugar, 'apagar');
 
-    const deOutraConta = estado.uid && estado.contaDaChave && estado.contaDaChave !== estado.uid;
     const linha = elemento('div', 'cfg-linha',
       elemento('div', 'cfg-quem',
         elemento('span', 'cfg-status', ponto, textoDaVoz('CFG-35.chaveSalva')),
         elemento('span', 'cfg-chave-mascarada cfg-chave-mascarada--card', mascarada())),
-      elemento('div', 'cfg-acoes', trocar, ...(deOutraConta ? [] : [apagar])));
+      elemento('div', 'cfg-acoes', trocar, ...(RetratoDaChave.deOutraConta(estado) ? [] : [apagar])));
     return colunaDaChave(lugar, linha, ...notasDaChave(lugar, true));
   }
 
@@ -220,19 +237,19 @@
     return colunaDaChave(lugar, formulario, ...notasDaChave(lugar, false));
   }
 
-  function notasDaChave(lugar, salva) {
-    const notas = [];
-    if (salva) {
-      notas.push(elemento('p', 'cfg-nota', textoDaVoz(estado.contaDaChave === null || (estado.comConta && !estado.contaDaChave) ? 'CFG-42.legado'
-        : estado.comConta && estado.contaDaChave && estado.contaDaChave !== estado.uid
-          ? 'CFG-35.chaveDeOutraConta' : estado.comConta ? 'CFG-35.chaveNaConta'
-            : estado.contaDaChave ? 'CFG-35.chaveSemContaVinculada' : 'CFG-35.chaveSemConta')));
-      if (estado.copia !== null) {
-        const copia = elemento('p', 'cfg-nota', textoDaVoz(estado.copia ? 'CFG-35.chaveCopiaNaConexao' : 'CFG-35.chaveSemCopia'));
-        copia.dataset.copia = estado.copia ? 'tem' : 'falta';
-        notas.push(copia);
-      }
+  function notasDaChaveSalva() {
+    const notas = [elemento('p', 'cfg-nota', textoDaVoz(RetratoDaChave.notaDaConta(estado)))];
+    const daCopia = RetratoDaChave.notaDaCopia(estado.copia);
+    if (daCopia) {
+      const copia = elemento('p', 'cfg-nota', textoDaVoz(daCopia.texto));
+      copia.dataset.copia = daCopia.copia;
+      notas.push(copia);
     }
+    return notas;
+  }
+
+  function notasDaChave(lugar, salva) {
+    const notas = salva ? notasDaChaveSalva() : [];
     const onde = elemento('a', 'veio-botao veio-botao--link', textoDaVoz('CFG-35.chaveOnde'));
     onde.href = ONDE_CRIAR_A_CHAVE;
     onde.target = '_blank';
@@ -293,6 +310,14 @@
     await enviarAChave(lugar, chave);
   }
 
+  async function confirmarNaConexao(chave) {
+    try {
+      return await ChaveDaOpenAI.confirmar(chave);
+    } catch (erro) {
+      return RetratoDaChave.falhaAoConfirmar(erro);
+    }
+  }
+
   async function enviarAChave(lugar, chave) {
     rodada += 1;
     mudarACopia(null);
@@ -301,32 +326,35 @@
     lugar.digitado = chave;
     desenhar(lugar);
     porId(idDe(lugar, 'conferir')).focus();
-    let resultado;
-    try {
-      resultado = await ChaveDaOpenAI.confirmar(chave);
-    } catch (erro) {
-      resultado = { ok: false, motivo: erro?.codigo === 'outdated_connection' ? 'conexao_antiga' : 'conexao_com_erro',
-        detalhes: erro?.codigo || erro?.name || 'storage_error' };
-    }
+    const resultado = await confirmarNaConexao(chave);
     lugar.conferindo = false;
-    if (resultado.ok) {
-      lugar.trocando = false;
-      for (const outro of lugares) {
-        outro.digitado = '';
-        if (outro !== lugar && !outro.conferindo) {
-          outro.trocando = false;
-          outro.erro = null;
-        }
+    if (resultado.ok) chaveConfirmada(lugar, resultado.ultimos4);
+    else chaveRecusada(lugar, resultado);
+  }
+
+  function esquecerOsOutrosLugares(lugar) {
+    for (const outro of lugares) {
+      outro.digitado = '';
+      if (outro !== lugar && !outro.conferindo) {
+        outro.trocando = false;
+        outro.erro = null;
       }
-      estado.ultimos4 = resultado.ultimos4;
-      estado.copia = conexaoLigada ? true : null;
-      desenharResumo();
-      for (const outro of lugares) if (!outro.conferindo) desenhar(outro);
-      porId(idDe(lugar, 'trocar'))?.focus();
-      mostrarToastDeSucesso(textoDaVoz('CFG-35.chaveToast'));
-      return;
     }
-    lugar.erro = { motivo: resultado.motivo, detalhes: resultado.detalhes };
+  }
+
+  function chaveConfirmada(lugar, ultimos4) {
+    lugar.trocando = false;
+    esquecerOsOutrosLugares(lugar);
+    estado.ultimos4 = ultimos4;
+    estado.copia = conexaoLigada ? true : null;
+    desenharResumo();
+    redesenharOsQueNaoConferem();
+    porId(idDe(lugar, 'trocar'))?.focus();
+    mostrarToastDeSucesso(textoDaVoz('CFG-35.chaveToast'));
+  }
+
+  function chaveRecusada(lugar, { motivo, detalhes }) {
+    lugar.erro = { motivo, detalhes };
     desenhar(lugar);
     porId(idDe(lugar, 'campo'))?.focus();
   }
@@ -349,22 +377,18 @@
     try {
       dono = await ChaveDaOpenAI.apagar();
     } catch (erro) {
-      lugar.erro = { motivo: erro?.codigo === 'outdated_connection' ? 'conexao_antiga'
-        : erro?.codigo === 'other_account_owner' ? 'outra_conta' : 'apagar_local',
-        detalhes: erro?.codigo || erro?.name || 'storage_error' };
+      lugar.erro = RetratoDaChave.falhaAoApagar(erro);
       desenhar(lugar);
       return;
     }
-    for (const cada of lugares) {
-      cada.trocando = false;
-      cada.erro = null;
-      cada.digitado = '';
-    }
-    estado.ultimos4 = dono.configurada ? dono.ultimos4 : '';
-    estado.contaDaChave = dono.conta;
-    estado.copia = conexaoLigada ? (dono.configurada || null) : null;
+    chaveApagada(lugar, dono);
+  }
+
+  function chaveApagada(lugar, dono) {
+    for (const cada of lugares) Object.assign(cada, { trocando: false, erro: null, digitado: '' });
+    Object.assign(estado, RetratoDaChave.depoisDeApagar(dono, conexaoLigada));
     desenharResumo();
-    for (const cada of lugares) if (!cada.conferindo) desenhar(cada);
+    redesenharOsQueNaoConferem();
     porId(idDe(lugar, 'campo'))?.focus();
     mostrarToastDeSucesso(textoDaVoz('CFG-35.apagarToast'));
   }

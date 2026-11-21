@@ -6,6 +6,7 @@ const { fotografar } = require('../evidencias-mineracao');
 const CHAVE = 'sk-proj-chave-de-exemplo-9f3a';
 const OUTRA_CHAVE = 'sk-proj-OutraChaveDoTeste0987654321-wxyz';
 const MASCARADA = '••••••••9f3a';
+const COPIA = 'A Conexão com o Anki guarda a chave.';
 
 async function abrirPainel(page, extensao, endereco) {
   await page.goto(extensao.url(`painel.html${endereco}`));
@@ -217,7 +218,7 @@ test('colar a chave: a Conexão a confere e guarda a cópia, a tela mostra só a
   await expect(card(page).locator('.cfg-resumo')).toHaveText(MASCARADA);
   await expect(corpo(page)).toContainText('Fica neste computador, na Conexão com o Anki. Para levá-la à conta Google, entre e confira a chave de novo.');
   await expect(corpo(page)).not.toContainText('vai junto com a sua conta Google');
-  await expect(corpo(page)).toContainText('A Conexão com o Anki guarda a chave.');
+  await expect(corpo(page)).toContainText(COPIA);
   await expect(campo(page)).toHaveCount(0);
   await expect(page.getByText(CHAVE)).toHaveCount(0);
   await expect(page.getByText('sk-proj-chave-de-exemplo')).toHaveCount(0);
@@ -404,7 +405,7 @@ test('com a Conexão desligada o card não afirma nada sobre a cópia', async ({
   await page.reload();
 
   await expect(card(page).locator('.cfg-resumo')).toHaveText(MASCARADA);
-  await expect(corpo(page)).not.toContainText('cópia da chave');
+  await expect(corpo(page)).not.toContainText(COPIA);
   expect(await chaveNoBancoDaExtensao(page)).toBe('');
   expect(await extensao.lerStorage('pm_chave_openai')).toMatchObject({ pm_chave_openai: { ultimos4: '9f3a' } });
   expect(JSON.stringify(await extensao.lerStorage(null))).not.toContain('sk-proj-chave-de-exemplo');
@@ -532,11 +533,11 @@ test('Trocar chave aberto num lugar, com um erro e a chave colada, é reposto qu
 test('com a Conexão desligada depois de conferir, o card deixa de dizer que ela tem a cópia, sem recarregar', async ({ page, extensao, fakes }) => {
   await abrirPainel(page, extensao, '#configuracoes/ia');
   await colarEConferir(page);
-  await expect(corpo(page)).toContainText('A Conexão com o Anki guarda a chave.');
+  await expect(corpo(page)).toContainText(COPIA);
 
   fakes.anki.desligar();
 
-  await expect(corpo(page)).not.toContainText('cópia da chave', { timeout: 25_000 });
+  await expect(corpo(page)).not.toContainText(COPIA, { timeout: 25_000 });
   await expect(card(page).locator('.cfg-resumo')).toHaveText(MASCARADA);
 
   expect(await chaveNoBancoDaExtensao(page)).toBe('');
@@ -749,7 +750,7 @@ test('trocar para B com chave mais antiga entrega a chave de B, sem reutilizar a
   await extensao.semearSessao({ uid: 'uid-B-antiga' });
   await page.reload();
   await expect(card(page).locator('.cfg-resumo')).toHaveText('••••••••wxyz');
-  await expect(corpo(page)).toContainText('A Conexão com o Anki guarda a chave.');
+  await expect(corpo(page)).toContainText(COPIA);
   expect(await chaveNoBancoDaExtensao(page)).toBe('');
   expect(fakes.anki.chaveNaConexao() === OUTRA_CHAVE).toBe(true);
 });
@@ -803,7 +804,7 @@ test('S4: apagamento aceito com falha no cache mostra resultado incerto, Detalhe
   await expect(erro(page)).toContainText('StorageUnavailable');
   await fotografar(card(page), 'ia-apagar-falhou.png');
   expect(fakes.anki.chaveNaConexao()).toBeNull();
-  await expect(card(page)).not.toContainText('A Conexão com o Anki guarda a chave.');
+  await expect(card(page)).not.toContainText(COPIA);
   expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai.ultimos4).toBe('9f3a');
   // Exceção de teste: chrome-nativo
   await page.evaluate(() => { chrome.storage.local.set = window.gravarAntesDoTeste; });

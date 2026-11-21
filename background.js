@@ -1,6 +1,6 @@
 'use strict';
 
-importScripts('lib/voz/catalogo.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/mineracao.js', 'lib/ajustes-de-envio.js', 'lib/mineracao-do-dia.js', 'lib/vocabulario-da-mineracao.js', 'lib/palavra-automatica.js', 'lib/mineracao-automatica-decisao.js', 'lib/pedido-ao-anki.js', 'lib/pareamento.js', 'lib/envio-gravado.js', 'lib/apagar-frases-pendente.js', 'lib/sincronizacao.js', 'lib/historico.js');
+importScripts('lib/voz/catalogo.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/mineracao.js', 'lib/ajustes-de-envio.js', 'lib/mineracao-do-dia.js', 'lib/vocabulario-da-mineracao.js', 'lib/palavra-automatica.js', 'lib/mineracao-automatica-decisao.js', 'lib/pedido-ao-anki.js', 'lib/pareamento.js', 'lib/envio-gravado.js', 'lib/apagar-frases-pendente.js', 'lib/historico.js', 'lib/sincronizacao.js');
 const { textoDaVoz, detectarIdioma, idiomaDe, IDIOMAS, MineracaoDoDia, Mineracao, MineracaoAutomatica, VocabularioDaMineracao, PalavraAutomatica, Sincronizacao } = PerpetualMiner;
 
 if (chrome.storage.local.setAccessLevel) {
@@ -36,12 +36,12 @@ function registrarMenuDeContexto() {
 
 chrome.runtime.onInstalled.addListener(aoInstalar);
 
-async function aoInstalar(detalhes) {
+async function aoInstalar(evento) {
   registrarMenuDeContexto();
   await chrome.storage.local.remove('pm_pending_sync').catch(() => {});
-  if (detalhes?.reason === 'install') {
+  if (evento?.reason === 'install') {
     await chrome.storage.local.set({ pm_boas_vindas: { agoraNao: [], concluida: false } }).catch(() => {});
-    chrome.tabs.create({ url: chrome.runtime.getURL('painel.html#boas-vindas') });
+    chrome.tabs.create({ url: chrome.runtime.getURL('painel/painel.html#boas-vindas') });
   }
 }
 

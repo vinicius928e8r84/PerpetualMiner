@@ -33,17 +33,25 @@ const PASSOS_POR_TIPO = {
     'Mova constantes, tipos e dados de exemplo para o seu próprio arquivo.'],
 };
 
+const EXTENSOES_DO_TIPO = {
+  doc: ['.md', '.mdx', '.txt', '.rst'],
+  html: ['.html', '.htm'],
+  dado: ['.json', '.yaml', '.yml', '.csv', '.toml'],
+  css: ['.css', '.scss'],
+  python: ['.py'],
+  codigo: ['.js', '.mjs', '.cjs', '.ts', '.tsx', '.jsx', '.sh'],
+};
+
+const TIPO_DA_EXTENSAO = new Map(Object.entries(EXTENSOES_DO_TIPO).flatMap(([tipo, extensoes]) => extensoes.map(extensao => [extensao, tipo])));
+
+function ehArquivoDeTeste(caminho, nome) {
+  return /^test_|_test\.|\.(test|spec)\./.test(nome) || /(^|\/)(tests?|__tests__)\//.test(caminho);
+}
+
 function tipoDe(caminho) {
   const nome = path.posix.basename(caminho);
-  const extensao = path.posix.extname(nome).toLowerCase();
-  if (/^test_|_test\.|\.(test|spec)\./.test(nome) || /(^|\/)(tests?|__tests__)\//.test(caminho)) return 'teste';
-  if (['.md', '.mdx', '.txt', '.rst'].includes(extensao)) return 'doc';
-  if (['.html', '.htm'].includes(extensao)) return 'html';
-  if (['.json', '.yaml', '.yml', '.csv', '.toml'].includes(extensao)) return 'dado';
-  if (['.css', '.scss'].includes(extensao)) return 'css';
-  if (extensao === '.py') return 'python';
-  if (['.js', '.mjs', '.cjs', '.ts', '.tsx', '.jsx', '.sh'].includes(extensao)) return 'codigo';
-  return 'outro';
+  if (ehArquivoDeTeste(caminho, nome)) return 'teste';
+  return TIPO_DA_EXTENSAO.get(path.posix.extname(nome).toLowerCase()) || 'outro';
 }
 
 function mensagemDeAfrouxamento(achado, baseDoHead, config) {
