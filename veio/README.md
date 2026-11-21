@@ -18,7 +18,7 @@ A identidade compartilhada por todas as páginas da extensão. A spec travada es
 <link rel="stylesheet" href="veio/tokens.css">
 <script src="veio/tema.js"></script>
 <link rel="stylesheet" href="veio/componentes.css">
-<link rel="stylesheet" href="painel.css">
+<link rel="stylesheet" href="painel/painel.css">
 …
 <script src="lib/voz/catalogo.js"></script>
 <script src="lib/voz/texto.js"></script>

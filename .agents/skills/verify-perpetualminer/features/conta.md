@@ -15,7 +15,7 @@ Configurações › Conta & sync is where a person signs in with Google, sees wh
 
 ## How to get to it (user POV)
 
-- Sidebar › Configurações › the **Conta & sync** card, or `painel.html#configuracoes/conta`.
+- Sidebar › Configurações › the **Conta & sync** card, or `painel/painel.html#configuracoes/conta`.
 - The sidebar chip (“Sincronizado agora”, “Sem sincronizar”, “Sessão expirou”…) leads to the same card, open.
 - **Entrar com Google** opens the Google window; **Sair da conta** signs out. Phrases are deleted from Frases (the cloud follows) or by Apagar tudo in Zona de perigo.
 

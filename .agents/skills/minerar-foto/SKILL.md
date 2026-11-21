@@ -37,7 +37,7 @@ part or none → aviso FOT-15/16 whose “Tentar de novo” mines again exactly 
 Formats: the picker's `accept` and the check take JPG, PNG, WEBP and HEIC — exactly what FOT-02 announces — by type or, with no type (HEIC on
 Windows), by extension, and send Gemini the real MIME type; a file that is not a photo gets the FOT-04 aviso. A HEIC
 thumbnail Chrome cannot draw falls back to the photo icon. The key lives only in Configurações: with none, the FOT-05
-card, whose button (like the key-refused aviso) opens `painel.html#configuracoes/chave`, and a key saved there frees
+card, whose button (like the key-refused aviso) opens `painel/painel.html#configuracoes/chave`, and a key saved there frees
 the page through `chrome.storage.onChanged`. “Voltar ao painel” and that button focus the panel tab already open
 (any hash), moving it to the address when there is one, and only open a new tab when there is none. A panel already
 at that address gets no `hashchange`, so the page sends `PAINEL_REAPLICAR_ENDERECO` and `painel-shell.js` applies the

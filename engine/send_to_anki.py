@@ -6,7 +6,7 @@ The Anki add-on writes the notes through the collection (`complemento/no_anki.py
 
 import logging
 import re
-from typing import Dict, List, Optional
+from typing import Dict, List, NamedTuple, Optional
 
 if __package__:  # inside the Anki add-on the engine is the package `complemento.motor`
     from .parser import normalize_ru_phrase
@@ -72,6 +72,24 @@ _BACK_RE = re.compile(
     re.DOTALL | re.IGNORECASE | re.MULTILINE,
 )
 _ALIGNMENT_LINE_RE = re.compile(r"^\s*\d+\s*\|\s*(.+?)\s*\|\s*(.+?)\s*$")
+_ALIGNMENT_HEADER_RE = re.compile(r"\*{0,2}alignment:\*{0,2}\s*$", re.IGNORECASE)
+_IMAGE_QUERIES_HEADER_RE = re.compile(r"\*{0,2}(google image search queries|image search queries):\*{0,2}\s*$", re.IGNORECASE)
+_LIST_ITEM_RE = re.compile(r"^(?:\d+[.)]|[-*])\s+.+$")
+_IMAGE_PROMPT_PREFIXES = (
+    "image search query:",
+    "**image search query:",
+    "google image search:",
+    "**google image search:",
+    "image:",
+    "**image:",
+)
+_MEDIA_MARKERS = (".mp3", ".png", "[sound:")
+_LITERAL_RE = re.compile(r"(\*{0,2}Literal:\*{0,2}\s*)(.+)$", re.IGNORECASE)
+_ENGLISH_FIELD_RE = re.compile(r"^\*{0,2}(definition|simple meaning|gist|other example|trigger):\*{0,2}\s*", re.IGNORECASE)
+_ARROWS = ("->", "→")
+_ENGLISH_EXAMPLE = "arrow"
+_ENGLISH_BACK_ORDER = ("definition", "simple meaning", _ENGLISH_EXAMPLE, "gist", "other example", "trigger")
+_BOLD_LABEL_RE = re.compile(r"<b>[^<]+:</b>")
 _COLOR_PALETTE = [
     "#ff8c42",
     "#a855f7",
@@ -87,36 +105,33 @@ def _log_raw(label: str, content: str) -> None:
     LOGGER.warning("%s - the card text has no usable content (%d characters)", label, len(content))
 
 
-def _extract_alignments(content: str) -> List[tuple[str, str]]:
-    """Parse Alignment pairs from a generated card."""
-    alignments: List[tuple[str, str]] = []
-    in_alignment = False
-
-    for raw_line in content.splitlines():
-        line = raw_line.strip()
+def _alignment_block(content: str) -> List[str]:
+    """The stripped lines under the first `Alignment:` header, up to the next blank line; a repeated header is not one of
+    them."""
+    lines = [raw_line.strip() for raw_line in content.splitlines()]
+    start = next((index + 1 for index, line in enumerate(lines) if _ALIGNMENT_HEADER_RE.match(line)), len(lines))
+    block: List[str] = []
+    for line in lines[start:]:
         if not line:
-            if in_alignment:
-                break
-            continue
+            break
+        if not _ALIGNMENT_HEADER_RE.match(line):
+            block.append(line)
+    return block
 
-        if re.match(r"\*{0,2}Alignment:\*{0,2}\s*$", line, re.IGNORECASE):
-            in_alignment = True
-            continue
 
-        if not in_alignment:
-            continue
-
+def _extract_alignments(content: str) -> List[tuple[str, str]]:
+    """The Alignment pairs of a generated card: the `n | target | English` lines of its block, from the first pair up to
+    the first line that is not one (the lines before the first pair are skipped)."""
+    alignments: List[tuple[str, str]] = []
+    for line in _alignment_block(content):
         match = _ALIGNMENT_LINE_RE.match(line)
         if not match:
             if alignments:
                 break
             continue
-
-        left = match.group(1).strip()
-        right = match.group(2).strip()
+        left, right = match.group(1).strip(), match.group(2).strip()
         if left and right:
             alignments.append((left, right))
-
     return alignments
 
 
@@ -153,40 +168,32 @@ def _apply_chunk_colors(text: str, chunks: List[str], ignore_case: bool = False)
     return rendered
 
 
-def _reorder_english_back_lines(lines: List[str]) -> List[str]:
-    first_line = next((line.strip() for line in lines if line.strip()), "")
-    if not first_line:
-        return []
-
-    fields: Dict[str, str] = {}
-    arrow_line = ""
-    field_re = re.compile(
-        r"^\*{0,2}(definition|simple meaning|gist|other example|trigger):\*{0,2}\s*",
-        re.IGNORECASE,
-    )
-
+def _english_back_parts(lines: List[str], first_line: str) -> Dict[str, str]:
+    """The English Back's learning fields by name (the last one of a name wins) and its first `->` example line."""
+    parts: Dict[str, str] = {}
     for line in lines:
         stripped = line.strip()
         if not stripped or stripped == first_line:
             continue
-        match = field_re.match(stripped)
+        match = _ENGLISH_FIELD_RE.match(stripped)
         if match:
-            fields[match.group(1).lower()] = stripped
-            continue
-        if stripped.startswith(("->", "→")) and not arrow_line:
-            arrow_line = stripped
+            parts[match.group(1).lower()] = stripped
+        elif stripped.startswith(_ARROWS):
+            parts.setdefault(_ENGLISH_EXAMPLE, stripped)
+    return parts
 
+
+def _reorder_english_back_lines(lines: List[str]) -> List[str]:
+    """The English Back as the card shows it: the headword line, then each part in `_ENGLISH_BACK_ORDER`, a blank line before
+    each; any other line is dropped."""
+    first_line = next((line.strip() for line in lines if line.strip()), "")
+    if not first_line:
+        return []
+    parts = _english_back_parts(lines, first_line)
     ordered = [first_line]
-    for key in ("definition", "simple meaning"):
-        if fields.get(key):
-            ordered.extend(["", fields[key]])
-    if arrow_line:
-        ordered.extend(["", arrow_line])
-    if fields.get("gist"):
-        ordered.extend(["", fields["gist"]])
-    for key in ("other example", "trigger"):
-        if fields.get(key):
-            ordered.extend(["", fields[key]])
+    for key in _ENGLISH_BACK_ORDER:
+        if parts.get(key):
+            ordered.extend(["", parts[key]])
     return ordered
 
 
@@ -210,15 +217,41 @@ def _build_front(content: str, phrase_audio_name: Optional[str], lang: str = "en
     return f"{phrase}[sound:{phrase_audio_name}]" if phrase_audio_name else phrase
 
 
-def _build_back(
-    content: str,
-    word_audio_name: Optional[str],
-    image_name: Optional[str] = None,
-    lang: str = "en",
-) -> str:
+class _HiddenBlock:
+    """A block of the Back the card does not show: its header line and the items right under it."""
+
+    def __init__(self, header: re.Pattern[str], item: re.Pattern[str]) -> None:
+        self.header = header
+        self.item = item
+        self.inside = False
+
+    def hides(self, line: str) -> bool:
+        """Whether the card hides `line`: the header or an item right under it; a blank line or any other line ends the
+        block."""
+        if self.header.match(line):
+            self.inside = True
+        else:
+            self.inside = self.inside and self.item.match(line) is not None
+        return self.inside
+
+
+def _is_image_prompt_or_media(line: str) -> bool:
+    low = line.lower()
+    return low.startswith(_IMAGE_PROMPT_PREFIXES) or any(marker in low for marker in _MEDIA_MARKERS)
+
+
+def _colored_literal(line: str, alignments: List[tuple[str, str]]) -> str:
+    """A Russian card's `Literal:` line with each English chunk of the Alignment in the colour of its pair."""
+    match = _LITERAL_RE.match(line) if alignments else None
+    if not match:
+        return line
+    return match.group(1) + _apply_chunk_colors(match.group(2).strip(), [en for _, en in alignments], ignore_case=True)
+
+
+def _back_text(content: str) -> str:
+    """The text under the `Back` label, or every line after the first one when the card has no such label."""
     match = _BACK_RE.search(content)
     text = match.group(1).strip() if match else ""
-
     if not text:
         lines = [line for line in content.splitlines() if line.strip()]
         text = "\n".join(lines[1:]) if len(lines) > 1 else ""
@@ -226,110 +259,77 @@ def _build_back(
             LOGGER.warning("'Back' not found - using rest of file as back.")
         else:
             _log_raw("_build_back FAILED", content)
+    return re.sub(r"🔊.*", "", text).strip()
 
-    text = re.sub(r"🔊.*", "", text).strip()
-    alignments = _extract_alignments(content) if lang == "ru" else []
-    in_alignment = False
-    in_image_queries = False
 
-    clean: List[str] = []
+def _shown_back_lines(text: str, alignments: List[tuple[str, str]]) -> List[str]:
+    """The stripped lines of the Back the card shows: without the Alignment, the image search queries, the image prompt and
+    the media file names. The hidden parts are asked in this order, and the first that hides a line ends the asking."""
+    hidden_parts = (
+        _HiddenBlock(_ALIGNMENT_HEADER_RE, _ALIGNMENT_LINE_RE).hides,
+        _HiddenBlock(_IMAGE_QUERIES_HEADER_RE, _LIST_ITEM_RE).hides,
+        _is_image_prompt_or_media,
+    )
+    shown: List[str] = []
     for line in text.splitlines():
         stripped = line.strip()
-        low = stripped.lower()
-
-        if not stripped:
-            if in_alignment:
-                in_alignment = False
-            if in_image_queries:
-                in_image_queries = False
-            clean.append("")
+        if any(hides(stripped) for hides in hidden_parts):
             continue
+        shown.append(_colored_literal(stripped, alignments))
+    return shown
 
-        if re.match(r"\*{0,2}alignment:\*{0,2}\s*$", stripped, re.IGNORECASE):
-            in_alignment = True
-            continue
-        if in_alignment and _ALIGNMENT_LINE_RE.match(stripped):
-            continue
-        if in_alignment:
-            in_alignment = False
 
-        if re.match(
-            r"\*{0,2}(google image search queries|image search queries):\*{0,2}\s*$",
-            stripped,
-            re.IGNORECASE,
-        ):
-            in_image_queries = True
-            continue
-        if in_image_queries and re.match(r"^(?:\d+[.)]|[-*])\s+.+$", stripped):
-            continue
-        if in_image_queries:
-            in_image_queries = False
+def _back_block_html(block: str) -> str:
+    """A paragraph of the Back: a bold `label:` line keeps its lines apart, any other paragraph becomes one line."""
+    block_lines = block.strip().split("\n")
+    if len(block_lines) > 1 and _BOLD_LABEL_RE.match(block_lines[0]):
+        return block_lines[0] + "<br>" + "<br>".join(block_lines[1:])
+    return " ".join(block_lines)
 
-        if low.startswith("image search query:") or low.startswith("**image search query:"):
-            continue
-        if low.startswith("google image search:") or low.startswith("**google image search:"):
-            continue
-        if low.startswith("image:") or low.startswith("**image:"):
-            continue
-        if ".mp3" in low or ".png" in low or "[sound:" in low:
-            continue
 
-        if lang == "ru":
-            literal_match = re.match(r"(\*{0,2}Literal:\*{0,2}\s*)(.+)$", stripped, re.IGNORECASE)
-            if literal_match and alignments:
-                prefix = literal_match.group(1)
-                translated = literal_match.group(2).strip()
-                translated = _apply_chunk_colors(
-                    translated,
-                    [en for _, en in alignments],
-                    ignore_case=True,
-                )
-                clean.append(prefix + translated)
-                continue
-
-        clean.append(stripped)
-
-    if lang == "en":
-        clean = _reorder_english_back_lines(clean)
-
-    text = _md_to_html("\n".join(clean))
-
-    lines = text.splitlines()
-    first_line = lines[0] if lines else ""
-    rest = "\n".join(lines[1:])
-
-    def _fmt_block(block: str) -> str:
-        blines = block.strip().split("\n")
-        if len(blines) > 1 and re.match(r"<b>[^<]+:</b>", blines[0]):
-            return blines[0] + "<br>" + "<br>".join(blines[1:])
-        return " ".join(blines)
-
-    blocks = rest.split("\n\n")
-    rest_html = "<br><br>".join(_fmt_block(block) for block in blocks)
-
+def _back_html(lines: List[str], word_audio_name: Optional[str], image_name: Optional[str]) -> str:
+    """The Back field's HTML from its shown lines: the first line with the word audio, the paragraphs, the image last."""
+    html_lines = _md_to_html("\n".join(lines)).splitlines()
+    first_line = html_lines[0] if html_lines else ""
+    rest_html = "<br><br>".join(_back_block_html(block) for block in "\n".join(html_lines[1:]).split("\n\n"))
     audio = f" [sound:{word_audio_name}]" if word_audio_name else ""
     back = f"{first_line}{audio}<br>{rest_html.lstrip('<br>').lstrip()}"
     if image_name:
         back += f'<br><br><img src="{image_name}">'
-
-    back = back.replace("\n", "<br>")
-    return back
+    return back.replace("\n", "<br>")
 
 
-def card_fields(
+def _build_back(
     content: str,
-    lang: str,
-    phrase_audio_name: Optional[str] = None,
-    word_audio_name: Optional[str] = None,
+    word_audio_name: Optional[str],
     image_name: Optional[str] = None,
-) -> Dict[str, object]:
+    lang: str = "en",
+) -> str:
+    """The Back field's HTML; without `word_audio_name` or `image_name` the audio or the image is left out. Russian colours
+    the Literal line with the Alignment pairs, English puts its parts in the card's order."""
+    alignments = _extract_alignments(content) if lang == "ru" else []
+    lines = _shown_back_lines(_back_text(content), alignments)
+    if lang == "en":
+        lines = _reorder_english_back_lines(lines)
+    return _back_html(lines, word_audio_name, image_name)
+
+
+class CardMedia(NamedTuple):
+    """The media file names a note cites; one without a name is left out (the Anki add-on's first card is text only, #142)."""
+
+    phrase_audio: Optional[str] = None
+    word_audio: Optional[str] = None
+    image: Optional[str] = None
+
+
+def card_fields(content: str, lang: str, media: CardMedia = CardMedia()) -> Dict[str, object]:
     """The note a card .txt becomes: `front` and `back` HTML, the `normalized_front` the duplicate search compares and
-    the `tags`. Without audio or image names the card is text only (the Anki add-on's first card, #142)."""
+    the `tags`."""
     content = content.replace("## Anki Card", "").strip()
-    front = _build_front(content, phrase_audio_name, lang=lang)
+    front = _build_front(content, media.phrase_audio, lang=lang)
     return {
         "front": front,
-        "back": _build_back(content, word_audio_name, image_name, lang=lang),
+        "back": _build_back(content, media.word_audio, media.image, lang=lang),
         "normalized_front": _normalize_front_text(front, lang),
         "tags": _extract_tags_from_card(content),
     }

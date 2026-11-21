@@ -170,15 +170,21 @@ def _split_target_word(line: str):
     The panel sends the Palavra only with words that occur in the phrase, so a prefix whose words are not all
     in the rest is part of the phrase (a Russian sentence may contain ' : ').
     """
-    prefix, sep, rest = line.partition(" : ")
-    if not sep or not prefix.strip() or not rest.strip():
-        return None, line
-    words = lambda text: re.findall(r"\w+", text.lower())
-    rest_words = set(words(rest))
+    prefix, _, rest = line.partition(" : ")
     groups = [g.strip() for g in prefix.split("|") if g.strip()]
-    if not groups or not all(w in rest_words for g in groups for w in words(g)):
-        return None, line
-    return groups[0], rest
+    if rest.strip() and _every_word_occurs_in(groups, rest):
+        return groups[0], rest
+    return None, line
+
+
+def _every_word_occurs_in(groups: List[str], phrase: str) -> bool:
+    """Whether there is a group and each word of every group is a word of `phrase` (case aside)."""
+    phrase_words = set(_words(phrase))
+    return bool(groups) and all(w in phrase_words for g in groups for w in _words(g))
+
+
+def _words(text: str) -> List[str]:
+    return re.findall(r"\w+", text.lower())
 
 
 def parse_mining_line_ru(raw_line: str) -> Optional[MiningEntry]:

@@ -19,16 +19,16 @@ import os
 from dataclasses import dataclass
 
 from . import baralhos, voz
-from .audio_do_cartao import FRASE_APAGADA
+from .audio_do_cartao import FRASE_APAGADA, AudioDoCartao, VozDeReserva, VozDoGoogle
 from .correcao_da_criacao import CorrecaoDaCriacao
 from .fila_do_envio import ADICIONADO, DUPLICADO, FALHOU, NO_ANKI, TEXTO, Fila, frase_inteira_no_anki, id_do_cartao
 from .gravacao_de_json import apagar as _apagar, gravar_json as _gravar_json
 from .configuracao import OPENVERSE_BASE, VOZ_BASE
-from .imagem_do_cartao import ParaOEnvio
-from .ia_do_envio import IaDoEnvio, SemQuemPague
+from .imagem_do_cartao import ImagemDoCartao, ParaOEnvio
+from .ia_do_envio import EsperasDaPorta, IaDoEnvio, SemQuemPague
 from .limite_do_plano import EsperaDoEnvio, dizer_a_espera
 from .login_do_chatgpt import RECUSOU, SAIU
-from .motor_do_cartao import Cartao, MotorDoCartao
+from .motor_do_cartao import Cartao, EsperasDaOpenai, MotorDoCartao
 from .motor_do_envio import configuracao_do_motor, motor_do_complemento
 from .paradas_do_envio import Apagado, Interrompido  # noqa: F401  (`envio.Interrompido`)
 from .tipo_do_envio import TipoDoEnvio
@@ -115,14 +115,15 @@ class Trabalho:
                  voz_base=VOZ_BASE, openverse_base=OPENVERSE_BASE, adaptador_de_imagem=None, espera_do_plano=300, teto=None, espera_do_teto=60):
         self.fila, self.ia = fila, ia
         self.correcao = CorrecaoDaCriacao(fila, colecao, fila.motor, logger)
-        self.da_porta = dict(teto=teto, espera_do_teto=espera_do_teto, espera_do_plano=espera_do_plano)
+        self.da_porta = EsperasDaPorta(teto, do_teto=espera_do_teto, do_plano=espera_do_plano)
         self.motor = fila.motor
         self.colecao = colecao
         self.logger = logger
         self.parar = parar
         self.espera_do_anki = espera_do_anki
-        self.motor_do_cartao = MotorDoCartao(self.motor, logger, fila.tranca, parar, openai_base, voz_base, openverse_base,
-            adaptador_de_imagem, esperas_da_openai)
+        esperas = EsperasDaOpenai(parar, esperas_da_openai)
+        audio = AudioDoCartao(self.motor, logger, VozDoGoogle(voz_base, esperas), VozDeReserva(openai_base, fila.tranca, logger))
+        self.motor_do_cartao = MotorDoCartao(self.motor, esperas, audio, ImagemDoCartao(self.motor, logger, openverse_base, adaptador_de_imagem))
 
     def _dormir(self, segundos):
         if self.parar.wait(segundos):
@@ -201,7 +202,7 @@ class Trabalho:
         if not tipo.serve:
             self.logger.warning("Envio %s: o tipo de nota %r não tem os campos do Cartão", job_id, tipo.nome)
             return self._terminar(job_id, pedido, SEM_TIPO_DE_NOTA)
-        ia = IaDoEnvio(self.ia, EsperaDoEnvio(self.fila, job_id, self.parar), self.logger, **self.da_porta)
+        ia = IaDoEnvio(self.ia, EsperaDoEnvio(self.fila, job_id, self.parar), self.logger, self.da_porta)
         try:
             self._os_cartoes(EnvioEmAndamento(job_id, pedido, config, ia, tipo))
         except Apagado:

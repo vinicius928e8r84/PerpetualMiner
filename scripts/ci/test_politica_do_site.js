@@ -59,13 +59,14 @@ function repositorio(mudar) {
   return ramo;
 }
 
-const rodar = (ramo, corpo, args) => spawnSync('node', [SCRIPT, ...args], { cwd: BASE, encoding: 'utf8', env: { PATH: process.env.PATH, PR_BODY: corpo } });
+const ambienteCom = corpo => (corpo === undefined ? { PATH: process.env.PATH } : { PATH: process.env.PATH, PR_BODY: corpo });
+const rodarOScript = (pasta, args, corpo) => spawnSync('node', [SCRIPT, ...args], { cwd: pasta, encoding: 'utf8', env: ambienteCom(corpo) });
 const conferir = (ramo, corpo, args = ['main', ramo]) => {
-  const { status, stdout, stderr } = rodar(ramo, corpo, args);
+  const { status, stdout, stderr } = rodarOScript(BASE, args, corpo);
   return { status, saida: stdout + stderr };
 };
-const espera = (caso, ramo, corpo, status, padrao) => {
-  const feito = conferirNoCodigo({ raiz: BASE, base: 'main', ponta: ramo, corpo });
+const espera = (caso, pr, status, padrao) => {
+  const feito = conferirNoCodigo({ raiz: BASE, base: 'main', ...pr });
   assert.strictEqual(feito.codigo, status, `${caso}: saiu ${feito.codigo}\n${feito.mensagem}`);
   if (padrao) assert.match(feito.mensagem, padrao, caso);
   return feito;
@@ -76,29 +77,31 @@ const comEnderecoNovo = repositorio(pasta => escrever(pasta, 'popup.js', "const 
 const pelaLinhaDeComando = conferir(comEnderecoNovo, corpoCom(`**Política:** ${LINK}`));
 assert.strictEqual(pelaLinhaDeComando.status, 0, `pela linha de comando, com o corpo no ambiente: ${pelaLinhaDeComando.saida}`);
 assert.strictEqual(conferir(comEnderecoNovo, '').status, 1, 'pela linha de comando, sem a linha');
-espera('sinal, corpo vazio', comEnderecoNovo, '', 1, /endereço de fora novo: https:\/\/nuvem\.nova\.com[^]*Política:/);
-espera('sinal, corpo sem a linha', comEnderecoNovo, corpoCom(''), 1);
-espera('sinal, link na linha Política', comEnderecoNovo, corpoCom(`**Política:** ${LINK}`), 0, /traz a PR da política/);
-espera('sinal, o link com o texto do markdown', comEnderecoNovo, corpoCom(`Política: [PR da política](${LINK})`), 0);
-espera('sinal, o link com o fim da página', comEnderecoNovo, corpoCom(`Política: ${LINK}/files`), 0);
-espera('sinal, link só dentro de comentário HTML', comEnderecoNovo, corpoCom(`<!-- Política: ${LINK} -->\n**Política:**`), 1);
-espera('sinal, link em bloco de código', comEnderecoNovo, corpoCom(`\`\`\`\nPolítica: ${LINK}\n\`\`\``), 1);
-espera('sinal, link em citação', comEnderecoNovo, corpoCom(`> Política: ${LINK}`), 1);
-espera('sinal, link fora da linha Política', comEnderecoNovo, corpoCom(`**Política:**\n\nVeja ${LINK}`), 1);
-espera('sinal, PR de outro repositório', comEnderecoNovo, corpoCom('Política: https://github.com/vinicius928e8r84/PerpetualMiner/pull/41'), 1);
-espera('sinal, link que não é de PR', comEnderecoNovo, corpoCom('Política: https://github.com/vinicius928e8r84/perpetualminer-site/issues/41'), 1);
-espera('sinal, sem mudança sem motivo', comEnderecoNovo, corpoCom('**Política:** sem mudança'), 1);
-espera('sinal, sem mudança com os dois pontos e sem motivo', comEnderecoNovo, corpoCom('**Política:** sem mudança:  '), 1);
-espera('sinal, sem mudança com motivo', comEnderecoNovo, corpoCom('**Política:** sem mudança: o endereço é o mesmo serviço da política'), 0, /declara a política sem mudança, com motivo/);
-espera('sinal, sem mudança com motivo, sem acento e em minúsculas', comEnderecoNovo, corpoCom('politica: SEM MUDANCA: motivo'), 0);
-espera('sinal, sem corpo nenhum (a PR sem descrição)', comEnderecoNovo, undefined, 1);
+const doEnderecoNovo = corpo => ({ ponta: comEnderecoNovo, corpo });
+espera('sinal, corpo vazio', doEnderecoNovo(''), 1, /endereço de fora novo: https:\/\/nuvem\.nova\.com[^]*Política:/);
+espera('sinal, corpo sem a linha', doEnderecoNovo(corpoCom('')), 1);
+espera('sinal, link na linha Política', doEnderecoNovo(corpoCom(`**Política:** ${LINK}`)), 0, /traz a PR da política/);
+espera('sinal, o link com o texto do markdown', doEnderecoNovo(corpoCom(`Política: [PR da política](${LINK})`)), 0);
+espera('sinal, o link com o fim da página', doEnderecoNovo(corpoCom(`Política: ${LINK}/files`)), 0);
+espera('sinal, link só dentro de comentário HTML', doEnderecoNovo(corpoCom(`<!-- Política: ${LINK} -->\n**Política:**`)), 1);
+espera('sinal, link em bloco de código', doEnderecoNovo(corpoCom(`\`\`\`\nPolítica: ${LINK}\n\`\`\``)), 1);
+espera('sinal, link em citação', doEnderecoNovo(corpoCom(`> Política: ${LINK}`)), 1);
+espera('sinal, link fora da linha Política', doEnderecoNovo(corpoCom(`**Política:**\n\nVeja ${LINK}`)), 1);
+espera('sinal, PR de outro repositório', doEnderecoNovo(corpoCom('Política: https://github.com/vinicius928e8r84/PerpetualMiner/pull/41')), 1);
+espera('sinal, link que não é de PR', doEnderecoNovo(corpoCom('Política: https://github.com/vinicius928e8r84/perpetualminer-site/issues/41')), 1);
+espera('sinal, sem mudança sem motivo', doEnderecoNovo(corpoCom('**Política:** sem mudança')), 1);
+espera('sinal, sem mudança com os dois pontos e sem motivo', doEnderecoNovo(corpoCom('**Política:** sem mudança:  ')), 1);
+espera('sinal, sem mudança com motivo', doEnderecoNovo(corpoCom('**Política:** sem mudança: o endereço é o mesmo serviço da política')), 0, /declara a política sem mudança, com motivo/);
+espera('sinal, sem mudança com motivo, sem acento e em minúsculas', doEnderecoNovo(corpoCom('politica: SEM MUDANCA: motivo')), 0);
+espera('sinal, sem corpo nenhum (a PR sem descrição)', doEnderecoNovo(undefined), 1);
 
 const soDocumentacao = repositorio(pasta => escrever(pasta, 'docs/leia-me.md', 'um texto novo https://exemplo.org/doc\n'));
-espera('sem sinal, corpo vazio', soDocumentacao, '', 0, /nenhum sinal de dados mudou/);
-espera('sem sinal, sem mudança', soDocumentacao, corpoCom('**Política:** sem mudança'), 0);
+espera('sem sinal, corpo vazio', { ponta: soDocumentacao, corpo: '' }, 0, /nenhum sinal de dados mudou/);
+espera('sem sinal, sem mudança', { ponta: soDocumentacao, corpo: corpoCom('**Política:** sem mudança') }, 0);
 
-const semSinal = (caso, mudar) => espera(caso, repositorio(mudar), '', 0, /nenhum sinal/);
-const comSinal = (caso, mudar, padrao) => espera(caso, repositorio(mudar), '', 1, padrao);
+const semCorpo = ponta => ({ ponta, corpo: '' });
+const semSinal = (caso, mudar) => espera(caso, semCorpo(repositorio(mudar)), 0, /nenhum sinal/);
+const comSinal = (caso, mudar, padrao) => espera(caso, semCorpo(repositorio(mudar)), 1, padrao);
 
 semSinal('um endereço que só mudou de arquivo', pasta => {
   escrever(pasta, 'popup.js', 'const gravar = chrome.storage.local.set;\n');
@@ -140,18 +143,21 @@ const ramoComDois = repositorio(pasta => {
   escrever(pasta, 'popup.js', "const NOVA = 'https://nuvem.nova.com/enviar';\n");
   escrever(pasta, 'lib/outro.js', 'chrome.cookies.getAll({});\n');
 });
-espera('os sinais são todos ditos', ramoComDois, '', 1, /endereço de fora novo: https:\/\/nuvem\.nova\.com[^]*uso novo de: chrome\.cookies/);
+espera('os sinais são todos ditos', semCorpo(ramoComDois), 1, /endereço de fora novo: https:\/\/nuvem\.nova\.com[^]*uso novo de: chrome\.cookies/);
 
-const aposAMain = iniciar('depois');
-git(aposAMain, 'checkout', '-q', '-b', 'pr');
-escrever(aposAMain, 'lib/outro.js', "const A = 'https://so-na-pr.com/x';\n");
-git(aposAMain, 'commit', '-q', '-am', 'pr');
-git(aposAMain, 'checkout', '-q', 'main');
-escrever(aposAMain, 'lib/outro.js', "const A = 'https://so-na-main.com/x';\n");
-git(aposAMain, 'commit', '-q', '-am', 'a main andou');
-const depois = spawnSync('node', [SCRIPT, 'main', 'pr'], { cwd: aposAMain, encoding: 'utf8', env: { PATH: process.env.PATH, PR_BODY: '' } });
-assert.strictEqual(depois.status, 1, 'a mudança da PR é a que vale');
-assert(depois.stderr.includes('so-na-pr.com') && !depois.stderr.includes('so-na-main.com'), `a mudança da main depois do ramo não é da PR: ${depois.stderr}`);
+function aMudancaDaPrEAQueVale() {
+  const aposAMain = iniciar('depois');
+  git(aposAMain, 'checkout', '-q', '-b', 'pr');
+  escrever(aposAMain, 'lib/outro.js', "const A = 'https://so-na-pr.com/x';\n");
+  git(aposAMain, 'commit', '-q', '-am', 'pr');
+  git(aposAMain, 'checkout', '-q', 'main');
+  escrever(aposAMain, 'lib/outro.js', "const A = 'https://so-na-main.com/x';\n");
+  git(aposAMain, 'commit', '-q', '-am', 'a main andou');
+  const depois = rodarOScript(aposAMain, ['main', 'pr'], '');
+  assert.strictEqual(depois.status, 1, 'a mudança da PR é a que vale');
+  assert(depois.stderr.includes('so-na-pr.com') && !depois.stderr.includes('so-na-main.com'), `a mudança da main depois do ramo não é da PR: ${depois.stderr}`);
+}
+aMudancaDaPrEAQueVale();
 
 const dois = repositorio(pasta => escrever(pasta, 'popup.js', "const NOVA = 'https://nuvem.nova.com/enviar';\n"));
 assert.strictEqual(conferir(dois, '', [dois, 'main']).status, 0, 'de volta à main não há o que a PR mude');
@@ -162,9 +168,9 @@ const semBase = conferir(dois, '', ['origin/nao-existe']);
 assert.strictEqual(semBase.status, 2, 'base que não existe');
 assert.match(semBase.saida, /origin\/nao-existe/);
 assert.strictEqual(conferir(dois, '', ['main', 'nao-existe']).status, 2, 'ponta que não existe');
-assert.strictEqual(spawnSync('node', [SCRIPT, 'main'], { cwd: tmp, encoding: 'utf8', env: { PATH: process.env.PATH } }).status, 2, 'fora de um repositório');
+assert.strictEqual(rodarOScript(tmp, ['main']).status, 2, 'fora de um repositório');
 
-{
+function oPassoDoWorkflow() {
   const workflow = lerYaml(fs.readFileSync(path.join(RAIZ, '.github', 'workflows', 'regras.yml'), 'utf8'));
   assert(rodaNoPR(workflow), 'o workflow roda em pull_request');
   assert(workflow.on.pull_request.types.includes('edited'), 'editar o corpo roda o check de novo');
@@ -175,6 +181,7 @@ assert.strictEqual(spawnSync('node', [SCRIPT, 'main'], { cwd: tmp, encoding: 'ut
   assert.deepStrictEqual(Object.fromEntries(Object.entries(passo.env)), { PR_BODY: '${{ github.event.pull_request.body }}' }, 'o corpo vai pelo ambiente, nunca dentro do comando');
   assert(comandos(workflow).some(comando => /scripts\/ci\/politica-do-site\.js/.test(comando.texto) && comando.executa), 'o passo executa de verdade');
 }
+oPassoDoWorkflow();
 
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log('test_politica_do_site: ok');

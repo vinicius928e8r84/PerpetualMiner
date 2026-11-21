@@ -17,6 +17,12 @@ SUPPORTED_IMAGE_MIMES = {
     "png": "image/png",
     "webp": "image/webp",
 }
+COMECO_DE_CADA_FORMATO = (
+    (b"\x89PNG\r\n\x1a\n", "png"),
+    (b"\xff\xd8\xff", "jpeg"),
+    ((b"GIF87a", b"GIF89a"), "gif"),
+)
+COMECO_DE_MARCACAO = (b"<!doctype html", b"<html", b"<?xml", b"<svg")
 
 
 class UnsupportedImageFormatError(ValueError):
@@ -24,15 +30,10 @@ class UnsupportedImageFormatError(ValueError):
 
 
 def detect_supported_image_format(data: bytes) -> str | None:
-    if data.startswith(b"\x89PNG\r\n\x1a\n"):
-        return "png"
-    if data.startswith(b"\xff\xd8\xff"):
-        return "jpeg"
-    if data.startswith((b"GIF87a", b"GIF89a")):
-        return "gif"
-    if len(data) >= 12 and data[:4] == b"RIFF" and data[8:12] == b"WEBP":
-        return "webp"
-    return None
+    for comeco, formato in COMECO_DE_CADA_FORMATO:
+        if data.startswith(comeco):
+            return formato
+    return "webp" if data[:4] == b"RIFF" and data[8:12] == b"WEBP" else None
 
 
 def supported_image_mime(data: bytes) -> str:
@@ -43,13 +44,7 @@ def supported_image_mime(data: bytes) -> str:
 
 
 def _looks_like_markup(data: bytes) -> bool:
-    head = data[:512].lstrip().lower()
-    return (
-        head.startswith(b"<!doctype html")
-        or head.startswith(b"<html")
-        or head.startswith(b"<?xml")
-        or head.startswith(b"<svg")
-    )
+    return data[:512].lstrip().lower().startswith(COMECO_DE_MARCACAO)
 
 
 def normalize_image_bytes(data: bytes, *, target_format: str = "PNG") -> tuple[bytes, str]:
