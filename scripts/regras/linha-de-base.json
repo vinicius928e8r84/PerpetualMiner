@@ -141,7 +141,6 @@
     "engine/image_judge.py": 6,
     "engine/nota_do_cartao.py": 3,
     "engine/openai_http.py": 13,
-    "engine/prompt_loader.py": 1,
     "engine/provedores.py": 4,
     "engine/rodar_imagens.py": 5,
     "engine/send_to_anki.py": 78,
