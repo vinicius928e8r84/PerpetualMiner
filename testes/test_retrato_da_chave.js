@@ -3,7 +3,7 @@
 const assert = require('assert');
 
 globalThis.PerpetualMiner = {};
-require('../painel-ia-estado.js');
+require('../painel/painel-ia-estado.js');
 const { daMarca, daConta, deOutraConta, notaDaConta, notaDaCopia, falhaAoConfirmar, falhaAoApagar, depoisDeApagar } = globalThis.PerpetualMiner.RetratoDaChave;
 
 const conferirCasos = casos => casos.forEach(([nome, visto, esperado]) => assert.deepStrictEqual(visto, esperado, nome));

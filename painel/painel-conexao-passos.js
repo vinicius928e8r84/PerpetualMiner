@@ -42,7 +42,6 @@
     });
   }
 
-  /** Permitir abrir o Anki: o aviso do Chrome sai já no clique (o pedido precisa do gesto da pessoa). */
   function pedirAPermissao() {
     if (abridor.fase !== FASE.PEDIR) return;
     const pedido = Abridor.pedirPermissao();

@@ -12,7 +12,7 @@ The Cartões only enter the Anki profile that was open on the first connection (
 
 ## How to get to it (user POV)
 
-- Sidebar › **Configurações** › card **Conexão com o Anki** (`painel.html#configuracoes/anki`) for the row; **Enviar ao Anki** in Frases, then the progress modal, for the waiting card.
+- Sidebar › **Configurações** › card **Conexão com o Anki** (`painel/painel.html#configuracoes/anki`) for the row; **Enviar ao Anki** in Frases, then the progress modal, for the waiting card.
 
 ## Driving it with the Playwright e2e harness
 

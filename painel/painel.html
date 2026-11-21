@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <title>PerpetualMiner</title>
-  <link rel="stylesheet" href="veio/tokens.css">
-  <script src="veio/tema.js"></script>
-  <link rel="stylesheet" href="veio/componentes.css">
+  <link rel="stylesheet" href="/veio/tokens.css">
+<script src="/veio/tema.js"></script>
+  <link rel="stylesheet" href="/veio/componentes.css">
   <link rel="stylesheet" href="painel.css">
   <link rel="stylesheet" href="painel-ia-modelo.css">
   <link rel="stylesheet" href="painel-teto.css">
@@ -16,7 +16,7 @@
 <body>
   <div class="bv" id="boas-vindas" hidden>
     <div class="bv-topo">
-      <img class="veio-marca" src="veio/icones/icone.svg" width="40" height="40" alt="PerpetualMiner">
+      <img class="veio-marca" src="/veio/icones/icone.svg" width="40" height="40" alt="PerpetualMiner">
       <span class="veio-nome bv-nome" aria-hidden="true">Perpetual<b>Miner</b><span class="veio-cursor"></span></span>
     </div>
     <div class="bv-grade">
@@ -29,15 +29,12 @@
       </main>
     </div>
   </div>
-
   <div class="shell">
-
     <aside class="shell-lateral">
       <div class="shell-marca">
-        <img class="veio-marca" src="veio/icones/icone.svg" width="30" height="30" alt="PerpetualMiner">
+        <img class="veio-marca" src="/veio/icones/icone.svg" width="30" height="30" alt="PerpetualMiner">
         <span class="veio-nome shell-rotulo" aria-hidden="true">Perpetual<b>Miner</b><span class="veio-cursor"></span></span>
       </div>
-
       <nav class="shell-nav" data-voz-aria="SHL-01.rotulo">
         <div class="shell-topo">
           <a class="shell-item" href="#frases" data-area="frases" aria-describedby="shell-total-descricao">
@@ -51,7 +48,6 @@
             <span class="shell-ponto" data-estado="conectando" aria-hidden="true"></span>
           </a>
         </div>
-
         <div class="shell-pe">
           <a class="shell-item" href="#configuracoes" data-area="configuracoes">
             <span data-icone="configuracoes"></span>
@@ -94,7 +90,6 @@
             </div>
           </div>
         </header>
-
         <aside class="frases-lembrete" id="frases-lembrete" aria-labelledby="frases-lembrete-texto" hidden>
           <span class="frases-lembrete__anel" id="frases-lembrete-anel"></span>
           <p class="frases-lembrete__texto" id="frases-lembrete-texto"></p>
@@ -105,9 +100,7 @@
                     data-voz="ONB-15.continuar"></button>
           </div>
         </aside>
-
         <div class="frases-avisos" id="frases-avisos"></div>
-
         <div class="frases-filtros">
           <span class="veio-select"><select class="veio-campo frases-filtro" id="filtro-fonte" data-voz-aria="PAI-25.fonte"></select></span>
           <span class="veio-select"><select class="veio-campo frases-filtro" id="filtro-idioma" data-voz-aria="PAI-25.idioma"></select></span>
@@ -130,7 +123,6 @@
             <span data-voz="PAI-09"></span>
           </label>
         </div>
-
         <div class="frases-selecao" id="frases-selecao" hidden>
           <label class="frases-selecao__pagina">
             <input type="checkbox" class="veio-checkbox" id="sel-pagina" data-voz-aria="PAI-31">
@@ -160,7 +152,6 @@
             </span>
           </div>
         </div>
-
         <div id="frases-lista" class="frases-lista" aria-busy="true">
           <div class="veio-esqueleto veio-frase-esqueleto" aria-hidden="true"></div>
           <div class="veio-esqueleto veio-frase-esqueleto" aria-hidden="true"></div>
@@ -168,7 +159,6 @@
           <div class="veio-esqueleto veio-frase-esqueleto" aria-hidden="true"></div>
           <div class="veio-esqueleto veio-frase-esqueleto" aria-hidden="true"></div>
         </div>
-
         <nav class="frases-paginas" id="frases-paginas" data-voz-aria="PAI-26.rotulo" hidden>
           <span class="frases-paginas__intervalo" id="paginas-intervalo"></span>
           <button class="veio-botao-icone" id="btn-first" data-voz-aria="PAI-26.primeira" data-voz-title="PAI-26.primeira"><span data-icone="primeira"></span></button>
@@ -178,7 +168,6 @@
           <button class="veio-botao-icone" id="btn-last" data-voz-aria="PAI-26.ultima" data-voz-title="PAI-26.ultima"><span data-icone="ultima"></span></button>
         </nav>
       </section>
-
       <section class="shell-area" data-area="anki" aria-labelledby="titulo-anki" hidden>
         <header class="shell-cabecalho">
           <h1 id="titulo-anki" data-voz="SHL-02.anki"></h1>
@@ -187,26 +176,21 @@
             <span data-voz="SHL-06"></span>
           </button>
         </header>
-
         <div class="veio-aviso shell-faixa" id="shell-faixa-conexao" role="status" hidden>
           <p class="veio-aviso__texto" data-voz="ENV-01.aviso"></p>
           <div class="veio-aviso__acoes">
             <button id="shell-tentar-de-novo" class="veio-botao veio-botao--contorno veio-botao--compacto" data-voz="ENV-01.tentarDeNovo"></button>
           </div>
         </div>
-
         <div class="anki-faixa-conectando" id="anki-conectando" role="status" hidden>
           <span class="anki-ponto" aria-hidden="true"></span><span data-voz="BRG-02"></span>
         </div>
-
         <section class="anki-primeira-vez" id="anki-primeira-vez" aria-labelledby="anki-primeira-vez-titulo" hidden>
           <div class="apv-topo">
             <h2 class="apv-titulo" id="anki-primeira-vez-titulo"></h2>
             <p class="apv-apoio" id="apv-apoio" data-voz="ONB-16.apoio"></p>
           </div>
-
           <div id="apv-passos"></div>
-
           <div class="apv-rodape" id="apv-rodape">
             <p class="apv-confere"><span class="anki-ponto" aria-hidden="true"></span><span id="apv-confere"></span></p>
             <div class="apv-quadros">
@@ -221,14 +205,12 @@
             </div>
           </div>
         </section>
-
         <div class="veio-segmentado shell-abas" role="radiogroup" data-voz-aria="SHL-03.rotulo">
           <label class="veio-segmentado__opcao"><input type="radio" name="aba-anki" value="custos"><span data-voz="SHL-03.custos"></span></label>
           <label class="veio-segmentado__opcao"><input type="radio" name="aba-anki" value="baralhos"><span data-voz="SHL-03.baralhos"></span></label>
           <label class="veio-segmentado__opcao"><input type="radio" name="aba-anki" value="vocabulario"><span data-voz="SHL-03.vocabulario"></span></label>
           <label class="veio-segmentado__opcao"><input type="radio" name="aba-anki" value="ajustes"><span data-voz="SHL-03.ajustes"></span></label>
         </div>
-
         <div class="shell-aba" data-aba="custos">
           <div class="anki-custos" id="anki-custos">
             <div class="anki-antigo" id="anki-custos-antigo" hidden></div>
@@ -263,7 +245,6 @@
             </details>
           </div>
         </div>
-
         <div class="shell-aba" data-aba="baralhos" hidden>
           <div class="anki-baralhos" id="anki-baralhos">
             <div class="anki-topo" id="anki-baralhos-topo"></div>
@@ -271,7 +252,6 @@
             <div class="anki-corpo" id="anki-baralhos-corpo"></div>
           </div>
         </div>
-
         <div class="shell-aba" data-aba="vocabulario" hidden>
           <div class="anki-vocabulario" id="anki-vocabulario">
             <div class="anki-topo" id="anki-vocabulario-topo"></div>
@@ -290,7 +270,6 @@
             <div class="anki-corpo" id="anki-vocabulario-corpo"></div>
           </div>
         </div>
-
         <div class="shell-aba" data-aba="ajustes" hidden>
           <p class="anki-nota" id="anki-ajustes-nota" data-voz="BRG-33.ajustes" hidden></p>
           <div class="ajustes" id="ajustes">
@@ -299,12 +278,10 @@
           </div>
         </div>
       </section>
-
       <section class="shell-area" data-area="configuracoes" aria-labelledby="titulo-configuracoes" hidden>
         <header class="shell-cabecalho">
           <h1 id="titulo-configuracoes" data-voz="SHL-02.configuracoes"></h1>
         </header>
-
         <div class="shell-cards">
           <section class="shell-card cfg-card" id="cfg-conta" aria-labelledby="cfg-conta-titulo">
             <div class="cfg-cabeca">
@@ -441,7 +418,6 @@
       </form>
     </div>
   </div>
-
   <div class="veio-scrim" id="modal-apagar" hidden>
     <div class="veio-modal" role="dialog" aria-labelledby="modal-apagar-titulo" aria-describedby="modal-apagar-corpo">
       <button class="veio-botao-icone veio-modal__fechar" data-fechar-modal
@@ -454,13 +430,11 @@
       </div>
     </div>
   </div>
-
   <div class="veio-scrim" id="modal-minerar" hidden>
     <div class="veio-modal minerar-modal" role="dialog" aria-labelledby="modal-minerar-titulo">
       <button class="veio-botao-icone veio-modal__fechar" data-fechar-modal
               data-voz-aria="PAI-34" data-voz-title="PAI-34"><span data-icone="fechar"></span></button>
       <h2 class="veio-modal__titulo" id="modal-minerar-titulo" data-voz="ADD-01.botao"></h2>
-
       <div id="minerar-edicao">
         <div class="minerar-abas">
           <div class="veio-segmentado" role="radiogroup" data-voz-aria="ADD-01.botao">
@@ -473,7 +447,6 @@
           </button>
           <span id="minerar-foto-ajuda" data-voz="ADD-11.fotoAjuda" hidden></span>
         </div>
-
         <form class="minerar-colar" id="minerar-colar" novalidate>
           <label class="frases-modal__campo">
             <span class="frases-modal__rotulo" data-voz="ADD-12.campo"></span>
@@ -497,7 +470,6 @@
             <button class="veio-botao veio-botao--primario" type="submit" id="btn-minerar-colar"></button>
           </div>
         </form>
-
         <div class="minerar-arquivo" id="minerar-arquivo" hidden>
           <div class="minerar-arquivo__area">
             <b class="minerar-arquivo__nome" id="minerar-arquivo-nome"></b>
@@ -512,7 +484,6 @@
           </div>
         </div>
       </div>
-
       <div class="minerar-progresso" id="minerar-progresso" hidden>
         <b class="minerar-progresso__rotulo" id="minerar-progresso-rotulo" aria-live="polite"></b>
         <div class="minerar-progresso__barra" role="progressbar" aria-labelledby="minerar-progresso-rotulo"
@@ -521,7 +492,6 @@
       </div>
     </div>
   </div>
-
   <div class="veio-scrim" id="modal-envio" hidden>
     <div class="veio-modal envio-modal" role="dialog" aria-labelledby="modal-envio-titulo" aria-describedby="modal-envio-detalhe">
       <button class="veio-botao-icone veio-modal__fechar" id="modal-envio-fechar"
@@ -533,7 +503,6 @@
       <p class="envio-modal__pe" data-voz="ENV-15"></p>
     </div>
   </div>
-
   <div class="veio-scrim" id="modal-resumo" hidden>
     <div class="veio-modal envio-modal" role="dialog" aria-labelledby="modal-resumo-titulo">
       <button class="veio-botao-icone veio-modal__fechar" id="modal-resumo-fechar"
@@ -553,76 +522,76 @@
       </div>
     </div>
   </div>
-  <iframe id="abridor-ponte" src="abridor/ponte.html" hidden></iframe>
-  <script src="lib/voz/catalogo.js"></script>
-  <script src="lib/voz/catalogo-nivel.js"></script>
-  <script src="lib/voz/texto.js"></script>
-  <script src="lib/ajustes-de-envio.js"></script>
-  <script src="lib/quiz-de-nivel.js"></script>
-  <script src="lib/festa-do-quiz.js"></script>
-  <script src="lib/som-do-quiz.js"></script>
-  <script src="veio/componentes.js"></script>
-  <script src="lib/idioma.js"></script>
-  <script src="lib/mineracao.js"></script>
-  <script src="lib/mineracao-do-dia.js"></script>
-  <script src="lib/mineracao-automatica.js"></script>
-  <script src="lib/contexto.js"></script>
-  <script src="lib/atalhos.js"></script>
-  <script src="lib/pedido-ao-anki.js"></script>
-  <script src="lib/pareamento.js"></script>
-  <script src="lib/conexao-anki.js"></script>
-  <script src="lib/conexao-na-tela.js"></script>
-  <script src="lib/chave-da-openai.js"></script>
-  <script src="lib/configuracao.js"></script>
-  <script src="lib/ankiweb.js"></script>
-  <script src="lib/abridor.js"></script>
-  <script src="lib/abrir-o-anki.js"></script>
-  <script src="lib/sincronizacao.js"></script>
-  <script src="lib/historico.js"></script>
-  <script src="painel-shell.js"></script>
-  <script src="painel-conta.js"></script>
-  <script src="painel-atalhos.js"></script>
-  <script src="painel-conexao-arraste.js"></script>
-  <script src="painel-anki-primeira-conexao-estado.js"></script>
+<iframe id="abridor-ponte" src="../abridor/ponte.html" hidden></iframe>
+<script src="/lib/voz/catalogo.js"></script>
+<script src="/lib/voz/catalogo-nivel.js"></script>
+<script src="/lib/voz/texto.js"></script>
+<script src="/lib/ajustes-de-envio.js"></script>
+<script src="/lib/quiz-de-nivel.js"></script>
+<script src="/lib/festa-do-quiz.js"></script>
+<script src="/lib/som-do-quiz.js"></script>
+<script src="/veio/componentes.js"></script>
+<script src="/lib/idioma.js"></script>
+<script src="/lib/mineracao.js"></script>
+<script src="/lib/mineracao-do-dia.js"></script>
+<script src="/lib/mineracao-automatica.js"></script>
+<script src="/lib/contexto.js"></script>
+<script src="/lib/atalhos.js"></script>
+<script src="/lib/pedido-ao-anki.js"></script>
+<script src="/lib/pareamento.js"></script>
+<script src="/lib/conexao-anki.js"></script>
+<script src="/lib/conexao-na-tela.js"></script>
+<script src="/lib/chave-da-openai.js"></script>
+<script src="/lib/configuracao.js"></script>
+<script src="/lib/ankiweb.js"></script>
+<script src="/lib/abridor.js"></script>
+<script src="/lib/abrir-o-anki.js"></script>
+<script src="/lib/sincronizacao.js"></script>
+<script src="/lib/historico.js"></script>
+<script src="painel-shell.js"></script>
+<script src="painel-conta.js"></script>
+<script src="painel-atalhos.js"></script>
+<script src="painel-conexao-arraste.js"></script>
+<script src="painel-anki-primeira-conexao-estado.js"></script>
   <script src="painel-conexao-passos-estado.js"></script>
   <script src="painel-conexao-passos-pecas.js"></script>
-  <script src="painel-conexao-passos.js"></script>
-  <script src="lib/ranking.js"></script>
-  <script src="painel-boas-vindas-ranking.js"></script>
-  <script src="painel-boas-vindas-minerar.js"></script>
-  <script src="painel-boas-vindas-festa.js"></script>
-  <script src="painel-boas-vindas-quiz.js"></script>
-  <script src="painel-boas-vindas-nivel.js"></script>
-  <script src="lib/envio-gravado.js"></script>
-  <script src="painel-envio-estado.js"></script>
-  <script src="painel-boas-vindas-envio.js"></script>
-  <script src="painel-boas-vindas.js"></script>
-  <script src="painel-lembrete.js"></script>
-  <script src="painel-chave.js"></script>
-  <script src="painel-ia-chatgpt.js"></script>
-  <script src="painel-ia-modelo.js"></script>
+<script src="painel-conexao-passos.js"></script>
+<script src="/lib/ranking.js"></script>
+<script src="painel-boas-vindas-ranking.js"></script>
+<script src="painel-boas-vindas-minerar.js"></script>
+<script src="painel-boas-vindas-festa.js"></script>
+<script src="painel-boas-vindas-quiz.js"></script>
+<script src="painel-boas-vindas-nivel.js"></script>
+<script src="/lib/envio-gravado.js"></script>
+<script src="painel-envio-estado.js"></script>
+<script src="painel-boas-vindas-envio.js"></script>
+<script src="painel-boas-vindas.js"></script>
+<script src="painel-lembrete.js"></script>
+<script src="painel-chave.js"></script>
+<script src="painel-ia-chatgpt.js"></script>
+<script src="painel-ia-modelo.js"></script>
   <script src="painel-ia-estado.js"></script>
-  <script src="painel-ia.js"></script>
-  <script src="painel-abrir-anki.js"></script>
-  <script src="painel-perigo.js"></script>
-  <script src="painel-teto.js"></script>
-  <script src="painel-conexao-versao-estado.js"></script>
-  <script src="painel-conexao-versao.js"></script>
-  <script src="painel-envio-cartao.js"></script>
-  <script src="painel-envio-anki-fechado.js"></script>
-  <script src="painel-envio-parado.js"></script>
-  <script src="painel-envio-limite.js"></script>
-  <script src="painel-envio-apagar.js"></script>
-  <script src="painel-envio.js"></script>
-  <script src="painel-anki-primeira-conexao.js"></script>
-  <script src="painel-anki-plano.js"></script>
-  <script src="painel-anki-continuar.js"></script>
-  <script src="painel-anki.js"></script>
-  <script src="painel-anki-baralhos.js"></script>
-  <script src="painel-anki-previa.js"></script>
-  <script src="painel-anki-tipo-proprio.js"></script>
-  <script src="painel-anki-estilo.js"></script>
-  <script src="painel-ajustes.js"></script>
-  <script src="painel.js"></script>
+<script src="painel-ia.js"></script>
+<script src="painel-abrir-anki.js"></script>
+<script src="painel-perigo.js"></script>
+<script src="painel-teto.js"></script>
+<script src="painel-conexao-versao-estado.js"></script>
+<script src="painel-conexao-versao.js"></script>
+<script src="painel-envio-cartao.js"></script>
+<script src="painel-envio-anki-fechado.js"></script>
+<script src="painel-envio-parado.js"></script>
+<script src="painel-envio-limite.js"></script>
+<script src="painel-envio-apagar.js"></script>
+<script src="painel-envio.js"></script>
+<script src="painel-anki-primeira-conexao.js"></script>
+<script src="painel-anki-plano.js"></script>
+<script src="painel-anki-continuar.js"></script>
+<script src="painel-anki.js"></script>
+<script src="painel-anki-baralhos.js"></script>
+<script src="painel-anki-previa.js"></script>
+<script src="painel-anki-tipo-proprio.js"></script>
+<script src="painel-anki-estilo.js"></script>
+<script src="painel-ajustes.js"></script>
+<script src="painel.js"></script>
 </body>
 </html>

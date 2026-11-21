@@ -65,7 +65,7 @@ function arquivoDoPedido(caminhoPedido) {
  * depois navega, então o endereço é conferido até aparecer.
  */
 async function esperarAbaDaInstalacao(context, id) {
-  const painel = `chrome-extension://${id}/painel.html`;
+  const painel = `chrome-extension://${id}/painel/painel.html`;
   const limite = Date.now() + 10_000;
   while (Date.now() < limite) {
     const aba = context.pages().find(p => p.url().startsWith(painel));
@@ -185,7 +185,7 @@ async function prepararExtensao(context, { manterAbaDaInstalacao, lembreteDaConf
     id,
     serviceWorker: sw,
     abaDaInstalacao: manterAbaDaInstalacao ? abaDaInstalacao : null,
-    url: caminho => `chrome-extension://${id}/${caminho}`,
+    url: caminho => `chrome-extension://${id}/${caminho.replace(/^(painel)\.html/, '$1/$1.html')}`,
     lerStorage,
     lerSessao: () => sessaoDiretoNoIndexedDB(null),
     gravarSessao: sessaoDiretoNoIndexedDB,

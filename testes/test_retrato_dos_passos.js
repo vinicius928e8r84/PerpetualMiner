@@ -7,8 +7,8 @@ globalThis.chrome = { storage: { local: { get: async () => ({}) }, onChanged: { 
 require('../lib/pedido-ao-anki.js');
 require('../lib/conexao-anki.js');
 require('../lib/configuracao.js');
-require('../painel-anki-primeira-conexao-estado.js');
-require('../painel-conexao-passos-estado.js');
+require('../painel/painel-anki-primeira-conexao-estado.js');
+require('../painel/painel-conexao-passos-estado.js');
 delete globalThis.chrome;
 const { RetratoDosPassos, ConexaoAnki, Configuracao, ConversaComOAbridor } = globalThis.PerpetualMiner;
 const { PASSO, PASSOS, SEM_RESPOSTA_MS, cartaoAberto, marcasDosPassos, statusDaConexao, abridorNoCard, espera } = RetratoDosPassos;
