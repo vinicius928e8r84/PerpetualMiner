@@ -27,6 +27,11 @@ class LoadPromptTests(unittest.TestCase):
         with self.assertRaisesRegex(KeyError, "Unknown prompt key: de_card"):
             load_prompt(config, "de_card")
 
+    def test_uma_chave_que_nao_e_de_prompt_e_sem_caminho_e_recusada_como_desconhecida(self):
+        for config in ({}, {"paths": {}}, {"paths": {"prompts": {"de_card": ""}}}):
+            with self.subTest(config=config), self.assertRaisesRegex(KeyError, "Unknown prompt key: de_card"):
+                load_prompt(config, "de_card")
+
     def test_uma_chave_sem_caminho_configurado_e_recusada_com_o_nome_dela(self):
         for config in ({}, {"paths": {}}, {"paths": {"prompts": {"en_card": ""}}}):
             with self.subTest(config=config), self.assertRaisesRegex(KeyError, "Prompt path not configured for 'en_card'"):
