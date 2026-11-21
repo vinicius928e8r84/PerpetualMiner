@@ -229,7 +229,6 @@
     "lib/voz/texto.js": 1,
     "overlay/overlay.js": 8,
     "painel/painel-abrir-anki.js": 10,
-    "painel/painel-anki-baralhos.js": 21,
     "painel/painel-anki-estilo.js": 1,
     "painel/painel-anki-plano.js": 2,
     "painel/painel-anki-primeira-conexao-estado.js": 25,
