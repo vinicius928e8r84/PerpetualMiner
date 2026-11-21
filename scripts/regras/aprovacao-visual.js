@@ -5,10 +5,10 @@ const path = require('path');
 
 const id = 'aprovacao-visual';
 
-const LIVRO = 'e2e/aprovados-visuais.json';
+const LIVRO = 'e2e/aprovados-visuais';
 
-const conserto = `Depois que o dono aprovar a tela, acrescente a entrada em ${LIVRO} (\`"<spec>": { "<nome>.png": { "data": `
-  + '"AAAA-MM-DD", "resposta": "onde ele respondeu" } }`), na mesma PR do PNG; uma referência que ainda espera o '
+const conserto = `Depois que o dono aprovar a tela, acrescente a entrada em ${LIVRO}/<spec>.json (\`"<nome>.png": { "data": `
+  + '"AAAA-MM-DD", "resposta": "onde ele respondeu" }`), na mesma PR do PNG; uma referência que ainda espera o '
   + 'olhar dele fica num `test.fixme` até ser aprovada.';
 
 const seAplica = arquivo => /^e2e\/tests\/[^/]+-visual\.spec\.js$/.test(arquivo);
@@ -22,13 +22,14 @@ function nomesEmFixme(fonte) {
   return nomes;
 }
 
-function lerLivro(raiz) {
-  const caminho = path.join(raiz, LIVRO);
-  if (!fs.existsSync(caminho)) return { telas: {} };
+function lerEntradas(raiz, spec) {
+  const arquivo = `${LIVRO}/${spec}.json`;
+  const caminho = path.join(raiz, arquivo);
+  if (!fs.existsSync(caminho)) return {};
   try {
     return JSON.parse(fs.readFileSync(caminho, 'utf8'));
   } catch (erro) {
-    throw new Error(`${LIVRO} não é um JSON válido (${erro.message})`);
+    throw new Error(`${arquivo} não é um JSON válido (${erro.message})`);
   }
 }
 
@@ -38,7 +39,7 @@ function verificar(arquivo, fonte, raiz) {
   const pasta = path.join(raiz, `${arquivo}-snapshots`);
   if (!fs.existsSync(pasta)) return [];
   const spec = path.posix.basename(arquivo, '.spec.js');
-  const aprovados = (lerLivro(raiz).telas || {})[spec] || {};
+  const aprovados = lerEntradas(raiz, spec);
   const emFixme = nomesEmFixme(fonte);
   const achados = [];
   for (const png of fs.readdirSync(pasta).filter(f => f.endsWith('.png')).sort()) {
@@ -48,8 +49,8 @@ function verificar(arquivo, fonte, raiz) {
       achados.push({
         linha: 1,
         detalhe: aprovados[nome]
-          ? `${nome} tem entrada em ${LIVRO} sem data (AAAA-MM-DD) ou sem a resposta do dono`
-          : `a referência ${nome} não tem entrada em ${LIVRO} (aprovação do dono)`,
+          ? `${nome} tem entrada em ${LIVRO}/${spec}.json sem data (AAAA-MM-DD) ou sem a resposta do dono`
+          : `a referência ${nome} não tem entrada em ${LIVRO}/${spec}.json (aprovação do dono)`,
       });
     }
   }
