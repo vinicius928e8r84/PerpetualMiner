@@ -13,6 +13,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from complemento import tipo_proprio
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria
 from complemento.test_envio import ID, EnvioNoTeste, pedido
 
@@ -148,6 +149,38 @@ class APreviaNoTipoDaPessoa(unittest.TestCase):
     def test_a_previa_de_um_tipo_que_nao_existe_diz_que_o_tipo_sumiu(self):
         (status, corpo), _ = self.previa({"nome": "Apagado", "mapa": {"frase": "Pergunta", "resposta": "Resposta"}})
         self.assertEqual((status, corpo), (404, {"error": "note_type_missing"}))
+
+
+class AFormaDoMapeamento(unittest.TestCase):
+    CASOS = [
+        ("o mapeamento completo", {"nome": MEU_TIPO, "mapa": MAPA}, {"nome": MEU_TIPO, "mapa": MAPA}),
+        ("as partes na ordem da Conexão", {"nome": MEU_TIPO, "mapa": {"imagem": "Som", "resposta": "Resposta", "frase": "Pergunta"}},
+         {"nome": MEU_TIPO, "mapa": {"frase": "Pergunta", "resposta": "Resposta", "imagem": "Som"}}),
+        ("o mapa vazio", {"nome": MEU_TIPO, "mapa": {}}, {"nome": MEU_TIPO, "mapa": {}}),
+        ("o nome com espaços em volta fica como veio", {"nome": "  Meu  ", "mapa": {}}, {"nome": "  Meu  ", "mapa": {}}),
+        ("o nome de 256 letras", {"nome": "n" * 256, "mapa": {}}, {"nome": "n" * 256, "mapa": {}}),
+        ("o campo de 256 letras", {"nome": MEU_TIPO, "mapa": {"frase": "c" * 256}}, {"nome": MEU_TIPO, "mapa": {"frase": "c" * 256}}),
+        ("o campo só de espaço", {"nome": MEU_TIPO, "mapa": {"frase": " "}}, {"nome": MEU_TIPO, "mapa": {"frase": " "}}),
+        ("as outras chaves do pedido ficam de fora", {"nome": MEU_TIPO, "mapa": {}, "extra": 1}, {"nome": MEU_TIPO, "mapa": {}}),
+        ("não é um objeto", ["nome", "mapa"], None),
+        ("nada", None, None),
+        ("sem nome", {"mapa": MAPA}, None),
+        ("o nome que não é texto", {"nome": 7, "mapa": MAPA}, None),
+        ("o nome vazio", {"nome": "", "mapa": MAPA}, None),
+        ("o nome só de espaços", {"nome": "   ", "mapa": MAPA}, None),
+        ("o nome de 257 letras", {"nome": "n" * 257, "mapa": MAPA}, None),
+        ("sem mapa", {"nome": MEU_TIPO}, None),
+        ("o mapa que é uma lista", {"nome": MEU_TIPO, "mapa": [["frase", "Pergunta"]]}, None),
+        ("uma parte que a Conexão não conhece", {"nome": MEU_TIPO, "mapa": dict(MAPA, segredo="Pergunta")}, None),
+        ("o campo vazio", {"nome": MEU_TIPO, "mapa": {"frase": ""}}, None),
+        ("o campo de 257 letras", {"nome": MEU_TIPO, "mapa": {"frase": "c" * 257}}, None),
+        ("o campo que não é texto", {"nome": MEU_TIPO, "mapa": {"frase": 3}}, None),
+    ]
+
+    def test_cada_mapeamento_sai_normalizado_ou_recusado(self):
+        for caso, bruto, esperado in self.CASOS:
+            with self.subTest(caso):
+                self.assertEqual(tipo_proprio.forma(bruto), esperado)
 
 
 if __name__ == "__main__":
