@@ -64,7 +64,9 @@ _FORMS_BY_LEMMA = {
     for group in _IRREGULAR_FORMS.replace("\n", "|").split("|")
     if group.strip()
 }
-_VOWELS = "aeiou"
+_ES_ENDINGS = ("s", "x", "z", "ch", "sh", "o")
+_ENDS_IN_CONSONANT_Y = re.compile(r"[^aeiou]y\Z")
+_ENDS_IN_CONSONANT_VOWEL_CONSONANT = re.compile(r"[^aeiou][aeiou][^aeiouwxy]\Z")
 
 
 _TONE_HINTS = {
@@ -161,28 +163,45 @@ def _has_ru_translation(card_text: str) -> bool:
     return bool(match and match.group(1).strip())
 
 
+def _es_forms(word: str) -> Set[str]:
+    return {word + "es"} if word.endswith(_ES_ENDINGS) else set()
+
+
+def _s_forms(word: str) -> Set[str]:
+    if _ENDS_IN_CONSONANT_Y.search(word):
+        return {word[:-1] + "ies", word[:-1] + "ied"}
+    return {word + "s"}
+
+
+def _ed_and_ing_forms(word: str) -> Set[str]:
+    if not word.endswith("e"):
+        return {word + "ed", word + "ing"}
+    forms = {word + "d", word[:-1] + "ing"}
+    if word.endswith("ie"):
+        forms.add(word[:-2] + "ying")
+    return forms
+
+
+def _doubled_consonant_forms(word: str) -> Set[str]:
+    if not _ENDS_IN_CONSONANT_VOWEL_CONSONANT.search(word):
+        return set()
+    return {word + word[-1] + "ed", word + word[-1] + "ing"}
+
+
+_SPELLING_RULES = (_es_forms, _s_forms, _ed_and_ing_forms, _doubled_consonant_forms)
+
+
+def _inflects_by_the_spelling_rules(word: str) -> bool:
+    return len(word) >= 2 and word.isalpha()
+
+
 def _forms_of(word: str) -> Set[str]:
     word = word.casefold()
-    forms = {word}
     if word in _FORMS_BY_LEMMA:
-        return forms | _FORMS_BY_LEMMA[word]
-    if len(word) < 2 or not word.isalpha():
-        return forms
-    if word.endswith(("s", "x", "z", "ch", "sh", "o")):
-        forms.add(word + "es")
-    if word.endswith("y") and word[-2] not in _VOWELS:
-        forms |= {word[:-1] + "ies", word[:-1] + "ied"}
-    else:
-        forms.add(word + "s")
-    if word.endswith("e"):
-        forms |= {word + "d", word[:-1] + "ing"}
-        if word.endswith("ie"):
-            forms.add(word[:-2] + "ying")
-    else:
-        forms |= {word + "ed", word + "ing"}
-    if len(word) >= 3 and word[-1] not in _VOWELS + "wxy" and word[-2] in _VOWELS and word[-3] not in _VOWELS:
-        forms |= {word + word[-1] + "ed", word + word[-1] + "ing"}
-    return forms
+        return {word} | _FORMS_BY_LEMMA[word]
+    if not _inflects_by_the_spelling_rules(word):
+        return {word}
+    return {word}.union(*(rule(word) for rule in _SPELLING_RULES))
 
 
 def _words_are_forms_of(words: List[str], lemma_words: List[str]) -> bool:
@@ -210,22 +229,15 @@ def _back_headword_matches(found: str, exp: str) -> bool:
     return found.startswith(exp) or _is_form_of_expression(" ".join(found.split()[:len(exp.split())]), exp)
 
 
-def _validate_keyword(card_text: str, expected: str) -> bool:
+def _back_starts_with_the_keyword(card_text: str, exp: str) -> bool:
     match = re.search(r"Back:\s*\*{0,2}([^\n/]+)", card_text, re.IGNORECASE)
     if not match:
         return False
     found = _normalize_keyword_for_validation(_strip_back_headword_separator(match.group(1)))
-    exp = _normalize_keyword_for_validation(expected)
-    if not _back_headword_matches(found, exp):
-        return False
+    return _back_headword_matches(found, exp)
 
-    front = _extract_front_text(card_text)
-    if _front_has_content_after_the_phrase(front):
-        return False
 
-    if len(exp.split()) < 2:
-        return True
-
+def _front_highlights_the_expression(front: str, exp: str) -> bool:
     if not front:
         return False
     highlighted = [
@@ -233,6 +245,18 @@ def _validate_keyword(card_text: str, expected: str) -> bool:
         for item in re.findall(r"\*([^*\n]+)\*", front)
     ]
     return exp in highlighted or any(_is_form_of_expression(item, exp) for item in highlighted)
+
+
+def _validate_keyword(card_text: str, expected: str) -> bool:
+    exp = _normalize_keyword_for_validation(expected)
+    if not _back_starts_with_the_keyword(card_text, exp):
+        return False
+
+    front = _extract_front_text(card_text)
+    if _front_has_content_after_the_phrase(front):
+        return False
+
+    return len(exp.split()) < 2 or _front_highlights_the_expression(front, exp)
 
 
 def _front_has_content_after_the_phrase(front: str) -> bool:
@@ -299,7 +323,118 @@ def _write_card(dest: Path, card: str) -> None:
     os.replace(provisorio, dest)
 
 
-def escrever(job: CardJob, config: dict, pedir: Callable[[str, str, str], Optional[str]], nome: str) -> Optional[str]:
+def _card_path(config: dict, nome: str) -> Path:
+    output_dir = Path(config["paths"]["output_dir"])
+    output_dir.mkdir(parents=True, exist_ok=True)
+    return output_dir / f"{nome}.txt"
+
+
+def _already_written(dest: Path) -> bool:
+    return dest.exists() and dest.stat().st_size > 0
+
+
+def _reads_the_whole_phrase(config: dict) -> bool:
+    estilo = config.get("estilo")
+    return estilo["entrada"] == "frase" if estilo else config.get("lang", "en") == "ru"
+
+
+def _system_prompt(config: dict, whole_phrase: bool) -> str:
+    estilo = config.get("estilo")
+    if estilo:
+        return Path(estilo["prompt"]).read_text(encoding="utf-8").strip()
+    return load_prompt(config, "ru_card" if whole_phrase else "en_card")
+
+
+Pedir = Callable[[str, str, str], Optional[str]]
+
+
+class _PedidoDoCartao:
+    def __init__(self, pedir: Pedir, system_prompt: str, nome: str):
+        self._pedir = pedir
+        self.system_prompt = system_prompt
+        self.nome = nome
+        self.falha: Optional[str] = None
+
+    def responder(self, message: str) -> Optional[str]:
+        try:
+            response = self._pedir(self.system_prompt, message, self.nome) or None
+        except provedores.ErroDoProvedor as exc:
+            LOGGER.error("Modelo falhou para '%s': %s", self.nome, exc)
+            self.falha = exc.codigo
+            return None
+        except Exception as exc:
+            LOGGER.error("Modelo falhou para '%s': %s", self.nome, type(exc).__name__)
+            self.falha = "generation_error"
+            return None
+        if not response:
+            LOGGER.error("Resposta vazia para '%s' - pulando.", self.nome)
+            self.falha = "empty_response"
+        return response
+
+    def cartao(self, message: str) -> Optional[str]:
+        response = self.responder(message)
+        return _prepare_card(response) if response else None
+
+    def recusar(self, falha: str) -> None:
+        self.falha = falha
+
+
+def _ru_card_problem(card: str) -> Optional[str]:
+    if _looks_like_ru_refusal(card):
+        return "recusa/erro do modelo"
+    if not _has_ru_translation(card):
+        return "campo Translation/Definition ausente"
+    return None
+
+
+def _phrase_holds_the_keyword(phrase: str, keyword: str) -> bool:
+    return keyword.casefold() in phrase.casefold() or _phrase_has_form_of_expression(phrase, keyword)
+
+
+def _front_must_keep_the_phrase(job: CardJob, phrase: str) -> bool:
+    return not job.is_generated and _phrase_holds_the_keyword(phrase, job.keyword)
+
+
+def _card_fits_the_keyword(card: str, job: CardJob) -> bool:
+    if not _validate_keyword(card, job.keyword):
+        return False
+    phrase = _strip_inline_context(job.entry.phrase)
+    return not _front_must_keep_the_phrase(job, phrase) or _front_keeps_the_phrase(card, phrase)
+
+
+def _retry_message(user_message: str, card: str, job: CardJob) -> str:
+    if not _validate_keyword(card, job.keyword):
+        return _build_keyword_retry_message(user_message, job.keyword)
+    return _build_phrase_retry_message(user_message, _strip_inline_context(job.entry.phrase))
+
+
+def _card_of_the_whole_phrase(job: CardJob, pedido: _PedidoDoCartao) -> Optional[str]:
+    card = pedido.cartao(_build_message_ru(job))
+    if card is None:
+        return None
+    problem = _ru_card_problem(card)
+    if problem:
+        LOGGER.error("Card russo para '%s' invalido (%s) - skipping.", pedido.nome, problem)
+        pedido.recusar("invalid_card")
+        return None
+    return card
+
+
+def _card_of_the_keyword(job: CardJob, pedido: _PedidoDoCartao) -> Optional[str]:
+    user_message = _build_message(job)
+    card = pedido.cartao(user_message)
+    if card is None or _card_fits_the_keyword(card, job):
+        return card
+    LOGGER.warning("Keyword mismatch para '%s' - tentando regenerar uma vez.", pedido.nome)
+    card = pedido.cartao(_retry_message(user_message, card, job))
+    if card is None or _card_fits_the_keyword(card, job):
+        return card
+    LOGGER.error("Keyword mismatch persistente para '%s' - card nao sera salvo.", pedido.nome)
+    pedido.recusar("keyword_mismatch")
+    return None
+
+
+def escrever(job: CardJob, config: dict, pedir: Pedir, nome: str) -> Optional[str]:
     """Write one card's text, `<output_dir>/<nome>.txt`, asked through `pedir`; returns None when it is on disk, else the failure code.
 
     `pedir(system_prompt, message, label)` asks the model for the card's text and returns it (or None); a refusal is an
@@ -311,67 +446,16 @@ def escrever(job: CardJob, config: dict, pedir: Callable[[str, str, str], Option
     quote the request. The failure codes: one of the provider layer, or `empty_response`, `invalid_card`, `keyword_mismatch`,
     `generation_error`.
     """
-    output_dir = Path(config["paths"]["output_dir"])
-    output_dir.mkdir(parents=True, exist_ok=True)
-    dest = output_dir / f"{nome}.txt"
-    if dest.exists() and dest.stat().st_size > 0:
+    dest = _card_path(config, nome)
+    if _already_written(dest):
         return None
 
-    estilo = config.get("estilo")
-    whole_phrase = estilo["entrada"] == "frase" if estilo else config.get("lang", "en") == "ru"
-    system_prompt = (
-        Path(estilo["prompt"]).read_text(encoding="utf-8").strip() if estilo else load_prompt(config, "ru_card" if whole_phrase else "en_card"))
-    failure: Dict[str, str] = {}
-
-    def call(message: str) -> Optional[str]:
-        try:
-            response = pedir(system_prompt, message, nome) or None
-        except provedores.ErroDoProvedor as exc:
-            LOGGER.error("Modelo falhou para '%s': %s", nome, exc)
-            failure["code"] = exc.codigo
-            return None
-        except Exception as exc:
-            LOGGER.error("Modelo falhou para '%s': %s", nome, type(exc).__name__)
-            failure["code"] = "generation_error"
-            return None
-        if not response:
-            LOGGER.error("Resposta vazia para '%s' - pulando.", nome)
-            failure["code"] = "empty_response"
-        return response
-
+    whole_phrase = _reads_the_whole_phrase(config)
+    pedido = _PedidoDoCartao(pedir, _system_prompt(config, whole_phrase), nome)
     LOGGER.info("Gerando card para: '%s'", nome)
-    user_message = _build_message_ru(job) if whole_phrase else _build_message(job)
-    response = call(user_message)
-    if not response:
-        return failure["code"]
-
-    card = _prepare_card(response)
-
-    if whole_phrase and (_looks_like_ru_refusal(card) or not _has_ru_translation(card)):
-        reason = "recusa/erro do modelo" if _looks_like_ru_refusal(card) else "campo Translation/Definition ausente"
-        LOGGER.error("Card russo para '%s' invalido (%s) - skipping.", nome, reason)
-        return "invalid_card"
-
-    clean_phrase = _strip_inline_context(job.entry.phrase)
-    keeps_phrase = whole_phrase or job.is_generated or not (
-        job.keyword.casefold() in clean_phrase.casefold() or _phrase_has_form_of_expression(clean_phrase, job.keyword))
-
-    def card_ok(text: str) -> bool:
-        return _validate_keyword(text, job.keyword) and (keeps_phrase or _front_keeps_the_phrase(text, clean_phrase))
-
-    if not whole_phrase and not card_ok(card):
-        LOGGER.warning("Keyword mismatch para '%s' - tentando regenerar uma vez.", nome)
-        retry_message = (
-            _build_keyword_retry_message(user_message, job.keyword)
-            if not _validate_keyword(card, job.keyword)
-            else _build_phrase_retry_message(user_message, clean_phrase))
-        retry_response = call(retry_message)
-        if not retry_response:
-            return failure["code"]
-        card = _prepare_card(retry_response)
-        if not card_ok(card):
-            LOGGER.error("Keyword mismatch persistente para '%s' - card nao sera salvo.", nome)
-            return "keyword_mismatch"
+    card = _card_of_the_whole_phrase(job, pedido) if whole_phrase else _card_of_the_keyword(job, pedido)
+    if card is None:
+        return pedido.falha
 
     _write_card(dest, card)
     LOGGER.info("Card salvo: '%s.txt'", nome)
