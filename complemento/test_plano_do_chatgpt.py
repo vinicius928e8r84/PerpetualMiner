@@ -18,6 +18,13 @@ from complemento.test_chatgpt_de_mentira import MARCA
 from complemento.test_envio import ID, EnvioNoTeste, pedido
 from complemento.test_login_do_chatgpt import arquivo_do_login, entrar_e_voltar, estado, trocas, tudo_o_que_ficou
 
+ROTAS_QUE_MOSTRAM_O_ENVIO = (("/ia/chatgpt/estado", {}), ("/ia/estado", {}), ("/jobs/list", {}), ("/jobs/get", {"jobId": ID}),
+                             ("/jobs/debug-bundle", {"jobId": ID}), ("/analytics/jobs", {"lang": "all"}))
+
+
+def o_que_a_conexao_responde(conexao):
+    return [conexao.pedir("POST", caminho, corpo=corpo)[2] for caminho, corpo in ROTAS_QUE_MOSTRAM_O_ENVIO]
+
 
 class CartaoPeloPlano(unittest.TestCase):
     def test_com_o_login_o_texto_do_cartao_vai_pela_responses_api_e_nao_gasta_a_chave(self):
@@ -120,6 +127,13 @@ class OsCustosDoPlano(unittest.TestCase):
 
 
 class OsTokensSoNoArquivoDoLogin(unittest.TestCase):
+    def assertNenhumSegredoFicou(self, segredos, ficou, respostas):
+        for segredo in segredos:
+            for nome, conteudo in ficou.items():
+                self.assertNotIn(segredo, conteudo, nome)
+            for resposta in respostas:
+                self.assertNotIn(segredo.encode("utf-8"), resposta)
+
     def test_nenhum_token_codigo_ou_verificador_aparece_fora_do_arquivo_do_login(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
             conexao.servidor_de_login.validade = 60
@@ -128,16 +142,10 @@ class OsTokensSoNoArquivoDoLogin(unittest.TestCase):
             conexao.esperar(ID)
             [troca] = [form for form in trocas(conexao) if form["grant_type"] == "authorization_code"]
             segredos = list(conexao.servidor_de_login.emitidos) + [consulta["code"], troca["code_verifier"]]
-            respostas = [retorno[2]] + [conexao.pedir("POST", caminho, corpo=corpo)[2] for caminho, corpo in (
-                ("/ia/chatgpt/estado", {}), ("/ia/estado", {}), ("/jobs/list", {}), ("/jobs/get", {"jobId": ID}),
-                ("/jobs/debug-bundle", {"jobId": ID}), ("/analytics/jobs", {"lang": "all"}))]
+            respostas = [retorno[2]] + o_que_a_conexao_responde(conexao)
             ficou = tudo_o_que_ficou(conexao)
         self.assertGreaterEqual(len(segredos), 5)
-        for segredo in segredos:
-            for nome, conteudo in ficou.items():
-                self.assertNotIn(segredo, conteudo, nome)
-            for resposta in respostas:
-                self.assertNotIn(segredo.encode("utf-8"), resposta)
+        self.assertNenhumSegredoFicou(segredos, ficou, respostas)
         self.assertFalse([nome for nome in ficou if re.search(MARCA, nome)])
 
     def test_quando_a_renovacao_ou_a_responses_api_falham_nenhum_token_vai_ao_log_nem_ao_que_a_conexao_responde(self):
@@ -156,19 +164,14 @@ class OsTokensSoNoArquivoDoLogin(unittest.TestCase):
                 conexao.criar(pedido(ID, "gave up : She gave up smoking"))
                 conexao.esperar(ID, lambda estado: estado["status"] == "failed" or estado.get("waiting"))
                 segredos = list(conexao.servidor_de_login.emitidos)
-                respostas = [conexao.pedir("POST", caminho, corpo=corpo)[2] for caminho, corpo in (
-                    ("/ia/chatgpt/estado", {}), ("/ia/estado", {}), ("/jobs/list", {}), ("/jobs/get", {"jobId": ID}),
-                    ("/jobs/debug-bundle", {"jobId": ID}), ("/analytics/jobs", {"lang": "all"}))]
+                respostas = o_que_a_conexao_responde(conexao)
                 ficou = tudo_o_que_ficou(conexao)
                 log = conexao.log()
                 self.assertGreaterEqual(len(segredos), 2)
                 for segredo in segredos:
                     self.assertNotIn(segredo, log)
-                    self.assertNotIn(MARCA, log)
-                    for arquivo, conteudo in ficou.items():
-                        self.assertNotIn(segredo, conteudo, arquivo)
-                    for resposta in respostas:
-                        self.assertNotIn(segredo.encode("utf-8"), resposta)
+                self.assertNotIn(MARCA, log)
+                self.assertNenhumSegredoFicou(segredos, ficou, respostas)
                 self.assertFalse([arquivo for arquivo in ficou if re.search(MARCA, arquivo)])
 
 
