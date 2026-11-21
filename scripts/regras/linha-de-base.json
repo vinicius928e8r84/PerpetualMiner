@@ -202,7 +202,6 @@
     "engine/corrigir_frase.py": 2,
     "engine/cost_tracker.py": 4,
     "engine/extract_prompts.py": 5,
-    "engine/generate_cards.py": 29,
     "engine/generate_images.py": 1,
     "engine/google_images.py": 5,
     "engine/image_guard.py": 1,
