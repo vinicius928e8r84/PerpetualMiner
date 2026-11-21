@@ -34,16 +34,24 @@
   const FRASE_EM_INGLES = 'I’m not saying it’s your fault, I’m saying it’s your responsibility.';
   const FRASE_EM_RUSSO = 'Мы с тобой одной крови — ты и я.';
 
+  const VALORES_DE_ATRIBUTO_AUSENTE = [false, null, undefined];
+  const atributoAusente = valor => VALORES_DE_ATRIBUTO_AUSENTE.includes(valor);
+  const filhoPresente = filho => filho !== null && filho !== undefined;
+  const ehPropriedadeDoNo = (no, nome) => nome in no && nome !== 'list';
+
+  function aplicarAtributo(no, nome, valor) {
+    if (nome === 'class') no.className = valor;
+    else if (nome === 'texto') no.textContent = valor;
+    else if (ehPropriedadeDoNo(no, nome)) no[nome] = valor;
+    else no.setAttribute(nome, valor === true ? '' : valor);
+  }
+
   function el(tag, atributos = {}, ...filhos) {
     const no = document.createElement(tag);
     for (const [nome, valor] of Object.entries(atributos)) {
-      if (valor === false || valor === null || valor === undefined) continue;
-      if (nome === 'class') no.className = valor;
-      else if (nome === 'texto') no.textContent = valor;
-      else if (nome in no && nome !== 'list') no[nome] = valor;
-      else no.setAttribute(nome, valor === true ? '' : valor);
+      if (!atributoAusente(valor)) aplicarAtributo(no, nome, valor);
     }
-    no.append(...filhos.filter(f => f !== null && f !== undefined));
+    no.append(...filhos.filter(filhoPresente));
     return no;
   }
 
@@ -74,8 +82,24 @@
       texto, 'data-vitrine-chrome': true, onclick: aoUsar,
     });
 
+  const VARIANTES_DO_BOTAO_DE_ICONE = {
+    neutro: 'veio-botao-icone',
+    perigo: 'veio-botao-icone veio-botao-icone--perigo',
+  };
+
+  function botaoDeIcone({ variante, idDaVoz, icone }, { desabilitado, classeDeFoco = '' } = {}) {
+    return el('button', {
+      type: 'button', class: `${VARIANTES_DO_BOTAO_DE_ICONE[variante]} ${classeDeFoco}`.trim(),
+      'aria-label': textoDaVoz(idDaVoz), disabled: desabilitado,
+    }, iconeVeio(icone));
+  }
+
+  const ABRIR_O_CONTEXTO = { variante: 'neutro', idDaVoz: 'PAI-20.umaFrase', icone: 'contexto' };
+  const APAGAR_A_FRASE = { variante: 'perigo', idDaVoz: 'PAI-12.confirmar', icone: 'apagar' };
+
   function botoes(estado) {
-    const { desabilitado, classeDeFoco: foco } = estadoDaAmostra(estado);
+    const amostra = estadoDaAmostra(estado);
+    const { desabilitado, classeDeFoco: foco } = amostra;
     const botao = (variante, id, valores) => el('button', {
       type: 'button',
       class: `veio-botao veio-botao--${variante} ${foco}`.trim(),
@@ -90,14 +114,8 @@
       botao('contorno', 'PAI-03.acao'),
       botao('perigo', 'PAI-13.confirmar', { n: 12 }),
       botao('perigo-cheio', 'PAI-13.confirmar', { n: 12 }),
-      el('button', {
-        type: 'button', class: `veio-botao-icone ${foco}`.trim(),
-        'aria-label': textoDaVoz('PAI-20.umaFrase'), disabled: desabilitado,
-      }, iconeVeio('contexto')),
-      el('button', {
-        type: 'button', class: `veio-botao-icone veio-botao-icone--perigo ${foco}`.trim(),
-        'aria-label': textoDaVoz('PAI-12.confirmar'), disabled: desabilitado,
-      }, iconeVeio('apagar')),
+      botaoDeIcone(ABRIR_O_CONTEXTO, amostra),
+      botaoDeIcone(APAGAR_A_FRASE, amostra),
     ];
   }
 
@@ -233,18 +251,18 @@
       el('span', { texto: textoDaVoz('ONB-15.texto', { n, total: 6 }) })));
   }
 
-  function azulejos() {
-    const azulejo = (idioma, id, valores, proporcao, escolhido) =>
-      el('div', { class: `veio-azulejo ${escolhido ? 'veio-azulejo--escolhido' : ''}`.trim() },
-        el('span', { class: 'veio-azulejo__legenda', texto: idioma }),
-        el('span', { class: 'veio-azulejo__numero', texto: textoDaVoz(id, valores) }),
-        el('span', { class: 'veio-medidor' }, el('i', { style: `width:${proporcao}%` })));
+  const AZULEJOS = [
+    { idioma: 'Inglês', id: 'POP-07.leitor', valores: { n: 7, limite: 20 }, proporcao: 35, escolhido: true },
+    { idioma: 'Russo', id: 'POP-08', valores: {}, proporcao: 100, escolhido: false },
+  ];
 
-    return [
-      azulejo('Inglês', 'POP-07.leitor', { n: 7, limite: 20 }, 35, true),
-      azulejo('Russo', 'POP-08', {}, 100, false),
-    ];
-  }
+  const azulejo = ({ idioma, id, valores, proporcao, escolhido }) =>
+    el('div', { class: `veio-azulejo ${escolhido ? 'veio-azulejo--escolhido' : ''}`.trim() },
+      el('span', { class: 'veio-azulejo__legenda', texto: idioma }),
+      el('span', { class: 'veio-azulejo__numero', texto: textoDaVoz(id, valores) }),
+      el('span', { class: 'veio-medidor' }, el('i', { style: `width:${proporcao}%` })));
+
+  const azulejos = () => AZULEJOS.map(azulejo);
 
   function modal(temaDaColuna) {
     const cancelar = el('button', {
@@ -287,12 +305,10 @@
       mostrarToastDeSucesso(textoDaVoz('PAI-14', { n: 12 }), { dentroDe: coluna }));
   }
 
-  function avisoQueVolta() {
+  function avisoQueVoltaAoFechar(montarConteudo) {
     const lugar = el('div', { class: 'lugar-do-aviso' });
     const montar = () => lugar.append(montarAviso({
-      texto: textoDaVoz('PAI-15.aviso'),
-      acao: { rotulo: textoDaVoz('PAI-15.tentarDeNovo'), aoUsar: () => {} },
-      detalhes: 'HTTP 403 · PERMISSION_DENIED',
+      ...montarConteudo(),
       rotuloDeFechar: textoDaVoz('ONB-15.ocultar'),
       aoFechar: montar,
     }));
@@ -300,19 +316,18 @@
     return lugar;
   }
 
-  function avisoInformativo() {
-    const lugar = el('div', { class: 'lugar-do-aviso' });
-    const montar = () => lugar.append(montarAviso({
-      tom: 'info',
-      icone: 'info',
-      abertura: textoDaVoz('FOT-21.abertura'),
-      texto: textoDaVoz('FOT-21.aviso', { n: 2 }),
-      rotuloDeFechar: textoDaVoz('ONB-15.ocultar'),
-      aoFechar: montar,
-    }));
-    montar();
-    return lugar;
-  }
+  const avisoDeErro = () => avisoQueVoltaAoFechar(() => ({
+    texto: textoDaVoz('PAI-15.aviso'),
+    acao: { rotulo: textoDaVoz('PAI-15.tentarDeNovo'), aoUsar: () => {} },
+    detalhes: 'HTTP 403 · PERMISSION_DENIED',
+  }));
+
+  const avisoInformativo = () => avisoQueVoltaAoFechar(() => ({
+    tom: 'info',
+    icone: 'info',
+    abertura: textoDaVoz('FOT-21.abertura'),
+    texto: textoDaVoz('FOT-21.aviso', { n: 2 }),
+  }));
 
   function vazio({ titulo, texto, acao, variante, icone }) {
     return el('div', { class: 'veio-vazio' },
@@ -360,8 +375,8 @@
       enviada ? selo('veio-selo--ok', iconeVeio('certo'), textoDaVoz('PAI-08.enviada')) : null);
 
     const acoes = el('div', { class: 'veio-frase__acoes' },
-      el('button', { type: 'button', class: 'veio-botao-icone', 'aria-label': textoDaVoz('PAI-20.umaFrase') }, iconeVeio('contexto')),
-      el('button', { type: 'button', class: 'veio-botao-icone veio-botao-icone--perigo', 'aria-label': textoDaVoz('PAI-12.confirmar') }, iconeVeio('apagar')));
+      botaoDeIcone(ABRIR_O_CONTEXTO),
+      botaoDeIcone(APAGAR_A_FRASE));
 
     return el('div', { class: `veio-frase ${selecionada ? 'veio-frase--selecionada' : ''}`.trim() },
       marcada, el('div', { class: 'coluna-da-frase' }, corpo, contexto), acoes);
@@ -398,60 +413,41 @@
     return ilha;
   }
 
+  const ESTADOS_DE_INTERACAO = ['normal', 'foco', 'desabilitado'];
+
+  const linhasPorEstado = (estados, amostrasDe) =>
+    estados.map(estado => linha(estado, ...amostrasDe(estado)));
+
+  const gruposDeControles = () => [
+    grupo('Botões', ...linhasPorEstado(ESTADOS_DE_INTERACAO, botoes)),
+    grupo('Campos', ...linhasPorEstado([...ESTADOS_DE_INTERACAO, 'erro'], campos)),
+    grupo('Toggle e checkbox', ...linhasPorEstado(ESTADOS_DE_INTERACAO, checkboxes)),
+    grupo('Selos',
+      linha('Fonte', ...selosDeFonte()),
+      linha('estado', ...selosDeEstado())),
+    grupo('Atalhos', linha('normal', ...atalhos())),
+    grupo('Controle segmentado',
+      linha('normal', segmentado()),
+      linha('foco', segmentado({ classeDeFoco: 'amostra-de-foco-parado' })),
+      linha('desabilitado', segmentado({ desabilitado: true }))),
+    grupo('Azulejo', linha('normal', ...azulejos())),
+    grupo('Anel de progresso', linha('normal', ...aneis())),
+  ];
+
+  const gruposDeRetorno = (destino, tema) => [
+    grupo('Modal', modal(tema)),
+    grupo('Toast', linha('normal', toast(destino))),
+    grupo('Aviso persistente',
+      linha('erro', avisoDeErro()),
+      linha('informativo', avisoInformativo())),
+    grupo('Estado vazio', linha('vazio', ...vazios())),
+    grupo('Esqueleto', linha('carregando', esqueleto())),
+    grupo('Linha de frase', frases(),
+      linha('palavra clicável, na ilha', fraseClicavel())),
+  ];
+
   function montarComponentes(destino, tema) {
-    destino.append(
-      grupo('Botões',
-        linha('normal', ...botoes('normal')),
-        linha('foco', ...botoes('foco')),
-        linha('desabilitado', ...botoes('desabilitado'))),
-
-      grupo('Campos',
-        linha('normal', ...campos('normal')),
-        linha('foco', ...campos('foco')),
-        linha('desabilitado', ...campos('desabilitado')),
-        linha('erro', ...campos('erro'))),
-
-      grupo('Toggle e checkbox',
-        linha('normal', ...checkboxes('normal')),
-        linha('foco', ...checkboxes('foco')),
-        linha('desabilitado', ...checkboxes('desabilitado'))),
-
-      grupo('Selos',
-        linha('Fonte', ...selosDeFonte()),
-        linha('estado', ...selosDeEstado())),
-
-      grupo('Atalhos',
-        linha('normal', ...atalhos())),
-
-      grupo('Controle segmentado',
-        linha('normal', segmentado()),
-        linha('foco', segmentado({ classeDeFoco: 'amostra-de-foco-parado' })),
-        linha('desabilitado', segmentado({ desabilitado: true }))),
-
-      grupo('Azulejo',
-        linha('normal', ...azulejos())),
-
-      grupo('Anel de progresso',
-        linha('normal', ...aneis())),
-
-      grupo('Modal', modal(tema)),
-
-      grupo('Toast',
-        linha('normal', toast(destino))),
-
-      grupo('Aviso persistente',
-        linha('erro', avisoQueVolta()),
-        linha('informativo', avisoInformativo())),
-
-      grupo('Estado vazio',
-        linha('vazio', ...vazios())),
-
-      grupo('Esqueleto',
-        linha('carregando', esqueleto())),
-
-      grupo('Linha de frase', frases(),
-        linha('palavra clicável, na ilha', fraseClicavel())),
-    );
+    destino.append(...gruposDeControles(), ...gruposDeRetorno(destino, tema));
   }
 
   raiz.Vitrine = { montarComponentes, CATALOGO_DA_VITRINE };

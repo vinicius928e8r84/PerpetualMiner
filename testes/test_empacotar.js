@@ -14,7 +14,7 @@ const versao = JSON.parse(fs.readFileSync('manifest.json', 'utf8')).version;
 const texto = execFileSync('node', ['scripts/empacotar-extensao.mjs', '--saida', saida], { encoding: 'utf8', env: { ...process.env, PM_COMMIT_VERDE: 'ignorar' } });
 const arquivos = texto.split('\n').filter(l => l.startsWith('  ')).map(l => l.trim());
 
-for (const esperado of ['manifest.json', 'background.js', 'lib/auto-recarregar.js', 'lib/arquivos-da-extensao.js', 'painel.html', 'veio/tokens.css']) {
+for (const esperado of ['manifest.json', 'background.js', 'lib/auto-recarregar.js', 'lib/arquivos-da-extensao.js', 'painel/painel.html', 'veio/tokens.css']) {
   assert(arquivos.includes(esperado), `falta ${esperado} no pacote`);
 }
 for (const arquivo of arquivos) {
