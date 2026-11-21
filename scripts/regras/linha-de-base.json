@@ -74,7 +74,6 @@
     "complemento/retencao_dos_envios.py": 7,
     "complemento/rotas_da_chave.py": 17,
     "complemento/rotas_da_voz.py": 4,
-    "complemento/rotas_do_item_de_login.py": 1,
     "complemento/rotas_do_pareamento.py": 5,
     "complemento/rotas_dos_baralhos.py": 1,
     "complemento/servidor.py": 30,
