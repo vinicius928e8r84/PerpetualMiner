@@ -32,7 +32,7 @@
     "e2e/tests/configuracoes-conta.spec.js": 24964,
     "e2e/tests/configuracoes-ia.spec.js": 51879,
     "e2e/tests/configuracoes-visual.spec.js": 22563,
-    "e2e/tests/minerar-foto.spec.js": 40487,
+    "e2e/tests/minerar-foto.spec.js": 37265,
     "e2e/tests/overlay.spec.js": 32092,
     "e2e/tests/painel-ajustes.spec.js": 26370,
     "e2e/tests/painel-anki-baralhos.spec.js": 32174,
