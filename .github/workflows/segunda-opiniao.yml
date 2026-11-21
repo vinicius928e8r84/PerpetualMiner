@@ -1,0 +1,62 @@
+name: Segunda opinião
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: segunda-opiniao-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  segunda-opiniao:
+    name: Segunda opinião (Qlty, informativa)
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
+    timeout-minutes: 10
+    continue-on-error: true
+    env:
+      QLTY_VERSAO: 0.671.0
+      QLTY_SHA256: de6576e0800883dd66456e374042034fa7fca845a48865aae49ae139b4472311
+      QLTY_TELEMETRY: 'off'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: npm ci --prefix scripts/regras/analisador
+        continue-on-error: true
+      - name: Qlty CLI
+        id: qlty
+        continue-on-error: true
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/qlty.tar.xz" "https://github.com/qltysh/qlty/releases/download/v$QLTY_VERSAO/qlty-x86_64-unknown-linux-gnu.tar.xz"
+          echo "$QLTY_SHA256  $RUNNER_TEMP/qlty.tar.xz" | sha256sum -c -
+          tar -xJf "$RUNNER_TEMP/qlty.tar.xz" -C "$RUNNER_TEMP"
+          "$RUNNER_TEMP/qlty-x86_64-unknown-linux-gnu/qlty" smells --all --include-tests --no-snippets --quiet --no-upgrade-check --sarif > "$RUNNER_TEMP/qlty.sarif"
+      - name: Tabela das diferenças
+        id: tabela
+        if: ${{ steps.qlty.outcome == 'success' }}
+        continue-on-error: true
+        run: |
+          node scripts/qualidade/segunda-opiniao.js --sarif "$RUNNER_TEMP/qlty.sarif" --base HEAD^1 --saida "$RUNNER_TEMP/segunda-opiniao.md" --json "$RUNNER_TEMP/segunda-opiniao.json"
+          cat "$RUNNER_TEMP/segunda-opiniao.md" >> "$GITHUB_STEP_SUMMARY"
+      - name: Aviso de que não rodou
+        if: ${{ steps.qlty.outcome != 'success' || steps.tabela.outcome != 'success' }}
+        run: echo "A segunda opinião não rodou desta vez (Qlty ${{ steps.qlty.outcome }}, tabela ${{ steps.tabela.outcome }}); o log dos passos acima diz por quê. Ela é informativa e não trava a PR." >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v6
+        if: ${{ steps.tabela.outcome == 'success' }}
+        continue-on-error: true
+        with:
+          name: segunda-opiniao
+          path: |
+            ${{ runner.temp }}/segunda-opiniao.md
+            ${{ runner.temp }}/segunda-opiniao.json
+            ${{ runner.temp }}/qlty.sarif
+          retention-days: 7
