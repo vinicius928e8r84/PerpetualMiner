@@ -84,6 +84,7 @@ const LINHAS_DE_BASE_INVALIDAS = [
   ['{\n  "x": 1,\n  "arquivos": null\n}', '"arquivos" tem de ser um objeto { caminho: bytes } (linha 3)'],
   ['{\n  "arquivos": {\n    "a.js": "1"\n  }\n}', 'o tamanho de "a.js" tem de ser um número de bytes (achou "1") (linha 3)'],
   ['{"arquivos": {"a.js": 1, "b.js": -1}}', 'o tamanho de "b.js" tem de ser um número de bytes (achou -1) (linha 1)'],
+  ['{\n  "arquivos": {\n    "a.js": -1,\n    "b.js": "x"\n  }\n}', 'o tamanho de "a.js" tem de ser um número de bytes (achou -1) (linha 3)'],
   ['{\n  "arquivos": {\n    "a.js": 1,\n    "b.js": null\n  }\n}', 'o tamanho de "b.js" tem de ser um número de bytes (achou null) (linha 4)'],
 ];
 function confereALinhaDeBaseInvalida([texto, detalhe]) {
@@ -96,7 +97,12 @@ LINHAS_DE_BASE_INVALIDAS.forEach(confereALinhaDeBaseInvalida);
 const JSONS_QUEBRADOS = [
   ['{\n  "arquivos": {\n    "a.js": 30000,\n  }\n}\n', / \(linha 4\)$/],
   ['{\n "a": 1\n "b": 2}', / \(linha 3\)$/],
-  ['', /\)$/],
+  ['{"a":1}\n\n{', / \(linha 3\)$/],
+  ['{\n  "a": 1,\n  "b": x\n}', / \(perto da linha 2\)$/],
+  ['abc', / \(perto da linha 1\)$/],
+  ['\n\n  nada', / \(perto da linha 1\)$/],
+  ['undefined', /is not valid JSON\)$/],
+  ['', /end of JSON input\)$/],
 ];
 function confereOJsonQuebrado([texto, fim]) {
   const { detalhe } = erroDe(() => lerLinhaDeBaseDoTexto(texto, 'b.json'));
