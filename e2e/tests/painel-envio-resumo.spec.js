@@ -2,7 +2,7 @@
 
 const { test, expect } = require('../fixtures');
 const { estadoFinal } = require('../estado-final');
-const { AGORA, INGLESAS, RUSSA, SACK, ARM, LATE, abrirPainel, progresso, resumo, envio, baralho, toasts, marcarEEnviar, enviosCriados, umaVoltaDoEnvio, apagarAFrase } = require('../apoio-do-envio');
+const { AGORA, INGLESAS, RUSSA, SACK, ARM, LATE, abrirPainel, cartao, progresso, resumo, envio, baralho, toasts, marcarEEnviar, enviosCriados, umaVoltaDoEnvio, apagarAFrase } = require('../apoio-do-envio');
 
 const leiturasDoTeto = fakes => fakes.anki.requisicoes.filter(r => r.caminho === '/custos/teto').length;
 
@@ -142,4 +142,83 @@ test('o resumo aberto fica como a pessoa o deixou: a leitura seguinte dos Envios
   await manter.click();
   await expect(resumo(page)).toHaveCount(0);
   await estadoFinal(extensao, { frases: [{ ...SACK, status: 'exported' }, ARM, LATE], pm_envio: null });
+});
+
+test('o resumo espera o outro modal aberto fechar', async ({ page, extensao, fakes }) => {
+  await extensao.gravarStorage({ frases: INGLESAS });
+  await abrirPainel(page, extensao);
+  await marcarEEnviar(page, [SACK.texto]);
+  const [job] = await enviosCriados(fakes, 1);
+  await progresso(page).getByRole('button', { name: 'Fechar' }).click();
+
+  await cartao(page, ARM.texto).hover();
+  await cartao(page, ARM.texto).getByRole('button', { name: 'Editar contexto' }).click();
+  const contexto = page.getByRole('dialog', { name: 'Editar contexto' });
+  await expect(contexto).toBeVisible();
+  const leituras = () => fakes.anki.requisicoes.filter(r => r.caminho === '/jobs/list').length;
+  const antes = leituras();
+  fakes.anki.concluirEnvio(job.jobId);
+  await expect.poll(leituras, { timeout: 10_000 }).toBeGreaterThan(antes);
+  await page.waitForTimeout(2500);
+  await expect(resumo(page)).toHaveCount(0);
+  await expect(contexto).toBeVisible();
+
+  await page.keyboard.press('Escape');
+  await expect(resumo(page)).toBeVisible();
+  expect((await extensao.frases()).find(f => f.id === ARM.id).contexto).toBeUndefined();
+});
+
+test('bug #9: recarregar com um Envio em andamento não o perde, e o resumo abre em Configurações', async ({ page, extensao, fakes }) => {
+  await extensao.gravarStorage({ frases: [...INGLESAS, RUSSA] });
+  await abrirPainel(page, extensao);
+  await marcarEEnviar(page, [SACK.texto, RUSSA.texto]);
+  const [ingles, russo] = await enviosCriados(fakes, 2);
+  fakes.anki.concluirEnvio(ingles.jobId);
+
+  await page.reload();
+  await page.goto(extensao.url('painel.html#configuracoes'));
+  await expect(page.getByRole('heading', { level: 1, name: 'Configurações' })).toBeVisible();
+  await expect(progresso(page)).toHaveCount(0);
+
+  fakes.anki.concluirEnvio(russo.jobId, { duplicadas: [RUSSA.id] });
+  await expect(resumo(page)).toBeVisible({ timeout: 10_000 });
+  await expect(baralho(page, 'Inglês')).toContainText('+1 cartão');
+  await expect(baralho(page, 'Russo')).toContainText('1 já estava lá');
+  await resumo(page).getByRole('button', { name: 'Manter' }).click();
+  await expect.poll(async () => (await extensao.frases()).filter(f => f.status === 'exported').length).toBe(2);
+});
+
+test('na Boas-vindas o resumo espera: ele abre quando a pessoa vai ao painel', async ({ page, extensao, fakes }) => {
+  await extensao.gravarStorage({ frases: INGLESAS });
+  await abrirPainel(page, extensao);
+  await marcarEEnviar(page, [SACK.texto]);
+  const [job] = await enviosCriados(fakes, 1);
+  await progresso(page).getByRole('button', { name: 'Fechar' }).click();
+
+  await page.goto(extensao.url('painel.html#boas-vindas'));
+  await expect(page.locator('.bv-card h2')).toHaveText('Boas-vindas ao PerpetualMiner');
+  const leiturasDosEnvios = () => fakes.anki.requisicoes.filter(r => r.caminho === '/jobs/list').length;
+  const antes = leiturasDosEnvios();
+  fakes.anki.concluirEnvio(job.jobId);
+  await expect.poll(leiturasDosEnvios, { timeout: 10_000 }).toBeGreaterThan(antes);
+  await page.waitForTimeout(2500);
+  await expect(resumo(page)).toHaveCount(0);
+  await expect(progresso(page)).toHaveCount(0);
+
+  await page.locator('.bv-card').getByRole('button', { name: 'Pular a configuração' }).click();
+  await expect(resumo(page)).toBeVisible({ timeout: 10_000 });
+  await estadoFinal(extensao, { pm_envio: { envios: [{ ids: [SACK.id], jobId: job.jobId }] } });
+});
+
+test('o resumo abre na área da Conexão com o Anki também', async ({ page, extensao, fakes }) => {
+  await extensao.gravarStorage({ frases: INGLESAS });
+  await abrirPainel(page, extensao);
+  await marcarEEnviar(page, [SACK.texto]);
+  const [job] = await enviosCriados(fakes, 1);
+  await progresso(page).getByRole('button', { name: 'Fechar' }).click();
+  await page.locator('.shell-item[data-area="anki"]').click();
+
+  fakes.anki.concluirEnvio(job.jobId);
+  await expect(resumo(page)).toBeVisible({ timeout: 10_000 });
+  await estadoFinal(extensao, { pm_envio: { envios: [{ ids: [SACK.id], jobId: job.jobId }] } });
 });
