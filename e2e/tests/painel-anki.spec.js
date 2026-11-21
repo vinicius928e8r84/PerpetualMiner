@@ -2,61 +2,19 @@
 
 const { test, expect } = require('../fixtures');
 const { fotografar } = require('../evidencias-mineracao');
-
-const AGORA = new Date('2026-09-18T12:00:00');
-
-const ENVIOS = [
-  {
-    jobId: 'job-en-concluido', lang: 'en', createdAt: '2026-09-18T11:00:00', status: 'completed', pedidas: 12,
-    custos: { cartoes: 0.0810, escolha: 0.0021, triagem: 0.0011 }, imagens: { real: 11, sem: 1 }, economia: 0.15,
-  },
-  {
-    jobId: 'job-ru-parte', lang: 'ru', createdAt: '2026-09-18T09:00:00', status: 'partial', pedidas: 4, enviadas: 3,
-    custos: { cartoes: 0.0270, geradas: 0.0120, escolha: 0.0008, triagem: 0.0004, outros: 0.0050 },
-    imagens: { real: 1, geradas: 2, falhas: 1 },
-    lastError: 'HTTP 502 · AnkiConnect: collection is not available',
-  },
-  {
-    jobId: 'job-en-andando', lang: 'en', createdAt: '2026-09-18T11:50:00', status: 'running', stage: 'generate_images', pedidas: 6,
-    custos: { cartoes: 0.0141 }, imagens: { real: 2 },
-  },
-  {
-    jobId: 'job-en-falhou', lang: 'en', createdAt: '2026-09-17T20:00:00', status: 'failed', pedidas: 3,
-    custos: { cartoes: 0.0110 }, lastError: 'HTTP 500 · Falha ao criar job EN',
-  },
-  {
-    jobId: 'job-ru-julho', lang: 'ru', createdAt: '2026-07-10T10:00:00', status: 'completed', pedidas: 20,
-    custos: { cartoes: 0.1130 }, imagens: { real: 12 },
-  },
-];
+const { estadoFinal } = require('../estado-final');
+const { AGORA, ENVIOS, custos, azulejos, listaDeEnvios, detalheDoEnvio, abrirAnki } = require('../apoio-dos-custos');
 
 const F1 = 'A Conexão com o Anki está desligada. Ligue-a neste computador e tente de novo.';
 
-const custos = page => page.locator('#anki-custos');
 const abas = page => page.getByRole('radiogroup', { name: 'Seções da Conexão com o Anki' });
-const azulejos = page => page.getByRole('group', { name: 'Idioma dos custos' });
-const listaDeEnvios = page => page.getByRole('listbox', { name: 'Envios recentes' });
-const detalheDoEnvio = (page, titulo) => page.getByRole('region', { name: titulo });
 const primeiraVez = page => page.getByRole('region', { name: 'Ainda não houve conexão neste computador' });
 const atualizar = page => page.getByRole('button', { name: 'Atualizar', exact: true });
 const pedidosDeCustos = fakes => fakes.anki.requisicoes.filter(r => r.caminho === '/analytics/jobs');
-const camadaPrincipal = page => page.locator('#anki-custos-azulejos, #anki-custos-corpo');
 
 async function escolher(page, nome) {
   await page.locator('label.veio-segmentado__opcao').filter({ hasText: new RegExp(`^${nome}$`) }).click();
   await expect(page.getByRole('radio', { name: nome, exact: true })).toBeChecked();
-}
-
-async function usarChave(page, nome, ligada) {
-  await page.getByText(nome, { exact: true }).click();
-  await expect(page.getByRole('checkbox', { name: nome })).toBeChecked({ checked: ligada });
-}
-
-async function abrirAnki(page, extensao, { hash = '#anki/custos', jaConectou = true, gravado = {} } = {}) {
-  if (jaConectou) await extensao.gravarStorage({ pm_anki_ja_conectou: true });
-  if (Object.keys(gravado).length) await extensao.gravarStorage(gravado);
-  await page.clock.setFixedTime(AGORA);
-  await page.goto(extensao.url(`painel.html${hash}`));
 }
 
 test.beforeEach(({ fakes }) => {
@@ -114,6 +72,7 @@ test('cai depois de responder: a F1 e o último dado com o selo BRG-12; Continua
 
   await escolher(page, 'Baralhos e termos');
   await expect(page.getByRole('button', { name: 'Reparar Anki' })).toHaveCount(0);
+  expect((await extensao.lerStorage(['pm_anki_custos'])).pm_anki_custos.envios).toHaveLength(4);
 });
 
 test('reabrir o painel com a Conexão desligada mostra o último dado gravado, não o card da primeira vez', async ({ page, extensao, fakes }) => {
@@ -170,6 +129,7 @@ test('erro na leitura de custos: BRG-04 inline com Tentar de novo e Detalhes, di
   await aviso.getByRole('button', { name: 'Tentar de novo' }).click();
   await expect(custos(page).getByRole('alert')).toHaveCount(0);
   await expect(listaDeEnvios(page).getByRole('option')).toHaveCount(4);
+  await expect.poll(async () => (await extensao.lerStorage(['pm_anki_custos'])).pm_anki_custos?.envios.length).toBe(4);
 });
 
 test('vazio: BRG-22 com “Ver tudo”, que troca o período para Tudo', async ({ page, extensao, fakes }) => {
@@ -183,6 +143,7 @@ test('vazio: BRG-22 com “Ver tudo”, que troca o período para Tudo', async (
   await expect(listaDeEnvios(page).getByRole('option')).toHaveCount(1);
   const ultimo = pedidosDeCustos(fakes).at(-1);
   expect(ultimo.dados).toEqual({ lang: 'all' });
+  await estadoFinal(extensao, { pm_anki_custos: { periodo: 'tudo', de: '', ate: '' } });
 });
 
 test('o período abre em Este mês; Hoje e De/Até pedem as datas certas', async ({ page, extensao, fakes }) => {
@@ -197,8 +158,10 @@ test('o período abre em Este mês; Hoje e De/Até pedem as datas certas', async
   await page.getByLabel('De', { exact: true }).fill('2026-07-01');
   await expect.poll(() => pedidosDeCustos(fakes).at(-1).dados).toMatchObject({ from: '2026-07-01' });
   await expect(page.getByRole('radio', { name: 'Hoje' })).not.toBeChecked();
+  await estadoFinal(extensao, { pm_anki_custos: { periodo: 'datas', de: '2026-07-01' } });
 });
 
+// Exceção de teste: sem-estado-guardado — o idioma escolhido nos azulejos só filtra a tela; nada é gravado.
 test('azulejos por idioma com total e envios; o escolhido filtra o resumo, as imagens e a lista', async ({ page, extensao }) => {
   await page.setViewportSize({ width: 1280, height: 1100 });
   await page.route('http://127.0.0.1:8766/analytics/jobs', async route => {
@@ -241,143 +204,6 @@ test('azulejos por idioma com total e envios; o escolhido filtra o resumo, as im
   await fotografar(page, 'anki-azulejos-russo.png');
 });
 
-test('lista × detalhe: o envio em parte mostra o que não entrou, Detalhes e Continuar envio, que retoma', async ({ page, extensao, fakes }) => {
-  await abrirAnki(page, extensao);
-
-  const opcoes = listaDeEnvios(page).getByRole('option');
-  await expect(opcoes.first()).toHaveAttribute('aria-selected', 'true');
-  await expect(opcoes.filter({ hasText: 'Envio em inglês · 6 frases' })).toContainText('há 10 min');
-  await expect(opcoes.filter({ hasText: 'Envio em inglês · 3 frases' })).toContainText('ontem');
-
-  await opcoes.filter({ hasText: 'Envio em russo' }).click();
-  const detalhe = detalheDoEnvio(page, 'Envio em russo · 4 frases');
-  await expect(detalhe).toContainText('Concluído em parte · 3 de 4 frases');
-  await expect(detalhe).toContainText('1 não entrou');
-  await detalhe.getByText('Detalhes').click();
-  await expect(detalhe.locator('pre')).toContainText('collection is not available');
-
-  await detalhe.getByRole('button', { name: 'Continuar envio' }).click();
-  await expect(page.getByText('Envio retomado')).toBeVisible();
-  expect(fakes.anki.requisicoes.filter(r => r.caminho === '/jobs/retry' && r.dados?.jobId === 'job-ru-parte')).toHaveLength(1);
-});
-
-test('Continuar envio que falha: ENV-14 no detalhe, com a causa em Detalhes, sem toast', async ({ page, extensao, fakes }) => {
-  fakes.anki.responder('POST', '/jobs/retry', () => ({ status: 500, json: { error: 'retry_failed' } }));
-  await abrirAnki(page, extensao);
-  await listaDeEnvios(page).getByRole('option', { name: /Envio em russo/ }).click();
-  const detalhe = detalheDoEnvio(page, 'Envio em russo · 4 frases');
-
-  await detalhe.getByRole('button', { name: 'Continuar envio' }).click();
-
-  await expect(detalhe).toContainText('Não deu para retomar o envio. Confira se a Conexão com o Anki está ligada.');
-  await detalhe.getByText('Detalhes', { exact: true }).click();
-  await expect(detalhe.locator('pre')).toContainText('HTTP 500');
-  await expect(detalhe.locator('pre')).toContainText('collection is not available');
-  await expect(page.locator('.veio-toast')).toHaveCount(0);
-});
-
-test('só o envio em parte ou que não concluiu tem Continuar envio; o em andamento diz a etapa', async ({ page, extensao }) => {
-  await abrirAnki(page, extensao);
-  const opcoes = listaDeEnvios(page).getByRole('option');
-
-  await opcoes.filter({ hasText: 'Envio em inglês · 6 frases' }).click();
-  const andando = detalheDoEnvio(page, 'Envio em inglês · 6 frases');
-  await expect(andando).toContainText('Enviando… · Escolhendo imagens');
-  await expect(andando.getByRole('button', { name: 'Continuar envio' })).toHaveCount(0);
-
-  await opcoes.filter({ hasText: 'Envio em inglês · 12 frases' }).click();
-  const concluido = detalheDoEnvio(page, 'Envio em inglês · 12 frases');
-  await expect(concluido).toContainText('Concluído');
-  await expect(concluido.getByRole('button', { name: 'Continuar envio' })).toHaveCount(0);
-
-  await opcoes.filter({ hasText: 'Envio em inglês · 3 frases' }).click();
-  const falhou = detalheDoEnvio(page, 'Envio em inglês · 3 frases');
-  await expect(falhou).toContainText('Não concluído');
-  await expect(falhou.getByRole('button', { name: 'Continuar envio' })).toBeVisible();
-});
-
-test('o total do envio bate com a soma das partes, inclusive os outros custos (#9)', async ({ page, extensao }) => {
-  await abrirAnki(page, extensao, { gravado: { pm_anki_quatro_casas: true } });
-  await listaDeEnvios(page).getByRole('option', { name: /Envio em russo/ }).click();
-
-  const detalhe = detalheDoEnvio(page, 'Envio em russo · 4 frases');
-  const partes = detalhe.locator('dl');
-  await expect(partes).toContainText('Outros custos');
-  const valores = await partes.locator('dd').allTextContents();
-  const numero = texto => Number(texto.replace('US$', '').replace(/\s/g, '').replace(',', '.'));
-  const [total, ...resto] = valores.map(numero).reverse();
-  expect(total).toBeCloseTo(0.0452, 4);
-  expect(resto.reduce((a, b) => a + b, 0)).toBeCloseTo(total, 4);
-});
-
-test('dinheiro com 2 casas e “< US$ 0,01”; a chave 4 casas passa tudo a 4 casas, e fica lembrada', async ({ page, extensao }) => {
-  await abrirAnki(page, extensao);
-  await listaDeEnvios(page).getByRole('option', { name: /Envio em russo/ }).click();
-  const detalhe = detalheDoEnvio(page, 'Envio em russo · 4 frases');
-  await expect(detalhe.locator('dl')).toContainText('Escolha e triagem< US$ 0,01');
-  for (const parte of await camadaPrincipal(page).all()) await expect(parte).not.toContainText(/US\$ \d+,\d{4}/);
-
-  await custos(page).getByText('Avançado').click();
-  await expect(page.getByRole('checkbox', { name: 'Mostrar custos com 4 casas' })).not.toBeChecked();
-  await usarChave(page, 'Mostrar custos com 4 casas', true);
-
-  await expect(azulejos(page)).toContainText('US$ 0,1545');
-  await expect(detalhe.locator('dl')).toContainText('Escolha e triagemUS$ 0,0012');
-  await expect(page.locator('#anki-custos-faixa')).toContainText('US$ 0,1331');
-  await expect(custos(page)).not.toContainText('< US$ 0,01');
-  await expect.poll(async () => (await extensao.lerStorage('pm_anki_quatro_casas')).pm_anki_quatro_casas).toBe(true);
-
-  await page.reload();
-  await expect(azulejos(page)).toContainText('US$ 0,1545');
-
-  await custos(page).getByText('Avançado').click();
-  await usarChave(page, 'Mostrar custos com 4 casas', false);
-  await expect(azulejos(page)).toContainText('US$ 0,15');
-  await expect(azulejos(page)).not.toContainText('US$ 0,1545');
-});
-
-test('os IDs dos envios só aparecem com a chave ligada, e ela fica lembrada', async ({ page, extensao }) => {
-  await abrirAnki(page, extensao);
-  await expect(listaDeEnvios(page).getByRole('option')).toHaveCount(4);
-  await expect(listaDeEnvios(page)).not.toContainText('job-ru-parte');
-
-  await custos(page).getByText('Avançado').click();
-  await usarChave(page, 'Mostrar IDs dos envios', true);
-  await expect(listaDeEnvios(page)).toContainText('job-ru-parte');
-  await expect.poll(async () => (await extensao.lerStorage('pm_anki_ids_dos_envios')).pm_anki_ids_dos_envios).toBe(true);
-
-  await page.reload();
-  await expect(listaDeEnvios(page)).toContainText('job-ru-parte');
-});
-
-test('o Avançado mostra escolha e triagem com 4 casas e baixa o diagnóstico de um envio', async ({ page, extensao }) => {
-  await abrirAnki(page, extensao);
-  await custos(page).getByText('Avançado').click();
-  const avancado = page.locator('#anki-custos-avancado');
-  await expect(avancado).toContainText('Escolha de imagemUS$ 0,0029');
-  await expect(avancado).toContainText('Triagem de imagemUS$ 0,0015');
-  await expect(avancado).toContainText('Total com 4 casasUS$ 0,1545');
-
-  const baixando = page.waitForEvent('download');
-  await avancado.getByRole('row', { name: /Envio em russo/ }).getByRole('button', { name: 'Baixar diagnóstico' }).click();
-  const download = await baixando;
-  expect(download.suggestedFilename()).toBe('diagnostico-job-ru-parte.json');
-  await expect(page.locator('.veio-toast')).toHaveCount(0);
-});
-
-test('com 4 casas, um valor abaixo de US$ 0,0001 diz “< US$ 0,0001”, nunca “US$ 0,0000”', async ({ page, extensao, fakes }) => {
-  fakes.anki.definirCustos([{
-    jobId: 'job-minimo', lang: 'en', createdAt: '2026-09-18T11:00:00', status: 'completed', pedidas: 2,
-    custos: { cartoes: 0.0200, triagem: 0.00003 },
-  }]);
-  await abrirAnki(page, extensao, { gravado: { pm_anki_quatro_casas: true } });
-
-  const detalhe = detalheDoEnvio(page, 'Envio em inglês · 2 frases');
-  await expect(detalhe.locator('dl')).toContainText('Escolha e triagem< US$ 0,0001');
-  await expect(detalhe.locator('dl')).toContainText('Imagens geradasUS$ 0,0000');
-  await expect(detalhe.locator('dl')).toContainText('TotalUS$ 0,0200');
-});
-
 test('↻ Atualizar com a Conexão desligada não pede os baralhos; ligada, pede e deixa abrir o Anki (BRG-24)', async ({ page, extensao, fakes }) => {
   const pedidosDeBaralhos = () => fakes.anki.requisicoes.filter(r => r.caminho === '/anki/stats/decks' && r.dados.refresh === true);
   await abrirAnki(page, extensao);
@@ -394,8 +220,10 @@ test('↻ Atualizar com a Conexão desligada não pede os baralhos; ligada, pede
   await expect(page.getByText(F1)).toBeHidden();
   await expect.poll(() => pedidosDeBaralhos().length).toBe(1);
   expect(pedidosDeBaralhos()[0].dados.launch).toBe(true);
+  await estadoFinal(extensao, { pm_anki_custos: { periodo: 'mes', de: '2026-09-01', ate: '2026-09-18' } });
 });
 
+// Exceção de teste: sem-estado-guardado — com a Conexão desligada, o Atualizar não lê nem grava nada.
 test('Ajustes de envio com a Conexão desligada: continuam editáveis, com a nota de que valem no próximo envio', async ({ page, extensao, fakes }) => {
   const nota = 'Os ajustes continuam editáveis com a conexão desligada. Valem a partir do próximo envio.';
   await abrirAnki(page, extensao, { hash: '#anki/ajustes' });
@@ -408,6 +236,7 @@ test('Ajustes de envio com a Conexão desligada: continuam editáveis, com a not
   await expect(page.getByRole('textbox', { name: 'Baralho' })).toBeEditable();
 });
 
+// Exceção de teste: sem-estado-guardado — o foco e as setas só andam pela tela; nada é gravado.
 test('os controles de Custos têm nome e foco visível; a lista anda com as setas', async ({ page, extensao }) => {
   await abrirAnki(page, extensao);
   await expect(listaDeEnvios(page).getByRole('option')).toHaveCount(4);

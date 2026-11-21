@@ -92,6 +92,7 @@ test('painel: com a porta muda, o Tentar de novo volta a Conectando e termina de
   await expect(pontoDaConexao(page)).toHaveAttribute('data-estado', 'ligada');
   await expect(faixaF1(page)).toBeHidden();
   await fotografar(page, 'painel-conexao-ligada.png');
+  expect(await lerJaConectou(extensao)).toBe(true);
 });
 
 test('painel: a primeira resposta ligada grava “já respondeu neste computador”; desligada, nunca respondeu', async ({ page, extensao, fakes }) => {

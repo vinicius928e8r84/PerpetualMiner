@@ -28,6 +28,7 @@ async function abrirPainel(page, extensao, endereco) {
 
 const card = (page, secao) => page.locator(`#cfg-${secao}`);
 const resumo = (page, secao) => card(page, secao).locator('.cfg-resumo');
+const zona = page => card(page, 'perigo');
 const campoDaChave = page => card(page, 'chave').getByRole('textbox', { name: 'Chave do Gemini' });
 const toast = page => page.locator('.veio-toast');
 const toastCom = (page, texto) => page.locator('.veio-toast', { hasText: texto });
@@ -68,10 +69,10 @@ test('trocar a chave com Enter grava a nova, mostra o toast CFG-16 e o card volt
   await expect(toast(page)).toHaveText('Chave do Gemini salva');
   await expect(campoDaChave(page)).toHaveCount(0);
   await expect(card(page, 'chave').locator('.cfg-corpo').getByText('AIza••••••••fG9h')).toBeVisible();
-  expect((await extensao.lerStorage('geminiApiKey')).geminiApiKey).toBe(OUTRA_CHAVE);
 
   await card(page, 'chave').getByRole('button', { name: 'Chave do Gemini', exact: true }).click();
   await expect(resumo(page, 'chave')).toHaveText('AIza••••••••fG9h');
+  expect((await extensao.lerStorage('geminiApiKey')).geminiApiKey).toBe(OUTRA_CHAVE);
 });
 
 test('sem chave: o campo fica aberto; salvar vazio é recusado em danger e salvar pelo botão grava', async ({ page, extensao }) => {
@@ -135,7 +136,7 @@ test('sem conta: o alcance é este computador; Cancelar tem o foco, Esc fecha e 
   await extensao.gravarStorage({ frases: frasesDeExemplo(3) });
   await abrirPainel(page, extensao, '#configuracoes/perigo');
 
-  const perigo = card(page, 'perigo');
+  const perigo = zona(page);
   await expect(perigo.getByText('Apagar tudo aqui não dá para desfazer.', { exact: true })).toBeVisible();
   await expect(perigo.getByText('Apagar todas as frases', { exact: true })).toBeVisible();
   await expect(perigo.getByText('3 frases neste computador')).toBeVisible();
@@ -166,7 +167,7 @@ test('sem conta: confirmar no modal apaga o histórico, mostra CFG-18 e zera o t
   await extensao.gravarStorage({ frases: frasesDeExemplo(3) });
   await abrirPainel(page, extensao, '#configuracoes/perigo');
 
-  await card(page, 'perigo').getByRole('button', { name: 'Apagar todas as 3 frases' }).click();
+  await zona(page).getByRole('button', { name: 'Apagar todas as 3 frases' }).click();
   await modal(page).getByRole('button', { name: 'Apagar 3 frases' }).click();
 
   await expect(modal(page)).toBeHidden();
@@ -174,8 +175,8 @@ test('sem conta: confirmar no modal apaga o histórico, mostra CFG-18 e zera o t
   await expect(page.locator('#shell-total')).toHaveText('0');
   await expect.poll(() => extensao.frases()).toEqual([]);
 
-  await expect(card(page, 'perigo').getByRole('button', { name: 'Nenhuma frase para apagar' })).toBeDisabled();
-  await expect(card(page, 'perigo').getByText('Nenhuma frase no histórico')).toBeVisible();
+  await expect(zona(page).getByRole('button', { name: 'Nenhuma frase para apagar' })).toBeDisabled();
+  await expect(zona(page).getByText('Nenhuma frase no histórico')).toBeVisible();
   await expect(resumo(page, 'perigo')).toHaveText('Nenhuma frase');
 });
 
@@ -183,15 +184,16 @@ test('com 1 frase, a entrada, o título e a confirmação falam no singular', as
   await extensao.gravarStorage({ frases: frasesDeExemplo(1) });
   await abrirPainel(page, extensao, '#configuracoes/perigo');
 
-  await expect(card(page, 'perigo').getByText('1 frase neste computador')).toBeVisible();
-  await card(page, 'perigo').getByRole('button', { name: 'Apagar 1 frase' }).click();
+  await expect(zona(page).getByText('1 frase neste computador')).toBeVisible();
+  await zona(page).getByRole('button', { name: 'Apagar 1 frase' }).click();
   await expect(modal(page)).toHaveAccessibleName('Apagar 1 frase?');
   await expect(modal(page).getByRole('button', { name: 'Apagar 1 frase' })).toBeVisible();
+  expect(await extensao.frases()).toHaveLength(1);
 });
 
 test('sem frases, a entrada fica indisponível com “Nenhuma frase para apagar”', async ({ page, extensao }) => {
   await abrirPainel(page, extensao, '#configuracoes/perigo');
-  await expect(card(page, 'perigo').getByRole('button', { name: 'Nenhuma frase para apagar' })).toBeDisabled();
+  await expect(zona(page).getByRole('button', { name: 'Nenhuma frase para apagar' })).toBeDisabled();
   await expect(modal(page)).toHaveCount(0);
 });
 
@@ -204,7 +206,7 @@ test('com conta: o alcance é todos os computadores, e confirmar apaga também a
   await abrirPainel(page, extensao, '#configuracoes/perigo');
   await expect(page.locator('#shell-chip')).toContainText('Sincronizado');
 
-  const perigo = card(page, 'perigo');
+  const perigo = zona(page);
   await expect(perigo.getByText('Apagar tudo aqui não dá para desfazer, e vale para todos os computadores da sua conta.')).toBeVisible();
   await expect(perigo.getByText('2 frases em todos os computadores da sua conta')).toBeVisible();
 
@@ -229,7 +231,7 @@ test('com conta e a chave da OpenAI, Apagar tudo diz que a chave também sai e a
   await expect(card(page, 'ia').locator('.cfg-resumo')).toHaveText('••••••••9f3a');
   await expect.poll(() => fakes.anki.chaveNaConexao()).toBe(chave);
 
-  await card(page, 'perigo').getByRole('button', { name: 'Apagar todas as 2 frases' }).click();
+  await zona(page).getByRole('button', { name: 'Apagar todas as 2 frases' }).click();
   await expect(modal(page)).toContainText('Elas somem deste computador e de todos os outros conectados à sua conta. Não dá para desfazer. A chave da OpenAI também sai, da sua conta e da Conexão com o Anki.');
   await modal(page).getByRole('button', { name: 'Apagar 2 frases' }).click();
 
@@ -245,7 +247,7 @@ test('sem a chave da OpenAI, o modal do Apagar tudo não fala dela', async ({ pa
   await extensao.gravarStorage({ frases: frasesDeExemplo(1) });
   await abrirPainel(page, extensao, '#configuracoes/perigo');
 
-  await card(page, 'perigo').getByRole('button', { name: 'Apagar 1 frase' }).click();
+  await zona(page).getByRole('button', { name: 'Apagar 1 frase' }).click();
 
   await expect(modal(page)).toContainText('Elas somem deste computador.');
   await expect(modal(page)).not.toContainText('chave');
@@ -258,7 +260,7 @@ test('com conta, enquanto a nuvem não responde, a Zona de perigo não finge que
   fakes.google.segurarLeituras();
   await abrirPainel(page, extensao, '#configuracoes/perigo');
 
-  const perigo = card(page, 'perigo');
+  const perigo = zona(page);
   await expect(perigo.getByText('Apagar tudo aqui não dá para desfazer, e vale para todos os computadores da sua conta.')).toBeVisible();
   await expect(perigo.getByRole('button', { name: /Apagar|Nenhuma/ })).toHaveCount(0);
   await expect(perigo.getByText('Nenhuma frase no histórico')).toHaveCount(0);
@@ -273,7 +275,7 @@ test('com conta e a nuvem fora do ar, as frases apagadas não voltam quando ela 
   await expect(page.locator('#shell-chip')).toContainText('Sincronizado');
 
   fakes.google.ficarForaDoAr();
-  await card(page, 'perigo').getByRole('button', { name: 'Apagar todas as 2 frases' }).click();
+  await zona(page).getByRole('button', { name: 'Apagar todas as 2 frases' }).click();
   await modal(page).getByRole('button', { name: 'Apagar 2 frases' }).click();
   const toastsDeApagado = () => toastCom(page, 'Todas as frases foram apagadas').count();
   await expect(page.locator('#shell-total')).toHaveText('0');
@@ -302,7 +304,7 @@ test('com conta e a nuvem fora do ar, o que outro computador gravou antes també
   const antes = { frasesLocais: await extensao.frases(), frasesNaNuvem: fakes.google.frasesDe('uid-outro') };
 
   fakes.google.ficarForaDoAr();
-  await card(page, 'perigo').getByRole('button', { name: 'Apagar todas as 2 frases' }).click();
+  await zona(page).getByRole('button', { name: 'Apagar todas as 2 frases' }).click();
   if (process.env.TEST_EVIDENCE_DIR) {
     await page.screenshot({ path: path.join(process.env.TEST_EVIDENCE_DIR, 'apagar-tudo-confirmacao.png'), fullPage: true, animations: 'disabled' });
   }
@@ -325,7 +327,6 @@ test('com conta e a nuvem fora do ar, o que outro computador gravou antes també
   await expect.poll(() => fakes.google.frasesDe('uid-outro').map(f => String(f.id))).toEqual([String(depois.id)]);
   await expect(page.locator('#shell-total')).toHaveText('1');
   expect((await extensao.frases()).filter(f => String(f.id) !== String(depois.id))).toEqual([]);
-  expect(await extensao.lerStorage('pm_apagar_tudo')).toEqual({});
   expect(fakes.google.apagadasDe('uid-outro').sort()).toEqual([...frases.map(f => String(f.id)), String(doOutroComputador.id)].sort());
   if (process.env.TEST_EVIDENCE_DIR) {
     await page.locator('a[href="#frases"]').click();
@@ -343,6 +344,7 @@ test('com conta e a nuvem fora do ar, o que outro computador gravou antes també
       },
     }, null, 2) + '\n');
   }
+  expect(await extensao.lerStorage('pm_apagar_tudo')).toEqual({});
 });
 
 test('com movimento reduzido, o flash dos cards novos e o ponto da chave ficam parados', async ({ page, extensao, relogioParado }) => {
@@ -351,14 +353,15 @@ test('com movimento reduzido, o flash dos cards novos e o ponto da chave ficam p
   await extensao.gravarStorage({ geminiApiKey: CHAVE_DO_GEMINI, frases: frasesDeExemplo(2) });
   await abrirPainel(page, extensao, '#configuracoes/perigo');
 
-  await expect(card(page, 'perigo')).toHaveClass(/shell-card--destaque/);
-  expect(await card(page, 'perigo').evaluate(el => getComputedStyle(el).animationName)).toBe('none');
+  await expect(zona(page)).toHaveClass(/shell-card--destaque/);
+  expect(await zona(page).evaluate(el => getComputedStyle(el).animationName)).toBe('none');
   await card(page, 'chave').getByRole('button', { name: 'Chave do Gemini', exact: true }).click();
   expect(await card(page, 'chave').locator('.cfg-ponto').evaluate(el => getComputedStyle(el).animationName)).toBe('none');
 
-  await card(page, 'perigo').getByRole('button', { name: 'Apagar todas as 2 frases' }).click();
+  await zona(page).getByRole('button', { name: 'Apagar todas as 2 frases' }).click();
   await expect(modal(page)).toBeVisible();
   expect(await modal(page).evaluate(el => getComputedStyle(el).animationName)).toBe('none');
+  expect(await extensao.frases()).toHaveLength(2);
 });
 
 test('pelo teclado: Trocar chave, digitar e Enter; abrir o modal com Enter e confirmar com Tab', async ({ page, extensao }) => {
@@ -375,7 +378,7 @@ test('pelo teclado: Trocar chave, digitar e Enter; abrir o modal com Enter e con
   await expect(toast(page)).toHaveText('Chave do Gemini salva');
 
   await page.goto(extensao.url('painel.html#configuracoes/perigo'));
-  const entrada = card(page, 'perigo').getByRole('button', { name: 'Apagar todas as 2 frases' });
+  const entrada = zona(page).getByRole('button', { name: 'Apagar todas as 2 frases' });
   await entrada.focus();
   await page.keyboard.press('Enter');
   await expect(modal(page).getByRole('button', { name: 'Cancelar' })).toBeFocused();

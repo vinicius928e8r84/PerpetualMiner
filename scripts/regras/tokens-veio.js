@@ -62,15 +62,26 @@ function literal(propriedade, valorBruto) {
   return proibido ? proibido.problema(p) : null;
 }
 
-function achadosNoCss(css, deslocamento, original) {
+const IMITACAO_DO_BADGE = Object.freeze({
+  arquivo: 'e2e/vitrine/vitrine.html',
+  seletor: '.icone-com-badge b',
+  problemas: ['raio literal', 'tamanho de letra literal'],
+});
+
+function isencaoDoArquivo(arquivo) {
+  if (arquivo !== IMITACAO_DO_BADGE.arquivo) return () => false;
+  return (seletor, problema) => seletor === IMITACAO_DO_BADGE.seletor && IMITACAO_DO_BADGE.problemas.includes(problema);
+}
+
+function achadosNoCss(css, deslocamento, original, isento = () => false) {
   const achados = [];
   const blocos = deslocamento.atributo
-    ? [{ corpo: css, inicio: 0 }]
-    : [...css.matchAll(/\{([^{}]*)\}/g)].map(m => ({ corpo: m[1], inicio: m.index + 1 }));
-  for (const { corpo, inicio } of blocos) {
+    ? [{ seletor: '', corpo: css, inicio: 0 }]
+    : [...css.matchAll(/([^{}]*)\{([^{}]*)\}/g)].map(m => ({ seletor: m[1].replace(/\s+/g, ' ').trim(), corpo: m[2], inicio: m.index + m[1].length + 1 }));
+  for (const { seletor, corpo, inicio } of blocos) {
     for (const m of corpo.matchAll(/([a-zA-Z-]+)\s*:\s*([^;]+)/g)) {
       const problema = literal(m[1], m[2]);
-      if (!problema) continue;
+      if (!problema || isento(seletor, problema)) continue;
       const linha = linhaDe(original, deslocamento.inicio + inicio + m.index);
       achados.push({ linha, detalhe: `${problema}: ${m[0].trim().replace(/\s+/g, ' ')}` });
     }
@@ -112,8 +123,9 @@ function verificar(arquivo, fonte) {
   if (arquivo.endsWith('.css')) return achadosNoCss(semComentariosCss(fonte), { inicio: 0 }, fonte);
   const achados = [];
   const html = semComentariosHtml(fonte);
+  const isento = isencaoDoArquivo(arquivo);
   for (const m of html.matchAll(/(<style[^>]*>)([\s\S]*?)<\/style>/g)) {
-    achados.push(...achadosNoCss(m[2], { inicio: m.index + m[1].length }, fonte));
+    achados.push(...achadosNoCss(m[2], { inicio: m.index + m[1].length }, fonte, isento));
   }
   for (const m of html.matchAll(/\sstyle\s*=\s*(["'])([^"']*)\1/g)) {
     const inicio = m.index + m[0].indexOf(m[2]);

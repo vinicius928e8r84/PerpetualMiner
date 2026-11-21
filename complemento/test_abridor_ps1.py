@@ -43,7 +43,7 @@ class OPs1NoPowerShell(unittest.TestCase):
 
     def escrever(self, perfil="Usuário 1"):
         abridor.Abridor(
-            sistema="windows", pasta=self.pasta, programa=self.anki, onde_registrar={}, registro=RegistroDeMentira(),
+            sistema=abridor.NoWindows({}, RegistroDeMentira()), pasta=self.pasta, programa=self.anki,
         ).escrever(perfil)
 
     def anki_no_lugar(self, abre):

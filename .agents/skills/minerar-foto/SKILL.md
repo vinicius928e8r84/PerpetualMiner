@@ -1,6 +1,6 @@
 ---
 name: minerar-foto
-description: "Use when changing or reviewing Minerar de uma foto (`bookreader/bookreader.html/js/css`). Reviewers: open it when the PR touches that surface. It holds the architecture notes moved out of CLAUDE.md for it (what it shows, the IDs it implements, its storage and its tests)."
+description: "Use when changing or reviewing Minerar de uma foto (`bookreader/bookreader.html/js/css`, `bookreader/leitura-do-gemini.js`, `bookreader/abrir-o-painel.js`). Reviewers: open it when the PR touches that surface. It holds the architecture notes moved out of CLAUDE.md for it (what it shows, the IDs it implements, its storage and its tests)."
 ---
 
 # Minerar de uma foto

@@ -44,75 +44,116 @@ def _image_query_content_terms(query: str) -> list[str]:
     return deduped
 
 
+_NO_QUERY = ("none", "none.", "n/a")
+_QUERY_HEADINGS = {
+    "google image search queries:",
+    "image search queries:",
+}
+_WINDOW_SIZES = (4, 3, 2)
+_SEARCH_FIELDS = (
+    r"\*{0,2}Google Image Search:\*{0,2}\s*(.+)",
+    r"\*{0,2}Image Search Query:\*{0,2}\s*(.+)",
+)
+_IMAGE_FIELD = r"\*{0,2}Image:\*{0,2}\s*(.+)"
+_MEANING_FIELDS = (
+    r"Translation:\s*([^\n]+)",
+    r"Literal:\s*([^\n]+)",
+    r"Natural:\s*([^\n]+)",
+    r"Gist:\s*([^\n]+)",
+    r"Definition:\s*([^\n]+)",
+    r"Simple meaning:\s*([^\n]+)",
+)
+_BACK_FIELD = r"Back:\s*\*{0,2}([^*\n/]+)"
+_FRONT_FIELD = r"Front:?\s*([^\n]+)"
+
+
+def _is_a_query(value: str) -> bool:
+    return bool(value) and value.lower() not in _NO_QUERY
+
+
+def _without_punctuation(text: str) -> str:
+    return re.sub(r"\s+", " ", re.sub(r"[^A-Za-z0-9\s]", " ", text)).strip()
+
+
+def _unique_ignoring_case(texts: list[str]) -> list[str]:
+    unique: list[str] = []
+    seen: set[str] = set()
+    for text in texts:
+        key = text.casefold()
+        if text and key not in seen:
+            unique.append(text)
+            seen.add(key)
+    return unique
+
+
 def _english_query_variants_from_text(query: str) -> list[str]:
     clean = _normalize_image_query(query)
     if not clean:
         return []
-
-    variants = [clean]
-    no_punct = re.sub(r"[^A-Za-z0-9\s]", " ", clean)
-    no_punct = re.sub(r"\s+", " ", no_punct).strip()
-    if no_punct and no_punct.casefold() != clean.casefold():
-        variants.append(no_punct)
-
+    no_punct = _without_punctuation(clean)
     words = [w for w in no_punct.split() if len(w) > 2]
-    if len(words) >= 2:
-        for size in (4, 3, 2):
-            if len(words) >= size:
-                for i in range(len(words) - size + 1):
-                    variants.append(" ".join(words[i:i + size]))
-    content_words = _image_query_content_terms(clean)
-    if content_words:
-        variants.append(" ".join(content_words[:2]))
-        variants.append(" ".join(content_words[:3]))
-        variants.append(" ".join(content_words[:4]))
-        if len(content_words) >= 2:
-            variants.append(f"{content_words[0]} {content_words[-1]}")
-    if words:
-        variants.append(" ".join(sorted(words, key=len, reverse=True)[:3]))
-    if len(words) > 5:
-        variants.append(" ".join(words[:5]))
-    if len(words) > 6:
-        variants.append(" ".join(words[:4]))
-        variants.append(" ".join(words[-4:]))
+    variants = [clean] + _punctuation_free_variant(clean, no_punct) + _word_windows(words)
+    variants += _content_word_variants(_image_query_content_terms(clean)) + _longest_words(words) + _first_five_words(words)
+    return _unique_ignoring_case(variants)
 
-    deduped: list[str] = []
-    seen: set[str] = set()
-    for variant in variants:
-        key = variant.casefold()
-        if variant and key not in seen:
-            deduped.append(variant)
-            seen.add(key)
-    return deduped
+
+def _punctuation_free_variant(clean: str, no_punct: str) -> list[str]:
+    differs = no_punct.casefold() != clean.casefold()
+    return [no_punct] if no_punct and differs else []
+
+
+def _word_windows(words: list[str]) -> list[str]:
+    return [" ".join(words[i:i + size]) for size in _WINDOW_SIZES for i in range(len(words) - size + 1)]
+
+
+def _content_word_variants(content_words: list[str]) -> list[str]:
+    if not content_words:
+        return []
+    variants = [" ".join(content_words[:size]) for size in (2, 3, 4)]
+    if len(content_words) >= 2:
+        variants.append(f"{content_words[0]} {content_words[-1]}")
+    return variants
+
+
+def _longest_words(words: list[str]) -> list[str]:
+    return [" ".join(sorted(words, key=len, reverse=True)[:3])] if words else []
+
+
+def _first_five_words(words: list[str]) -> list[str]:
+    return [" ".join(words[:5])] if len(words) > 5 else []
 
 
 def _extract_multiline_image_queries(content: str) -> list[str]:
     lines = [line.rstrip() for line in (content or "").splitlines()]
-    headings = {
-        "google image search queries:",
-        "image search queries:",
-    }
-    queries: list[str] = []
+    heading = next((idx for idx, line in enumerate(lines) if _is_a_query_heading(line)), None)
+    if heading is None:
+        return []
+    return _queries_of_the_block(lines[heading + 1:])
 
-    for idx, line in enumerate(lines):
-        clean = line.strip().strip("*").strip()
-        if clean.lower() not in headings:
-            continue
 
-        for next_line in lines[idx + 1:]:
-            raw = next_line.strip()
-            if not raw:
-                break
-            if re.match(r"^[A-Za-z][A-Za-z ]+:", raw):
-                break
-            raw = raw.strip("*").strip()
-            match = re.match(r"^(?:[-*]|\d+[.)]|[A-Da-d][.)])\s*(.+)$", raw)
-            query = (match.group(1) if match else raw).strip()
-            query = _normalize_image_query(query)
-            if query and query.lower() not in ("none", "none.", "n/a"):
-                queries.append(query)
-        break
-    return queries
+def _is_a_query_heading(line: str) -> bool:
+    return line.strip().strip("*").strip().lower() in _QUERY_HEADINGS
+
+
+def _queries_of_the_block(lines: list[str]) -> list[str]:
+    queries = [_query_of_the_line(raw) for raw in _lines_of_the_query_block(lines)]
+    return [query for query in queries if _is_a_query(query)]
+
+
+def _lines_of_the_query_block(lines: list[str]) -> list[str]:
+    block = []
+    for line in lines:
+        raw = line.strip()
+        if not raw or re.match(r"^[A-Za-z][A-Za-z ]+:", raw):
+            break
+        block.append(raw)
+    return block
+
+
+def _query_of_the_line(raw: str) -> str:
+    raw = raw.strip("*").strip()
+    match = re.match(r"^(?:[-*]|\d+[.)]|[A-Da-d][.)])\s*(.+)$", raw)
+    return _normalize_image_query((match.group(1) if match else raw).strip())
 
 
 def _image_field_value(content: str, pattern: str) -> str:
@@ -130,58 +171,31 @@ def _build_card_google_queries(
     max_queries: int = 8,
 ) -> list[str]:
     is_ru = lang == "ru"
-    queries: list[str] = []
-
-    queries.extend(_extract_multiline_image_queries(card_text))
-
-    for pattern in (
-        r"\*{0,2}Google Image Search:\*{0,2}\s*(.+)",
-        r"\*{0,2}Image Search Query:\*{0,2}\s*(.+)",
-    ):
-        value = _image_field_value(card_text, pattern)
-        if value and value.lower() not in ("none", "none.", "n/a"):
-            queries.append(value)
-
+    queries = _extract_multiline_image_queries(card_text) + _search_field_queries(card_text)
     if len(queries) < max_queries:
-        image_prompt = _image_field_value(card_text, r"\*{0,2}Image:\*{0,2}\s*(.+)")
-        if image_prompt and image_prompt.lower() not in ("none", "none.", "n/a"):
-            queries.extend(_english_query_variants_from_text(image_prompt))
+        queries += _queries_from_the_meaning(card_text, is_ru) + _queries_from_the_words(card_text, stem, is_ru)
+        queries += _english_query_variants_from_text(prompt)
+    return _unique_ignoring_case([_normalize_image_query(query.strip(" -*\t\r\n")) for query in queries])[:max_queries]
 
-        for pattern in (
-            r"Translation:\s*([^\n]+)",
-            r"Literal:\s*([^\n]+)",
-            r"Natural:\s*([^\n]+)",
-            r"Gist:\s*([^\n]+)",
-            r"Definition:\s*([^\n]+)",
-            r"Simple meaning:\s*([^\n]+)",
-        ):
-            value = _image_field_value(card_text, pattern)
-            if value:
-                queries.extend(_english_query_variants_from_text(value))
 
-        back_value = _image_field_value(card_text, r"Back:\s*\*{0,2}([^*\n/]+)")
-        if back_value:
-            queries.extend(_english_query_variants_from_text(back_value) if is_ru else [back_value])
+def _search_field_queries(card_text: str) -> list[str]:
+    values = [_image_field_value(card_text, pattern) for pattern in _SEARCH_FIELDS]
+    return [value for value in values if _is_a_query(value)]
 
-        front_value = _image_field_value(card_text, r"Front:?\s*([^\n]+)")
-        if front_value and not is_ru:
-            queries.append(front_value)
 
-        if stem and not is_ru:
-            queries.append(stem.replace("_", " ").strip())
+def _queries_from_the_meaning(card_text: str, is_ru: bool) -> list[str]:
+    image_prompt = _image_field_value(card_text, _IMAGE_FIELD)
+    queries = _english_query_variants_from_text(image_prompt) if _is_a_query(image_prompt) else []
+    for pattern in _MEANING_FIELDS:
+        queries += _english_query_variants_from_text(_image_field_value(card_text, pattern))
+    back_value = _image_field_value(card_text, _BACK_FIELD)
+    return queries + (_english_query_variants_from_text(back_value) if is_ru else [back_value])
 
-        if prompt:
-            queries.extend(_english_query_variants_from_text(prompt))
 
-    deduped: list[str] = []
-    seen: set[str] = set()
-    for query in queries:
-        clean = _normalize_image_query(query.strip(" -*\t\r\n"))
-        key = clean.casefold()
-        if clean and key not in seen:
-            deduped.append(clean)
-            seen.add(key)
-    return deduped[:max_queries] if deduped else []
+def _queries_from_the_words(card_text: str, stem: str, is_ru: bool) -> list[str]:
+    if is_ru:
+        return []
+    return [_image_field_value(card_text, _FRONT_FIELD), stem.replace("_", " ").strip() if stem else ""]
 
 
 def _visual_subject_for_card(card_text: str, stem: str, prompt: str) -> str:
@@ -194,7 +208,7 @@ def _visual_subject_for_card(card_text: str, stem: str, prompt: str) -> str:
         r"Back:\s*\*{0,2}([^*\n/]+)",
     ):
         value = _image_field_value(card_text, pattern)
-        if value and value.lower() not in ("none", "none.", "n/a"):
+        if _is_a_query(value):
             return value
     return prompt or stem.replace("_", " ")
 

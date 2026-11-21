@@ -77,6 +77,34 @@ const ACHADOS = [
     ],
   },
   {
+    porque: 'a imitação do badge na vitrine (veio/README.md § Como usar) pode ter o raio e a letra do Chrome, e só ela',
+    arquivo: 'e2e/vitrine/vitrine.html',
+    fonte: [
+      '<style>',
+      '  /* o badge do Chrome */',
+      '  .icone-com-badge b { border-radius: 3px; font-size: 10px; color: #fff; transition: all 2s; }',
+      '  .icone-com-badge i { border-radius: 3px; }',
+      '  @media (min-width: 1px) { .icone-com-badge b { font-size: 10px; } }',
+      '</style>',
+      '<b class="icone-com-badge" style="font-size: 10px"></b>',
+    ].join('\n'),
+    esperado: [
+      { linha: 3, detalhe: 'cor literal em `color`: color: #fff' },
+      { linha: 3, detalhe: 'duração literal: transition: all 2s' },
+      { linha: 4, detalhe: 'raio literal: border-radius: 3px' },
+      { linha: 7, detalhe: 'tamanho de letra literal: font-size: 10px' },
+    ],
+  },
+  {
+    porque: 'o mesmo seletor fora da vitrine não é a imitação do badge',
+    arquivo: 'popup/popup.html',
+    fonte: '<style>\n  .icone-com-badge b { border-radius: 3px; font-size: 10px; }\n</style>\n',
+    esperado: [
+      { linha: 2, detalhe: 'raio literal: border-radius: 3px' },
+      { linha: 2, detalhe: 'tamanho de letra literal: font-size: 10px' },
+    ],
+  },
+  {
     porque: 'o estilo no JS e a cor solta numa string, uma vez por linha',
     arquivo: 'painel.js',
     fonte: [
