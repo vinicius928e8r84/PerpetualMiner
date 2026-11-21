@@ -33,20 +33,29 @@ function lerConfiguracaoDaVersao(raiz, versao) {
 const globsDe = config => (Array.isArray(config.ignorar) ? config.ignorar : []).map(regra => regra.glob);
 const marcasDe = config => (Array.isArray(config.marcasDeGerado) ? config.marcasDeGerado : []);
 
+const CAMPOS_QUE_SO_DESCEM = ['limiteDeBytes', 'linhasDoCabecalho'];
+
+function camposQueSubiram(preparada, doHead) {
+  return CAMPOS_QUE_SO_DESCEM.filter(campo => preparada[campo] > doHead[campo])
+    .map(campo => `"${campo}" subiu de ${doHead[campo]} para ${preparada[campo]}`);
+}
+
+function linhaDeBaseTrocada(preparada, doHead) {
+  if (preparada.linhaDeBase === doHead.linhaDeBase) return [];
+  return [`"linhaDeBase" mudou de ${doHead.linhaDeBase} para ${preparada.linhaDeBase}`];
+}
+
+function entradasNovas(daPreparada, doHead) {
+  return daPreparada.filter(entrada => !doHead.includes(entrada));
+}
+
 function afrouxamentosDaConfiguracao(preparada, doHead) {
-  const achados = [];
-  for (const campo of ['limiteDeBytes', 'linhasDoCabecalho']) {
-    if (preparada[campo] > doHead[campo]) achados.push(`"${campo}" subiu de ${doHead[campo]} para ${preparada[campo]}`);
-  }
-  if (preparada.linhaDeBase !== doHead.linhaDeBase) achados.push(`"linhaDeBase" mudou de ${doHead.linhaDeBase} para ${preparada.linhaDeBase}`);
-  const globsDoHead = globsDe(doHead);
-  for (const glob of globsDe(preparada)) {
-    if (!globsDoHead.includes(glob)) achados.push(`"ignorar" ganhou o glob ${JSON.stringify(glob)}`);
-  }
-  for (const marca of marcasDe(preparada)) {
-    if (!marcasDe(doHead).includes(marca)) achados.push(`"marcasDeGerado" ganhou ${JSON.stringify(marca)}`);
-  }
-  return achados;
+  return [
+    ...camposQueSubiram(preparada, doHead),
+    ...linhaDeBaseTrocada(preparada, doHead),
+    ...entradasNovas(globsDe(preparada), globsDe(doHead)).map(glob => `"ignorar" ganhou o glob ${JSON.stringify(glob)}`),
+    ...entradasNovas(marcasDe(preparada), marcasDe(doHead)).map(marca => `"marcasDeGerado" ganhou ${JSON.stringify(marca)}`),
+  ];
 }
 
 function carregarConfiguracao(raiz, padrao, nova = '', velha = 'HEAD') {

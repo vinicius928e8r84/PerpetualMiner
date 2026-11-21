@@ -69,7 +69,6 @@
   },
   "dialogo-nativo": {},
   "saude-do-codigo": {
-    ".agents/skills/verificar-historico/explorar.js": 17,
     ".agents/skills/verificar-historico/variantes.py": 1,
     "background.js": 41,
     "complemento/abridor.py": 9,
@@ -267,10 +266,7 @@
     "scripts/ci/test_registrar_na_pr.js": 6,
     "scripts/ci/test_registro_da_pr.js": 3,
     "scripts/empacotar-extensao.mjs": 7,
-    "scripts/ganchos/configuracao-do-indice.js": 2,
-    "scripts/ganchos/entrada-do-gancho.js": 3,
     "scripts/ganchos/globs.js": 1,
-    "scripts/ganchos/mensagens-de-tamanho.js": 2,
     "scripts/ganchos/test_limite_de_tokens.js": 6,
     "scripts/ganchos/test_pre_push.js": 11,
     "scripts/grupos-de-teste.js": 4,
