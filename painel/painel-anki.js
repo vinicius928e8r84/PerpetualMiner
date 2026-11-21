@@ -12,12 +12,6 @@
   ];
   const CODIGO_DO_IDIOMA = Object.fromEntries(IDIOMAS_DOS_AZULEJOS.map(({ idioma, codigo }) => [idioma, codigo]));
   const NOME_DO_IDIOMA = { en: 'INGLES', ru: 'RUSSO' };
-  const STATUS_DO_ENVIO = {
-    completed: { tom: 'ok', selo: 'veio-selo--ok', retomavel: false },
-    partial: { tom: 'parte', selo: 'veio-selo--parte', retomavel: true },
-    failed: { tom: 'erro', selo: 'veio-selo--erro', retomavel: true },
-  };
-  const ANDANDO = { tom: 'andando', selo: 'veio-selo--info', retomavel: false };
   const ORIGENS = [
     { chave: 'real', rotulo: 'BRG-09.fotoReal', serie: 'real' },
     { chave: 'generated', rotulo: 'BRG-09.geradaPorIa', serie: 'gerada' },
@@ -25,13 +19,14 @@
     { chave: 'failed', rotulo: 'BRG-09.falhou', serie: 'falhou' },
   ];
 
-  const { textoDaVoz, Veio, Shell, ConexaoAnki, Contexto, IDIOMAS, PrimeiraConexao, PedidoAoAnki, ConversaComOAnki, PlanoDosCustos, SomaDosCustos } = raiz;
+  const { textoDaVoz, Veio, Shell, ConexaoAnki, Contexto, IDIOMAS, PrimeiraConexao, PedidoAoAnki, ConversaComOAnki, PlanoDosCustos, SomaDosCustos, RetratoDosCustos } = raiz;
   const { elemento } = Veio;
   const { numero, partes } = SomaDosCustos;
   const somar = envios => SomaDosCustos.somar(envios, ORIGENS);
   const { haQuanto } = Contexto;
   const { ENDERECO: ENDERECO_DA_CONEXAO, SITUACAO: CONEXAO } = ConexaoAnki;
   const porId = id => document.getElementById(id);
+  const { datasDoPeriodo, linhasDosCustos, naoEntraram, resultadoDaLeitura, situacaoDoDetalhe, statusDoEnvio } = RetratoDosCustos;
 
   const estado = {
     periodo: 'mes',
@@ -108,10 +103,13 @@
 
   let anterior = CONEXAO.CONECTANDO;
 
+  const acabouDeLigar = (antes, situacao) => situacao === CONEXAO.LIGADA && antes !== CONEXAO.LIGADA;
+  const naAreaDoAnki = () => Shell.areaAtual() === 'anki';
+
   function aoMudarAConexao(situacao) {
     const antes = anterior;
     anterior = situacao;
-    if (situacao === CONEXAO.LIGADA && antes !== CONEXAO.LIGADA && Shell.areaAtual() === 'anki') ler();
+    if (acabouDeLigar(antes, situacao) && naAreaDoAnki()) ler();
     desenhar();
   }
 
@@ -129,47 +127,44 @@
     ouvintesDoAtualizar.push(ouvinte);
   }
 
-  function dataIso(data) {
-    const mes = String(data.getMonth() + 1).padStart(2, '0');
-    const dia = String(data.getDate()).padStart(2, '0');
-    return `${data.getFullYear()}-${mes}-${dia}`;
-  }
-
-  function datasDoPeriodo(periodo) {
-    const hoje = new Date();
-    if (periodo === 'hoje') return { periodo, de: dataIso(hoje), ate: dataIso(hoje) };
-    if (periodo === 'mes') return { periodo, de: dataIso(new Date(hoje.getFullYear(), hoje.getMonth(), 1)), ate: dataIso(hoje) };
-    return { periodo: 'tudo', de: '', ate: '' };
-  }
-
   function escolherPeriodo(periodo) {
     Object.assign(estado, datasDoPeriodo(periodo));
     ler();
   }
 
-  async function ler({ calado = false } = {}) {
-    if (calado && estado.carregando) return;
-    const leitura = ++estado.leitura;
-    const { periodo, de, ate } = estado;
-    if (!calado) {
-      estado.carregando = true;
-      estado.erro = null;
-      desenhar();
-    }
+  const caladaDuranteOutraLeitura = calado => calado && estado.carregando;
+  const outraLeituraVeioDepois = leitura => leitura !== estado.leitura;
+  const caladaSemEnvios = (calado, envios) => calado && !envios;
 
+  function mostrarQueLe() {
+    estado.carregando = true;
+    estado.erro = null;
+    desenhar();
+  }
+
+  async function lerOsEnvios({ de, ate }) {
     const pedidoDosCustos = PedidoAoAnki.custosDosEnvios({ de, ate });
     const pedido = `POST /analytics/jobs ${JSON.stringify(pedidoDosCustos.corpo)}`;
-    const desfecho = await ConversaComOAnki.pedir(pedidoDosCustos);
-    const envios = desfecho.ok ? (Array.isArray(desfecho.dados.jobs) ? desfecho.dados.jobs : []) : null;
-    const erro = desfecho.ok ? null : `${pedido} · ${desfecho.status >= 300 ? `HTTP ${desfecho.status}` : desfecho.detalhes}`;
-    if (leitura !== estado.leitura || (calado && !envios)) return;
+    return resultadoDaLeitura(await ConversaComOAnki.pedir(pedidoDosCustos), pedido);
+  }
+
+  function guardarALeitura(leitura) {
+    estado.dados = leitura;
+    chrome.storage.local.set({ [CHAVE_CUSTOS]: estado.dados });
+  }
+
+  async function ler({ calado = false } = {}) {
+    if (caladaDuranteOutraLeitura(calado)) return;
+    const leitura = ++estado.leitura;
+    const { periodo, de, ate } = estado;
+    if (!calado) mostrarQueLe();
+
+    const { envios, erro } = await lerOsEnvios({ de, ate });
+    if (outraLeituraVeioDepois(leitura) || caladaSemEnvios(calado, envios)) return;
 
     estado.carregando = false;
     estado.erro = erro;
-    if (envios) {
-      estado.dados = { quando: Date.now(), periodo, de, ate, envios };
-      chrome.storage.local.set({ [CHAVE_CUSTOS]: estado.dados });
-    }
+    if (envios) guardarALeitura({ quando: Date.now(), periodo, de, ate, envios });
     desenhar();
   }
 
@@ -194,50 +189,62 @@
   }
 
   function vistaDosCustos() {
-    if (desligada() && estado.dados) return 'antiga';
-    if (!jaRespondeu()) return 'esqueleto';
-    if (estado.carregando) return 'carregando';
-    if (estado.erro || desligada()) return 'erro';
-    if (!estado.dados) return 'carregando';
-    return estado.dados.envios.length ? 'dados' : 'vazio';
+    const { carregando, erro, dados } = estado;
+    return RetratoDosCustos.vistaDosCustos({ desligada: desligada(), respondeu: jaRespondeu(), carregando, erro, dados });
   }
 
   function desenharCustos() {
     const vista = vistaDosCustos();
     const comDados = vista === 'dados' || vista === 'antiga';
-    const periodo = vista === 'antiga' ? estado.dados : estado;
+    desenharOPeriodo(vista === 'antiga');
+    desenharOSeloAntigo(vista === 'antiga');
+    porId('anki-custos-azulejos').hidden = !comDados;
+    porId('anki-custos-avancado').hidden = !comDados;
+    desenharOCorpo(vista);
+  }
+
+  function desenharOPeriodo(antiga) {
+    const periodo = antiga ? estado.dados : estado;
     for (const radio of document.querySelectorAll('input[name="periodo-custos"]')) {
       radio.checked = radio.value === periodo.periodo;
-      radio.disabled = vista === 'antiga';
+      radio.disabled = antiga;
     }
     for (const [campo, valor] of [[porId('anki-custos-de'), periodo.de], [porId('anki-custos-ate'), periodo.ate]]) {
       campo.value = valor || '';
-      campo.disabled = vista === 'antiga';
+      campo.disabled = antiga;
     }
+  }
 
+  function desenharOSeloAntigo(antiga) {
     const antigo = porId('anki-custos-antigo');
-    antigo.hidden = vista !== 'antiga';
-    if (vista === 'antiga') {
-      antigo.replaceChildren(...partesDoSeloAntigo(estado.dados.quando));
-    }
+    antigo.hidden = !antiga;
+    if (antiga) antigo.replaceChildren(...partesDoSeloAntigo(estado.dados.quando));
+  }
 
-    porId('anki-custos-azulejos').hidden = !comDados;
-    porId('anki-custos-avancado').hidden = !comDados;
+  const PECAS_DA_VISTA = {
+    esqueleto: () => [esqueleto()],
+    carregando: () => [linhaDeEspera(textoDaVoz('BRG-25')), esqueleto()],
+    erro: erroDosCustos,
+    vazio: () => [vazioDosCustos()],
+    dados: pecasDosEnvios,
+    antiga: pecasDosEnvios,
+  };
 
-    const foco = document.activeElement?.closest?.('#anki-custos-corpo [data-foco]')?.dataset.foco;
+  const focoNoCorpo = () => document.activeElement?.closest?.('#anki-custos-corpo [data-foco]')?.dataset.foco;
+
+  function desenharOCorpo(vista) {
+    const foco = focoNoCorpo();
     const corpo = porId('anki-custos-corpo');
-    if (vista === 'esqueleto') corpo.replaceChildren(esqueleto());
-    else if (vista === 'carregando') corpo.replaceChildren(linhaDeEspera(textoDaVoz('BRG-25')), esqueleto());
-    else if (vista === 'erro') corpo.replaceChildren(...erroDosCustos());
-    else if (vista === 'vazio') corpo.replaceChildren(vazioDosCustos());
-    else {
-      const envios = enviosDoIdioma();
-      desenharAzulejos();
-      const soma = somar(envios);
-      corpo.replaceChildren(...[PlanoDosCustos.cartao(envios, dinheiro), faixaDeResumo(soma), origemDasImagens(soma), listaEDetalhe(envios)].filter(Boolean));
-      desenharAvancado(envios, soma);
-    }
+    corpo.replaceChildren(...PECAS_DA_VISTA[vista]());
     if (foco) corpo.querySelector(`[data-foco="${CSS.escape(foco)}"]`)?.focus();
+  }
+
+  function pecasDosEnvios() {
+    const envios = enviosDoIdioma();
+    desenharAzulejos();
+    const soma = somar(envios);
+    desenharAvancado(envios, soma);
+    return [PlanoDosCustos.cartao(envios, dinheiro), faixaDeResumo(soma), origemDasImagens(soma), listaEDetalhe(envios)].filter(Boolean);
   }
 
   function partesDoSeloAntigo(quando, causa = `GET ${ENDERECO_DA_CONEXAO}/health · sem resposta`) {
@@ -322,9 +329,7 @@
   }
 
   function enviosDoIdioma(idioma = estado.idioma) {
-    return [...estado.dados.envios]
-      .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
-      .filter(envio => idioma === 'all' || envio.lang === idioma);
+    return RetratoDosCustos.enviosDoIdioma(estado.dados.envios, idioma);
   }
 
   function montarAzulejos() {
@@ -440,10 +445,6 @@
     escolherEnvio(envios[destino].jobId);
   }
 
-  function statusDoEnvio(envio) {
-    return STATUS_DO_ENVIO[envio.status] || ANDANDO;
-  }
-
   function textoDoSelo(envio) {
     if (envio.status === 'completed') return textoDaVoz('ENV-07.concluido');
     if (envio.status === 'failed') return textoDaVoz('ENV-07.falhou');
@@ -459,6 +460,14 @@
   }
 
   function detalheDoEnvio(envio) {
+    const situacao = situacaoDoDetalhe(envio, estado);
+    const detalhe = cabecaDoDetalhe(envio);
+    detalhe.append(...avisosDoDetalhe(envio, situacao), custosDoEnvio(envio), imagensDoEnvio(envio));
+    if (situacao.retomavel) detalhe.append(continuar.montar(envio));
+    return detalhe;
+  }
+
+  function cabecaDoDetalhe(envio) {
     const idDoTitulo = 'anki-detalhe-titulo';
     const meta = [haQuanto(envio.createdAt), nomeDoIdioma(envio.lang)];
     if (estado.ids) meta.push(envio.jobId);
@@ -468,37 +477,32 @@
       seloDoEnvio(envio));
     detalhe.querySelector('h3').id = idDoTitulo;
     detalhe.setAttribute('aria-labelledby', idDoTitulo);
+    return detalhe;
+  }
 
-    const apagado = envio.lastError === 'frases_apagadas' || estado.apagados.has(envio.jobId);
-    const retomavel = statusDoEnvio(envio).retomavel && !apagado;
-    if (apagado) detalhe.append(elemento('p', 'anki-motivo', textoDaVoz('ENV-24.apagado')));
-    if (retomavel) {
-      const naoEntraram = numero(envio.failedCards) || Math.max(0, numero(envio.requestedCards) - numero(envio.successfulCards));
-      const falhaAoRetomar = estado.falhasAoRetomar.get(envio.jobId);
-      const motivo = falhaAoRetomar ? textoDaVoz('ENV-14.falha') : textoDaVoz('ENV-10.naoEntraram', { n: naoEntraram });
-      detalhe.append(elemento('p', 'anki-motivo', motivo));
-      const causas = [falhaAoRetomar, envio.lastError].filter(Boolean).map(String);
-      if (causas.length) detalhe.append(Veio.montarDetalhes(causas.join('\n')));
-    } else if (envio.lastError) {
-      detalhe.append(Veio.montarDetalhes(String(envio.lastError)));
-    }
+  const linhaDoMotivo = texto => elemento('p', 'anki-motivo', texto);
 
+  function avisosDoDetalhe(envio, { apagado, retomavel, falhaAoRetomar }) {
+    if (retomavel) return avisosDeRetomar(envio, falhaAoRetomar);
+    const avisos = apagado ? [linhaDoMotivo(textoDaVoz('ENV-24.apagado'))] : [];
+    if (envio.lastError) avisos.push(Veio.montarDetalhes(String(envio.lastError)));
+    return avisos;
+  }
+
+  function avisosDeRetomar(envio, falhaAoRetomar) {
+    const avisos = [linhaDoMotivo(falhaAoRetomar ? textoDaVoz('ENV-14.falha') : textoDaVoz('ENV-10.naoEntraram', { n: naoEntraram(envio) }))];
+    const causas = [falhaAoRetomar, envio.lastError].filter(Boolean).map(String);
+    if (causas.length) avisos.push(Veio.montarDetalhes(causas.join('\n')));
+    return avisos;
+  }
+
+  function custosDoEnvio(envio) {
     const p = partes(envio);
-    const linhas = [
-      [textoDaVoz('BRG-08.criacaoDeCartoes'), p.cartoes],
-      [textoDaVoz('BRG-08.imagensGeradas'), p.geradas],
-      [textoDaVoz('BRG-29.escolhaETriagem'), p.escolha + p.triagem],
-    ];
-    if (p.outros > 0) linhas.push([textoDaVoz('BRG-29.outros'), p.outros]);
-    if (p.correcao > 0) linhas.push([textoDaVoz('BRG-51'), p.correcao]);
-    const custos = elemento('dl', 'anki-partes', ...linhas.flatMap(([rotulo, valor]) =>
-      [elemento('dt', null, rotulo), elemento('dd', null, dinheiro(valor))]));
+    const custos = elemento('dl', 'anki-partes', ...linhasDosCustos(p).flatMap(([codigo, valor]) =>
+      [elemento('dt', null, textoDaVoz(codigo)), elemento('dd', null, dinheiro(valor))]));
     custos.append(elemento('dt', 'anki-partes__total', textoDaVoz('BRG-29.total')),
       elemento('dd', 'anki-partes__total', dinheiro(p.total)));
-    detalhe.append(custos, imagensDoEnvio(envio));
-
-    if (retomavel) detalhe.append(continuar.montar(envio));
-    return detalhe;
+    return custos;
   }
 
   function imagensDoEnvio(envio) {
