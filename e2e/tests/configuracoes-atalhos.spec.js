@@ -165,6 +165,7 @@ test('sair do card cancela a gravação: a tecla digitada lá fora não vira ata
   await expect(tecla(page, 'Minerar legenda')).toHaveText('Alt+S');
   await expect(tecla(page, 'Minerar seleção')).toHaveText('Sem atalho');
   await expect(gravar(page, 'Minerar legenda')).toBeEnabled();
+  expect(await atalhosGravados(extensao)).toEqual({});
 });
 
 test('clique esquerdo e direito não gravam: a gravação continua', async ({ page, extensao }) => {
@@ -284,6 +285,7 @@ test('Restaurar aparece assim que um atalho deixa o padrão', async ({ page, ext
   await page.keyboard.press('Alt+KeyE');
 
   await expect(restaurar(page)).toBeVisible();
+  await expect.poll(async () => (await atalhosGravados(extensao)).pm_atalho).toMatchObject({ type: 'keyboard', code: 'KeyE', altKey: true });
 });
 
 test('pelo teclado: Tab chega ao Gravar atalho, Enter grava e o foco aparece', async ({ page, extensao }) => {
@@ -297,6 +299,7 @@ test('pelo teclado: Tab chega ao Gravar atalho, Enter grava e o foco aparece', a
   await expect(cancelar(page, 'Minerar legenda')).toBeFocused();
   await page.keyboard.press('Control+Shift+KeyK');
   await expect(tecla(page, 'Minerar legenda')).toHaveText('Ctrl+Shift+K');
+  await expect.poll(async () => (await atalhosGravados(extensao)).pm_atalho_legenda).toMatchObject({ type: 'keyboard', code: 'KeyK', ctrlKey: true, shiftKey: true, altKey: false });
 });
 
 test('o leitor de tela ouve a gravação, o aviso de repetido e o nome da ação de cada botão', async ({ page, extensao }) => {
@@ -310,6 +313,7 @@ test('o leitor de tela ouve a gravação, o aviso de repetido e o nome da ação
   await expect(linha(page, 'Minerar seleção').getByRole('status')).toHaveText('Pressione as teclas ou um botão extra do mouse…');
   await page.keyboard.press('Alt+KeyS');
   await expect(linha(page, 'Minerar seleção').getByRole('alert')).toHaveText('Esse atalho já é do Minerar legenda. Grave outro.');
+  expect(await atalhosGravados(extensao)).toEqual({});
 });
 
 test('com movimento reduzido, a pílula de gravação não pulsa', async ({ page, extensao }) => {
@@ -323,6 +327,7 @@ test('com movimento reduzido, a pílula de gravação não pulsa', async ({ page
     return { nome: estilo.animationName, repeticoes: estilo.animationIterationCount };
   });
   expect(animacao.nome).toBe('none');
+  expect(await atalhosGravados(extensao)).toEqual({});
 });
 
 test('com movimento reduzido, a tecla nova não pisca', async ({ page, extensao }) => {
@@ -334,6 +339,7 @@ test('com movimento reduzido, a tecla nova não pisca', async ({ page, extensao 
   const kbd = tecla(page, 'Minerar legenda');
   await expect(kbd).toHaveText('Ctrl+Shift+K');
   expect(await kbd.evaluate(el => getComputedStyle(el).animationName)).toBe('none');
+  await expect.poll(async () => (await atalhosGravados(extensao)).pm_atalho_legenda).toMatchObject({ type: 'keyboard', code: 'KeyK', ctrlKey: true, shiftKey: true, altKey: false });
 });
 
 test('sem movimento reduzido, a pílula de gravação pulsa', async ({ page, extensao }) => {
@@ -343,6 +349,7 @@ test('sem movimento reduzido, a pílula de gravação pulsa', async ({ page, ext
 
   const repeticoes = await tecla(page, 'Minerar legenda').evaluate(el => getComputedStyle(el).animationIterationCount);
   expect(repeticoes).toBe('infinite');
+  expect(await atalhosGravados(extensao)).toEqual({});
 });
 
 test('com o botão voltar gravado para a legenda, minerar não leva a página de volta', async ({ page, paginas, extensao }) => {

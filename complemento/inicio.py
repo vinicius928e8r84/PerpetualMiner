@@ -9,7 +9,7 @@ import sys
 
 from . import abridor as abridores, item_de_login as itens_de_login, passagem as passagens, pasta_de_dados, registro, tipo_de_nota
 from .baralhos import ColecaoIndisponivel
-from .atualizacao import ARQUIVO_DE_QUEM_DESLIGOU, AnkiWebAusente, Atualizacao
+from .atualizacao import ARQUIVO_DE_QUEM_DESLIGOU, AnkiWebAusente, Atualizacao, RegistroDaAtualizacao
 from .configuracao import ATUALIZACAO_AUTOMATICA, OPENAI_BASE, OPENVERSE_BASE, ORIGENS_ACEITAS, PORTA, VERSAO, VOZ_BASE
 from .servidor import Conexao
 
@@ -71,7 +71,7 @@ def iniciar(
             voz_base=voz_base,
             item_de_login=item_de_login,
             atualizacao=Atualizacao(
-                arquivo=os.path.join(dados.raiz, "atualizacao.json"), anki_web=anki_web or AnkiWebAusente(), versao=VERSAO, logger=logger,
+                registro=RegistroDaAtualizacao(os.path.join(dados.raiz, "atualizacao.json"), VERSAO, logger), anki_web=anki_web or AnkiWebAusente(), logger=logger,
                 ligada=atualizacao_automatica and not os.path.exists(os.path.join(dados.raiz, ARQUIVO_DE_QUEM_DESLIGOU))),
         )
         _cuidar_do_perfil(conexao, abridor, ao_abrir_o_perfil, logger)

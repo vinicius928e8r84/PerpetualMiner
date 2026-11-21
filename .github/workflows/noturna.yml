@@ -89,7 +89,7 @@ jobs:
           tests/abrir-o-anki-sozinho.spec.js tests/boas-vindas-nivel-visual.spec.js tests/boas-vindas-quiz-ritmo.spec.js
           tests/boas-vindas-visual.spec.js tests/conexao-anki.spec.js tests/conexao-na-tela.spec.js tests/configuracoes-conta-relogio.spec.js
           tests/configuracoes-perigo-visual.spec.js tests/lembrete-configuracao.spec.js tests/painel-ajustes-frente-visual.spec.js
-          tests/painel-apagar.spec.js tests/painel-frases-visual.spec.js tests/painel-minerar-frases.spec.js tests/painel-shell-visual.spec.js
+          tests/painel-apagar.spec.js tests/painel-frases-visual.spec.js tests/painel-minerar-frases.spec.js tests/painel-minerar-frases-menu.spec.js tests/painel-shell-visual.spec.js
           tests/painel-shell.spec.js tests/popup-visual.spec.js tests/popup.spec.js tests/ter-o-anki-abridor-falha.spec.js
           tests/ter-o-anki-abridor-mudo.spec.js tests/ter-o-anki-mac-visual.spec.js tests/ter-o-anki-mac.spec.js tests/ter-o-anki.spec.js
           tests/overlay-marca.spec.js tests/overlay-visual.spec.js tests/seam.spec.js tests/sincronizacao.spec.js

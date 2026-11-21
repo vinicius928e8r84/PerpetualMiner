@@ -30,7 +30,7 @@ from .ia_dos_cartoes import IaDosCartoes
 from .modelo_dos_cartoes import ModeloDosCartoes, lista_nossa
 from .teto_do_mes import TetoDoMes
 from .perfil import PerfilFixo
-from .atualizacao import AnkiWebAusente, Atualizacao
+from .atualizacao import AnkiWebAusente, Atualizacao, RegistroDaAtualizacao
 from .rotas_da_atualizacao import ROTAS_DA_ATUALIZACAO
 from .rotas_dos_baralhos import ROTAS_DOS_BARALHOS
 from .rotas_da_frente import ROTAS_DA_FRENTE
@@ -296,7 +296,7 @@ class Conexao:
         self.firestore_base = firestore_base
         self.item_de_login = item_de_login
         self.atualizacao = atualizacao or Atualizacao(
-            arquivo=os.path.join(dados.raiz, "atualizacao.json"), anki_web=AnkiWebAusente(), versao=versao, logger=logger)
+            registro=RegistroDaAtualizacao(os.path.join(dados.raiz, "atualizacao.json"), versao, logger), anki_web=AnkiWebAusente(), logger=logger)
         self.intervalo_de_parada = intervalo_de_parada
         self._servidor = None
         self._thread = None

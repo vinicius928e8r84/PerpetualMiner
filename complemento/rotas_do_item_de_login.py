@@ -8,14 +8,20 @@ def _estado_do_item_de_login(conexao, corpo):
     return 200, {"ok": True, "ligado": item is not None and item.ligado()}
 
 
-def _abrir_com_o_computador(conexao, corpo):
-    """Escreve (`ligado: true`) ou apaga (`ligado: false`) o item de login que abre o Anki com o computador."""
-    ligado = corpo.get("ligado")
+def _recusa_do_pedido(ligado, item):
     if not isinstance(ligado, bool):
         return 400, {"error": "invalid_request"}
-    item = conexao.item_de_login
     if item is None:
         return 501, {"error": "login_item_unsupported"}
+    return None
+
+
+def _abrir_com_o_computador(conexao, corpo):
+    """Escreve (`ligado: true`) ou apaga (`ligado: false`) o item de login que abre o Anki com o computador."""
+    ligado, item = corpo.get("ligado"), conexao.item_de_login
+    recusa = _recusa_do_pedido(ligado, item)
+    if recusa:
+        return recusa
     try:
         if ligado:
             item.ligar()

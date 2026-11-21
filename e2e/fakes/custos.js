@@ -1,26 +1,54 @@
 'use strict';
 
+const PARCELAS_DO_TOTAL = ['cardUsd', 'imageJudgeUsd', 'imageGuardUsd', 'imageGenerationUsd', 'otherUsd', 'correctionUsd'];
+const CAMPO_DO_PREFIXO = [['[image_judge]', 'imageJudgeUsd'], ['[image_guard]', 'imageGuardUsd']];
+const CUSTO_DA_LINHA = [['cardUsd', 'cartoes'], ['imageJudgeUsd', 'escolha'], ['imageGuardUsd', 'triagem'], ['imageGenerationUsd', 'geradas'], ['otherUsd', 'outros']];
+const IMAGEM_DA_LINHA = [['real', 'real'], ['generated', 'geradas'], ['skipped', 'sem'], ['failed', 'falhas']];
+
+const arredondar = valor => Math.round(valor * 1e6) / 1e6;
+const somar = (a, b) => a + b;
+const terminouComFalha = status => ['failed', 'partial'].includes(status);
+
+const antesDoComeco = (dia, de) => Boolean(de) && dia < de;
+const depoisDoFim = (dia, ate) => Boolean(ate) && dia > ate;
+const dentroDoPeriodo = (dia, { de, ate }) => !antesDoComeco(dia, de) && !depoisDoFim(dia, ate);
+
+const palavraDo = registro => String(registro.keyword || '');
+const custoDo = registro => registro.cost_usd || 0;
+
+function campoDaPalavra(palavra) {
+  const doPrefixo = CAMPO_DO_PREFIXO.find(([prefixo]) => palavra.startsWith(prefixo));
+  return doPrefixo ? doPrefixo[1] : 'cardUsd';
+}
+
+const SOMA_DO_TIPO = new Map([
+  ['tokens', (soma, registro) => { soma.custos[campoDaPalavra(palavraDo(registro))] += custoDo(registro); }],
+  ['correction_tokens', (soma, registro) => { soma.correcao = (soma.correcao || 0) + custoDo(registro); }],
+  ['plan_tokens', (soma, registro) => { soma.doPlano.add(palavraDo(registro)); soma.naChave += registro.would_cost_usd || 0; }],
+]);
+
+function somaDosRegistros(registros) {
+  const soma = {
+    custos: { cardUsd: 0, imageJudgeUsd: 0, imageGuardUsd: 0, imageGenerationUsd: 0, otherUsd: 0, totalUsd: 0 },
+    correcao: null, doPlano: new Set(), naChave: 0,
+  };
+  for (const registro of registros) SOMA_DO_TIPO.get(registro.type)?.(soma, registro);
+  return soma;
+}
+
+function custosComTotal({ custos, correcao }) {
+  const comCorrecao = correcao === null ? { ...custos } : { ...custos, correctionUsd: correcao };
+  comCorrecao.totalUsd = PARCELAS_DO_TOTAL.reduce((total, campo) => total + (comCorrecao[campo] || 0), 0);
+  return comCorrecao;
+}
+
+const resumoDoPlano = ({ doPlano, naChave }) => (doPlano.size ? { plan: { cards: doPlano.size, wouldCostUsd: arredondar(naChave) } } : {});
+
 function resumoDosCustos(registros, de, ate) {
-  const custos = { cardUsd: 0, imageJudgeUsd: 0, imageGuardUsd: 0, imageGenerationUsd: 0, otherUsd: 0, totalUsd: 0 };
-  let contados = 0;
-  const doPlano = new Set();
-  let naChave = 0;
-  let correcao = null;
-  for (const registro of registros) {
-    const dia = String(registro.date || '').slice(0, 10);
-    if ((de && dia < de) || (ate && dia > ate)) continue;
-    contados += 1;
-    const palavra = String(registro.keyword || '');
-    const campo = palavra.startsWith('[image_judge]') ? 'imageJudgeUsd' : palavra.startsWith('[image_guard]') ? 'imageGuardUsd' : 'cardUsd';
-    if (registro.type === 'tokens') custos[campo] += registro.cost_usd || 0;
-    if (registro.type === 'correction_tokens') correcao = (correcao || 0) + (registro.cost_usd || 0);
-    if (registro.type === 'plan_tokens') { doPlano.add(palavra); naChave += registro.would_cost_usd || 0; }
-  }
-  if (correcao !== null) custos.correctionUsd = correcao;
-  custos.totalUsd = custos.cardUsd + custos.imageJudgeUsd + custos.imageGuardUsd + custos.imageGenerationUsd + custos.otherUsd + (custos.correctionUsd || 0);
-  const arredondados = Object.fromEntries(Object.entries(custos).map(([chave, valor]) => [chave, Math.round(valor * 1e6) / 1e6]));
-  const plano = doPlano.size ? { plan: { cards: doPlano.size, wouldCostUsd: Math.round(naChave * 1e6) / 1e6 } } : {};
-  return { costs: arredondados, images: imagensZeradas(), matchedRecords: contados, ...plano };
+  const contados = registros.filter(registro => dentroDoPeriodo(String(registro.date || '').slice(0, 10), { de, ate }));
+  const soma = somaDosRegistros(contados);
+  const arredondados = Object.fromEntries(Object.entries(custosComTotal(soma)).map(([chave, valor]) => [chave, arredondar(valor)]));
+  return { costs: arredondados, images: imagensZeradas(), matchedRecords: contados.length, ...resumoDoPlano(soma) };
 }
 
 function imagensZeradas() {
@@ -30,49 +58,59 @@ function imagensZeradas() {
   };
 }
 
+function cartoesQueFalharam(state, pedidas, enviadas) {
+  const marcados = state.failedPhraseIds.length;
+  return terminouComFalha(state.status) ? Math.max(marcados, pedidas - enviadas) : marcados;
+}
+
+function linhaDoEnvio(envio, resumo) {
+  const { state, corpo } = envio;
+  const pedidas = new Set(envio.entries.map(e => e.phraseId)).size;
+  const enviadas = state.successfulPhraseIds.length;
+  return {
+    jobId: envio.jobId, createdAt: envio.createdAt, updatedAt: state.updatedAt, lang: envio.lang,
+    deckName: corpo.deckName || '', imageSource: corpo.imageSource || '', status: state.status, stage: state.stage,
+    requestedCards: pedidas, successfulCards: enviadas, failedCards: cartoesQueFalharam(state, pedidas, enviadas), lastError: state.lastError,
+    costs: resumo.costs, images: resumo.images, matchedRecords: resumo.matchedRecords, ...(resumo.plan ? { plan: resumo.plan } : {}),
+  };
+}
+
+const doIdioma = (linha, lang) => lang === 'all' || linha.lang === lang;
+
 function linhasDosCustosDaFila({ definidas, envios, registrosDeCusto }, corpo) {
   const { lang = 'all', from: de, to: ate } = corpo || {};
-  const doPeriodo = linha => (lang === 'all' || linha.lang === lang) && (!de || String(linha.createdAt).slice(0, 10) >= de) && (!ate || String(linha.createdAt).slice(0, 10) <= ate);
+  const doPeriodo = linha => doIdioma(linha, lang) && dentroDoPeriodo(String(linha.createdAt).slice(0, 10), { de, ate });
   if (definidas) return definidas.filter(doPeriodo);
-  return envios.filter(doPeriodo).map(envio => {
-    const resumo = resumoDosCustos(registrosDeCusto.get(envio.jobId) || [], de, ate);
-    const pedidas = new Set(envio.entries.map(e => e.phraseId)).size;
-    const enviadas = envio.state.successfulPhraseIds.length;
-    const falharam = ['failed', 'partial'].includes(envio.state.status) ? Math.max(envio.state.failedPhraseIds.length, pedidas - enviadas) : envio.state.failedPhraseIds.length;
-    return {
-      jobId: envio.jobId, createdAt: envio.createdAt, updatedAt: envio.state.updatedAt, lang: envio.lang,
-      deckName: envio.corpo.deckName || '', imageSource: envio.corpo.imageSource || '', status: envio.state.status, stage: envio.state.stage,
-      requestedCards: pedidas, successfulCards: enviadas, failedCards: falharam, lastError: envio.state.lastError,
-      costs: resumo.costs, images: resumo.images, matchedRecords: resumo.matchedRecords, ...(resumo.plan ? { plan: resumo.plan } : {}),
-    };
-  }).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  return envios.filter(doPeriodo)
+    .map(envio => linhaDoEnvio(envio, resumoDosCustos(registrosDeCusto.get(envio.jobId) || [], de, ate)))
+    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
 }
+
+const contagemPelosNomes = (pares, valores) => Object.fromEntries(pares.map(([campo, nome]) => [campo, valores[nome] || 0]));
+
+function custosDaLinha(custos) {
+  const costs = { ...contagemPelosNomes(CUSTO_DA_LINHA, custos), ...(custos.correcao ? { correctionUsd: custos.correcao } : {}) };
+  costs.totalUsd = Object.values(costs).reduce(somar, 0);
+  return costs;
+}
+
+function imagensDaLinha(imagens, economia) {
+  const contadas = contagemPelosNomes(IMAGEM_DA_LINHA, imagens);
+  const total = Object.values(contadas).reduce(somar, 0);
+  const pct = parte => (total ? Math.round((parte / total) * 1000) / 10 : 0);
+  return {
+    ...imagensZeradas(), ...contadas, savingsUsd: economia, total,
+    realPct: pct(contadas.real), generatedPct: pct(contadas.generated), skippedPct: pct(contadas.skipped), failedPct: pct(contadas.failed),
+  };
+}
+
+const cartoesEnviados = ({ enviadas, status, pedidas }) => enviadas ?? (status === 'completed' ? pedidas : 0);
 
 function linhaDeCustos({
   jobId, lang = 'en', createdAt, status = 'completed', stage, pedidas = 1, enviadas, lastError = null,
   custos = {}, imagens = {}, economia = 0, baralho = '', plano = null,
 }) {
-  const costs = {
-    cardUsd: custos.cartoes || 0,
-    imageJudgeUsd: custos.escolha || 0,
-    imageGuardUsd: custos.triagem || 0,
-    imageGenerationUsd: custos.geradas || 0,
-    otherUsd: custos.outros || 0,
-    ...(custos.correcao ? { correctionUsd: custos.correcao } : {}),
-  };
-  costs.totalUsd = Object.values(costs).reduce((a, b) => a + b, 0);
-  const images = {
-    ...imagensZeradas(),
-    real: imagens.real || 0,
-    generated: imagens.geradas || 0,
-    skipped: imagens.sem || 0,
-    failed: imagens.falhas || 0,
-    savingsUsd: economia,
-  };
-  images.total = images.real + images.generated + images.skipped + images.failed;
-  const pct = parte => (images.total ? Math.round((parte / images.total) * 1000) / 10 : 0);
-  Object.assign(images, { realPct: pct(images.real), generatedPct: pct(images.generated), skippedPct: pct(images.skipped), failedPct: pct(images.failed) });
-  const successfulCards = enviadas ?? (status === 'completed' ? pedidas : 0);
+  const successfulCards = cartoesEnviados({ enviadas, status, pedidas });
   return {
     jobId,
     createdAt,
@@ -84,10 +122,10 @@ function linhaDeCustos({
     stage: stage || status,
     requestedCards: pedidas,
     successfulCards,
-    failedCards: ['failed', 'partial'].includes(status) ? pedidas - successfulCards : 0,
+    failedCards: terminouComFalha(status) ? pedidas - successfulCards : 0,
     lastError,
-    costs,
-    images,
+    costs: custosDaLinha(custos),
+    images: imagensDaLinha(imagens, economia),
     matchedRecords: 1,
     ...(plano ? { plan: { cards: plano.cartoes, wouldCostUsd: plano.economia } } : {}),
   };
