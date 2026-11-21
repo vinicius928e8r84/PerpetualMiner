@@ -62,7 +62,6 @@
     "complemento/envios_dos_custos.py": 2,
     "complemento/gravacao_de_json.py": 4,
     "complemento/ia_dos_cartoes.py": 2,
-    "complemento/imagem_do_cartao.py": 1,
     "complemento/inicio.py": 16,
     "complemento/modelo_dos_cartoes.py": 4,
     "complemento/no_anki.py": 28,
