@@ -43,11 +43,11 @@ class SistemaDeMentira:
 class NaPassagem:
     """A Conexão nova (porta da Conexão de hoje de mentira, uma coleção e a thread de trabalho ligada) e a passagem por cima dela."""
 
-    def __init__(self, pasta, antiga, colecao=None, falha_em=None, **envio_no_teste):
+    def __init__(self, pasta, antiga, falha_em=None, **envio_no_teste):
         self.antiga, self.eventos, self.fotografias, self.dormiu = antiga, [], [], []
         envio_no_teste.setdefault("trabalhando", True)
         os.makedirs(os.path.join(pasta, "novo"))
-        self.novo = EnvioNoTeste(os.path.join(pasta, "novo"), colecao=colecao, chave=None, **envio_no_teste)
+        self.novo = EnvioNoTeste(os.path.join(pasta, "novo"), chave=None, **envio_no_teste)
         self.conexao = self.novo.conexao
         self.conexao.porta = antiga.porta
         self.sistema = SistemaDeMentira(antiga, self.eventos, ao_parar=lambda: self.fotografias.append(self.fotografar()), falha_em=falha_em)
