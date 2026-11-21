@@ -49,6 +49,18 @@ def envelhecer(conexao, job_id, dias):
     return datetime.fromisoformat(quando)
 
 
+def arquivos_do_envio(arquivos, job_id):
+    return sorted(nome for nome in arquivos if nome.startswith(("fila" + os.sep + job_id, "estado" + os.sep + job_id)))
+
+
+def custos_guardados(arquivos):
+    return {nome: dados for nome, dados in arquivos.items() if nome.startswith("custos" + os.sep)}
+
+
+def custos_sem_a_ficha(arquivos):
+    return {nome: dados for nome, dados in custos_guardados(arquivos).items() if not nome.endswith("ficha.json")}
+
+
 def linhas_dos_custos(conexao):
     return json.loads(conexao.pedir("POST", "/analytics/jobs", corpo={"lang": "all"})[2])["jobs"]
 
@@ -63,14 +75,11 @@ class UmEnvioTerminadoEVelho(unittest.TestCase):
             depois, linhas_depois, gasto_depois = arquivos_sem_o_log(conexao), linhas_dos_custos(conexao), conexao.conexao.teto.gasto()
             na_fila = json.loads(conexao.pedir("POST", "/jobs/list", corpo={})[2])["jobs"]
         self.assertEqual(apagados, [ID])
-        self.assertEqual(sorted(nome for nome in antes if nome.startswith(("fila" + os.sep + ID, "estado" + os.sep + ID))),
-                         [os.path.join("estado", ID + ".json"), os.path.join("fila", ID + ".json")])
-        self.assertEqual([nome for nome in depois if nome.startswith(("fila" + os.sep + ID, "estado" + os.sep + ID))], [])
+        self.assertEqual(arquivos_do_envio(antes, ID), [os.path.join("estado", ID + ".json"), os.path.join("fila", ID + ".json")])
+        self.assertEqual(arquivos_do_envio(depois, ID), [])
         self.assertEqual(json.loads(depois[os.path.join("fila", "fila.json")]), {"jobs": []})
         self.assertEqual([job["jobId"] for job in na_fila], [ID])
-        self.assertEqual(
-            {nome: dados for nome, dados in depois.items() if nome.startswith("custos" + os.sep) and not nome.endswith("ficha.json")},
-            {nome: dados for nome, dados in antes.items() if nome.startswith("custos" + os.sep)})
+        self.assertEqual(custos_sem_a_ficha(depois), custos_guardados(antes))
         self.assertTrue(linhas_antes[0]["costs"]["totalUsd"] > 0)
         self.assertEqual(linhas_depois, linhas_antes)
         self.assertEqual(gasto_depois, gasto_antes)
@@ -194,7 +203,7 @@ class UmErroDeDisco(unittest.TestCase):
             estado_do_outro = os.path.exists(arquivo_do_estado(conexao, OUTRO_ID))
             registro = " ".join(str(chamada) for chamada in fila.logger.method_calls)
             segunda = retencao_dos_envios.reter(fila)
-            sobrou = [nome for nome in arquivos_sem_o_log(conexao) if nome.startswith(("fila" + os.sep + ID, "estado" + os.sep + ID))]
+            sobrou = arquivos_do_envio(arquivos_sem_o_log(conexao), ID)
             linhas = linhas_dos_custos(conexao)
         self.assertEqual((primeira, estado_do_primeiro, estado_do_outro), ([OUTRO_ID], "completed", False))
         self.assertIn(ID, registro)
@@ -219,9 +228,9 @@ class UmErroDeDisco(unittest.TestCase):
 
             with mock.patch.object(retencao_dos_envios, "apagar", antivirus_trava_o_estado):
                 primeira = retencao_dos_envios.reter(fila)
-            sobrou = sorted(nome for nome in arquivos_sem_o_log(conexao) if nome.startswith(("fila" + os.sep + ID, "estado" + os.sep + ID)))
+            sobrou = arquivos_do_envio(arquivos_sem_o_log(conexao), ID)
             segunda = retencao_dos_envios.reter(fila)
-            depois = sorted(nome for nome in arquivos_sem_o_log(conexao) if nome.startswith(("fila" + os.sep + ID, "estado" + os.sep + ID)))
+            depois = arquivos_do_envio(arquivos_sem_o_log(conexao), ID)
             linhas = linhas_dos_custos(conexao)
         self.assertEqual((primeira, sobrou), ([], [os.path.join("estado", ID + ".json")]))
         self.assertEqual((segunda, depois), ([ID], []))
@@ -272,7 +281,7 @@ class UmLinkNoLugarDaPasta(unittest.TestCase):
                 self.skipTest("este sistema não cria link simbólico")
             apagados = retencao_dos_envios.reter(fila)
             sobrou = sorted(os.listdir(fora))
-            depois = [nome for nome in arquivos_sem_o_log(conexao) if nome.startswith(("fila" + os.sep + ID, "estado" + os.sep + ID))]
+            depois = arquivos_do_envio(arquivos_sem_o_log(conexao), ID)
             linhas = linhas_dos_custos(conexao)
         self.assertEqual(apagados, [ID])
         self.assertEqual(sobrou, ["1-0.txt", "outro.json", "qualquer"])

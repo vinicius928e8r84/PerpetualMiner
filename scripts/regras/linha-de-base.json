@@ -93,7 +93,6 @@
     "complemento/test_plano_do_chatgpt.py": 2,
     "complemento/test_qt_do_anki.py": 29,
     "complemento/test_qt_do_anki_pareamento.py": 13,
-    "complemento/test_retencao_dos_envios.py": 3,
     "complemento/test_servidor_repeticao.py": 3,
     "complemento/test_voz_de_mentira.py": 2,
     "complemento/tipo_de_nota.py": 6,
