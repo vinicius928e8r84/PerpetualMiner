@@ -1,0 +1,42 @@
+name: Testes de novo
+
+on:
+  workflow_run:
+    workflows: [Testes]
+    types: [completed]
+
+permissions:
+  contents: read
+
+jobs:
+  rodar-de-novo:
+    name: Rodar de novo os jobs que falharam
+    if: ${{ github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.run_attempt == 1 && github.event.workflow_run.event == 'pull_request' }}
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - name: Rodar de novo, uma vez, os jobs que falharam na primeira tentativa
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RAMO: ${{ github.event.workflow_run.head_branch }}
+          URL: ${{ github.event.workflow_run.html_url }}
+        run: |
+          mais_novo=$(gh run list --workflow testes.yml --event pull_request --branch "$RAMO" --limit 1 --json databaseId --jq '.[0].databaseId')
+          if [ "$mais_novo" != "$RUN_ID" ]; then
+            echo "O run $RUN_ID não é o mais novo da branch (o mais novo é $mais_novo): não roda de novo." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          falharam=$(gh run view "$RUN_ID" --json jobs --jq '.jobs[] | select(.conclusion == "failure") | .name')
+          {
+            echo "### Jobs que falharam na primeira tentativa de $URL e rodam de novo"
+            echo
+            printf '%s\n' "$falharam" | sed 's/^/- /'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          printf '%s\n' "$falharam" | while IFS= read -r job; do
+            echo "::warning title=Rodou de novo::$job falhou na primeira tentativa do run $RUN_ID"
+          done
+          gh run rerun "$RUN_ID" --failed
