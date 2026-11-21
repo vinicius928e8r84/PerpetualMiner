@@ -137,7 +137,6 @@
     "lib/atalhos.js": 11,
     "lib/chave-da-openai.js": 78,
     "lib/envio-gravado.js": 5,
-    "lib/mineracao-automatica-decisao.js": 9,
     "lib/palavra-automatica.js": 20,
     "lib/pedido-ao-anki.js": 8,
     "lib/sincronizacao.js": 8,
