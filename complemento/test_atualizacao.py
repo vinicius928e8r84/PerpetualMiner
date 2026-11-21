@@ -63,10 +63,9 @@ class AnkiWebDeMentira:
 
 def montar(pasta, anki_web=None, versao="0.4.5", ligada=True):
     anki_web = anki_web or AnkiWebDeMentira()
-    return atualizacao.Atualizacao(
-        arquivo=os.path.join(pasta, "atualizacao.json"), anki_web=anki_web, versao=versao, ligada=ligada,
-        logger=logging.getLogger("teste-da-atualizacao"),
-    ), anki_web
+    logger = logging.getLogger("teste-da-atualizacao")
+    registro = atualizacao.RegistroDaAtualizacao(os.path.join(pasta, "atualizacao.json"), versao, logger)
+    return atualizacao.Atualizacao(registro=registro, anki_web=anki_web, ligada=ligada, logger=logger), anki_web
 
 
 MATRIZ_DA_ATUALIZACAO = {
@@ -88,7 +87,7 @@ def atualizacao_do_exemplo(pasta, guardado, ankiweb, logger):
     anki_web = AnkiWebDeMentira(versao_no_ankiweb="9.9.9") if ankiweb else atualizacao.AnkiWebAusente()
     anki_web.tem_versao_nova = ankiweb != "sem_versao_nova"
     anki_web.instalar_funciona = ankiweb != "recusa"
-    return atualizacao.Atualizacao(arquivo=arquivo, anki_web=anki_web, versao=configuracao.VERSAO, logger=logger)
+    return atualizacao.Atualizacao(registro=atualizacao.RegistroDaAtualizacao(arquivo, configuracao.VERSAO, logger), anki_web=anki_web, logger=logger)
 
 
 class AtualizacaoEmSilencio(unittest.TestCase):

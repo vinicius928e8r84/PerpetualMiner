@@ -15,13 +15,13 @@ from pathlib import Path
 
 if __package__:  # inside the Anki add-on the engine is the package `complemento.motor`
     from . import cost_tracker, generate_images, image_guard
-    from .image_queries import _build_card_google_queries, _english_query_variants_from_text, _visual_subject_for_card
+    from .image_queries import CardToSearch, _build_card_google_queries, _english_query_variants_from_text, _visual_subject_for_card
     from .image_real_first import Card, GenerationPolicy, RealFirst
 else:
     import cost_tracker
     import generate_images
     import image_guard
-    from image_queries import _build_card_google_queries, _english_query_variants_from_text, _visual_subject_for_card
+    from image_queries import CardToSearch, _build_card_google_queries, _english_query_variants_from_text, _visual_subject_for_card
     from image_real_first import Card, GenerationPolicy, RealFirst
 
 QUERY_FIELDS = ("queries", "query_stats", "best_real_query")
@@ -61,11 +61,9 @@ class ImagePipeline:
         self.max_queries = _judge_limit(self.judge_cfg, "max_queries", 8)
         self.guard_enabled = config.get("lang") != "ru"
 
-    def real_first(self, stem: str, prompt: str, dest: Path, generation_policy: str = "normal",
-                   paid_generation_blocked_by_guard: bool = False) -> bool:
+    def real_first(self, stem: str, prompt: str, dest: Path, generation_policy: str = "normal") -> bool:
         """A real photo the judge accepts, else (by the policy) a generated image; True when the card got a picture."""
-        policy = GenerationPolicy(generation_policy, paid_generation_blocked_by_guard)
-        return RealFirst(self, Card(stem, prompt, dest), policy).choose()
+        return RealFirst(self, Card(stem, prompt, dest), GenerationPolicy(generation_policy)).choose()
 
     def generate_direct(self, stem: str, prompt: str, dest: Path) -> str:
         """Generated image only (no search): "skipped" (the guard says it is abstract), "ok" or "failed"."""
@@ -109,9 +107,7 @@ class ImagePipeline:
     def search_queries(self, card: Card) -> list:
         """The card's photo searches, or (when the card gives none) the variants of its generation prompt."""
         queries = _build_card_google_queries(
-            self.card_content(card),
-            stem=card.stem,
-            prompt=card.prompt,
+            CardToSearch(self.card_content(card), stem=card.stem, prompt=card.prompt),
             lang=self.config.get("lang", "en"),
             max_queries=self.max_queries,
         )

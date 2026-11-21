@@ -18,6 +18,15 @@ DOLARES_POR_MIL_LETRAS = 0.015  # o preço de tabela do `tts-1`, para a aba Cust
 LIMITE_DA_RESPOSTA = 16 * 1024 * 1024
 
 
+def _codigo_da_recusa(status):
+    """O código que quem pede a voz recebe quando a OpenAI responde `status`, sem nada do que ela disse."""
+    if status == 401:
+        return openai_api.RECUSADA
+    if status in (402, 429):
+        return openai_api.SEM_CREDITO
+    return FORA_DO_AR if status >= 500 else RECUSADA
+
+
 def pedir_o_audio(base, chave, texto):
     """O MP3 que a OpenAI fala para `texto`; levanta `ErroDaVoz`."""
     corpo = json.dumps({"model": MODELO, "voice": VOZ, "input": texto, "response_format": "mp3"}).encode("utf-8")
@@ -28,11 +37,7 @@ def pedir_o_audio(base, chave, texto):
             audio = resposta.read(LIMITE_DA_RESPOSTA)
     except urllib.error.HTTPError as erro:
         erro.close()
-        if erro.code == 401:
-            raise ErroDaVoz(openai_api.RECUSADA)
-        if erro.code in (402, 429):
-            raise ErroDaVoz(openai_api.SEM_CREDITO)
-        raise ErroDaVoz(FORA_DO_AR if erro.code >= 500 else RECUSADA)
+        raise ErroDaVoz(_codigo_da_recusa(erro.code))
     except (urllib.error.URLError, OSError, ValueError):
         raise ErroDaVoz(FORA_DO_AR)
     if not audio:

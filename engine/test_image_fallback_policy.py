@@ -12,6 +12,7 @@ import generate_images
 import google_images
 import image_guard
 import image_judge
+from image_queries import CardToSearch
 from rodar_imagens import _build_card_google_queries, _run_images
 
 
@@ -315,9 +316,7 @@ Natural: We are very hungry.
 """
 
         queries = _build_card_google_queries(
-            card_text,
-            stem="hungry_people",
-            prompt="fallback generated prompt",
+            CardToSearch(card_text, stem="hungry_people", prompt="fallback generated prompt"),
             lang="ru",
             max_queries=3,
         )
