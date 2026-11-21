@@ -6,7 +6,7 @@ const ATENCOES = ['BAIXA', 'MÉDIA', 'ALTA'];
 const ROTULO_DE_RISCO_ALTO = 'risco:alto';
 const SECAO_DA_PROVA = 'Prova real';
 const FRASE = 'PROVADO 100% REAL';
-const LACUNA_DA_PROVA = /\bnao coberto\b|\bbloqueada\b/;
+const LACUNA_DA_PROVA = /\bnao[\s-]+cobert[oa]s?\b|\bbloquead[oa]s?\b/;
 const VEREDITO_LIMPO = 'CLEAN';
 // Num repositório público qualquer pessoa comenta: só vale o registro de quem pode escrever no repositório.
 const QUEM_REGISTRA = ['OWNER', 'MEMBER', 'COLLABORATOR'];
@@ -65,9 +65,15 @@ function linhaQueVale(linha) {
   return { texto: semMarcacao(titulo ? titulo[2] : linha), nivel: titulo ? titulo[1].length : 0, puro: TEXTO_PURO.test(linha) };
 }
 
+const linhasSemComentario = markdown => String(markdown || '').replace(/<!--[^]*?(?:-->|$)/g, '').split(/\r?\n/);
+
+function indicesQueValem(linhas) {
+  return indicesForaDoCodigo(linhas).filter(indice => !CITACAO.test(linhas[indice]));
+}
+
 function linhasQueValem(markdown) {
-  const linhas = String(markdown || '').replace(/<!--[^]*?(?:-->|$)/g, '').split(/\r?\n/);
-  return indicesForaDoCodigo(linhas).map(indice => linhas[indice]).filter(linha => !CITACAO.test(linha)).map(linhaQueVale);
+  const linhas = linhasSemComentario(markdown);
+  return indicesQueValem(linhas).map(indice => linhaQueVale(linhas[indice]));
 }
 
 function secao(linhas, nome) {
@@ -76,6 +82,15 @@ function secao(linhas, nome) {
   const resto = linhas.slice(inicio + 1);
   const fim = resto.findIndex(linha => linha.nivel && linha.nivel <= linhas[inicio].nivel);
   return (fim < 0 ? resto : resto.slice(0, fim)).map(linha => linha.texto);
+}
+
+function secaoInteira(markdown, nome) {
+  const linhas = linhasSemComentario(markdown);
+  const titulos = indicesQueValem(linhas).map(indice => ({ indice, ...linhaQueVale(linhas[indice]) })).filter(linha => linha.nivel);
+  const inicio = titulos.findIndex(titulo => igual(titulo.texto, nome));
+  if (inicio < 0) return [];
+  const fim = titulos.slice(inicio + 1).find(titulo => titulo.nivel <= titulos[inicio].nivel);
+  return linhas.slice(titulos[inicio].indice + 1, fim && fim.indice).map(semMarcacao);
 }
 
 const valoresDe = (textos, campo) => textos.filter(texto => texto.includes(':'))
@@ -159,10 +174,10 @@ function faltasDaIssue(linhas, repositorio) {
   return faltas;
 }
 
-function faltaDaProva(linhas, head) {
-  const prova = secao(linhas, SECAO_DA_PROVA);
+function faltaDaProva(corpo, head) {
+  const prova = secao(linhasQueValem(corpo), SECAO_DA_PROVA);
   if (!prova) return `o corpo não tem a seção "${SECAO_DA_PROVA}"`;
-  const lacuna = prova.find(texto => LACUNA_DA_PROVA.test(semCaixaNemAcento(texto)));
+  const lacuna = secaoInteira(corpo, SECAO_DA_PROVA).find(texto => LACUNA_DA_PROVA.test(semCaixaNemAcento(texto)));
   if (lacuna) return `a seção "${SECAO_DA_PROVA}" diz "${lacuna}": com uma parte não coberta ou bloqueada, a prova não é ${FRASE}`;
   if (!prova.includes(FRASE)) return `a seção "${SECAO_DA_PROVA}" não tem a linha ${FRASE} (a frase sozinha na linha)`;
   return faltaDoHead(prova, head, `a seção "${SECAO_DA_PROVA}"`);
@@ -176,8 +191,8 @@ const MOTIVOS_DA_PROVA = [
 
 const motivoDaProva = pr => (MOTIVOS_DA_PROVA.find(([pede]) => pede(pr)) || [])[1];
 
-function faltaDaProvaPedida(motivo, linhas, head) {
-  const falta = motivo && faltaDaProva(linhas, head);
+function faltaDaProvaPedida(motivo, corpo, head) {
+  const falta = motivo && faltaDaProva(corpo, head);
   return falta && `${motivo}: ${falta}`;
 }
 
@@ -203,7 +218,7 @@ function partesDoCorpo({ corpo, rotulos, head, repositorio, risco }) {
       semAtencao,
       ...faltasDaIssue(linhas, repositorio),
     ].filter(Boolean),
-    daProva: faltaDaProvaPedida(motivo, linhas, head),
+    daProva: faltaDaProvaPedida(motivo, corpo, head),
   };
 }
 
@@ -226,7 +241,7 @@ function conferir({ corpo, rotulos, registros, head, repositorio, headsEquivalen
     mensagem: [
       `✗ O registro da PR não vale para o head ${head}:`,
       ...faltas.map(falta => `    - ${falta}`),
-      `  Conserto: o formato de cada parte está em ${MODELO}. O que está em comentário de HTML, em bloco de código ou em citação não conta.`,
+      `  Conserto: o formato de cada parte está em ${MODELO}. O que está em comentário de HTML, em bloco de código ou em citação não conta; na seção "${SECAO_DA_PROVA}", a parte não coberta ou bloqueada conta também no código e na citação.`,
       `  O corpo se confere antes de abrir a PR ou de editá-lo, sem o GitHub: node ${CONFERIDOR_DO_CORPO} <arquivo do corpo>`,
       `  O registro do /code-review e a prova com o head lido do GitHub (e o check rodando de novo): node ${PUBLICADOR} --help`,
     ].join('\n'),

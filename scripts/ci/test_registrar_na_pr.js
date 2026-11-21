@@ -72,10 +72,26 @@ function conferirORiscoDoRevisor() {
 }
 
 function conferirACoberturaDaProva() {
-  for (const lacuna of ['NÃO COBERTO: o Windows.', 'NAO COBERTO: o Windows.', 'O Windows ficou BLOQUEADA.']) {
-    assert.match(conferir(pr({ corpo: ALTA + provaDoHead(lacuna), registros: [registro(HEAD)] })).mensagem, /atenção ALTA: a seção "Prova real" diz "[^"]+": com uma parte não coberta ou bloqueada/, lacuna);
+  const lacunas = [
+    ['NÃO COBERTO: o Windows.'], ['NAO COBERTO: o Windows.'], ['O Windows ficou BLOQUEADA.'],
+    ['```text', 'Mac: ok', 'Windows: NÃO COBERTO', '```'], ['~~~', '## Windows', 'bloqueado', '~~~'], ['> NÃO COBERTO: o Windows.'], ['  > > nao coberta: o Mac.'],
+    ['Windows: parte não coberta.'], ['Windows: NÃO COBERTA.'], ['NAO COBERTA: o Mac.'], ['NÃO COBERTOS: Mac e Windows.'], ['Mac e Windows: não cobertas.'],
+    ['Windows: BLOQUEADO (sem máquina).'], ['Windows: bloqueado.'], ['Mac e Windows: BLOQUEADAS.'], ['Mac e Windows: bloqueados.'], ['Windows: **NÃO** COBERTO.'], ['Windows: NÃO-COBERTO.'],
+  ];
+  for (const linhas of lacunas) {
+    const lacuna = linhas.join('\n');
+    assert.match(conferir(pr({ corpo: ALTA + provaDoHead(...linhas), registros: [registro(HEAD)] })).mensagem, /atenção ALTA: a seção "Prova real" diz "[^"]+": com uma parte não coberta ou bloqueada/, lacuna);
     assert.match(planejar(prova(), pr({ corpo: ALTA, registros: [registro(HEAD)] }), lacuna).recusa, /o check não aceitaria esta prova: a seção "Prova real" diz/, `total com ${lacuna}`);
   }
+  const limpas = [
+    ['```text', 'Mac: ok', 'Windows: ok', '```', '> Envio real no Anki.'], ['<!-- NÃO COBERTO: o modelo. -->', 'Envio real no Anki.'],
+    ['Envio real no Anki.', '', '## Known limits', '', 'NÃO COBERTO: a versão 2.1.50, fora do escopo.', '> BLOQUEADA'],
+  ];
+  for (const linhas of limpas) {
+    assert.strictEqual(conferir(pr({ corpo: ALTA + provaDoHead(...linhas), registros: [registro(HEAD)] })).ok, true, linhas.join('\n'));
+  }
+  const foraDaProva = corpoCom('**Atenção:** ALTA', '', '```', '## Prova real', 'NÃO COBERTO', '```', provaDoHead('Envio real no Anki.'));
+  assert.strictEqual(conferir(pr({ corpo: foraDaProva, registros: [registro(HEAD)] })).ok, true, 'o título dentro do código não abre a seção');
   const parcial = planejar(prova({ cobertura: PROVA_BLOQUEADA }), pr({ corpo: ALTA, registros: [registro(HEAD)] }), 'Só no Mac.');
   assert.strictEqual(parcial.secao, `## Prova real\n\nBLOQUEADA-Mac-Windows\nHead: ${HEAD}\n\nSó no Mac.`, 'a parcial escreve a seção bloqueada, sem a frase');
   assert.strictEqual(parcial.depois.ok, false);

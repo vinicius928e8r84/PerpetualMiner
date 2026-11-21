@@ -68,7 +68,7 @@ function rodador(servidor, pedidos) {
 const USO = /^uso: node scripts\/ci\/registrar-na-pr\.js <comando>[^]*e 2 no erro de uso ou do GitHub\.\n$/;
 const LEITURA = ['GET /repos/dono/repo/pulls/7 Bearer t', 'GET /repos/dono/repo/issues/7/comments Bearer t', 'GET /repos/dono/repo/pulls/7/reviews Bearer t'];
 const CONSERTO = [
-  '  Conserto: o formato de cada parte está em .github/PULL_REQUEST_TEMPLATE.md. O que está em comentário de HTML, em bloco de código ou em citação não conta.',
+  '  Conserto: o formato de cada parte está em .github/PULL_REQUEST_TEMPLATE.md. O que está em comentário de HTML, em bloco de código ou em citação não conta; na seção "Prova real", a parte não coberta ou bloqueada conta também no código e na citação.',
   '  O corpo se confere antes de abrir a PR ou de editá-lo, sem o GitHub: node scripts/ci/corpo-da-pr.js <arquivo do corpo>',
   '  O registro do /code-review e a prova com o head lido do GitHub (e o check rodando de novo): node scripts/ci/registrar-na-pr.js --help',
 ];

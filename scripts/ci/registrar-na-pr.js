@@ -4,7 +4,7 @@
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const {
-  ATENCOES, FRASE, SECAO_DA_PROVA, conferir, faltaDaProva, faltaDaRevisao, indicesForaDoCodigo, lerDoGitHub, linhasQueValem, semCaixaNemAcento,
+  ATENCOES, FRASE, SECAO_DA_PROVA, conferir, faltaDaProva, faltaDaRevisao, indicesForaDoCodigo, lerDoGitHub, semCaixaNemAcento,
 } = require('./registro-da-pr.js');
 
 const WORKFLOW = 'registro-da-pr.yml';
@@ -146,7 +146,7 @@ function planoDaProva(opcoes, pr, nota) {
   const { head } = pr;
   const secao = secaoDaProva(head, nota, opcoes.cobertura);
   const corpo = corpoComAProva(pr.corpo, secao);
-  const falta = opcoes.cobertura === FRASE && faltaDaProva(linhasQueValem(corpo), head);
+  const falta = opcoes.cobertura === FRASE && faltaDaProva(corpo, head);
   if (falta) return { recusa: `o check não aceitaria esta prova: ${falta}` };
   return { corpo, secao, depois: conferir({ ...pr, corpo, head }) };
 }
