@@ -160,7 +160,6 @@
     "painel/painel-ia-chatgpt.js": 2,
     "painel/painel-ia-modelo.js": 4,
     "painel/painel-perigo.js": 2,
-    "painel/painel-shell.js": 8,
     "painel/painel.js": 86,
     "preview/chrome-simulado.js": 2,
     "scripts/ci/checks-obrigatorios.js": 1,
