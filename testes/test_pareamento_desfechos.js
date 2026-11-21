@@ -236,8 +236,11 @@ async function conferirCadaPedidoAssinado() {
 
 const esperar = ms => new Promise(resolver => setTimeout(resolver, ms));
 
-async function filaDeDoisPedidos(primeiraConferencia) {
-  const conferencias = [primeiraConferencia, sessaoProvada(SEGREDO)];
+async function filaDeDoisPedidos(respostaAoPrimeiro) {
+  let primeiroConferindo;
+  const chegou = new Promise(resolver => { primeiroConferindo = resolver; });
+  const atrasada = async corpo => { primeiroConferindo(); await esperar(30); return respostaAoPrimeiro(corpo); };
+  const conferencias = [atrasada, sessaoProvada(SEGREDO)];
   const { pagina } = paginaDaConexao(corpo => conferencias.shift()(corpo));
   await parearComChaveGuardada(pagina);
   const ordem = [];
@@ -247,19 +250,19 @@ async function filaDeDoisPedidos(primeiraConferencia) {
     ordem.push(`${quem} volta`);
     return provada(200, { quem })(argumentos[4]);
   };
-  const desfechos = await Promise.all(['A', 'B'].map(quem => pagina.Pareamento.pedirAssinado(ENDERECO, COM_CORPO, {}, enviarComo(quem))
-    .catch(erro => ({ erro: erro.message }))));
+  const pedir = quem => pagina.Pareamento.pedirAssinado(ENDERECO, COM_CORPO, {}, enviarComo(quem)).catch(erro => ({ erro: erro.message }));
+  const primeiro = pedir('A');
+  await chegou;
+  const desfechos = await Promise.all([primeiro, pedir('B')]);
   return { ordem, desfechos };
 }
 
 async function conferirAFilaDeSaida() {
-  const atrasada = async corpo => { await esperar(30); return sessaoProvada(SEGREDO)(corpo); };
-  igual(await filaDeDoisPedidos(atrasada), {
+  igual(await filaDeDoisPedidos(sessaoProvada(SEGREDO)), {
     ordem: ['A sai', 'B sai', 'A volta', 'B volta'],
     desfechos: [devolvida(200, { quem: 'A' }), devolvida(200, { quem: 'B' })],
   }, 'o segundo pedido sai depois do primeiro sair, sem esperar a volta dele');
-  const recusadaAtrasada = async corpo => { await esperar(30); return sessaoProvada(OUTRO_SEGREDO)(corpo); };
-  igual(await filaDeDoisPedidos(recusadaAtrasada), {
+  igual(await filaDeDoisPedidos(sessaoProvada(OUTRO_SEGREDO)), {
     ordem: ['B sai', 'B volta'],
     desfechos: [{ erro: SEM_PROVA_DO_SERVIDOR.erro }, devolvida(200, { quem: 'B' })],
   }, 'o primeiro que não sai libera a fila');
