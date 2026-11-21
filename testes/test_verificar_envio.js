@@ -48,7 +48,7 @@ function compilador(trocas) {
 }
 
 const ator = new AsyncLocalStorage();
-const ehDoCodigoAlvo = arquivo => arquivo.startsWith('lib/') || arquivo === 'painel-envio-apagar.js';
+const ehDoCodigoAlvo = arquivo => arquivo.startsWith('lib/') || arquivo === 'painel/painel-envio-apagar.js';
 
 function chamador() {
   for (const linha of new Error().stack.split('\n').slice(2)) {
@@ -155,7 +155,7 @@ const quieto = async () => { for (let i = 0; i < 4; i++) await new Promise(r => 
 const ENVIO_E1 = { id: 'e1', jobId: 'e1', lang: 'en', ids: [1] };
 const ENVIO_E2 = { id: 'e2', jobId: 'e2', lang: 'en', ids: [2] };
 
-const aba = (nome, acoes) => ({ nome, marca: acoes.some(a => a.tipo === 'apagarTudo'), acoes, arquivos: ['lib/envio-gravado.js', 'painel-envio-apagar.js'] });
+const aba = (nome, acoes) => ({ nome, marca: acoes.some(a => a.tipo === 'apagarTudo'), acoes, arquivos: ['lib/envio-gravado.js', 'painel/painel-envio-apagar.js'] });
 const worker = (nome, acoes) => ({ nome, marca: false, acoes, arquivos: ['lib/envio-gravado.js', 'lib/apagar-frases-pendente.js'] });
 const acompanhar = envios => ({ tipo: 'acompanhar', envios });
 const esquecer = { tipo: 'esquecer' };
@@ -297,14 +297,14 @@ const CENARIOS = [
 ];
 
 function ligacoesDoPainelContinuamAsMesmas() {
-  const painel = fs.readFileSync(path.join(RAIZ, 'painel-envio.js'), 'utf8');
+  const painel = fs.readFileSync(path.join(RAIZ, 'painel/painel-envio.js'), 'utf8');
   for (const trecho of [
     'gravado.mudar(EnvioGravado.EVENTO.ACOMPANHAR, { envios, seAinda: () => remessa === aRemessa })',
     'await gravado.mudar(EnvioGravado.EVENTO.APAGAR_TUDO);\n    return EnvioApagarFrases.pedir();',
     'return gravado.mudar(EnvioGravado.EVENTO.ESQUECER);',
     'if (situacao !== CONEXAO.DESLIGADA) EnvioApagarFrases.pedir();',
   ]) {
-    assert.ok(painel.includes(trecho), `painel-envio.js mudou o que o explorador copia dele: ${trecho}`);
+    assert.ok(painel.includes(trecho), `painel/painel-envio.js mudou o que o explorador copia dele: ${trecho}`);
   }
 }
 
