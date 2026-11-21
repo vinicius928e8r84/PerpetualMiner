@@ -191,7 +191,6 @@
     "scripts/ganchos/globs.js": 1,
     "scripts/ganchos/test_limite_de_tokens.js": 6,
     "scripts/ganchos/test_pre_push.js": 11,
-    "scripts/grupos-de-teste.js": 4,
     "scripts/regras/apoio-da-tabela-de-regras.js": 4,
     "scripts/regras/aprovacao-visual.js": 1,
     "scripts/regras/contrato-fechado.js": 1,
