@@ -43,7 +43,7 @@ class QtComCodigo(QtDeMentira):
 
 def ligado(conexao, perfil="Usuário 1"):
     qt = QtComCodigo()
-    janela.ligar(object(), a_janela(conexao, perfil=perfil), qt, "perpetualminer", conexao.logger)
+    janela.ligar(object(), a_janela(conexao, perfil=perfil), qt, "perpetualminer")
     return qt
 
 
@@ -82,7 +82,7 @@ class OCodigoApareceNoAnki(unittest.TestCase):
 
     def test_sem_conexao_a_janela_nao_tem_onde_ligar_o_pareamento_e_nada_levanta(self):
         qt = QtComCodigo()
-        janela.ligar(object(), janela.Janela(None, lambda: None, "0.4.25", __import__("logging").getLogger("t")), qt, "perpetualminer", __import__("logging").getLogger("t"))
+        janela.ligar(object(), janela.Janela(None, lambda: None, "0.4.25", __import__("logging").getLogger("t")), qt, "perpetualminer")
         self.assertEqual(qt.codigos, [])
 
 

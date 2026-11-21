@@ -287,6 +287,23 @@ class AntesEDepoisDaSaida(unittest.TestCase):
         self.assertEqual((visto["escolha"], visto["trocou"]), ("automatico", {"de": "gpt-4.1-mini"}))
 
 
+class OArquivoDaEscolha(unittest.TestCase):
+    def test_a_escolha_guardada_que_nao_e_um_modelo_ou_traz_a_troca_ilegivel_vale_como_o_automatico(self):
+        guardados = {
+            "a troca legível": {"escolha": "gpt-4.1", "trocou": {"de": "gpt-4o"}},
+            "a escolha vazia": {"escolha": "", "trocou": None},
+            "a escolha que não é texto": {"escolha": 4, "trocou": None},
+            "a troca sem o de": {"escolha": "gpt-4.1", "trocou": {}},
+            "a troca com o de que não é texto": {"escolha": "gpt-4.1", "trocou": {"de": 1}},
+        }
+        vistos = {}
+        for nome, guardado_antes in guardados.items():
+            with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta, modelo=cenario("Automático", **guardado_antes)) as conexao:
+                visto = estado(conexao)[1]
+            vistos[nome] = (visto["escolha"], visto["trocou"])
+        self.assertEqual(vistos, dict({nome: ("automatico", None) for nome in guardados}, **{"a troca legível": ("gpt-4.1", {"de": "gpt-4o"})}))
+
+
 class QuandoAListaDaContaNaoVem(unittest.TestCase):
     def test_com_a_openai_fora_do_ar_o_estado_diz_que_nao_deu_e_nada_muda(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta, openai="fora_do_ar", modelo=cenario("gpt-4.1-mini sai em 20/11")) as conexao:

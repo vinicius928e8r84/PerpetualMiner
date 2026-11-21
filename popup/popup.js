@@ -25,7 +25,9 @@ let minerando = false;
 
 const porId = id => document.getElementById(id);
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', abrirOPopup);
+
+function abrirOPopup() {
   escreverCopiaFixa();
   desenharUltimas();
 
@@ -50,24 +52,28 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   pedirEstadoDaAutomatica();
-
-  chrome.storage.onChanged.addListener((mudancas, area) => {
-    if (area !== 'local') return;
-    if (mudancas.frases) {
-      frases = mudancas.frases.newValue || [];
-      desenharUltimas();
-    }
-    if (mudancas[MineracaoDoDia.CHAVES.estadoPublicado]?.newValue) {
-      mostrarMineracaoAutomatica(mudancas[MineracaoDoDia.CHAVES.estadoPublicado].newValue);
-    }
-    const mudouOVocabulario = Object.values(VocabularioDaMineracao.CHAVES).some(chave => chave in mudancas);
-    if (mudouOVocabulario || AjustesDeEnvio.CHAVE in mudancas) lerAIdadeDoVocabulario();
-  });
+  chrome.storage.onChanged.addListener(refletirOQueMudouGuardado);
 
   ConexaoAnki.acompanhar(refletirOVocabularioDoAnkiFechado);
   ConexaoAnki.iniciar();
   lerAIdadeDoVocabulario();
-});
+}
+
+function refletirOQueMudouGuardado(mudancas, area) {
+  if (area !== 'local') return;
+  if (mudancas.frases) {
+    frases = mudancas.frases.newValue || [];
+    desenharUltimas();
+  }
+  const publicado = mudancas[MineracaoDoDia.CHAVES.estadoPublicado]?.newValue;
+  if (publicado) mostrarMineracaoAutomatica(publicado);
+  if (mudouOQueOSeloLe(mudancas)) lerAIdadeDoVocabulario();
+}
+
+function mudouOQueOSeloLe(mudancas) {
+  const mudouOVocabulario = Object.values(VocabularioDaMineracao.CHAVES).some(chave => chave in mudancas);
+  return mudouOVocabulario || AjustesDeEnvio.CHAVE in mudancas;
+}
 
 function escreverCopiaFixa() {
   const abrir = porId('abrir-painel');
@@ -131,7 +137,7 @@ function mostrarMineracaoAutomatica(estado) {
 
   trocarAzulejos(azulejos, IDIOMAS_DA_MINERACAO.map(({ chave, idioma }) => {
     const numeros = numerosDoIdioma(chave);
-    if (foco.noCampo && foco.chave === chave && !numeros.atingiuOLimite) {
+    if (limiteEmEdicao(foco, chave, numeros)) {
       const atual = azulejos.querySelector(`.popup-azulejo[data-idioma="${chave}"]`);
       preencherAzulejo(atual, numeros);
       return atual;
@@ -141,6 +147,10 @@ function mostrarMineracaoAutomatica(estado) {
 
   devolverOFoco(azulejos, foco);
   refletirOVocabularioDoAnkiFechado();
+}
+
+function limiteEmEdicao(foco, chave, { atingiuOLimite }) {
+  return foco.noCampo && foco.chave === chave && !atingiuOLimite;
 }
 
 function ondeEstaOFoco() {
@@ -271,19 +281,34 @@ function lerAIdadeDoVocabulario() {
 function refletirOVocabularioDoAnkiFechado() {
   const selo = porId('selo-vocabulario');
   AbrirOAnki.montarSeJaConectou(selo, 'veio-botao veio-botao--link');
-  const leituras = leiturasDoVocabulario;
-  const desligada = ConexaoAnki.situacao() === ConexaoAnki.SITUACAO.DESLIGADA;
-  const ligados = IDIOMAS_DA_MINERACAO.filter(({ chave }) => mineracaoAutomatica?.settings?.[chave]?.enabled);
-  const lidos = leituras ? ligados.map(({ chave }) => leituras[chave]).filter(Boolean) : [];
-  const semOAnki = desligada && lidos.length > 0;
+  const { lidos, esperando } = vocabularioComOAnkiFechado(leiturasDoVocabulario, idiomasLigados());
+  mostrarOSeloDoVocabulario(selo, lidos);
+  for (const { chave } of IDIOMAS_DA_MINERACAO) mostrarAEsperaDoAnki(chave, esperando.includes(chave));
+}
 
-  selo.hidden = !semOAnki;
-  if (semOAnki) porId('selo-vocabulario-texto').textContent = textoDaVoz('POP-17.selo', { quando: diaEHora(Math.min(...lidos.map(leitura => leitura.createdAt))) });
-  for (const { chave } of IDIOMAS_DA_MINERACAO) {
-    const espera = document.querySelector(`.popup-azulejo[data-idioma="${chave}"] .popup-azulejo__espera`);
-    AbrirOAnki.montarSeJaConectou(espera);
-    if (espera) espera.hidden = !(leituras && desligada && ligados.some(l => l.chave === chave) && !leituras[chave]);
-  }
+function idiomasLigados() {
+  return IDIOMAS_DA_MINERACAO.map(({ chave }) => chave).filter(chave => mineracaoAutomatica?.settings?.[chave]?.enabled);
+}
+
+function vocabularioComOAnkiFechado(leituras, ligados) {
+  if (!leituras || ConexaoAnki.situacao() !== ConexaoAnki.SITUACAO.DESLIGADA) return { lidos: [], esperando: [] };
+  return {
+    lidos: ligados.map(chave => leituras[chave]).filter(Boolean),
+    esperando: ligados.filter(chave => !leituras[chave]),
+  };
+}
+
+function mostrarOSeloDoVocabulario(selo, lidos) {
+  selo.hidden = lidos.length === 0;
+  if (selo.hidden) return;
+  const quando = diaEHora(Math.min(...lidos.map(leitura => leitura.createdAt)));
+  porId('selo-vocabulario-texto').textContent = textoDaVoz('POP-17.selo', { quando });
+}
+
+function mostrarAEsperaDoAnki(chave, esperando) {
+  const espera = document.querySelector(`.popup-azulejo[data-idioma="${chave}"] .popup-azulejo__espera`);
+  AbrirOAnki.montarSeJaConectou(espera);
+  if (espera) espera.hidden = !esperando;
 }
 
 function desenharLembrete() {
@@ -304,7 +329,7 @@ function prepararMineracaoRapida() {
     limparErro();
   });
   campo.addEventListener('keydown', evento => {
-    if (evento.key !== 'Enter' || evento.shiftKey || evento.isComposing) return;
+    if (!enterQueMinera(evento)) return;
     evento.preventDefault();
     formulario.requestSubmit();
   });
@@ -312,6 +337,10 @@ function prepararMineracaoRapida() {
     evento.preventDefault();
     minerarFraseRapida();
   });
+}
+
+function enterQueMinera({ key, shiftKey, isComposing }) {
+  return key === 'Enter' && !shiftKey && !isComposing;
 }
 
 function refletirCampo() {
@@ -361,15 +390,7 @@ function desenharUltimas() {
   const lugar = porId('ultimas');
 
   if (!frases) {
-    const lista = criar('ol', 'popup-ultimas');
-    lista.setAttribute('aria-busy', 'true');
-    for (let i = 0; i < QUANTAS_ULTIMAS; i++) {
-      const linha = criar('li', 'popup-ultima popup-ultima--esqueleto');
-      linha.setAttribute('aria-hidden', 'true');
-      linha.append(...linhasDeEsqueleto());
-      lista.append(linha);
-    }
-    lugar.replaceChildren(lista);
+    lugar.replaceChildren(montarEsqueletoDasUltimas());
     porId('ver-todas').hidden = true;
     return;
   }
@@ -386,15 +407,30 @@ function desenharUltimas() {
   const lista = criar('ol', 'popup-ultimas');
   for (const f of ultimas) {
     const linha = montarUltima(f);
-    if (idsJaMostrados && !idsJaMostrados.has(f.id)) idsChegando.add(f.id);
-    if (idsChegando.has(f.id)) {
-      linha.classList.add('popup-ultima--nova');
-      linha.addEventListener('animationend', () => idsChegando.delete(f.id), { once: true });
-    }
+    marcarSeEstaChegando(linha, f);
     lista.append(linha);
   }
   lugar.replaceChildren(lista);
   idsJaMostrados = new Set([...(idsJaMostrados || []), ...ultimas.map(f => f.id)]);
+}
+
+function montarEsqueletoDasUltimas() {
+  const lista = criar('ol', 'popup-ultimas');
+  lista.setAttribute('aria-busy', 'true');
+  for (let i = 0; i < QUANTAS_ULTIMAS; i++) {
+    const linha = criar('li', 'popup-ultima popup-ultima--esqueleto');
+    linha.setAttribute('aria-hidden', 'true');
+    linha.append(...linhasDeEsqueleto());
+    lista.append(linha);
+  }
+  return lista;
+}
+
+function marcarSeEstaChegando(linha, f) {
+  if (idsJaMostrados && !idsJaMostrados.has(f.id)) idsChegando.add(f.id);
+  if (!idsChegando.has(f.id)) return;
+  linha.classList.add('popup-ultima--nova');
+  linha.addEventListener('animationend', () => idsChegando.delete(f.id), { once: true });
 }
 
 function montarUltima(f) {

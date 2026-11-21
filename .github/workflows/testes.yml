@@ -171,3 +171,19 @@ jobs:
         env:
           PM_CONEXAO: real
           PYTHON: python
+
+  testes-ok:
+    name: Testes ok
+    if: ${{ always() }}
+    needs: [rapidos, complemento, e2e]
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
+    timeout-minutes: 5
+    steps:
+      - name: Todos os jobs de teste passaram
+        env:
+          RAPIDOS: ${{ needs.rapidos.result }}
+          COMPLEMENTO: ${{ needs.complemento.result }}
+          E2E: ${{ needs.e2e.result }}
+        run: |
+          echo "Testes rápidos: $RAPIDOS; complemento: $COMPLEMENTO; e2e: $E2E"
+          [ "$RAPIDOS" = success ] && [ "$COMPLEMENTO" = success ] && [ "$E2E" = success ]

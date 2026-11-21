@@ -1,20 +1,30 @@
 'use strict';
 
+const CAMINHO = '/jobs/usar-a-chave';
 const FIM = ['completed', 'partial', 'failed'];
 
+const pedidoDeOutraRota = (metodo, caminho) => metodo !== 'POST' || caminho !== CAMINHO;
+const envioAcabou = envio => FIM.includes(envio.state.status) || Boolean(envio.state.wiped);
+
+function usarAChave(envio) {
+  const { waiting, ...resto } = envio.state;
+  envio.state = { ...resto, usingKey: true };
+  return { status: 200, json: { jobId: envio.jobId, status: envio.state.status } };
+}
+
 function criarLimiteDoPlano({ envios, chaveGuardada, erro }) {
-  const CAMINHO = '/jobs/usar-a-chave';
+  function motivoDaRecusa(envio, corpo) {
+    if (typeof corpo?.jobId !== 'string') return 'invalid_job_id';
+    if (!envio) return 'job_not_found';
+    if (envioAcabou(envio)) return 'job_finished';
+    return chaveGuardada() ? null : 'openai_key_missing';
+  }
 
   function responder(metodo, caminho, corpo) {
-    if (metodo !== 'POST' || caminho !== CAMINHO) return null;
-    if (typeof corpo?.jobId !== 'string') return erro(CAMINHO, 'invalid_job_id');
-    const envio = envios.find(e => e.jobId === corpo.jobId);
-    if (!envio) return erro(CAMINHO, 'job_not_found');
-    if (FIM.includes(envio.state.status) || envio.state.wiped) return erro(CAMINHO, 'job_finished');
-    if (!chaveGuardada()) return erro(CAMINHO, 'openai_key_missing');
-    const { waiting, ...resto } = envio.state;
-    envio.state = { ...resto, usingKey: true };
-    return { status: 200, json: { jobId: envio.jobId, status: envio.state.status } };
+    if (pedidoDeOutraRota(metodo, caminho)) return null;
+    const envio = envios.find(e => e.jobId === corpo?.jobId);
+    const motivo = motivoDaRecusa(envio, corpo);
+    return motivo ? erro(CAMINHO, motivo) : usarAChave(envio);
   }
 
   return { responder };
