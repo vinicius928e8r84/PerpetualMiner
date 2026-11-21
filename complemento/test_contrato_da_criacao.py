@@ -105,6 +105,11 @@ class ContratoDaCriacao(ContratoDaCorrecao, ContratoDoGanchoDaCriacao):
         self.assertEqual(resultado, {"tipos": {"en": False, "ru": False}, "baralhos": []})
         self.assertFalse(tipo_de_nota.atualizar_a_criacao(colecao, "en"))
 
+    def test_sem_o_tipo_de_nota_a_criacao_nao_e_regravada_nem_o_tipo_nasce(self):
+        colecao = self.adaptador(SO_O_DEFAULT)
+        self.assertFalse(tipo_de_nota.atualizar_a_criacao(colecao, "en"))
+        self.assertIsNone(colecao.tipo_de_nota("PerpetualMiner Inglês"))
+
     def test_um_tipo_que_a_pessoa_trocou_de_frente_fica_como_esta_ao_abrir_o_perfil(self):
         colecao = self.com_a_criacao_de_antes()
         tipo_de_nota.trocar_a_frente(colecao, "en", "lacuna")

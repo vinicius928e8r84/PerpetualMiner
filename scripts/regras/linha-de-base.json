@@ -100,7 +100,6 @@
     "complemento/test_retencao_dos_envios.py": 3,
     "complemento/test_servidor_repeticao.py": 3,
     "complemento/test_voz_de_mentira.py": 2,
-    "complemento/tipo_de_nota.py": 6,
     "complemento/tipo_do_envio.py": 2,
     "complemento/trabalhador.py": 2,
     "complemento/versao_no_merge.py": 7,
