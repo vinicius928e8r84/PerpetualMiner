@@ -190,7 +190,6 @@
     "scripts/ci/selecao-de-testes.js": 7,
     "scripts/ci/so-merge-da-main.js": 6,
     "scripts/ci/test_issue_da_noturna.js": 5,
-    "scripts/ci/test_pastas_da_extensao.js": 1,
     "scripts/ci/test_registrar_na_pr.js": 6,
     "scripts/ci/test_registro_da_pr.js": 3,
     "scripts/empacotar-extensao.mjs": 7,
