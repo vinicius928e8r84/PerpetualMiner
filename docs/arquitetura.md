@@ -159,7 +159,7 @@ For the day rollover's scheduling and persistence contract, see `agendarViradaDo
 ## Key Constants
 
 - `ATALHOS_PADRAO` in `lib/atalhos.js` — the factory shortcuts: Minerar legenda on **Alt+S**, Minerar seleção with none
-- `SENTINEL_VAZIO = 'NENHUM_TRECHO'` in `bookreader/bookreader.js` — returned by Gemini when no marked passages found (the photo is “Sem marcações”, FOT-10)
+- `SENTINEL_VAZIO = 'NENHUM_TRECHO'` in `bookreader/leitura-do-gemini.js` — returned by Gemini when no marked passages found (the photo is “Sem marcações”, FOT-10)
 - Firebase configuration and Firestore paths: see `lib/sincronizacao.js`
 - `BADGE_COR_DE_FUNDO = '#F5B83D'` / `BADGE_COR_DO_TEXTO = '#1A1204'` in `background.js` — the toolbar badge's Veio colors
 - `ALARME_VIRADA_DO_DIA` in `background.js` — see `agendarViradaDoDia` for the rollover contract

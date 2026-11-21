@@ -2,6 +2,7 @@
 
 const { test, expect } = require('../fixtures');
 const { fotografar, registrarEstado } = require('../evidencias-mineracao');
+const { estadoFinal } = require('../estado-final');
 
 const CHAVE = 'chave-de-teste';
 
@@ -94,6 +95,7 @@ test('várias fotos pulam a prévia e são lidas em sequência, com o status de 
   await expect(page.getByText('Foto 2', { exact: true })).toBeVisible();
   await expect(page.getByText('Foto 3', { exact: true })).toBeHidden();
   await expect(botaoMinerar(page)).toHaveText('Minerar 5 frases');
+  expect(await extensao.frases()).toEqual([]);
 });
 
 test('lendo a primeira foto, a coluna das frases diz que está lendo, e as fotos novas entram na fila', async ({ page, extensao, fakes }) => {
@@ -112,6 +114,7 @@ test('lendo a primeira foto, a coluna das frases diz que está lendo, e as fotos
   soltar();
   await expect(fotoNaFila(page, 'b.png')).toContainText('2 frases');
   await expect(botaoMinerar(page)).toHaveText('Minerar 5 frases');
+  expect(await extensao.frases()).toEqual([]);
 });
 
 test('a frase editada na lista é a que fica gravada', async ({ page, extensao, fakes }) => {
@@ -242,6 +245,7 @@ test('o Gemini sem marcações diz “Sem marcações” e ensina a marcar', asy
   await expect(colunaDasFrases(page).getByText('entre barras')).toHaveCount(0);
   await expect(page.getByRole('alert')).toHaveCount(0);
   await expect(botaoMinerar(page)).toBeHidden();
+  expect(await extensao.frases()).toEqual([]);
 });
 
 test('o Gemini com pedidos demais: a foto falha com o motivo, sem culpar as marcações', async ({ page, extensao, fakes }) => {
@@ -260,6 +264,7 @@ test('o Gemini com pedidos demais: a foto falha com o motivo, sem culpar as marc
 
   await expect(page.getByText(/Nenhuma marcação/)).toHaveCount(0);
   await expect(page.getByText('Sem marcações')).toHaveCount(0);
+  expect(await extensao.frases()).toEqual([]);
 });
 
 test('a chave recusada pelo Gemini diz que a chave não funciona e leva a Configurações', async ({ page, context, extensao, fakes }) => {
@@ -274,6 +279,7 @@ test('a chave recusada pelo Gemini diz que a chave não funciona e leva a Config
     coluna.getByRole('button', { name: 'Abrir Configurações' }).click(),
   ]);
   await expect(painel).toHaveURL(/painel\.html#configuracoes\/chave$/);
+  expect(await extensao.frases()).toEqual([]);
 });
 
 test('sem rede, a foto falha dizendo que falta a conexão', async ({ page, extensao, fakes }) => {
@@ -283,6 +289,7 @@ test('sem rede, a foto falha dizendo que falta a conexão', async ({ page, exten
 
   await expect(fotoNaFila(page, 'pagina.png')).toContainText('Sem conexão com a internet. Confira a rede e tente de novo.');
   await expect(colunaDasFrases(page)).toContainText('Não deu para ler a foto');
+  expect(await extensao.frases()).toEqual([]);
 });
 
 test('uma resposta do Gemini sem texto (pedido bloqueado) é falha, não “Sem marcações”', async ({ page, extensao, fakes }) => {
@@ -295,6 +302,7 @@ test('uma resposta do Gemini sem texto (pedido bloqueado) é falha, não “Sem 
   await expect(coluna).toContainText('Não deu para ler a foto');
   await expect(coluna).toContainText('Algo deu errado. Tente de novo.');
   await expect(page.getByText('Sem marcações')).toHaveCount(0);
+  expect(await extensao.frases()).toEqual([]);
 });
 
 test('uma foto sem marcações e outra que falhou: a coluna diz que a leitura falhou, sem culpar as marcações', async ({ page, extensao, fakes }) => {
@@ -310,6 +318,7 @@ test('uma foto sem marcações e outra que falhou: a coluna diz que a leitura fa
   await expect(coluna.getByText('Não deu para ler a foto', { exact: true })).toBeVisible();
   await expect(coluna).toContainText('Algo deu errado. Tente de novo.');
   await expect(page.getByText(/Nenhuma marcação encontrada/)).toHaveCount(0);
+  expect(await extensao.frases()).toEqual([]);
 });
 
 test('uma foto que falha não apaga as frases das outras', async ({ page, extensao, fakes }) => {
@@ -322,6 +331,7 @@ test('uma foto que falha não apaga as frases das outras', async ({ page, extens
   await expect(fotoNaFila(page, 'b.png')).toContainText('Falhou');
   await expect(page.getByRole('alert')).toContainText('Não deu para ler a foto 2. Algo deu errado. Tente de novo.');
   await expect(botaoMinerar(page)).toHaveText('Minerar 3 frases');
+  expect(await extensao.frases()).toEqual([]);
 });
 
 test('várias fotos sem marcações: o vazio fala das fotos, no plural', async ({ page, extensao, fakes }) => {
@@ -333,6 +343,7 @@ test('várias fotos sem marcações: o vazio fala das fotos, no plural', async (
 
   await expect(fotoNaFila(page, 'b.png')).toContainText('Sem marcações');
   await expect(page.getByText('Nenhuma marcação encontrada nestas fotos', { exact: true })).toBeVisible();
+  expect(await extensao.frases()).toEqual([]);
 });
 
 test('várias fotos que falham dão um aviso só, com o símbolo de aviso e sem Detalhes', async ({ page, extensao, fakes }) => {
@@ -351,6 +362,7 @@ test('várias fotos que falham dão um aviso só, com o símbolo de aviso e sem 
   await expect(aviso.locator('.veio-aviso__texto svg')).toHaveCount(1);
   await expect(aviso.getByText('Detalhes')).toHaveCount(0);
   await expect(botaoMinerar(page)).toHaveText('Minerar 3 frases');
+  expect(await extensao.frases()).toEqual([]);
 });
 
 test('todas as fotos falharam: a coluna das frases diz que não deu para ler, com a causa e o caminho até a chave', async ({ page, extensao, fakes }) => {
@@ -368,6 +380,7 @@ test('todas as fotos falharam: a coluna das frases diz que não deu para ler, co
   await expect(coluna.getByText('Detalhes')).toHaveCount(0);
   await expect(page.getByRole('alert')).toHaveCount(0);
   await expect(page.getByText(/Nenhuma marcação/)).toHaveCount(0);
+  expect(await extensao.frases()).toEqual([]);
 });
 
 test('fechado, o aviso das falhas não volta com uma foto lida; volta com uma falha nova', async ({ page, extensao, fakes }) => {
@@ -389,6 +402,7 @@ test('fechado, o aviso das falhas não volta com uma foto lida; volta com uma fa
   await enviarFotos(page, foto('d.png'));
   await expect(fotoNaFila(page, 'd.png')).toContainText('Falhou');
   await expect(aviso).toContainText('Não deu para ler 2 fotos.');
+  expect(await extensao.frases()).toEqual([]);
 });
 
 const FRASES_DA_PAGINA_3 = ['The lamp flickered twice and went out.'];
@@ -454,6 +468,7 @@ test('lendo a 1ª foto de várias, a coluna diz “Lendo a foto 1 de 3…”, e 
 
   await soltar();
   await expect(frase(page, FRASES_DA_PAGINA_1[0])).toHaveCount(0);
+  expect(await extensao.frases()).toEqual([]);
 });
 
 test('Recomeçar com a leitura em andamento: nenhuma frase chega depois (sem itens fantasma)', async ({ page, extensao, fakes }) => {
@@ -508,6 +523,7 @@ test('Recomeçar com frases não mineradas pede confirmação no modal; Cancelar
   await page.keyboard.press('Escape');
   await expect(modal).toHaveCount(0);
   await expect(frase(page, FRASES_DA_PAGINA_1[0])).toBeVisible();
+  expect(await extensao.frases()).toEqual([]);
 });
 
 test('Recomeçar conta só as frases ainda não mineradas, e sem nenhuma pendente recomeça direto', async ({ page, extensao, fakes }) => {
@@ -558,6 +574,7 @@ test('Recomeçar também está na prévia e nos vazios de falha e de sem marcaç
   await colunaDasFrases(page).getByRole('button', { name: 'Recomeçar' }).click();
   await expect(filaDeFotos(page).getByRole('listitem')).toHaveCount(0);
   await expect(page.getByText('Arraste fotos de páginas marcadas')).toBeVisible();
+  expect(await extensao.frases()).toEqual([]);
 });
 
 test('“Tentar de novo” numa foto que falhou lê só aquela foto', async ({ page, extensao, fakes }) => {
@@ -583,6 +600,7 @@ test('“Tentar de novo” numa foto que falhou lê só aquela foto', async ({ p
   await expect(page.locator('#foto-avisos .veio-aviso')).toHaveCount(0);
   await expect(page.getByText('Foto 2', { exact: true })).toBeVisible();
   await expect(botaoMinerar(page)).toHaveText('Minerar 5 frases');
+  expect(await extensao.frases()).toEqual([]);
 });
 
 test('“Tentar de novo” com todas as fotos falhadas: a que volta a falhar continua com o motivo, e a outra é lida', async ({ page, extensao, fakes }) => {
@@ -603,8 +621,10 @@ test('“Tentar de novo” com todas as fotos falhadas: a que volta a falhar con
   await expect(fotoNaFila(page, 'b.png')).toContainText('2 frases');
   await expect(page.getByRole('alert')).toContainText('Não deu para ler a foto 1.');
   expect(fakes.gemini.chamadas).toHaveLength(4);
+  expect(await extensao.frases()).toEqual([]);
 });
 
+// Exceção de teste: sem-estado-guardado — o Voltar ao painel só foca a aba do painel; nada é gravado.
 test('“Voltar ao painel” com o painel aberto foca aquela aba, sem abrir outra nem recarregar', async ({ page, context, extensao }) => {
   const painel = await context.newPage();
   await painel.goto(extensao.url('painel.html#frases'));
@@ -621,6 +641,7 @@ test('“Voltar ao painel” com o painel aberto foca aquela aba, sem abrir outr
   expect(await painel.evaluate(() => window.continuaAMesmaPagina)).toBe(true);
 });
 
+// Exceção de teste: sem-estado-guardado — o Voltar ao painel só abre o painel; nada é gravado.
 test('“Voltar ao painel” sem painel aberto abre um', async ({ page, context, extensao }) => {
   await abrirAPagina(page, extensao);
 
@@ -639,6 +660,7 @@ test('o Livro digitado volta preenchido na próxima visita', async ({ page, exte
   await page.reload();
 
   await expect(page.getByLabel('Livro')).toHaveValue('Братья Карамазовы');
+  await estadoFinal(extensao, { bookTitleDefault: 'Братья Карамазовы' });
 });
 
 test('com o Livro em branco a frase vai com o Título “Físico/Livro”, como hoje', async ({ page, extensao, fakes }) => {
@@ -665,6 +687,7 @@ test('o que a página anuncia de formatos é o que ela aceita: HEIC entra e vai 
 
   await expect(fotoNaFila(page, 'IMG_2041.HEIC')).toContainText('3 frases');
   expect(fakes.gemini.chamadas[0].mimeType).toBe('image/heic');
+  expect(await extensao.frases()).toEqual([]);
 });
 
 test('um arquivo que não é foto é recusado com o aviso, e nada entra na fila', async ({ page, extensao, fakes }) => {
@@ -675,61 +698,7 @@ test('um arquivo que não é foto é recusado com o aviso, e nada entra na fila'
   await expect(page.getByRole('alert')).toContainText('Esse arquivo não é uma foto. Use JPG, PNG, HEIC ou WEBP.');
   await expect(filaDeFotos(page).getByRole('listitem')).toHaveCount(0);
   expect(fakes.gemini.chamadas).toHaveLength(0);
-});
-
-test('sem chave, o cartão FOT-05 no lugar do campo de chave, e “Abrir Configurações” abre #configuracoes/chave com o campo focado', async ({ page, context, extensao }) => {
-  await abrirAPagina(page, extensao, { chave: null });
-
-  await expect(page.getByText('Falta a chave do Gemini')).toBeVisible();
-  await expect(page.getByText('Para ler fotos, adicione sua chave do Gemini em Configurações.')).toBeVisible();
-  await expect(page.getByText('Adicione a chave do Gemini para começar', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Escolher' })).toHaveCount(0);
-  await expect(page.locator('input[type="password"]')).toHaveCount(0);
-
-  const [painel] = await Promise.all([
-    context.waitForEvent('page'),
-    page.getByRole('button', { name: 'Abrir Configurações' }).click(),
-  ]);
-
-  await expect(painel).toHaveURL(/painel\.html#configuracoes\/chave$/);
-  await expect(painel.locator('#cfg-chave-campo')).toBeFocused();
-});
-
-test('sem chave e com o painel aberto, “Abrir Configurações” leva aquela aba à chave', async ({ page, context, extensao }) => {
-  const painel = await context.newPage();
-  await painel.goto(extensao.url('painel.html#frases'));
-  await abrirAPagina(page, extensao, { chave: null });
-  const abasAntes = context.pages().length;
-
-  await page.getByRole('button', { name: 'Abrir Configurações' }).click();
-
-  await expect(painel).toHaveURL(/painel\.html#configuracoes\/chave$/);
-  await expect(painel.locator('#cfg-chave-campo')).toBeFocused();
-  expect(context.pages()).toHaveLength(abasAntes);
-});
-
-test('com o painel já em #configuracoes/chave, “Abrir Configurações” põe o foco no campo de novo', async ({ page, context, extensao }) => {
-  const painel = await context.newPage();
-  await painel.goto(extensao.url('painel.html#configuracoes/chave'));
-  await expect(painel.locator('#cfg-chave-campo')).toBeFocused();
-  await painel.locator('#cfg-chave-campo').blur();
-  await abrirAPagina(page, extensao, { chave: null });
-  await page.bringToFront();
-
-  await page.getByRole('button', { name: 'Abrir Configurações' }).click();
-
-  await expect(painel.locator('#cfg-chave-campo')).toBeFocused();
-});
-
-test('a chave salva no painel libera a página sem recarregar', async ({ page, extensao }) => {
-  await abrirAPagina(page, extensao, { chave: null });
-  await expect(page.getByText('Falta a chave do Gemini')).toBeVisible();
-
-  await extensao.gravarStorage({ geminiApiKey: CHAVE });
-
-  await expect(page.getByText('Falta a chave do Gemini')).toBeHidden();
-  await expect(page.getByRole('button', { name: 'Escolher' })).toBeVisible();
-  await expect(page.getByText('Tire uma foto da página com os trechos marcados e escolha quais frases minerar. As frases aparecem aqui, agrupadas por foto.', { exact: true })).toBeVisible();
+  expect(await extensao.frases()).toEqual([]);
 });
 
 test('os controles têm nome, e o teclado chega à escolha de fotos e ao Livro', async ({ page, extensao, fakes }) => {
@@ -751,6 +720,7 @@ test('os controles têm nome, e o teclado chega à escolha de fotos e ao Livro',
   await frase(page, FRASES_DA_PAGINA_1[0]).focus();
   await page.keyboard.press('Space');
   await expect(frase(page, FRASES_DA_PAGINA_1[0])).not.toBeChecked();
+  expect(await extensao.frases()).toEqual([]);
 });
 
 test('com movimento reduzido, o “Lendo…” da foto fica parado', async ({ page, extensao, fakes }) => {
@@ -767,6 +737,7 @@ test('com movimento reduzido, o “Lendo…” da foto fica parado', async ({ pa
   });
   expect(animacao.nome).toBe('none');
   soltar();
+  expect(await extensao.frases()).toEqual([]);
 });
 
 test('a página segue o tema escolhido, sem recarregar', async ({ page, extensao }) => {

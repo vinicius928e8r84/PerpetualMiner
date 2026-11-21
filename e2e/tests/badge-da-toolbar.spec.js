@@ -5,6 +5,7 @@ const DRU = 'PerpetualMiner::Russo';
 const path = require('path');
 
 const { test, expect } = require('../fixtures');
+const { estadoFinal } = require('../estado-final');
 
 const FRASE_RUSSA = 'Я улыбаюсь';
 const ALARME_VIRADA_DO_DIA = 'pm-virada-do-dia';
@@ -142,6 +143,7 @@ test('ligar e desligar um idioma no popup muda o badge na hora', async ({ page, 
     badge: '13',
     tooltip: 'Mineração automática: 13 hoje',
   });
+  await estadoFinal(extensao, { pm_auto_miner_settings: { en: { enabled: false, dailyLimit: 20 }, ru: { enabled: true, dailyLimit: 20 } } });
 });
 
 test('cada mineração automática soma um no badge', async ({ page, paginas, extensao }) => {
