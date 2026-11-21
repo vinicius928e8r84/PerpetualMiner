@@ -39,19 +39,29 @@ class EnviosDosCustos:
         """`POST /jobs/list`: cada Envio da fila, na ordem, com o `status` do estado; depois, os que a retenção apagou e que enviaram Frases,
         só com os ids delas (`ficha.successfulPhraseIds`): quem volta depois do prazo as marca como enviadas, sem pagar de novo (#372)."""
         with self.tranca:
-            lista = []
-            for item in self.ordem():
-                estado = self.estado(item["jobId"])
-                lista.append(dict(
-                    item, status=estado.get("status", "queued"), updatedAt=estado.get("updatedAt", item.get("createdAt")), state=estado))
+            lista = [self._com_o_status(item) for item in self.ordem()]
             na_fila = {item["jobId"] for item in lista}
             for item in self.envios_dos_custos():
-                ficha = item.get("ficha")
-                ids = ficha.get("successfulPhraseIds") if ficha else None
-                if item["jobId"] in na_fila or not isinstance(ids, list) or not ids:
+                ids = self._frases_que_enviou(item)
+                if item["jobId"] in na_fila or not ids:
                     continue
-                estado = {"jobId": item["jobId"], "status": "completed", "stage": "completed", "updatedAt": ficha["updatedAt"],
-                          "successfulPhraseIds": ids, "failedPhraseIds": [], "duplicatePhraseIds": ficha.get("duplicatePhraseIds") or []}
-                lista.append({"jobId": item["jobId"], "lang": ficha["lang"], "createdAt": ficha["createdAt"], "status": "completed",
-                              "updatedAt": ficha["updatedAt"], "state": estado})
+                lista.append(self._apagado_que_enviou(item, ids))
             return lista
+
+    def _com_o_status(self, item):
+        estado = self.estado(item["jobId"])
+        return dict(item, status=estado.get("status", "queued"), updatedAt=estado.get("updatedAt", item.get("createdAt")), state=estado)
+
+    @staticmethod
+    def _frases_que_enviou(item):
+        ficha = item.get("ficha")
+        ids = ficha.get("successfulPhraseIds") if ficha else None
+        return ids if isinstance(ids, list) else []
+
+    @staticmethod
+    def _apagado_que_enviou(item, ids):
+        ficha = item["ficha"]
+        estado = {"jobId": item["jobId"], "status": "completed", "stage": "completed", "updatedAt": ficha["updatedAt"],
+                  "successfulPhraseIds": ids, "failedPhraseIds": [], "duplicatePhraseIds": ficha.get("duplicatePhraseIds") or []}
+        return {"jobId": item["jobId"], "lang": ficha["lang"], "createdAt": ficha["createdAt"], "status": "completed",
+                "updatedAt": ficha["updatedAt"], "state": estado}
