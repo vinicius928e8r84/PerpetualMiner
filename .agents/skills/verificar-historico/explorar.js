@@ -282,4 +282,4 @@ async function principal() {
 }
 
 if (require.main === module) principal();
-module.exports = { CENARIOS, explorar };
+module.exports = { CENARIOS, armazenamento, conferir, explorar, principal };
