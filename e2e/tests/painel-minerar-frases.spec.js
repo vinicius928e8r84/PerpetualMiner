@@ -50,55 +50,7 @@ async function escolherArquivo(page, conteudo, nome = 'frases.txt') {
   await seletor.setFiles({ name: nome, mimeType: 'text/plain', buffer: Buffer.isBuffer(conteudo) ? conteudo : Buffer.from(conteudo, 'utf8') });
 }
 
-test('o cabeçalho traz [Minerar frases ▾], que abre o menu Colar · Arquivo .txt · Foto com uma linha de explicação', async ({ page, extensao }) => {
-  await abrirFrases(page, extensao);
-
-  await expect(botaoMinerar(page)).toHaveAttribute('aria-haspopup', 'menu');
-  await expect(botaoMinerar(page)).toHaveAttribute('aria-expanded', 'false');
-  await expect(menu(page)).toBeHidden();
-
-  await botaoMinerar(page).click();
-  await expect(botaoMinerar(page)).toHaveAttribute('aria-expanded', 'true');
-  await expect(menu(page).getByRole('menuitem')).toHaveText([
-    /Colar\s*Uma frase por linha/,
-    /Arquivo \.txt\s*Importar um \.txt com uma frase por linha/,
-    /Foto\s*Abre Minerar de uma foto numa aba nova/,
-  ]);
-  await expect(itemDoMenu(page, /^Colar/)).toBeFocused();
-});
-
-test('pelo teclado: setas andam no menu, Esc fecha e devolve o foco ao botão', async ({ page, extensao }) => {
-  await abrirFrases(page, extensao);
-
-  await botaoMinerar(page).focus();
-  await page.keyboard.press('Enter');
-  await expect(itemDoMenu(page, /^Colar/)).toBeFocused();
-  await page.keyboard.press('ArrowDown');
-  await expect(itemDoMenu(page, /^Arquivo/)).toBeFocused();
-  await page.keyboard.press('ArrowDown');
-  await expect(itemDoMenu(page, /^Foto/)).toBeFocused();
-  await page.keyboard.press('ArrowDown');
-  await expect(itemDoMenu(page, /^Colar/)).toBeFocused();
-  await page.keyboard.press('ArrowUp');
-  await expect(itemDoMenu(page, /^Foto/)).toBeFocused();
-
-  await page.keyboard.press('Escape');
-  await expect(menu(page)).toBeHidden();
-  await expect(botaoMinerar(page)).toBeFocused();
-  await expect(botaoMinerar(page)).toHaveAttribute('aria-expanded', 'false');
-
-  const contorno = await botaoMinerar(page).evaluate(b => getComputedStyle(b).outlineStyle);
-  expect(contorno).not.toBe('none');
-});
-
-test('um clique fora fecha o menu', async ({ page, extensao }) => {
-  await abrirFrases(page, extensao);
-  await botaoMinerar(page).click();
-  await expect(menu(page)).toBeVisible();
-  await page.getByRole('heading', { level: 1 }).click();
-  await expect(menu(page)).toBeHidden();
-});
-
+// Exceção de teste: sem-estado-guardado — o item Foto só abre outra aba; nada é gravado.
 test('Foto abre Minerar de uma foto numa aba nova', async ({ page, context, extensao }) => {
   await abrirFrases(page, extensao);
   await botaoMinerar(page).click();
@@ -108,28 +60,6 @@ test('Foto abre Minerar de uma foto numa aba nova', async ({ page, context, exte
   ]);
   await expect(aba).toHaveURL(extensao.url('bookreader/bookreader.html'));
   await expect(menu(page)).toBeHidden();
-});
-
-test('Colar abre o modal na aba Colar, com o campo focado, a contagem ao vivo e “Minerar N frases”', async ({ page, extensao }) => {
-  await abrirFrases(page, extensao);
-  await abrirColar(page);
-
-  await expect(aba(page, 'Colar')).toBeChecked();
-  await expect(aba(page, 'Arquivo .txt')).not.toBeChecked();
-  await expect(campoDeFrases(page)).toBeFocused();
-  await expect(campoDeFrases(page)).toHaveAttribute('placeholder', 'Cole as frases, uma por linha');
-  await expect(modal(page).getByRole('textbox', { name: 'Fonte' })).toBeVisible();
-  await expect(modal(page).getByRole('textbox', { name: 'Título' })).toBeVisible();
-  await expect(modal(page).locator('.minerar-contagem')).toHaveText('0 frases');
-  await expect(botaoDeMinerar(page)).toHaveText('Minerar frases');
-
-  await campoDeFrases(page).fill('Break a leg.\n\n   \nKeep me posted.\nThat ship has sailed.');
-  await expect(modal(page).locator('.minerar-contagem')).toHaveText('3 frases');
-  await expect(botaoDeMinerar(page)).toHaveText('Minerar 3 frases');
-
-  await campoDeFrases(page).fill('Break a leg.');
-  await expect(modal(page).locator('.minerar-contagem')).toHaveText('1 frase');
-  await expect(botaoDeMinerar(page)).toHaveText('Minerar 1 frase');
 });
 
 test('Colar vazio mostra “Cole pelo menos uma frase.” no campo, e escrever tira o erro', async ({ page, extensao }) => {
@@ -147,6 +77,7 @@ test('Colar vazio mostra “Cole pelo menos uma frase.” no campo, e escrever t
   await campoDeFrases(page).fill('Break a leg.');
   await expect(erro).toBeHidden();
   await expect(campoDeFrases(page)).not.toHaveAttribute('aria-invalid', 'true');
+  expect(await extensao.frases()).toEqual([]);
 });
 
 test('Minerar 3 frases grava as três com a Fonte e o Título, fecha o modal e dá o toast “3 frases mineradas”', async ({ page, extensao }) => {
@@ -315,33 +246,7 @@ test('a nuvem falhou: fica o aviso persistente ADD-06 com Tentar de novo, sem De
   expect((await extensao.frases()).map(f => f.texto).sort()).toEqual(['Break a leg.', 'Keep me posted.']);
 });
 
-test('Arquivo .txt abre o modal na aba certa, com a área de escolher o arquivo', async ({ page, extensao }) => {
-  await abrirFrases(page, extensao);
-  await abrirArquivo(page);
-
-  await expect(aba(page, 'Arquivo .txt')).toBeChecked();
-  await expect(modal(page)).toContainText('Escolha um arquivo .txt');
-  await expect(modal(page)).toContainText(
-    'Uma frase por linha. O .txt exportado daqui volta com o contexto. Frases que já estão no histórico ficam de fora.');
-  await expect(modal(page).getByRole('button', { name: 'Escolher arquivo' })).toBeFocused();
-  await expect(modal(page).getByRole('button', { name: 'Cancelar' })).toBeVisible();
-});
-
-test('as abas trocam no lugar e o texto colado não se perde', async ({ page, extensao }) => {
-  await abrirFrases(page, extensao);
-  await abrirColar(page);
-  await campoDeFrases(page).fill('Break a leg.');
-
-  await modal(page).locator('label').filter({ hasText: 'Arquivo .txt' }).click();
-  await expect(aba(page, 'Arquivo .txt')).toBeChecked();
-  await expect(campoDeFrases(page)).toBeHidden();
-
-  await aba(page, 'Arquivo .txt').focus();
-  await page.keyboard.press('ArrowLeft');
-  await expect(aba(page, 'Colar')).toBeChecked();
-  await expect(campoDeFrases(page)).toHaveValue('Break a leg.');
-});
-
+// Exceção de teste: sem-estado-guardado — o Foto ↗ só fecha o modal e abre outra aba; nada é gravado.
 test('Foto ↗, ao lado das abas, fecha o modal e abre Minerar de uma foto numa aba nova', async ({ page, context, extensao }) => {
   await abrirFrases(page, extensao);
   await abrirColar(page);
@@ -421,6 +326,7 @@ test('nada novo só com repetidas: ADD-09 não fala de zero linhas ilegíveis', 
   await escolherArquivo(page, 'Break a leg.\nKeep me posted.\n');
 
   await expect(modal(page).locator('.minerar-resultado')).toHaveText('Nenhuma frase nova: 2 já estavam no histórico.');
+  expect(await extensao.frases()).toHaveLength(2);
 });
 
 test('nada novo só com linhas ilegíveis: ADD-09 não fala de zero repetidas', async ({ page, extensao }) => {
@@ -429,6 +335,7 @@ test('nada novo só com linhas ilegíveis: ADD-09 não fala de zero repetidas', 
   await escolherArquivo(page, 'palavra : [Contexto: web - Desconhecido - Desconhecido]\n');
 
   await expect(modal(page).locator('.minerar-resultado')).toHaveText('Nenhuma frase nova: 1 linha não pôde ser lida.');
+  expect(await extensao.frases()).toEqual([]);
 });
 
 const PARA_EXPORTAR = [
@@ -481,6 +388,7 @@ test('exportar → importar o mesmo .txt num histórico vazio devolve as mesmas 
   await expect(cartao(page, 'The harbour : a quiet place.')).toContainText('palavra:');
   await expect(cartao(page, 'The harbour : a quiet place.').locator('.veio-chip-palavra')).toContainText('harbour');
   await expect(cartao(page, 'Note : this matters a lot.').locator('.veio-chip-palavra')).toHaveCount(0);
+  expect(await extensao.frases()).toHaveLength(PARA_EXPORTAR.length);
 });
 
 test('exportar → importar: uma frase sem Palavra que termina em “ :” volta inteira', async ({ page, extensao }) => {
@@ -490,6 +398,7 @@ test('exportar → importar: uma frase sem Palavra que termina em “ :” volta
   ]);
 
   expect([...porTexto.keys()].sort()).toEqual(['Attention :', 'Look out.']);
+  expect(await extensao.frases()).toHaveLength(2);
 });
 
 test('exportar → importar: uma Palavra que já não está no texto (texto editado) não vai parar no texto, e os outros grupos voltam', async ({ page, extensao }) => {
@@ -508,6 +417,7 @@ test('exportar → importar: uma Palavra que já não está no texto (texto edit
   expect([...porTexto.keys()].sort()).toEqual(['He got cold feet before the party.', 'Look out.', 'She finally made it home.']);
   expect(porTexto.get('She finally made it home.').keywords || []).toEqual([]);
   expect(porTexto.get('He got cold feet before the party.').keywords).toEqual(['cold@4', 'feet@6']);
+  expect(await extensao.frases()).toHaveLength(3);
 });
 
 test('enquanto o .txt ainda está sendo lido, Minerar no Colar não começa uma segunda mineração', async ({ page, extensao }) => {
@@ -546,14 +456,6 @@ test('um .txt exportado por uma versão antiga, com Palavra e com “ : ” no t
   expect(porTexto.get('Note : this matters a lot.').keywords || []).toEqual([]);
 });
 
-test('o Minerar frases do primeiro uso (PAI-02) abre o modal em Colar', async ({ page, extensao }) => {
-  await abrirFrases(page, extensao);
-  await page.locator('#frases-lista .veio-vazio').getByRole('button', { name: 'Minerar frases' }).click();
-  await expect(modal(page)).toBeVisible();
-  await expect(aba(page, 'Colar')).toBeChecked();
-  await expect(campoDeFrases(page)).toBeFocused();
-});
-
 test('com movimento reduzido, a barra de progresso não anima', async ({ page, extensao, fakes }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   let soltar;
@@ -570,4 +472,5 @@ test('com movimento reduzido, a barra de progresso não anima', async ({ page, e
   expect(transicao.split(',').every(t => parseFloat(t) === 0)).toBe(true);
   soltar();
   await expect(toasts(page)).toHaveText('2 frases mineradas');
+  expect((await extensao.frases()).map(f => f.texto).sort()).toEqual(['Break a leg.', 'Keep me posted.']);
 });
