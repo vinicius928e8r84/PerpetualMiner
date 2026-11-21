@@ -3,7 +3,7 @@
 const assert = require('assert');
 
 globalThis.PerpetualMiner = {};
-require('../painel-anki-primeira-conexao-estado.js');
+require('../painel/painel-anki-primeira-conexao-estado.js');
 const { FaseDaPrimeiraConexao, ConversaComOAbridor } = globalThis.PerpetualMiner;
 
 // ─── A fase do card ───────────────────────────────────────────────────────────────────────────────────────────────────────────
