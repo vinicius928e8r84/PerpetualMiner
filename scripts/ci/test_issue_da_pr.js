@@ -6,7 +6,7 @@ const { conferir } = require('./registro-da-pr.js');
 const HEAD = '96cfa870d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6';
 const MODELO_DO_PR = ['## Summary', '', 'O que mudou.', '', 'Sem issue', '', '## Evidence', '', 'Rodei.', '', '## Merge Danger', '', '**Door:** two-way', '', '**Blast Radius:** CI', '', '**Política:** sem mudança', ''];
 const corpoCom = (...linhas) => [...MODELO_DO_PR, ...linhas].join('\n');
-const REVISAO = ['## Code review', '', 'Veredito: CLEAN', `Head: ${HEAD}`, 'Autor: sessão do autor', 'Revisor: sessão da revisão'].join('\n');
+const REVISAO = ['## Code review', '', 'Veredito: CLEAN', `Head: ${HEAD}`, 'Autor: sessão do autor', 'Revisor: sessão da revisão', 'Risco: BAIXA'].join('\n');
 
 const resultado = pr => conferir({ corpo: '', rotulos: [], registros: [REVISAO], head: HEAD, repositorio: 'dono/repo', ...pr });
 const passa = (pr, caso) => {

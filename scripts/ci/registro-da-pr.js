@@ -6,6 +6,7 @@ const ATENCOES = ['BAIXA', 'MÉDIA', 'ALTA'];
 const ROTULO_DE_RISCO_ALTO = 'risco:alto';
 const SECAO_DA_PROVA = 'Prova real';
 const FRASE = 'PROVADO 100% REAL';
+const LACUNA_DA_PROVA = /\bnao coberto\b|\bbloqueada\b/;
 const VEREDITO_LIMPO = 'CLEAN';
 // Num repositório público qualquer pessoa comenta: só vale o registro de quem pode escrever no repositório.
 const QUEM_REGISTRA = ['OWNER', 'MEMBER', 'COLLABORATOR'];
@@ -92,12 +93,23 @@ function faltaDoHead(textos, head, oQue) {
   return `${oQue} não tem a linha "Head:" com o SHA do head`;
 }
 
+const nivelDe = valor => ATENCOES.find(atencao => igual(atencao, valor)) || valor;
+const maiorNivel = niveis => niveis.reduce((maior, nivel) => (ATENCOES.indexOf(nivel) > ATENCOES.indexOf(maior) ? nivel : maior));
+
 function atencaoDe(textos) {
-  const ditas = [...new Set(valoresDe(textos, 'Atenção').map(valor => ATENCOES.find(atencao => igual(atencao, valor)) || valor))];
+  const ditas = [...new Set(valoresDe(textos, 'Atenção').map(nivelDe))];
   if (ditas.length === 1 && ATENCOES.includes(ditas[0])) return { atencao: ditas[0] };
   if (!ditas.length) return { falta: `o corpo não tem o campo de atenção preenchido (uma linha "Atenção: ${ATENCOES.join('", "Atenção: ')}")` };
   if (ditas.length > 1) return { falta: `o corpo diz mais de uma atenção (${ditas.join(' e ')})` };
   return { falta: `a atenção "${ditas[0]}" do corpo não é ${ATENCOES.join(' nem ')} (o valor sozinho na linha)` };
+}
+
+function riscoDe(textos) {
+  const ditos = valoresDe(textos, 'Risco').map(nivelDe);
+  const fora = ditos.find(dito => !ATENCOES.includes(dito));
+  if (fora) return { falta: `o risco "${fora}" do registro do /code-review não é ${ATENCOES.join(' nem ')} (o valor sozinho na linha)` };
+  if (!ditos.length) return { falta: `o registro do /code-review não diz o risco que o revisor viu (uma linha "Risco: ${ATENCOES.join('", "Risco: ')}")` };
+  return { risco: maiorNivel(ditos) };
 }
 
 function registroQueVale(registros, head, equivalentes = []) {
@@ -111,7 +123,7 @@ function faltaDaRevisao(registros, head, equivalentes = []) {
   const { todos, doHead } = registroQueVale(registros, head, equivalentes);
   if (!doHead) {
     return todos.length ? faltaDoHead(todos[todos.length - 1], head, 'o registro do /code-review mais recente')
-      : 'nenhum comentário ou revisão da PR é o registro do /code-review (as linhas "Veredito: CLEAN", "Head: <SHA>", "Autor:" e "Revisor:")';
+      : 'nenhum comentário ou revisão da PR é o registro do /code-review (as linhas "Veredito: CLEAN", "Head: <SHA>", "Autor:", "Revisor:" e "Risco:")';
   }
   const vereditos = valoresDe(doHead, 'Veredito');
   if (!vereditos.every(veredito => veredito === VEREDITO_LIMPO)) return `o veredito do registro mais recente do /code-review deste head é ${vereditos.join(' e ')}, não ${VEREDITO_LIMPO}`;
@@ -119,7 +131,12 @@ function faltaDaRevisao(registros, head, equivalentes = []) {
   const [revisor] = valoresDe(doHead, 'Revisor');
   if (!autor || !revisor) return 'o registro do /code-review não diz quem é o autor e quem é o revisor (as linhas "Autor:" e "Revisor:")';
   if (igual(autor, revisor)) return `o revisor do registro do /code-review é o próprio autor (${autor})`;
-  return null;
+  return riscoDe(doHead).falta;
+}
+
+function riscoDoRevisor(registros, head, equivalentes) {
+  const { doHead } = registroQueVale(registros, head, equivalentes);
+  return doHead ? riscoDe(doHead).risco : undefined;
 }
 
 function headsSoComMergeDaMain(registros, head, base, raiz) {
@@ -144,13 +161,32 @@ function faltasDaIssue(linhas, repositorio) {
 
 function faltaDaProva(linhas, head) {
   const prova = secao(linhas, SECAO_DA_PROVA);
-  if (!prova) return `atenção ALTA: o corpo não tem a seção "${SECAO_DA_PROVA}"`;
-  if (!prova.includes(FRASE)) return `atenção ALTA: a seção "${SECAO_DA_PROVA}" não tem a linha ${FRASE} (a frase sozinha na linha)`;
-  const semHead = faltaDoHead(prova, head, `a seção "${SECAO_DA_PROVA}"`);
-  return semHead && `atenção ALTA: ${semHead}`;
+  if (!prova) return `o corpo não tem a seção "${SECAO_DA_PROVA}"`;
+  const lacuna = prova.find(texto => LACUNA_DA_PROVA.test(semCaixaNemAcento(texto)));
+  if (lacuna) return `a seção "${SECAO_DA_PROVA}" diz "${lacuna}": com uma parte não coberta ou bloqueada, a prova não é ${FRASE}`;
+  if (!prova.includes(FRASE)) return `a seção "${SECAO_DA_PROVA}" não tem a linha ${FRASE} (a frase sozinha na linha)`;
+  return faltaDoHead(prova, head, `a seção "${SECAO_DA_PROVA}"`);
 }
 
-function partesDoCorpo({ corpo, rotulos, head, repositorio }) {
+const MOTIVOS_DA_PROVA = [
+  [({ atencao }) => atencao === 'ALTA', 'atenção ALTA'],
+  [({ rotulos }) => rotulos.some(rotulo => igual(String(rotulo), ROTULO_DE_RISCO_ALTO)), 'atenção ALTA'],
+  [({ risco }) => risco === 'ALTA', 'risco ALTA do revisor'],
+];
+
+const motivoDaProva = pr => (MOTIVOS_DA_PROVA.find(([pede]) => pede(pr)) || [])[1];
+
+function faltaDaProvaPedida(motivo, linhas, head) {
+  const falta = motivo && faltaDaProva(linhas, head);
+  return falta && `${motivo}: ${falta}`;
+}
+
+function atencaoQueVale(atencao, risco) {
+  const vale = maiorNivel([atencao, risco]);
+  return vale === atencao ? atencao : `${vale} (o corpo diz ${atencao}, o revisor ${risco})`;
+}
+
+function partesDoCorpo({ corpo, rotulos, head, repositorio, risco }) {
   const linhas = linhasQueValem(corpo);
   const textos = linhas.map(linha => linha.texto);
   const foraDoModelo = [
@@ -158,16 +194,16 @@ function partesDoCorpo({ corpo, rotulos, head, repositorio }) {
     ...CAMPOS_DO_MODELO.filter(campo => !valoresDe(textos, campo).length).map(campo => `o campo "${campo}:" preenchido`),
   ];
   const { atencao, falta: semAtencao } = atencaoDe(textos);
-  const alta = atencao === 'ALTA' || rotulos.some(rotulo => igual(String(rotulo), ROTULO_DE_RISCO_ALTO));
+  const motivo = motivoDaProva({ atencao, rotulos, risco });
   return {
     atencao,
-    alta,
+    alta: Boolean(motivo),
     doModelo: [
       foraDoModelo.length && `o corpo não segue o modelo do /pr: falta ${foraDoModelo.join(', ')}`,
       semAtencao,
       ...faltasDaIssue(linhas, repositorio),
     ].filter(Boolean),
-    daProva: alta && faltaDaProva(linhas, head),
+    daProva: faltaDaProvaPedida(motivo, linhas, head),
   };
 }
 
@@ -177,12 +213,13 @@ function faltasDoCorpo(pr) {
 }
 
 function conferir({ corpo, rotulos, registros, head, repositorio, headsEquivalentes = [] }) {
-  const { atencao, alta, doModelo, daProva } = partesDoCorpo({ corpo, rotulos, head, repositorio });
+  const risco = riscoDoRevisor(registros, head, headsEquivalentes);
+  const { atencao, alta, doModelo, daProva } = partesDoCorpo({ corpo, rotulos, head, repositorio, risco });
   const faltas = [...doModelo, faltaDaRevisao(registros, head, headsEquivalentes), daProva].filter(Boolean);
   if (!faltas.length) {
     const { headDoRegistro } = registroQueVale(registros, head, headsEquivalentes);
     const viaMerge = headDoRegistro !== head ? ` (registro do head ${headDoRegistro}; daí até este head só há merges limpos da main)` : '';
-    return { ok: true, mensagem: `registro da PR ok no head ${head}: atenção ${atencao}, /code-review ${VEREDITO_LIMPO}${viaMerge}${alta ? `, ${FRASE}` : ''}` };
+    return { ok: true, mensagem: `registro da PR ok no head ${head}: atenção ${atencaoQueVale(atencao, risco)}, /code-review ${VEREDITO_LIMPO}${viaMerge}${alta ? `, ${FRASE}` : ''}` };
   }
   return {
     ok: false,
@@ -261,4 +298,4 @@ async function main(env) {
 
 if (require.main === module) main(process.env).then(codigo => { process.exitCode = codigo; });
 
-module.exports = { FRASE, ROTULO_DE_RISCO_ALTO, SECAO_DA_PROVA, conferir, faltaDaProva, faltaDaRevisao, faltasDoCorpo, indicesForaDoCodigo, lerDoGitHub, linhasQueValem };
+module.exports = { ATENCOES, FRASE, ROTULO_DE_RISCO_ALTO, SECAO_DA_PROVA, conferir, faltaDaProva, faltaDaRevisao, faltasDoCorpo, indicesForaDoCodigo, lerDoGitHub, linhasQueValem, semCaixaNemAcento };

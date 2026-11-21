@@ -6,8 +6,8 @@ const fs = require('fs');
 const http = require('http');
 const os = require('os');
 const path = require('path');
-const { conferir } = require('./registro-da-pr.js');
-const { corpoComAProva, planejar, secaoDaProva } = require('./registrar-na-pr.js');
+const { FRASE, conferir } = require('./registro-da-pr.js');
+const { PROVA_BLOQUEADA, corpoComAProva, planejar, secaoDaProva } = require('./registrar-na-pr.js');
 
 const HEAD = '1d606d78aac180096ca7cc5df8279355f21ac729';
 const ANTERIOR = '13cf9d9a6ec64ca5d07f1266fe8998323de16ef3';
@@ -15,10 +15,10 @@ const MODELO = ['## Summary', '', 'O que mudou.', '', 'Sem issue', '', '## Evide
 const corpoCom = (...linhas) => [...MODELO, ...linhas].join('\n');
 const MEDIA = corpoCom('**Atenção:** MÉDIA');
 const ALTA = corpoCom('**Atenção:** ALTA', 'Muda o estado do Envio.');
-const registro = (head, veredito = 'CLEAN') => ['Registro do /code-review', '', `Veredito: ${veredito}`, `Head: ${head}`, 'Autor: worker a', 'Revisor: worker b'].join('\n');
+const registro = (head, veredito = 'CLEAN') => ['Registro do /code-review', '', `Veredito: ${veredito}`, `Head: ${head}`, 'Autor: worker a', 'Revisor: worker b', 'Risco: BAIXA'].join('\n');
 const pr = (estado = {}) => ({ corpo: MEDIA, rotulos: [], registros: [], head: HEAD, ...estado });
-const revisao = (opcoes = {}) => ({ comando: 'revisao', veredito: 'CLEAN', head: HEAD, autor: 'worker a', revisor: 'worker b', ...opcoes });
-const prova = (opcoes = {}) => ({ comando: 'prova', head: HEAD, ...opcoes });
+const revisao = (opcoes = {}) => ({ comando: 'revisao', veredito: 'CLEAN', head: HEAD, autor: 'worker a', revisor: 'worker b', risco: 'BAIXA', ...opcoes });
+const prova = (opcoes = {}) => ({ comando: 'prova', head: HEAD, cobertura: FRASE, ...opcoes });
 
 {
   const plano = planejar(revisao(), pr(), 'Nenhum achado.');
@@ -53,6 +53,39 @@ assert.match(planejar(revisao(), pr(), 'Veredito: FINDINGS no eixo Spec').recusa
   const comModelo = corpoCom('**Atenção:** ALTA', '', '<!--', '   ## Prova real', '   Head: <SHA>', '-->', '', '```', '## Prova real', '```');
   assert.strictEqual(corpoComAProva(comModelo, secaoDaProva(HEAD)), `${comModelo}\n\n## Prova real\n\nPROVADO 100% REAL\nHead: ${HEAD}\n`);
 }
+
+const comRisco = (risco, ...linhas) => [registro(HEAD).replace('Risco: BAIXA', `Risco: ${risco}`), ...linhas].join('\n');
+const provaDoHead = (...nota) => ['', '## Prova real', '', FRASE, `Head: ${HEAD}`, '', ...nota].join('\n');
+
+function conferirORiscoDoRevisor() {
+  const semProva = conferir(pr({ registros: [comRisco('ALTA')] }));
+  assert.strictEqual(semProva.ok, false, 'o corpo MÉDIA com o revisor ALTA pede a prova');
+  assert.match(semProva.mensagem, /- risco ALTA do revisor: o corpo não tem a seção "Prova real"/);
+  const provada = conferir(pr({ corpo: MEDIA + provaDoHead('Envio real no Anki.'), registros: [comRisco('alta')] }));
+  assert.match(provada.mensagem, /atenção ALTA \(o corpo diz MÉDIA, o revisor ALTA\), \/code-review CLEAN, PROVADO 100% REAL$/);
+  assert.strictEqual(conferir(pr({ corpo: ALTA, registros: [registro(HEAD)] })).ok, false, 'o corpo ALTA com o revisor BAIXA segue ALTA');
+  assert.match(conferir(pr({ corpo: ALTA + provaDoHead(), registros: [registro(HEAD)] })).mensagem, /: atenção ALTA, \/code-review CLEAN, PROVADO 100% REAL$/);
+  assert.strictEqual(conferir(pr({ registros: [comRisco('BAIXA', '', 'S1: o Envio muda.', 'Risco: ALTA')] })).ok, false, 'vale o maior risco do registro');
+  assert.match(conferir(pr({ registros: [registro(HEAD).replace('\nRisco: BAIXA', '')] })).mensagem, /não diz o risco que o revisor viu/);
+  assert.match(conferir(pr({ registros: [comRisco('baixo')] })).mensagem, /o risco "baixo" do registro do \/code-review não é BAIXA nem MÉDIA nem ALTA/);
+  assert.strictEqual(planejar(revisao({ risco: 'ALTA' }), pr()).comentario, comRisco('ALTA'), 'o registro publicado diz o risco');
+}
+
+function conferirACoberturaDaProva() {
+  for (const lacuna of ['NÃO COBERTO: o Windows.', 'NAO COBERTO: o Windows.', 'O Windows ficou BLOQUEADA.']) {
+    assert.match(conferir(pr({ corpo: ALTA + provaDoHead(lacuna), registros: [registro(HEAD)] })).mensagem, /atenção ALTA: a seção "Prova real" diz "[^"]+": com uma parte não coberta ou bloqueada/, lacuna);
+    assert.match(planejar(prova(), pr({ corpo: ALTA, registros: [registro(HEAD)] }), lacuna).recusa, /o check não aceitaria esta prova: a seção "Prova real" diz/, `total com ${lacuna}`);
+  }
+  const parcial = planejar(prova({ cobertura: PROVA_BLOQUEADA }), pr({ corpo: ALTA, registros: [registro(HEAD)] }), 'Só no Mac.');
+  assert.strictEqual(parcial.secao, `## Prova real\n\nBLOQUEADA-Mac-Windows\nHead: ${HEAD}\n\nSó no Mac.`, 'a parcial escreve a seção bloqueada, sem a frase');
+  assert.strictEqual(parcial.depois.ok, false);
+  assert.match(parcial.depois.mensagem, /atenção ALTA: a seção "Prova real" diz "BLOQUEADA-Mac-Windows"/);
+  const total = planejar(prova(), pr({ corpo: ALTA, registros: [registro(HEAD)] }), 'Envio real no Anki, no Mac e no Windows.');
+  assert.strictEqual(total.depois.ok, true, total.depois.mensagem);
+}
+
+conferirORiscoDoRevisor();
+conferirACoberturaDaProva();
 
 (async () => {
   const github = {};
@@ -92,8 +125,8 @@ assert.match(planejar(revisao(), pr(), 'Veredito: FINDINGS no eixo Spec').recusa
       env: { PATH: process.env.PATH, GITHUB_API_URL: `http://127.0.0.1:${servidor.address().port}`, GITHUB_REPOSITORY: 'dono/repo', GITHUB_TOKEN: 'segredo' },
     }, (erro, stdout) => pronto({ status: erro ? erro.code : 0, stdout, escritas: pedidos.filter(pedido => pedido.metodo !== 'GET') }));
   });
-  const REVISAO = ['revisao', '--pr', '7', '--head', HEAD, '--autor', 'worker a', '--revisor', 'worker b'];
-  const PROVA = ['prova', '--pr', '7', '--head', HEAD, '--nota', nota];
+  const REVISAO = ['revisao', '--pr', '7', '--head', HEAD, '--autor', 'worker a', '--revisor', 'worker b', '--risco', 'baixa'];
+  const PROVA = ['prova', '--pr', '7', '--head', HEAD, '--cobertura', 'total', '--nota', nota];
   try {
     const ensaio = await rodar(REVISAO);
     assert.strictEqual(ensaio.status, 0, ensaio.stdout);
@@ -112,7 +145,7 @@ assert.match(planejar(revisao(), pr(), 'Veredito: FINDINGS no eixo Spec').recusa
     assert.match(rodando.stdout, /já está rodando neste head/);
     assert.strictEqual(rodando.escritas.length, 1, 'só o comentário: a execução em andamento lê o registro novo');
 
-    const atrasada = await rodar(['revisao', '--pr', '7', '--head', ANTERIOR, '--autor', 'a', '--revisor', 'b', '--publicar']);
+    const atrasada = await rodar(['revisao', '--pr', '7', '--head', ANTERIOR, '--autor', 'a', '--revisor', 'b', '--risco', 'baixa', '--publicar']);
     assert.strictEqual(atrasada.status, 1);
     assert.match(atrasada.stdout, new RegExp(`^✗ Nada foi publicado na PR 7: a revisão é do commit ${ANTERIOR}, e o head da PR agora é ${HEAD}`));
     assert.deepStrictEqual(atrasada.escritas, []);
@@ -137,7 +170,7 @@ assert.match(planejar(revisao(), pr(), 'Veredito: FINDINGS no eixo Spec').recusa
     assert.deepStrictEqual(conferida.escritas, []);
 
     for (const [args, padrao] of [
-      [['revisao', '--pr', '7', '--head', HEAD], /revisao pede --autor, --revisor/], [['prova', '--pr', '7', '--head', HEAD], /prova pede --nota/],
+      [['revisao', '--pr', '7', '--head', HEAD], /revisao pede --autor, --revisor, --risco/], [['prova', '--pr', '7', '--head', HEAD], /prova pede --cobertura, --nota/],
       [['publicar', '--pr', '7'], /comando desconhecido: publicar/], [['conferir'], /--pr <número> é obrigatório/], [['conferir', '--pr', '7', '--forcar'], /opção desconhecida: --forcar/],
     ]) {
       const errado = await rodar(args);
