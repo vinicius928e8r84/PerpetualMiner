@@ -28,7 +28,7 @@ Codes such as K1, N2 and P1 are the names the PR 204 review rounds gave each sce
 
 ## How to get to it (user POV)
 
-- Sidebar › Configurações › the **IA dos cartões** card, or `painel.html#configuracoes/ia`.
+- Sidebar › Configurações › the **IA dos cartões** card, or `painel/painel.html#configuracoes/ia`.
 - Boas-vindas › step 5 (`#boas-vindas/ia`).
 - Signing out: Configurações › Conta & sync › **Sair da conta**; then the card offers local-only deletion (`ia-delete`, `O1:`; see [conta.md](./conta.md)).
 
