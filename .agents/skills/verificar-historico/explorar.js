@@ -49,25 +49,30 @@ function novoMundo(escolhas) {
   return mundo;
 }
 
+function pedidoTocaFrases(chaves) {
+  if (chaves === null || chaves === 'frases') return true;
+  if (Array.isArray(chaves)) return chaves.includes('frases');
+  return typeof chaves === 'object' && 'frases' in chaves;
+}
+
+function lerDe(dados, pedido) {
+  if (pedido === null) return copia(dados);
+  const chaves = typeof pedido === 'string' ? [pedido] : pedido;
+  if (Array.isArray(chaves)) return Object.fromEntries(chaves.filter(c => c in dados).map(c => [c, copia(dados[c])]));
+  return Object.fromEntries(Object.entries(chaves).map(([c, padrao]) => [c, copia(c in dados ? dados[c] : padrao)]));
+}
+
 function armazenamento(mundo, dados = mundo.dados) {
-  const tocaFrases = chaves => dados === mundo.dados && (chaves === null || chaves === 'frases' ||
-    (Array.isArray(chaves) ? chaves.includes('frases') : typeof chaves === 'object' && 'frases' in chaves));
-  function ler(pedido) {
-    if (pedido === null) return copia(dados);
-    if (typeof pedido === 'string') pedido = [pedido];
-    if (Array.isArray(pedido)) return Object.fromEntries(pedido.filter(c => c in dados).map(c => [c, copia(dados[c])]));
-    return Object.fromEntries(Object.entries(pedido).map(([c, padrao]) => [c, copia(c in dados ? dados[c] : padrao)]));
-  }
+  const ehOHistorico = dados === mundo.dados;
+  const acessar = (chaves, oQue, efeito) => (ehOHistorico && pedidoTocaFrases(chaves)
+    ? mundo.passo(oQue, efeito)
+    : Promise.resolve().then(efeito));
   const gravar = valores => { for (const [c, v] of Object.entries(valores)) dados[c] = copia(v); };
   const tirar = chaves => { for (const c of [].concat(chaves)) delete dados[c]; };
   const responder = (promessa, devolver) => (devolver ? void promessa.then(devolver) : promessa);
   return {
-    get: (pedido, devolver) => responder(tocaFrases(pedido)
-      ? mundo.passo('lê frases', () => ler(pedido))
-      : Promise.resolve().then(() => ler(pedido)), devolver),
-    set: (valores, devolver) => responder(tocaFrases(valores)
-      ? mundo.passo('grava frases', () => gravar(valores))
-      : Promise.resolve().then(() => gravar(valores)), devolver),
+    get: (pedido, devolver) => responder(acessar(pedido, 'lê frases', () => lerDe(dados, pedido)), devolver),
+    set: (valores, devolver) => responder(acessar(valores, 'grava frases', () => gravar(valores)), devolver),
     remove: (chaves, devolver) => responder(Promise.resolve().then(() => tirar(chaves)), devolver),
   };
 }
@@ -175,28 +180,51 @@ function intercalacoesQueMantemAOrdemDeCadaAtor(seqs, prefixo = []) {
   return seqs.flatMap((s, i) => (s.length ? intercalacoesQueMantemAOrdemDeCadaAtor(seqs.map((t, j) => (j === i ? t.slice(1) : t)), [...prefixo, s[0]]) : []));
 }
 
-function conferir(cenario, { mundo, fim, parados }) {
-  const iniciais = new Set((cenario.dados.frases || []).map(f => String(f.id)));
-  const final = mundo.dados.frases || [];
-  const erros = [];
-  if (parados.length) erros.push(`impasse: ${parados.join(', ')} não terminou`);
-  for (const [nome, { erro }] of fim) if (erro) erros.push(`${nome} falhou: ${erro.split('\n')[0]}`);
+function errosDeQuemNaoTerminou({ fim, parados }) {
+  const impasse = parados.length ? [`impasse: ${parados.join(', ')} não terminou`] : [];
+  const falharam = [...fim].filter(([, { erro }]) => erro).map(([nome, { erro }]) => `${nome} falhou: ${erro.split('\n')[0]}`);
+  return [...impasse, ...falharam];
+}
+
+function idsRepetidos(final) {
   const ids = final.map(f => String(f.id));
-  if (new Set(ids).size !== ids.length) erros.push(`ids repetidos: ${ids.join(', ')}`);
-  const inicio = (cenario.dados.frases || []).map(f => projetar(f, iniciais));
-  const possiveis = new Set(intercalacoesQueMantemAOrdemDeCadaAtor(cenario.atores.map(a => a.ops))
+  return new Set(ids).size === ids.length ? [] : [`ids repetidos: ${ids.join(', ')}`];
+}
+
+function frasesEmSerie(cenario, inicio) {
+  return new Set(intercalacoesQueMantemAOrdemDeCadaAtor(cenario.atores.map(a => a.ops))
     .map(ordem => chave(ordem.reduce((l, op) => OPS[op.tipo](l, op), inicio))));
+}
+
+const textoDaLinha = linha => JSON.parse(linha).texto;
+const contarPorTexto = k => k.split('\n').reduce((m, l) => m.set(textoDaLinha(l), (m.get(textoDaLinha(l)) || 0) + 1), new Map());
+
+function maiorContagemEmSerie(possiveis) {
+  const maximo = new Map();
+  for (const k of possiveis) for (const [t, n] of contarPorTexto(k)) maximo.set(t, Math.max(maximo.get(t) || 0, n));
+  return maximo;
+}
+
+function entrouDuasVezes(obtido, possiveis) {
+  const no = contarPorTexto(obtido);
+  const maximo = maiorContagemEmSerie(possiveis);
+  return [...no].some(([t, n]) => n > 1 && n > (maximo.get(t) || 0));
+}
+
+function erroDeNenhumaOrdemEmSerie(obtido, possiveis) {
+  const tipo = entrouDuasVezes(obtido, possiveis) ? 'duplicata: a mesma Frase entrou duas vezes' : 'perda: uma escrita sumiu (Frase, campo ou apagamento)';
+  return `${tipo}; o frases final não é o de nenhuma ordem em série\n` +
+    `      final: ${obtido.split('\n').join('\n             ')}\n` +
+    `      em série, por exemplo: ${[...possiveis][0].split('\n').join('\n                             ')}`;
+}
+
+function conferir(cenario, execucao) {
+  const iniciais = new Set((cenario.dados.frases || []).map(f => String(f.id)));
+  const final = execucao.mundo.dados.frases || [];
+  const erros = [...errosDeQuemNaoTerminou(execucao), ...idsRepetidos(final)];
+  const possiveis = frasesEmSerie(cenario, (cenario.dados.frases || []).map(f => projetar(f, iniciais)));
   const obtido = chave(final.map(f => projetar(f, iniciais)));
-  if (!possiveis.has(obtido)) {
-    const contar = k => k.split('\n').reduce((m, l) => m.set(JSON.parse(l).texto, (m.get(JSON.parse(l).texto) || 0) + 1), new Map());
-    const no = contar(obtido);
-    const maximo = new Map();
-    for (const k of possiveis) for (const [t, n] of contar(k)) maximo.set(t, Math.max(maximo.get(t) || 0, n));
-    const duplicata = [...no].some(([t, n]) => n > 1 && n > (maximo.get(t) || 0));
-    erros.push(`${duplicata ? 'duplicata: a mesma Frase entrou duas vezes' : 'perda: uma escrita sumiu (Frase, campo ou apagamento)'}; o frases final não é o de nenhuma ordem em série\n` +
-      `      final: ${obtido.split('\n').join('\n             ')}\n` +
-      `      em série, por exemplo: ${[...possiveis][0].split('\n').join('\n                             ')}`);
-  }
+  if (!possiveis.has(obtido)) erros.push(erroDeNenhumaOrdemEmSerie(obtido, possiveis));
   return erros;
 }
 
@@ -257,29 +285,46 @@ const CENARIOS = [
   { nome: 'legenda-repetida', dados: { frases: [f1], ...ajustes }, atores: [legenda('SW legenda 1'), legenda('SW legenda 2')] },
 ];
 
-async function principal() {
-  const args = process.argv.slice(2);
+function pedidoDaLinhaDeComando(args) {
   const so = args.includes('--cenario') ? args[args.indexOf('--cenario') + 1] : null;
-  const um = args.includes('--um');
+  return { so, um: args.includes('--um') };
+}
+
+const tipoDoErro = erro => erro.split(':')[0];
+
+function falhouSoComoOConhecido({ conhecido }, falhas) {
+  if (!conhecido || falhas.length === 0) return false;
+  return falhas.every(f => f.erros.every(e => tipoDoErro(e) === conhecido));
+}
+
+function veredito(cenario, falhas) {
+  if (falhouSoComoOConhecido(cenario, falhas)) return { estado: `FALHOU SÓ COMO O ACHADO CONHECIDO (${cenario.conhecido})`, reprova: false };
+  if (falhas.length) return { estado: 'FALHOU', reprova: true };
+  if (cenario.conhecido) return { estado: 'PASSOU (o achado conhecido sumiu: atualize o cenário)', reprova: true };
+  return { estado: 'PASSOU', reprova: false };
+}
+
+function relatarOPrimeiroContraexemplo(falhas) {
+  if (falhas.length === 0) return;
+  const [primeira] = falhas;
+  console.log(`  contraexemplo (o primeiro de ${falhas.length}):`);
+  primeira.rastro.forEach((p, i) => console.log(`    ${String(i + 1).padStart(2)}. ${p}`));
+  primeira.erros.forEach(e => console.log(`    → ${e}`));
+}
+
+async function principal() {
+  const { so, um } = pedidoDaLinhaDeComando(process.argv.slice(2));
   let ruim = false;
   for (const cenario of CENARIOS.filter(c => !so || c.nome === so)) {
     const inicio = Date.now();
     const { ordens, falhas } = await explorar(cenario, { um });
-    const tipos = new Set(falhas.flatMap(f => f.erros.map(e => e.split(':')[0])));
-    const soOConhecido = cenario.conhecido && falhas.length > 0 && [...tipos].every(t => t === cenario.conhecido);
-    const estado = falhas.length === 0 ? (cenario.conhecido ? 'PASSOU (o achado conhecido sumiu: atualize o cenário)' : 'PASSOU')
-      : soOConhecido ? `FALHOU SÓ COMO O ACHADO CONHECIDO (${cenario.conhecido})` : 'FALHOU';
-    if (!(falhas.length === 0 && !cenario.conhecido) && !soOConhecido) ruim = true;
+    const { estado, reprova } = veredito(cenario, falhas);
+    if (reprova) ruim = true;
     console.log(`${cenario.nome}: ${ordens} ordens, ${falhas.length} contraexemplos, ${Date.now() - inicio} ms → ${estado}`);
-    if (falhas.length) {
-      const [primeira] = falhas;
-      console.log(`  contraexemplo (o primeiro de ${falhas.length}):`);
-      primeira.rastro.forEach((p, i) => console.log(`    ${String(i + 1).padStart(2)}. ${p}`));
-      primeira.erros.forEach(e => console.log(`    → ${e}`));
-    }
+    relatarOPrimeiroContraexemplo(falhas);
   }
   process.exitCode = ruim ? 1 : 0;
 }
 
 if (require.main === module) principal();
-module.exports = { CENARIOS, explorar };
+module.exports = { CENARIOS, armazenamento, conferir, explorar, principal };
