@@ -104,7 +104,7 @@ function carregarFaixa({ responder } = {}) {
       },
       outros: { textoDaVoz: id => id, Veio },
     },
-    arquivos: ['lib/abridor.js', 'lib/abrir-o-anki.js', 'painel-envio-anki-fechado.js'],
+    arquivos: ['lib/abridor.js', 'lib/abrir-o-anki.js', 'painel/painel-envio-anki-fechado.js'],
   });
   const faixa = EnvioComOAnkiFechado.criar({ aoLigar: ids => aoLigar.push(ids) });
   return {
