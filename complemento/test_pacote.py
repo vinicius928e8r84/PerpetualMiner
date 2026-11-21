@@ -145,12 +145,12 @@ class ArquivoDoComplemento(unittest.TestCase):
                 self.assertEqual(motor.config_loader.base_config()["anki"]["note_type"], "Básico")
                 self.assertTrue(os.path.isfile(os.path.join(os.path.dirname(motor.config_loader.__file__), "prompts", "en_card.txt")))
                 from complemento.test_openai_de_mentira import OpenAIDeMentira
-                from complemento.test_motor import SEM_AS_BIBLIOTECAS_DE_FORA, configuracao_do_teste, gerar_a_imagem, pela_chave
+                from complemento.test_motor import SEM_AS_BIBLIOTECAS_DE_FORA, MotorPelaChave, configuracao_do_teste
 
                 with OpenAIDeMentira() as openai, mock.patch.dict(sys.modules, SEM_AS_BIBLIOTECAS_DE_FORA):
                     config = configuracao_do_teste(motor, pasta)
                     trabalho = motor.parser.get_card_jobs(motor.parser.parse_mining_line("give up : She gave up smoking"))[0]
-                    falha = motor.generate_cards.escrever(trabalho, config, pela_chave(motor, config, openai.base), "9-0")
+                    falha = motor.generate_cards.escrever(trabalho, config, MotorPelaChave(motor, config, openai.base).pedido_do_texto(), "9-0")
                 self.assertIsNone(falha)
                 self.assertTrue(os.path.isfile(os.path.join(pasta, "textos", "9-0.txt")))
                 from pathlib import Path
@@ -160,8 +160,9 @@ class ArquivoDoComplemento(unittest.TestCase):
                 with OpenAIDeMentira() as openai, mock.patch.dict(sys.modules, SEM_AS_BIBLIOTECAS_DE_FORA):
                     imagem = Path(pasta) / "imagem.png"
                     concreta = motor.parser.get_card_jobs(motor.parser.parse_mining_line("bicycle : He rides a bicycle"))[0]
-                    motor.generate_cards.escrever(concreta, config, pela_chave(motor, config, openai.base), "9-1")
-                    resultado = gerar_a_imagem(motor, config, openai.base, "9-1", imagem)
+                    pago = MotorPelaChave(motor, config, openai.base)
+                    motor.generate_cards.escrever(concreta, config, pago.pedido_do_texto(), "9-1")
+                    resultado = pago.gerar_a_imagem("9-1", imagem)
                 self.assertEqual(resultado, "ok")
                 self.assertEqual(imagem.read_bytes(), png_de("gerada"))
             finally:
