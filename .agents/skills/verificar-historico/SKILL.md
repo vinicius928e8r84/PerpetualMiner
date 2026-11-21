@@ -92,4 +92,4 @@ Limites: 2 a 4 atores por cenário, uma operação cada (o carregar faz duas), 1
 
 ## No CI
 
-Fica manual: não está em `scripts/testes.json`. O CI roda só arquivos `test_*.js` por grupo, e o explorador leva ~7 s (e `variantes.py` ~30 s). Rode à mão quando a mudança tocar a tabela de cobertura.
+A exploração fica manual: o explorador leva ~7 s (e `variantes.py` ~30 s), então rode-o à mão quando a mudança tocar a tabela de cobertura. O CI roda `test_explorar.js` (grupo `ferramentas`), que prova o relatório, a conferência contra as ordens em série e o que vira passo no `chrome.storage` falso, com cenários de mentira e sem explorar os de verdade.
