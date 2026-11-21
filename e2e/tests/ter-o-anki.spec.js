@@ -182,6 +182,7 @@ test.describe('com a permissão que o Chrome guardou depois de Permitir', () => 
     await expect.poll(() => fakes.abridor.pedidos()).toEqual([ABRIR]);
     await page.waitForTimeout(500);
     expect(fakes.abridor.pedidos()).toEqual([ABRIR]);
+    await expect(resultadoDoAnki(page)).toHaveText('O Anki está abrindo…');
     await estadoFinalEm('a permissão nativeMessaging no Chrome', () => extensao.permissaoDoAbridor(), true);
   });
 
