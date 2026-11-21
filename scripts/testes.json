@@ -26,7 +26,8 @@
         ".agents/skills/verify-perpetualminer/scripts/test_*.js",
         "scripts/ganchos/test_*.js",
         "scripts/qualidade/test_*.js",
-        "scripts/test_testar.mjs"
+        "scripts/test_testar.mjs",
+        "scripts/test_yaml_de_workflow.js"
       ]
     },
     "complemento": {

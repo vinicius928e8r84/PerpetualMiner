@@ -13,7 +13,7 @@ The rules that cross surfaces are in `docs/arquitetura.md` and the role of each 
 | `popup/popup.html/js/css` | `popup` |
 | `painel/painel.js`, `painel/painel.css` (Frases list, Minerar frases) | `painel-frases` |
 | `painel/painel-anki*.js`, `painel/painel-ajustes.js`, `painel/painel-envio.js`, `lib/ajustes-de-envio.js` | `painel-anki` |
-| `bookreader/bookreader.html/js/css` | `minerar-foto` |
+| `bookreader/bookreader.html/js/css`, `bookreader/leitura-do-gemini.js`, `bookreader/abrir-o-painel.js` | `minerar-foto` |
 | `veio/componentes.css`, `veio/componentes.js` | `veio-componentes` |
 | `overlay/overlay.js`, `overlay/overlay.css`, `content.js` (the caption and selection capture and the answer on screen) | `overlay` |
 | `e2e/fixtures.js`, `e2e/fakes/`, `e2e/pages/`, `e2e/vitrine/`, `e2e/tests/*-visual.spec.js` | `e2e-suite` |

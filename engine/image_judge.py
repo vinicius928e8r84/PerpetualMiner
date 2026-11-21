@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import json
 import logging
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -77,24 +78,44 @@ def _image_data_url(path: Path) -> str:
     return f"data:{mime};base64,{raw}"
 
 
+_QUERY_BLOCK_HEADINGS = ("google image search queries:", "image search queries:")
+_IMAGE_LINES = ("image:", "google image search:", "image search query:")
+
+
 def _card_brief(card_text: str) -> str:
-    lines = [line.strip() for line in (card_text or "").splitlines() if line.strip()]
     keep: list[str] = []
     in_query_block = False
-    for line in lines:
+    for line in _filled_lines(card_text):
         low = line.lower()
-        if low.startswith("google image search queries:") or low.startswith("image search queries:"):
+        if low.startswith(_QUERY_BLOCK_HEADINGS):
             in_query_block = True
             continue
-        if in_query_block:
-            if ":" in line and not line[:1].isdigit():
-                in_query_block = False
-            else:
-                continue
-        if low.startswith("image:") or low.startswith("google image search:") or low.startswith("image search query:"):
-            continue
-        keep.append(line)
+        in_query_block = in_query_block and not _ends_the_query_block(line)
+        if not in_query_block and not low.startswith(_IMAGE_LINES):
+            keep.append(line)
     return "\n".join(keep[:12])
+
+
+def _filled_lines(card_text: str) -> list[str]:
+    return [line.strip() for line in (card_text or "").splitlines() if line.strip()]
+
+
+def _ends_the_query_block(line: str) -> bool:
+    return ":" in line and not line[:1].isdigit()
+
+
+def _verdict_without_a_usable_photo(mode: str) -> str:
+    return "generate_better" if mode == "real_only" else "keep_generated"
+
+
+def _no_supported_candidates(mode: str) -> dict[str, Any]:
+    return {
+        "best_index": 0,
+        "best_score": 0,
+        "verdict": _verdict_without_a_usable_photo(mode),
+        "summary": "No supported image candidates.",
+        "candidates": [],
+    }
 
 
 def _invalid_image_format_fallback(mode: str, valid_index_map: list[int]) -> dict[str, Any]:
@@ -104,7 +125,7 @@ def _invalid_image_format_fallback(mode: str, valid_index_map: list[int]) -> dic
     return {
         "best_index": best_index,
         "best_score": 0,
-        "verdict": "generate_better" if mode == "real_only" else "keep_generated",
+        "verdict": _verdict_without_a_usable_photo(mode),
         "summary": "OpenAI rejected one or more image candidates as invalid_image_format; candidates discarded.",
         "candidates": [
             {
@@ -135,29 +156,57 @@ def rank_candidates(
     add-on it is the IA dos cartões' `JuizDaImagem` (the ChatGPT plan, or the key's `model`); the engine never sees who pays nor the secret.
     `label` is what the cost record says the call was for (the keyword by default; the add-on passes the card's id); only the key's verdict
     has a cost record."""
-    content: list[dict[str, Any]] = [{
-        "type": "text",
-        "text": (
-            f"Mode: {mode}\n"
-            f"Keyword: {keyword}\n"
-            f"Phrase: {phrase}\n"
-            f"Context: {context or 'None'}\n"
-            f"Card brief:\n{_card_brief(card_text)}\n\n"
-            "Evaluate all candidates. The best image is the one that would help a learner"
-            " instantly remember the keyword inside this specific card."
-        ),
-    }]
+    card_part = _CardForTheJudge(keyword, phrase, context, card_text).part(mode)
+    photos = _PhotosForTheJudge(candidates)
+    if not photos.valid_index_map:
+        return _no_supported_candidates(mode)
+    judging = _Judging(juiz, model, mode, label or keyword)
+    return judging.verdict([card_part] + photos.content, photos.valid_index_map, log_dir)
 
-    valid_index_map: list[int] = []
-    for original_idx, candidate in enumerate(candidates):
-        try:
-            data_url = _image_data_url(Path(candidate["path"]))
-        except (KeyError, OSError, UnsupportedImageFormatError):
-            continue
-        idx = len(valid_index_map)
-        valid_index_map.append(original_idx)
-        meta = candidate.get("meta", {})
-        content.append({
+
+@dataclass
+class _CardForTheJudge:
+    keyword: str
+    phrase: str
+    context: str
+    card_text: str
+
+    def part(self, mode: str) -> dict[str, Any]:
+        return {
+            "type": "text",
+            "text": (
+                f"Mode: {mode}\n"
+                f"Keyword: {self.keyword}\n"
+                f"Phrase: {self.phrase}\n"
+                f"Context: {self.context or 'None'}\n"
+                f"Card brief:\n{_card_brief(self.card_text)}\n\n"
+                "Evaluate all candidates. The best image is the one that would help a learner"
+                " instantly remember the keyword inside this specific card."
+            ),
+        }
+
+
+class _PhotosForTheJudge:
+    def __init__(self, candidates: list[dict[str, Any]]):
+        self.content: list[dict[str, Any]] = []
+        self.valid_index_map: list[int] = []
+        for original_idx, candidate in enumerate(candidates):
+            data_url = _readable_data_url(candidate)
+            if data_url is not None:
+                self.content += _candidate_parts(len(self.valid_index_map), candidate.get("meta", {}), data_url)
+                self.valid_index_map.append(original_idx)
+
+
+def _readable_data_url(candidate: dict[str, Any]) -> str | None:
+    try:
+        return _image_data_url(Path(candidate["path"]))
+    except (KeyError, OSError, UnsupportedImageFormatError):
+        return None
+
+
+def _candidate_parts(idx: int, meta: dict[str, Any], data_url: str) -> list[dict[str, Any]]:
+    return [
+        {
             "type": "text",
             "text": (
                 f"Candidate {idx}\n"
@@ -167,36 +216,40 @@ def rank_candidates(
                 f"creator={meta.get('creator', '')}\n"
                 f"kind={meta.get('kind', '')}"
             ),
-        })
-        content.append({
+        },
+        {
             "type": "image_url",
             "image_url": {"url": data_url},
-        })
+        },
+    ]
 
-    if not valid_index_map:
-        return {
-            "best_index": 0,
-            "best_score": 0,
-            "verdict": "generate_better" if mode == "real_only" else "keep_generated",
-            "summary": "No supported image candidates.",
-            "candidates": [],
-        }
 
-    try:
-        raw, usage, pela_chave = juiz.julgar(model, _SYSTEM, content, label or keyword)
-    except provedores.ErroDoProvedor as exc:
-        if exc.codigo != provedores.IMAGEM_INVALIDA:
-            raise
-        LOGGER.warning(
-            "image_judge invalid_image_format keyword=%s mode=%s candidates=%s",
-            label or keyword,
-            mode,
-            len(valid_index_map),
-        )
-        return _invalid_image_format_fallback(mode, valid_index_map)
-    if pela_chave:
-        _record_cost(log_dir, model, usage, f"[image_judge] {label or keyword}")
+@dataclass
+class _Judging:
+    juiz: Any
+    model: str
+    mode: str
+    label: str
 
+    def verdict(self, content: list[dict[str, Any]], valid_index_map: list[int], log_dir: str) -> dict[str, Any]:
+        try:
+            raw, usage, pela_chave = self.juiz.julgar(self.model, _SYSTEM, content, self.label)
+        except provedores.ErroDoProvedor as exc:
+            if exc.codigo != provedores.IMAGEM_INVALIDA:
+                raise
+            LOGGER.warning(
+                "image_judge invalid_image_format keyword=%s mode=%s candidates=%s",
+                self.label,
+                self.mode,
+                len(valid_index_map),
+            )
+            return _invalid_image_format_fallback(self.mode, valid_index_map)
+        if pela_chave:
+            _record_cost(log_dir, self.model, usage, f"[image_judge] {self.label}")
+        return _parsed_verdict(raw, self.mode, valid_index_map)
+
+
+def _parsed_verdict(raw: str, mode: str, valid_index_map: list[int]) -> dict[str, Any]:
     try:
         data = json.loads(raw)
     except Exception:
@@ -207,9 +260,13 @@ def rank_candidates(
     data.setdefault("verdict", "keep_real" if mode == "real_only" else "keep_generated")
     data.setdefault("summary", raw.strip()[:300] or "No summary.")
     data.setdefault("candidates", [])
+    data["best_index"] = _original_index(data, valid_index_map)
+    return data
+
+
+def _original_index(data: dict[str, Any], valid_index_map: list[int]) -> int:
     try:
         compact_idx = max(0, min(int(data.get("best_index", 0)), len(valid_index_map) - 1))
-        data["best_index"] = valid_index_map[compact_idx]
+        return valid_index_map[compact_idx]
     except Exception:
-        data["best_index"] = valid_index_map[0]
-    return data
+        return valid_index_map[0]

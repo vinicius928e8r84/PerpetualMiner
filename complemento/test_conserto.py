@@ -150,16 +150,13 @@ class Mundo:
 
     def abridor(self, perfil="Usuário 1", **conserto):
         a = abridor.Abridor(
-            sistema="mac",
+            sistema=abridor.NoMac({"Chrome": self.pastas.hosts_do_chrome}, abrir_com=self.programas["open"], ler_json_com=self.pastas.ler_json),
             pasta=self.pastas.abridor,
             programa=self.pastas.app,
-            onde_registrar={"Chrome": self.pastas.hosts_do_chrome},
-            abrir_com=self.programas["open"],
-            ler_json_com=self.pastas.ler_json,
             conserto=conserto_do_anki.Conserto(
                 executavel=COMANDO_DO_ANKI, complemento=self.complemento,
-                programas={nome: self.programas[nome] for nome in ("ps", "curl", "kill", "sleep", "date", "lsof")},
-                **conserto),
+                conexao=conserto_do_anki.ConexaoEsperada(**conserto),
+                programas={nome: self.programas[nome] for nome in ("ps", "curl", "kill", "sleep", "date", "lsof")}),
         )
         a.escrever(perfil)
         return os.path.join(self.pastas.abridor, "abrir-o-anki.sh")
@@ -210,7 +207,7 @@ class NoMac(unittest.TestCase):
         self.assertEqual(self.mundo.passos()[0], "esperou 12 s")
 
     def test_o_padrao_da_espera_e_de_30_s(self):
-        self.assertEqual(conserto_do_anki.Conserto().espera_s, 30)
+        self.assertEqual(conserto_do_anki.Conserto().conexao.espera_s, 30)
 
     def test_reabre_sem_escolher_perfil_quando_nenhum_foi_marcado(self):
         self.assertEqual(self.mundo.consertar(perfil=None), {"situacao": "reiniciado"})
@@ -313,9 +310,9 @@ class NoMac(unittest.TestCase):
 
     def test_um_abridor_sem_os_dados_do_conserto_nunca_fecha_nada(self):
         a = abridor.Abridor(
-            sistema="mac", pasta=self.mundo.pastas.abridor, programa=self.mundo.pastas.app,
-            onde_registrar={"Chrome": self.mundo.pastas.hosts_do_chrome}, abrir_com=self.mundo.programas["open"],
-            ler_json_com=self.mundo.pastas.ler_json,
+            sistema=abridor.NoMac(
+                {"Chrome": self.mundo.pastas.hosts_do_chrome}, abrir_com=self.mundo.programas["open"], ler_json_com=self.mundo.pastas.ler_json),
+            pasta=self.mundo.pastas.abridor, programa=self.mundo.pastas.app,
         )
         a.escrever("Usuário 1")
         resposta = conversar(os.path.join(self.mundo.pastas.abridor, "abrir-o-anki.sh"), CONSERTAR)
@@ -326,11 +323,11 @@ class NoMac(unittest.TestCase):
         comando = "/Applications/Anki's $HOME.app/Contents/MacOS/anki"
         self.mundo.anki_aberto(comando=comando + " --flag")
         script = abridor.Abridor(
-            sistema="mac", pasta=self.mundo.pastas.abridor, programa=self.mundo.pastas.app,
-            onde_registrar={"Chrome": self.mundo.pastas.hosts_do_chrome}, abrir_com=self.mundo.programas["open"],
-            ler_json_com=self.mundo.pastas.ler_json,
+            sistema=abridor.NoMac(
+                {"Chrome": self.mundo.pastas.hosts_do_chrome}, abrir_com=self.mundo.programas["open"], ler_json_com=self.mundo.pastas.ler_json),
+            pasta=self.mundo.pastas.abridor, programa=self.mundo.pastas.app,
             conserto=conserto_do_anki.Conserto(
-                executavel=comando, complemento=self.mundo.complemento, espera_s=2,
+                executavel=comando, complemento=self.mundo.complemento, conexao=conserto_do_anki.ConexaoEsperada(espera_s=2),
                 programas={nome: self.mundo.programas[nome] for nome in ("ps", "curl", "kill", "sleep", "date", "lsof")}),
         )
         script.escrever(None)

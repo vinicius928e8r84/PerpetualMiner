@@ -118,7 +118,7 @@ Authentication in `painel/painel.js` uses `chrome.identity.launchWebAuthFlow` (O
 
 A capture is saved locally, then sent by `salvarFrase` / `sincronizarComFirestore` in `background.js`; a failed upload leaves no record. There is no retry queue: `carregar` in `lib/sincronizacao.js` uploads the local phrases the cloud lacks.
 
-`criarSincronizacao` owns deletion, tombstones and a pending Apagar tudo; the panel clears its visible/local history and delegates cloud work to the module, while the popup does not delete. For tombstone storage and the offline wipe's account/cutoff rules, read the module's doc comments. The Firestore field-path escaping requirement is documented at `tombstoneFirestore`.
+`criarSincronizacao` owns deletion, tombstones and a pending Apagar tudo; the panel clears its visible/local history and delegates cloud work to the module, while the popup does not delete. For tombstone storage and the offline wipe's account/cutoff rules, read the module's doc comments. The Firestore field-path escaping requirement is documented at `tombstoneFirestore`. A `404` on `meta/deleted` means no tombstones yet; any other failure to read it makes `carregar` reject before it uploads or removes anything, as a failed listing does, and the next opening retries.
 
 The OpenAI key follows the account (#154): the versioned Conexão owner replicates `usuarios/{uid}/segredos/openai` (`{ chave, em }`, empty value for deletion). The extension sends transient UID/token requests on opening/login/visibility/key changes and reads only the owner's public summary. Invariants, legacy migration, ordering limits and P6 owner rule-publication gate: `docs/seguranca/chave-da-openai.md`.
 
@@ -159,7 +159,7 @@ For the day rollover's scheduling and persistence contract, see `agendarViradaDo
 ## Key Constants
 
 - `ATALHOS_PADRAO` in `lib/atalhos.js` — the factory shortcuts: Minerar legenda on **Alt+S**, Minerar seleção with none
-- `SENTINEL_VAZIO = 'NENHUM_TRECHO'` in `bookreader/bookreader.js` — returned by Gemini when no marked passages found (the photo is “Sem marcações”, FOT-10)
+- `SENTINEL_VAZIO = 'NENHUM_TRECHO'` in `bookreader/leitura-do-gemini.js` — returned by Gemini when no marked passages found (the photo is “Sem marcações”, FOT-10)
 - Firebase configuration and Firestore paths: see `lib/sincronizacao.js`
 - `BADGE_COR_DE_FUNDO = '#F5B83D'` / `BADGE_COR_DO_TEXTO = '#1A1204'` in `background.js` — the toolbar badge's Veio colors
 - `ALARME_VIRADA_DO_DIA` in `background.js` — see `agendarViradaDoDia` for the rollover contract

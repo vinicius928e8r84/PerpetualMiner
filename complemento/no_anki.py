@@ -377,6 +377,6 @@ def _por_no_menu(mw, conexao, modulo, qt):
     """O item e a janela. Sem eles (um Anki que mudou o menu) a Conexão segue: o erro vai ao registro, nunca ao Anki."""
     logger = conexao.logger if conexao is not None else registro.silencioso()
     try:
-        janela.ligar(mw, janela.Janela(conexao, lambda: perfil_aberto(mw), VERSAO, logger), qt or _qt_do_anki(logger), modulo, logger)
+        janela.ligar(mw, janela.Janela(conexao, lambda: perfil_aberto(mw), VERSAO, logger), qt or _qt_do_anki(logger), modulo)
     except Exception:
         logger.exception("O item PerpetualMiner… não entrou em Ferramentas")
