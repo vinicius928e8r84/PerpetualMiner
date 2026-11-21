@@ -106,19 +106,21 @@ async function carregarFrases(storage, { atuais = [] } = {}) {
   return resultado.frases;
 }
 
-async function capturarFrase(storage, texto, { syncFails = false, syncInFlight = false } = {}) {
-  const frase = { texto, data: '06/04/2026', streaming: 'youtube', id: Date.now() + (++_phraseCounter), idioma: 'Inglês' };
+function guardarFraseNova(storage, texto, streaming) {
+  const frase = { texto, data: '06/04/2026', streaming, id: Date.now() + (++_phraseCounter), idioma: 'Inglês' };
   const { frases = [] } = getLocal(storage, { frases: [] });
   setLocal(storage, { frases: [frase, ...frases] });
+  return frase;
+}
 
+async function capturarFrase(storage, texto, { syncFails = false, syncInFlight = false } = {}) {
+  const frase = guardarFraseNova(storage, texto, 'youtube');
   if (!syncFails && !syncInFlight) await de(storage).nuvem.gravarFrase(frase);
   return frase;
 }
 
 async function adicionarFraseManual(storage, texto, { syncFails = false } = {}) {
-  const frase = { texto, data: '06/04/2026', streaming: 'manual', id: Date.now() + (++_phraseCounter), idioma: 'Inglês' };
-  const { frases = [] } = getLocal(storage, { frases: [] });
-  setLocal(storage, { frases: [frase, ...frases] });
+  const frase = guardarFraseNova(storage, texto, 'manual');
   if (!syncFails) await de(storage).nuvem.gravarFrase(frase);
   return frase;
 }
@@ -146,25 +148,55 @@ async function idNoTombstoneSync(id) {
   return (await lerTombstoneSync()).has(String(id)) || String(id) in firestoreTomb;
 }
 
-async function rodar() {
-resetState();
+const DIA = 24 * 60 * 60 * 1000;
+const diasAtras = (dias) => Date.now() - dias * DIA;
 
-head('CENÁRIO 1 — Adição no dispositivo A aparece no dispositivo B');
-sep();
-await (async () => {
-  resetState();
+function fraseDaNetflix(texto, id) {
+  return { texto, data: '01/02/2026', streaming: 'netflix', id, idioma: 'Inglês' };
+}
+const frasesLocais = (storage) => getLocal(storage, { frases: [] }).frases;
+const idsApagadosAqui = (storage) => getLocal(storage, { pm_deleted_ids: [] }).pm_deleted_ids;
+const apagarTudoPendente = (storage) => getLocal(storage, { pm_apagar_tudo: null }).pm_apagar_tudo;
+const docsNoFirestore = () => Object.keys(firestore).length;
+
+async function comNuvemFalhando(qual, acao) {
+  nuvemFalha[qual] = true;
+  try {
+    return await acao();
+  } finally {
+    nuvemFalha[qual] = false;
+  }
+}
+
+async function erroDe(acao) {
+  try {
+    await acao();
+    return null;
+  } catch (e) {
+    return e;
+  }
+}
+
+async function desfechoDe(promessa) {
+  const [desfecho] = await Promise.allSettled([promessa]);
+  return desfecho;
+}
+const rejeitouComExpirou = (desfecho) => desfecho.status === 'rejected' && desfecho.reason?.motivo === MOTIVO.EXPIROU;
+
+function conferirPresencas(vis, presencas, prefixo = '') {
+  for (const [texto, rotulo, presente] of presencas) assert(fraseVisivel(vis, texto) === presente, `${prefixo}${rotulo}`);
+}
+
+async function adicaoEmAApareceEmB() {
   const fa = await capturarFrase(storageLocalA, 'Hello world');
   const visB = await carregarFrases(storageLocalB);
 
   assert(idNoFirestore(fa.id),              'frase está no Firestore após captura');
   assert(fraseVisivel(visB, 'Hello world'), 'frase aparece no painel do dispositivo B');
-  info(`Firestore tem ${Object.keys(firestore).length} doc(s)`);
-})();
+  info(`Firestore tem ${docsNoFirestore()} doc(s)`);
+}
 
-head('CENÁRIO 2 — Deleção no dispositivo A desaparece do dispositivo B (cenário principal)');
-sep();
-await (async () => {
-  resetState();
+async function delecaoEmASomeDeB() {
   const frase = await capturarFrase(storageLocalA, 'To delete');
   await carregarFrases(storageLocalB);
 
@@ -174,24 +206,21 @@ await (async () => {
 
   assert(!idNoFirestore(frase.id),            'frase removida do Firestore');
   assert(!fraseVisivel(visB, 'To delete'),    'frase NÃO aparece no painel do B após deleção em A');
-  assert(await idNoTombstoneSync(frase.id),         'tombstone ainda ativo após B processar (expira em 30 dias)');
-  info(`Firestore tem ${Object.keys(firestore).length} doc(s)`);
-})();
+  assert(await idNoTombstoneSync(frase.id),   'tombstone ainda ativo após B processar (expira em 30 dias)');
+  info(`Firestore tem ${docsNoFirestore()} doc(s)`);
+}
 
-head('CENÁRIO 3 — O bug original: frase pendente em B, deletada em A');
-sep();
-await (async () => {
-  resetState();
+async function pendenteEmBDeletadaEmA() {
   const frase = await capturarFrase(storageLocalB, 'Pendente no B', { syncFails: true });
 
-  assert(!idNoFirestore(frase.id),                'frase NÃO está no Firestore (sync falhou)');
+  assert(!idNoFirestore(frase.id),               'frase NÃO está no Firestore (sync falhou)');
   assert(idNoLocal(storageLocalB, frase.id),     'frase está no local do B');
 
   await nuvemEmMemoria().gravarFrase(frase);
   await deletarFrase(storageLocalA, frase.id);
 
   assert(!idNoFirestore(frase.id),               'frase deletada do Firestore por A');
-  assert(await idNoTombstoneSync(frase.id),            'id está no tombstone sync após deleção em A');
+  assert(await idNoTombstoneSync(frase.id),      'id está no tombstone sync após deleção em A');
 
   const visB = await carregarFrases(storageLocalB);
 
@@ -199,34 +228,28 @@ await (async () => {
   assert(!fraseVisivel(visB, 'Pendente no B'),   'frase NÃO aparece no painel do B');
   assert(!idNoLocal(storageLocalB, frase.id),    'frase tirada do local do B (sem leak)');
   info(`Tombstone size: ${(await lerTombstoneSync()).size}`);
-})();
+}
 
-head('CENÁRIO 4 — Deleção offline em A: retry quando B abre o painel');
-sep();
-await (async () => {
-  resetState();
+async function delecaoOfflineRepetidaPorB() {
   const frase = await capturarFrase(storageLocalA, 'Offline delete');
 
   await deletarFrase(storageLocalA, frase.id, { firestoreFailure: true });
 
-  assert(idNoFirestore(frase.id),             'frase ainda no Firestore (delete falhou)');
-  assert(await idNoTombstoneSync(frase.id),         'id está no tombstone sync');
+  assert(idNoFirestore(frase.id),               'frase ainda no Firestore (delete falhou)');
+  assert(await idNoTombstoneSync(frase.id),     'id está no tombstone sync');
 
   const visB = await carregarFrases(storageLocalB);
 
-  assert(!idNoFirestore(frase.id),            'B deletou do Firestore via tombstone sync');
-  assert(!fraseVisivel(visB, 'Offline delete'),'frase NÃO aparece no painel do B');
+  assert(!idNoFirestore(frase.id),              'B deletou do Firestore via tombstone sync');
+  assert(!fraseVisivel(visB, 'Offline delete'), 'frase NÃO aparece no painel do B');
 
   const visA = await carregarFrases(storageLocalA);
-  assert(!fraseVisivel(visA, 'Offline delete'),'frase NÃO aparece no painel do A após retry');
-})();
+  assert(!fraseVisivel(visA, 'Offline delete'), 'frase NÃO aparece no painel do A após retry');
+}
 
-head('CENÁRIO 5 — Frase antiga (>30d) deletada hoje propaga corretamente');
-sep();
-await (async () => {
-  resetState();
-  const idAntigo = Date.now() - 40 * 24 * 60 * 60 * 1000;
-  const frase = { texto: 'Frase antiga', data: '01/02/2026', streaming: 'netflix', id: idAntigo, idioma: 'Inglês' };
+async function fraseAntigaDeletadaHojePropaga() {
+  const idAntigo = diasAtras(40);
+  const frase = fraseDaNetflix('Frase antiga', idAntigo);
   await nuvemEmMemoria().gravarFrase(frase);
   setLocal(storageLocalA, { frases: [frase] });
   setLocal(storageLocalB, { frases: [frase] });
@@ -239,32 +262,28 @@ await (async () => {
   const visB = await carregarFrases(storageLocalB);
   assert(!idNoFirestore(frase.id),                'frase antiga removida do Firestore');
   assert(!fraseVisivel(visB, 'Frase antiga'),     'frase antiga NÃO aparece no B');
-})();
+}
 
-head('CENÁRIO 6 — Deleção em A não afeta outras frases em B');
-sep();
-await (async () => {
-  resetState();
-  const f1 = await capturarFrase(storageLocalA, 'Keep this');
+async function delecaoEmANaoAfetaOutrasEmB() {
+  await capturarFrase(storageLocalA, 'Keep this');
   const f2 = await capturarFrase(storageLocalA, 'Delete this');
 
   await carregarFrases(storageLocalB);
-  const f3 = await capturarFrase(storageLocalB, 'From B');
+  await capturarFrase(storageLocalB, 'From B');
 
   await deletarFrase(storageLocalA, f2.id);
 
   const visB = await carregarFrases(storageLocalB);
 
-  assert(fraseVisivel(visB, 'Keep this'),     'f1 (não deletada) ainda aparece em B');
-  assert(!fraseVisivel(visB, 'Delete this'),  'f2 (deletada em A) não aparece em B');
-  assert(fraseVisivel(visB, 'From B'),        'f3 (de B) ainda aparece em B');
+  conferirPresencas(visB, [
+    ['Keep this',   'f1 (não deletada) ainda aparece em B', true],
+    ['Delete this', 'f2 (deletada em A) não aparece em B',  false],
+    ['From B',      'f3 (de B) ainda aparece em B',         true],
+  ]);
   info(`Painel B mostra ${visB.length} frase(s)`);
-})();
+}
 
-head('CENÁRIO 7 — Deleção em B propaga para A');
-sep();
-await (async () => {
-  resetState();
+async function delecaoEmBPropagaParaA() {
   const frase = await capturarFrase(storageLocalA, 'Delete from B');
   await carregarFrases(storageLocalB);
 
@@ -273,33 +292,25 @@ await (async () => {
   const visA = await carregarFrases(storageLocalA);
   assert(!idNoFirestore(frase.id),               'frase removida do Firestore por B');
   assert(!fraseVisivel(visA, 'Delete from B'),   'frase não aparece no painel de A');
-})();
+}
 
-head('CENÁRIO 8 — "Apagar tudo" em A propaga para B');
-sep();
-await (async () => {
-  resetState();
-  const f1 = await capturarFrase(storageLocalA, 'Phrase 1');
-  const f2 = await capturarFrase(storageLocalA, 'Phrase 2');
-  const f3 = await capturarFrase(storageLocalA, 'Phrase 3');
+async function apagarTudoEmAPropagaParaB() {
+  const ids = [];
+  for (const texto of ['Phrase 1', 'Phrase 2', 'Phrase 3']) ids.push((await capturarFrase(storageLocalA, texto)).id);
   await carregarFrases(storageLocalB);
 
-  const ids = [f1.id, f2.id, f3.id];
   await removerFrases(storageLocalA, ids);
   setLocal(storageLocalA, { frases: [] });
 
   const visB = await carregarFrases(storageLocalB);
-  assert(Object.keys(firestore).length === 0,  'Firestore vazio após apagar tudo');
-  assert(visB.length === 0,                    'Painel B mostra 0 frases após apagar tudo em A');
-})();
+  assert(docsNoFirestore() === 0,  'Firestore vazio após apagar tudo');
+  assert(visB.length === 0,        'Painel B mostra 0 frases após apagar tudo em A');
+}
 
-head('CENÁRIO 9 — Tombstone TTL: entradas expiradas são ignoradas');
-sep();
-await (async () => {
-  resetState();
-  const deletedAt31d = Date.now() - 31 * 24 * 60 * 60 * 1000;
-  const fAntiga  = { texto: 'Tombstone expirado', data: '01/02/2026', streaming: 'netflix', id: Date.now() - 60 * 24 * 60 * 60 * 1000, idioma: 'Inglês' };
-  const fRecente = { texto: 'Tombstone válido',   data: '01/02/2026', streaming: 'netflix', id: Date.now() - 1000, idioma: 'Inglês' };
+async function tombstoneExpiradoEIgnorado() {
+  const deletedAt31d = diasAtras(31);
+  const fAntiga  = fraseDaNetflix('Tombstone expirado', diasAtras(60));
+  const fRecente = fraseDaNetflix('Tombstone válido', Date.now() - 1000);
   firestore[fAntiga.id] = fAntiga;
   firestore[fRecente.id] = fRecente;
 
@@ -315,26 +326,20 @@ await (async () => {
   firestoreTomb[fAntiga.id] = deletedAt31d;
   const visA = await carregarFrases(storageLocalA);
   assert(fraseVisivel(visA, 'Tombstone expirado'),  'tombstone da nuvem expirado (31d) NÃO apaga a frase');
-})();
+}
 
-head('CENÁRIO 10 — Captura em B durante painel aberto em A não perde dados');
-sep();
-await (async () => {
-  resetState();
-  const f1 = await capturarFrase(storageLocalA, 'Already synced');
+async function capturaEmBComPainelAbertoEmA() {
+  await capturarFrase(storageLocalA, 'Already synced');
 
   const f2 = await capturarFrase(storageLocalB, 'New from B');
 
   const visA = await carregarFrases(storageLocalA);
   assert(fraseVisivel(visA, 'Already synced'), 'f1 aparece em A');
   assert(fraseVisivel(visA, 'New from B'),     'f2 (de B) aparece em A via Firestore');
-  assert(idNoFirestore(f2.id),                'f2 está no Firestore');
-})();
+  assert(idNoFirestore(f2.id),                 'f2 está no Firestore');
+}
 
-head('CENÁRIO 11 — Re-deleção da mesma frase (idempotência)');
-sep();
-await (async () => {
-  resetState();
+async function reDelecaoEIdempotente() {
   const frase = await capturarFrase(storageLocalA, 'Double delete');
 
   await deletarFrase(storageLocalA, frase.id);
@@ -343,12 +348,9 @@ await (async () => {
   const visB = await carregarFrases(storageLocalB);
   assert(!fraseVisivel(visB, 'Double delete'), 'frase não aparece em B mesmo com double delete');
   assert(!idNoFirestore(frase.id),             'Firestore não tem a frase');
-})();
+}
 
-head('CENÁRIO 12 — Múltiplas frases: deleção seletiva preserva o restante');
-sep();
-await (async () => {
-  resetState();
+async function delecaoSeletivaPreservaORestante() {
   const frases = [];
   for (let i = 1; i <= 5; i++) frases.push(await capturarFrase(storageLocalA, `Phrase ${i}`));
 
@@ -358,18 +360,17 @@ await (async () => {
   await deletarFrase(storageLocalA, frases[3].id);
 
   const visB = await carregarFrases(storageLocalB);
-  assert(fraseVisivel(visB, 'Phrase 1'), 'Phrase 1 presente');
-  assert(!fraseVisivel(visB, 'Phrase 2'), 'Phrase 2 deletada');
-  assert(fraseVisivel(visB, 'Phrase 3'), 'Phrase 3 presente');
-  assert(!fraseVisivel(visB, 'Phrase 4'), 'Phrase 4 deletada');
-  assert(fraseVisivel(visB, 'Phrase 5'), 'Phrase 5 presente');
+  conferirPresencas(visB, [
+    ['Phrase 1', 'Phrase 1 presente', true],
+    ['Phrase 2', 'Phrase 2 deletada', false],
+    ['Phrase 3', 'Phrase 3 presente', true],
+    ['Phrase 4', 'Phrase 4 deletada', false],
+    ['Phrase 5', 'Phrase 5 presente', true],
+  ]);
   assert(visB.length === 3, `B mostra exatamente 3 frases (mostrou ${visB.length})`);
-})();
+}
 
-head('CENÁRIO 13 — Race condition: painel abre enquanto sync ainda está em voo');
-sep();
-await (async () => {
-  resetState();
+async function painelAbreComSyncEmVoo() {
   const frase = await capturarFrase(storageLocalA, 'In-flight phrase', { syncInFlight: true });
 
   assert(!idNoFirestore(frase.id),                 'frase não está no Firestore ainda (sync em voo)');
@@ -378,12 +379,9 @@ await (async () => {
 
   assert(fraseVisivel(visA, 'In-flight phrase'),   'frase aparece no painel (local como buffer)');
   assert(idNoFirestore(frase.id),                  'orphan detectado e re-enviado ao Firestore');
-})();
+}
 
-head('CENÁRIO 14 — Adição manual (painel): sync falha, recupera na próxima abertura');
-sep();
-await (async () => {
-  resetState();
+async function adicaoManualRecuperaNaProximaAbertura() {
   const frase = await adicionarFraseManual(storageLocalA, 'Manual phrase', { syncFails: true });
 
   assert(!idNoFirestore(frase.id),               'frase não está no Firestore (sync falhou)');
@@ -391,31 +389,25 @@ await (async () => {
   const visA = await carregarFrases(storageLocalA);
 
   assert(fraseVisivel(visA, 'Manual phrase'),    'frase recuperada no painel após refresh');
-  assert(idNoFirestore(frase.id),               'frase re-enviada ao Firestore com sucesso');
-})();
+  assert(idNoFirestore(frase.id),                'frase re-enviada ao Firestore com sucesso');
+}
 
-head('CENÁRIO 15 — Tombstone vence: frase local tombstoned NÃO re-sobe');
-sep();
-await (async () => {
-  resetState();
+async function tombstoneVenceAFraseLocal() {
   const frase = await capturarFrase(storageLocalA, 'Will be deleted', { syncInFlight: true });
 
   await nuvemEmMemoria().gravarFrase(frase);
   await deletarFrase(storageLocalA, frase.id);
 
   assert(!idNoFirestore(frase.id),               'frase deletada do Firestore');
-  assert(await idNoTombstoneSync(frase.id),            'tombstone ativo');
+  assert(await idNoTombstoneSync(frase.id),      'tombstone ativo');
 
   const visA = await carregarFrases(storageLocalA);
 
   assert(!fraseVisivel(visA, 'Will be deleted'), 'frase NÃO re-aparece');
   assert(!idNoFirestore(frase.id),               'frase NÃO re-subiu ao Firestore');
-})();
+}
 
-head('CENÁRIO 16 — Adição manual em B: sync falha, aparece em A após B abrir painel');
-sep();
-await (async () => {
-  resetState();
+async function adicaoManualEmBApareceEmA() {
   const frase = await adicionarFraseManual(storageLocalB, 'Manual from B', { syncFails: true });
 
   assert(!idNoFirestore(frase.id), 'frase não está no Firestore');
@@ -426,12 +418,9 @@ await (async () => {
 
   const visA = await carregarFrases(storageLocalA);
   assert(fraseVisivel(visA, 'Manual from B'), 'frase de B aparece em A');
-})();
+}
 
-head('CENÁRIO 17 — Deleções simultâneas em A e B (o bug relatado)');
-sep();
-await (async () => {
-  resetState();
+async function delecoesSimultaneasEmAEB() {
   const fA = await capturarFrase(storageLocalA, 'Phrase A');
   const fB = await capturarFrase(storageLocalB, 'Phrase B');
   assert(idNoFirestore(fA.id), 'fA no Firestore');
@@ -444,24 +433,22 @@ await (async () => {
   assert(tomb.has(String(fA.id)), 'tombstone contém fA (deletada por A)');
   assert(tomb.has(String(fB.id)), 'tombstone contém fB (deletada por B)');
 
-  const visA = await carregarFrases(storageLocalA);
-  assert(!fraseVisivel(visA, 'Phrase A'), 'A: fA não aparece');
-  assert(!fraseVisivel(visA, 'Phrase B'), 'A: fB não aparece (deletada por B)');
+  conferirPresencas(await carregarFrases(storageLocalA), [
+    ['Phrase A', 'fA não aparece', false],
+    ['Phrase B', 'fB não aparece (deletada por B)', false],
+  ], 'A: ');
+  conferirPresencas(await carregarFrases(storageLocalB), [
+    ['Phrase A', 'fA não aparece (deletada por A)', false],
+    ['Phrase B', 'fB não aparece', false],
+  ], 'B: ');
 
-  const visB = await carregarFrases(storageLocalB);
-  assert(!fraseVisivel(visB, 'Phrase A'), 'B: fA não aparece (deletada por A)');
-  assert(!fraseVisivel(visB, 'Phrase B'), 'B: fB não aparece');
+  assert(docsNoFirestore() === 0, 'Firestore vazio');
+}
 
-  assert(Object.keys(firestore).length === 0, 'Firestore vazio');
-})();
-
-head('CENÁRIO 18 — Deleções simultâneas não afetam frases de terceiros');
-sep();
-await (async () => {
-  resetState();
+async function delecoesSimultaneasPreservamTerceiros() {
   const fA     = await capturarFrase(storageLocalA, 'Delete by A');
   const fB     = await capturarFrase(storageLocalB, 'Delete by B');
-  const fKeep  = await capturarFrase(storageLocalA, 'Keep this');
+  await capturarFrase(storageLocalA, 'Keep this');
 
   await carregarFrases(storageLocalB);
 
@@ -471,30 +458,25 @@ await (async () => {
   const visA = await carregarFrases(storageLocalA);
   const visB = await carregarFrases(storageLocalB);
 
-  assert(!fraseVisivel(visA, 'Delete by A'), 'A: fA removida');
-  assert(!fraseVisivel(visA, 'Delete by B'), 'A: fB removida');
-  assert(fraseVisivel(visA, 'Keep this'),    'A: fKeep presente');
+  const presencas = [
+    ['Delete by A', 'fA removida',  false],
+    ['Delete by B', 'fB removida',  false],
+    ['Keep this',   'fKeep presente', true],
+  ];
+  conferirPresencas(visA, presencas, 'A: ');
+  conferirPresencas(visB, presencas, 'B: ');
+}
 
-  assert(!fraseVisivel(visB, 'Delete by A'), 'B: fA removida');
-  assert(!fraseVisivel(visB, 'Delete by B'), 'B: fB removida');
-  assert(fraseVisivel(visB, 'Keep this'),    'B: fKeep presente');
-})();
-
-head('CENÁRIO 19 — Apagar tudo com a nuvem fora do ar: o sync seguinte conclui, e o que veio depois fica');
-sep();
-await (async () => {
-  resetState();
+async function apagarTudoComANuvemFora() {
   const antes1 = await capturarFrase(storageLocalA, 'Gravada em A');
   const antesB = await capturarFrase(storageLocalB, 'Gravada em B antes do apagar tudo');
   await carregarFrases(storageLocalA);
 
-  nuvemFalha.apagar = true;
-  const resultado = await de(storageLocalA).sinc.apagarTudo([antes1.id], antesB.id);
-  nuvemFalha.apagar = false;
+  const resultado = await comNuvemFalhando('apagar', () => de(storageLocalA).sinc.apagarTudo([antes1.id], antesB.id));
   setLocal(storageLocalA, { frases: [] });
 
   assert(!resultado.ok && resultado.erro instanceof Error, 'apagarTudo avisa que a nuvem falhou');
-  assert(getLocal(storageLocalA, { pm_apagar_tudo: null }).pm_apagar_tudo?.uid === 'uid-teste', 'pm_apagar_tudo guardado até a nuvem confirmar');
+  assert(apagarTudoPendente(storageLocalA)?.uid === 'uid-teste', 'pm_apagar_tudo guardado até a nuvem confirmar');
   assert(idNoFirestore(antes1.id), 'a nuvem ainda tem as frases');
 
   const depois = await capturarFrase(storageLocalB, 'Minerada depois');
@@ -503,46 +485,38 @@ await (async () => {
   assert(!idNoFirestore(antes1.id) && !idNoFirestore(antesB.id), 'frases de antes do Apagar tudo saíram da nuvem (também a de B, que A nunca tinha em mãos)');
   assert(idNoFirestore(depois.id),                              'o que foi minerado depois fica na nuvem');
   assert(fraseVisivel(visA, 'Minerada depois') && visA.length === 1, 'A mostra só o que veio depois');
-  assert(getLocal(storageLocalA, { pm_apagar_tudo: null }).pm_apagar_tudo === null, 'pm_apagar_tudo é limpo');
-})();
+  assert(apagarTudoPendente(storageLocalA) === null, 'pm_apagar_tudo é limpo');
+}
 
-head('CENÁRIO 20 — Apagar tudo com a nuvem no ar apaga tudo e não deixa pendência');
-sep();
-await (async () => {
-  resetState();
+async function apagarTudoComANuvemNoAr() {
   const f1 = await capturarFrase(storageLocalA, 'Phrase 1');
   const f2 = await capturarFrase(storageLocalB, 'Phrase 2 de B');
   const resultado = await de(storageLocalA).sinc.apagarTudo([f1.id], f2.id);
   setLocal(storageLocalA, { frases: [] });
 
   assert(resultado.ok,                                    'apagarTudo confirma');
-  assert(Object.keys(firestore).length === 0,             'a nuvem ficou vazia, inclusive a frase de B');
+  assert(docsNoFirestore() === 0,                         'a nuvem ficou vazia, inclusive a frase de B');
   assert(!('pm_apagar_tudo' in storageLocalA),            'nenhuma pendência de Apagar tudo');
   assert(await idNoTombstoneSync(f2.id),                  'a frase de B ganhou tombstone');
   assert((await carregarFrases(storageLocalB)).length === 0, 'B abre o painel e não vê nada');
-})();
+}
 
-head('CENÁRIO 21 — Sem conta: Apagar tudo e apagar só gravam os tombstones deste computador');
-sep();
-await (async () => {
-  resetState();
+async function semContaSoGravaTombstonesLocais() {
   ligar(storageLocalA, { semConta: true });
   const resultado = await de(storageLocalA).sinc.apagarTudo([1, 2]);
   assert(resultado.ok,                                    'apagarTudo sem conta resolve ok');
   assert(!('pm_apagar_tudo' in storageLocalA),            'sem conta não há Apagar tudo pendente');
   const erro = await de(storageLocalA).sinc.apagar([3]);
   assert(erro === null,                                   'apagar sem conta não falha');
-  assert(getLocal(storageLocalA, { pm_deleted_ids: [] }).pm_deleted_ids.includes('3'), 'o id fica em pm_deleted_ids');
+  assert(idsApagadosAqui(storageLocalA).includes('3'),    'o id fica em pm_deleted_ids');
   assert((await lerTombstoneSync()).has('3'),             'e no tombstone do sync');
-})();
+}
 
-head('CENÁRIO 22 — Marcas Enviada ao Anki / Exportada juntam local e nuvem');
-sep();
-await (async () => {
-  resetState();
+async function marcasJuntamLocalENuvem() {
   const marcadaAqui = await capturarFrase(storageLocalA, 'Marcada aqui');
   const marcadaLa   = await capturarFrase(storageLocalA, 'Marcada na nuvem');
-  setLocal(storageLocalA, { frases: getLocal(storageLocalA, { frases: [] }).frases.map(f => f.id === marcadaAqui.id ? { ...f, status: 'exported' } : f) });
+  const marcarExportada = (f) => (f.id === marcadaAqui.id ? { ...f, status: 'exported' } : f);
+  setLocal(storageLocalA, { frases: frasesLocais(storageLocalA).map(marcarExportada) });
   firestore[marcadaLa.id] = { ...marcadaLa, exportadaTxt: true };
 
   const vis = await carregarFrases(storageLocalA);
@@ -550,18 +524,16 @@ await (async () => {
   assert(porTexto('Marcada aqui').status === 'exported',      'a marca daqui aparece na lista');
   assert(firestore[marcadaAqui.id].status === 'exported',     'e vai para a nuvem (retry)');
   assert(porTexto('Marcada na nuvem').exportadaTxt === true,  'a marca da nuvem aparece na lista');
-  assert(getLocal(storageLocalA, { frases: [] }).frases.find(f => f.id === marcadaLa.id).exportadaTxt === true, 'e é aplicada ao local');
-})();
+  assert(frasesLocais(storageLocalA).find(f => f.id === marcadaLa.id).exportadaTxt === true, 'e é aplicada ao local');
+}
 
-head('CENÁRIO 23 — Frase que não sobe fica na lista e no computador (nunca some)');
-sep();
-await (async () => {
-  resetState();
+async function fraseQueNaoSobeNuncaSome() {
   const frase = await capturarFrase(storageLocalA, 'Nuvem recusa', { syncFails: true });
-  nuvemFalha.gravarFrase = true;
-  const resultado = await de(storageLocalA).sinc.carregar({ atuais: () => [] });
-  await resultado.concluida;
-  nuvemFalha.gravarFrase = false;
+  const resultado = await comNuvemFalhando('gravarFrase', async () => {
+    const carregado = await de(storageLocalA).sinc.carregar({ atuais: () => [] });
+    await carregado.concluida;
+    return carregado;
+  });
 
   assert(fraseVisivel(resultado.frases, 'Nuvem recusa'),      'a frase continua na lista');
   assert(resultado.falhaNasOrfas?.quantas === 1,              'a falha é contada (falhaNasOrfas)');
@@ -571,12 +543,9 @@ await (async () => {
   const depois = await carregarFrases(storageLocalA);
   assert(fraseVisivel(depois, 'Nuvem recusa') && idNoFirestore(frase.id),
     'na próxima abertura sobe');
-})();
+}
 
-head('CENÁRIO 24 — Uma edição feita enquanto a nuvem responde sobrevive (a lista da tela é lida no fim)');
-sep();
-await (async () => {
-  resetState();
+async function edicaoDuranteARespostaSobrevive() {
   const frase = await capturarFrase(storageLocalA, 'Antes da edição', { syncInFlight: true });
   let leituras = 0;
   const resultado = await de(storageLocalA).sinc.carregar({
@@ -586,44 +555,62 @@ await (async () => {
   assert(leituras === 1,                                       'a lista da tela é consultada uma vez, depois da leitura da nuvem');
   assert(fraseVisivel(resultado.frases, 'Depois da edição'),   'a órfã aparece com a edição');
   assert(!fraseVisivel(resultado.frases, 'Antes da edição'),   'e não com o texto antigo');
-})();
+}
 
-head('CENÁRIO 25 — A nuvem não responde: carregar rejeita e nada local é descartado');
-sep();
-await (async () => {
-  resetState();
+async function nuvemCaladaCarregarRejeita() {
   const frase = await capturarFrase(storageLocalA, 'Só aqui', { syncFails: true });
   nuvemFalha.listar = true;
-  let erro = null;
-  try { await de(storageLocalA).sinc.carregar(); } catch (e) { erro = e; }
+  const erro = await erroDe(() => de(storageLocalA).sinc.carregar());
   assert(erro !== null,                                        'carregar rejeita com a causa');
-  assert(getLocal(storageLocalA, { frases: [] }).frases.some(f => f.id === frase.id), 'a frase continua no local');
-})();
+  assert(frasesLocais(storageLocalA).some(f => f.id === frase.id), 'a frase continua no local');
+}
 
-head('CENÁRIO 26 — Tombstone local: o DELETE que falhou é repetido no próximo carregamento');
-sep();
-await (async () => {
-  resetState();
+async function deleteQueFalhouERepetido() {
   const frase = await capturarFrase(storageLocalA, 'Delete teimoso');
   await deletarFrase(storageLocalA, frase.id, { firestoreFailure: true });
-  assert(getLocal(storageLocalA, { pm_deleted_ids: [] }).pm_deleted_ids.includes(String(frase.id)), 'id fica em pm_deleted_ids');
+  assert(idsApagadosAqui(storageLocalA).includes(String(frase.id)), 'id fica em pm_deleted_ids');
 
   const vis = await carregarFrases(storageLocalA);
   assert(!fraseVisivel(vis, 'Delete teimoso') && !idNoFirestore(frase.id), 'o retry apagou da nuvem');
-  assert(getLocal(storageLocalA, { pm_deleted_ids: [] }).pm_deleted_ids.length === 0, 'e limpou pm_deleted_ids');
-})();
+  assert(idsApagadosAqui(storageLocalA).length === 0, 'e limpou pm_deleted_ids');
+}
 
-head('CENÁRIO 27 — Subir frases de uma vez: a falha é devolvida e nada some do computador');
-sep();
-await (async () => {
-  resetState();
+async function subirFrasesDeUmaVez() {
   const f1 = await capturarFrase(storageLocalA, 'Minerada 1', { syncFails: true });
-  nuvemFalha.gravarFrases = true;
-  const erro = await de(storageLocalA).sinc.subirFrases([f1]);
-  nuvemFalha.gravarFrases = false;
+  const erro = await comNuvemFalhando('gravarFrases', () => de(storageLocalA).sinc.subirFrases([f1]));
   assert(erro instanceof Error && !idNoFirestore(f1.id) && idNoLocal(storageLocalA, f1.id), 'a falha é devolvida e a frase fica no local');
   assert(await de(storageLocalA).sinc.subirFrases([f1]) === null && idNoFirestore(f1.id) && idNoLocal(storageLocalA, f1.id), 'ao subir, chega à nuvem e continua no local');
-})();
+}
+
+const CENARIOS_DO_SYNC = [
+  ['CENÁRIO 1 — Adição no dispositivo A aparece no dispositivo B', adicaoEmAApareceEmB],
+  ['CENÁRIO 2 — Deleção no dispositivo A desaparece do dispositivo B (cenário principal)', delecaoEmASomeDeB],
+  ['CENÁRIO 3 — O bug original: frase pendente em B, deletada em A', pendenteEmBDeletadaEmA],
+  ['CENÁRIO 4 — Deleção offline em A: retry quando B abre o painel', delecaoOfflineRepetidaPorB],
+  ['CENÁRIO 5 — Frase antiga (>30d) deletada hoje propaga corretamente', fraseAntigaDeletadaHojePropaga],
+  ['CENÁRIO 6 — Deleção em A não afeta outras frases em B', delecaoEmANaoAfetaOutrasEmB],
+  ['CENÁRIO 7 — Deleção em B propaga para A', delecaoEmBPropagaParaA],
+  ['CENÁRIO 8 — "Apagar tudo" em A propaga para B', apagarTudoEmAPropagaParaB],
+  ['CENÁRIO 9 — Tombstone TTL: entradas expiradas são ignoradas', tombstoneExpiradoEIgnorado],
+  ['CENÁRIO 10 — Captura em B durante painel aberto em A não perde dados', capturaEmBComPainelAbertoEmA],
+  ['CENÁRIO 11 — Re-deleção da mesma frase (idempotência)', reDelecaoEIdempotente],
+  ['CENÁRIO 12 — Múltiplas frases: deleção seletiva preserva o restante', delecaoSeletivaPreservaORestante],
+  ['CENÁRIO 13 — Race condition: painel abre enquanto sync ainda está em voo', painelAbreComSyncEmVoo],
+  ['CENÁRIO 14 — Adição manual (painel): sync falha, recupera na próxima abertura', adicaoManualRecuperaNaProximaAbertura],
+  ['CENÁRIO 15 — Tombstone vence: frase local tombstoned NÃO re-sobe', tombstoneVenceAFraseLocal],
+  ['CENÁRIO 16 — Adição manual em B: sync falha, aparece em A após B abrir painel', adicaoManualEmBApareceEmA],
+  ['CENÁRIO 17 — Deleções simultâneas em A e B (o bug relatado)', delecoesSimultaneasEmAEB],
+  ['CENÁRIO 18 — Deleções simultâneas não afetam frases de terceiros', delecoesSimultaneasPreservamTerceiros],
+  ['CENÁRIO 19 — Apagar tudo com a nuvem fora do ar: o sync seguinte conclui, e o que veio depois fica', apagarTudoComANuvemFora],
+  ['CENÁRIO 20 — Apagar tudo com a nuvem no ar apaga tudo e não deixa pendência', apagarTudoComANuvemNoAr],
+  ['CENÁRIO 21 — Sem conta: Apagar tudo e apagar só gravam os tombstones deste computador', semContaSoGravaTombstonesLocais],
+  ['CENÁRIO 22 — Marcas Enviada ao Anki / Exportada juntam local e nuvem', marcasJuntamLocalENuvem],
+  ['CENÁRIO 23 — Frase que não sobe fica na lista e no computador (nunca some)', fraseQueNaoSobeNuncaSome],
+  ['CENÁRIO 24 — Uma edição feita enquanto a nuvem responde sobrevive (a lista da tela é lida no fim)', edicaoDuranteARespostaSobrevive],
+  ['CENÁRIO 25 — A nuvem não responde: carregar rejeita e nada local é descartado', nuvemCaladaCarregarRejeita],
+  ['CENÁRIO 26 — Tombstone local: o DELETE que falhou é repetido no próximo carregamento', deleteQueFalhouERepetido],
+  ['CENÁRIO 27 — Subir frases de uma vez: a falha é devolvida e nada some do computador', subirFrasesDeUmaVez],
+];
 
 const DOCS = 'https://firestore.googleapis.com/v1/projects/perpetualminer-4c219/databases/(default)/documents';
 
@@ -649,9 +636,10 @@ function nuvemDeTeste(responder, credenciais = {}) {
   return { sessao, nuvem: nuvemHttp({ sessao, buscar: fetch.buscar }), pedidos: fetch.pedidos, renovadas };
 }
 
-head('HTTP 1 — Codec: ida e volta, com mapas e listas');
-sep();
-{
+const recusa = (status, error) => () => ({ status, corpo: { error } });
+const ehRenovacao = (url) => url.includes('securetoken');
+
+function codecFazIdaEVolta() {
   const frase = { id: 123, texto: 'Hello', idioma: 'Inglês', keywords: ['a', 'b'], exportadaTxt: true, contexto: { titulo: 'Show', episodio: 3 }, nulo: null };
   const volta = deCampos(paraCampos(frase));
   assert(volta.id === 123 && volta.texto === 'Hello' && volta.exportadaTxt === true, 'números, textos e booleanos');
@@ -661,106 +649,103 @@ sep();
   assert(paraCampos({ id: 5 }).id.integerValue === '5',                             'inteiros vão como integerValue em texto');
 }
 
-head('HTTP 2 — Tombstone: o campo do id vai entre crases, com updateMask por campo');
-sep();
-{
+function tombstoneTemMascaraPorCampo() {
   const { mascara, corpo } = tombstoneFirestore(['123', '456'], 99);
   assert(decodeURIComponent(mascara) === 'updateMask.fieldPaths=ids.`123`&updateMask.fieldPaths=ids.`456`', 'máscara por id, entre crases');
   assert(corpo.fields.ids.mapValue.fields['123'].integerValue === '99',             'corpo guarda a hora da deleção');
   assert(tombstonesSync(['7'], 5)[`${PREFIXO_DO_TOMBSTONE}7`] === 5,                'chave pm_del_{id} do chrome.storage.sync');
 }
 
-head('HTTP 3 — Listar frases pagina e decodifica');
-sep();
-await (async () => {
-  const { nuvem, pedidos } = nuvemDeTeste((url) => url.includes('pageToken=p2')
-    ? { corpo: { documents: [{ fields: paraCampos({ id: 2, texto: 'dois' }) }] } }
-    : { corpo: { documents: [{ fields: paraCampos({ id: 1, texto: 'um' }) }], nextPageToken: 'p2' } });
+async function listarPaginaEDecodifica() {
+  const paginas = {
+    p1: { corpo: { documents: [{ fields: paraCampos({ id: 1, texto: 'um' }) }], nextPageToken: 'p2' } },
+    p2: { corpo: { documents: [{ fields: paraCampos({ id: 2, texto: 'dois' }) }] } },
+  };
+  const { nuvem, pedidos } = nuvemDeTeste((url) => (url.includes('pageToken=p2') ? paginas.p2 : paginas.p1));
   const frases = await nuvem.listarFrases();
   assert(frases.map(f => f.texto).join() === 'um,dois',                             'as duas páginas, na ordem');
   assert(pedidos[0].url === `${DOCS}/usuarios/u1/frases?pageSize=300`,              'primeira página em usuarios/{uid}/frases');
   assert(pedidos[1].url.endsWith('&pageToken=p2') && pedidos[1].token === 'Bearer token-bom', 'segunda página com o token da conta');
-})();
+}
 
-head('HTTP 4 — Gravar campos: máscara e documento existente; sem o documento, grava inteiro');
-sep();
-await (async () => {
-  const { nuvem, pedidos } = nuvemDeTeste((url) => url.includes('currentDocument.exists=true') ? { status: 404, corpo: { error: { message: 'NOT_FOUND' } } } : {});
+async function gravarCamposComMascara() {
+  const semODocumento = recusa(404, { message: 'NOT_FOUND' });
+  const { nuvem, pedidos } = nuvemDeTeste((url) => (url.includes('currentDocument.exists=true') ? semODocumento() : {}));
   await nuvem.gravarFrase({ id: 9, texto: 'x', keywords: ['k'] }, ['keywords']);
   assert(pedidos[0].url.endsWith('/frases/9?updateMask.fieldPaths=keywords&currentDocument.exists=true'), 'PATCH com updateMask e currentDocument.exists');
   assert(pedidos.length === 2 && pedidos[1].url.endsWith('/frases/9') && pedidos[1].metodo === 'PATCH', 'o 404 vira um PATCH do documento inteiro');
   await nuvem.gravarFrase({ id: 10, texto: 'y' });
   assert(pedidos[2].url.endsWith('/frases/10') && pedidos[2].corpo.fields.texto.stringValue === 'y', 'sem campos, grava todos');
-})();
+}
 
-head('HTTP 5 — Apagar: 404 é tudo certo; uma recusa sobe com o motivo');
-sep();
-await (async () => {
+async function apagarDistingueAusenteDeRecusa() {
   const a = nuvemDeTeste(() => ({ status: 404, corpo: {} }));
-  let erro = null;
-  try { await a.nuvem.apagarFrases(['1', '2']); } catch (e) { erro = e; }
+  let erro = await erroDe(() => a.nuvem.apagarFrases(['1', '2']));
   assert(erro === null && a.pedidos.length === 2 && a.pedidos.every(p => p.metodo === 'DELETE'), 'um DELETE por frase; 404 não é falha');
 
-  const b = nuvemDeTeste(() => ({ status: 403, corpo: { error: { status: 'PERMISSION_DENIED', message: 'Missing or insufficient permissions.' } } }));
-  erro = null;
-  try { await b.nuvem.apagarFrases(['1']); } catch (e) { erro = e; }
+  const b = nuvemDeTeste(recusa(403, { status: 'PERMISSION_DENIED', message: 'Missing or insufficient permissions.' }));
+  erro = await erroDe(() => b.nuvem.apagarFrases(['1']));
   assert(erro?.motivo === MOTIVO.RECUSADO && /insufficient/.test(erro.message), '403 → motivo RECUSADO, com a mensagem da nuvem');
 
-  const c = nuvemDeTeste(() => ({ status: 503, corpo: { error: { message: 'UNAVAILABLE' } } }));
-  erro = null;
-  try { await c.nuvem.listarFrases(); } catch (e) { erro = e; }
+  const c = nuvemDeTeste(recusa(503, { message: 'UNAVAILABLE' }));
+  erro = await erroDe(() => c.nuvem.listarFrases());
   assert(erro?.status === 503 && !erro.motivo,                                      '503 → falha comum, com o status');
-})();
+}
 
-head('HTTP 6 — Tombstone da nuvem: grava por campo e lê as horas');
-sep();
-await (async () => {
-  const { nuvem, pedidos } = nuvemDeTeste((url, opcoes) => opcoes.method === 'PATCH' ? {} :
-    { corpo: { fields: { ids: { mapValue: { fields: { 11: { integerValue: '1000' } } } } } } });
+async function tombstoneDaNuvemGravaELe() {
+  const tombstones = { corpo: { fields: { ids: { mapValue: { fields: { 11: { integerValue: '1000' } } } } } } };
+  const { nuvem, pedidos } = nuvemDeTeste((url, opcoes) => (opcoes.method === 'PATCH' ? {} : tombstones));
   await nuvem.gravarTombstones(['11'], 1000);
   assert(pedidos[0].url === `${DOCS}/usuarios/u1/meta/deleted?updateMask.fieldPaths=ids.\`11\``, 'PATCH em usuarios/{uid}/meta/deleted');
   const lidos = await nuvem.lerTombstones();
   assert(lidos.get('11') === 1000,                                                  'lê id → hora da deleção');
-})();
+}
 
-head('HTTP 7 — Sessão: renova perto de vencer, guarda o que renovou e tenta uma vez após 401');
-sep();
-await (async () => {
-  const renovacao = { corpo: { id_token: 'token-novo', refresh_token: 'refresh-novo' } };
-  const a = nuvemDeTeste((url) => url.includes('securetoken') ? renovacao : { corpo: {} }, { expiresAt: Date.now() + 30_000 });
+const RENOVACAO = { corpo: { id_token: 'token-novo', refresh_token: 'refresh-novo' } };
+
+async function renovaPertoDeVencer() {
+  const a = nuvemDeTeste((url) => (ehRenovacao(url) ? RENOVACAO : { corpo: {} }), { expiresAt: Date.now() + 30_000 });
   await a.nuvem.listarFrases();
   assert(a.pedidos[0].url.startsWith('https://securetoken.googleapis.com/v1/token?key='),   'token perto de vencer: renova antes do pedido');
   assert(a.pedidos[1].token === 'Bearer token-novo',                                       'o pedido usa o token novo');
-  assert(a.renovadas.length === 1 && a.renovadas[0].refreshToken === 'refresh-novo' && a.renovadas[0].uid === 'u1' && a.renovadas[0].expiresAt > Date.now() + 50 * 60_000,
+  const [renovada] = a.renovadas;
+  assert(a.renovadas.length === 1 && renovada.refreshToken === 'refresh-novo' && renovada.uid === 'u1' && renovada.expiresAt > Date.now() + 50 * 60_000,
     'aoRenovar recebe as credenciais completas para gravar');
+}
 
+async function renovaUmaVezApos401() {
   let chamadas = 0;
+  const tokenRuim = recusa(401, { message: 'bad token' });
   const b = nuvemDeTeste((url) => {
-    if (url.includes('securetoken')) return renovacao;
-    return ++chamadas === 1 ? { status: 401, corpo: { error: { message: 'bad token' } } } : { corpo: {} };
+    if (ehRenovacao(url)) return RENOVACAO;
+    return ++chamadas === 1 ? tokenRuim() : { corpo: {} };
   });
   await b.nuvem.listarFrases();
   assert(b.pedidos.map(p => p.token || 'renovação').join() === 'Bearer token-bom,renovação,Bearer token-novo', '401: renova e repete uma vez');
+}
 
-  const c = nuvemDeTeste(() => ({ status: 401, corpo: { error: { message: 'sempre' } } }));
-  let erro = null;
-  try { await c.nuvem.listarFrases(); } catch (e) { erro = e; }
+async function sessaoQueNaoRenovaExpira() {
+  const c = nuvemDeTeste(recusa(401, { message: 'sempre' }));
+  let erro = await erroDe(() => c.nuvem.listarFrases());
   assert(erro?.motivo === MOTIVO.EXPIROU,                                                  'um 401 que se repete → motivo EXPIROU');
 
   const d = nuvemDeTeste(() => ({}), { refreshToken: null, expiresAt: 0 });
-  erro = null;
-  try { await d.nuvem.listarFrases(); } catch (e) { erro = e; }
+  erro = await erroDe(() => d.nuvem.listarFrases());
   assert(erro?.motivo === MOTIVO.EXPIROU && d.pedidos.length === 0,                        'sem refresh token → EXPIROU, sem pedido');
 
-  const e2 = nuvemDeTeste((url) => url.includes('securetoken') ? { status: 400, corpo: { error: { message: 'TOKEN_EXPIRED' } } } : {}, { expiresAt: 0 });
-  erro = null;
-  try { await e2.nuvem.listarFrases(); } catch (e) { erro = e; }
+  const renovacaoRecusada = recusa(400, { message: 'TOKEN_EXPIRED' });
+  const e2 = nuvemDeTeste((url) => (ehRenovacao(url) ? renovacaoRecusada() : {}), { expiresAt: 0 });
+  erro = await erroDe(() => e2.nuvem.listarFrases());
   assert(erro?.motivo === MOTIVO.EXPIROU && erro.message === 'TOKEN_EXPIRED',              'renovação recusada → EXPIROU, com a mensagem');
-})();
+}
 
-head('HTTP 8 — armazenamentoDoChrome adapta o chrome.storage de callbacks');
-sep();
-await (async () => {
+async function sessaoRenovaEExpira() {
+  await renovaPertoDeVencer();
+  await renovaUmaVezApos401();
+  await sessaoQueNaoRenovaExpira();
+}
+
+async function armazenamentoViraPromessas() {
   const dados = {};
   const area = { get: (k, cb) => cb({ ...dados }), set: (i, cb) => { Object.assign(dados, i); cb(); }, remove: (k, cb) => { for (const x of [].concat(k)) delete dados[x]; cb(); } };
   const { local, sync } = armazenamentoDoChrome({ local: area, sync: area });
@@ -768,11 +753,9 @@ await (async () => {
   assert((await sync.get(null)).a === 1,                                                   'set/get viram promessas');
   await local.remove('a');
   assert(!('a' in dados),                                                                  'remove também');
-})();
+}
 
-head('HTTP 9 — Revogar a sessão impede pedidos e uma renovação em voo');
-sep();
-await (async () => {
+async function revogarBarraARenovacaoEmVoo() {
   let responder;
   const resposta = new Promise(resolve => { responder = resolve; });
   const a = nuvemDeTeste(() => resposta, { expiresAt: 0 });
@@ -780,11 +763,13 @@ await (async () => {
   assert(a.pedidos.length === 1 && a.pedidos[0].url.includes('securetoken'), 'a renovação está em voo');
   a.sessao.revogar();
   responder({ corpo: { id_token: 'token-tardio', refresh_token: 'refresh-tardio' } });
-  const [resultado] = await Promise.allSettled([pedido]);
+  const resultado = await desfechoDe(pedido);
   assert(resultado.status === 'rejected' && resultado.reason?.motivo === MOTIVO.EXPIROU, 'o pedido rejeita com EXPIROU após a revogação');
   assert(a.renovadas.length === 0, 'a renovação tardia não chama aoRenovar');
   assert(a.pedidos.length === 1, 'nenhum pedido chega ao Firestore após a renovação tardia');
+}
 
+async function sessaoRevogadaRecusaTodoPedido() {
   const b = nuvemDeTeste(() => ({}));
   b.sessao.revogar();
   b.sessao.revogar();
@@ -798,32 +783,37 @@ await (async () => {
     ['gravar tombstones', () => b.nuvem.gravarTombstones(['1'], 1000)],
   ];
   for (const [nome, pedir] of pedidosRevogados) {
-    const [r] = await Promise.allSettled([pedir()]);
-    assert(r.status === 'rejected' && r.reason?.motivo === MOTIVO.EXPIROU, `${nome} rejeita com EXPIROU numa sessão revogada`);
+    assert(rejeitouComExpirou(await desfechoDe(pedir())), `${nome} rejeita com EXPIROU numa sessão revogada`);
   }
   assert(b.pedidos.length === 0 && b.renovadas.length === 0, 'a sessão revogada não faz pedidos nem persiste credenciais');
   b.sessao.invalidar();
-  const [aindaRevogada] = await Promise.allSettled([b.sessao.token()]);
-  assert(aindaRevogada.status === 'rejected' && aindaRevogada.reason?.motivo === MOTIVO.EXPIROU && b.pedidos.length === 0,
+  const aindaRevogada = await desfechoDe(b.sessao.token());
+  assert(rejeitouComExpirou(aindaRevogada) && b.pedidos.length === 0,
     'invalidar o token não reativa a sessão revogada');
+}
 
+async function revogarAntesDoEnvioBarraOTokenObtido() {
   const c = nuvemDeTeste(() => ({}));
   const comTokenValido = c.nuvem.listarFrases();
   c.sessao.revogar();
-  const [semPedido] = await Promise.allSettled([comTokenValido]);
-  assert(semPedido.status === 'rejected' && semPedido.reason?.motivo === MOTIVO.EXPIROU && c.pedidos.length === 0,
+  const semPedido = await desfechoDe(comTokenValido);
+  assert(rejeitouComExpirou(semPedido) && c.pedidos.length === 0,
     'a revogação antes do envio impede usar um token já obtido');
+}
 
+async function revogarBarraARespostaEmVoo() {
   for (const [nome, pedir] of [
     ['leitura', nuvem => nuvem.listarFrases()],
     ['lotes', nuvem => nuvem.gravarFrases(Array.from({ length: 501 }, (_, id) => ({ id, texto: 'x' })))],
   ]) {
     const d = nuvemDeTeste(() => { d.sessao.revogar(); return {}; });
-    const [emVoo] = await Promise.allSettled([pedir(d.nuvem)]);
-    assert(emVoo.status === 'rejected' && emVoo.reason?.motivo === MOTIVO.EXPIROU && d.pedidos.length === 1,
+    const emVoo = await desfechoDe(pedir(d.nuvem));
+    assert(rejeitouComExpirou(emVoo) && d.pedidos.length === 1,
       `${nome}: a resposta em voo rejeita após revogar, sem continuar os pedidos`);
   }
+}
 
+async function revogarDuranteALeituraDaResposta() {
   let entregarCorpo, avisarLeitura;
   const corpo = new Promise(resolve => { entregarCorpo = resolve; });
   const lendoCorpo = new Promise(resolve => { avisarLeitura = resolve; });
@@ -837,21 +827,57 @@ await (async () => {
   await lendoCorpo;
   sessao.revogar();
   entregarCorpo({ id_token: 'token-tardio', refresh_token: 'refresh-tardio' });
-  const [semRenovar] = await Promise.allSettled([token]);
-  assert(semRenovar.status === 'rejected' && semRenovar.reason?.motivo === MOTIVO.EXPIROU && renovadas.length === 0,
+  const semRenovar = await desfechoDe(token);
+  assert(rejeitouComExpirou(semRenovar) && renovadas.length === 0,
     'revogar durante a leitura da resposta também impede aoRenovar');
-})();
-
-console.log(`\n${C.bold}${'═'.repeat(60)}${C.reset}`);
-const total = passed + failed;
-if (failed === 0) {
-  console.log(`${C.bold}${C.green}TODOS OS TESTES PASSARAM: ${passed}/${total}${C.reset}`);
-} else {
-  console.log(`${C.bold}${C.red}FALHAS: ${failed}/${total}  |  Passaram: ${passed}/${total}${C.reset}`);
 }
-console.log(`${C.bold}${'═'.repeat(60)}${C.reset}\n`);
 
-process.exit(failed > 0 ? 1 : 0);
+async function revogarASessao() {
+  await revogarBarraARenovacaoEmVoo();
+  await sessaoRevogadaRecusaTodoPedido();
+  await revogarAntesDoEnvioBarraOTokenObtido();
+  await revogarBarraARespostaEmVoo();
+  await revogarDuranteALeituraDaResposta();
+}
+
+const CENARIOS_DO_HTTP = [
+  ['HTTP 1 — Codec: ida e volta, com mapas e listas', codecFazIdaEVolta],
+  ['HTTP 2 — Tombstone: o campo do id vai entre crases, com updateMask por campo', tombstoneTemMascaraPorCampo],
+  ['HTTP 3 — Listar frases pagina e decodifica', listarPaginaEDecodifica],
+  ['HTTP 4 — Gravar campos: máscara e documento existente; sem o documento, grava inteiro', gravarCamposComMascara],
+  ['HTTP 5 — Apagar: 404 é tudo certo; uma recusa sobe com o motivo', apagarDistingueAusenteDeRecusa],
+  ['HTTP 6 — Tombstone da nuvem: grava por campo e lê as horas', tombstoneDaNuvemGravaELe],
+  ['HTTP 7 — Sessão: renova perto de vencer, guarda o que renovou e tenta uma vez após 401', sessaoRenovaEExpira],
+  ['HTTP 8 — armazenamentoDoChrome adapta o chrome.storage de callbacks', armazenamentoViraPromessas],
+  ['HTTP 9 — Revogar a sessão impede pedidos e uma renovação em voo', revogarASessao],
+];
+
+async function rodarCenarios(cenarios, antes = () => {}) {
+  for (const [titulo, cenario] of cenarios) {
+    head(titulo);
+    sep();
+    antes();
+    await cenario();
+  }
+}
+
+function resumir() {
+  console.log(`\n${C.bold}${'═'.repeat(60)}${C.reset}`);
+  const total = passed + failed;
+  if (failed === 0) {
+    console.log(`${C.bold}${C.green}TODOS OS TESTES PASSARAM: ${passed}/${total}${C.reset}`);
+  } else {
+    console.log(`${C.bold}${C.red}FALHAS: ${failed}/${total}  |  Passaram: ${passed}/${total}${C.reset}`);
+  }
+  console.log(`${C.bold}${'═'.repeat(60)}${C.reset}\n`);
+}
+
+async function rodar() {
+  resetState();
+  await rodarCenarios(CENARIOS_DO_SYNC, resetState);
+  await rodarCenarios(CENARIOS_DO_HTTP);
+  resumir();
+  process.exit(failed > 0 ? 1 : 0);
 }
 
 rodar().catch(err => { console.error(err); process.exit(1); });
