@@ -24,6 +24,14 @@ class ParaOEnvio(Exception):
         self.codigo = codigo
 
 
+def _a_foto_real_vem_primeiro(pedido):
+    return pedido["imageSource"] == "1"
+
+
+def _a_imagem_tem_de_onde_vir(pedido, chave):
+    return _a_foto_real_vem_primeiro(pedido) or bool(chave)
+
+
 class ImagemDoCartao:
     """A imagem de um Cartão. `adaptador_de_imagem` converte para PNG (None: o Qt do Anki)."""
 
@@ -52,7 +60,7 @@ class ImagemDoCartao:
         também pela chave."""
         pedido, config = cartao.pedido, cartao.config
         juiz, chave = ia.para_a_imagem()
-        if not juiz or (pedido["imageSource"] != "1" and not chave):
+        if not juiz or not _a_imagem_tem_de_onde_vir(pedido, chave):
             return None
         motor = self.motor
         motor.image_utils.usar_adaptador(self.adaptador_de_imagem or AdaptadorQt())
@@ -61,7 +69,7 @@ class ImagemDoCartao:
         prompt = motor.extract_prompts.card_prompt(texto)
         with tempfile.TemporaryDirectory(prefix="perpetualminer_imagem_") as pasta:
             destino = Path(pasta) / "imagem.png"
-            if pedido["imageSource"] == "1":
+            if _a_foto_real_vem_primeiro(pedido):
                 feita = pipeline.real_first(cartao.id, prompt, destino, generation_policy="normal" if chave else "free_only")
             else:
                 feita = pipeline.generate_direct(cartao.id, prompt, destino) == "ok"

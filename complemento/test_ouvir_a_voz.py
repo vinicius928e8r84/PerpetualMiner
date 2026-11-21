@@ -103,6 +103,13 @@ class OuvirAVozDaOpenAI(unittest.TestCase):
             status, resposta = ouvir(conexao, lang="en", provedor="openai")
         self.assertEqual((status, resposta), (502, {"error": "openai_no_credit"}))
 
+    def test_cada_outra_recusa_da_openai_responde_o_codigo_do_seu_status(self):
+        for status_da_openai, codigo in ((402, "openai_no_credit"), (400, "tts_rejected"), (404, "tts_rejected"), (500, "tts_unreachable"), (503, "tts_unreachable")):
+            with self.subTest(status_da_openai), tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
+                conexao.openai.recusa_da_fala = (status_da_openai, "recusada")
+                status, resposta = ouvir(conexao, lang="en", provedor="openai")
+            self.assertEqual((status, resposta), (502, {"error": codigo}))
+
 
 class UmPedidoQueNaoServe(unittest.TestCase):
     def test_idioma_ou_provedor_fora_da_lista_e_recusado_sem_pedir_nada_a_ninguem(self):

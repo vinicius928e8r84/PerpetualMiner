@@ -7,6 +7,7 @@ vai ao Openverse, o assunto visual e a Frase com o contexto.
 import unittest
 
 from image_queries import (
+    CardToSearch,
     _build_card_google_queries,
     _card_phrase_and_context_from_text,
     _english_query_variants_from_text,
@@ -303,7 +304,9 @@ FRASES = [
 
 
 def consultas_do_cartao(texto, argumentos):
-    return _build_card_google_queries(texto, **argumentos)
+    busca = dict(argumentos)
+    cartao = CardToSearch(texto, stem=busca.pop("stem", ""), prompt=busca.pop("prompt", ""))
+    return _build_card_google_queries(cartao, **busca)
 
 
 class AsConsultasDeImagemDoCartao(unittest.TestCase):

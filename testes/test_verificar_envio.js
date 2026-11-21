@@ -48,16 +48,18 @@ function compilador(trocas) {
 }
 
 const ator = new AsyncLocalStorage();
+const ehDoCodigoAlvo = arquivo => arquivo.startsWith('lib/') || arquivo === 'painel/painel-envio-apagar.js';
+
+function chamador() {
+  for (const linha of new Error().stack.split('\n').slice(2)) {
+    const m = linha.match(/\(?((?:lib\/)?[\w.-]+\.js):(\d+):\d+\)?$/);
+    if (m && ehDoCodigoAlvo(m[1])) return `${m[1]}:${m[2]}`;
+  }
+  return '?';
+}
 
 function novoMundo(escolhas, fonte) {
   const mundo = { dados: {}, pendentes: [], rastro: [], decisoes: [], posts: [], marcas: [], passos: 0 };
-  const chamador = () => {
-    for (const linha of new Error().stack.split('\n').slice(2)) {
-      const m = linha.match(/\(?((?:lib\/)?[\w.-]+\.js):(\d+):\d+\)?$/);
-      if (m && (m[1].startsWith('lib/') || m[1] === 'painel/painel-envio-apagar.js')) return `${m[1]}:${m[2]}`;
-    }
-    return '?';
-  };
   mundo.passo = (o_que, efeito) => new Promise(resolve => {
     mundo.pendentes.push({ quem: ator.getStore() || '?', o_que, onde: chamador(), executar() { resolve(efeito(this.quem)); } });
   });
@@ -71,16 +73,33 @@ function novoMundo(escolhas, fonte) {
   return mundo;
 }
 
+const ehObjeto = c => c !== null && typeof c === 'object';
+
+function pedidoTocaOEnvio(c) {
+  if (c === CHAVE) return true;
+  if (Array.isArray(c)) return c.includes(CHAVE);
+  return ehObjeto(c) && CHAVE in c;
+}
+
+const valorGuardadoOuPadrao = (mundo, c, padrao) => copia(c in mundo.dados ? mundo.dados[c] : padrao);
+const lerDoMundo = (mundo, pedido) => Object.fromEntries(Object.entries(pedido).map(([c, p]) => [c, valorGuardadoOuPadrao(mundo, c, p)]));
+
+function anotarAPrimeiraMarca(mundo, quem, valor) {
+  if (!mundo.marcadores.has(quem) || !valor?.apagarFrases) return;
+  if (mundo.marcas.some(m => m.quem === quem)) return;
+  mundo.marcas.push({ quem, depoisDoPasso: mundo.passos });
+}
+
+function gravarNoMundo(mundo, quem, valor) {
+  mundo.passos += 1;
+  anotarAPrimeiraMarca(mundo, quem, valor);
+  mundo.dados[CHAVE] = copia(valor);
+}
+
 function armazenamento(mundo) {
-  const toca = c => c === CHAVE || (Array.isArray(c) ? c.includes(CHAVE) : c !== null && typeof c === 'object' && CHAVE in c);
-  const ler = pedido => Object.fromEntries(Object.entries(pedido).map(([c, p]) => [c, copia(c in mundo.dados ? mundo.dados[c] : p)]));
   return {
-    get: pedido => mundo.passo('lê pm_envio', () => ler(toca(pedido) ? pedido : {})),
-    set: valores => mundo.passo(`grava pm_envio ${JSON.stringify(valores[CHAVE])}`, quem => {
-      mundo.passos += 1;
-      if (mundo.marcadores.has(quem) && valores[CHAVE]?.apagarFrases && !mundo.marcas.some(m => m.quem === quem)) mundo.marcas.push({ quem, depoisDoPasso: mundo.passos });
-      mundo.dados[CHAVE] = copia(valores[CHAVE]);
-    }),
+    get: pedido => mundo.passo('lê pm_envio', () => lerDoMundo(mundo, pedidoTocaOEnvio(pedido) ? pedido : {})),
+    set: valores => mundo.passo(`grava pm_envio ${JSON.stringify(valores[CHAVE])}`, quem => gravarNoMundo(mundo, quem, valores[CHAVE])),
     remove: () => mundo.passo('remove pm_envio', () => { mundo.passos += 1; delete mundo.dados[CHAVE]; }),
   };
 }
@@ -144,22 +163,28 @@ const apagarTudo = { tipo: 'apagarTudo' };
 const pedir = { tipo: 'pedir' };
 const alarme = { tipo: 'alarme' };
 
+const mudarOGravado = (ctx, evento, dados) => {
+  const { EnvioGravado } = ctx.PerpetualMiner;
+  return EnvioGravado.criar(ctx.chrome.storage.local).mudar(EnvioGravado.EVENTO[evento], dados);
+};
+
 const FAZER = {
-  acompanhar: (ctx, a) => ctx.PerpetualMiner.EnvioGravado.criar(ctx.chrome.storage.local)
-    .mudar(ctx.PerpetualMiner.EnvioGravado.EVENTO.ACOMPANHAR, { envios: a.envios, seAinda: () => true }),
-  esquecer: ctx => ctx.PerpetualMiner.EnvioGravado.criar(ctx.chrome.storage.local).mudar(ctx.PerpetualMiner.EnvioGravado.EVENTO.ESQUECER),
-  apagarTudo: ctx => ctx.PerpetualMiner.EnvioGravado.criar(ctx.chrome.storage.local).mudar(ctx.PerpetualMiner.EnvioGravado.EVENTO.APAGAR_TUDO),
+  acompanhar: (ctx, a) => mudarOGravado(ctx, 'ACOMPANHAR', { envios: a.envios, seAinda: () => true }),
+  esquecer: ctx => mudarOGravado(ctx, 'ESQUECER'),
+  apagarTudo: ctx => mudarOGravado(ctx, 'APAGAR_TUDO'),
   pedir: ctx => ctx.PerpetualMiner.EnvioApagarFrases.pedir(),
   alarme: ctx => ctx.PerpetualMiner.ApagarFrasesPendente
     .criar({ chrome: ctx.chrome, conversa: ctx.PerpetualMiner.ConversaComOAnki }).conferir(),
 };
 
+const confirmarSeMarcado = (s, _a, E) => (s?.apagarFrases ? E.proximo(s, { tipo: E.EVENTO.CONFIRMOU }) : s);
+
 const SERIAL = {
   acompanhar: (s, a, E) => E.proximo(s, { tipo: E.EVENTO.ACOMPANHAR, envios: a.envios }),
   esquecer: (s, _a, E) => E.proximo(s, { tipo: E.EVENTO.ESQUECER }),
   apagarTudo: (s, _a, E) => E.proximo(s, { tipo: E.EVENTO.APAGAR_TUDO }),
-  pedir: (s, _a, E) => (s?.apagarFrases ? E.proximo(s, { tipo: E.EVENTO.CONFIRMOU }) : s),
-  alarme: (s, _a, E) => (s?.apagarFrases ? E.proximo(s, { tipo: E.EVENTO.CONFIRMOU }) : s),
+  pedir: confirmarSeMarcado,
+  alarme: confirmarSeMarcado,
 };
 
 async function executar(cenario, escolhas, fonte) {
@@ -191,28 +216,46 @@ async function executar(cenario, escolhas, fonte) {
   return { mundo, fim, parados };
 }
 
-function conferir(cenario, { mundo, fim, parados }, E) {
-  const erros = [];
-  if (parados.length) erros.push(`impasse: ${parados.join(', ')} não terminou`);
+function errosDosAtores({ fim, parados }) {
+  const erros = parados.length ? [`impasse: ${parados.join(', ')} não terminou`] : [];
   for (const [nome, { erro }] of fim) if (erro) erros.push(`falha: ${nome}: ${erro.split('\n')[0]}`);
-  const final = copia(mundo.dados[CHAVE] ?? null);
-  const seqs = cenario.atores.map(a => a.acoes.map(acao => ({ acao })));
-  const ordens = [];
-  (function intercalar(restos, prefixo) {
-    if (restos.every(r => r.length === 0)) { ordens.push(prefixo); return; }
-    restos.forEach((r, i) => { if (r.length) intercalar(restos.map((t, j) => (j === i ? t.slice(1) : t)), [...prefixo, r[0]]); });
-  })(seqs, []);
-  const possiveis = new Set(ordens.map(o => JSON.stringify(o.reduce((s, { acao }) => SERIAL[acao.tipo](s, acao, E), copia(cenario.inicio ?? null)) ?? null)));
-  if (!possiveis.has(JSON.stringify(final))) {
-    erros.push(`estado: o pm_envio final ${JSON.stringify(final)} não é o de nenhuma ordem em série (por exemplo ${[...possiveis][0]})`);
-  }
-  for (const { quem, depoisDoPasso } of mundo.marcas) {
-    const chegou = mundo.posts.some(p => p.aposOPasso > depoisDoPasso);
-    if (!final?.apagarFrases && !chegou) {
-      erros.push(`marca perdida: o Apagar tudo de ${quem} marcou o pm_envio, e a marca não está no fim nem chegou um POST /jobs/apagar-frases depois dela`);
-    }
-  }
   return erros;
+}
+
+const semAPrimeira = (restos, i) => restos.map((t, j) => (j === i ? t.slice(1) : t));
+
+function intercalar(restos, prefixo, ordens) {
+  if (restos.every(r => r.length === 0)) {
+    ordens.push(prefixo);
+    return ordens;
+  }
+  restos.forEach((r, i) => r.length && intercalar(semAPrimeira(restos, i), [...prefixo, r[0]], ordens));
+  return ordens;
+}
+
+function estadosEmSerie(cenario, E) {
+  const ordens = intercalar(cenario.atores.map(a => a.acoes), [], []);
+  const emSerie = ordem => ordem.reduce((s, acao) => SERIAL[acao.tipo](s, acao, E), copia(cenario.inicio ?? null)) ?? null;
+  return new Set(ordens.map(ordem => JSON.stringify(emSerie(ordem))));
+}
+
+function errosDoEstado(cenario, final, E) {
+  const possiveis = estadosEmSerie(cenario, E);
+  if (possiveis.has(JSON.stringify(final))) return [];
+  return [`estado: o pm_envio final ${JSON.stringify(final)} não é o de nenhuma ordem em série (por exemplo ${[...possiveis][0]})`];
+}
+
+const chegouUmPostDepois = (mundo, passo) => mundo.posts.some(p => p.aposOPasso > passo);
+
+function marcasPerdidas(mundo, final) {
+  if (final?.apagarFrases) return [];
+  return mundo.marcas.filter(({ depoisDoPasso }) => !chegouUmPostDepois(mundo, depoisDoPasso))
+    .map(({ quem }) => `marca perdida: o Apagar tudo de ${quem} marcou o pm_envio, e a marca não está no fim nem chegou um POST /jobs/apagar-frases depois dela`);
+}
+
+function conferir(cenario, execucao, E) {
+  const final = copia(execucao.mundo.dados[CHAVE] ?? null);
+  return [...errosDosAtores(execucao), ...errosDoEstado(cenario, final, E), ...marcasPerdidas(execucao.mundo, final)];
 }
 
 async function explorar(cenario, fonte, E, { um = false } = {}) {
