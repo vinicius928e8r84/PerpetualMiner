@@ -466,15 +466,17 @@
     porId('foto-progresso-barra').style.width = `${Math.round((lidas / total) * 100)}%`;
   }
 
-  function cartaoDaFoto(foto) {
-    let cartao = desenhado.cartoes.get(foto.id);
-    if (!cartao) {
-      cartao = montarCartaoDaFoto(foto);
-      desenhado.cartoes.set(foto.id, cartao);
-      porId('foto-fila').append(cartao);
+  function desenhadoOuMontado(mapa, chave, montar, lugar) {
+    let no = mapa.get(chave);
+    if (!no) {
+      no = montar();
+      mapa.set(chave, no);
+      lugar.append(no);
     }
-    return cartao;
+    return no;
   }
+
+  const cartaoDaFoto = foto => desenhadoOuMontado(desenhado.cartoes, foto.id, () => montarCartaoDaFoto(foto), porId('foto-fila'));
 
   function montarCartaoDaFoto(foto) {
     const nome = elemento('p', 'foto-cartao__nome', foto.nome);
@@ -504,22 +506,31 @@
     cartao.querySelector('.foto-cartao__de-novo').hidden = !falhou;
   }
 
+  function seloLendo() {
+    const lendo = selo('veio-selo--lendo', textoDaVoz('FOT-19.lendo'));
+    lendo.prepend(elemento('span', 'veio-selo__ponto'));
+    return lendo;
+  }
+
+  function seloDaLida(foto) {
+    return foto.achadas
+      ? selo('veio-selo--ok', textoDaVoz('FOT-19.frases', { n: foto.achadas }))
+      : selo('', textoDaVoz('FOT-19.semMarcacoes'));
+  }
+
+  const SELO_DO_STATUS = new Map([
+    [STATUS.PRONTA, () => selo('', textoDaVoz('FOT-19.pronta'))],
+    [STATUS.NA_FILA, () => selo('', textoDaVoz('FOT-19.naFila'))],
+    [STATUS.LENDO, seloLendo],
+    [STATUS.LIDA, seloDaLida],
+    [STATUS.FALHOU, () => selo('veio-selo--erro', textoDaVoz('FOT-19.falhou'))],
+    [STATUS.CANCELADA, () => selo('', textoDaVoz('FOT-19.cancelada'))],
+  ]);
+
   function seloDaFoto(foto) {
-    switch (foto.status) {
-      case STATUS.PRONTA: return selo('', textoDaVoz('FOT-19.pronta'));
-      case STATUS.NA_FILA: return selo('', textoDaVoz('FOT-19.naFila'));
-      case STATUS.LENDO: {
-        const lendo = selo('veio-selo--lendo', textoDaVoz('FOT-19.lendo'));
-        lendo.prepend(elemento('span', 'veio-selo__ponto'));
-        return lendo;
-      }
-      case STATUS.LIDA: return foto.achadas
-        ? selo('veio-selo--ok', textoDaVoz('FOT-19.frases', { n: foto.achadas }))
-        : selo('', textoDaVoz('FOT-19.semMarcacoes'));
-      case STATUS.FALHOU: return selo('veio-selo--erro', textoDaVoz('FOT-19.falhou'));
-      case STATUS.CANCELADA: return selo('', textoDaVoz('FOT-19.cancelada'));
-      default: throw new Error(`Status de foto desconhecido: ${foto.status}`);
-    }
+    const montar = SELO_DO_STATUS.get(foto.status);
+    if (!montar) throw new Error(`Status de foto desconhecido: ${foto.status}`);
+    return montar(foto);
   }
 
   function miniatura(foto, classe) {
@@ -688,25 +699,9 @@
     for (const frase of frasesDaFoto) atualizarLinha(linhaDaFrase(frase, grupo), frase);
   }
 
-  function grupoDaFoto(foto) {
-    let grupo = desenhado.grupos.get(foto.id);
-    if (!grupo) {
-      grupo = montarGrupo(foto);
-      desenhado.grupos.set(foto.id, grupo);
-      porId('foto-grupos').append(grupo);
-    }
-    return grupo;
-  }
-
-  function linhaDaFrase(frase, grupo) {
-    let linha = desenhado.linhas.get(frase.id);
-    if (!linha) {
-      linha = montarLinha(frase);
-      desenhado.linhas.set(frase.id, linha);
-      grupo.querySelector('.foto-grupo__frases').append(linha);
-    }
-    return linha;
-  }
+  const grupoDaFoto = foto => desenhadoOuMontado(desenhado.grupos, foto.id, () => montarGrupo(foto), porId('foto-grupos'));
+  const linhaDaFrase = (frase, grupo) => desenhadoOuMontado(desenhado.linhas, frase.id, () => montarLinha(frase),
+    grupo.querySelector('.foto-grupo__frases'));
 
   function desenharSelecao() {
     const aindaNao = pendentes();
