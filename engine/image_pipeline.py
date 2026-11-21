@@ -61,11 +61,9 @@ class ImagePipeline:
         self.max_queries = _judge_limit(self.judge_cfg, "max_queries", 8)
         self.guard_enabled = config.get("lang") != "ru"
 
-    def real_first(self, stem: str, prompt: str, dest: Path, generation_policy: str = "normal",
-                   paid_generation_blocked_by_guard: bool = False) -> bool:
+    def real_first(self, stem: str, prompt: str, dest: Path, generation_policy: str = "normal") -> bool:
         """A real photo the judge accepts, else (by the policy) a generated image; True when the card got a picture."""
-        policy = GenerationPolicy(generation_policy, paid_generation_blocked_by_guard)
-        return RealFirst(self, Card(stem, prompt, dest), policy).choose()
+        return RealFirst(self, Card(stem, prompt, dest), GenerationPolicy(generation_policy)).choose()
 
     def generate_direct(self, stem: str, prompt: str, dest: Path) -> str:
         """Generated image only (no search): "skipped" (the guard says it is abstract), "ok" or "failed"."""
