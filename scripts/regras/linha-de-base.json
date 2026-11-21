@@ -166,7 +166,6 @@
     "painel/painel-envio-apagar.js": 1,
     "painel/painel-envio-cartao.js": 34,
     "painel/painel-envio-estado.js": 21,
-    "painel/painel-envio-parado.js": 2,
     "painel/painel-envio.js": 54,
     "painel/painel-ia-chatgpt.js": 2,
     "painel/painel-ia-modelo.js": 4,
