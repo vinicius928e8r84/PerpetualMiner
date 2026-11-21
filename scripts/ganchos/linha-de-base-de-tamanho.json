@@ -49,7 +49,7 @@
     "lib/sincronizacao.js": 29245,
     "lib/voz/catalogo.js": 44483,
     "overlay/overlay.js": 22279,
-    "painel/painel-anki-baralhos.js": 30110,
+    "painel/painel-anki-baralhos.js": 24689,
     "painel/painel-anki.js": 29486,
     "painel/painel-boas-vindas.js": 22520,
     "painel/painel-envio.js": 25256,
