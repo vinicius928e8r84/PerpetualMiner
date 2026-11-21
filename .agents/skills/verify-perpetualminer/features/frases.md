@@ -1,6 +1,6 @@
 # Frases list in the panel
 
-The panel's default area (`painel.html#frases`, "Frases mineradas") lists every mined phrase as a card under its day heading, with the Palavra highlighted and a Contexto line (Fonte badge, Título · Detalhe, status badge). A person searches and filters, selects phrases, and deletes, edits or exports them.
+The panel's default area (`painel/painel.html#frases`, "Frases mineradas") lists every mined phrase as a card under its day heading, with the Palavra highlighted and a Contexto line (Fonte badge, Título · Detalhe, status badge). A person searches and filters, selects phrases, and deletes, edits or exports them.
 
 ## Sub-features
 

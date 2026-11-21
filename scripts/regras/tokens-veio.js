@@ -46,16 +46,20 @@ function semVar(valor) {
     .replace(/var\(\s*--[\w-]+\s*,/g, '(');
 }
 
+const VALORES_LITERAIS = [
+  { propriedade: /^--/, valor: COR, problema: p => `cor literal na variável \`${p}\`` },
+  { propriedade: PROPRIEDADE_DE_COR, valor: COR, problema: p => `cor literal em \`${p}\`` },
+  { propriedade: /^font-size$/, valor: /(?:^|[\s(])\d*\.?\d+(?:px|rem|pt)\b/, problema: () => 'tamanho de letra literal' },
+  { propriedade: /^font$/, valor: /(?:^|\s)\d*\.?\d+(?:px|rem|pt)\b/, problema: () => 'tamanho de letra literal em `font`' },
+  { propriedade: PROPRIEDADE_DE_RAIO, valor: /(?:^|\s)(?:0*[1-9]\d*|\d*\.\d+)(?:px|rem|em)\b/, problema: () => 'raio literal' },
+  { propriedade: PROPRIEDADE_DE_TEMPO, valor: /(?:^|[\s,(])(?:0*[1-9]\d*(?:\.\d+)?|0?\.\d*[1-9]\d*)m?s\b/, problema: () => 'duração literal' },
+];
+
 function literal(propriedade, valorBruto) {
   const p = propriedade.trim().toLowerCase();
   const valor = semVar(valorBruto).replace(/url\([^)]*\)/g, 'url()');
-  if (p.startsWith('--')) return COR.test(valor) ? `cor literal na variável \`${p}\`` : null;
-  if (PROPRIEDADE_DE_COR.test(p) && COR.test(valor)) return `cor literal em \`${p}\``;
-  if (p === 'font-size' && /(?:^|[\s(])\d*\.?\d+(?:px|rem|pt)\b/.test(valor)) return 'tamanho de letra literal';
-  if (p === 'font' && /(?:^|\s)\d*\.?\d+(?:px|rem|pt)\b/.test(valor)) return 'tamanho de letra literal em `font`';
-  if (PROPRIEDADE_DE_RAIO.test(p) && /(?:^|\s)(?:0*[1-9]\d*|\d*\.\d+)(?:px|rem|em)\b/.test(valor)) return 'raio literal';
-  if (PROPRIEDADE_DE_TEMPO.test(p) && /(?:^|[\s,(])(?:0*[1-9]\d*(?:\.\d+)?|0?\.\d*[1-9]\d*)m?s\b/.test(valor)) return 'duração literal';
-  return null;
+  const proibido = VALORES_LITERAIS.find(regra => regra.propriedade.test(p) && regra.valor.test(valor));
+  return proibido ? proibido.problema(p) : null;
 }
 
 function achadosNoCss(css, deslocamento, original) {
@@ -77,19 +81,30 @@ function achadosNoCss(css, deslocamento, original) {
 const ESTILO_NO_JS = /\b(fontSize|borderRadius|transition|animation(?:Duration|Delay)?|color|background(?:Color)?|borderColor|outlineColor|boxShadow)\s*(?::|=(?!=))\s*(['"`])([^'"`]*)\2/g;
 const PARA_CSS = nome => nome.replace(/[A-Z]/g, letra => `-${letra.toLowerCase()}`);
 
-function achadosNoJs(fonte) {
-  const codigo = semComentariosJs(fonte);
+const COR_NUMA_STRING = /(['"`])(#[0-9a-fA-F]{3,8})\1/g;
+
+function estilosLiteraisNoJs(codigo) {
   const achados = [];
   for (const m of codigo.matchAll(ESTILO_NO_JS)) {
     const problema = literal(PARA_CSS(m[1]), m[3]);
     if (problema) achados.push({ linha: linhaDe(codigo, m.index), detalhe: `${problema}: ${m[0]}` });
   }
-  const jaVistas = new Set(achados.map(a => a.linha));
-  for (const m of codigo.matchAll(/(['"`])(#[0-9a-fA-F]{3,8})\1/g)) {
+  return achados;
+}
+
+function coresSoltasNoJs(codigo, linhasDoEstilo) {
+  const achados = [];
+  for (const m of codigo.matchAll(COR_NUMA_STRING)) {
     const linha = linhaDe(codigo, m.index);
-    if (!jaVistas.has(linha)) achados.push({ linha, detalhe: `cor literal ${m[2]}` });
+    if (!linhasDoEstilo.has(linha)) achados.push({ linha, detalhe: `cor literal ${m[2]}` });
   }
   return achados;
+}
+
+function achadosNoJs(fonte) {
+  const codigo = semComentariosJs(fonte);
+  const doEstilo = estilosLiteraisNoJs(codigo);
+  return [...doEstilo, ...coresSoltasNoJs(codigo, new Set(doEstilo.map(a => a.linha)))];
 }
 
 function verificar(arquivo, fonte) {
