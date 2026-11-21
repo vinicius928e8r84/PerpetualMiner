@@ -25,7 +25,9 @@ let minerando = false;
 
 const porId = id => document.getElementById(id);
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', abrirOPopup);
+
+function abrirOPopup() {
   escreverCopiaFixa();
   desenharUltimas();
 
@@ -50,24 +52,28 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   pedirEstadoDaAutomatica();
-
-  chrome.storage.onChanged.addListener((mudancas, area) => {
-    if (area !== 'local') return;
-    if (mudancas.frases) {
-      frases = mudancas.frases.newValue || [];
-      desenharUltimas();
-    }
-    if (mudancas[MineracaoDoDia.CHAVES.estadoPublicado]?.newValue) {
-      mostrarMineracaoAutomatica(mudancas[MineracaoDoDia.CHAVES.estadoPublicado].newValue);
-    }
-    const mudouOVocabulario = Object.values(VocabularioDaMineracao.CHAVES).some(chave => chave in mudancas);
-    if (mudouOVocabulario || AjustesDeEnvio.CHAVE in mudancas) lerAIdadeDoVocabulario();
-  });
+  chrome.storage.onChanged.addListener(refletirOQueMudouGuardado);
 
   ConexaoAnki.acompanhar(refletirOVocabularioDoAnkiFechado);
   ConexaoAnki.iniciar();
   lerAIdadeDoVocabulario();
-});
+}
+
+function refletirOQueMudouGuardado(mudancas, area) {
+  if (area !== 'local') return;
+  if (mudancas.frases) {
+    frases = mudancas.frases.newValue || [];
+    desenharUltimas();
+  }
+  const publicado = mudancas[MineracaoDoDia.CHAVES.estadoPublicado]?.newValue;
+  if (publicado) mostrarMineracaoAutomatica(publicado);
+  if (mudouOQueOSeloLe(mudancas)) lerAIdadeDoVocabulario();
+}
+
+function mudouOQueOSeloLe(mudancas) {
+  const mudouOVocabulario = Object.values(VocabularioDaMineracao.CHAVES).some(chave => chave in mudancas);
+  return mudouOVocabulario || AjustesDeEnvio.CHAVE in mudancas;
+}
 
 function escreverCopiaFixa() {
   const abrir = porId('abrir-painel');
