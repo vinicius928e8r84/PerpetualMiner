@@ -205,12 +205,9 @@
     "testes/test_abridor.js": 22,
     "testes/test_apagar_frases_pendente.js": 3,
     "testes/test_aviso_da_versao.js": 3,
-    "testes/test_envio_acompanhado.js": 3,
     "testes/test_estado_do_envio.js": 5,
-    "testes/test_fake_anki.js": 20,
     "testes/test_preview.js": 4,
     "testes/test_primeira_conexao.js": 13,
-    "testes/test_quiz_de_nivel.js": 1,
-    "testes/test_verificar_envio.js": 13
+    "testes/test_quiz_de_nivel.js": 1
   }
 }
