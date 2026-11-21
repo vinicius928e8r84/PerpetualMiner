@@ -94,14 +94,14 @@ class IaDosCartoes:
             if etapa == CORRECAO:
                 pelo_plano = pagador.quem == PLANO
                 texto, uso = provedores.texto(cred, sistema, mensagem) if pelo_plano else provedores.texto(cred, sistema, mensagem, temperatura=0.2)
-                custos.record_correction(pasta, cred["modelo"], uso.get("entrada", 0), uso.get("saida", 0), paid=not pelo_plano)
+                custos.record_correction(pasta, custos.TokenUsage(cred["modelo"], uso.get("entrada", 0), uso.get("saida", 0)), paid=not pelo_plano)
             elif pagador.quem == PLANO:
                 texto, uso = provedores.texto(cred, sistema, mensagem)
-                custos.record_plan_tokens(pasta, cred["modelo"], modelo_da_chave, uso["entrada"], uso["saida"], rotulo)
+                custos.record_plan_tokens(pasta, custos.TokenUsage(cred["modelo"], uso["entrada"], uso["saida"]), modelo_da_chave, rotulo)
             else:
                 texto, uso = provedores.texto(cred, sistema, mensagem, temperatura=0.2)
                 if uso:
-                    custos.record_tokens(pasta, model=cred["modelo"], input_tokens=uso.get("entrada", 0), output_tokens=uso.get("saida", 0), keyword=rotulo)
+                    custos.record_tokens(pasta, custos.TokenUsage(cred["modelo"], uso.get("entrada", 0), uso.get("saida", 0)), keyword=rotulo)
             return texto
 
         return pedir
