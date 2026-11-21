@@ -28,7 +28,7 @@ def juiz_pela_chave(base):
         *presa.texto(modelo, sistema, conteudo, temperatura=0, json=True, repeticoes=provedores.REPETICOES_DA_IMAGEM), True))
 
 
-def julgar(pasta, openai, mode="real_only", juiz=None, **mais):
+def julgar(pasta, openai, juiz=None, **mais):
     raiz = Path(pasta)
     imagem = raiz / "candidate.png"
     imagem.write_bytes(PNG_BYTES)
@@ -36,7 +36,7 @@ def julgar(pasta, openai, mode="real_only", juiz=None, **mais):
     return image_judge.rank_candidates(
         juiz=juiz or juiz_pela_chave(openai.base), model="mock-judge", log_dir=str(raiz / "log"), keyword="saw", phrase="I saw it happen.", context="test",
         card_text="Front: I saw it happen.", candidates=[{"path": str(imagem), "meta": {"query": "eye", "source": "openverse"}}],
-        mode=mode, **mais)
+        mode="real_only", **mais)
 
 
 def veredito(**campos):

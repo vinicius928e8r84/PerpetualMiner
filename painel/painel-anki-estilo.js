@@ -25,6 +25,12 @@
     texto.textContent = textoDaVoz(VOZ_DO_NIVEL[nivel][1], { idioma: NOME_DO_IDIOMA[lang].toLowerCase() });
   }
 
+  function esconderAPreviaEAFrenteNoTipoProprio(lang, rascunho, previa) {
+    previa.no.hidden = Boolean(rascunho.tipoProprio);
+    const frente = document.getElementById(`ajustes-frente-${lang}-bloco`);
+    if (frente) frente.hidden = Boolean(rascunho.tipoProprio);
+  }
+
   function campo(lang, rascunho, { prefixo = 'ajustes', aoEscolher, aoConfirmar, tipoProprio = prefixo === 'ajustes' } = {}) {
     const id = `${prefixo}-estilo-${lang}`;
     const rotulo = elemento('span', 'ajustes-campo__rotulo', textoDaVoz('BRG-42.titulo'));
@@ -37,11 +43,7 @@
     previa.no.hidden = Boolean(rascunho.tipoProprio);
     const proprio = !tipoProprio ? null : raiz.TipoProprioDoCartao.montar({
       lang, rascunho, nivelAtual: () => rascunho.nivel,
-      aoMudar: () => {
-        previa.no.hidden = Boolean(rascunho.tipoProprio);
-        const frente = document.getElementById(`ajustes-frente-${lang}-bloco`);
-        if (frente) frente.hidden = Boolean(rascunho.tipoProprio);
-      },
+      aoMudar: () => esconderAPreviaEAFrenteNoTipoProprio(lang, rascunho, previa),
     });
     const grupo = elemento('div', 'veio-segmentado', ...NIVEIS.map(nivel => {
       const radio = elemento('input', '');
