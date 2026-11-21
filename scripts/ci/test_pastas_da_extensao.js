@@ -29,12 +29,9 @@ const deFora = {
   'tokens-veio': ['veio/tokens.css', 'e2e/tests/x.css', 'docs/design/x.html'],
   'indice-de-arquivos': ['testes/test_sync.js', 'lib/voz/catalogo.js', 'veio/fontes/manrope-latin.woff2', 'e2e/fixtures.js', 'AGENTS.md'],
 };
-for (const [id, arquivos] of Object.entries(jaConferidos)) {
-  for (const arquivo of arquivos) assert.strictEqual(regras[id].seAplica(arquivo), true, `${id} confere ${arquivo}`);
-}
-for (const [id, arquivos] of Object.entries(deFora)) {
-  for (const arquivo of arquivos) assert.strictEqual(regras[id].seAplica(arquivo), false, `${id} não confere ${arquivo}`);
-}
+const regraEArquivo = arquivosPorRegra => Object.entries(arquivosPorRegra).flatMap(([id, arquivos]) => arquivos.map(arquivo => [id, arquivo]));
+for (const [id, arquivo] of regraEArquivo(jaConferidos)) assert.strictEqual(regras[id].seAplica(arquivo), true, `${id} confere ${arquivo}`);
+for (const [id, arquivo] of regraEArquivo(deFora)) assert.strictEqual(regras[id].seAplica(arquivo), false, `${id} não confere ${arquivo}`);
 assert.deepStrictEqual(selecionar(['lib/historico.js']), { e2e: true, complemento: false });
 assert.deepStrictEqual(selecionar(['painel/painel.js']), { e2e: true, complemento: false });
 
