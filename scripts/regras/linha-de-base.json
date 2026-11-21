@@ -13,7 +13,6 @@
   },
   "contrato-fechado": {},
   "e2e-estado-final": {
-    "e2e/tests/badge-da-toolbar.spec.js": 1,
     "e2e/tests/base-veio.spec.js": 4,
     "e2e/tests/boas-vindas.spec.js": 10,
     "e2e/tests/componentes-veio.spec.js": 11,
