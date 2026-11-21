@@ -39,7 +39,7 @@
     "e2e/tests/painel-anki-primeira-conexao.spec.js": 39268,
     "e2e/tests/painel-anki-visual.spec.js": 20782,
     "e2e/tests/painel-anki.spec.js": 14093,
-    "e2e/tests/painel-envio.spec.js": 38987,
+    "e2e/tests/painel-envio.spec.js": 33802,
     "e2e/tests/painel-frases-selecao.spec.js": 26312,
     "e2e/tests/painel-frases.spec.js": 27348,
     "e2e/tests/painel-minerar-frases.spec.js": 28790,
