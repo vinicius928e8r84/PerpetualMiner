@@ -12,14 +12,13 @@ RETENCAO_A_CADA_S = 6 * 60 * 60
 class Trabalhador:
     """A thread de trabalho: tira um Envio da fila de cada vez. Nenhum erro dela sai do logger."""
 
-    def __init__(self, trabalho, intervalo=1.0, contato=None, espera_do_contato=0.0, retencao_a_cada_s=RETENCAO_A_CADA_S):
+    def __init__(self, trabalho, intervalo=1.0, contato=None, espera_do_contato=0.0):
         self.trabalho = trabalho
         self.fila = trabalho.fila
         self.parar = trabalho.parar
         self.intervalo = intervalo
         self.contato = contato
         self.espera_do_contato = espera_do_contato
-        self.retencao_a_cada_s = retencao_a_cada_s
         self._proxima_retencao = None
         self._thread = None
 
@@ -27,7 +26,7 @@ class Trabalhador:
         agora = time.monotonic()
         if self._proxima_retencao is not None and agora < self._proxima_retencao:
             return
-        self._proxima_retencao = agora + self.retencao_a_cada_s
+        self._proxima_retencao = agora + RETENCAO_A_CADA_S
         retencao_dos_envios.reter(self.fila)
 
     def _esperar_a_extensao(self):
@@ -35,8 +34,11 @@ class Trabalhador:
             return
         self.trabalho.logger.info("Envio: esperando até %g s o primeiro pedido de Envio da extensão antes de retomar", self.espera_do_contato)
         fim = time.monotonic() + self.espera_do_contato
-        while not self.contato.is_set() and not self.parar.is_set() and time.monotonic() < fim:
+        while not self._a_extensao_chamou_ou_parou() and time.monotonic() < fim:
             self.contato.wait(min(self.intervalo, max(fim - time.monotonic(), 0)))
+
+    def _a_extensao_chamou_ou_parou(self):
+        return self.contato.is_set() or self.parar.is_set()
 
     def iniciar(self):
         self.fila.recuperar_os_interrompidos()
