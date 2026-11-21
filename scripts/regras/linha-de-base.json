@@ -15,7 +15,6 @@
   "e2e-estado-final": {
     "e2e/tests/boas-vindas.spec.js": 10,
     "e2e/tests/componentes-veio.spec.js": 11,
-    "e2e/tests/conexao-anki.spec.js": 1,
     "e2e/tests/conexao-na-tela.spec.js": 2,
     "e2e/tests/configuracoes-atalhos.spec.js": 7,
     "e2e/tests/configuracoes-chave-perigo.spec.js": 4,
