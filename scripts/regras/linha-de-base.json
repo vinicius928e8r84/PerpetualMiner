@@ -8,9 +8,7 @@
   "idioma-solto": {},
   "teste-le-codigo": {},
   "e2e-funcao-interna": {},
-  "testes-no-portao": {
-    ".agents/skills/verify-perpetualminer/scripts/test_helpers.sh": 1
-  },
+  "testes-no-portao": {},
   "contrato-fechado": {},
   "e2e-estado-final": {
     "e2e/tests/configuracoes-tema.spec.js": 6,

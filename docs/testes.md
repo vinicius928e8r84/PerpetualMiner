@@ -27,7 +27,7 @@ The add-on's contract with the extension is tested from both sides on the same e
 
 The legacy tests keep running: `node testes/test_sync.js` (loads `lib/sincronizacao.js` for real, two computers over a memory cloud, plus the HTTP adapter over a fake `fetch`), `node testes/test_auto_keyword.js`.
 
-**Every test runs in the gate.** The groups of `scripts/testes.json` are the one list of what runs: a workflow job only calls `node scripts/testar.mjs <group>`. `node scripts/regras/verificar.js` (rule `testes-no-portao`) fails on a test file no group runs, a group no PR workflow calls, and a workflow that runs a test by hand. Still outside the gate, on the rule's baseline: `.agents/skills/verify-perpetualminer/scripts/test_helpers.sh` (minutes long, sends signals).
+**Every test runs in the gate.** The groups of `scripts/testes.json` are the one list of what runs: a workflow job only calls `node scripts/testar.mjs <group>`. `node scripts/regras/verificar.js` (rule `testes-no-portao`) fails on a test file no group runs, a group no PR workflow calls, and a workflow that runs a test by hand. A `.sh` file of a `node` group runs with `bash` (the `ferramentas` group runs `.agents/skills/verify-perpetualminer/scripts/test_helpers.sh` this way).
 
 
 ## Testing on devices and the Chrome Web Store

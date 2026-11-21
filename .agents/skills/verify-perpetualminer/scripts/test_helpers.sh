@@ -61,7 +61,7 @@ sleep 300 & p3=$!; extras+=("$p3")
 printf '%s\n%s\n' "$p3" "$(inicio "$p3")" > "$PM_VERIFY_ROOT/velho/drive.pid"
 "$SCRIPTS/cleanup.sh" velho >/dev/null 2>&1
 vivo "$p3" && passou "unrelated process survives even with the right start time" || falhou "cleanup killed a process that is not this run's drive.sh"
-bash -c 'sleep 300; :' innocent-task drive.sh velho & p4=$!; extras+=("$p4")
+bash -c 'sleep 300; :' innocent-task drive.sh velho >/dev/null 2>&1 & p4=$!; extras+=("$p4")
 sleep 0.3
 { echo "$p4"; inicio "$p4"; ps -o args= -p "$p4"; echo "$AQUI/drive.sh"; } > "$PM_VERIFY_ROOT/velho/drive.pid"
 "$SCRIPTS/cleanup.sh" velho >/dev/null 2>&1
