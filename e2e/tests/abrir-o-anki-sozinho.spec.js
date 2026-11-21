@@ -20,6 +20,7 @@ const itemDaLista = (page, nome) => lista(page).getByRole('button', { name: new 
 const tituloDoPasso = page => page.locator('#apv-passo-titulo');
 const statusDaConexao = page => page.locator('#apv-status');
 const statusDoAbridor = page => page.locator('#apv-abridor-status');
+const pontoDoAbridor = page => statusDoAbridor(page).locator('.bv-ponto');
 const permitir = page => card(page).getByRole('button', { name: 'Permitir abrir o Anki' });
 const agoraNao = page => card(page).getByRole('button', { name: 'Agora não' });
 const tentarDoAbridor = page => page.locator('#apv-abridor-tentar');
@@ -124,7 +125,7 @@ test('quem já conectou, não respondeu ao passo 4 e está com o Anki fechado te
   await estadoFinal(extensao, { pm_anki_ja_conectou: true, pm_anki_abridor_pendente: true });
 });
 
-test('quem já conectou e disse Agora não, com a Conexão desligada: o passo 4 da Boas-vindas abre em Reiniciar o Anki, com Tentar de novo', async ({ page, extensao, fakes }) => {
+test('quem já conectou e disse Agora não, com a Conexão desligada: o passo 4 da Boas-vindas abre em Reiniciar o Anki, com Tentar de novo, que sai quando ela liga', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
   await extensao.gravarStorage({ pm_anki_ja_conectou: true, pm_abridor: { agoraNao: true } });
   await page.goto(extensao.url('painel.html#boas-vindas/anki'));
@@ -132,6 +133,12 @@ test('quem já conectou e disse Agora não, com a Conexão desligada: o passo 4 
   await expect(page.locator('#bv4-passo-titulo')).toHaveText('Reiniciar o Anki');
   await expect(page.locator('#bv4-status')).toHaveText('Conexão com o Anki: desligada');
   await expect(page.locator('.bv-card').getByRole('button', { name: 'Tentar de novo' })).toBeVisible();
+
+  fakes.anki.ligar();
+  await page.locator('#bv4-tentar').click();
+  await expect(page.locator('#bv4-status')).toHaveText(/^Achei o Anki/);
+  await expect(page.locator('#bv4-passo-titulo')).toHaveText('Reiniciar o Anki');
+  await expect(page.locator('#bv4-tentar')).toBeHidden();
   await estadoFinal(extensao, { pm_anki_ja_conectou: true, pm_abridor: { agoraNao: true } });
 });
 
@@ -158,6 +165,8 @@ test('Agora não guarda a escolha, marca o passo “agora não” e o Pronto dev
   await expect(itemDaLista(page, 'Abrir o Anki sozinho')).toHaveAccessibleName(/agora não$/);
   await expect(statusDoAbridor(page)).toHaveText(SEM_PERMISSAO);
   await expect(statusDoAbridor(page)).toBeVisible();
+  await expect(page.locator('#apv-permitir')).toBeHidden();
+  await expect(page.locator('#apv-agora-nao')).toBeHidden();
   await expect(tituloDoPasso(page)).toBeFocused();
   await fotografar(page, 'abridor-agora-nao-pronto.png');
   await relogio.avancar(1_800);
@@ -195,6 +204,7 @@ test.describe('com a permissão que o Chrome guardou depois de Permitir', () => 
     await expect(pronto(page)).toBeVisible();
     await expect(statusDoAbridor(page)).toHaveText(ACHOU);
     await expect(statusDoAbridor(page)).toBeVisible();
+    await expect(pontoDoAbridor(page)).toHaveAttribute('data-estado', 'ligada');
     await fotografar(page, 'abridor-achou-pronto.png');
     await relogio.avancar(1_800);
     await expect(abas(page)).toBeVisible();
@@ -254,6 +264,7 @@ test.describe('com a permissão que o Chrome guardou depois de Permitir', () => 
     await conectarPelaPrimeiraVez(page, extensao, fakes);
 
     await expect(statusDoAbridor(page)).toHaveText('Procurando o Anki…');
+    await expect(pontoDoAbridor(page)).toHaveAttribute('data-estado', 'conectando');
     await expect.poll(() => fakes.abridor.pedidos()).toEqual([CONFERIR]);
     await relogio.avancar(9_000);
     await expect(statusDoAbridor(page)).toHaveText('Procurando o Anki…');
@@ -293,6 +304,8 @@ test('no passo 4 da Boas-vindas, o mesmo passo: ligada, Abrir o Anki sozinho, e 
   await cardDaBoasVindas(page).getByRole('button', { name: 'Agora não', exact: true }).first().click();
 
   await expect(page.locator('#bv4-abridor-status')).toHaveText(SEM_PERMISSAO);
+  await expect(page.locator('#bv4-agora-nao')).toBeHidden();
+  await expect(page.locator('#bv-titulo')).toBeFocused();
   await expect(passosDaBoasVindas(page).getByRole('button', { name: /^Abrir o Anki sozinho/ })).toHaveAccessibleName(/agora não$/);
   await expect(page.getByRole('navigation', { name: 'Passos da configuração' }).getByRole('button', { name: /^Ligar a Conexão com o Anki/ }))
     .toHaveAccessibleName(/feito$/);
