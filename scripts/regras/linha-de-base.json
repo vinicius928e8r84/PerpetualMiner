@@ -105,7 +105,6 @@
     "complemento/pedido_do_envio.py": 27,
     "complemento/previa_do_cartao.py": 11,
     "complemento/retencao_dos_envios.py": 7,
-    "complemento/rotas_da_chave.py": 17,
     "complemento/rotas_da_frente.py": 1,
     "complemento/rotas_da_voz.py": 4,
     "complemento/rotas_do_item_de_login.py": 1,
