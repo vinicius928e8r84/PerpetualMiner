@@ -5,13 +5,20 @@ from . import baralhos, tipo_de_nota
 from .motor import estilos
 
 
-def trocar_a_frente(conexao, corpo):
-    """“Frente” dos Ajustes de envio › Estilo do cartão: os Cartões do idioma passam a ter a frente na hora. Repetir responde igual e não muda nada."""
-    lang, frente = corpo.get("lang"), corpo.get("frente")
+def _recusa_do_pedido(lang, frente):
     if lang not in estilos.idiomas():
         return 400, {"error": "invalid_lang"}
     if frente not in tipo_de_nota.FRENTES:
         return 400, {"error": "invalid_front"}
+    return None
+
+
+def trocar_a_frente(conexao, corpo):
+    """“Frente” dos Ajustes de envio › Estilo do cartão: os Cartões do idioma passam a ter a frente na hora. Repetir responde igual e não muda nada."""
+    lang, frente = corpo.get("lang"), corpo.get("frente")
+    recusa = _recusa_do_pedido(lang, frente)
+    if recusa:
+        return recusa
     try:
         mudou = tipo_de_nota.trocar_a_frente(conexao.colecao, lang, frente)
     except baralhos.ColecaoIndisponivel as motivo:
