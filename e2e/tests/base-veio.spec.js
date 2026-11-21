@@ -128,6 +128,7 @@ for (const pagina of PAGINAS_DA_EXTENSAO) {
 }
 
 for (const pagina of PAGINAS_DA_EXTENSAO) {
+  // Exceção de teste: sem-estado-guardado — o único `check` é o document.fonts.check, que mede a fonte e não grava nada.
   test(`em ${pagina}, uma frase em russo renderiza em Manrope, sem fonte substituta`, async ({ page, extensao }) => {
     await page.goto(extensao.url(pagina));
 
@@ -141,6 +142,7 @@ for (const pagina of PAGINAS_DA_EXTENSAO) {
   });
 }
 
+// Exceção de teste: sem-estado-guardado — o único `check` é o document.fonts.check, que mede a fonte e não grava nada.
 test('os números e atalhos têm JetBrains Mono empacotada, com cirílico', async ({ page, extensao }) => {
   await page.goto(extensao.url('painel.html'));
 
@@ -233,6 +235,7 @@ test('o teclado vê onde está: os controles do popup mostram o anel ouro', asyn
 });
 
 for (const pagina of PAGINAS_DA_EXTENSAO) {
+  // Exceção de teste: sem-estado-guardado — o Tab só move o foco; nada vai para o storage.
   test(`em ${pagina}, todo controle alcançado pelo Tab mostra onde o foco está`, async ({ page, extensao }) => {
     await page.goto(extensao.url(pagina));
 
@@ -279,6 +282,7 @@ for (const pagina of PAGINAS_DA_EXTENSAO) {
   });
 }
 
+// Exceção de teste: sem-estado-guardado — a vitrine é uma página de teste fora da extensão, e o document.fonts.check só mede a fonte.
 test('a vitrine mostra os tokens e a escala de tipo nos dois temas, com uma frase em russo', async ({ page, paginas }) => {
   await page.goto(paginas.url('vitrine.html'));
 
