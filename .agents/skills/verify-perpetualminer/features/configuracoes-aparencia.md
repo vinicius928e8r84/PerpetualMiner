@@ -12,7 +12,7 @@ Configurações › Aparência has one control, **Tema**: Escuro (the default) o
 
 ## How to get to it (user POV)
 
-- Sidebar › **Configurações** › **Aparência** (`painel.html#configuracoes/aparencia`), then **Claro** or **Escuro**.
+- Sidebar › **Configurações** › **Aparência** (`painel/painel.html#configuracoes/aparencia`), then **Claro** or **Escuro**.
 
 ## Driving it with the Playwright e2e harness
 

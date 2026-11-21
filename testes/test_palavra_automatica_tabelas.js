@@ -91,161 +91,206 @@ const rival = tamanho => 'q'.repeat(tamanho);
 
 const casos = {};
 const EXIGIDO = { limit: 2, requireVocabulary: true };
+const UMA = { limit: 1, requireVocabulary: true };
+const EN = { lang: 'en', opcoes: EXIGIDO };
+const EN_UMA = { lang: 'en', opcoes: UMA };
+const ru = opcoes => ({ lang: 'ru', opcoes });
+const en = opcoes => ({ lang: 'en', opcoes });
+const RU_DUAS = ru({ limit: 2 });
 const marcadas = (...palavras) => palavras.map((palavra, i) => `${palavra}@${2 * i}`);
-function caso(id, texto, vocab, opcoes = EXIGIDO, lang = 'en', esperado = undefined) {
+
+function caso(id, texto, vocab, { lang, opcoes } = EN) {
   assert.ok(!(id in casos), `caso repetido: ${id}`);
-  casos[id] = { esperado, executar: () => PalavraAutomatica.escolher(texto, lang, vocabulario(vocab), opcoes) };
+  casos[id] = { esperado: undefined, executar: () => PalavraAutomatica.escolher(texto, lang, vocabulario(vocab), opcoes) };
+  return { espera: esperado => { casos[id].esperado = esperado; } };
 }
+
+const tamanhosDeRival = tamanhos => [...new Set(tamanhos.filter(t => t >= 3 && t <= 17))];
 
 function contraRivais(id, texto, vocab, placar) {
   const sozinho = Math.max(placar - 70, 3);
-  for (const tamanho of new Set([sozinho, sozinho + 1].filter(t => t >= 3 && t <= 17))) {
-    caso(`${id} contra ${rival(tamanho)}`, `${texto} ${rival(tamanho)}`, vocab, { limit: 1, requireVocabulary: true });
-  }
-  for (const forte of ['gruel', 'sow']) {
-    caso(`${id} contra ${forte}`, `${texto} ${forte}`, vocab, { limit: 1, requireVocabulary: true });
-  }
-  for (const tamanho of new Set([sozinho - 1, sozinho, 16].filter(t => t >= 3 && t <= 17))) {
-    caso(`${id} depois de ${rival(tamanho)}`, `${rival(tamanho)} ${texto}`, vocab, { limit: 1, requireVocabulary: true });
-  }
+  for (const tamanho of tamanhosDeRival([sozinho, sozinho + 1])) caso(`${id} contra ${rival(tamanho)}`, `${texto} ${rival(tamanho)}`, vocab, EN_UMA);
+  for (const forte of ['gruel', 'sow']) caso(`${id} contra ${forte}`, `${texto} ${forte}`, vocab, EN_UMA);
+  for (const tamanho of tamanhosDeRival([sozinho - 1, sozinho, 16])) caso(`${id} depois de ${rival(tamanho)}`, `${rival(tamanho)} ${texto}`, vocab, EN_UMA);
 }
 
+function casoContraRivais(id, texto, vocab, placar) {
+  caso(id, texto, vocab);
+  contraRivais(id, texto, vocab, placar);
+}
 
-for (const palavra of STOP_WORDS_EN) caso(`en parada ${palavra}`, palavra, {}, EXIGIDO, 'en', []);
-for (const palavra of STOP_WORDS_RU) caso(`ru parada ${palavra}`, palavra, {}, { limit: 2 }, 'ru', []);
-caso('en controle zebra', 'zebra', {});
-caso('ru controle', 'зебра', {}, { limit: 2 }, 'ru');
-caso('en curta', 'zb', {});
-caso('en com digito', 'abc1 4ab', {});
-caso('en sem letra latina', 'пппп', {});
-caso('ru em latim', 'zebra', {}, { limit: 2 }, 'ru');
-caso('ru com digito', 'зебра1 4аб', {}, { limit: 2 }, 'ru');
-caso('ru uma letra', 'ж', {}, { limit: 2 }, 'ru');
-caso('ru duas letras', 'жж', {}, { limit: 2 }, 'ru');
-caso('ru sem vocabulario', 'зебра', { available: false }, { limit: 2 }, 'ru');
-caso('en sem vocabulario exigido', 'zebra', { available: false });
-caso('en sem vocabulario nao exigido', 'zebra', { available: false }, { limit: 2 });
-caso('en limite zero vira 2', 'zebra yak llama', {}, { limit: 0 });
-caso('en limite 5 vira 2', 'zebra yak llama', {}, { limit: 5 });
-caso('en limite 1', 'zebra yak llama', {}, { limit: 1 });
-caso('ru limite 3', 'зебра як лама', {}, { limit: 3 }, 'ru');
-caso('ru sem limite', 'зебра як лама', {}, {}, 'ru');
+function casosDePalavraDeParada() {
+  for (const palavra of STOP_WORDS_EN) caso(`en parada ${palavra}`, palavra, {}).espera([]);
+  for (const palavra of STOP_WORDS_RU) caso(`ru parada ${palavra}`, palavra, {}, RU_DUAS).espera([]);
+}
 
-for (const padrao of PADROES) {
+function casosDeControle() {
+  caso('en controle zebra', 'zebra', {});
+  caso('ru controle', 'зебра', {}, RU_DUAS);
+  caso('en curta', 'zb', {});
+  caso('en com digito', 'abc1 4ab', {});
+  caso('en sem letra latina', 'пппп', {});
+  caso('ru em latim', 'zebra', {}, RU_DUAS);
+  caso('ru com digito', 'зебра1 4аб', {}, RU_DUAS);
+  caso('ru uma letra', 'ж', {}, RU_DUAS);
+  caso('ru duas letras', 'жж', {}, RU_DUAS);
+  caso('ru sem vocabulario', 'зебра', { available: false }, RU_DUAS);
+  caso('en sem vocabulario exigido', 'zebra', { available: false });
+  caso('en sem vocabulario nao exigido', 'zebra', { available: false }, en({ limit: 2 }));
+  caso('en limite zero vira 2', 'zebra yak llama', {}, en({ limit: 0 }));
+  caso('en limite 5 vira 2', 'zebra yak llama', {}, en({ limit: 5 }));
+  caso('en limite 1', 'zebra yak llama', {}, en({ limit: 1 }));
+  caso('ru limite 3', 'зебра як лама', {}, ru({ limit: 3 }));
+  caso('ru sem limite', 'зебра як лама', {}, ru({}));
+}
+
+const SO_O_USED_TO_FICA = ['be used to', 'get used to'];
+const esperadoComTermoEstudado = padrao => (SO_O_USED_TO_FICA.includes(padrao) ? ['used@2', 'to@4'] : []);
+
+function casosDoPadrao(padrao) {
   const palavras = padrao.split(' ');
-  caso(`padrao conhecido ${padrao}`, padrao, { words: palavras }, EXIGIDO, 'en', marcadas(...palavras));
-  caso(`padrao com termo estudado ${padrao}`, padrao, { words: palavras, terms: [padrao] }, EXIGIDO, 'en', ['be used to', 'get used to'].includes(padrao) ? ['used@2', 'to@4'] : []);
+  caso(`padrao conhecido ${padrao}`, padrao, { words: palavras }).espera(marcadas(...palavras));
+  caso(`padrao com termo estudado ${padrao}`, padrao, { words: palavras, terms: [padrao] }).espera(esperadoComTermoEstudado(padrao));
   const placar = PLACAR.padrao.unknown + palavras.length;
-  caso(`padrao ${padrao} vence ${rival(placar - 71)}`, `${rival(placar - 71)} ${padrao}`, { words: palavras }, { limit: 1, requireVocabulary: true }, 'en', palavras.map((palavra, i) => `${palavra}@${2 + 2 * i}`));
-  caso(`padrao ${padrao} perde para ${rival(placar - 70)}`, `${rival(placar - 70)} ${padrao}`, { words: palavras }, { limit: 1, requireVocabulary: true }, 'en', [`${rival(placar - 70)}@0`]);
-}
-for (const padrao of ['as soon as', 'out of', 'in spite of']) {
-  for (const estado of STATUS) {
-    caso(`padrao ${padrao} ${estado}`, padrao, { words: padrao.split(' '), termInfo: { [padrao]: estado } });
-  }
+  const perde = rival(placar - 71);
+  const vence = rival(placar - 70);
+  caso(`padrao ${padrao} vence ${perde}`, `${perde} ${padrao}`, { words: palavras }, EN_UMA).espera(palavras.map((palavra, i) => `${palavra}@${2 + 2 * i}`));
+  caso(`padrao ${padrao} perde para ${vence}`, `${vence} ${padrao}`, { words: palavras }, EN_UMA).espera([`${vence}@0`]);
 }
 
-for (const estado of STATUS) {
+function casosDoPadraoPorEstado(padrao) {
+  for (const estado of STATUS) caso(`padrao ${padrao} ${estado}`, padrao, { words: padrao.split(' '), termInfo: { [padrao]: estado } });
+}
+
+function casosDePadrao() {
+  for (const padrao of PADROES) casosDoPadrao(padrao);
+  for (const padrao of ['as soon as', 'out of', 'in spite of']) casosDoPadraoPorEstado(padrao);
+}
+
+function casosDeIdioma() {
   const termo = 'around the clock';
-  const vocab = { words: palavrasDe(termo), termInfo: { [termo]: estado } };
-  caso(`idioma ${estado}`, termo, vocab);
-  contraRivais(`idioma ${estado}`, termo, vocab, PLACAR.idioma[estado] + 3);
+  for (const estado of STATUS) {
+    casoContraRivais(`idioma ${estado}`, termo, { words: palavrasDe(termo), termInfo: { [termo]: estado } }, PLACAR.idioma[estado] + 3);
+  }
+  caso('idioma estudado', termo, { words: ['around', 'the', 'clock'], terms: [termo] });
+  caso('idioma desconhecido com palavra nova', termo, {});
+  caso('idioma no meio do texto', 'He worked around the clock again', { words: ['worked', 'again', 'around', 'the', 'clock'] });
+  caso('idioma no fim e no comeco', 'around the clock around the clock', { words: ['around', 'the', 'clock'] });
 }
-caso('idioma estudado', 'around the clock', { words: ['around', 'the', 'clock'], terms: ['around the clock'] });
-caso('idioma desconhecido com palavra nova', 'around the clock', {});
-caso('idioma no meio do texto', 'He worked around the clock again', { words: ['worked', 'again', 'around', 'the', 'clock'] });
-caso('idioma no fim e no comeco', 'around the clock around the clock', { words: ['around', 'the', 'clock'] });
 
-const CONTEUDOS = [['drought', 'rain'], ['lack', 'sleep']];
-for (const [primeira, terceira] of CONTEUDOS) {
+const bonusDoTamanho = (...palavras) => Math.min(8, palavras.join('').length);
+
+function casosDoConteudo([primeira, terceira]) {
   const termo = `${primeira} of ${terceira}`;
   for (const estado of STATUS) {
-    const vocab = { words: [terceira], termInfo: { [termo]: estado } };
-    caso(`conteudo ${termo} ${estado}`, termo, vocab);
-    contraRivais(`conteudo ${termo} ${estado}`, termo, vocab, PLACAR.conteudo[estado] + Math.min(8, primeira.length + terceira.length));
+    casoContraRivais(`conteudo ${termo} ${estado}`, termo, { words: [terceira], termInfo: { [termo]: estado } }, PLACAR.conteudo[estado] + bonusDoTamanho(primeira, terceira));
   }
   caso(`conteudo ${termo} estudado`, termo, { words: [terceira], terms: [termo] });
   caso(`conteudo ${termo} tudo conhecido`, termo, { words: [primeira, terceira] });
   caso(`conteudo ${termo} so a terceira nova`, termo, { words: [primeira] });
 }
-for (const ligacao of ['for', 'to', 'in', 'on', 'and', 'with', 'from', 'at', 'by', 'or', 'the', 'a']) {
-  caso(`conteudo ligacao ${ligacao}`, `drought ${ligacao} rain`, { words: ['rain'] });
-}
-caso('conteudo primeira curta', 'ox of rain', { words: ['rain'] });
-caso('conteudo terceira parada', 'drought of the', {});
-caso('conteudo primeira parada', 'the of drought', {});
 
-for (const objeto of OBJETOS_DE_ACAO) {
+function casosDeConteudo() {
+  for (const par of [['drought', 'rain'], ['lack', 'sleep']]) casosDoConteudo(par);
+  for (const ligacao of ['for', 'to', 'in', 'on', 'and', 'with', 'from', 'at', 'by', 'or', 'the', 'a']) {
+    caso(`conteudo ligacao ${ligacao}`, `drought ${ligacao} rain`, { words: ['rain'] });
+  }
+  caso('conteudo primeira curta', 'ox of rain', { words: ['rain'] });
+  caso('conteudo terceira parada', 'drought of the', {});
+  caso('conteudo primeira parada', 'the of drought', {});
+}
+
+function casosDoObjetoDeAcao(objeto) {
   caso(`acao ${objeto} fields`, `${objeto} fields`, { words: ['fields'] });
   caso(`acao ${objeto} fields desconhecido`, `${objeto} fields`, {});
   caso(`acao ${objeto} conhecido`, `${objeto} fields`, { words: [objeto, 'fields'] });
 }
-for (const estado of STATUS) {
-  const termo = 'ploughing fields';
-  const vocab = { words: ['fields'], termInfo: { [termo]: estado } };
-  caso(`acao ${estado}`, termo, vocab);
-  contraRivais(`acao ${estado}`, termo, vocab, PLACAR.acao[estado] + Math.min(8, 'ploughing'.length + 'fields'.length));
-}
-caso('acao estudada', 'ploughing fields', { words: ['fields'], terms: ['ploughing fields'] });
-caso('acao generica ing longa', 'wandering dogs', { words: ['dogs'] });
-caso('acao generica ing de 5 letras', 'doing dogs', { words: ['dogs'] });
-caso('acao generica ing de 6 letras', 'eating dogs', { words: ['dogs'] });
-caso('acao generica ing de 7 letras', 'walking dogs', { words: ['dogs'] });
-caso('acao generica ing parada', 'during dogs', { words: ['dogs'] });
-caso('acao generica ing parada nothing', 'nothing dogs', { words: ['dogs'] });
-caso('acao objeto parado', 'ploughing the', {});
-caso('acao objeto curto', 'ploughing ox', { words: [] });
-caso('acao objeto com digito', 'ploughing a1b', {});
-caso('acao nao termina em ing', 'ploughed fields', { words: ['fields'] });
-caso('acao 4 letras', 'plow fields', { words: ['fields'] });
 
-for (const raiz of RAIZES_FORTES) {
-  for (const particula of PARTICULAS) caso(`frasal ${raiz} ${particula}`, `${raiz} ${particula}`, {}, EXIGIDO, 'en', marcadas(raiz, particula));
+function casosDeAcao() {
+  for (const objeto of OBJETOS_DE_ACAO) casosDoObjetoDeAcao(objeto);
+  const termo = 'ploughing fields';
+  for (const estado of STATUS) {
+    casoContraRivais(`acao ${estado}`, termo, { words: ['fields'], termInfo: { [termo]: estado } }, PLACAR.acao[estado] + bonusDoTamanho('ploughing', 'fields'));
+  }
+  caso('acao estudada', termo, { words: ['fields'], terms: [termo] });
+  caso('acao generica ing longa', 'wandering dogs', { words: ['dogs'] });
+  caso('acao generica ing de 5 letras', 'doing dogs', { words: ['dogs'] });
+  caso('acao generica ing de 6 letras', 'eating dogs', { words: ['dogs'] });
+  caso('acao generica ing de 7 letras', 'walking dogs', { words: ['dogs'] });
+  caso('acao generica ing parada', 'during dogs', { words: ['dogs'] });
+  caso('acao generica ing parada nothing', 'nothing dogs', { words: ['dogs'] });
+  caso('acao objeto parado', 'ploughing the', {});
+  caso('acao objeto curto', 'ploughing ox', { words: [] });
+  caso('acao objeto com digito', 'ploughing a1b', {});
+  caso('acao nao termina em ing', 'ploughed fields', { words: ['fields'] });
+  caso('acao 4 letras', 'plow fields', { words: ['fields'] });
+}
+
+const PLACAR_DO_VERBO_FORTE = 58;
+
+function casosDoFrasalPorEstado(raiz, estado) {
+  const termo = `${raiz} away`;
+  casoContraRivais(`frasal ${raiz} ${estado}`, termo, { termInfo: { [termo]: estado } }, PLACAR.frasal[estado] + 2 + PLACAR_DO_VERBO_FORTE);
+  const termo3 = `${raiz} away with`;
+  casoContraRivais(`frasal ${raiz} tres ${estado}`, termo3, { termInfo: { [termo3]: estado } }, PLACAR.frasal[estado] + 3 + PLACAR_DO_VERBO_FORTE);
+}
+
+function casosDaRaizForte(raiz) {
+  for (const particula of PARTICULAS) caso(`frasal ${raiz} ${particula}`, `${raiz} ${particula}`, {}).espera(marcadas(raiz, particula));
   for (const final of FINAIS) caso(`frasal ${raiz} away ${final}`, `${raiz} away ${final}`, {});
   caso(`frasal ${raiz} sem particula`, `${raiz} money`, {});
   caso(`frasal ${raiz} particula e palavra nao final`, `${raiz} away money`, {});
   caso(`frasal ${raiz} termo estudado`, `${raiz} away`, { terms: [`${raiz} away`] });
   caso(`frasal ${raiz} termo de tres estudado`, `${raiz} away on`, { terms: [`${raiz} away on`] });
-  for (const estado of STATUS) {
-    const termo = `${raiz} away`;
-    const vocab = { termInfo: { [termo]: estado } };
-    caso(`frasal ${raiz} ${estado}`, termo, vocab);
-    contraRivais(`frasal ${raiz} ${estado}`, termo, vocab, PLACAR.frasal[estado] + 2 + 58);
-    const termo3 = `${raiz} away with`;
-    caso(`frasal ${raiz} tres ${estado}`, termo3, { termInfo: { [termo3]: estado } });
-    contraRivais(`frasal ${raiz} tres ${estado}`, termo3, { termInfo: { [termo3]: estado } }, PLACAR.frasal[estado] + 3 + 58);
-  }
+  for (const estado of STATUS) casosDoFrasalPorEstado(raiz, estado);
 }
-for (const particula of PARTICULAS) {
-  caso(`frasal comum ${particula}`, `turn ${particula}`, {});
-}
-for (const final of FINAIS) caso(`frasal comum tres ${final}`, `turn up ${final}`, {});
-caso('frasal com primeira parada', 'out up', {});
-caso('frasal raiz forte parada nao conta', 'up away', {});
-caso('frasal raiz forte curta', 'fritter', {});
-caso('frasal particula no fim', 'money frittered away', {});
-caso('frasal tres com particula e final no meio do texto', 'He frittered away with joy', { words: ['he', 'joy'] });
 
-for (let tamanho = 3; tamanho <= 17; tamanho++) {
-  caso(`palavra ${tamanho} antes de ${tamanho + 1}`, `${rival(tamanho)} ${rival(tamanho + 1)}`, {}, { limit: 1, requireVocabulary: true });
-  caso(`palavra ${tamanho + 1} antes de ${tamanho}`, `${rival(tamanho + 1)} ${rival(tamanho)}`, {}, { limit: 1, requireVocabulary: true });
+function casosDeFrasal() {
+  for (const raiz of RAIZES_FORTES) casosDaRaizForte(raiz);
+  for (const particula of PARTICULAS) caso(`frasal comum ${particula}`, `turn ${particula}`, {});
+  for (const final of FINAIS) caso(`frasal comum tres ${final}`, `turn up ${final}`, {});
+  caso('frasal com primeira parada', 'out up', {});
+  caso('frasal raiz forte parada nao conta', 'up away', {});
+  caso('frasal raiz forte curta', 'fritter', {});
+  caso('frasal particula no fim', 'money frittered away', {});
+  caso('frasal tres com particula e final no meio do texto', 'He frittered away with joy', { words: ['he', 'joy'] });
 }
-for (const forte of FORTES) {
-  caso(`forte ${forte}`, forte, {});
-  caso(`forte ${forte} conhecida`, forte, { words: [forte] });
-}
-for (const primeira of [rival(16), ...FORTES]) {
-  for (const segunda of [rival(16), ...FORTES]) {
-    if (primeira !== segunda) caso(`forte ${primeira} antes de ${segunda}`, `${primeira} ${segunda}`, {}, { limit: 1, requireVocabulary: true });
+
+const paresDistintos = lista => lista.flatMap(primeira => lista.filter(segunda => segunda !== primeira).map(segunda => [primeira, segunda]));
+
+function casosDeTamanhoEForca() {
+  for (let tamanho = 3; tamanho <= 17; tamanho++) {
+    caso(`palavra ${tamanho} antes de ${tamanho + 1}`, `${rival(tamanho)} ${rival(tamanho + 1)}`, {}, EN_UMA);
+    caso(`palavra ${tamanho + 1} antes de ${tamanho}`, `${rival(tamanho + 1)} ${rival(tamanho)}`, {}, EN_UMA);
+  }
+  for (const forte of FORTES) {
+    caso(`forte ${forte}`, forte, {});
+    caso(`forte ${forte} conhecida`, forte, { words: [forte] });
+  }
+  for (const [primeira, segunda] of paresDistintos([rival(16), ...FORTES])) {
+    caso(`forte ${primeira} antes de ${segunda}`, `${primeira} ${segunda}`, {}, EN_UMA);
   }
 }
-caso('limiar: todas as palavras conhecidas', 'zebra yak llama', { words: ['zebra', 'yak', 'llama'] });
-caso('desempate pela posicao', 'aaaa bbbb cccc', {}, { limit: 3 });
-caso('sobreposicao some', 'around the clock clock', { words: ['around', 'the'] }, { limit: 3 });
-caso('virgula e hifen', 'a well-known zebra, yak.', {});
-caso('indices com pontuacao', '"Zebra!" said (llama)', {});
-caso('texto vazio', '', {});
-caso('so pontuacao', '... !!!', {});
+
+function casosSoltos() {
+  caso('limiar: todas as palavras conhecidas', 'zebra yak llama', { words: ['zebra', 'yak', 'llama'] });
+  caso('desempate pela posicao', 'aaaa bbbb cccc', {}, en({ limit: 3 }));
+  caso('sobreposicao some', 'around the clock clock', { words: ['around', 'the'] }, en({ limit: 3 }));
+  caso('virgula e hifen', 'a well-known zebra, yak.', {});
+  caso('indices com pontuacao', '"Zebra!" said (llama)', {});
+  caso('texto vazio', '', {});
+  caso('so pontuacao', '... !!!', {});
+}
+
+casosDePalavraDeParada();
+casosDeControle();
+casosDePadrao();
+casosDeIdioma();
+casosDeConteudo();
+casosDeAcao();
+casosDeFrasal();
+casosDeTamanhoEForca();
+casosSoltos();
 
 const AVALIACOES = [];
 function avaliacao(id, texto, lang, vocab = {}) {

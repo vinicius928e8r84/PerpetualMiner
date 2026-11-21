@@ -1,0 +1,18 @@
+{
+  "fonte": "as notas da lista de hotspots do painel, análise de 19/11/2026 23:30 (BRT)",
+  "commit": "351523da",
+  "notas": {
+    "painel/painel-envio.js": 6.79,
+    "complemento/envio.py": 6.93,
+    "background.js": 7.43,
+    "painel/painel-envio-cartao.js": 8.09,
+    "e2e/fakes/anki.js": 8.46,
+    "lib/pedido-ao-anki.js": 8.55,
+    "complemento/no_anki.py": 8.62,
+    "complemento/servidor.py": 8.68,
+    "complemento/empacotar.py": 9.34,
+    "complemento/test_servidor.py": 9.69,
+    "painel/painel-anki-estilo.js": 9.69,
+    "complemento/test_pacote.py": 10
+  }
+}

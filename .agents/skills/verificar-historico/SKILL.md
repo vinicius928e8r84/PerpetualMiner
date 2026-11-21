@@ -1,6 +1,6 @@
 ---
 name: verificar-historico
-description: Use when a change touches how `frases` is read or written (lib/historico.js, salvarFrase or handleAutoMinerCandidate in background.js, carregar/juntarMarcas in lib/sincronizacao.js, the Historico calls in painel.js) or the Web Lock `pm-historico`. Runs an exhaustive interleaving explorer over the real code and checks that every Histórico operation behaves as if it ran whole and alone (no lost Frase, edit or deletion; no duplicate; unique ids).
+description: Use when a change touches how `frases` is read or written (lib/historico.js, salvarFrase or handleAutoMinerCandidate in background.js, carregar/juntarMarcas in lib/sincronizacao.js, the Historico calls in painel/painel.js) or the Web Lock `pm-historico`. Runs an exhaustive interleaving explorer over the real code and checks that every Histórico operation behaves as if it ran whole and alone (no lost Frase, edit or deletion; no duplicate; unique ids).
 ---
 
 # Verificar o Histórico
@@ -84,7 +84,7 @@ Limites: 2 a 4 atores por cenário, uma operação cada (o carregar faz duas), 1
 
 ## Manter em dia
 
-1. `git diff cc8e121724ae8de50ca9a727820548c847597c65 -- lib/historico.js background.js lib/sincronizacao.js painel.js` e compare com a tabela.
+1. `git diff -M cc8e121724ae8de50ca9a727820548c847597c65 -- lib/historico.js background.js lib/sincronizacao.js ':(glob)**/painel.js'` e compare com a tabela.
 2. Operação nova em `OPERACOES` ou nome novo no `Historico`: acrescente o caso em `OPS` (o que ela promete, inteira) e um ator que a use num cenário.
 3. Um lugar novo que lê `frases` e grava com base nisso (como a duplicata em `Historico.acrescentarSe`): um cenário com ele e outro ator.
 4. Mudou um número de linha da tabela: atualize-o.
@@ -92,4 +92,4 @@ Limites: 2 a 4 atores por cenário, uma operação cada (o carregar faz duas), 1
 
 ## No CI
 
-Fica manual: não está em `scripts/testes.json`. O CI roda só arquivos `test_*.js` por grupo, e o explorador leva ~7 s (e `variantes.py` ~30 s). Rode à mão quando a mudança tocar a tabela de cobertura.
+A exploração fica manual: o explorador leva ~7 s (e `variantes.py` ~30 s), então rode-o à mão quando a mudança tocar a tabela de cobertura. O CI roda `test_explorar.js` (grupo `ferramentas`), que prova o relatório, a conferência contra as ordens em série e o que vira passo no `chrome.storage` falso, com cenários de mentira e sem explorar os de verdade.
