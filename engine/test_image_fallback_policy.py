@@ -1,8 +1,12 @@
+import copy
 import json
 import tempfile
 import unittest
+from collections import namedtuple
 from contextlib import contextmanager
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
 
 import generate_images
 import google_images
@@ -97,38 +101,206 @@ def _pipeline_records(log_dir: Path, keyword: str) -> list[dict]:
     ]
 
 
+Card = namedtuple("Card", "stem prompt text")
+ImagesMade = namedtuple("ImagesMade", "img_files skipped sources")
+
+
+def _card(stem: str, prompt: str, text: str = CARD_TEXT) -> Card:
+    return Card(stem, prompt, text)
+
+
+@dataclass(frozen=True)
+class FakePipeline:
+    search_candidates: Callable
+    download_candidate: Callable
+    rank_candidates: Callable
+    generate_one: Callable
+    should_generate_image: Callable
+
+
+_PIPELINE_SEAMS = {
+    "search_candidates": google_images,
+    "download_candidate": google_images,
+    "rank_candidates": image_judge,
+    "generate_one": generate_images,
+    "should_generate_image": image_guard,
+}
+
+
 @contextmanager
-def _patched_pipeline(
-    *,
-    search_candidates,
-    download_candidate,
-    rank_candidates,
-    generate_one,
-    should_generate_image,
-):
-    originals = {
-        "search_candidates": google_images.search_candidates,
-        "download_candidate": google_images.download_candidate,
-        "rank_candidates": image_judge.rank_candidates,
-        "generate_one": generate_images.generate_one,
-        "should_generate_image": image_guard.should_generate_image,
-    }
-    google_images.search_candidates = search_candidates
-    google_images.download_candidate = download_candidate
-    image_judge.rank_candidates = rank_candidates
-    generate_images.generate_one = generate_one
-    image_guard.should_generate_image = should_generate_image
+def _patched_pipeline(fake: FakePipeline):
+    originals = {name: getattr(module, name) for name, module in _PIPELINE_SEAMS.items()}
+    for name, module in _PIPELINE_SEAMS.items():
+        setattr(module, name, getattr(fake, name))
     try:
         yield
     finally:
-        google_images.search_candidates = originals["search_candidates"]
-        google_images.download_candidate = originals["download_candidate"]
-        image_judge.rank_candidates = originals["rank_candidates"]
-        generate_images.generate_one = originals["generate_one"]
-        image_guard.should_generate_image = originals["should_generate_image"]
+        for name, module in _PIPELINE_SEAMS.items():
+            setattr(module, name, originals[name])
+
+
+def _download_succeeds(candidate, dest):
+    return _write_fake_image(dest) or True
+
+
+def _download_fails(candidate, dest):
+    return False
+
+
+def _guard_sees_concrete(*args, **kwargs):
+    return True
+
+
+def _guard_sees_abstract(*args, **kwargs):
+    return False
+
+
+def _guard_must_not_run(*args, **kwargs):
+    raise AssertionError("RU image flow should not call image_guard")
+
+
+def _judge_always(answer: dict) -> Callable:
+    return lambda **kwargs: copy.deepcopy(answer)
+
+
+def _judge_by_mode(real_only: dict, real_vs_generated: dict) -> Callable:
+    return lambda **kwargs: copy.deepcopy(real_only if kwargs["mode"] == "real_only" else real_vs_generated)
+
+
+def _real_verdict(score: int, summary: str, reason: str) -> dict:
+    return {
+        "best_index": 0,
+        "best_score": score,
+        "verdict": "keep_real",
+        "summary": summary,
+        "candidates": [{"index": 0, "score": score, "reason": reason}],
+    }
+
+
+def _weak_real_verdict(summary: str) -> dict:
+    return {
+        "best_index": 0,
+        "best_score": 20,
+        "verdict": "generate_better",
+        "summary": summary,
+        "candidates": [{"index": 0, "score": 20, "reason": "weak"}],
+    }
+
+
+_GENERATED_IS_CLEARER = {
+    "best_index": 1,
+    "best_score": 85,
+    "verdict": "keep_generated",
+    "summary": "generated is clearer",
+    "candidates": [
+        {"index": 0, "score": 20, "reason": "weak"},
+        {"index": 1, "score": 85, "reason": "clear"},
+    ],
+}
+
+_DISCARDED_AFTER_INVALID_FORMAT = {"index": 0, "score": 0, "reason": "discarded_after_invalid_image_format"}
+
+_INVALID_FORMAT_REAL_ONLY = {
+    "best_index": 0,
+    "best_score": 0,
+    "verdict": "generate_better",
+    "summary": "invalid image format fallback",
+    "candidates": [_DISCARDED_AFTER_INVALID_FORMAT],
+    "error": "invalid_image_format",
+}
+
+_INVALID_FORMAT_REAL_VS_GENERATED = {
+    "best_index": 1,
+    "best_score": 0,
+    "verdict": "keep_generated",
+    "summary": "generated fallback after invalid image format",
+    "candidates": [
+        _DISCARDED_AFTER_INVALID_FORMAT,
+        {"index": 1, "score": 100, "reason": "safe generated fallback"},
+    ],
+    "error": "invalid_image_format",
+}
+
+_NORMAL_POLICY = {"generation_policy": "normal", "paid_generation_blocked_by_guard": False}
+_PAID_WITHOUT_REAL_CANDIDATES = {"result": "no_real_candidates", "final_source": "gerada", **_NORMAL_POLICY}
+_GENERATED_WON_OVER_WEAK_REAL = {"result": "generated_won", "best_real_score": 20, **_NORMAL_POLICY}
+_PAID_AFTER_DOWNLOADS_FAILED = {"result": "real_download_failed", "openverse_candidate_count": 8, "final_source": "gerada"}
+_GENERATED_WON_AFTER_INVALID_FORMAT = {
+    "result": "generated_won",
+    "final_source": "gerada",
+    "judge_error": "invalid_image_format",
+    "compare_judge_error": "invalid_image_format",
+}
 
 
 class ImageFallbackPolicyTests(unittest.TestCase):
+    def setUp(self):
+        workdir = tempfile.TemporaryDirectory()
+        self.addCleanup(workdir.cleanup)
+        root = Path(workdir.name)
+        self.output_dir = root / "Output"
+        self.log_dir = root / "log"
+        self.output_dir.mkdir()
+        self.log_dir.mkdir()
+        self.queries = []
+        self.generated = 0
+
+    def search_finding_every_query(self, query, limit=8):
+        self.queries.append((query, limit))
+        return [_candidate(query)]
+
+    def search_finding_nothing(self, query, limit=8):
+        self.queries.append((query, limit))
+        return []
+
+    def generate(self, config, stem, prompt, dest=None):
+        self.generated += 1
+        _write_fake_image(dest or (self.output_dir / f"{stem}.png"))
+        return True
+
+    def generation_forbidden(self, why: str) -> Callable:
+        def generate_one(*args, **kwargs):
+            self.generated += 1
+            raise AssertionError(why)
+        return generate_one
+
+    def photos_found(self, judge: Callable, generate: Callable, guard: Callable) -> FakePipeline:
+        return FakePipeline(self.search_finding_every_query, _download_succeeds, judge, generate, guard)
+
+    def good_enough_photo_found(self, verdict: dict, why_not_generate: str, guard: Callable) -> FakePipeline:
+        return self.photos_found(_judge_always(verdict), self.generation_forbidden(why_not_generate), guard)
+
+    def nothing_found(self, guard: Callable) -> FakePipeline:
+        return FakePipeline(self.search_finding_nothing, _download_fails, _judge_always({}), self.generate, guard)
+
+    def photos_found_but_not_downloaded(self, guard: Callable) -> FakePipeline:
+        return FakePipeline(self.search_finding_every_query, _download_fails, _judge_always({}), self.generate, guard)
+
+    def mine(self, card: Card, fake: FakePipeline, lang: str = "en") -> ImagesMade:
+        (self.output_dir / f"{card.stem}.txt").write_text(card.text, encoding="utf-8")
+        with _patched_pipeline(fake):
+            made = _run_images(
+                _config(self.log_dir, lang=lang),
+                [f"{card.stem}:{card.prompt}"],
+                self.output_dir,
+                "1",
+                "test",
+                str(self.log_dir),
+            )
+        return ImagesMade(*made)
+
+    def assert_real_photo_kept(self, made: ImagesMade, stem: str):
+        self.assertEqual(made, ImagesMade([f"{stem}.png"], 0, {stem: "real"}))
+        self.assertEqual(self.generated, 0)
+
+    def assert_paid_fallback(self, made: ImagesMade, stem: str):
+        self.assertEqual(made, ImagesMade([f"{stem}.png"], 0, {stem: "gerada"}))
+        self.assertEqual(self.generated, 1)
+
+    def assert_last_record(self, stem: str, expected: dict):
+        last = _pipeline_records(self.log_dir, stem)[-1]
+        self.assertEqual({name: last.get(name) for name in expected}, expected)
+
     def test_build_card_google_queries_preserves_explicit_order_and_max_queries(self):
         card_text = """Anki Card
 Front: Hungry people ask for food.
@@ -153,582 +325,124 @@ Natural: We are very hungry.
         self.assertEqual(queries, ["food", "empty plate", "starving child Africa"])
 
     def test_russian_hunger_card_sends_high_impact_queries_to_openverse_first(self):
-        with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            output_dir = root / "Output"
-            log_dir = root / "log"
-            output_dir.mkdir()
-            log_dir.mkdir()
-            (output_dir / "vashe_velichestvo.txt").write_text(RU_HUNGER_CARD_TEXT, encoding="utf-8")
+        def search_finding_only_the_starving_child(query, limit=8):
+            self.queries.append((query, limit))
+            return [_candidate(query)] if query == "starving child Africa" else []
 
-            calls = {"generate": 0, "queries": []}
+        def judge_of_the_first_query(**kwargs):
+            self.assertEqual(kwargs["keyword"], "King Arthur character")
+            return _real_verdict(78, "strong hunger memory link", "high impact hunger image")
 
-            def search_candidates(query, limit=8):
-                calls["queries"].append((query, limit))
-                return [_candidate(query)] if query == "starving child Africa" else []
+        made = self.mine(_card("vashe_velichestvo", "Fallback prompt", RU_HUNGER_CARD_TEXT), FakePipeline(
+            search_finding_only_the_starving_child,
+            _download_succeeds,
+            judge_of_the_first_query,
+            self.generation_forbidden("strong free hunger image should prevent paid generation"),
+            _guard_sees_concrete,
+        ), lang="ru")
 
-            def rank_candidates(**kwargs):
-                self.assertEqual(kwargs["keyword"], "King Arthur character")
-                return {
-                    "best_index": 0,
-                    "best_score": 78,
-                    "verdict": "keep_real",
-                    "summary": "strong hunger memory link",
-                    "candidates": [{"index": 0, "score": 78, "reason": "high impact hunger image"}],
-                }
-
-            def generate_one(*args, **kwargs):
-                calls["generate"] += 1
-                raise AssertionError("strong free hunger image should prevent paid generation")
-
-            with _patched_pipeline(
-                search_candidates=search_candidates,
-                download_candidate=lambda candidate, dest: (_write_fake_image(dest) or True),
-                rank_candidates=rank_candidates,
-                generate_one=generate_one,
-                should_generate_image=lambda *args, **kwargs: True,
-            ):
-                img_files, skipped, sources = _run_images(
-                    _config(log_dir, lang="ru"),
-                    ["vashe_velichestvo:Fallback prompt"],
-                    output_dir,
-                    "1",
-                    "test",
-                    str(log_dir),
-                )
-
-            self.assertEqual([query for query, _ in calls["queries"][:4]], [
-                "King Arthur character",
-                "food",
-                "empty plate",
-                "starving child Africa",
-            ])
-            self.assertEqual(img_files, ["vashe_velichestvo.png"])
-            self.assertEqual(skipped, 0)
-            self.assertEqual(sources, {"vashe_velichestvo": "real"})
-            self.assertEqual(calls["generate"], 0)
+        self.assertEqual([query for query, _ in self.queries[:4]], [
+            "King Arthur character",
+            "food",
+            "empty plate",
+            "starving child Africa",
+        ])
+        self.assert_real_photo_kept(made, "vashe_velichestvo")
 
     def test_acceptable_real_image_prevents_generation(self):
-        with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            output_dir = root / "Output"
-            log_dir = root / "log"
-            output_dir.mkdir()
-            log_dir.mkdir()
-            (output_dir / "saw.txt").write_text(CARD_TEXT, encoding="utf-8")
+        made = self.mine(_card("saw", "A fallback generated prompt"), self.good_enough_photo_found(
+            _real_verdict(60, "usable mental link", "eye link"),
+            "generation should not run for an acceptable real image",
+            _guard_sees_concrete,
+        ))
 
-            calls = {"generate": 0, "queries": []}
-
-            def search_candidates(query, limit=8):
-                calls["queries"].append((query, limit))
-                return [_candidate(query)]
-
-            def rank_candidates(**kwargs):
-                return {
-                    "best_index": 0,
-                    "best_score": 60,
-                    "verdict": "keep_real",
-                    "summary": "usable mental link",
-                    "candidates": [{"index": 0, "score": 60, "reason": "eye link"}],
-                }
-
-            def generate_one(*args, **kwargs):
-                calls["generate"] += 1
-                raise AssertionError("generation should not run for an acceptable real image")
-
-            with _patched_pipeline(
-                search_candidates=search_candidates,
-                download_candidate=lambda candidate, dest: (_write_fake_image(dest) or True),
-                rank_candidates=rank_candidates,
-                generate_one=generate_one,
-                should_generate_image=lambda *args, **kwargs: True,
-            ):
-                img_files, skipped, sources = _run_images(
-                    _config(log_dir),
-                    ["saw:A fallback generated prompt"],
-                    output_dir,
-                    "1",
-                    "test",
-                    str(log_dir),
-                )
-
-            self.assertEqual(img_files, ["saw.png"])
-            self.assertEqual(skipped, 0)
-            self.assertEqual(sources, {"saw": "real"})
-            self.assertEqual(calls["generate"], 0)
-            self.assertIn(("eye", 8), calls["queries"])
-            self.assertTrue((output_dir / "saw.png").exists())
+        self.assert_real_photo_kept(made, "saw")
+        self.assertIn(("eye", 8), self.queries)
+        self.assertTrue((self.output_dir / "saw.png").exists())
 
     def test_abstract_english_card_keeps_good_real_image_without_paid_generation(self):
-        with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            output_dir = root / "Output"
-            log_dir = root / "log"
-            output_dir.mkdir()
-            log_dir.mkdir()
-            (output_dir / "resilience.txt").write_text(CARD_TEXT, encoding="utf-8")
+        made = self.mine(_card("resilience", "A generated prompt that should be blocked"), self.good_enough_photo_found(
+            _real_verdict(60, "usable symbol", "clear enough"),
+            "good free real images should prevent paid generation",
+            _guard_sees_abstract,
+        ))
 
-            calls = {"generate": 0, "queries": []}
-
-            def search_candidates(query, limit=8):
-                calls["queries"].append((query, limit))
-                return [_candidate(query)]
-
-            def rank_candidates(**kwargs):
-                return {
-                    "best_index": 0,
-                    "best_score": 60,
-                    "verdict": "keep_real",
-                    "summary": "usable symbol",
-                    "candidates": [{"index": 0, "score": 60, "reason": "clear enough"}],
-                }
-
-            def generate_one(*args, **kwargs):
-                calls["generate"] += 1
-                raise AssertionError("good free real images should prevent paid generation")
-
-            with _patched_pipeline(
-                search_candidates=search_candidates,
-                download_candidate=lambda candidate, dest: (_write_fake_image(dest) or True),
-                rank_candidates=rank_candidates,
-                generate_one=generate_one,
-                should_generate_image=lambda *args, **kwargs: False,
-            ):
-                img_files, skipped, sources = _run_images(
-                    _config(log_dir),
-                    ["resilience:A generated prompt that should be blocked"],
-                    output_dir,
-                    "1",
-                    "test",
-                    str(log_dir),
-                )
-
-            records = _pipeline_records(log_dir, "resilience")
-            self.assertEqual(img_files, ["resilience.png"])
-            self.assertEqual(skipped, 0)
-            self.assertEqual(sources, {"resilience": "real"})
-            self.assertEqual(calls["generate"], 0)
-            self.assertGreater(len(calls["queries"]), 0)
-            self.assertEqual(records[-1]["generation_policy"], "normal")
-            self.assertFalse(records[-1]["paid_generation_blocked_by_guard"])
+        self.assert_real_photo_kept(made, "resilience")
+        self.assertTrue(self.queries)
+        self.assert_last_record("resilience", _NORMAL_POLICY)
 
     def test_abstract_english_card_uses_paid_fallback_when_no_real_image_is_found(self):
-        with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            output_dir = root / "Output"
-            log_dir = root / "log"
-            output_dir.mkdir()
-            log_dir.mkdir()
-            (output_dir / "resilience.txt").write_text(CARD_TEXT, encoding="utf-8")
+        made = self.mine(
+            _card("resilience", "A generated prompt that should be blocked"),
+            self.nothing_found(_guard_sees_abstract),
+        )
 
-            calls = {"generate": 0, "queries": []}
-
-            def search_candidates(query, limit=8):
-                calls["queries"].append((query, limit))
-                return []
-
-            def generate_one(config, stem, prompt, dest=None):
-                calls["generate"] += 1
-                _write_fake_image(dest or (output_dir / f"{stem}.png"))
-                return True
-
-            with _patched_pipeline(
-                search_candidates=search_candidates,
-                download_candidate=lambda candidate, dest: False,
-                rank_candidates=lambda **kwargs: {},
-                generate_one=generate_one,
-                should_generate_image=lambda *args, **kwargs: False,
-            ):
-                img_files, skipped, sources = _run_images(
-                    _config(log_dir),
-                    ["resilience:A generated prompt that should be blocked"],
-                    output_dir,
-                    "1",
-                    "test",
-                    str(log_dir),
-                )
-
-            records = _pipeline_records(log_dir, "resilience")
-            self.assertEqual(img_files, ["resilience.png"])
-            self.assertEqual(skipped, 0)
-            self.assertEqual(sources, {"resilience": "gerada"})
-            self.assertEqual(calls["generate"], 1)
-            self.assertGreater(len(calls["queries"]), 0)
-            self.assertEqual(records[-1]["result"], "no_real_candidates")
-            self.assertEqual(records[-1]["final_source"], "gerada")
-            self.assertEqual(records[-1]["generation_policy"], "normal")
-            self.assertFalse(records[-1]["paid_generation_blocked_by_guard"])
+        self.assert_paid_fallback(made, "resilience")
+        self.assertTrue(self.queries)
+        self.assert_last_record("resilience", _PAID_WITHOUT_REAL_CANDIDATES)
 
     def test_abstract_english_card_uses_paid_fallback_when_real_image_is_rejected(self):
-        with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            output_dir = root / "Output"
-            log_dir = root / "log"
-            output_dir.mkdir()
-            log_dir.mkdir()
-            (output_dir / "resilience.txt").write_text(CARD_TEXT, encoding="utf-8")
+        made = self.mine(_card("resilience", "A generated prompt that should be blocked"), self.photos_found(
+            _judge_by_mode(_weak_real_verdict("too abstract"), _GENERATED_IS_CLEARER),
+            self.generate,
+            _guard_sees_abstract,
+        ))
 
-            calls = {"generate": 0}
-
-            def rank_candidates(**kwargs):
-                if kwargs["mode"] == "real_only":
-                    return {
-                        "best_index": 0,
-                        "best_score": 20,
-                        "verdict": "generate_better",
-                        "summary": "too abstract",
-                        "candidates": [{"index": 0, "score": 20, "reason": "weak"}],
-                    }
-                return {
-                    "best_index": 1,
-                    "best_score": 85,
-                    "verdict": "keep_generated",
-                    "summary": "generated is clearer",
-                    "candidates": [
-                        {"index": 0, "score": 20, "reason": "weak"},
-                        {"index": 1, "score": 85, "reason": "clear"},
-                    ],
-                }
-
-            def generate_one(config, stem, prompt, dest=None):
-                calls["generate"] += 1
-                _write_fake_image(dest or (output_dir / f"{stem}.png"))
-                return True
-
-            with _patched_pipeline(
-                search_candidates=lambda query, limit=8: [_candidate(query)],
-                download_candidate=lambda candidate, dest: (_write_fake_image(dest) or True),
-                rank_candidates=rank_candidates,
-                generate_one=generate_one,
-                should_generate_image=lambda *args, **kwargs: False,
-            ):
-                img_files, skipped, sources = _run_images(
-                    _config(log_dir),
-                    ["resilience:A generated prompt that should be blocked"],
-                    output_dir,
-                    "1",
-                    "test",
-                    str(log_dir),
-                )
-
-            records = _pipeline_records(log_dir, "resilience")
-            self.assertEqual(img_files, ["resilience.png"])
-            self.assertEqual(skipped, 0)
-            self.assertEqual(sources, {"resilience": "gerada"})
-            self.assertEqual(calls["generate"], 1)
-            self.assertEqual(records[-1]["result"], "generated_won")
-            self.assertEqual(records[-1]["best_real_score"], 20)
-            self.assertEqual(records[-1]["generation_policy"], "normal")
-            self.assertFalse(records[-1]["paid_generation_blocked_by_guard"])
+        self.assert_paid_fallback(made, "resilience")
+        self.assert_last_record("resilience", _GENERATED_WON_OVER_WEAK_REAL)
 
     def test_concrete_english_card_uses_paid_fallback_when_no_real_image_is_found(self):
-        with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            output_dir = root / "Output"
-            log_dir = root / "log"
-            output_dir.mkdir()
-            log_dir.mkdir()
-            (output_dir / "saw.txt").write_text(CARD_TEXT, encoding="utf-8")
+        made = self.mine(_card("saw", "A fallback generated prompt"), self.nothing_found(_guard_sees_concrete))
 
-            calls = {"generate": 0, "queries": []}
-
-            def search_candidates(query, limit=8):
-                calls["queries"].append((query, limit))
-                return []
-
-            def generate_one(config, stem, prompt, dest=None):
-                calls["generate"] += 1
-                _write_fake_image(dest or (output_dir / f"{stem}.png"))
-                return True
-
-            with _patched_pipeline(
-                search_candidates=search_candidates,
-                download_candidate=lambda candidate, dest: False,
-                rank_candidates=lambda **kwargs: {},
-                generate_one=generate_one,
-                should_generate_image=lambda *args, **kwargs: True,
-            ):
-                img_files, skipped, sources = _run_images(
-                    _config(log_dir),
-                    ["saw:A fallback generated prompt"],
-                    output_dir,
-                    "1",
-                    "test",
-                    str(log_dir),
-                )
-
-            records = _pipeline_records(log_dir, "saw")
-            self.assertEqual(img_files, ["saw.png"])
-            self.assertEqual(skipped, 0)
-            self.assertEqual(sources, {"saw": "gerada"})
-            self.assertEqual(calls["generate"], 1)
-            self.assertGreater(len(calls["queries"]), 0)
-            self.assertEqual(records[-1]["result"], "no_real_candidates")
-            self.assertEqual(records[-1]["final_source"], "gerada")
-            self.assertEqual(records[-1]["generation_policy"], "normal")
-            self.assertFalse(records[-1]["paid_generation_blocked_by_guard"])
+        self.assert_paid_fallback(made, "saw")
+        self.assertTrue(self.queries)
+        self.assert_last_record("saw", _PAID_WITHOUT_REAL_CANDIDATES)
 
     def test_concrete_english_card_uses_paid_fallback_when_real_downloads_fail(self):
-        with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            output_dir = root / "Output"
-            log_dir = root / "log"
-            output_dir.mkdir()
-            log_dir.mkdir()
-            (output_dir / "saw.txt").write_text(CARD_TEXT, encoding="utf-8")
+        made = self.mine(
+            _card("saw", "A fallback generated prompt"),
+            self.photos_found_but_not_downloaded(_guard_sees_concrete),
+        )
 
-            calls = {"generate": 0}
-
-            def generate_one(config, stem, prompt, dest=None):
-                calls["generate"] += 1
-                _write_fake_image(dest or (output_dir / f"{stem}.png"))
-                return True
-
-            with _patched_pipeline(
-                search_candidates=lambda query, limit=8: [_candidate(query)],
-                download_candidate=lambda candidate, dest: False,
-                rank_candidates=lambda **kwargs: {},
-                generate_one=generate_one,
-                should_generate_image=lambda *args, **kwargs: True,
-            ):
-                img_files, skipped, sources = _run_images(
-                    _config(log_dir),
-                    ["saw:A fallback generated prompt"],
-                    output_dir,
-                    "1",
-                    "test",
-                    str(log_dir),
-                )
-
-            records = _pipeline_records(log_dir, "saw")
-            self.assertEqual(img_files, ["saw.png"])
-            self.assertEqual(skipped, 0)
-            self.assertEqual(sources, {"saw": "gerada"})
-            self.assertEqual(calls["generate"], 1)
-            self.assertEqual(records[-1]["result"], "real_download_failed")
-            self.assertEqual(records[-1]["openverse_candidate_count"], 8)
-            self.assertEqual(records[-1]["final_source"], "gerada")
+        self.assert_paid_fallback(made, "saw")
+        self.assert_last_record("saw", _PAID_AFTER_DOWNLOADS_FAILED)
 
     def test_concrete_english_card_uses_paid_fallback_when_real_image_is_weak(self):
-        with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            output_dir = root / "Output"
-            log_dir = root / "log"
-            output_dir.mkdir()
-            log_dir.mkdir()
-            (output_dir / "saw.txt").write_text(CARD_TEXT, encoding="utf-8")
+        made = self.mine(_card("saw", "A fallback generated prompt"), self.photos_found(
+            _judge_by_mode(_weak_real_verdict("weak real image"), _GENERATED_IS_CLEARER),
+            self.generate,
+            _guard_sees_concrete,
+        ))
 
-            calls = {"generate": 0}
-
-            def rank_candidates(**kwargs):
-                if kwargs["mode"] == "real_only":
-                    return {
-                        "best_index": 0,
-                        "best_score": 20,
-                        "verdict": "generate_better",
-                        "summary": "weak real image",
-                        "candidates": [{"index": 0, "score": 20, "reason": "weak"}],
-                    }
-                return {
-                    "best_index": 1,
-                    "best_score": 85,
-                    "verdict": "keep_generated",
-                    "summary": "generated is clearer",
-                    "candidates": [
-                        {"index": 0, "score": 20, "reason": "weak"},
-                        {"index": 1, "score": 85, "reason": "clear"},
-                    ],
-                }
-
-            def generate_one(config, stem, prompt, dest=None):
-                calls["generate"] += 1
-                _write_fake_image(dest or (output_dir / f"{stem}.png"))
-                return True
-
-            with _patched_pipeline(
-                search_candidates=lambda query, limit=8: [_candidate(query)],
-                download_candidate=lambda candidate, dest: (_write_fake_image(dest) or True),
-                rank_candidates=rank_candidates,
-                generate_one=generate_one,
-                should_generate_image=lambda *args, **kwargs: True,
-            ):
-                img_files, skipped, sources = _run_images(
-                    _config(log_dir),
-                    ["saw:A fallback generated prompt"],
-                    output_dir,
-                    "1",
-                    "test",
-                    str(log_dir),
-                )
-
-            records = _pipeline_records(log_dir, "saw")
-            self.assertEqual(img_files, ["saw.png"])
-            self.assertEqual(skipped, 0)
-            self.assertEqual(sources, {"saw": "gerada"})
-            self.assertEqual(calls["generate"], 1)
-            self.assertEqual(records[-1]["result"], "generated_won")
-            self.assertEqual(records[-1]["best_real_score"], 20)
-            self.assertEqual(records[-1]["generation_policy"], "normal")
-            self.assertFalse(records[-1]["paid_generation_blocked_by_guard"])
+        self.assert_paid_fallback(made, "saw")
+        self.assert_last_record("saw", _GENERATED_WON_OVER_WEAK_REAL)
 
     def test_invalid_image_format_from_judge_uses_paid_fallback_and_logs_pipeline(self):
-        with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            output_dir = root / "Output"
-            log_dir = root / "log"
-            output_dir.mkdir()
-            log_dir.mkdir()
-            (output_dir / "saw.txt").write_text(CARD_TEXT, encoding="utf-8")
+        made = self.mine(_card("saw", "A fallback generated prompt"), self.photos_found(
+            _judge_by_mode(_INVALID_FORMAT_REAL_ONLY, _INVALID_FORMAT_REAL_VS_GENERATED),
+            self.generate,
+            _guard_sees_concrete,
+        ))
 
-            calls = {"generate": 0}
-
-            def rank_candidates(**kwargs):
-                if kwargs["mode"] == "real_only":
-                    return {
-                        "best_index": 0,
-                        "best_score": 0,
-                        "verdict": "generate_better",
-                        "summary": "invalid image format fallback",
-                        "candidates": [{"index": 0, "score": 0, "reason": "discarded_after_invalid_image_format"}],
-                        "error": "invalid_image_format",
-                    }
-                return {
-                    "best_index": 1,
-                    "best_score": 0,
-                    "verdict": "keep_generated",
-                    "summary": "generated fallback after invalid image format",
-                    "candidates": [
-                        {"index": 0, "score": 0, "reason": "discarded_after_invalid_image_format"},
-                        {"index": 1, "score": 100, "reason": "safe generated fallback"},
-                    ],
-                    "error": "invalid_image_format",
-                }
-
-            def generate_one(config, stem, prompt, dest=None):
-                calls["generate"] += 1
-                _write_fake_image(dest or (output_dir / f"{stem}.png"))
-                return True
-
-            with _patched_pipeline(
-                search_candidates=lambda query, limit=8: [_candidate(query)],
-                download_candidate=lambda candidate, dest: (_write_fake_image(dest) or True),
-                rank_candidates=rank_candidates,
-                generate_one=generate_one,
-                should_generate_image=lambda *args, **kwargs: True,
-            ):
-                img_files, skipped, sources = _run_images(
-                    _config(log_dir),
-                    ["saw:A fallback generated prompt"],
-                    output_dir,
-                    "1",
-                    "test",
-                    str(log_dir),
-                )
-
-            records = _pipeline_records(log_dir, "saw")
-            self.assertEqual(img_files, ["saw.png"])
-            self.assertEqual(skipped, 0)
-            self.assertEqual(sources, {"saw": "gerada"})
-            self.assertEqual(calls["generate"], 1)
-            self.assertEqual(records[-1]["result"], "generated_won")
-            self.assertEqual(records[-1]["final_source"], "gerada")
-            self.assertEqual(records[-1]["judge_error"], "invalid_image_format")
-            self.assertEqual(records[-1]["compare_judge_error"], "invalid_image_format")
+        self.assert_paid_fallback(made, "saw")
+        self.assert_last_record("saw", _GENERATED_WON_AFTER_INVALID_FORMAT)
 
     def test_english_google_mode_uses_paid_fallback_after_free_search_fails(self):
-        with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            output_dir = root / "Output"
-            log_dir = root / "log"
-            output_dir.mkdir()
-            log_dir.mkdir()
-            (output_dir / "saw.txt").write_text(CARD_TEXT, encoding="utf-8")
+        made = self.mine(_card("saw", "A fallback generated prompt"), self.nothing_found(_guard_sees_concrete))
 
-            calls = {"generate": 0, "queries": []}
-
-            def search_candidates(query, limit=8):
-                calls["queries"].append((query, limit))
-                return []
-
-            def generate_one(config, stem, prompt, dest=None):
-                calls["generate"] += 1
-                _write_fake_image(dest or (output_dir / f"{stem}.png"))
-                return True
-
-            with _patched_pipeline(
-                search_candidates=search_candidates,
-                download_candidate=lambda candidate, dest: False,
-                rank_candidates=lambda **kwargs: {},
-                generate_one=generate_one,
-                should_generate_image=lambda *args, **kwargs: True,
-            ):
-                img_files, skipped, sources = _run_images(
-                    _config(log_dir),
-                    ["saw:A fallback generated prompt"],
-                    output_dir,
-                    "1",
-                    "test",
-                    str(log_dir),
-                )
-
-            records = _pipeline_records(log_dir, "saw")
-            self.assertEqual(img_files, ["saw.png"])
-            self.assertEqual(skipped, 0)
-            self.assertEqual(sources, {"saw": "gerada"})
-            self.assertEqual(calls["generate"], 1)
-            self.assertGreater(len(calls["queries"]), 0)
-            self.assertEqual(records[-1]["generation_policy"], "normal")
-            self.assertEqual(records[-1]["final_source"], "gerada")
+        self.assert_paid_fallback(made, "saw")
+        self.assertTrue(self.queries)
+        self.assert_last_record("saw", {"generation_policy": "normal", "final_source": "gerada"})
 
     def test_russian_cards_do_not_call_image_guard(self):
-        with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            output_dir = root / "Output"
-            log_dir = root / "log"
-            output_dir.mkdir()
-            log_dir.mkdir()
-            (output_dir / "privet.txt").write_text(CARD_TEXT, encoding="utf-8")
+        made = self.mine(_card("privet", "A fallback generated prompt"), self.good_enough_photo_found(
+            _real_verdict(60, "usable", "usable"),
+            "good real RU image should not need generation",
+            _guard_must_not_run,
+        ), lang="ru")
 
-            calls = {"queries": []}
-
-            def search_candidates(query, limit=8):
-                calls["queries"].append((query, limit))
-                return [_candidate(query)]
-
-            def rank_candidates(**kwargs):
-                return {
-                    "best_index": 0,
-                    "best_score": 60,
-                    "verdict": "keep_real",
-                    "summary": "usable",
-                    "candidates": [{"index": 0, "score": 60, "reason": "usable"}],
-                }
-
-            def guard_should_not_run(*args, **kwargs):
-                raise AssertionError("RU image flow should not call image_guard")
-
-            with _patched_pipeline(
-                search_candidates=search_candidates,
-                download_candidate=lambda candidate, dest: (_write_fake_image(dest) or True),
-                rank_candidates=rank_candidates,
-                generate_one=lambda *args, **kwargs: (_ for _ in ()).throw(
-                    AssertionError("good real RU image should not need generation")
-                ),
-                should_generate_image=guard_should_not_run,
-            ):
-                img_files, skipped, sources = _run_images(
-                    _config(log_dir, lang="ru"),
-                    ["privet:A fallback generated prompt"],
-                    output_dir,
-                    "1",
-                    "test",
-                    str(log_dir),
-                )
-
-            self.assertEqual(img_files, ["privet.png"])
-            self.assertEqual(skipped, 0)
-            self.assertEqual(sources, {"privet": "real"})
-            self.assertGreater(len(calls["queries"]), 0)
+        self.assertEqual(made, ImagesMade(["privet.png"], 0, {"privet": "real"}))
+        self.assertTrue(self.queries)
 
 
 if __name__ == "__main__":

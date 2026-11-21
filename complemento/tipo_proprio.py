@@ -19,14 +19,24 @@ SEPARADOR = "<br>"
 def forma(bruto):
     """O `tipoProprio` normalizado (`{ nome, mapa }`, só as partes que a Conexão conhece, sem campo em branco), ou None se não tem a forma certa.
     Não olha a coleção: ver `recusa`."""
-    if not isinstance(bruto, dict) or not isinstance(bruto.get("nome"), str) or not bruto["nome"].strip() or len(bruto["nome"]) > 256:
+    if not isinstance(bruto, dict) or not _e_um_nome_de_tipo(bruto.get("nome")):
         return None
     mapa = bruto.get("mapa")
-    if not isinstance(mapa, dict) or set(mapa) - set(PARTES):
-        return None
-    if not all(isinstance(campo, str) and 0 < len(campo) <= 256 for campo in mapa.values()):
+    if not _e_um_mapa_das_partes(mapa):
         return None
     return {"nome": bruto["nome"], "mapa": {parte: mapa[parte] for parte in PARTES if parte in mapa}}
+
+
+def _e_um_nome_de_tipo(nome):
+    return isinstance(nome, str) and nome.strip() != "" and len(nome) <= 256
+
+
+def _e_um_mapa_das_partes(mapa):
+    return isinstance(mapa, dict) and not set(mapa) - set(PARTES) and all(_e_um_nome_de_campo(campo) for campo in mapa.values())
+
+
+def _e_um_nome_de_campo(campo):
+    return isinstance(campo, str) and 0 < len(campo) <= 256
 
 
 def recusa(tipo_proprio, campos_do_tipo):
@@ -35,9 +45,13 @@ def recusa(tipo_proprio, campos_do_tipo):
     mapa = tipo_proprio["mapa"]
     if any(campo not in campos_do_tipo for campo in mapa.values()):
         return "unknown_field"
-    if any(parte not in mapa for parte in OBRIGATORIAS) or mapa["frase"] == mapa["resposta"]:
+    if not _frase_e_resposta_cada_uma_no_seu_campo(mapa):
         return "missing_field"
     return None
+
+
+def _frase_e_resposta_cada_uma_no_seu_campo(mapa):
+    return all(parte in mapa for parte in OBRIGATORIAS) and mapa["frase"] != mapa["resposta"]
 
 
 def _chaves(parte, estilo):

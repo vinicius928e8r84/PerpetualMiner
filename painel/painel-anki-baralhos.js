@@ -46,42 +46,21 @@
   const { SITUACAO: CONEXAO } = ConexaoAnki;
   const porId = id => document.getElementById(id);
 
+  const leituraDaAba = () => ({ dados: null, quando: 0, nomes: null, carregando: false, erro: null, leitura: 0, idioma: 'en' });
   const estado = {
     nomes: null,
-    baralhos: {
-      dados: null,
-      quando: 0,
-      nomes: null,
-      carregando: false,
-      erro: null,
-      leitura: 0,
-      idioma: 'en',
-    },
-    vocabulario: {
-      dados: null,
-      quando: 0,
-      nomes: null,
-      carregando: false,
-      erro: null,
-      leitura: 0,
-      idioma: 'en',
-      tipo: 'all',
-      status: 'all',
-      busca: '',
-      escolhido: null,
-    },
+    baralhos: leituraDaAba(),
+    vocabulario: { ...leituraDaAba(), tipo: 'all', status: 'all', busca: '', escolhido: null },
   };
 
   async function iniciar() {
-    montarAzulejos('anki-baralhos-azulejos', estado.baralhos);
-    montarAzulejos('anki-vocabulario-azulejos', estado.vocabulario);
+    for (const { nome, recorte } of ABAS) montarAzulejos(`anki-${nome}-azulejos`, recorte);
     montarFiltros();
 
     const gravado = await chrome.storage.local.get({ [CHAVE_BARALHOS]: null, [CHAVE_VOCABULARIO]: null });
-    const baralhos = gravado[CHAVE_BARALHOS];
-    if (baralhos?.dados && !estado.baralhos.dados) Object.assign(estado.baralhos, baralhos);
-    const vocabulario = gravado[CHAVE_VOCABULARIO];
-    if (vocabulario?.dados && !estado.vocabulario.dados) Object.assign(estado.vocabulario, vocabulario);
+    for (const { recorte, chave } of ABAS) {
+      if (gravado[chave]?.dados && !recorte.dados) Object.assign(recorte, gravado[chave]);
+    }
 
     ConexaoAnki.acompanhar(aoMudarAConexao);
     Shell.aoEntrarNaArea('anki', () => lerTudo());
@@ -92,19 +71,27 @@
   function usarBaralhos(nomes) {
     const antes = estado.nomes;
     estado.nomes = { en: nomes.en, ru: nomes.ru };
-    const mudou = Boolean(antes) && (antes.en !== nomes.en || antes.ru !== nomes.ru);
-    if ((!antes || mudou) && Shell.areaAtual() === 'anki') lerTudo({ deNovo: mudou });
+    if (!antes) lerNaAreaDoAnki({ deNovo: false });
+    else if (mudaramOsBaralhos(antes, nomes)) lerNaAreaDoAnki({ deNovo: true });
+  }
+
+  function mudaramOsBaralhos(antes, nomes) {
+    return IDIOMAS_DOS_AZULEJOS.some(({ idioma }) => antes[idioma] !== nomes[idioma]);
   }
 
   let anterior = CONEXAO.CONECTANDO;
 
+  const acabouDeLigar = (antes, agora) => agora === CONEXAO.LIGADA && antes !== CONEXAO.LIGADA;
+
   function aoMudarAConexao(situacao) {
     const antes = anterior;
     anterior = situacao;
-    if (situacao === CONEXAO.LIGADA && antes !== CONEXAO.LIGADA && Shell.areaAtual() === 'anki') {
-      lerTudo();
-    }
+    if (acabouDeLigar(antes, situacao)) lerNaAreaDoAnki();
     desenhar();
+  }
+
+  function lerNaAreaDoAnki(opcoes) {
+    if (Shell.areaAtual() === 'anki') lerTudo(opcoes);
   }
 
   function desligada() {
@@ -117,78 +104,101 @@
     lerVocabulario();
   }
 
-  async function lerBaralhos({ deNovo = false, abrirOAnki = false } = {}) {
-    const baralhos = estado.baralhos;
-    const leitura = ++baralhos.leitura;
-    baralhos.carregando = true;
-    baralhos.erro = null;
+  const lerBaralhos = opcoes => lerAba(ABA_DOS_BARALHOS, () => estatisticasDosBaralhos(opcoes));
+  const lerVocabulario = () => lerAba(ABA_DO_VOCABULARIO, vocabularioDosBaralhos);
+
+  async function lerAba({ recorte, chave }, pedir) {
+    const leitura = ++recorte.leitura;
+    recorte.carregando = true;
+    recorte.erro = null;
     desenhar();
 
     const nomes = { ...estado.nomes };
+    const { dados, erro } = await pedir();
+    const quando = Date.now();
+    if (leitura !== recorte.leitura) return;
+
+    recorte.carregando = false;
+    recorte.erro = erro;
+    if (dados) {
+      Object.assign(recorte, { dados, quando, nomes });
+      chrome.storage.local.set({ [chave]: { dados, quando, nomes } });
+    }
+    desenhar();
+  }
+
+  async function estatisticasDosBaralhos({ deNovo = false, abrirOAnki = false } = {}) {
     const baralhosPedidos = IDIOMAS_DOS_AZULEJOS.map(({ idioma }) => ({ deckName: estado.nomes[idioma], lang: idioma }));
     const desfecho = await raiz.ConversaComOAnki.pedir(raiz.PedidoAoAnki.estatisticas(baralhosPedidos, { deNovo, abrirOAnki }));
-    const dados = desfecho.ok ? desfecho.dados : null;
-    const erro = desfecho.ok ? null : `POST /anki/stats/decks · ${desfecho.detalhes}`;
-    const quando = Date.now();
-    if (leitura !== baralhos.leitura) return;
-
-    baralhos.carregando = false;
-    baralhos.erro = erro;
-    if (dados) {
-      Object.assign(baralhos, { dados, quando, nomes });
-      chrome.storage.local.set({ [CHAVE_BARALHOS]: { dados, quando, nomes } });
-    }
-    desenhar();
+    if (desfecho.ok) return { dados: desfecho.dados, erro: null };
+    return { dados: null, erro: `POST /anki/stats/decks · ${desfecho.detalhes}` };
   }
 
-  async function lerVocabulario() {
-    const vocabulario = estado.vocabulario;
-    const leitura = ++vocabulario.leitura;
-    vocabulario.carregando = true;
-    vocabulario.erro = null;
-    desenhar();
-
-    const nomes = { ...estado.nomes };
-    const lerIdioma = async idioma => {
-      const deckName = estado.nomes[idioma];
-      const desfecho = await raiz.ConversaComOAnki.pedir(raiz.PedidoAoAnki.vocabulario(deckName, idioma));
-      if (!desfecho.ok) throw new Error(desfecho.detalhes);
-      const resposta = desfecho.dados;
-      const itens = Array.isArray(resposta.words) ? resposta.words : [];
-      return { deckName: resposta.deckName || deckName, itens, total: numero(resposta.totalWords ?? itens.length) };
-    };
-    let dados = null;
-    let erro = null;
+  async function vocabularioDosBaralhos() {
     try {
-      const [en, ru] = await Promise.all(IDIOMAS_DOS_AZULEJOS.map(({ idioma }) => lerIdioma(idioma)));
-      dados = { en, ru };
+      const [en, ru] = await Promise.all(IDIOMAS_DOS_AZULEJOS.map(({ idioma }) => vocabularioDoIdioma(idioma)));
+      return { dados: { en, ru }, erro: null };
     } catch (falha) {
-      erro = `POST /anki/vocabulary · ${falha.message}`;
+      return { dados: null, erro: `POST /anki/vocabulary · ${falha.message}` };
     }
-    const quando = Date.now();
-    if (leitura !== vocabulario.leitura) return;
-
-    vocabulario.carregando = false;
-    vocabulario.erro = erro;
-    if (dados) {
-      Object.assign(vocabulario, { dados, quando, nomes });
-      chrome.storage.local.set({ [CHAVE_VOCABULARIO]: { dados, quando, nomes } });
-    }
-    desenhar();
   }
+
+  async function vocabularioDoIdioma(idioma) {
+    const deckName = estado.nomes[idioma];
+    const desfecho = await raiz.ConversaComOAnki.pedir(raiz.PedidoAoAnki.vocabulario(deckName, idioma));
+    if (!desfecho.ok) throw new Error(desfecho.detalhes);
+    const resposta = desfecho.dados;
+    const itens = Array.isArray(resposta.words) ? resposta.words : [];
+    return { deckName: resposta.deckName || deckName, itens, total: numero(resposta.totalWords ?? itens.length) };
+  }
+
+  const ABA_DOS_BARALHOS = {
+    nome: 'baralhos', recorte: estado.baralhos, chave: CHAVE_BARALHOS, alturas: [120, 120], espera: 'BRG-10',
+    erro: { texto: 'BRG-11.aviso', rotulo: 'BRG-11.tentarDeNovo', tentarDeNovo: () => lerTudo({ deNovo: true, abrirOAnki: true }) },
+    topo: topoDosBaralhos, mostrarControles: mostrarOsAzulejosDosBaralhos, desenharLida: desenharBaralhosLidos,
+  };
+  const ABA_DO_VOCABULARIO = {
+    nome: 'vocabulario', recorte: estado.vocabulario, chave: CHAVE_VOCABULARIO, alturas: [40, 300], espera: 'BRG-19',
+    erro: { texto: 'BRG-20.aviso', rotulo: 'BRG-20.tentarDeNovo', tentarDeNovo: lerVocabulario },
+    topo: topoDoVocabulario, mostrarControles: desenharOsFiltros, desenharLida: desenharVocabularioLido,
+  };
+  const ABAS = [ABA_DOS_BARALHOS, ABA_DO_VOCABULARIO];
+
+  const CORPO_SEM_DADOS = {
+    esqueleto: aba => [esqueleto(aba.alturas)],
+    carregando: aba => [linhaDeEspera(textoDaVoz(aba.espera)), esqueleto(aba.alturas)],
+    erro: aba => [oMesmo(`${aba.nome}:erro`, aba.recorte.erro, () => avisoDoErro(aba))],
+    nada: aba => [oMesmo(`${aba.nome}:esperando`, true, esperandoOAnki)],
+  };
 
   function desenhar() {
-    desenharBaralhos();
-    desenharVocabulario();
+    for (const aba of ABAS) desenharAba(aba);
   }
 
-  function vista({ dados, carregando, erro }) {
-    if (desligada() && dados) return 'antiga';
-    if (ConexaoAnki.ultimaResposta() === null || ConexaoAnki.apresentada() !== ConexaoAnki.situacao()) return 'esqueleto';
+  function desenharAba(aba) {
+    const qual = vista(aba.recorte);
+    mostrar(porId(`anki-${aba.nome}-topo`), aba.topo(qual));
+    aba.mostrarControles(qual === 'dados' || qual === 'antiga');
+    const corpo = porId(`anki-${aba.nome}-corpo`);
+    if (qual in CORPO_SEM_DADOS) mostrar(corpo, CORPO_SEM_DADOS[qual](aba));
+    else aba.desenharLida(corpo);
+  }
+
+  function vista(recorte) {
+    if (desligada() && recorte.dados) return 'antiga';
+    if (!conexaoApresentada()) return 'esqueleto';
     if (desligada()) return 'nada';
-    if (carregando || (!dados && !erro)) return 'carregando';
+    return vistaDaLeitura(recorte);
+  }
+
+  function conexaoApresentada() {
+    return ConexaoAnki.ultimaResposta() !== null && ConexaoAnki.apresentada() === ConexaoAnki.situacao();
+  }
+
+  function vistaDaLeitura({ dados, carregando, erro }) {
+    if (carregando) return 'carregando';
     if (erro) return 'erro';
-    return 'dados';
+    return dados ? 'dados' : 'carregando';
   }
 
   function mostrar(lugar, nos) {
@@ -210,37 +220,34 @@
     return no;
   }
 
-  function desenharBaralhos() {
-    const baralhos = estado.baralhos;
-    const qual = vista(baralhos);
+  function seloDaLeituraAntiga(nome, recorte) {
+    return oMesmo(`${nome}:selo`, haQuanto(recorte.quando), () => seloAntigo(recorte.quando));
+  }
 
-    const topo = [];
-    const comDados = qual === 'dados' || qual === 'antiga';
-    if (qual === 'antiga') {
-      const idade = haQuanto(baralhos.quando);
-      topo.push(oMesmo('baralhos:selo', idade, () => seloAntigo(baralhos.quando)));
-    } else if (qual === 'dados' && baralhos.dados.stale) topo.push(oMesmo('baralhos:cache', baralhos.dados, () => seloDoCache(baralhos.dados)));
-    mostrar(porId('anki-baralhos-topo'), topo);
+  function topoDosBaralhos(qual) {
+    const { dados } = estado.baralhos;
+    if (qual === 'antiga') return [seloDaLeituraAntiga('baralhos', estado.baralhos)];
+    if (qual === 'dados' && dados.stale) return [oMesmo('baralhos:cache', dados, () => seloDoCache(dados))];
+    return [];
+  }
 
+  function mostrarOsAzulejosDosBaralhos(comDados) {
     porId('anki-baralhos-azulejos').hidden = !comDados;
-    const corpo = porId('anki-baralhos-corpo');
-    if (qual === 'esqueleto') mostrar(corpo, [esqueleto([120, 120])]);
-    else if (qual === 'carregando') mostrar(corpo, [linhaDeEspera(textoDaVoz('BRG-10')), esqueleto([120, 120])]);
-    else if (qual === 'erro') mostrar(corpo, [oMesmo('baralhos:erro', baralhos.erro, erroDosBaralhos)]);
-    else if (qual === 'nada') mostrar(corpo, [oMesmo('baralhos:esperando', true, esperandoOAnki)]);
-    else {
-      const decks = decksPorIdioma(baralhos.dados);
-      desenharAzulejos('anki-baralhos-azulejos', baralhos, idioma => {
-        const deck = decks[idioma];
-        return {
-          baralho: nomeDoBaralho(idioma, deck),
-          valor: deck?.missing ? textoDaVoz('BRG-27.valor') : formatar(palavrasDoBaralho(deck)),
-          legenda: deck?.missing ? textoDaVoz('BRG-27.legenda') : textoDaVoz('BRG-34.palavras', { n: palavrasDoBaralho(deck) }),
-        };
-      });
-      const deck = decks[baralhos.idioma];
-      mostrar(corpo, [oMesmo('baralhos:detalhe', deck, () => detalheDoBaralho(baralhos.idioma, deck))]);
-    }
+  }
+
+  function desenharBaralhosLidos(corpo) {
+    const baralhos = estado.baralhos;
+    const decks = decksPorIdioma(baralhos.dados);
+    desenharAzulejos('anki-baralhos-azulejos', baralhos, idioma => azulejoDoBaralho(idioma, decks[idioma]));
+    const deck = decks[baralhos.idioma];
+    mostrar(corpo, [oMesmo('baralhos:detalhe', deck, () => detalheDoBaralho(baralhos.idioma, deck))]);
+  }
+
+  function azulejoDoBaralho(idioma, deck) {
+    const baralho = nomeDoBaralho(idioma, deck);
+    if (deck?.missing) return { baralho, valor: textoDaVoz('BRG-27.valor'), legenda: textoDaVoz('BRG-27.legenda') };
+    const palavras = palavrasDoBaralho(deck);
+    return { baralho, valor: formatar(palavras), legenda: textoDaVoz('BRG-34.palavras', { n: palavras }) };
   }
 
   function esperandoOAnki() {
@@ -254,11 +261,11 @@
     return seloAntigo(dados.generatedAt || estado.baralhos.quando, 'atualizacao');
   }
 
-  function erroDosBaralhos() {
+  function avisoDoErro({ erro, recorte }) {
     return Veio.montarAviso({
-      texto: textoDaVoz('BRG-11.aviso'),
-      acao: { rotulo: textoDaVoz('BRG-11.tentarDeNovo'), aoUsar: () => lerTudo({ deNovo: true, abrirOAnki: true }) },
-      detalhes: estado.baralhos.erro,
+      texto: textoDaVoz(erro.texto),
+      acao: { rotulo: textoDaVoz(erro.rotulo), aoUsar: erro.tentarDeNovo },
+      detalhes: recorte.erro,
       fechavel: false,
     });
   }
@@ -304,15 +311,17 @@
       [textoDaVoz('BRG-34.palavraNovaPorCartao'), formatar(numero(deck.vocabulary?.avgNewPhraseVocabularyPerCard), 1)],
       ...MATURIDADE.map(({ chave, rotulo }) => [marcaDaSerie(chave, textoDaVoz(rotulo)), formatar(series[chave])]),
     ];
-    const numeros = elemento('dl', 'anki-partes', ...linhas.flatMap(([rotulo, valor]) =>
-      [elemento('dt', null, rotulo), elemento('dd', null, valor)]));
     return elemento('section', 'anki-cartao anki-baralho',
       anelDeMaturidade(series),
       elemento('div', 'anki-baralho__numeros',
         elemento('p', 'anki-apoio', nome),
         elemento('p', 'anki-baralho__palavras', formatar(palavrasDoBaralho(deck))),
         elemento('p', 'anki-apoio', textoDaVoz('BRG-34.palavrasNosCartoes')),
-        numeros));
+        listaDeNumeros(linhas)));
+  }
+
+  function listaDeNumeros(linhas) {
+    return elemento('dl', 'anki-partes', ...linhas.flatMap(([rotulo, valor]) => [elemento('dt', null, rotulo), elemento('dd', null, valor)]));
   }
 
   function marcaDaSerie(chave, texto) {
@@ -322,42 +331,32 @@
   }
 
   function anelDeMaturidade(series) {
-    const SVG = 'http://www.w3.org/2000/svg';
     const raio = 52;
     const volta = 2 * Math.PI * raio;
     const total = series.maduros + series.recentes + series.novos;
     const pct = `${total ? Math.round((series.maduros / total) * 100) : 0}%`;
-    const svg = document.createElementNS(SVG, 'svg');
-    svg.setAttribute('viewBox', '0 0 132 132');
-    svg.setAttribute('class', 'anki-anel');
-    svg.setAttribute('role', 'img');
-    svg.setAttribute('aria-label', textoDaVoz('BRG-34.maturidade', { pct }));
-    const circulo = classe => {
-      const no = document.createElementNS(SVG, 'circle');
-      for (const [nome, valor] of [['cx', 66], ['cy', 66], ['r', raio], ['class', classe]]) no.setAttribute(nome, valor);
-      return no;
-    };
+    const svg = noDoAnel('svg', { viewBox: '0 0 132 132', class: 'anki-anel', role: 'img', 'aria-label': textoDaVoz('BRG-34.maturidade', { pct }) });
+    const circulo = (classe, traco = {}) => noDoAnel('circle', { cx: 66, cy: 66, r: raio, class: classe, ...traco });
     svg.append(circulo('anki-anel__fundo'));
     let andado = 0;
     for (const { chave } of MATURIDADE) {
       if (!total || !series[chave]) continue;
       const comprimento = (series[chave] / total) * volta;
-      const pedaco = circulo(`anki-anel__serie anki-serie--${chave}`);
-      pedaco.setAttribute('stroke-dasharray', `${Math.max(comprimento - 2, 0)} ${volta}`);
-      pedaco.setAttribute('stroke-dashoffset', String(-andado));
-      pedaco.setAttribute('transform', 'rotate(-90 66 66)');
-      svg.append(pedaco);
+      svg.append(circulo(`anki-anel__serie anki-serie--${chave}`, {
+        'stroke-dasharray': `${Math.max(comprimento - 2, 0)} ${volta}`, 'stroke-dashoffset': String(-andado), transform: 'rotate(-90 66 66)',
+      }));
       andado += comprimento;
     }
-    const texto = (classe, y, conteudo) => {
-      const no = document.createElementNS(SVG, 'text');
-      for (const [nome, valor] of [['x', 66], ['y', y], ['text-anchor', 'middle'], ['class', classe]]) no.setAttribute(nome, valor);
-      no.textContent = conteudo;
-      no.setAttribute('aria-hidden', 'true');
-      return no;
-    };
+    const texto = (classe, y, conteudo) => noDoAnel('text', { x: 66, y, 'text-anchor': 'middle', class: classe, 'aria-hidden': 'true' }, conteudo);
     svg.append(texto('anki-anel__pct', 66, pct), texto('anki-anel__rotulo', 82, textoDaVoz('BRG-34.anel')));
     return svg;
+  }
+
+  function noDoAnel(tag, atributos, conteudo) {
+    const no = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    for (const [nome, valor] of Object.entries(atributos)) no.setAttribute(nome, valor);
+    if (conteudo) no.textContent = conteudo;
+    return no;
   }
 
   function montarFiltros() {
@@ -393,75 +392,66 @@
 
   const chaveDoItem = item => `${item.type}:${item.word}`;
 
+  const passaNoFiltro = (escolha, valor) => escolha === 'all' || valor === escolha;
+  const contemABusca = (item, procura) => !procura || String(item.word).toLocaleLowerCase().includes(procura);
+
   function itensFiltrados() {
     const { dados, idioma, tipo, status, busca } = estado.vocabulario;
     const procura = busca.trim().toLocaleLowerCase();
-    return (dados?.[idioma]?.itens || []).filter(item =>
-      (tipo === 'all' || item.type === tipo)
-      && (status === 'all' || item.status === status)
-      && (!procura || String(item.word).toLocaleLowerCase().includes(procura)));
+    const itens = dados?.[idioma]?.itens || [];
+    return itens.filter(item => passaNoFiltro(tipo, item.type) && passaNoFiltro(status, item.status) && contemABusca(item, procura));
   }
 
-  function desenharVocabulario() {
-    const vocabulario = estado.vocabulario;
-    const qual = vista(vocabulario);
-    const comDados = qual === 'dados' || qual === 'antiga';
-    const idade = haQuanto(vocabulario.quando);
-    mostrar(porId('anki-vocabulario-topo'),
-      qual === 'antiga' ? [oMesmo('vocabulario:selo', idade, () => seloAntigo(vocabulario.quando))] : []);
+  function topoDoVocabulario(qual) {
+    return qual === 'antiga' ? [seloDaLeituraAntiga('vocabulario', estado.vocabulario)] : [];
+  }
 
-    porId('anki-vocabulario-azulejos').hidden = !comDados;
-    porId('anki-vocabulario-filtros').hidden = !comDados;
-    porId('anki-vocabulario-resumo').hidden = !comDados;
-    porId('anki-vocabulario-tipo').value = vocabulario.tipo;
-    porId('anki-vocabulario-status').value = vocabulario.status;
-    const busca = porId('anki-vocabulario-busca');
-    if (busca.value !== vocabulario.busca) busca.value = vocabulario.busca;
-    porId('anki-vocabulario-limpar').hidden = !vocabulario.busca;
+  function desenharOsFiltros(comDados) {
+    const { tipo, status, busca } = estado.vocabulario;
+    for (const id of ['anki-vocabulario-azulejos', 'anki-vocabulario-filtros', 'anki-vocabulario-resumo']) porId(id).hidden = !comDados;
+    porId('anki-vocabulario-tipo').value = tipo;
+    porId('anki-vocabulario-status').value = status;
+    const campo = porId('anki-vocabulario-busca');
+    if (campo.value !== busca) campo.value = busca;
+    porId('anki-vocabulario-limpar').hidden = !busca;
+  }
 
-    const corpo = porId('anki-vocabulario-corpo');
-    if (qual === 'esqueleto') return mostrar(corpo, [esqueleto([40, 300])]);
-    if (qual === 'carregando') return mostrar(corpo, [linhaDeEspera(textoDaVoz('BRG-19')), esqueleto([40, 300])]);
-    if (qual === 'erro') return mostrar(corpo, [oMesmo('vocabulario:erro', vocabulario.erro, erroDoVocabulario)]);
-    if (qual === 'nada') return mostrar(corpo, [oMesmo('vocabulario:esperando', true, esperandoOAnki)]);
-
-    desenharAzulejos('anki-vocabulario-azulejos', vocabulario, idioma => {
-      const doIdioma = vocabulario.dados[idioma] || { deckName: estado.nomes?.[idioma] || '', itens: [] };
-      return {
-        baralho: doIdioma.deckName,
-        valor: formatar(totalDoIdioma(doIdioma)),
-        legenda: textoDaVoz('BRG-35.itens', { n: totalDoIdioma(doIdioma) }),
-      };
-    });
-    const itens = itensFiltrados();
-    const mostrados = itens.slice(0, MOSTRAR_NO_MAXIMO);
-    const total = totalDoIdioma(vocabulario.dados[vocabulario.idioma]);
-    porId('anki-vocabulario-resumo').textContent = [
-      textoDaVoz('BRG-21.resumo', { n: total, idioma: nomeDoIdioma(vocabulario.idioma).toLowerCase() }),
-      textoDaVoz('BRG-21.mostrando', { n: mostrados.length }),
-    ].join(' · ');
-
-    const foco = document.activeElement?.closest?.('#anki-vocabulario-corpo [data-foco]')?.dataset.foco;
-    if (mostrados.length) corpo.replaceChildren(listaEDetalhe(mostrados));
-    else corpo.replaceChildren(vazioDaBusca());
+  function desenharVocabularioLido(corpo) {
+    desenharAzulejos('anki-vocabulario-azulejos', estado.vocabulario, azulejoDoVocabulario);
+    const mostrados = itensFiltrados().slice(0, MOSTRAR_NO_MAXIMO);
+    porId('anki-vocabulario-resumo').textContent = resumoDoVocabulario(mostrados.length);
+    const foco = focoNaLista();
+    corpo.replaceChildren(mostrados.length ? listaEDetalhe(mostrados) : vazioDaBusca());
     if (foco) corpo.querySelector(`[data-foco="${CSS.escape(foco)}"]`)?.focus();
   }
 
-  function erroDoVocabulario() {
-    return Veio.montarAviso({
-      texto: textoDaVoz('BRG-20.aviso'),
-      acao: { rotulo: textoDaVoz('BRG-20.tentarDeNovo'), aoUsar: lerVocabulario },
-      detalhes: estado.vocabulario.erro,
-      fechavel: false,
-    });
+  function azulejoDoVocabulario(idioma) {
+    const doIdioma = estado.vocabulario.dados[idioma] || { deckName: nomeDoBaralho(idioma), itens: [] };
+    const total = totalDoIdioma(doIdioma);
+    return { baralho: doIdioma.deckName, valor: formatar(total), legenda: textoDaVoz('BRG-35.itens', { n: total }) };
+  }
+
+  function resumoDoVocabulario(mostrados) {
+    const { dados, idioma } = estado.vocabulario;
+    return [
+      textoDaVoz('BRG-21.resumo', { n: totalDoIdioma(dados[idioma]), idioma: nomeDoIdioma(idioma).toLowerCase() }),
+      textoDaVoz('BRG-21.mostrando', { n: mostrados }),
+    ].join(' · ');
+  }
+
+  function focoNaLista() {
+    return document.activeElement?.closest?.('#anki-vocabulario-corpo [data-foco]')?.dataset.foco;
+  }
+
+  function algumFiltroLigado({ busca, tipo, status }) {
+    return Boolean(busca) || [tipo, status].some(filtro => filtro !== 'all');
   }
 
   function vazioDaBusca() {
-    const { busca, tipo, status } = estado.vocabulario;
     const vazio = elemento('div', 'veio-vazio',
       elemento('p', 'veio-vazio__titulo', textoDaVoz('BRG-21.vazio')),
       elemento('p', 'veio-vazio__texto', textoDaVoz('BRG-35.vazioTexto')));
-    if (busca || tipo !== 'all' || status !== 'all') {
+    if (algumFiltroLigado(estado.vocabulario)) {
       vazio.append(botao(textoDaVoz('BRG-35.limparBusca'), 'veio-botao veio-botao--contorno veio-botao--compacto', limparTudo));
     }
     return vazio;
@@ -549,8 +539,7 @@
       [textoDaVoz('BRG-35.apareceEm'), textoDaVoz('BRG-35.cartoes', { n: numero(item.cards) })],
       ...MATURIDADE.map(({ chave, rotulo }) => [textoDaVoz(rotulo), formatar(series[chave])]),
     ];
-    const numeros = elemento('dl', 'anki-partes', ...linhas.flatMap(([rotulo, valor]) =>
-      [elemento('dt', null, rotulo), elemento('dd', null, valor)]));
+    const numeros = listaDeNumeros(linhas);
     numeros.append(
       elemento('dt', 'anki-partes__total', textoDaVoz('BRG-35.status')),
       elemento('dd', 'anki-partes__total anki-partes__texto', textoDaVoz(statusDoItem(item).texto)));
