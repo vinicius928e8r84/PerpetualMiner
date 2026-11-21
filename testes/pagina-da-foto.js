@@ -325,7 +325,10 @@ async function abrirPagina({
       await esperar();
     },
     async mudarChave(nova) {
-      for (const ouvinte of ouvintes) ouvinte({ geminiApiKey: { newValue: nova } }, 'local');
+      await pagina.mudarArmazenamento({ geminiApiKey: { newValue: nova } }, 'local');
+    },
+    async mudarArmazenamento(mudancas, area) {
+      for (const ouvinte of ouvintes) ouvinte(mudancas, area);
       await esperar();
     },
     cartoes: () => no('foto-fila').nos(),

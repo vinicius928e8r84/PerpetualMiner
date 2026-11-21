@@ -62,6 +62,27 @@ cenario('a chave da coluna abre o painel nas Configurações, e o painel já abe
   assert.deepStrictEqual(comPainel.registro.mensagens, [{ type: 'PAINEL_REAPLICAR_ENDERECO' }]);
 });
 
+cenario('a chave só muda com uma mudança local da própria chave', async () => {
+  const pagina = await abrirPagina();
+  await pagina.mudarArmazenamento({ geminiApiKey: { newValue: '' } }, 'sync');
+  await pagina.mudarArmazenamento({ bookTitleDefault: { newValue: 'Outro' } }, 'local');
+  assert.strictEqual(pagina.retrato().semChave, false);
+  await pagina.mudarArmazenamento({ geminiApiKey: { newValue: '' } }, 'local');
+  assert.strictEqual(pagina.retrato().semChave, true);
+});
+
+cenario('o painel no endereço sem hash é focado sem o aviso de reaplicar, e levado ao endereço da chave', async () => {
+  const pagina = await abrirPagina({ chave: '', abas: [{ id: 4, windowId: 2, url: 'chrome-extension://pm/painel/painel.html' }] });
+  await pagina.clicar('foto-voltar');
+  await pagina.clicar(pagina.botoesDaColuna()[0]);
+  assert.deepStrictEqual(pagina.registro.abasMudadas, [
+    { id: 4, active: true },
+    { id: 4, active: true, url: 'chrome-extension://pm/painel/painel.html#configuracoes/chave' },
+  ]);
+  assert.deepStrictEqual(pagina.registro.mensagens, []);
+  assert.deepStrictEqual(pagina.registro.abasCriadas, []);
+});
+
 cenario('uma foto sozinha para na prévia; outra que chega com a prévia aberta espera nela', async () => {
   const pagina = await abrirPagina();
   await pagina.soltar([foto('um.jpg')]);
