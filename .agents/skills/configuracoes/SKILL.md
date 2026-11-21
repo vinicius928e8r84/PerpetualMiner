@@ -1,6 +1,6 @@
 ---
 name: configuracoes
-description: "Use when changing or reviewing the Configurações area of the panel: IA dos cartões (the OpenAI key), Chave do Gemini, Zona de perigo, Atalhos, Conta & sync and Conexão com o Anki (`painel-ia.js`, `lib/chave-da-openai.js`, `painel-chave.js`, `painel-perigo.js`, `painel-atalhos.js`, `lib/atalhos.js`, `painel-conta.js`, `painel-abrir-anki.js`). Reviewers: open it when the PR touches that surface. It holds the architecture notes moved out of CLAUDE.md for it (what it shows, the IDs it implements, its storage and its tests)."
+description: "Use when changing or reviewing the Configurações area of the panel: IA dos cartões (the OpenAI key), Chave do Gemini, Zona de perigo, Atalhos, Conta & sync and Conexão com o Anki (`lib/chave-da-openai.js`, `lib/atalhos.js`, `painel/painel-{ia,chave,perigo,atalhos,conta,abrir-anki}.js`). Reviewers: open it when the PR touches that surface. It holds the architecture notes moved out of CLAUDE.md for it (what it shows, the IDs it implements, its storage and its tests)."
 ---
 
 # Configurações

@@ -12,7 +12,7 @@ The Conexão com o Anki updates itself in silence through AnkiWeb (`complemento/
 
 ## How to get to it (user POV)
 
-- Any Painel area, with the Conexão on (`painel.html`). Nothing to open: it shows when the health says so.
+- Any Painel area, with the Conexão on (`painel/painel.html`). Nothing to open: it shows when the health says so.
 
 ## Driving it with the Playwright e2e harness
 

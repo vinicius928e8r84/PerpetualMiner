@@ -15,7 +15,7 @@ Configurações › Zona de perigo has one action, **Apagar todas as frases**: i
 
 ## How to get to it (user POV)
 
-- Sidebar › **Configurações** › **Zona de perigo**, or `painel.html#configuracoes/perigo`.
+- Sidebar › **Configurações** › **Zona de perigo**, or `painel/painel.html#configuracoes/perigo`.
 
 ## Driving it with the Playwright e2e harness
 

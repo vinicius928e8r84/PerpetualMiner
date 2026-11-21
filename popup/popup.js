@@ -86,7 +86,7 @@ function escreverCopiaFixa() {
 }
 
 function abrirPainel(endereco = '') {
-  const painel = chrome.runtime.getURL('painel.html');
+  const painel = chrome.runtime.getURL('painel/painel.html');
   chrome.tabs.query({ url: painel }, abas => {
     const aba = abas?.[0];
     if (!aba) {
