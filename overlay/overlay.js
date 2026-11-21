@@ -168,15 +168,23 @@
   function mostrarContador(contagem) {
     etiquetaDoContador = contagem?.etiqueta || '';
     if (!partes) return;
-    const { contador, botao, descricaoDoContador } = partes;
-    contador.hidden = !contagem;
-    descricaoDoContador.textContent = contagem?.descricao || '';
-    if (contagem?.descricao) botao.setAttribute('aria-describedby', descricaoDoContador.id);
-    else botao.removeAttribute('aria-describedby');
+    partes.contador.hidden = !contagem;
+    descreverOContador(contagem?.descricao || '');
     desenharEtiqueta();
-    if (!contagem) return;
-    contador.textContent = contagem.texto;
-    contador.classList.toggle('pm-contador--limite', Boolean(contagem.noLimite));
+    if (contagem) escreverOContador(contagem);
+  }
+
+  function descreverOContador(descricao) {
+    const { botao, descricaoDoContador } = partes;
+    descricaoDoContador.textContent = descricao;
+    if (descricao) botao.setAttribute('aria-describedby', descricaoDoContador.id);
+    else botao.removeAttribute('aria-describedby');
+  }
+
+  function escreverOContador({ texto, noLimite }) {
+    const { contador } = partes;
+    contador.textContent = texto;
+    contador.classList.toggle('pm-contador--limite', Boolean(noLimite));
   }
 
   function ehOHost(no) {
@@ -265,15 +273,19 @@
     if (!faixa || !host?.isConnected) return null;
     const pedacos = pedacosDeTexto(faixa);
     const linhasDoTexto = juntarPorLinha(pedacos.flatMap(({ no, inicio, fim }) => retangulos(no, inicio, fim)));
-    if (!linhasDoTexto.length) return null;
-
-    if (host.parentNode !== document.documentElement) {
-      const caixa = host.parentNode.getBoundingClientRect();
-      const dentro = linhasDoTexto.every(r => r.left >= caixa.left - 1 && r.right <= caixa.right + 1
-        && r.top >= caixa.top - 1 && r.bottom <= caixa.bottom + 1);
-      if (!dentro) return null;
-    }
+    if (!linhasDoTexto.length || !dentroDoPlayer(linhasDoTexto)) return null;
     return { linhas: linhasDoTexto, grifos: grifosDasPalavras(pedacos, palavras) };
+  }
+
+  function dentroDoPlayer(linhasDoTexto) {
+    if (host.parentNode === document.documentElement) return true;
+    const caixa = host.parentNode.getBoundingClientRect();
+    return linhasDoTexto.every(r => dentroDaCaixa(r, caixa));
+  }
+
+  function dentroDaCaixa(r, caixa) {
+    return r.left >= caixa.left - 1 && r.right <= caixa.right + 1
+      && r.top >= caixa.top - 1 && r.bottom <= caixa.bottom + 1;
   }
 
   function pedacosDeTexto(faixa) {
@@ -325,15 +337,25 @@
       if (achada < 0) continue;
       const inicio = cursor + achada;
       const fim = inicio + palavra.length;
-      if (LETRA.test(texto[inicio - 1] || '') || LETRA.test(texto[fim] || '')) continue;
+      if (letraEm(texto, inicio - 1) || letraEm(texto, fim)) continue;
       cursor = fim;
-      let deslocamento = 0;
-      for (const { no, inicio: comeco, fim: final } of pedacos) {
-        const de = Math.max(inicio, deslocamento);
-        const ate = Math.min(fim, deslocamento + final - comeco);
-        if (ate > de) caixas.push(...retangulos(no, comeco + de - deslocamento, comeco + ate - deslocamento));
-        deslocamento += final - comeco;
-      }
+      caixas.push(...retangulosDoTrecho(pedacos, inicio, fim));
+    }
+    return caixas;
+  }
+
+  function letraEm(texto, posicao) {
+    return LETRA.test(texto[posicao] || '');
+  }
+
+  function retangulosDoTrecho(pedacos, inicio, fim) {
+    const caixas = [];
+    let deslocamento = 0;
+    for (const { no, inicio: comeco, fim: final } of pedacos) {
+      const de = Math.max(inicio, deslocamento);
+      const ate = Math.min(fim, deslocamento + final - comeco);
+      if (ate > de) caixas.push(...retangulos(no, comeco + de - deslocamento, comeco + ate - deslocamento));
+      deslocamento += final - comeco;
     }
     return caixas;
   }
@@ -349,12 +371,14 @@
     const desenhos = [];
     for (const r of geometria.linhas) {
       const linha = elemento('div', 'pm-linha');
-      posicionarEm(linha, r.left - origem.left, r.bottom - origem.top + LINHA_ABAIXO_TEXTO, r.right - r.left);
+      posicionarEm(linha, { esquerda: r.left - origem.left, cima: r.bottom - origem.top + LINHA_ABAIXO_TEXTO, largura: r.right - r.left });
       desenhos.push(linha);
     }
     for (const r of geometria.grifos) {
       const grifo = elemento('div', 'pm-grifo');
-      posicionarEm(grifo, r.left - origem.left - 1, r.top - origem.top + r.height * 0.5, r.width + 2, r.height * 0.44);
+      posicionarEm(grifo, {
+        esquerda: r.left - origem.left - 1, cima: r.top - origem.top + r.height * 0.5, largura: r.width + 2, altura: r.height * 0.44,
+      });
       desenhos.push(grifo);
     }
     camada.replaceChildren(...desenhos);
@@ -368,10 +392,10 @@
       Math.min(centro - width / 2, window.innerWidth - MARGEM_DA_JANELA - width));
     let cima = topo.top - CHIP_LONGE_DO_TEXTO - height;
     if (cima < MARGEM_DA_JANELA) cima = fundo.bottom + LINHA_ABAIXO_TEXTO + CHIP_LONGE_DO_TEXTO;
-    posicionarEm(chip, esquerda - origem.left, cima - origem.top);
+    posicionarEm(chip, { esquerda: esquerda - origem.left, cima: cima - origem.top });
   }
 
-  function posicionarEm(no, esquerda, cima, largura, altura) {
+  function posicionarEm(no, { esquerda, cima, largura, altura }) {
     no.style.left = `${esquerda}px`;
     no.style.top = `${cima}px`;
     if (largura !== undefined) no.style.width = `${largura}px`;
