@@ -135,7 +135,6 @@
     "e2e/tests/painel-envio.spec.js": 2,
     "e2e/tests/popup-visual.spec.js": 1,
     "e2e/tests/popup.spec.js": 3,
-    "engine/corrigir_frase.py": 2,
     "engine/cost_tracker.py": 4,
     "engine/extract_prompts.py": 5,
     "engine/image_judge.py": 6,
