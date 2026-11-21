@@ -90,7 +90,7 @@ class Janela:
         self._conexao = conexao
         self._perfil_aberto = perfil_aberto
         self._versao = versao
-        self._logger = logger
+        self.logger = logger
         self._ultimo_erro_registrado = None
         self._primeiro_passo = True
         self._base = set()
@@ -101,7 +101,7 @@ class Janela:
         marca = (o_que, type(erro).__name__, str(erro))
         if marca != self._ultimo_erro_registrado:
             self._ultimo_erro_registrado = marca
-            self._logger.exception("A janela não leu %s", o_que)
+            self.logger.exception("A janela não leu %s", o_que)
 
     def _perfil(self):
         try:
@@ -173,26 +173,41 @@ class Janela:
     def passo(self):
         """(o rótulo do item, os avisos novos): o que o item tem de dizer agora e o que ainda não foi anunciado."""
         envios = self._envios()
-        avisos = []
         if self._primeiro_passo:
             self._primeiro_passo = False
             self._base = {e.job_id for e in envios if not e.ativo}
-        for lido in envios:
-            if lido.ativo:
-                self._base.discard(lido.job_id)
-                self._fim_anunciado.discard(lido.job_id)
-                if lido.job_id not in self._ativos_vistos:
-                    self._ativos_vistos.add(lido.job_id)
-                    avisos.append(lido.aviso_do_comeco())
-            else:
-                self._ativos_vistos.discard(lido.job_id)
-                if lido.job_id not in self._base and lido.job_id not in self._fim_anunciado:
-                    self._fim_anunciado.add(lido.job_id)
-                    avisos.append(lido.aviso_do_fim())
-        agora = next((e for e in envios if e.ativo), None)
-        if agora is None:
-            return texto_da_janela.texto("ANK-01.parado"), avisos
-        return texto_da_janela.texto("ANK-01.enviando", feitos=agora.feitos, total=agora.total), avisos
+        avisos = [aviso for aviso in map(self._aviso_novo, envios) if aviso is not None]
+        return _rotulo_do_item(envios), avisos
+
+    def _aviso_novo(self, lido):
+        """O aviso que o Envio ainda não deu, ou None: o do começo na primeira vez que ele aparece ativo, o do fim na primeira vez que aparece
+        terminado (nunca o de um Envio que já tinha terminado quando a janela o viu pela primeira vez)."""
+        if lido.ativo:
+            return self._comecou(lido)
+        return self._terminou(lido)
+
+    def _comecou(self, lido):
+        self._base.discard(lido.job_id)
+        self._fim_anunciado.discard(lido.job_id)
+        if lido.job_id in self._ativos_vistos:
+            return None
+        self._ativos_vistos.add(lido.job_id)
+        return lido.aviso_do_comeco()
+
+    def _terminou(self, lido):
+        self._ativos_vistos.discard(lido.job_id)
+        if lido.job_id in self._base or lido.job_id in self._fim_anunciado:
+            return None
+        self._fim_anunciado.add(lido.job_id)
+        return lido.aviso_do_fim()
+
+
+def _rotulo_do_item(envios):
+    """Parado, ou quantos Cartões do Envio ativo já foram feitos."""
+    agora = next((e for e in envios if e.ativo), None)
+    if agora is None:
+        return texto_da_janela.texto("ANK-01.parado")
+    return texto_da_janela.texto("ANK-01.enviando", feitos=agora.feitos, total=agora.total)
 
 
 def protegido(funcao, logger, o_que):
@@ -224,12 +239,14 @@ class NaTelaDoAnki:
         self._qt.avisar_de_outra_thread(self._mw, texto_da_janela.texto("ANK-05.conectado"))
 
 
-def ligar(mw, janela, qt, modulo, logger):
-    """Põe no Anki o item de Ferramentas, o botão Config do complemento `modulo` e a conferência do Envio, pela fronteira `qt`.
+def ligar(mw, janela, qt, modulo):
+    """Põe no Anki o item de Ferramentas, o botão Config do complemento `modulo` e a conferência do Envio, pela fronteira `qt`; os erros vão
+    ao registro da `janela`.
 
     O item e o Config abrem a mesma janela. Só o Config é opcional: se o Anki não o aceita, o item e a conferência ficam. Se o item
     não entra, `ligar` levanta e quem chamou (`no_anki`) registra o erro e segue sem a janela. Com a Conexão no ar, o código do
     pareamento ganha onde aparecer (`NaTelaDoAnki`)."""
+    logger = janela.logger
     janela.pareamento_na_tela(NaTelaDoAnki(mw, qt))
     abrir = protegido(lambda: qt.abrir_janela(mw, janela.estado, janela.desconectar_navegadores), logger, "abrir a janela")
     item = qt.item_do_menu(mw, texto_da_janela.texto("ANK-01.parado"), abrir)
