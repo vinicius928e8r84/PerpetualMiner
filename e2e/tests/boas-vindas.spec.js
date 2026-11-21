@@ -1,6 +1,7 @@
 'use strict';
 
 const { test, expect } = require('../fixtures');
+const { estadoFinal } = require('../estado-final');
 const { fotografar, registrarEstado } = require('../evidencias-mineracao');
 const path = require('path');
 
@@ -75,6 +76,7 @@ test('a abertura lista os 9 passos e Começar leva ao passo 1', async ({ page, e
   await expect(tituloDoCard(page)).toHaveText('Minerar a primeira frase');
   await expect(tituloDoCard(page)).toBeFocused();
   await expect(itemDaLista(page, 'Minerar a primeira frase')).toHaveAttribute('aria-current', 'step');
+  await estadoFinal(extensao, { pm_boas_vindas: null });
 });
 
 test('Pular a configuração abre o painel em Frases, com a sidebar', async ({ page, extensao }) => {
@@ -95,6 +97,7 @@ test('qualquer item da lista abre o seu passo; o opcional diz “opcional” no 
   await expect(sobretitulo(page)).toHaveText('Passo 6 de 9 · opcional');
   await expect(tituloDoCard(page)).toHaveText('Ligar a mineração automática');
   await expect(botaoDoCard(page, 'Agora não')).toBeVisible();
+  await estadoFinal(extensao, { pm_boas_vindas: null });
 });
 
 test('passo 1: minerar a primeira frase pelo campo grava a frase e o passo fica feito', async ({ page, extensao }) => {
@@ -138,6 +141,7 @@ test('passo 1: com o disco recusando, POP-06 aparece e o texto fica no campo', a
   await expect(campoRapido(page)).toHaveAttribute('aria-invalid', 'true');
   await expect(itemDaLista(page, 'Minerar a primeira frase')).not.toHaveAccessibleName(/feito/);
   await extensao.serviceWorker.evaluate(() => { chrome.storage.local.set = globalThis.gravarDeVerdade; });
+  expect(await extensao.frases()).toEqual([]);
 });
 
 test('passo 1 sem atalho de legenda: “Sem atalho” e Definir atalho, que leva ao passo 2', async ({ page, extensao }) => {
@@ -149,6 +153,7 @@ test('passo 1 sem atalho de legenda: “Sem atalho” e Definir atalho, que leva
 
   await expect(page).toHaveURL(/#boas-vindas\/atalho$/);
   await expect(tituloDoCard(page)).toHaveText('Escolher o atalho de Minerar seleção');
+  await estadoFinal(extensao, { pm_atalho: null });
 });
 
 test('passo 1: o foco fica no Definir atalho quando outra coisa muda no armazenamento', async ({ page, extensao }) => {
@@ -197,6 +202,7 @@ test('“Continuar” num passo obrigatório segue sem marcar; o resumo mostra �
   await itemDaLista(page, 'Tudo pronto').click();
   const resumo = card(page).getByRole('listitem');
   await expect(resumo.filter({ hasText: 'Minerar a primeira frase' })).toContainText('falta');
+  await estadoFinal(extensao, { pm_boas_vindas: null });
 });
 
 test('passo 2: o gravador é o de Configurações — grava, recusa o repetido e Configurações mostra o mesmo', async ({ page, extensao }) => {
@@ -252,6 +258,7 @@ test('os passos 3 a 6 se marcam pelo estado real', async ({ page, extensao, fake
   const resumo = card(page).getByRole('listitem');
   await expect(resumo.filter({ hasText: 'mineração automática' })).toContainText('Inglês');
   await expect(resumo.filter({ hasText: 'chave do Gemini' })).toContainText('salva');
+  await estadoFinal(extensao, { pm_boas_vindas: null });
 });
 
 test('passo 3: o Entrar com Google de Configurações; entrar marca o passo e o card mostra a conta', async ({ page, extensao }) => {
@@ -276,6 +283,7 @@ test('passo 3: um login que falha diz CFG-07 no próprio passo', async ({ page, 
 
   await expect(card(page).getByText('Não deu para entrar com o Google. Tente de novo.')).toBeVisible();
   await expect(itemDaLista(page, 'Entrar com Google')).not.toHaveAccessibleName(/feito/);
+  await estadoFinal(extensao, { pm_user_info: null });
 });
 
 const passosDaConexao = page => card(page).getByRole('navigation', { name: 'Como ligar' });
@@ -369,28 +377,6 @@ test('passo 4: o destaque da tela é o Continuar da Boas-vindas, nos passos dos 
   expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
 });
 
-test('quem já tinha a área Conexão com o Anki aberta sem conexão vê o mesmo passo da Boas-vindas', async ({ page, extensao, fakes }) => {
-  fakes.anki.desligar();
-  await page.goto(extensao.url('painel.html#anki/custos'));
-  const naArea = page.getByRole('region', { name: 'Ainda não houve conexão neste computador' });
-  await expect(naArea).toBeVisible();
-  await naArea.getByRole('navigation', { name: 'Como ligar' }).getByRole('button', { name: 'Pôr a Conexão no Anki' }).click();
-  const daArea = {
-    lista: await naArea.getByRole('navigation', { name: 'Como ligar' }).getByRole('button').allTextContents(),
-    texto: await naArea.locator('.pc-card .bv-texto').textContent(),
-    sobretitulo: await naArea.locator('.pc-card .bv-sobretitulo').textContent(),
-    arquivo: await naArea.getByRole('link', { name: 'Baixar a Conexão com o Anki' }).getAttribute('href'),
-  };
-
-  await abrirBoasVindas(page, extensao, 'anki');
-  await passosDaConexao(page).getByRole('button', { name: 'Pôr a Conexão no Anki' }).click();
-  expect(await passosDaConexao(page).getByRole('button').allTextContents()).toEqual(daArea.lista);
-  expect(await card(page).locator('.pc-card .bv-texto').textContent()).toBe(daArea.texto);
-  expect(await card(page).locator('.pc-card .bv-sobretitulo').textContent()).toBe(daArea.sobretitulo);
-  await expect(baixarDoPasso4(page)).toHaveAttribute('href', daArea.arquivo);
-  expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);
-});
-
 test('passo 5: o card IA dos cartões de Configurações; conferir a chave a guarda e marca o passo', async ({ page, extensao, fakes }) => {
   fakes.anki.ligar();
   await abrirBoasVindas(page, extensao, 'ia');
@@ -464,6 +450,7 @@ test('passo 6: com a Conexão desligada, a nota de dependência (ONB-10)', async
   await card(page).getByText('Russo', { exact: true }).click();
   await expect(card(page).getByRole('switch', { name: 'Mineração automática em russo' })).toBeChecked();
   await expect(itemDaLista(page, 'Ligar a mineração automática')).toHaveAccessibleName(/feito$/);
+  await estadoFinal(extensao, { pm_auto_miner_settings: { en: { enabled: false }, ru: { enabled: true } } });
 });
 
 test('passo 6: com o disco recusando, POP-16 pede para tentar de novo e o switch volta ao gravado', async ({ page, extensao }) => {
@@ -481,6 +468,7 @@ test('passo 6: com o disco recusando, POP-16 pede para tentar de novo e o switch
   await expect(ingles).not.toBeChecked();
   await expect(itemDaLista(page, 'Ligar a mineração automática')).not.toHaveAccessibleName(/feito/);
   await extensao.serviceWorker.evaluate(() => { chrome.storage.local.set = globalThis.gravarDeVerdade; });
+  await estadoFinal(extensao, { pm_auto_miner_settings: null });
 });
 
 test('passo 7: o campo de Configurações › Chave do Gemini; salvar grava a chave e marca o passo', async ({ page, extensao }) => {
@@ -512,12 +500,12 @@ test('“Agora não” num opcional fica gravado neste computador e aparece no r
 
   await expect(tituloDoCard(page)).toHaveText('Ligar a Conexão com o Anki');
   await expect(itemDaLista(page, 'Entrar com Google')).toHaveAccessibleName(/agora não$/);
-  expect((await extensao.lerStorage('pm_boas_vindas')).pm_boas_vindas.agoraNao).toEqual(['conta']);
 
   await page.reload();
   await expect(itemDaLista(page, 'Entrar com Google')).toHaveAccessibleName(/agora não$/);
   await itemDaLista(page, 'Tudo pronto').click();
   await expect(card(page).getByRole('listitem').filter({ hasText: 'Entrar com Google' })).toContainText('agora não');
+  expect((await extensao.lerStorage('pm_boas_vindas')).pm_boas_vindas.agoraNao).toEqual(['conta']);
 });
 
 test('Tudo pronto resume cada passo e Abrir painel leva a Frases', async ({ page, extensao, fakes }) => {

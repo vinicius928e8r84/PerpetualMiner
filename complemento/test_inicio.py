@@ -339,8 +339,8 @@ class InicioDeProducaoIsolado(unittest.TestCase):
                 pastas = Pastas(raiz)
                 registro = RegistroDeMentira()
                 injetado = abridor_do_mac(pastas) if sistema == "mac" else abridor.Abridor(
-                    sistema="windows", pasta=pastas.abridor, programa=os.path.join(raiz, "anki.exe"),
-                    onde_registrar={"Chrome": "HKCU-de-mentira"}, registro=registro,
+                    sistema=abridor.NoWindows({"Chrome": "HKCU-de-mentira"}, registro), pasta=pastas.abridor,
+                    programa=os.path.join(raiz, "anki.exe"),
                 )
                 with patch("complemento.inicio.abridores.deste_computador", return_value=injetado) as fabrica:
                     conexao = inicio.iniciar(os.path.join(raiz, "complemento"), lambda: None, porta=0)
@@ -361,7 +361,7 @@ class OAbridorDesteComputador(unittest.TestCase):
     def test_o_abridor_anota_o_programa_que_roda_o_anki_e_a_pasta_do_complemento(self):
         with tempfile.TemporaryDirectory() as pasta, patch("complemento.inicio.abridores.deste_computador", return_value=None) as deste:
             parar(inicio.iniciar(pasta, lambda: None, porta=0, item_de_login=item_de_login.ItemDeLogin(sistema="mac", pasta=pasta, comando=None)))
-        self.assertEqual((deste.call_args.kwargs["executavel"], deste.call_args.kwargs["complemento"]), (sys.executable, pasta))
+        self.assertEqual((deste.call_args.kwargs["computador"].executavel, deste.call_args.kwargs["complemento"]), (sys.executable, pasta))
 
 
 if __name__ == "__main__":

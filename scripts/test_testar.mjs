@@ -7,7 +7,7 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
-const { ehArquivoDeTeste, padraoComoRegex, escolherPython, dicaDeModulo, baseDaVersao, trabalhadoresDoGrupo, tetoEmSegundos, estourouOTeto } = require('./grupos-de-teste.js');
+const { ehArquivoDeTeste, padraoComoRegex, escolherPython, dicaDeModulo, baseDaVersao, interpreteDoArquivo, trabalhadoresDoGrupo, tetoEmSegundos, estourouOTeto } = require('./grupos-de-teste.js');
 
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 delete process.env.PM_PARALELO;
@@ -22,11 +22,15 @@ assert.ok(!ehArquivoDeTeste('lib/atestado.js'));
 assert.ok(padraoComoRegex('engine/test_*.py').test('engine/test_parser_line.py'));
 assert.ok(!padraoComoRegex('engine/test_*.py').test('engine/sub/test_parser_line.py'));
 assert.ok(padraoComoRegex('e2e/tests/**/*.spec.js').test('e2e/tests/sub/algo.spec.js'));
+assert.equal(interpreteDoArquivo('.agents/skills/verify-perpetualminer/scripts/test_helpers.sh'), 'bash');
+assert.equal(interpreteDoArquivo('testes/test_sync.js'), 'node');
+assert.equal(interpreteDoArquivo('scripts/test_testar.mjs'), 'node');
 
 const lista = testar('--listar');
 assert.equal(lista.status, 0, lista.stdout + lista.stderr);
 assert.match(lista.stdout, /^node: (?:\S+ )*testes\/test_sync\.js(?: \S+)*$/m);
 assert.match(lista.stdout, /^e2e \(pesado\): e2e\/tests\/.*\.spec\.js/m);
+assert.match(lista.stdout, /^ferramentas: (?:\S+ )*\.agents\/skills\/verify-perpetualminer\/scripts\/test_helpers\.sh(?: \S+)*$/m);
 assert.match(lista.stdout, /^complemento: (?:\S+ )*complemento\/test_servidor\.py(?: \S+)*$/m);
 
 const desconhecido = testar('inexistente');
