@@ -4,6 +4,7 @@
   const { textoDaVoz, Mineracao } = raiz;
   const { iconeVeio, montarAviso, mostrarToastDeSucesso, refletirSelecao, abrirConfirmacao, elemento, botao } = raiz.Veio;
   const { tipoDaFoto, lerAsMarcacoes, classificarFalha } = raiz.LeituraDoGemini;
+  const { abrirPainel } = raiz.AbrirOPainel;
 
   const TITULO_SEM_LIVRO = 'Físico/Livro';
 
@@ -61,16 +62,8 @@
     preencherTextosFixos();
     porId('foto-marcacoes').replaceWith(montarLegenda());
 
-    chrome.storage.local.get({ geminiApiKey: '', bookTitleDefault: '' }, dados => {
-      estado.chaveGemini = dados.geminiApiKey || '';
-      porId('foto-livro').value = dados.bookTitleDefault || '';
-      desenhar();
-    });
-    chrome.storage.onChanged.addListener((mudancas, area) => {
-      if (area !== 'local' || !('geminiApiKey' in mudancas)) return;
-      estado.chaveGemini = mudancas.geminiApiKey.newValue || '';
-      desenhar();
-    });
+    chrome.storage.local.get({ geminiApiKey: '', bookTitleDefault: '' }, aplicarOQueFoiGuardado);
+    chrome.storage.onChanged.addListener(aoMudarOArmazenamento);
 
     porId('foto-livro').addEventListener('input', evento => {
       chrome.storage.local.set({ bookTitleDefault: evento.target.value });
@@ -89,13 +82,27 @@
     });
     ouvirArrastar();
 
-    porId('foto-todas').addEventListener('change', evento => {
-      for (const frase of pendentes()) frase.marcada = evento.target.checked;
-      desenharLista();
-    });
+    porId('foto-todas').addEventListener('change', evento => marcarTodas(evento.target.checked));
     porId('foto-minerar').addEventListener('click', () => minerar());
     porId('foto-cancelar').addEventListener('click', cancelarLeitura);
     porId('foto-recomecar').addEventListener('click', pedirParaRecomecar);
+  }
+
+  function aplicarOQueFoiGuardado(dados) {
+    estado.chaveGemini = dados.geminiApiKey || '';
+    porId('foto-livro').value = dados.bookTitleDefault || '';
+    desenhar();
+  }
+
+  function aoMudarOArmazenamento(mudancas, area) {
+    if (area !== 'local' || !('geminiApiKey' in mudancas)) return;
+    estado.chaveGemini = mudancas.geminiApiKey.newValue || '';
+    desenhar();
+  }
+
+  function marcarTodas(marcada) {
+    for (const frase of pendentes()) frase.marcada = marcada;
+    desenharLista();
   }
 
   function preencherTextosFixos() {
@@ -409,28 +416,6 @@
   async function salvarNoHistorico(texto, titulo) {
     const { ok } = await Mineracao.gravar({ texto, contexto: { fonte: FONTE, titulo, detalhe: '' } });
     return ok;
-  }
-
-  /**
-   * Foca a aba do painel que já estiver aberta (levando-a a `endereco`, se
-   * houver); sem nenhuma, abre uma. Nunca abre um segundo painel. Um painel
-   * que já está em `endereco` não recebe `hashchange`, então ele é avisado
-   * para aplicar o endereço de novo (e focar o campo da chave, por exemplo).
-   */
-  function abrirPainel(endereco = '') {
-    const alvo = chrome.runtime.getURL('painel/painel.html');
-    chrome.tabs.query({}, abas => {
-      const aba = abas.find(a => a.url && a.url.split('#')[0] === alvo);
-      if (!aba) {
-        chrome.tabs.create({ url: alvo + endereco });
-        return;
-      }
-      chrome.tabs.update(aba.id, endereco ? { active: true, url: alvo + endereco } : { active: true });
-      chrome.windows.update(aba.windowId, { focused: true });
-      if (endereco && aba.url === alvo + endereco) {
-        chrome.runtime.sendMessage({ type: 'PAINEL_REAPLICAR_ENDERECO' }, () => void chrome.runtime.lastError);
-      }
-    });
   }
 
   function desenhar() {
