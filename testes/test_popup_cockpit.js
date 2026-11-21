@@ -39,6 +39,7 @@ class PopupDeTeste {
     this.situacao = situacao;
     this.chamadasDoAbrirOAnki = [];
     this.mineradas = [];
+    this.leiturasPedidas = 0;
     this.ouvintes = {};
     this.contexto = vm.createContext({ document: this.documento, chrome: this.chrome(), console, setTimeout, clearTimeout, Intl, Date });
     this.contexto.globalThis = this.contexto;
@@ -82,7 +83,10 @@ class PopupDeTeste {
       AjustesDeEnvio: { CHAVE: 'pm_ajustes_de_envio' },
       VocabularioDaMineracao: {
         CHAVES: CHAVES_DO_VOCABULARIO,
-        lerLeituras: () => (popup.leituras ? Promise.resolve(popup.leituras) : Promise.reject(new Error('sem leitura'))),
+        lerLeituras: () => {
+          popup.leiturasPedidas++;
+          return popup.leituras ? Promise.resolve(popup.leituras) : Promise.reject(new Error('sem leitura'));
+        },
       },
       minerarFraseManual: texto => { popup.mineradas.push(texto); return Promise.resolve(null); },
     };
@@ -333,12 +337,38 @@ function provarAsUltimas() {
   assert.deepStrictEqual(retratoDasUltimas(comecaVazio), lista([1], [1]), 'o popup que abriu vazio mostra a primeira frase como nova');
 }
 
+const CASOS_DAS_MUDANCAS = [
+  { nome: 'a mudança fora do storage local é ignorada', area: 'sync', mudancas: { frases: { newValue: [] }, pm_ajustes_de_envio: {} }, esperado: { ultimas: 'popup-ultimas', azulejos: 0, leituras: 0 } },
+  { nome: 'frases apagadas viram o vazio', area: 'local', mudancas: { frases: {} }, esperado: { ultimas: 'veio-vazio popup-vazio', azulejos: 0, leituras: 0 } },
+  { nome: 'o estado publicado sem valor não desenha os azulejos', area: 'local', mudancas: { [ESTADO_PUBLICADO]: {} }, esperado: { ultimas: 'popup-ultimas', azulejos: 0, leituras: 0 } },
+  { nome: 'o estado publicado desenha os azulejos', area: 'local', mudancas: { [ESTADO_PUBLICADO]: { newValue: estado({ en: [true, 20], ru: [false, 10] }) } }, esperado: { ultimas: 'popup-ultimas', azulejos: 2, leituras: 0 } },
+  { nome: 'o vocabulário do russo lido de novo relê a idade', area: 'local', mudancas: { pm_vocab_ru: {} }, esperado: { ultimas: 'popup-ultimas', azulejos: 0, leituras: 1 } },
+  { nome: 'os Ajustes de envio mudados releem a idade', area: 'local', mudancas: { pm_ajustes_de_envio: {} }, esperado: { ultimas: 'popup-ultimas', azulejos: 0, leituras: 1 } },
+  { nome: 'outra chave não relê nada', area: 'local', mudancas: { pm_outra: {} }, esperado: { ultimas: 'popup-ultimas', azulejos: 0, leituras: 0 } },
+];
+
+function provarAsMudancasGuardadas() {
+  for (const caso of CASOS_DAS_MUDANCAS) {
+    const popup = new PopupDeTeste().abrir();
+    popup.ouvintes.frases({ frases: [frase(1)] });
+    popup.leiturasPedidas = 0;
+    popup.ouvintes.storage(caso.mudancas, caso.area);
+    const retrato = {
+      ultimas: popup.porId('ultimas').children[0].className,
+      azulejos: popup.documento.querySelectorAll('.popup-azulejo').length,
+      leituras: popup.leiturasPedidas,
+    };
+    assert.deepStrictEqual(retrato, caso.esperado, caso.nome);
+  }
+}
+
 async function main() {
   await provarOVocabularioComOAnkiFechado();
   await provarOVocabularioAntesDosAzulejos();
   await provarOFocoNosAzulejos();
   provarOEnterDaMineracaoRapida();
   provarAsUltimas();
+  provarAsMudancasGuardadas();
   console.log('popup cockpit tests passed');
 }
 
