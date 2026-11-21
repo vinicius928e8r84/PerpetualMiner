@@ -15,8 +15,10 @@ const conserto = 'Cadastre o teste num grupo de scripts/testes.json (`arquivos` 
 
 const DIRETORIO_DOS_WORKFLOWS = '.github/workflows';
 
-const seAplica = arquivo => ehArquivoDeTeste(arquivo) || arquivo === ARQUIVO_DO_REGISTRO
-  || new RegExp(`^${DIRETORIO_DOS_WORKFLOWS.replace('.', '\\.')}/[^/]+\\.ya?ml$`).test(arquivo);
+const WORKFLOW = new RegExp(`^${DIRETORIO_DOS_WORKFLOWS.replace('.', '\\.')}/[^/]+\\.ya?ml$`);
+const ehWorkflow = arquivo => WORKFLOW.test(arquivo);
+
+const seAplica = arquivo => ehArquivoDeTeste(arquivo) || arquivo === ARQUIVO_DO_REGISTRO || ehWorkflow(arquivo);
 
 const TESTE_POR_FORA = [
   /\bnode\s+(?:\S*\/)?test_\S+/,
@@ -29,25 +31,31 @@ const CHAMADA_DO_EXECUTOR = /scripts\/testar\.mjs\s+((?:(?!-)[a-z0-9][a-z0-9-]*\
 const EXECUTA_O_EXECUTOR = /^\s*(?:(?:xvfb-run(?:\s+-{1,2}[\w-]+(?:=\S+)?)*|env|nice(?:\s+-n\s*\d+)?|sudo|[A-Za-z_][A-Za-z0-9_]*=\S+)\s+)*node\s+scripts\/testar\.mjs\s+((?:(?!-)[a-z0-9][a-z0-9-]*\s*)+)/;
 const gruposDe = texto => texto.trim().split(/\s+/).filter(Boolean);
 
-const emCache = new Map();
-function contexto(raiz) {
-  if (emCache.has(raiz)) return emCache.get(raiz);
+const CITA_O_EXECUTOR = /scripts\/testar\.mjs/;
+const EXECUTORES = ['node', 'unittest', 'playwright'];
+
+function gruposQueOComandoRoda(comando) {
+  const chamada = EXECUTA_O_EXECUTOR.exec(comando.texto);
+  return chamada ? gruposDe(chamada[1]) : [];
+}
+
+function gruposChamadosNoPR(texto) {
+  const yaml = lerYaml(texto);
+  if (!rodaNoPR(yaml)) return [];
+  return comandos(yaml).filter(c => c.executa).flatMap(gruposQueOComandoRoda);
+}
+
+function lerContexto(raiz) {
   const arquivos = arquivosDoRepositorio(raiz);
   const registro = lerRegistro(raiz);
-  const workflows = arquivos.filter(arquivo => new RegExp(`^${DIRETORIO_DOS_WORKFLOWS.replace('.', '\\.')}/[^/]+\\.ya?ml$`).test(arquivo))
-    .map(arquivo => ({ arquivo, texto: fs.readFileSync(path.join(raiz, arquivo), 'utf8') }));
-  const chamados = new Set();
-  for (const { texto } of workflows) {
-    const yaml = lerYaml(texto);
-    if (!rodaNoPR(yaml)) continue;
-    for (const comando of comandos(yaml).filter(c => c.executa)) {
-      const chamada = EXECUTA_O_EXECUTOR.exec(comando.texto);
-      if (chamada) for (const grupo of gruposDe(chamada[1])) chamados.add(grupo);
-    }
-  }
-  const resultado = { arquivos, registro, chamados };
-  emCache.set(raiz, resultado);
-  return resultado;
+  const textosDosWorkflows = arquivos.filter(ehWorkflow).map(arquivo => fs.readFileSync(path.join(raiz, arquivo), 'utf8'));
+  return { arquivos, registro, chamados: new Set(textosDosWorkflows.flatMap(gruposChamadosNoPR)) };
+}
+
+const emCache = new Map();
+function contexto(raiz) {
+  if (!emCache.has(raiz)) emCache.set(raiz, lerContexto(raiz));
+  return emCache.get(raiz);
 }
 
 function linhasDeComando(texto) {
@@ -59,55 +67,74 @@ function linhaDaChave(fonte, chave) {
   return i < 0 ? 1 : i + 1;
 }
 
+function estaNoPortao(registro, arquivo) {
+  return Boolean(grupoDoArquivo(registro, arquivo)) || registro.fora.some(f => f.arquivo === arquivo);
+}
+
+function achadosDoTeste(arquivo, registro) {
+  if (estaNoPortao(registro, arquivo)) return [];
+  return [{ linha: 1, detalhe: `${arquivo} é um teste que nenhum grupo de ${ARQUIVO_DO_REGISTRO} roda; o CI não o executa` }];
+}
+
+function problemaDoGrupo(nome, grupo, { arquivos, chamados }) {
+  if (!EXECUTORES.includes(grupo.executor)) return `grupo ${nome}: executor desconhecido (${grupo.executor}); use node, unittest ou playwright`;
+  if (arquivosDoGrupo(grupo, arquivos).length === 0) return `grupo ${nome}: nenhum arquivo do repositório casa com ele; tire o grupo ou conserte o padrão`;
+  if (!chamados.has(nome)) return `grupo ${nome}: nenhum workflow de PR chama \`node scripts/testar.mjs ${nome}\`; os testes dele não rodam no CI`;
+  return null;
+}
+
+function problemaDaEntradaDeFora(fora, arquivos) {
+  if (!fora.arquivo || !arquivos.includes(fora.arquivo)) return `fora: ${fora.arquivo || '(sem arquivo)'} não existe; tire a entrada`;
+  if (!String(fora.motivo || '').trim()) return `fora: ${fora.arquivo} sem motivo; diga por que não é um teste do portão`;
+  return null;
+}
+
+function achadosDoRegistro(fonte, portao) {
+  const dosGrupos = Object.entries(portao.registro.grupos)
+    .map(([nome, grupo]) => ({ linha: linhaDaChave(fonte, nome), detalhe: problemaDoGrupo(nome, grupo, portao) }));
+  const doFora = portao.registro.fora
+    .map(fora => ({ linha: linhaDaChave(fonte, fora.arquivo || 'fora'), detalhe: problemaDaEntradaDeFora(fora, portao.arquivos) }));
+  return [...dosGrupos, ...doFora].filter(achado => achado.detalhe);
+}
+
+function testePorFora(texto) {
+  if (!TESTE_POR_FORA.some(r => r.test(texto))) return [];
+  return [`roda um teste por fora do executor: ${texto.trim().slice(0, 100)}; chame \`node scripts/testar.mjs <grupo>\``];
+}
+
+function gruposQueORegistroNaoTem(texto, registro) {
+  return [...texto.matchAll(CHAMADA_DO_EXECUTOR)].flatMap(m => gruposDe(m[1]))
+    .filter(grupo => !registro.grupos[grupo])
+    .map(grupo => `chama o grupo ${grupo}, que ${ARQUIVO_DO_REGISTRO} não tem`);
+}
+
+function achadosDasLinhas(fonte, registro) {
+  return linhasDeComando(fonte).flatMap(({ linha, texto }) => [...testePorFora(texto), ...gruposQueORegistroNaoTem(texto, registro)]
+    .map(detalhe => ({ linha, detalhe })));
+}
+
+function problemaDoPasso(comando) {
+  const citado = comando.texto.trim().slice(0, 100);
+  if (!comando.executa) {
+    return `${citado} não executa o grupo (${comando.motivo}); o passo precisa rodar \`node scripts/testar.mjs <grupo>\` e poder barrar o PR`;
+  }
+  if (!EXECUTA_O_EXECUTOR.test(comando.texto)) {
+    return `${citado} cita o executor mas não o roda como comando; escreva \`node scripts/testar.mjs <grupo>\` (com xvfb-run, env ou nice na frente, se precisar)`;
+  }
+  return null;
+}
+
+function achadosDosPassos(fonte) {
+  return comandos(lerYaml(fonte)).filter(comando => CITA_O_EXECUTOR.test(comando.texto))
+    .map(comando => ({ linha: comando.linha, detalhe: problemaDoPasso(comando) }))
+    .filter(achado => achado.detalhe);
+}
+
 function verificar(arquivo, fonte, raiz = process.cwd()) {
-  const { arquivos, registro, chamados } = contexto(raiz);
-
-  if (ehArquivoDeTeste(arquivo)) {
-    if (grupoDoArquivo(registro, arquivo) || registro.fora.some(f => f.arquivo === arquivo)) return [];
-    return [{ linha: 1, detalhe: `${arquivo} é um teste que nenhum grupo de ${ARQUIVO_DO_REGISTRO} roda; o CI não o executa` }];
-  }
-
-  if (arquivo === ARQUIVO_DO_REGISTRO) {
-    const achados = [];
-    for (const [nome, grupo] of Object.entries(registro.grupos)) {
-      const linha = linhaDaChave(fonte, nome);
-      if (!['node', 'unittest', 'playwright'].includes(grupo.executor)) {
-        achados.push({ linha, detalhe: `grupo ${nome}: executor desconhecido (${grupo.executor}); use node, unittest ou playwright` });
-      } else if (arquivosDoGrupo(grupo, arquivos).length === 0) {
-        achados.push({ linha, detalhe: `grupo ${nome}: nenhum arquivo do repositório casa com ele; tire o grupo ou conserte o padrão` });
-      } else if (!chamados.has(nome)) {
-        achados.push({ linha, detalhe: `grupo ${nome}: nenhum workflow de PR chama \`node scripts/testar.mjs ${nome}\`; os testes dele não rodam no CI` });
-      }
-    }
-    for (const fora of registro.fora) {
-      const linha = linhaDaChave(fonte, fora.arquivo || 'fora');
-      if (!fora.arquivo || !arquivos.includes(fora.arquivo)) achados.push({ linha, detalhe: `fora: ${fora.arquivo || '(sem arquivo)'} não existe; tire a entrada` });
-      else if (!String(fora.motivo || '').trim()) achados.push({ linha, detalhe: `fora: ${fora.arquivo} sem motivo; diga por que não é um teste do portão` });
-    }
-    return achados;
-  }
-
-  const achados = [];
-  for (const { linha, texto } of linhasDeComando(fonte)) {
-    if (TESTE_POR_FORA.some(r => r.test(texto))) {
-      achados.push({ linha, detalhe: `roda um teste por fora do executor: ${texto.trim().slice(0, 100)}; chame \`node scripts/testar.mjs <grupo>\`` });
-    }
-    for (const m of texto.matchAll(CHAMADA_DO_EXECUTOR)) {
-      for (const grupo of gruposDe(m[1])) {
-        if (!registro.grupos[grupo]) achados.push({ linha, detalhe: `chama o grupo ${grupo}, que ${ARQUIVO_DO_REGISTRO} não tem` });
-      }
-    }
-  }
-  const yaml = lerYaml(fonte);
-  for (const comando of comandos(yaml)) {
-    if (!/scripts\/testar\.mjs/.test(comando.texto)) continue;
-    if (!comando.executa) {
-      achados.push({ linha: comando.linha, detalhe: `${comando.texto.trim().slice(0, 100)} não executa o grupo (${comando.motivo}); o passo precisa rodar \`node scripts/testar.mjs <grupo>\` e poder barrar o PR` });
-    } else if (!EXECUTA_O_EXECUTOR.test(comando.texto)) {
-      achados.push({ linha: comando.linha, detalhe: `${comando.texto.trim().slice(0, 100)} cita o executor mas não o roda como comando; escreva \`node scripts/testar.mjs <grupo>\` (com xvfb-run, env ou nice na frente, se precisar)` });
-    }
-  }
-  return achados;
+  const portao = contexto(raiz);
+  if (ehArquivoDeTeste(arquivo)) return achadosDoTeste(arquivo, portao.registro);
+  if (arquivo === ARQUIVO_DO_REGISTRO) return achadosDoRegistro(fonte, portao);
+  return [...achadosDasLinhas(fonte, portao.registro), ...achadosDosPassos(fonte)];
 }
 
 module.exports = { id, conserto, seAplica, verificar };
