@@ -1,7 +1,7 @@
 'use strict';
 
 (function () {
-  if (window.chrome && chrome.storage && chrome.storage.local) return;
+  if (window.chrome?.storage?.local) return;
 
   const HOJE = new Date();
   const dia = deslocamento => {
@@ -62,12 +62,17 @@
   /** Copia o valor, como o storage do Chrome faz ao devolver o que guardou. */
   const copiar = valor => (valor === undefined ? undefined : JSON.parse(JSON.stringify(valor)));
 
+  function chavesEPadroes(pedido) {
+    if (Array.isArray(pedido)) return { chaves: pedido, padroes: {} };
+    if (typeof pedido === 'string') return { chaves: [pedido], padroes: {} };
+    return { chaves: Object.keys(pedido), padroes: pedido };
+  }
+
   function resolver(pedido) {
     if (pedido === null || pedido === undefined) {
       return Object.fromEntries(Object.keys(dados).map(chave => [chave, copiar(dados[chave])]));
     }
-    const chaves = Array.isArray(pedido) ? pedido : typeof pedido === 'string' ? [pedido] : Object.keys(pedido);
-    const padroes = Array.isArray(pedido) || typeof pedido === 'string' ? {} : pedido;
+    const { chaves, padroes } = chavesEPadroes(pedido);
     const saida = {};
     for (const chave of chaves) {
       saida[chave] = chave in dados ? copiar(dados[chave]) : copiar(padroes[chave]);

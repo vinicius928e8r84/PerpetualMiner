@@ -170,7 +170,6 @@
     "painel/painel-ia-modelo.js": 4,
     "painel/painel-shell.js": 8,
     "painel/painel.js": 86,
-    "preview/chrome-simulado.js": 2,
     "scripts/ci/checks-obrigatorios.js": 1,
     "scripts/ci/corpo-da-pr.js": 7,
     "scripts/ci/fatias-e2e.js": 7,
