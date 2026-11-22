@@ -10,7 +10,7 @@ import logging
 from collections import namedtuple
 
 from .configuracao import NOME_DO_LOGGER
-from .modelo_dos_cartoes import CHAVE, PARADO, PLANO, SEM_CHAVE, Conta, credencial, credencial_da_imagem, quem_paga
+from .modelo_dos_cartoes import CHAVE, PARADO, PLANO, SEM_CHAVE, credencial, credencial_da_imagem, quem_paga
 
 TEXTO, CORRECAO, JUIZ, IMAGEM, VOZ, OUVIR = "texto", "correcao", "juiz", "imagem", "voz", "ouvir"
 PELO_PLANO = (TEXTO, CORRECAO, JUIZ)
@@ -21,6 +21,10 @@ ETAPAS = PELO_PLANO + SO_PELA_CHAVE
 class Situacao(namedtuple("Situacao", "login motivo pela_chave tem_chave")):
     """A outra entrada da tabela, a de quem pode pagar agora: `login` e `motivo` são a `situacao()` do login; `pela_chave`, o Usar a minha
     chave do Envio (#158); `tem_chave`, se o cofre tem a chave da OpenAI."""
+
+
+MotorNaOpenAI = namedtuple("MotorNaOpenAI", "motor openai_base")
+SEM_MOTOR = MotorNaOpenAI(None, None)
 
 
 def quem_paga_a_etapa(etapa, situacao):
@@ -57,12 +61,12 @@ class JuizDaImagem:
 
 
 class IaDosCartoes:
-    """`login` é o `LoginDoChatGPT` (None: sem login), `cofre` o das chaves, `modelos` o `ModeloDosCartoes`, `motor` o de `engine/`
-    (`envio.motor_do_complemento()`), `openai_base` o endereço da OpenAI e `logger` o da Conexão."""
+    """`conta` é a `Conta` (o `LoginDoChatGPT`, None sem login, e o cofre das chaves), `modelos` o `ModeloDosCartoes`, `motor` o
+    `MotorNaOpenAI`: o de `engine/` (`envio.motor_do_complemento()`) e o endereço da OpenAI; `logger` é o da Conexão."""
 
-    def __init__(self, login, cofre, modelos, motor=None, openai_base=None, logger=None):
-        self._conta, self._modelos = Conta(login, cofre), modelos
-        self._motor, self._openai_base = motor, openai_base
+    def __init__(self, conta, modelos, motor=SEM_MOTOR, logger=None):
+        self._conta, self._modelos = conta, modelos
+        self._motor, self._openai_base = motor
         self._logger = logger or logging.getLogger(NOME_DO_LOGGER)
         self._do_envio = {}
 

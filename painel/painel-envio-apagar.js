@@ -5,14 +5,16 @@
   const gravado = EnvioGravado.criar(chrome.storage.local);
   let apagando = null;
 
+  async function apagarAsFrasesSeOEnvioPediu() {
+    if (!(await gravado.ler())?.apagarFrases) return true;
+    if (!(await ConversaComOAnki.pedir(PedidoAoAnki.apagarFrasesDosEnvios())).ok) return false;
+    await gravado.mudar(EnvioGravado.EVENTO.CONFIRMOU);
+    return true;
+  }
+
   function pedir() {
     if (apagando) return apagando;
-    apagando = (async () => {
-      if (!(await gravado.ler())?.apagarFrases) return true;
-      if (!(await ConversaComOAnki.pedir(PedidoAoAnki.apagarFrasesDosEnvios())).ok) return false;
-      await gravado.mudar(EnvioGravado.EVENTO.CONFIRMOU);
-      return true;
-    })().finally(() => { apagando = null; });
+    apagando = apagarAsFrasesSeOEnvioPediu().finally(() => { apagando = null; });
     return apagando;
   }
 

@@ -46,9 +46,11 @@ function naListaDaBase(raiz, base, arquivo) {
   return arquivo in listasDasBases.get(chave);
 }
 
+const geradoForaDaLinhaDeBase = (arquivo, fonte, raiz, base) => ehGerado(fonte) && !naListaDaBase(raiz, base, arquivo);
+
 function verificar(arquivo, fonte, raiz, base) {
   const linhas = contarLinhas(fonte);
-  if (linhas <= LIMITE || (ehGerado(fonte) && !naListaDaBase(raiz, base, arquivo))) return [];
+  if (linhas <= LIMITE || geradoForaDaLinhaDeBase(arquivo, fonte, raiz, base)) return [];
   return Array.from({ length: linhas - LIMITE }, (_, i) => ({
     linha: LIMITE + 1 + i,
     detalhe: `a linha ${LIMITE + 1 + i} de ${linhas} passa do teto de ${LIMITE} linhas`,

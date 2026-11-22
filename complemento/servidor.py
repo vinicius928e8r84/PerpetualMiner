@@ -26,8 +26,8 @@ from .rotas_da_chave import (
 )
 from .configuracao import ENDERECO, OPENAI_BASE, OPENVERSE_BASE, VOZ_BASE
 from .colecao_vazia import SemColecao
-from .ia_dos_cartoes import IaDosCartoes
-from .modelo_dos_cartoes import ModeloDosCartoes, lista_nossa
+from .ia_dos_cartoes import IaDosCartoes, MotorNaOpenAI
+from .modelo_dos_cartoes import Conta, ModeloDosCartoes, lista_nossa
 from .teto_do_mes import TetoDoMes
 from .perfil import PerfilFixo
 from .atualizacao import AnkiWebAusente, Atualizacao, RegistroDaAtualizacao
@@ -292,7 +292,7 @@ class Conexao:
         self.modelos = ModeloDosCartoes(os.path.join(dados.raiz, "modelo-dos-cartoes.json"), modelos_da_ia or lista_nossa(), hoje,
                                         logger, self.chatgpt, self.cofre, openai_base,
                                         lambda: motor.config_loader.base_config()["openai"]["chat_model"])
-        self.ia = IaDosCartoes(self.chatgpt, self.cofre, self.modelos, motor=motor, openai_base=openai_base, logger=logger)
+        self.ia = IaDosCartoes(Conta(self.chatgpt, self.cofre), self.modelos, motor=MotorNaOpenAI(motor, openai_base), logger=logger)
         self.firestore_base = firestore_base
         self.item_de_login = item_de_login
         self.atualizacao = atualizacao or Atualizacao(
