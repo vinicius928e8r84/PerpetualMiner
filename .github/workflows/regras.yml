@@ -55,14 +55,13 @@ jobs:
         env:
           BASE: ${{ github.base_ref }}
           HEAD: ${{ github.event.pull_request.head.sha }}
-      - name: CodeScene na refatoração
+      - name: CodeScene em toda PR
         if: ${{ !cancelled() && github.event_name == 'pull_request' }}
-        run: node scripts/ci/codescene-na-refatoracao.js
+        run: node scripts/ci/codescene-em-toda-pr.js
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMERO: ${{ github.event.pull_request.number }}
-          PR_TITULO: ${{ github.event.pull_request.title }}
-          PR_ROTULOS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          PR_CORPO: ${{ github.event.pull_request.body }}
           PR_HEAD: ${{ github.event.pull_request.head.sha }}
 
   pr-de-versao:
