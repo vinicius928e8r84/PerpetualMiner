@@ -31,11 +31,17 @@ class TipoDoEnvio:
         pedido = self.pedido
         proprio = pedido.get("tipoProprio")
         if not proprio:
-            campos = dict(nota["campos"])
-            for campo, reserva in tipo_de_nota.definicao(pedido["lang"], pedido.get("nivel"))["opcionais"].items():
-                if campo in campos and self.campos is not None and campo not in self.campos:
-                    texto = campos.pop(campo)
-                    campos[reserva] = campos[reserva] + "<br>" + texto if campos.get(reserva) else texto
-            return self.nome, frentes, dict(nota, campos=campos)
+            return self.nome, frentes, dict(nota, campos=self._campos_no_tipo_da_conexao(nota["campos"]))
         campos = tipo_proprio.campos_do_tipo_proprio(nota["campos"], pedido["lang"], pedido.get("nivel"), proprio["mapa"])
         return proprio["nome"], (proprio["mapa"]["frase"],), dict(nota, campos=campos)
+
+    def _falta_no_tipo(self, campo):
+        return self.campos is not None and campo not in self.campos
+
+    def _campos_no_tipo_da_conexao(self, campos_da_nota):
+        campos = dict(campos_da_nota)
+        for campo, reserva in tipo_de_nota.definicao(self.pedido["lang"], self.pedido.get("nivel"))["opcionais"].items():
+            if campo in campos and self._falta_no_tipo(campo):
+                texto = campos.pop(campo)
+                campos[reserva] = campos[reserva] + "<br>" + texto if campos.get(reserva) else texto
+        return campos

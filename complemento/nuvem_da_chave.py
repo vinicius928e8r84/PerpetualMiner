@@ -10,6 +10,16 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 
+FORMATO_DA_CHAVE = re.compile(r'[A-Za-z0-9._\-]{8,256}')
+
+
+def _e_uma_chave(chave):
+    return isinstance(chave, str) and FORMATO_DA_CHAVE.fullmatch(chave) is not None
+
+
+def _chave_que_a_nuvem_guarda(chave):
+    return chave == '' or _e_uma_chave(chave)
+
 
 class NuvemIndisponivel(Exception):
     def __init__(self, status):
@@ -49,7 +59,7 @@ class NuvemDaChave:
             campos = dados['fields']
             chave = '' if campos.get('apagada', {}).get('booleanValue') else campos.get('chave', {}).get('stringValue', '')
             em = int(campos.get('em', {}).get('integerValue', 0))
-            if not isinstance(chave, str) or (chave and not re.fullmatch(r'[A-Za-z0-9._\-]{8,256}', chave)) or em < 0:
+            if not _chave_que_a_nuvem_guarda(chave) or em < 0:
                 raise ValueError()
             return {'chave': chave, 'em': em or (1 if chave else 0)}
         except (KeyError, TypeError, ValueError, AttributeError):
