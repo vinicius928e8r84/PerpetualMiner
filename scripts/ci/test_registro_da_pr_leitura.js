@@ -8,7 +8,7 @@ const { conferir, linhasQueValem } = require('./registro-da-pr.js');
 
 const HEAD = '96cfa870d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6';
 const MODELO = ['## Summary', '', 'O que mudou.', '', '## Evidence', '', 'Rodei.', '', '## Merge Danger', '', '**Door:** two-way', '', '**Blast Radius:** CI', '', '**Política:** sem mudança', '', '**Atenção:** BAIXA', ''];
-const REVISAO = ['## Code review', '', 'Veredito: CLEAN', `Head: ${HEAD}`, 'Autor: sessão do autor', 'Revisor: sessão da revisão'].join('\n');
+const REVISAO = ['## Code review', '', 'Veredito: CLEAN', `Head: ${HEAD}`, 'Autor: sessão do autor', 'Revisor: sessão da revisão', 'Risco: BAIXA'].join('\n');
 const corpoCom = (...linhas) => [...MODELO, ...linhas].join('\n');
 const linha = (texto, nivel = 0, puro = true) => ({ texto, nivel, puro });
 const textoDe = linhas => linhas.join('\n');

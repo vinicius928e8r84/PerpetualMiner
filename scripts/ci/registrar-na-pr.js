@@ -3,17 +3,24 @@
 
 const { execFileSync } = require('child_process');
 const fs = require('fs');
-const { FRASE, SECAO_DA_PROVA, conferir, faltaDaProva, faltaDaRevisao, indicesForaDoCodigo, lerDoGitHub, linhasQueValem } = require('./registro-da-pr.js');
+const {
+  ATENCOES, FRASE, SECAO_DA_PROVA, conferir, faltaDaProva, faltaDaRevisao, indicesForaDoCodigo, lerDoGitHub, semCaixaNemAcento,
+} = require('./registro-da-pr.js');
 
 const WORKFLOW = 'registro-da-pr.yml';
+const PROVA_BLOQUEADA = 'BLOQUEADA-Mac-Windows';
 
 const AJUDA = `uso: node scripts/ci/registrar-na-pr.js <comando> --pr <número> [opções]
 
   conferir   diz o que o check "Registro da PR" diria agora, e se ele já rodou no head
   revisao    publica o registro do /code-review num comentário e roda o check de novo
-               --head <SHA revisado> --autor <quem escreveu> --revisor <quem revisou> [--veredito CLEAN] [--nota <arquivo>]
-  prova      escreve (ou troca) a seção "${SECAO_DA_PROVA}" do corpo, com ${FRASE} e o head
-               --head <SHA provado> --nota <arquivo com o que foi provado no produto de verdade e como>
+               --head <SHA revisado> --autor <quem escreveu> --revisor <quem revisou> --risco baixa|media|alta
+               [--veredito CLEAN] [--nota <arquivo>]
+  prova      escreve (ou troca) a seção "${SECAO_DA_PROVA}" do corpo, com o head
+               --head <SHA provado> --cobertura total|parcial --nota <arquivo com o que foi provado no produto de verdade e como>
+
+  --risco      o risco que o revisor viu; o check pede a prova real quando ele ou a atenção do corpo é ALTA
+  --cobertura  total escreve ${FRASE}; parcial escreve ${PROVA_BLOQUEADA}, e o check não passa com ALTA
 
   --head       o SHA inteiro do commit que foi revisado ou provado; se não for o head da PR agora, nada é publicado
   --nota       um arquivo de Markdown que entra depois das linhas do registro (na revisão, os achados)
@@ -29,8 +36,12 @@ const SHA_INTEIRO = /^[0-9a-f]{40}$/;
 const TITULO = /^ {0,3}(#{1,6})\s+(.*?)\s*#*\s*$/;
 const nomeDoTitulo = texto => texto.replace(/[*_`]/g, '').trim().toLowerCase();
 
-const OPCOES_PEDIDAS = { conferir: [], revisao: ['head', 'autor', 'revisor'], prova: ['head', 'nota'] };
-const OPCOES_COM_VALOR = ['pr', 'head', 'veredito', 'autor', 'revisor', 'nota', 'repo'];
+const OPCOES_PEDIDAS = { conferir: [], revisao: ['head', 'autor', 'revisor', 'risco'], prova: ['head', 'cobertura', 'nota'] };
+const OPCOES_COM_VALOR = ['pr', 'head', 'veredito', 'autor', 'revisor', 'risco', 'cobertura', 'nota', 'repo'];
+const ESCOLHAS = {
+  risco: Object.fromEntries(ATENCOES.map(risco => [semCaixaNemAcento(risco), risco])),
+  cobertura: { total: FRASE, parcial: PROVA_BLOQUEADA },
+};
 
 function pedeAjuda(comando, resto) {
   if (!comando) return true;
@@ -63,22 +74,34 @@ function exigirAsOpcoesDoComando(opcoes) {
   if (faltam.length) throw new ErroDeUso(`${opcoes.comando} pede ${faltam.map(nome => `--${nome}`).join(', ')}`);
 }
 
+function escolhaDe(nome, valor) {
+  const aceitos = ESCOLHAS[nome];
+  const chave = semCaixaNemAcento(valor);
+  if (!Object.hasOwn(aceitos, chave)) throw new ErroDeUso(`--${nome} é ${Object.keys(aceitos).join(', ')}; veio "${valor}"`);
+  return aceitos[chave];
+}
+
+function lerAsEscolhas(opcoes) {
+  Object.keys(ESCOLHAS).filter(nome => opcoes[nome] !== undefined).forEach(nome => { opcoes[nome] = escolhaDe(nome, opcoes[nome]); });
+}
+
 function lerArgumentos(argv) {
   const [comando, ...resto] = argv;
   if (pedeAjuda(comando, resto)) return { ajuda: true };
   if (!Object.hasOwn(OPCOES_PEDIDAS, comando)) throw new ErroDeUso(`comando desconhecido: ${comando}`);
   const opcoes = lerOpcoes(comando, resto);
   exigirAsOpcoesDoComando(opcoes);
+  lerAsEscolhas(opcoes);
   if (opcoes.head) opcoes.head = opcoes.head.trim().toLowerCase();
   return opcoes;
 }
 
-const registroDaRevisao = ({ veredito, head, autor, revisor }, nota) => [
-  'Registro do /code-review', '', `Veredito: ${veredito}`, `Head: ${head}`, `Autor: ${autor}`, `Revisor: ${revisor}`,
+const registroDaRevisao = ({ veredito, head, autor, revisor, risco }, nota) => [
+  'Registro do /code-review', '', `Veredito: ${veredito}`, `Head: ${head}`, `Autor: ${autor}`, `Revisor: ${revisor}`, `Risco: ${risco}`,
   ...(nota ? ['', nota.trim()] : []),
 ].join('\n');
 
-const secaoDaProva = (head, nota) => [`## ${SECAO_DA_PROVA}`, '', FRASE, `Head: ${head}`, ...(nota ? ['', nota.trim()] : [])].join('\n');
+const secaoDaProva = (head, nota, cobertura = FRASE) => [`## ${SECAO_DA_PROVA}`, '', cobertura, `Head: ${head}`, ...(nota ? ['', nota.trim()] : [])].join('\n');
 
 function titulosForaDoCodigo(linhas) {
   return indicesForaDoCodigo(linhas)
@@ -109,24 +132,31 @@ function faltaDoHeadInformado(informado, head, oQue) {
     + `${oQue === 'a revisão' ? 'Revise' : 'Prove'} o head novo (\`git diff ${informado.slice(0, 8)}..${head.slice(0, 8)}\` mostra o que mudou).`;
 }
 
+function planoDaRevisao(opcoes, pr, nota) {
+  const { head } = pr;
+  const comentario = registroDaRevisao({ ...opcoes, head }, nota);
+  const registros = [...pr.registros, comentario];
+  const limpo = opcoes.veredito === 'CLEAN';
+  const falta = limpo && faltaDaRevisao(registros, head);
+  if (falta) return { recusa: `o check não aceitaria este registro: ${falta}` };
+  return { comentario, depois: conferir({ ...pr, registros, head }) };
+}
+
+function planoDaProva(opcoes, pr, nota) {
+  const { head } = pr;
+  const secao = secaoDaProva(head, nota, opcoes.cobertura);
+  const corpo = corpoComAProva(pr.corpo, secao);
+  const falta = opcoes.cobertura === FRASE && faltaDaProva(corpo, head);
+  if (falta) return { recusa: `o check não aceitaria esta prova: ${falta}` };
+  return { corpo, secao, depois: conferir({ ...pr, corpo, head }) };
+}
+
 function planejar(opcoes, pr, nota) {
   const { head } = pr;
   if (opcoes.comando === 'conferir') return { depois: conferir({ ...pr, head }) };
   const foraDoHead = faltaDoHeadInformado(opcoes.head, head, opcoes.comando === 'revisao' ? 'a revisão' : 'a prova');
   if (foraDoHead) return { recusa: foraDoHead };
-  if (opcoes.comando === 'revisao') {
-    const comentario = registroDaRevisao({ ...opcoes, head }, nota);
-    const registros = [...pr.registros, comentario];
-    const limpo = opcoes.veredito === 'CLEAN';
-    const falta = limpo && faltaDaRevisao(registros, head);
-    if (falta) return { recusa: `o check não aceitaria este registro: ${falta}` };
-    return { comentario, depois: conferir({ ...pr, registros, head }) };
-  }
-  const secao = secaoDaProva(head, nota);
-  const corpo = corpoComAProva(pr.corpo, secao);
-  const falta = faltaDaProva(linhasQueValem(corpo), head);
-  if (falta) return { recusa: `o check não aceitaria esta prova: ${falta.replace(/^atenção ALTA: /, '')}` };
-  return { corpo, secao, depois: conferir({ ...pr, corpo, head }) };
+  return opcoes.comando === 'revisao' ? planoDaRevisao(opcoes, pr, nota) : planoDaProva(opcoes, pr, nota);
 }
 
 function cliente(env) {
@@ -251,4 +281,4 @@ async function main(argv, env) {
 
 if (require.main === module) main(process.argv.slice(2), process.env).then(codigo => { process.exitCode = codigo; });
 
-module.exports = { corpoComAProva, planejar, secaoDaProva };
+module.exports = { PROVA_BLOQUEADA, corpoComAProva, planejar, secaoDaProva };

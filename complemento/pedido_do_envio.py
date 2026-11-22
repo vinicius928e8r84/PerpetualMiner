@@ -48,53 +48,130 @@ def ids_unicos(valores):
     return ids
 
 
-def validar_pedido(corpo):
-    """O pedido de `POST /jobs` normalizado, ou (status, erro) se ele não serve. Frases com o mesmo `phraseId` valem uma vez (a primeira)."""
-    if not id_valido(corpo.get("jobId")):
-        return None, (400, "invalid_job_id")
-    if corpo.get("lang") not in estilos.idiomas():
-        return None, (400, "invalid_lang")
+def _sem_id_de_envio(corpo):
+    return not id_valido(corpo.get("jobId"))
+
+
+def _idioma_que_a_conexao_nao_tem(corpo):
+    return corpo.get("lang") not in estilos.idiomas()
+
+
+def _baralho_sem_nome_que_sirva(corpo):
     deck = corpo.get("deckName")
-    if not isinstance(deck, str) or not deck.strip() or len(deck) > 256:
-        return None, (400, "invalid_request")
-    nivel = corpo.get("nivel")
-    if "nivel" in corpo and nivel not in estilos.niveis(corpo["lang"]):
-        return None, (400, "invalid_level")
-    if "teste" in corpo and type(corpo["teste"]) is not bool:
-        return None, (400, "invalid_request")
-    proprio = tipo_proprio.forma(corpo.get("tipoProprio")) if "tipoProprio" in corpo else None
-    if "tipoProprio" in corpo and (proprio is None or tipo_proprio.recusa(proprio, set(proprio["mapa"].values()))):
-        return None, (400, "invalid_mapping")
+    return not isinstance(deck, str) or not deck.strip() or len(deck) > 256
+
+
+def _nivel_que_o_idioma_nao_tem(corpo):
+    return "nivel" in corpo and corpo["nivel"] not in estilos.niveis(corpo["lang"])
+
+
+def _teste_que_nao_e_sim_nem_nao(corpo):
+    return "teste" in corpo and type(corpo["teste"]) is not bool
+
+
+def _tipo_proprio_pedido(corpo):
+    return tipo_proprio.forma(corpo["tipoProprio"]) if "tipoProprio" in corpo else None
+
+
+def _mapeamento_que_nao_serve(corpo):
+    if "tipoProprio" not in corpo:
+        return False
+    proprio = _tipo_proprio_pedido(corpo)
+    return proprio is None or bool(tipo_proprio.recusa(proprio, set(proprio["mapa"].values())))
+
+
+def _sem_frases(corpo):
     entradas = corpo.get("entries")
-    if not isinstance(entradas, list) or not entradas:
-        return None, (400, "entries_required")
-    if len(entradas) > MAXIMO_DE_FRASES:
-        return None, (413, "too_many_entries")
-    limpas, vistas = [], set()
-    for entrada in entradas:
-        frase = entrada.get("phraseId") if isinstance(entrada, dict) else None
-        if type(frase) is not int or not isinstance(entrada.get("line"), str):
-            return None, (400, "entries_required")
-        if frase not in vistas:
-            vistas.add(frase)
-            limpas.append({"phraseId": frase, "line": entrada["line"]})
-    tts = corpo.get("tts") if isinstance(corpo.get("tts"), dict) else {}
-    reserva = tts.get("reserva")
-    if "reserva" in tts and not (isinstance(reserva, list) and len(reserva) <= MAXIMO_DE_RESERVAS
-                                 and all(isinstance(nome, str) and _PROVEDOR_DA_VOZ.match(nome) for nome in reserva)):
-        return None, (400, "invalid_request")
+    return not isinstance(entradas, list) or not entradas
+
+
+def _frases_demais(corpo):
+    return len(corpo["entries"]) > MAXIMO_DE_FRASES
+
+
+def _frase_da_entrada(entrada):
+    frase = entrada.get("phraseId") if isinstance(entrada, dict) else None
+    if type(frase) is not int or not isinstance(entrada.get("line"), str):
+        return None
+    return {"phraseId": frase, "line": entrada["line"]}
+
+
+def _entrada_que_nao_serve(corpo):
+    return any(_frase_da_entrada(entrada) is None for entrada in corpo["entries"])
+
+
+def _voz_pedida(corpo):
+    tts = corpo.get("tts")
+    return tts if isinstance(tts, dict) else {}
+
+
+def _provedor_de_voz(nome):
+    return isinstance(nome, str) and bool(_PROVEDOR_DA_VOZ.match(nome))
+
+
+def _reserva_que_serve(reserva):
+    return isinstance(reserva, list) and len(reserva) <= MAXIMO_DE_RESERVAS and all(map(_provedor_de_voz, reserva))
+
+
+def _reserva_que_nao_serve(corpo):
+    tts = _voz_pedida(corpo)
+    return "reserva" in tts and not _reserva_que_serve(tts["reserva"])
+
+
+_RECUSAS = (
+    (_sem_id_de_envio, (400, "invalid_job_id")),
+    (_idioma_que_a_conexao_nao_tem, (400, "invalid_lang")),
+    (_baralho_sem_nome_que_sirva, (400, "invalid_request")),
+    (_nivel_que_o_idioma_nao_tem, (400, "invalid_level")),
+    (_teste_que_nao_e_sim_nem_nao, (400, "invalid_request")),
+    (_mapeamento_que_nao_serve, (400, "invalid_mapping")),
+    (_sem_frases, (400, "entries_required")),
+    (_frases_demais, (413, "too_many_entries")),
+    (_entrada_que_nao_serve, (400, "entries_required")),
+    (_reserva_que_nao_serve, (400, "invalid_request")),
+)
+
+
+def _recusa_do_pedido(corpo):
+    return next((recusa for recusa_quando, recusa in _RECUSAS if recusa_quando(corpo)), None)
+
+
+def _frases_sem_repetir(entradas):
+    primeiras = {}
+    for frase in map(_frase_da_entrada, entradas):
+        primeiras.setdefault(frase["phraseId"], frase)
+    return list(primeiras.values())
+
+
+def _voz_guardada(corpo):
+    tts = _voz_pedida(corpo)
+    guardada = {chave: valor for chave, valor in tts.items() if isinstance(valor, str)}
+    if "reserva" in tts:
+        guardada["reserva"] = list(dict.fromkeys(tts["reserva"]))
+    return guardada
+
+
+def _pedido_normalizado(corpo):
+    proprio = _tipo_proprio_pedido(corpo)
     return {
         "jobId": corpo["jobId"],
         "lang": corpo["lang"],
-        "deckName": deck.strip(),
+        "deckName": corpo["deckName"].strip(),
         "imageSource": str(corpo.get("imageSource") or "1"),
-        **({"nivel": nivel} if "nivel" in corpo else {}),
+        **({"nivel": corpo["nivel"]} if "nivel" in corpo else {}),
         **({"tipoProprio": proprio} if proprio else {}),
         **({"teste": True} if corpo.get("teste") else {}),
-        "tts": dict({chave: valor for chave, valor in tts.items() if isinstance(valor, str)},
-                    **({"reserva": list(dict.fromkeys(reserva))} if "reserva" in tts else {})),
-        "entries": limpas,
-    }, None
+        "tts": _voz_guardada(corpo),
+        "entries": _frases_sem_repetir(corpo["entries"]),
+    }
+
+
+def validar_pedido(corpo):
+    """O pedido de `POST /jobs` normalizado, ou (status, erro) se ele não serve. Frases com o mesmo `phraseId` valem uma vez (a primeira)."""
+    recusa = _recusa_do_pedido(corpo)
+    if recusa:
+        return None, recusa
+    return _pedido_normalizado(corpo), None
 
 
 def visao_do_pedido(pedido):

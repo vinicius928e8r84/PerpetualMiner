@@ -31,15 +31,30 @@ function caminhoDe(codigo, de) {
   return caminho;
 }
 
+function exemplosDoContrato(pasta) {
+  const [base, carregador] = ['exemplos.json', 'carregar.js'].map(nome => path.join(pasta, nome));
+  if (!fs.existsSync(base)) return [];
+  if (fs.existsSync(carregador)) return require(carregador).carregar(pasta).exemplos;
+  return JSON.parse(fs.readFileSync(base, 'utf8')).exemplos;
+}
+
 const contratos = new Map();
 function rotasDoContrato(raiz) {
   if (!contratos.has(raiz)) {
-    const pasta = path.join(raiz, 'complemento', 'contrato');
-    const [base, carregador] = ['exemplos.json', 'carregar.js'].map(nome => path.join(pasta, nome));
-    const exemplos = !fs.existsSync(base) ? [] : fs.existsSync(carregador) ? require(carregador).carregar(pasta).exemplos : JSON.parse(fs.readFileSync(base, 'utf8')).exemplos;
+    const exemplos = exemplosDoContrato(path.join(raiz, 'complemento', 'contrato'));
     contratos.set(raiz, new Set(exemplos.filter(e => e.daExtensao === true).map(e => `${e.pedido.metodo} ${e.pedido.caminho}`)));
   }
   return contratos.get(raiz);
+}
+
+const metodoDaChamada = chamada => (/\bmethod\s*:\s*['"](\w+)['"]/i.exec(chamada) || [, 'GET'])[1].toUpperCase();
+
+const rotaVemDeVariavel = rota => rota === '' || rota.startsWith(':id');
+
+function detalheDoFetch(metodo, rota, rotas) {
+  if (rotaVemDeVariavel(rota)) return `fetch direto à Conexão com o caminho vindo de uma variável (${metodo}): o contrato não tem como conferir o pedido`;
+  if (rotas.has(`${metodo} ${rota}`)) return `fetch direto a ${metodo} ${rota}, que o contrato tem: peça por ConversaComOAnki.pedir com o construtor dele`;
+  return `fetch direto a ${metodo} ${rota}: a rota não tem exemplo no contrato (complemento/contrato/exemplos.json)`;
 }
 
 function verificar(arquivo, fonte, raiz = process.cwd()) {
@@ -55,13 +70,7 @@ function verificar(arquivo, fonte, raiz = process.cwd()) {
     const alvo = ENDERECO.exec(chamada);
     if (!alvo) continue;
     const rota = caminhoDe(chamada, alvo.index + alvo[0].length);
-    const metodo = (/\bmethod\s*:\s*['"](\w+)['"]/i.exec(chamada) || [, 'GET'])[1].toUpperCase();
-    const detalhe = rota === '' || rota.startsWith(':id')
-      ? `fetch direto à Conexão com o caminho vindo de uma variável (${metodo}): o contrato não tem como conferir o pedido`
-      : rotas.has(`${metodo} ${rota}`)
-      ? `fetch direto a ${metodo} ${rota}, que o contrato tem: peça por ConversaComOAnki.pedir com o construtor dele`
-      : `fetch direto a ${metodo} ${rota}: a rota não tem exemplo no contrato (complemento/contrato/exemplos.json)`;
-    achados.push({ linha: linhaDe(codigo, m.index), detalhe });
+    achados.push({ linha: linhaDe(codigo, m.index), detalhe: detalheDoFetch(metodoDaChamada(chamada), rota, rotas) });
   }
   return achados;
 }

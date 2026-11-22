@@ -139,6 +139,12 @@ class EnglishPromptGistContractTests(unittest.TestCase):
         )
 
 
+def _cada_nivel():
+    for lang in estilos.idiomas():
+        for nivel in estilos.DADOS["idiomas"][lang]["niveis"]:
+            yield lang, nivel
+
+
 def _prompt_do_nivel(lang, nivel=None):
     return " ".join((ROOT / estilos.estilo(lang, nivel)["prompt"]).read_text(encoding="utf-8").split())
 
@@ -147,38 +153,35 @@ class PromptsPorNivelTests(unittest.TestCase):
     """O contrato dos prompts cobre a saída de cada idioma × nível: a língua da explicação, as partes do verso e as cores."""
 
     def test_cada_nivel_de_cada_idioma_tem_o_seu_prompt_com_o_texto_do_cartao_que_o_nivel_pede(self):
-        for lang in estilos.idiomas():
-            for nivel in estilos.DADOS["idiomas"][lang]["niveis"]:
-                with self.subTest(lang=lang, nivel=nivel):
-                    estilo, prompt = estilos.estilo(lang, nivel), _prompt_do_nivel(lang, nivel)
-                    for parte in estilo["verso"] + estilo.get("guarda", []):
-                        rotulo = estilos.rotulo(parte)
-                        if rotulo:
-                            self.assertRegex(prompt, r"%s: \[" % rotulo, "o prompt não diz como escrever a parte %s" % parte)
-                    self.assertIn("Anki Card", prompt)
-                    self.assertIn("Google Image Search Queries:", prompt)
+        for lang, nivel in _cada_nivel():
+            with self.subTest(lang=lang, nivel=nivel):
+                estilo, prompt = estilos.estilo(lang, nivel), _prompt_do_nivel(lang, nivel)
+                for parte in estilo["verso"] + estilo.get("guarda", []):
+                    rotulo = estilos.rotulo(parte)
+                    if rotulo:
+                        self.assertRegex(prompt, r"%s: \[" % rotulo, "o prompt não diz como escrever a parte %s" % parte)
+                self.assertIn("Anki Card", prompt)
+                self.assertIn("Google Image Search Queries:", prompt)
 
     def test_o_nivel_com_cores_pede_o_alinhamento_com_os_pedacos_copiados_ao_pe_da_letra_da_literal(self):
-        for lang in estilos.idiomas():
-            for nivel in estilos.DADOS["idiomas"][lang]["niveis"]:
-                if not estilos.estilo(lang, nivel)["cores"]:
-                    continue
-                with self.subTest(lang=lang, nivel=nivel):
-                    prompt = _prompt_do_nivel(lang, nivel)
-                    self.assertRegex(prompt, r"Alignment: 1 \| \[[^]]+\] \| \[[^]]+\]")
-                    self.assertRegex(prompt, r"Portuguese chunk[^.]*MUST be copied verbatim from the Literal line")
+        for lang, nivel in _cada_nivel():
+            if not estilos.estilo(lang, nivel)["cores"]:
+                continue
+            with self.subTest(lang=lang, nivel=nivel):
+                prompt = _prompt_do_nivel(lang, nivel)
+                self.assertRegex(prompt, r"Alignment: 1 \| \[[^]]+\] \| \[[^]]+\]")
+                self.assertRegex(prompt, r"Portuguese chunk[^.]*MUST be copied verbatim from the Literal line")
 
     def test_a_explicacao_em_portugues_proibe_explicar_em_ingles_e_so_as_buscas_de_imagem_ficam_em_ingles(self):
-        for lang in estilos.idiomas():
-            for nivel in estilos.DADOS["idiomas"][lang]["niveis"]:
-                if estilos.estilo(lang, nivel)["explicacao"] != "pt":
-                    continue
-                with self.subTest(lang=lang, nivel=nivel):
-                    prompt = _prompt_do_nivel(lang, nivel)
-                    self.assertIn("Brazilian Portuguese", prompt)
-                    self.assertNotIn("100% in ENGLISH", prompt)
-                    self.assertNotIn("NEVER translate to Portuguese", prompt)
-                    self.assertRegex(prompt, r"(?i)never (write|explain)[^.]*in English")
+        for lang, nivel in _cada_nivel():
+            if estilos.estilo(lang, nivel)["explicacao"] != "pt":
+                continue
+            with self.subTest(lang=lang, nivel=nivel):
+                prompt = _prompt_do_nivel(lang, nivel)
+                self.assertIn("Brazilian Portuguese", prompt)
+                self.assertNotIn("100% in ENGLISH", prompt)
+                self.assertNotIn("NEVER translate to Portuguese", prompt)
+                self.assertRegex(prompt, r"(?i)never (write|explain)[^.]*in English")
 
     def test_o_iniciante_do_russo_parte_do_cartao_de_russo_de_hoje_traduzido_para_o_portugues(self):
         hoje = " ".join(RU_PROMPT.read_text(encoding="utf-8").split())
