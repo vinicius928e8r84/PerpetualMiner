@@ -6,25 +6,34 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { NOME_DO_CHECK, PRIMEIRA_PR_COBRADA, cobranca, situacaoDoCheck, conferir } = require('./codescene-na-refatoracao');
+const { NOME_DO_CHECK, PRIMEIRA_PR_COBRADA, cobranca, liberacaoDoDono, situacaoDoCheck, conferir } = require('./codescene-em-toda-pr');
 const { lerYaml } = require('../yaml-de-workflow.js');
 
 const RAIZ = path.resolve(__dirname, '..', '..');
-const SCRIPT = path.join(__dirname, 'codescene-na-refatoracao.js');
+const SCRIPT = path.join(__dirname, 'codescene-em-toda-pr.js');
 const HEAD = 'a'.repeat(40);
 
 let total = 0;
 const prova = (achado, esperado, porque) => { assert.deepStrictEqual(achado, esperado, porque); total++; };
 
-const pr = (numero, titulo, rotulos = []) => ({ numero, titulo, rotulos, head: HEAD });
+const pr = (numero, corpo = '') => ({ numero, corpo, head: HEAD });
+const LIBERACAO = `Liberação do dono (CodeScene): ${HEAD.slice(0, 7)} — o CodeScene está fora do ar`;
 const check = (id, status, conclusion = null) => ({ id, name: NOME_DO_CHECK, status, conclusion, app: 'codescene-local' });
 
-prova(PRIMEIRA_PR_COBRADA, 639, 'a cobrança começa na PR #639, a primeira de refatoração depois da ordem do dono');
-prova(cobranca(pr(638, 'A Fila sai de envio.py (CodeScene, Onda 1)')).cobra, false, 'a PR anterior à #639 fica isenta, mesmo de refatoração');
-prova(cobranca(pr(639, 'A Fila sai de envio.py (CodeScene, Onda 1)')).cobra, true, 'a #639 com "CodeScene" no título é cobrada');
-prova(cobranca(pr(700, 'Refatoração do painel de envio')).cobra, true, '"refatora" no título também marca a PR de refatoração');
-prova(cobranca(pr(700, 'O painel lembra o baralho', ['refatoracao'])).cobra, true, 'o rótulo refatoracao também marca');
-prova(cobranca(pr(700, 'O painel lembra o baralho', ['bug'])).cobra, false, 'a PR de produto que não é refatoração não é cobrada');
+prova(PRIMEIRA_PR_COBRADA, 639, 'o corte continua na #639: as PRs anteriores seguem isentas');
+prova(cobranca(pr(638)).cobra, false, 'a PR anterior à #639 fica isenta');
+prova(cobranca(pr(639)).cobra, true, 'a #639, sem nada de refatoração, é cobrada');
+prova(cobranca(pr(757)).cobra, true, 'a PR comum depois do corte é cobrada, com título e rótulo quaisquer');
+prova([cobranca(pr(757, `Texto da PR\n\n${LIBERACAO}\n`)).cobra, /liberação do dono/.test(cobranca(pr(757, LIBERACAO)).motivo)], [false, true], 'a liberação do dono para o head desta PR a isenta, dizendo por quê');
+
+prova(liberacaoDoDono(LIBERACAO, HEAD), true, 'a linha com o head abreviado libera');
+prova(liberacaoDoDono(`liberação do dono (codescene): ${HEAD}`, HEAD), true, 'o head inteiro, sem maiúsculas, também');
+prova(liberacaoDoDono('', HEAD), false, 'sem a linha não há liberação');
+prova(liberacaoDoDono(`Liberação do dono (CodeScene): ${'b'.repeat(7)}`, HEAD), false, 'a liberação de outro head não vale: um push novo a perde');
+prova(liberacaoDoDono('Liberação do dono (CodeScene): aaaaaa', HEAD), false, 'seis dígitos não bastam para dizer qual head');
+prova(liberacaoDoDono(`Liberação do dono (CodeScene): ${HEAD.slice(0, 7)}`, HEAD), true, 'o head abreviado sem motivo vale');
+prova(liberacaoDoDono(`Veja a Liberação do dono (CodeScene): ${HEAD.slice(0, 7)}`, HEAD), false, 'a linha tem de começar pela liberação, não citá-la no meio de uma frase');
+prova(liberacaoDoDono(`Liberação do dono (CodeScene): ${HEAD.slice(0, 7)}`, 'c'.repeat(40)), false, 'outro head, mesmo com o corpo igual');
 
 prova(situacaoDoCheck([]), { estado: 'ausente' }, 'sem o check no head: ausente');
 prova(situacaoDoCheck([{ ...check(1, 'completed', 'success'), name: 'Regras de revisão' }]), { estado: 'ausente' }, 'outro check não conta');
@@ -60,33 +69,47 @@ function portasCom(respostas) {
 }
 
 async function provarAEspera() {
-  const DE_REFATORACAO = pr(642, 'A fábrica de closures vira classe (CodeScene, onda 3)');
+  const COMUM = pr(757);
 
   let { portas, relogio } = portasCom([[check(1, 'completed', 'success')]]);
-  let r = await conferir(DE_REFATORACAO, portas, 600);
+  let r = await conferir(COMUM, portas, 600);
   prova([r.ok, relogio.lidas], [true, 1], `o check em success passa na primeira leitura: ${r.mensagem}`);
 
   ({ portas, relogio } = portasCom([[check(1, 'completed', 'failure')]]));
-  r = await conferir(DE_REFATORACAO, portas, 600);
+  r = await conferir(COMUM, portas, 600);
   prova([r.ok, /está em failure, não em success/.test(r.mensagem)], [false, true], `o check reprovado reprova o job: ${r.mensagem}`);
 
   ({ portas, relogio } = portasCom([[], [check(1, 'in_progress')], [check(1, 'completed', 'success')]]));
-  r = await conferir(DE_REFATORACAO, portas, 600);
+  r = await conferir(COMUM, portas, 600);
   prova([r.ok, relogio.lidas, relogio.agora, relogio.avisos.length], [true, 3, 40000, 2],
     `o job que roda antes do CodeScene espera ele reportar e terminar: ${r.mensagem}`);
 
   ({ portas, relogio } = portasCom([[]]));
-  r = await conferir(DE_REFATORACAO, portas, 600);
+  r = await conferir(COMUM, portas, 600);
   prova([r.ok, /ainda não reportou em 600 s/.test(r.mensagem), relogio.agora], [false, true, 600000],
     `o check que nunca chega falha no prazo, sem passar em silêncio e sem esperar para sempre: ${r.mensagem}`);
 
+  prova(r.mensagem.includes('Liberação do dono (CodeScene): <head>'), true, `a falha diz como o dono libera a PR: ${r.mensagem}`);
+
   ({ portas, relogio } = portasCom([[check(1, 'queued')]]));
-  r = await conferir(DE_REFATORACAO, portas, 60);
+  r = await conferir(COMUM, portas, 60);
   prova([r.ok, /ainda não terminou em 60 s/.test(r.mensagem)], [false, true], `o check que não termina também falha no prazo: ${r.mensagem}`);
 
   ({ portas, relogio } = portasCom([[check(1, 'completed', 'failure')]]));
-  r = await conferir(pr(638, 'TESTE CodeScene'), portas, 600);
-  prova([r.ok, relogio.lidas], [true, 0], 'a PR isenta nem lê os checks');
+  r = await conferir(pr(638), portas, 600);
+  prova([r.ok, relogio.lidas], [true, 0], 'a PR anterior ao corte nem lê os checks');
+
+  ({ portas, relogio } = portasCom([[check(1, 'completed', 'failure')]]));
+  r = await conferir(pr(757, LIBERACAO), portas, 600);
+  prova([r.ok, relogio.lidas, /liberação do dono/.test(r.mensagem)], [true, 0, true], `a liberação do dono passa mesmo com o check vermelho: ${r.mensagem}`);
+
+  ({ portas, relogio } = portasCom([[]]));
+  r = await conferir(pr(757, LIBERACAO), portas, 600);
+  prova([r.ok, relogio.agora], [true, 0], 'com o CodeScene fora do ar, a liberação passa sem esperar os dez minutos');
+
+  ({ portas, relogio } = portasCom([[check(1, 'completed', 'failure')]]));
+  r = await conferir(pr(757, `Liberação do dono (CodeScene): ${'b'.repeat(7)}`), portas, 600);
+  prova([r.ok, relogio.lidas], [false, 1], 'a liberação de um head antigo não vale para o head de agora');
 }
 
 function rodarComGhFalso(saidaDoGh, env = {}) {
@@ -98,7 +121,7 @@ function rodarComGhFalso(saidaDoGh, env = {}) {
     encoding: 'utf8',
     env: {
       PATH: `${pasta}:${process.env.PATH}`, GH_TOKEN: 'segredo-do-token', GITHUB_REPOSITORY: 'dono/repo', PM_PRAZO_CODESCENE_S: '0',
-      PR_NUMERO: '650', PR_TITULO: 'O resumo sai do painel (CodeScene, Onda 1)', PR_ROTULOS: '[]', PR_HEAD: HEAD, ...env,
+      PR_NUMERO: '650', PR_CORPO: 'Texto da PR', PR_HEAD: HEAD, ...env,
     },
   });
   const chamadas = fs.existsSync(path.join(pasta, 'chamadas')) ? fs.readFileSync(path.join(pasta, 'chamadas'), 'utf8') : '';
@@ -121,6 +144,12 @@ function provarOComando() {
   prova([r.status, /PR_HEAD não é um SHA inteiro/.test(r.saida), r.chamadas], [1, true, ''], `ambiente errado é erro, não passe: ${r.saida}`);
   r = rodarComGhFalso('exit 1', { PR_NUMERO: '600' });
   prova([r.status, /isenta/.test(r.saida)], [0, true], `a PR anterior à #639 passa sem perguntar: ${r.saida}`);
+  r = rodarComGhFalso(sucesso, { PR_TITULO: 'Ajusta o rótulo do botão', PR_NUMERO: '700' });
+  prova([r.status, r.chamadas.includes('check-runs')], [0, true], `a PR comum, sem "CodeScene" nem "refatora" no título, também é cobrada: ${r.saida}`);
+  r = rodarComGhFalso(`echo '${JSON.stringify(check(9, 'completed', 'failure'))}'`, { PR_NUMERO: '700' });
+  prova(r.status, 1, `a PR comum com o check vermelho é barrada: ${r.saida}`);
+  r = rodarComGhFalso('exit 1', { PR_NUMERO: '700', PR_CORPO: `Texto\n\n${LIBERACAO}` });
+  prova([r.status, /liberação do dono/.test(r.saida), r.chamadas], [0, true, ''], `a liberação do dono, pelo comando, passa sem perguntar ao GitHub: ${r.saida}`);
   r = rodarComGhFalso(sucesso, { PR_NUMERO: '64a' });
   prova([r.status, /PR_NUMERO inválido/.test(r.saida)], [1, true], `número da PR inválido é erro: ${r.saida}`);
 }
@@ -128,18 +157,18 @@ function provarOComando() {
 function provarOWorkflow() {
   const workflow = lerYaml(fs.readFileSync(path.join(RAIZ, '.github', 'workflows', 'regras.yml'), 'utf8'));
   const job = workflow.jobs.regras;
-  const passo = job.steps.find(p => p.name === 'CodeScene na refatoração');
+  const passo = job.steps.find(p => p.name === 'CodeScene em toda PR');
   prova(Boolean(passo), true, 'o passo está no job "Regras de revisão": sem ele, a regra não vale');
   prova(job.name, 'Regras de revisão', 'no job obrigatório');
-  prova(passo.run, 'node scripts/ci/codescene-na-refatoracao.js', 'roda o script, sem nada da PR no comando');
+  prova(passo.run, 'node scripts/ci/codescene-em-toda-pr.js', 'roda o script, sem nada da PR no comando');
   prova(/github\.event_name == 'pull_request'/.test(passo.if) && /!cancelled\(\)/.test(passo.if), true, 'em toda PR, mesmo depois de outro passo falhar');
   prova(Object.fromEntries(Object.entries(passo.env)), {
     GH_TOKEN: '${{ github.token }}',
     PR_NUMERO: '${{ github.event.pull_request.number }}',
-    PR_TITULO: '${{ github.event.pull_request.title }}',
-    PR_ROTULOS: '${{ toJSON(github.event.pull_request.labels.*.name) }}',
+    PR_CORPO: '${{ github.event.pull_request.body }}',
     PR_HEAD: '${{ github.event.pull_request.head.sha }}',
-  }, 'o título e os rótulos vão pelo ambiente, e o head é o da PR');
+  }, 'o corpo (onde mora a liberação do dono) vai pelo ambiente, e o head é o da PR');
+  prova(passo.if.includes("github.event_name == 'pull_request'") && workflow.on.pull_request.types.includes('edited'), true, 'editar o corpo da PR (a liberação do dono) roda o passo de novo');
   prova(workflow.permissions.checks, 'read', 'o token do job lê os checks');
   prova(job['timeout-minutes'] >= 12, true, 'o job dá tempo para os 10 minutos de espera');
 }
@@ -147,5 +176,5 @@ function provarOWorkflow() {
 provarAEspera().then(() => {
   provarOComando();
   provarOWorkflow();
-  console.log(`codescene-na-refatoracao: ${total} provas passaram`);
+  console.log(`codescene-em-toda-pr: ${total} provas passaram`);
 }, erro => { console.error(erro); process.exit(1); });
