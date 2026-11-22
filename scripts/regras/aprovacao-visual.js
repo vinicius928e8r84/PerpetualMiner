@@ -35,6 +35,10 @@ function lerEntradas(raiz, spec) {
 
 const entradaValida = e => e && /^\d{4}-\d{2}-\d{2}$/.test(e.data || '') && typeof e.resposta === 'string' && e.resposta.trim() !== '';
 
+const detalheDaReferencia = (nome, spec, entrada) => (entrada
+  ? `${nome} tem entrada em ${LIVRO}/${spec}.json sem data (AAAA-MM-DD) ou sem a resposta do dono`
+  : `a referência ${nome} não tem entrada em ${LIVRO}/${spec}.json (aprovação do dono)`);
+
 function verificar(arquivo, fonte, raiz) {
   const pasta = path.join(raiz, `${arquivo}-snapshots`);
   if (!fs.existsSync(pasta)) return [];
@@ -45,14 +49,7 @@ function verificar(arquivo, fonte, raiz) {
   for (const png of fs.readdirSync(pasta).filter(f => f.endsWith('.png')).sort()) {
     const nome = png.replace(/-(?:linux|darwin|win32)\.png$/, '.png');
     if (emFixme.has(nome)) continue;
-    if (!entradaValida(aprovados[nome])) {
-      achados.push({
-        linha: 1,
-        detalhe: aprovados[nome]
-          ? `${nome} tem entrada em ${LIVRO}/${spec}.json sem data (AAAA-MM-DD) ou sem a resposta do dono`
-          : `a referência ${nome} não tem entrada em ${LIVRO}/${spec}.json (aprovação do dono)`,
-      });
-    }
+    if (!entradaValida(aprovados[nome])) achados.push({ linha: 1, detalhe: detalheDaReferencia(nome, spec, aprovados[nome]) });
   }
   return achados;
 }

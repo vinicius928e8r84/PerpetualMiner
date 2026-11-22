@@ -70,11 +70,14 @@ function conferir(raiz, head) {
   }
 }
 
+const pedeAjuda = args => ['--help', '-h'].some(bandeira => args.includes(bandeira));
+const temHeadDemais = args => args.length > 1;
+
 if (require.main === module) {
   const args = process.argv.slice(2);
-  if (args.includes('--help') || args.includes('-h') || args.length > 1) {
+  if (pedeAjuda(args) || temHeadDemais(args)) {
     console.log(USO);
-    process.exit(args.length > 1 ? 2 : 0);
+    process.exit(temHeadDemais(args) ? 2 : 0);
   }
   const raiz = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
   const { ok, linha } = conferir(raiz, args[0] || 'HEAD');

@@ -23,10 +23,12 @@ function combinacoes(matriz) {
   return saida;
 }
 
+const semValoresDeMatriz = combinados => combinados.every(valores => !Object.keys(valores).length);
+
 function nomesDoJob(id, job) {
   const nome = job.name || id;
   const combinados = combinacoes(job.strategy && job.strategy.matrix);
-  if (!combinados.length || (combinados.length === 1 && !Object.keys(combinados[0]).length)) return [nome];
+  if (semValoresDeMatriz(combinados)) return [nome];
   return combinados.map(valores => {
     if (/\$\{\{\s*matrix\./.test(nome)) return nome.replace(/\$\{\{\s*matrix\.([\w-]+)\s*\}\}/g, (_, chave) => valores[chave]);
     return `${nome} (${Object.values(valores).join(', ')})`;
