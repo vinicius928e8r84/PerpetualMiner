@@ -27,18 +27,7 @@
     "scripts/com.perpetualminer.atualizar.plist.exemplo": 1,
     "scripts/preparar-python.sh": 1
   },
-  "aprovacao-visual": {
-    "e2e/tests/boas-vindas-visual.spec.js": 15,
-    "e2e/tests/configuracoes-visual.spec.js": 14,
-    "e2e/tests/minerar-foto-visual.spec.js": 15,
-    "e2e/tests/overlay-visual.spec.js": 11,
-    "e2e/tests/painel-anki-baralhos-visual.spec.js": 10,
-    "e2e/tests/painel-anki-visual.spec.js": 5,
-    "e2e/tests/painel-envio-visual.spec.js": 4,
-    "e2e/tests/painel-frases-visual.spec.js": 23,
-    "e2e/tests/painel-shell-visual.spec.js": 5,
-    "e2e/tests/popup-visual.spec.js": 9
-  },
+  "aprovacao-visual": {},
   "relogio-fora-da-fixture": {},
   "versoes-publicadas": {},
   "link-de-doc": {},
@@ -69,10 +58,8 @@
     "complemento/openai_api.py": 4,
     "complemento/pareamento.py": 18,
     "complemento/passagem_das_copias.py": 15,
-    "complemento/pedido_do_envio.py": 27,
     "complemento/previa_do_cartao.py": 11,
     "complemento/retencao_dos_envios.py": 7,
-    "complemento/rotas_da_chave.py": 17,
     "complemento/rotas_da_voz.py": 4,
     "complemento/rotas_do_pareamento.py": 5,
     "complemento/servidor.py": 30,
@@ -196,11 +183,8 @@
     "testes/test_abridor.js": 22,
     "testes/test_apagar_frases_pendente.js": 3,
     "testes/test_aviso_da_versao.js": 3,
-    "testes/test_envio_acompanhado.js": 3,
     "testes/test_estado_do_envio.js": 5,
-    "testes/test_fake_anki.js": 20,
     "testes/test_preview.js": 4,
-    "testes/test_primeira_conexao.js": 13,
-    "testes/test_verificar_envio.js": 13
+    "testes/test_primeira_conexao.js": 13
   }
 }

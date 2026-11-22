@@ -24,9 +24,10 @@ O check "Registro da PR" (.github/workflows/registro-da-pr.yml, scripts/ci/regis
    Head: <SHA inteiro do head>
    Autor: <quem escreveu a mudança>
    Revisor: <quem revisou, que não é o autor>
+   Risco: <BAIXA, MÉDIA ou ALTA: o risco que o revisor viu, que pode não ser a atenção do corpo>
 
    Vale o registro mais recente com a linha "Head:" deste head. Um comentário não dispara o check: publique com
-   `node scripts/ci/registrar-na-pr.js revisao`, que lê o head no GitHub e roda o check de novo.
+   `node scripts/ci/registrar-na-pr.js revisao --risco baixa|media|alta`, que lê o head no GitHub e roda o check de novo.
 
    Um head novo que é só merge limpo da main sobre o head revisado (cada commit novo da branch é um merge da main, sem
    conflito resolvido à mão nem mudança dentro do merge; scripts/ci/so-merge-da-main.js) não pede revisão nova: vale o
@@ -34,15 +35,17 @@ O check "Registro da PR" (.github/workflows/registro-da-pr.yml, scripts/ci/regis
    (ou quando a main trouxer algo de que a PR precise); a main andar não é motivo, o check não exige a branch em dia.
    A seção "Prova real" (item 3) continua valendo só para o head exato.
 
-3. Com Atenção ALTA (ou o rótulo `risco:alto`), o corpo tem também a seção abaixo, com o que foi provado no produto
-   de verdade e como:
+3. Com Atenção ALTA, com o Risco ALTA do registro do /code-review (vale a maior das duas: o corpo MÉDIA com o revisor
+   ALTA pede a prova) ou com o rótulo `risco:alto`, o corpo tem também a seção abaixo, com o que foi provado no produto
+   de verdade e como. A seção que diz NÃO COBERTO (ou NAO COBERTO) ou BLOQUEADA não vale, mesmo com a frase; a prova que
+   não cobriu tudo usa `--cobertura parcial`, que escreve BLOQUEADA-Mac-Windows no lugar da frase:
 
    ## Prova real
 
    PROVADO 100% REAL
    Head: <SHA inteiro do head>
 
-   `node scripts/ci/registrar-na-pr.js prova` escreve a seção com o head lido no GitHub.
+   `node scripts/ci/registrar-na-pr.js prova --cobertura total` escreve a seção com o head lido no GitHub.
 
 4. O corpo diz a issue da PR, em linhas sozinhas:
 

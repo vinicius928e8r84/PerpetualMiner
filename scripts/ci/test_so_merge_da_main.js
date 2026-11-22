@@ -74,7 +74,7 @@ try {
   git('commit', '-q', '-m', 'Merge origin/main');
   assert.strictEqual(vale(conflitoNaPr, git('rev-parse', 'HEAD')), false, 'o merge com conflito resolvido à mão');
 
-  const REGISTRO = head => `## Code review\n\nVeredito: CLEAN\nHead: ${head}\nAutor: a\nRevisor: b`;
+  const REGISTRO = head => `## Code review\n\nVeredito: CLEAN\nHead: ${head}\nAutor: a\nRevisor: b\nRisco: BAIXA`;
   const CORPO = ['## Summary', '', 'Sem issue', '', '## Evidence', '', '## Merge Danger', '', 'Door: two-way', 'Blast Radius: CI', 'Política: sem mudança', 'Atenção: BAIXA'].join('\n');
   const pedidos = [];
   global.fetch = async url => {

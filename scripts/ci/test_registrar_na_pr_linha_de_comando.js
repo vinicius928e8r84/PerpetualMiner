@@ -68,11 +68,11 @@ function rodador(servidor, pedidos) {
 const USO = /^uso: node scripts\/ci\/registrar-na-pr\.js <comando>[^]*e 2 no erro de uso ou do GitHub\.\n$/;
 const LEITURA = ['GET /repos/dono/repo/pulls/7 Bearer t', 'GET /repos/dono/repo/issues/7/comments Bearer t', 'GET /repos/dono/repo/pulls/7/reviews Bearer t'];
 const CONSERTO = [
-  '  Conserto: o formato de cada parte está em .github/PULL_REQUEST_TEMPLATE.md. O que está em comentário de HTML, em bloco de código ou em citação não conta.',
+  '  Conserto: o formato de cada parte está em .github/PULL_REQUEST_TEMPLATE.md. O que está em comentário de HTML, em bloco de código ou em citação não conta; na seção "Prova real", a parte não coberta ou bloqueada conta também no código e na citação.',
   '  O corpo se confere antes de abrir a PR ou de editá-lo, sem o GitHub: node scripts/ci/corpo-da-pr.js <arquivo do corpo>',
   '  O registro do /code-review e a prova com o head lido do GitHub (e o check rodando de novo): node scripts/ci/registrar-na-pr.js --help',
 ];
-const SEM_REVISAO = '    - nenhum comentário ou revisão da PR é o registro do /code-review (as linhas "Veredito: CLEAN", "Head: <SHA>", "Autor:" e "Revisor:")';
+const SEM_REVISAO = '    - nenhum comentário ou revisão da PR é o registro do /code-review (as linhas "Veredito: CLEAN", "Head: <SHA>", "Autor:", "Revisor:" e "Risco:")';
 const SEM_PROVA = '    - atenção ALTA: o corpo não tem a seção "Prova real"';
 const NAO_VALE = `✗ O registro da PR não vale para o head ${HEAD}:`;
 const SEM_EXECUCAO = '  O check "Registro da PR" não tem execução neste head, e um comentário não cria uma. Se a PR acabou de receber um commit ou uma edição, '
@@ -91,7 +91,9 @@ async function conferirOsErrosDeUso(rodar) {
     [['conferir', '--pr', '7', '--veredito'], '--veredito precisa de um valor'], [['conferir', '--pr', '7', 'repo', 'x'], 'opção desconhecida: repo'],
     [['conferir', '--pr', '7', '-repo', 'x'], 'opção desconhecida: -repo'], [['conferir', '--pr', '7', '++repo', 'x'], 'opção desconhecida: ++repo'],
     [['conferir', '--pr', 'sete'], '--pr <número> é obrigatório'],
-    [['revisao', '--pr', '7', '--head', HEAD, '--autor', ' ', '--revisor', 'b'], 'revisao pede --autor'], [['-x'], 'comando desconhecido: -x'],
+    [['revisao', '--pr', '7', '--head', HEAD, '--autor', ' ', '--revisor', 'b'], 'revisao pede --autor, --risco'], [['-x'], 'comando desconhecido: -x'],
+    [['revisao', '--pr', '7', '--head', HEAD, '--autor', 'a', '--revisor', 'b', '--risco', 'urgente'], '--risco é baixa, media, alta; veio "urgente"'],
+    [['prova', '--pr', '7', '--head', HEAD, '--cobertura', 'quase', '--nota', 'x'], '--cobertura é total, parcial; veio "quase"'],
   ]) {
     const errado = await rodar(args);
     assert.deepStrictEqual([errado.status, errado.pedidos], [2, []], args.join(' '));
@@ -103,7 +105,7 @@ async function conferirOsErrosDeUso(rodar) {
 }
 
 async function conferirAsSaidas(rodar, nota) {
-  const PROVA = ['prova', '--pr', '7', '--head', HEAD, '--nota', nota];
+  const PROVA = ['prova', '--pr', '7', '--head', HEAD, '--cobertura', 'total', '--nota', nota];
   const depoisDaProva = ['Com isso publicado, o check diz:', NAO_VALE, SEM_REVISAO, ...CONSERTO, ''];
   assert.deepStrictEqual(await rodar(PROVA), {
     status: 1, stdout: linhas('A seção que entra no corpo da PR 7 (ensaio: nada foi publicado; repita com --publicar):', '', recuada(SECAO), '', ...depoisDaProva), pedidos: LEITURA,
@@ -113,8 +115,8 @@ async function conferirAsSaidas(rodar, nota) {
     stdout: linhas('A seção que entra no corpo da PR 7:', '', recuada(SECAO), '', 'Corpo gravado (a edição do corpo dispara o check).', ...depoisDaProva),
     pedidos: [...LEITURA, `PATCH /repos/dono/repo/pulls/7 Bearer t ${JSON.stringify({ body: `${ALTA.trimEnd()}\n\n${SECAO}\n` })}`],
   }, 'a prova publicada');
-  const registro = linhas('Registro do /code-review', '', 'Veredito: CLEAN', `Head: ${HEAD}`, 'Autor: a', 'Revisor: b');
-  assert.deepStrictEqual(await rodar(['revisao', '--pr', '7', '--head', ` ${HEAD.toUpperCase()} `, '--autor', 'a', '--revisor', 'b']), {
+  const registro = linhas('Registro do /code-review', '', 'Veredito: CLEAN', `Head: ${HEAD}`, 'Autor: a', 'Revisor: b', 'Risco: MÉDIA');
+  assert.deepStrictEqual(await rodar(['revisao', '--pr', '7', '--head', ` ${HEAD.toUpperCase()} `, '--autor', 'a', '--revisor', 'b', '--risco', 'Média']), {
     status: 1,
     stdout: linhas('O comentário da PR 7 (ensaio: nada foi publicado; repita com --publicar):', '', recuada(registro), '', 'Com isso publicado, o check diz:', NAO_VALE, SEM_PROVA, ...CONSERTO, SEM_EXECUCAO, ''),
     pedidos: [...LEITURA, 'GET /repos/dono/repo/actions/workflows/registro-da-pr.yml/runs Bearer t'],
@@ -123,7 +125,7 @@ async function conferirAsSaidas(rodar, nota) {
   const pedidosDoConferir = token => [...LEITURA, 'GET /repos/dono/repo/actions/workflows/registro-da-pr.yml/runs Bearer t'].map(pedido => pedido.replace('Bearer t', `Bearer ${token}`));
   assert.deepStrictEqual(await rodar(['conferir', '--pr', '7', '--repo', 'dono/repo'], { env: { GITHUB_REPOSITORY: '' } }), { status: 1, stdout: conferida, pedidos: pedidosDoConferir('t') }, '--repo');
   assert.deepStrictEqual(await rodar(['conferir', '--pr', '7'], { env: { GITHUB_TOKEN: '', GH_TOKEN: 'g' } }), { status: 1, stdout: conferida, pedidos: pedidosDoConferir('g') }, 'o token do GH_TOKEN');
-  const semNota = await rodar(['prova', '--pr', '7', '--head', HEAD, '--nota', `${nota}.falta`]);
+  const semNota = await rodar(['prova', '--pr', '7', '--head', HEAD, '--cobertura', 'total', '--nota', `${nota}.falta`]);
   assert.deepStrictEqual(semNota, { status: 2, stdout: `✗ ENOENT: no such file or directory, open '${nota}.falta'\n`, pedidos: [] }, 'a nota que não existe');
 }
 
