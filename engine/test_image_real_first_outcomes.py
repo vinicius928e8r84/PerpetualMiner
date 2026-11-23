@@ -230,7 +230,8 @@ class RealFirstOutcomes(unittest.TestCase):
         seen = []
 
         def rank_candidates(**kwargs):
-            seen.append((kwargs["mode"], kwargs["keyword"], kwargs["phrase"], kwargs["context"], kwargs["model"], len(kwargs["candidates"])))
+            card, judge = kwargs["card"], kwargs["judge"]
+            seen.append((kwargs["mode"], card.keyword, card.phrase, card.context, judge.model, len(kwargs["candidates"])))
             return _judge(30, dict(_compare(1, 40, 90), error="timeout"), real_error="invalid_image_format")(**kwargs)
 
         _, _, _, (record,) = self.choose(Scenario(judge=rank_candidates))

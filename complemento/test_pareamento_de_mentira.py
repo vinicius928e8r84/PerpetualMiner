@@ -5,6 +5,7 @@ Os testes pedem à Conexão como a extensão pede: com a assinatura de um navega
 """
 
 import base64
+import dataclasses
 import json
 import os
 import unittest
@@ -41,18 +42,45 @@ class Contador:
         return NONCE % self.vez
 
 
+class NonceFixo:
+    def __init__(self, nonce):
+        self.nonce = nonce
+
+    def proximo(self):
+        return self.nonce
+
+
 _NONCES = Contador()
 
 
-def cabecalhos_assinados(sessao, metodo, caminho, corpo=b"", cliente=CLIENTE, segredo=SEGREDO, nonce=None):
-    """Os cabeçalhos que a extensão põe num pedido: o navegador, a sessão provada, um nonce novo e a assinatura."""
-    nonce = nonce or _NONCES.proximo()
-    return {
-        pareamento.CABECALHO_DO_CLIENTE: cliente,
-        pareamento.CABECALHO_DA_SESSAO: sessao,
-        pareamento.CABECALHO_DO_NONCE: nonce,
-        pareamento.CABECALHO_DA_ASSINATURA: pareamento.assinatura_do_pedido(segredo, sessao, nonce, metodo, caminho, corpo),
-    }
+@dataclasses.dataclass(frozen=True)
+class Navegador:
+    """Um navegador pareado: quem ele diz ser, o segredo que assina por ele e de onde vem o nonce de cada pedido."""
+
+    cliente: str
+    segredo: bytes
+    nonces: object = _NONCES
+
+    def com_nonce(self, nonce):
+        return dataclasses.replace(self, nonces=NonceFixo(nonce))
+
+    def assinar(self, sessao, metodo, caminho, corpo=b""):
+        """Os cabeçalhos que a extensão põe num pedido: o navegador, a sessão provada, um nonce novo e a assinatura."""
+        nonce = self.nonces.proximo()
+        return {
+            pareamento.CABECALHO_DO_CLIENTE: self.cliente,
+            pareamento.CABECALHO_DA_SESSAO: sessao,
+            pareamento.CABECALHO_DO_NONCE: nonce,
+            pareamento.CABECALHO_DA_ASSINATURA: pareamento.assinatura_do_pedido(self.segredo, sessao, nonce, metodo, caminho, corpo),
+        }
+
+
+PRIMEIRO = Navegador(CLIENTE, SEGREDO)
+SEGUNDO = Navegador(OUTRO_CLIENTE, OUTRO_SEGREDO)
+
+
+def cabecalhos_assinados(sessao, metodo, caminho, corpo=b""):
+    return PRIMEIRO.assinar(sessao, metodo, caminho, corpo)
 
 
 class TelaDeMentira:
@@ -126,7 +154,7 @@ def ao_carregar_pareado(anki, pasta, **palavras):
     return no_anki.ao_carregar(anki, pasta, **palavras)
 
 
-def pedir_como_a_extensao(porta, metodo, caminho, corpo=None, origem=None, cabecalhos=None):
+def pedir_como_a_extensao(porta, metodo, caminho, corpo=None):
     """Um pedido assinado a uma Conexão na `porta`, como a extensão o faz: primeiro o `conferir` (que dá a sessão), depois o pedido.
 
     Devolve (status, cabeçalhos, bytes). Serve às provas que sobem a Conexão por `inicio.iniciar` ou `no_anki.ao_carregar`, que
@@ -139,7 +167,7 @@ def pedir_como_a_extensao(porta, metodo, caminho, corpo=None, origem=None, cabec
     def enviar(metodo_, caminho_, corpo_, extras):
         ligacao = http.client.HTTPConnection("127.0.0.1", porta, timeout=10)
         try:
-            enviados = {"Origin": origem or configuracao.ORIGENS_ACEITAS[0], **extras}
+            enviados = {"Origin": configuracao.ORIGENS_ACEITAS[0], **extras}
             if corpo_ is not None:
                 enviados["Content-Type"] = "application/json"
             ligacao.request(metodo_, caminho_, body=corpo_, headers=enviados)
@@ -152,7 +180,6 @@ def pedir_como_a_extensao(porta, metodo, caminho, corpo=None, origem=None, cabec
     sessao = json.loads(lido)["sessao"]
     bruto = None if corpo is None else (corpo if isinstance(corpo, bytes) else json.dumps(corpo).encode("utf-8"))
     extras = cabecalhos_assinados(sessao, metodo, caminho, bruto or b"")
-    extras.update(cabecalhos or {})
     return enviar(metodo, caminho, bruto, extras)
 
 
@@ -174,6 +201,27 @@ def recusa_do_porteiro(status, erro, caminho):
     return status == 401 and erro in RECUSAS_DO_PORTEIRO and not caminho.startswith("/pareamento/")
 
 
+def gastar_as_tentativas_de_um_codigo(p):
+    p.comecar()
+    for _ in range(pareamento.TENTATIVAS):
+        p.concluir("AAA-AAA", OUTRO_CLIENTE, "")
+
+
+def bloquear_o_pareamento(p):
+    for _ in range(pareamento.CODIGOS_ESGOTADOS_PARA_BLOQUEAR):
+        gastar_as_tentativas_de_um_codigo(p)
+
+
+def mostrar_o_codigo_pendente(p, contexto):
+    codigo = contexto.get("codigoPendente")
+    if not codigo:
+        return
+    p.sortear = lambda: codigo
+    p.comecar()
+    if contexto.get("codigoUsadoPor"):
+        p.concluir(codigo, contexto["codigoUsadoPor"], "Outro")
+
+
 def preparar_o_pareamento(p, com_tela, contexto=None):
     """A janela do Anki de mentira no pareamento `p` (`com_tela=False`: o Anki não tem onde mostrar o código) e o que o `contexto` de um exemplo do contrato
     diz dele: `codigoPendente` (o código que a janela mostra agora), `codigoUsadoPor` (o navegador que já o usou), `desconectado` (o Desconectar navegadores já foi apertado) e `bloqueado` (três códigos gastaram as
@@ -181,18 +229,11 @@ def preparar_o_pareamento(p, com_tela, contexto=None):
     contexto = contexto or {}
     tela = TelaDeMentira()
     p.na_tela = tela if com_tela else None
-    if contexto.get("codigoPendente"):
-        p.sortear = lambda: contexto["codigoPendente"]
-        p.comecar()
-        if contexto.get("codigoUsadoPor"):
-            p.concluir(contexto["codigoPendente"], contexto["codigoUsadoPor"], "Outro")
+    mostrar_o_codigo_pendente(p, contexto)
     if contexto.get("desconectado"):
         p.desconectar()
     if contexto.get("bloqueado"):
-        for _ in range(pareamento.CODIGOS_ESGOTADOS_PARA_BLOQUEAR):
-            p.comecar()
-            for _ in range(pareamento.TENTATIVAS):
-                p.concluir("AAA-AAA", OUTRO_CLIENTE, "")
+        bloquear_o_pareamento(p)
     return tela
 
 

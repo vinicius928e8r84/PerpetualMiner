@@ -99,8 +99,9 @@ def julgar(cenario):
     with tempfile.TemporaryDirectory() as pasta:
         raiz = Path(pasta)
         pedido = dict(
-            juiz=juiz, model="juiz-1", log_dir=str(raiz), keyword="saw", phrase="I saw it.", context=cenario.get("contexto", ""),
-            card_text=CARTAO, candidates=candidatos_em(raiz, cenario["candidatos"]), mode=cenario["modo"], label=cenario.get("rotulo"))
+            card=image_judge.CardForTheJudge("saw", "I saw it.", cenario.get("contexto", ""), CARTAO),
+            judge=image_judge.TheJudge(juiz, "juiz-1", str(raiz), cenario.get("rotulo")),
+            candidates=candidatos_em(raiz, cenario["candidatos"]), mode=cenario["modo"])
         image_judge.LOGGER.addHandler(avisos)
         try:
             veredito = veredito_ou_erro(pedido)

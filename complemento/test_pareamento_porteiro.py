@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from complemento import pareamento
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria
 from complemento.test_pareamento_de_mentira import (
-    CLIENTE, DESAFIO, OUTRO_CLIENTE, OUTRO_SEGREDO, SEGREDO, UM_CLIENTE_NOVO, bytes_de, cabecalhos_assinados, comecar, concluir, json_de, segredo_em_base64, semear,
+    CLIENTE, DESAFIO, OUTRO_CLIENTE, OUTRO_SEGREDO, PRIMEIRO, SEGREDO, SEGUNDO, UM_CLIENTE_NOVO, Navegador, bytes_de, cabecalhos_assinados, comecar, concluir, json_de, segredo_em_base64, semear,
 )
 from complemento.test_harness import ORIGEM, ConexaoNoTeste
 
@@ -61,20 +61,20 @@ class OPorteiro(unittest.TestCase):
 
     def test_o_nonce_repetido_e_recusado_mesmo_com_a_assinatura_certa(self):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
-            cabecalhos = cabecalhos_assinados(conexao.conexao.pareamento.sessao, "POST", "/ia/estado", b"{}", nonce="nonce-repetido-1")
+            cabecalhos = PRIMEIRO.com_nonce("nonce-repetido-1").assinar(conexao.conexao.pareamento.sessao, "POST", "/ia/estado", b"{}")
             primeiro = conexao.pedir("POST", "/ia/estado", corpo={}, assinar=False, cabecalhos=cabecalhos)[0]
             segundo = conexao.pedir("POST", "/ia/estado", corpo={}, assinar=False, cabecalhos=cabecalhos)
         self.assertEqual((primeiro, segundo[0], json_de(segundo[2])), (200, 401, {"error": "pairing_invalid"}))
 
     def test_um_nonce_fora_do_formato_e_recusado(self):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
-            cabecalhos = cabecalhos_assinados(conexao.conexao.pareamento.sessao, "POST", "/ia/estado", b"{}", nonce="curto")
+            cabecalhos = PRIMEIRO.com_nonce("curto").assinar(conexao.conexao.pareamento.sessao, "POST", "/ia/estado", b"{}")
             status = conexao.pedir("POST", "/ia/estado", corpo={}, assinar=False, cabecalhos=cabecalhos)[0]
         self.assertEqual(status, 401)
 
     def test_um_navegador_que_a_conexao_nao_conhece_nao_pede_nada_mesmo_com_um_segredo_qualquer(self):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
-            cabecalhos = cabecalhos_assinados(conexao.conexao.pareamento.sessao, "POST", "/ia/estado", b"{}", cliente=UM_CLIENTE_NOVO)
+            cabecalhos = Navegador(UM_CLIENTE_NOVO, SEGREDO).assinar(conexao.conexao.pareamento.sessao, "POST", "/ia/estado", b"{}")
             status, _, corpo = conexao.pedir("POST", "/ia/estado", corpo={}, assinar=False, cabecalhos=cabecalhos)
         self.assertEqual((status, json_de(corpo)), (401, {"error": "pairing_required"}))
 
@@ -138,10 +138,10 @@ class AProvaDaResposta(unittest.TestCase):
     def test_toda_resposta_a_um_pedido_assinado_volta_com_a_prova_dele(self):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
             sessao = conexao.conexao.pareamento.sessao
-            cabecalhos = cabecalhos_assinados(sessao, "POST", "/ia/estado", b"{}", nonce="nonce-da-prova-1")
+            cabecalhos = PRIMEIRO.com_nonce("nonce-da-prova-1").assinar(sessao, "POST", "/ia/estado", b"{}")
             status, recebidos, corpo = conexao.pedir("POST", "/ia/estado", corpo={}, assinar=False, cabecalhos=cabecalhos)
             nao_encontrada = conexao.pedir("POST", "/nao/existe", corpo={}, assinar=False,
-                                           cabecalhos=cabecalhos_assinados(sessao, "POST", "/nao/existe", b"{}", nonce="nonce-da-prova-2"))
+                                           cabecalhos=PRIMEIRO.com_nonce("nonce-da-prova-2").assinar(sessao, "POST", "/nao/existe", b"{}"))
         esperada = pareamento.prova_da_resposta(SEGREDO, sessao, "nonce-da-prova-1", status, corpo)
         self.assertEqual(recebidos[pareamento.CABECALHO_DA_PROVA], esperada)
         self.assertIn(pareamento.CABECALHO_DA_PROVA, nao_encontrada[1])
@@ -190,8 +190,8 @@ class DesconectarOsNavegadores(unittest.TestCase):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
             semear(os.path.join(pasta, "pareamento.json"), ((CLIENTE, SEGREDO), (OUTRO_CLIENTE, OUTRO_SEGREDO)))
             sessao = conexao.conexao.pareamento.sessao
-            do_segundo = conexao.pedir("POST", "/ia/estado", corpo={}, assinar=False, cabecalhos=cabecalhos_assinados(sessao, "POST", "/ia/estado", b"{}", cliente=OUTRO_CLIENTE, segredo=OUTRO_SEGREDO))[0]
-            trocado = conexao.pedir("POST", "/ia/estado", corpo={}, assinar=False, cabecalhos=cabecalhos_assinados(sessao, "POST", "/ia/estado", b"{}", cliente=OUTRO_CLIENTE, segredo=SEGREDO))[0]
+            do_segundo = conexao.pedir("POST", "/ia/estado", corpo={}, assinar=False, cabecalhos=SEGUNDO.assinar(sessao, "POST", "/ia/estado", b"{}"))[0]
+            trocado = conexao.pedir("POST", "/ia/estado", corpo={}, assinar=False, cabecalhos=Navegador(OUTRO_CLIENTE, SEGREDO).assinar(sessao, "POST", "/ia/estado", b"{}"))[0]
         self.assertEqual((do_segundo, trocado), (200, 401))
 
     def test_uma_linha_do_arquivo_com_segredo_que_nao_e_base64_nao_pareia_ninguem(self):
@@ -207,7 +207,7 @@ class DesconectarOsNavegadores(unittest.TestCase):
             p = conexao.conexao.pareamento
             sessao = p.sessao
             for n in range(pareamento.NONCES_LEMBRADOS + 5):
-                cabecalhos = cabecalhos_assinados(sessao, "POST", "/ia/estado", b"{}", nonce="nonce-%08d" % n)
+                cabecalhos = PRIMEIRO.com_nonce("nonce-%08d" % n).assinar(sessao, "POST", "/ia/estado", b"{}")
                 self.assertEqual(p.verificar("POST", "/ia/estado", b"{}", cabecalhos).status, 200)
             lembrados = len(p._nonces)
         self.assertEqual(lembrados, pareamento.NONCES_LEMBRADOS)

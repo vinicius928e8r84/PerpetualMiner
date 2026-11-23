@@ -5,6 +5,17 @@
   const { DESFECHO } = AbrirOAnki;
   const AVISO = 'envio-anki-fechado';
 
+  const CAUSA_SEM_RESPOSTA = 'abridor · sem resposta da Conexão no prazo';
+
+  const FAIXA_DO_DESFECHO = {
+    [DESFECHO.SEM_PERMISSAO]: () => ({ opcoes: { botao: true }, espera: true }),
+    [DESFECHO.NAO_ABRIU]: resultado => ({ opcoes: { causa: AbrirOAnki.causaDoAbridor(resultado) }, espera: true }),
+    [DESFECHO.SEM_RESPOSTA]: () => ({ opcoes: { causa: CAUSA_SEM_RESPOSTA }, espera: false }),
+    [DESFECHO.FECHOU]: () => ({ opcoes: { causa: 'abridor · a pessoa fechou o Anki durante a espera' }, espera: false }),
+  };
+
+  const faixaDoDesfecho = resultado => FAIXA_DO_DESFECHO[resultado.desfecho]?.(resultado) ?? null;
+
   function criar({ aoLigar }) {
     let pedido = null;
 
@@ -52,12 +63,14 @@
       await executar(este);
     }
 
+    const vigente = (este, minha) => pedido === este && este.espera === minha;
+
     async function esperar(este) {
       const minha = este.espera = {};
-      const respondeu = await AbrirOAnki.esperarOAnki({ continuar: () => pedido === este && este.espera === minha });
-      if (pedido !== este || este.espera !== minha || respondeu) return;
+      const respondeu = await AbrirOAnki.esperarOAnki({ continuar: () => vigente(este, minha) });
+      if (respondeu || !vigente(este, minha)) return;
       pedido = null;
-      mostrar('abra', { causa: 'abridor · sem resposta da Conexão no prazo' });
+      mostrar('abra', { causa: CAUSA_SEM_RESPOSTA });
     }
 
     async function executar(este) {
@@ -70,20 +83,25 @@
       const fala = AbrirOAnki.falaDoDesfecho(resultado);
       if (fala?.sucesso) return Veio.mostrarToastDeSucesso(fala.texto);
       if (!vale()) return;
-      if (fala) {
-        pedido = null;
-        tirar();
-        colocar(Veio.montarAviso({ texto: fala.texto, acao: fala.acao, detalhes: fala.detalhes, fechavel: false }));
-      } else if (resultado.desfecho === DESFECHO.SEM_PERMISSAO || resultado.desfecho === DESFECHO.NAO_ABRIU) {
-        mostrar('abra', resultado.desfecho === DESFECHO.SEM_PERMISSAO ? { botao: true } : { causa: AbrirOAnki.causaDoAbridor(resultado) });
-        await esperar(este);
-      } else if (resultado.desfecho === DESFECHO.SEM_RESPOSTA) {
-        pedido = null;
-        mostrar('abra', { causa: 'abridor · sem resposta da Conexão no prazo' });
-      } else if (resultado.desfecho === DESFECHO.FECHOU) {
-        pedido = null;
-        mostrar('abra', { causa: 'abridor · a pessoa fechou o Anki durante a espera' });
-      } else if (resultado.desfecho === DESFECHO.RESPONDEU) ConexaoAnki.conferir();
+      if (fala) return substituirPorFala(fala);
+      await encerrar(este, resultado);
+    }
+
+    function substituirPorFala(fala) {
+      pedido = null;
+      tirar();
+      colocar(Veio.montarAviso({ texto: fala.texto, acao: fala.acao, detalhes: fala.detalhes, fechavel: false }));
+    }
+
+    async function encerrar(este, resultado) {
+      const faixa = faixaDoDesfecho(resultado);
+      if (!faixa) {
+        if (resultado.desfecho === DESFECHO.RESPONDEU) ConexaoAnki.conferir();
+        return;
+      }
+      if (!faixa.espera) pedido = null;
+      mostrar('abra', faixa.opcoes);
+      if (faixa.espera) await esperar(este);
     }
 
     ConexaoAnki.acompanhar(situacao => {
@@ -97,5 +115,5 @@
     return { pedir };
   }
 
-  raiz.EnvioComOAnkiFechado = { criar };
+  raiz.EnvioComOAnkiFechado = { criar, faixaDoDesfecho };
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});

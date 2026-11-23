@@ -324,7 +324,7 @@ Natural: We are very hungry.
             return [_candidate(query)] if query == "starving child Africa" else []
 
         def judge_of_the_first_query(**kwargs):
-            self.assertEqual(kwargs["keyword"], "King Arthur character")
+            self.assertEqual(kwargs["card"].keyword, "King Arthur character")
             return _real_verdict(78, "strong hunger memory link", "high impact hunger image")
 
         made = self.mine(_card("vashe_velichestvo", "Fallback prompt", RU_HUNGER_CARD_TEXT), FakePipeline(
