@@ -57,33 +57,54 @@ const ehCommitDeVersao = (raiz, sha, assunto) => ASSUNTO_DA_VERSAO.test(assunto)
 
 const versaoDe = texto => (/^VERSAO = "([^"]+)"/m.exec(texto) || [])[1];
 
+function versaoMexida(raiz, desde) {
+  const antes = git(raiz, ['show', `${desde}:${CONFIGURACAO}`]);
+  const agora = versaoDe(fs.readFileSync(path.join(raiz, CONFIGURACAO), 'utf8'));
+  const temOQueComparar = antes.ok && Boolean(agora);
+  if (!temOQueComparar || versaoDe(antes.texto) === agora) return null;
+  return { mexido: 'na `VERSAO` de complemento/configuracao.py', novos: [agora] };
+}
+
+function chavesNovas(raiz, desde, publicadas, hoje) {
+  const antigas = git(raiz, ['show', `${desde}:${ARQUIVO}`]);
+  const registradas = antigas.ok ? JSON.parse(antigas.texto) : publicadas;
+  const novasChaves = Object.keys(hoje).filter(versao => !(versao in registradas));
+  return novasChaves.length ? { mexido: `no ${ARQUIVO}`, novos: novasChaves } : null;
+}
+
+function pacoteMexido(raiz, desde) {
+  const mudou = git(raiz, ['diff', '--quiet', desde, '--', PACOTE]).status === 1;
+  return mudou ? { mexido: `no ${PACOTE}`, novos: [] } : null;
+}
+
+function soCommitsDeVersao(raiz, desde) {
+  const log = git(raiz, ['log', '--no-merges', '--format=%H %s', `${desde}..HEAD`, '--', CONFIGURACAO, ARQUIVO, PACOTE]);
+  const commits = log.texto.split('\n').filter(Boolean).map(linha => [linha.slice(0, linha.indexOf(' ')), linha.slice(linha.indexOf(' ') + 1)]);
+  return commits.length > 0 && commits.every(([sha, assunto]) => ehCommitDeVersao(raiz, sha, assunto));
+}
+
+function soVersoesReservadas(raiz, base, novos) {
+  const reservadas = reservadasDaBase(raiz, base);
+  return novos.length > 0 && novos.every(versao => reservadas.includes(versao));
+}
+
 function mexidoAMao(raiz, base, publicadas, hoje) {
   const origem = git(raiz, ['merge-base', base, 'HEAD']);
   if (!origem.ok) return [];
   const desde = origem.texto.trim();
-  const mexidos = [];
-  const novos = [];
-  const antes = git(raiz, ['show', `${desde}:${CONFIGURACAO}`]);
-  const agora = versaoDe(fs.readFileSync(path.join(raiz, CONFIGURACAO), 'utf8'));
-  if (antes.ok && agora && versaoDe(antes.texto) !== agora) {
-    mexidos.push('na `VERSAO` de complemento/configuracao.py');
-    novos.push(agora);
-  }
-  const antigas = git(raiz, ['show', `${desde}:${ARQUIVO}`]);
-  const registradas = antigas.ok ? JSON.parse(antigas.texto) : publicadas;
-  const novasChaves = Object.keys(hoje).filter(versao => !(versao in registradas));
-  if (novasChaves.length) {
-    mexidos.push(`no ${ARQUIVO}`);
-    novos.push(...novasChaves);
-  }
-  if (git(raiz, ['diff', '--quiet', desde, '--', PACOTE]).status === 1) mexidos.push(`no ${PACOTE}`);
-  if (!mexidos.length) return [];
-  const log = git(raiz, ['log', '--no-merges', '--format=%H %s', `${desde}..HEAD`, '--', CONFIGURACAO, ARQUIVO, PACOTE]);
-  const commits = log.texto.split('\n').filter(Boolean).map(linha => [linha.slice(0, linha.indexOf(' ')), linha.slice(linha.indexOf(' ') + 1)]);
-  if (commits.length && commits.every(([sha, assunto]) => ehCommitDeVersao(raiz, sha, assunto))) return [];
-  const reservadas = reservadasDaBase(raiz, base);
-  if (novos.length && novos.every(versao => reservadas.includes(versao))) return [];
-  return mexidos;
+  const mexidas = [versaoMexida(raiz, desde), chavesNovas(raiz, desde, publicadas, hoje), pacoteMexido(raiz, desde)].filter(Boolean);
+  if (!mexidas.length) return [];
+  if (soCommitsDeVersao(raiz, desde)) return [];
+  if (soVersoesReservadas(raiz, base, mexidas.flatMap(mexida => mexida.novos))) return [];
+  return mexidas.map(mexida => mexida.mexido);
+}
+
+const mexidoAMaoNaPr = (raiz, base, publicadas, hoje) => (emPr() ? mexidoAMao(raiz, base, publicadas, hoje) : []);
+
+function achadoDaVersaoPublicada(fonte, hoje, [versao, hash]) {
+  if (!(versao in hoje)) return [{ linha: 1, detalhe: `a versão ${versao} já estava registrada na base e sumiu do arquivo` }];
+  if (hoje[versao] !== hash) return [{ linha: linhaDaChave(fonte, versao), detalhe: `o hash da versão ${versao}, já registrado na base, foi reescrito` }];
+  return [];
 }
 
 function verificar(arquivo, fonte, raiz, base) {
@@ -96,19 +117,9 @@ function verificar(arquivo, fonte, raiz, base) {
   } catch {
     return [{ linha: 1, detalhe: `${ARQUIVO} não é um JSON válido` }];
   }
-  const achados = [];
-  const aMao = emPr() ? mexidoAMao(raiz, base, publicadas, hoje) : [];
-  if (aMao.length) {
-    achados.push({ linha: 1, detalhe: `a versão é dada no merge: esta PR mexe à mão ${aMao.join(', ')}` });
-  }
-  for (const [versao, hash] of Object.entries(publicadas)) {
-    if (!(versao in hoje)) {
-      achados.push({ linha: 1, detalhe: `a versão ${versao} já estava registrada na base e sumiu do arquivo` });
-    } else if (hoje[versao] !== hash) {
-      achados.push({ linha: linhaDaChave(fonte, versao), detalhe: `o hash da versão ${versao}, já registrado na base, foi reescrito` });
-    }
-  }
-  return achados;
+  const aMao = mexidoAMaoNaPr(raiz, base, publicadas, hoje);
+  const doMerge = aMao.length ? [{ linha: 1, detalhe: `a versão é dada no merge: esta PR mexe à mão ${aMao.join(', ')}` }] : [];
+  return [...doMerge, ...Object.entries(publicadas).flatMap(publicada => achadoDaVersaoPublicada(fonte, hoje, publicada))];
 }
 
 module.exports = { id, conserto, seAplica, verificar };
