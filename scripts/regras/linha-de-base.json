@@ -103,7 +103,6 @@
     "lib/chave-da-openai.js": 78,
     "lib/palavra-automatica.js": 20,
     "lib/pedido-ao-anki.js": 1,
-    "lib/sincronizacao.js": 8,
     "painel/painel-abrir-anki.js": 10,
     "painel/painel-anki-primeira-conexao-estado.js": 25,
     "painel/painel-anki-primeira-conexao.js": 9,
