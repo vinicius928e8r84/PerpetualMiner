@@ -223,6 +223,24 @@ class ConcluirOPareamento(unittest.TestCase):
             restam = concluir(conexao, codigo="AAA-AAA")[1]["restam"]
         self.assertEqual((recusas, restam), ([400, 400], 4))
 
+    def test_o_pedido_com_campo_faltando_ou_de_tipo_errado_e_recusado_nas_duas_rotas(self):
+        pedidos = [
+            ("concluir", {"codigo": "AAA-AAA", "cliente": UM_CLIENTE_NOVO, "nome": 7}),
+            ("concluir", {"codigo": "AAA-AAA", "nome": "a"}),
+            ("concluir", {"cliente": UM_CLIENTE_NOVO, "nome": "a"}),
+            ("concluir", {"codigo": "A" * 33, "cliente": UM_CLIENTE_NOVO}),
+            ("conferir", {"desafio": DESAFIO}),
+            ("conferir", {"cliente": CLIENTE}),
+            ("conferir", {"cliente": CLIENTE, "desafio": "curto"}),
+            ("conferir", {"cliente": "x", "desafio": DESAFIO}),
+            ("conferir", {"cliente": CLIENTE, "desafio": 5}),
+        ]
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta, pareado=False) as conexao:
+            comecar(conexao)
+            respostas = [conexao.pedir("POST", "/pareamento/" + rota, corpo=corpo, assinar=False)[::2] for rota, corpo in pedidos]
+            restam = concluir(conexao, codigo="AAA-AAA")[1]["restam"]
+        self.assertEqual((respostas, restam), ([(400, b'{"error": "invalid_request"}')] * len(pedidos), 4))
+
 
 def esgotar(conexao, codigos=1):
     """Gasta as 5 tentativas de `codigos` códigos seguidos, como um programa que só adivinha."""
