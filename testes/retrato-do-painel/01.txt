@@ -1,0 +1,161 @@
+<html lang="pt-BR">
+ <head>
+  <meta charset="UTF-8">
+  <title>
+   "PerpetualMiner"
+  <link href="/veio/tokens.css" rel="stylesheet">
+  <script src="/veio/tema.js">
+  <link href="/veio/componentes.css" rel="stylesheet">
+  <link href="painel.css" rel="stylesheet">
+  <link href="painel-ia-modelo.css" rel="stylesheet">
+  <link href="painel-teto.css" rel="stylesheet">
+  <link href="painel-previa.css" rel="stylesheet">
+  <link href="painel-quiz.css" rel="stylesheet">
+  <link href="painel-conexao-arraste.css" rel="stylesheet">
+ <body>
+  <div class="bv" hidden id="boas-vindas">
+   <div class="bv-topo">
+    <img alt="PerpetualMiner" class="veio-marca" height="40" src="/veio/icones/icone.svg" width="40">
+    <span aria-hidden="true" class="bv-nome veio-nome">
+     "Perpetual"
+     <b>
+      "Miner"
+     <span class="veio-cursor">
+   <div class="bv-grade">
+    <nav class="bv-lista" id="bv-lista">
+    <main aria-labelledby="bv-titulo" class="bv-card">
+     <p class="bv-sobretitulo" id="bv-sobretitulo">
+     <h2 class="bv-titulo" id="bv-titulo" tabindex="-1">
+     <div class="bv-telas" id="bv-telas">
+     <div class="bv-rodape" id="bv-rodape">
+  <div class="shell">
+   <aside class="shell-lateral">
+    <div class="shell-marca">
+     <img alt="PerpetualMiner" class="veio-marca" height="30" src="/veio/icones/icone.svg" width="30">
+     <span aria-hidden="true" class="shell-rotulo veio-nome">
+      "Perpetual"
+      <b>
+       "Miner"
+      <span class="veio-cursor">
+    <nav class="shell-nav" data-voz-aria="SHL-01.rotulo">
+     <div class="shell-topo">
+      <a aria-describedby="shell-total-descricao" class="shell-item" data-area="frases" href="#frases">
+       <span data-icone="frases">
+       <span class="shell-rotulo" data-voz="SHL-01.frases">
+       <span aria-hidden="true" class="shell-contador" id="shell-total">
+      <a aria-describedby="shell-conexao-descricao" class="shell-item" data-area="anki" href="#anki/custos">
+       <span data-icone="anki">
+       <span class="shell-rotulo" data-voz="SHL-01.anki">
+       <span aria-hidden="true" class="shell-ponto" data-estado="conectando">
+     <div class="shell-pe">
+      <a class="shell-item" data-area="configuracoes" href="#configuracoes">
+       <span data-icone="configuracoes">
+       <span class="shell-rotulo" data-voz="SHL-01.configuracoes">
+      <a class="shell-chip" href="#configuracoes/conta" id="shell-chip">
+       <span aria-hidden="true" class="shell-avatar" id="shell-avatar">
+       <span class="shell-chip__quem shell-rotulo">
+        <span class="shell-chip__nome" id="shell-chip-nome">
+        <span class="shell-chip__estado" id="shell-chip-estado">
+    <span hidden id="shell-total-descricao">
+    <span hidden id="shell-conexao-descricao">
+   <main class="shell-conteudo">
+    <section aria-labelledby="titulo-frases" class="shell-area" data-area="frases">
+     <header class="shell-cabecalho">
+      <h1 data-voz="SHL-02.frases" id="titulo-frases">
+      <div class="minerar-menu">
+       <button aria-controls="menu-minerar" aria-expanded="false" aria-haspopup="menu" class="veio-botao veio-botao--primario" id="btn-minerar-frases">
+        <span data-voz="ADD-01.botao">
+        <span data-icone="abaixo">
+       <div class="minerar-menu__lista" data-voz-aria="ADD-01.botao" hidden id="menu-minerar" role="menu">
+        <button class="minerar-menu__item" data-minerar="colar" role="menuitem" tabindex="-1">
+         <span data-icone="colar">
+         <span>
+          <b data-voz="ADD-11.colar">
+          <small data-voz="ADD-11.colarAjuda">
+        <button class="minerar-menu__item" data-minerar="arquivo" role="menuitem" tabindex="-1">
+         <span data-icone="arquivo">
+         <span>
+          <b data-voz="ADD-11.arquivo">
+          <small data-voz="ADD-11.arquivoAjuda">
+        <button class="minerar-menu__item" data-minerar="foto" role="menuitem" tabindex="-1">
+         <span data-icone="foto">
+         <span>
+          <b data-voz="ADD-11.foto">
+          <small data-voz="ADD-11.fotoAjuda">
+     <aside aria-labelledby="frases-lembrete-texto" class="frases-lembrete" hidden id="frases-lembrete">
+      <span class="frases-lembrete__anel" id="frases-lembrete-anel">
+      <p class="frases-lembrete__texto" id="frases-lembrete-texto">
+      <div class="frases-lembrete__acoes">
+       <button class="veio-botao veio-botao--compacto veio-botao--fantasma" data-voz="ONB-15.ocultar" id="frases-lembrete-ocultar">
+       <button class="veio-botao veio-botao--compacto veio-botao--contorno" data-voz="ONB-15.continuar" id="frases-lembrete-continuar">
+     <div class="frases-avisos" id="frases-avisos">
+     <div class="frases-filtros">
+      <span class="veio-select">
+       <select class="frases-filtro veio-campo" data-voz-aria="PAI-25.fonte" id="filtro-fonte">
+      <span class="veio-select">
+       <select class="frases-filtro veio-campo" data-voz-aria="PAI-25.idioma" id="filtro-idioma">
+      <span class="veio-select">
+       <select class="frases-filtro veio-campo" data-voz-aria="PAI-25.ordem" id="filtro-ordem">
+        <option data-voz="PAI-24.novas" value="novas">
+        <option data-voz="PAI-24.antigas" value="antigas">
+      <label class="frases-busca veio-busca">
+       <span class="veio-busca__lupa">
+        <span data-icone="busca">
+       <input autocomplete="off" class="veio-campo" data-voz-aria="PAI-23" id="busca-frases" placeholder="" type="search">
+       <button class="veio-botao-icone veio-busca__limpar" data-voz-aria="PAI-04.acao" data-voz-title="PAI-04.acao" hidden id="btn-limpar-busca">
+        <span data-icone="fechar">
+      <label class="veio-toggle">
+       <input id="filtro-ocultar" role="switch" type="checkbox">
+       <span class="veio-toggle__trilho">
+       <span data-voz="PAI-09">
+     <div class="frases-selecao" hidden id="frases-selecao">
+      <label class="frases-selecao__pagina">
+       <input class="veio-checkbox" data-voz-aria="PAI-31" id="sel-pagina" type="checkbox">
+       <span data-voz="PAI-31" id="sel-pagina-rotulo">
+      <div class="frases-barra" hidden id="frases-barra">
+       <button class="veio-botao-icone" data-voz-aria="PAI-32.desmarcar" data-voz-title="PAI-32.desmarcar" id="btn-desmarcar-todas">
+        <span data-icone="fechar">
+       <span aria-live="polite" class="frases-barra__contagem" id="selection-count">
+       <button class="frases-barra__todas veio-botao veio-botao--link" hidden id="btn-sel-todas">
+       <span class="frases-barra__acoes">
+        <button class="veio-botao veio-botao--compacto veio-botao--fantasma" id="btn-bulk-edit">
+         <span data-icone="contexto">
+         <span data-voz="PAI-32.editarContexto">
+        <button class="veio-botao veio-botao--compacto veio-botao--fantasma" id="btn-export">
+         <span data-icone="arquivo">
+         <span data-voz="PAI-32.exportar">
+        <button class="veio-botao veio-botao--compacto veio-botao--perigo-fantasma" id="btn-delete-selected">
+         <span data-icone="apagar">
+         <span data-voz="PAI-32.apagar">
+        <span class="veio-com-dica">
+         <button class="veio-botao veio-botao--compacto veio-botao--primario" id="btn-send-anki">
+          <span data-icone="enviar">
+          <span data-voz="PAI-32.enviar">
+         <span class="veio-dica" id="envio-indisponivel" role="tooltip">
+     <div aria-busy="true" class="frases-lista" id="frases-lista">
+      <div aria-hidden="true" class="veio-esqueleto veio-frase-esqueleto">
+      <div aria-hidden="true" class="veio-esqueleto veio-frase-esqueleto">
+      <div aria-hidden="true" class="veio-esqueleto veio-frase-esqueleto">
+      <div aria-hidden="true" class="veio-esqueleto veio-frase-esqueleto">
+      <div aria-hidden="true" class="veio-esqueleto veio-frase-esqueleto">
+     <nav class="frases-paginas" data-voz-aria="PAI-26.rotulo" hidden id="frases-paginas">
+      <span class="frases-paginas__intervalo" id="paginas-intervalo">
+      <button class="veio-botao-icone" data-voz-aria="PAI-26.primeira" data-voz-title="PAI-26.primeira" id="btn-first">
+       <span data-icone="primeira">
+      <button class="veio-botao-icone" data-voz-aria="PAI-26.anterior" data-voz-title="PAI-26.anterior" id="btn-prev">
+       <span data-icone="anterior">
+      <span class="frases-paginas__atual" id="paginas-atual">
+      <button class="veio-botao-icone" data-voz-aria="PAI-26.proxima" data-voz-title="PAI-26.proxima" id="btn-next">
+       <span data-icone="proxima">
+      <button class="veio-botao-icone" data-voz-aria="PAI-26.ultima" data-voz-title="PAI-26.ultima" id="btn-last">
+       <span data-icone="ultima">
+    <section aria-labelledby="titulo-anki" class="shell-area" data-area="anki" hidden>
+     <header class="shell-cabecalho">
+      <h1 data-voz="SHL-02.anki" id="titulo-anki">
+      <button class="veio-botao veio-botao--contorno" data-voz-title="BRG-24" id="btn-anki-atualizar">
+       <span data-icone="atualizar">
+       <span data-voz="SHL-06">
+     <div class="shell-faixa veio-aviso" hidden id="shell-faixa-conexao" role="status">
+      <p class="veio-aviso__texto" data-voz="ENV-01.aviso">
+      <div class="veio-aviso__acoes">
+       <button class="veio-botao veio-botao--compacto veio-botao--contorno" data-voz="ENV-01.tentarDeNovo" id="shell-tentar-de-novo">
