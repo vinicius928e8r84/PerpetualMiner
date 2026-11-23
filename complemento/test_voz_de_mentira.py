@@ -11,10 +11,18 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 
+CAMINHO_DO_GTTS = "/_/TranslateWebserverUi/data/batchexecute"
+
 
 def audio_de_mentira(sotaque, lang, texto):
     """Os bytes que a voz de mentira devolve para um pedaço de texto: dizem com que sotaque e língua ele foi pedido."""
     return ("mp3-de-mentira|%s|%s|%s" % (sotaque, lang, texto)).encode("utf-8")
+
+
+def o_f_req_do_gtts(caminho, consulta, corpo):
+    if caminho != CAMINHO_DO_GTTS or consulta:
+        return ""
+    return parse_qs(corpo).get("f.req", [""])[0]
 
 
 class VozDeMentira:
@@ -44,7 +52,8 @@ class VozDeMentira:
                 partes = urlsplit(self.path)
                 sotaque = partes.path.split("/")[1]
                 texto_do_pedido = "/" + "/".join(partes.path.split("/")[2:])
-                status, corpo = dono._responder(sotaque, texto_do_pedido, parse_qs(partes.query), lido, dict(self.headers.items()))
+                f_req = o_f_req_do_gtts(texto_do_pedido, parse_qs(partes.query), lido)
+                status, corpo = dono._responder(sotaque, f_req, dict(self.headers.items()))
                 dados = corpo.encode("utf-8")
                 self.send_response(status)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -78,12 +87,10 @@ class VozDeMentira:
                 return recusa[0]
         return None
 
-    def _responder(self, sotaque, caminho, consulta, corpo, cabecalhos):
-        # O pedido é o que o gTTS 2.5 faz: POST .../_/TranslateWebserverUi/data/batchexecute, sem consulta, com `f.req=` no corpo.
-        pedido = parse_qs(corpo).get("f.req", [""])[0]
-        if caminho != "/_/TranslateWebserverUi/data/batchexecute" or consulta or not pedido:
+    def _responder(self, sotaque, f_req, cabecalhos):
+        if not f_req:
             return 404, "{}"
-        rpc = json.loads(pedido)[0][0]
+        rpc = json.loads(f_req)[0][0]
         texto, lang = json.loads(rpc[1])[:2]
         self.pedidos.append((sotaque, lang, texto))
         self.cabecalhos.append(cabecalhos)

@@ -4,13 +4,19 @@
   const { textoDaVoz, ConexaoAnki, AbrirOAnki, Veio } = raiz;
   const { DESFECHO } = AbrirOAnki;
   const FIM = ['completed', 'partial', 'failed'];
+  const ENVIADO = ['added', 'duplicate'];
   const abrindo = new Set();
   const naoAbriu = new Map();
 
   function contagem(estado) {
     const cartoes = Object.values(estado?.cards || {});
     if (!cartoes.length) return null;
-    return { n: cartoes.filter(c => c.status === 'added' || c.status === 'duplicate').length, total: cartoes.length };
+    return { n: cartoes.filter(c => ENVIADO.includes(c.status)).length, total: cartoes.length };
+  }
+
+  function porQueNaoAbriu(jobId) {
+    if (!naoAbriu.has(jobId) || abrindo.has(jobId)) return '';
+    return naoAbriu.get(jobId).fala || textoDaVoz('BRG-38.naoAbriu');
   }
 
   function motivo(envio, estado) {
@@ -18,7 +24,7 @@
     return [
       dos ? textoDaVoz('ENV-18.contagem', dos) : '',
       textoDaVoz(abrindo.has(envio.jobId) ? 'ENV-16.abrindo' : 'ENV-18.continua'),
-      naoAbriu.has(envio.jobId) && !abrindo.has(envio.jobId) ? (naoAbriu.get(envio.jobId).fala || textoDaVoz('BRG-38.naoAbriu')) : '',
+      porQueNaoAbriu(envio.jobId),
     ].filter(Boolean);
   }
 
@@ -31,6 +37,13 @@
     }));
   }
 
+  const FALHA_DO_DESFECHO = new Map([
+    [DESFECHO.ABERTO, () => null],
+    [DESFECHO.RESPONDEU, () => null],
+    [DESFECHO.NAO_ABRIU, resposta => ({ causa: AbrirOAnki.causaDoAbridor(resposta) })],
+    [DESFECHO.SEM_RESPOSTA, () => ({ causa: 'abridor · sem resposta da Conexão no prazo' })],
+  ]);
+
   function falhaDe(resposta) {
     const { desfecho, motivo: porque, passos = [] } = resposta;
     const fala = AbrirOAnki.falaDoDesfecho(resposta);
@@ -38,9 +51,7 @@
       Veio.mostrarToastDeSucesso(fala.texto);
       return null;
     }
-    if (desfecho === DESFECHO.ABERTO || desfecho === DESFECHO.RESPONDEU) return null;
-    if (desfecho === DESFECHO.NAO_ABRIU) return { causa: AbrirOAnki.causaDoAbridor(resposta) };
-    if (desfecho === DESFECHO.SEM_RESPOSTA) return { causa: 'abridor · sem resposta da Conexão no prazo' };
+    if (FALHA_DO_DESFECHO.has(desfecho)) return FALHA_DO_DESFECHO.get(desfecho)(resposta);
     const causa = ['abridor', desfecho, porque].filter(Boolean).join(' · ');
     return { causa: [causa, ...passos].join('\n'), ...(fala && { fala: { texto: fala.texto, acao: fala.acao, toString: () => fala.texto } }) };
   }
@@ -69,9 +80,13 @@
     }
   }
 
+  const conexaoCaiu = () => ConexaoAnki.situacao() === ConexaoAnki.SITUACAO.DESLIGADA && ConexaoAnki.jaConectou();
+  const terminou = estado => FIM.includes(estado?.status);
+
   function pedido(envio, estado) {
-    const desligada = ConexaoAnki.situacao() === ConexaoAnki.SITUACAO.DESLIGADA && ConexaoAnki.jaConectou();
-    if (!envio.jobId || !desligada || FIM.includes(estado?.status)) return null;
+    const desligada = conexaoCaiu();
+    if (!envio.jobId || !desligada) return null;
+    if (terminou(estado)) return null;
     return {
       motivo: motivo(envio, estado),
       rotulo: textoDaVoz('ENV-13.continuar'),

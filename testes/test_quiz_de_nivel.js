@@ -16,15 +16,22 @@ const comOutrosNiveis = { PerpetualMiner: { AjustesDeEnvio: { NIVEIS: ['basico',
 require('vm').runInNewContext(require('fs').readFileSync('./lib/quiz-de-nivel.js', 'utf8'), comOutrosNiveis);
 assert.deepStrictEqual({ ...comOutrosNiveis.PerpetualMiner.QuizDeNivel.NIVEIS }, { BASICO: 'basico', FLUENTE: 'fluente' });
 
+const RESPOSTA_DO_JEITO = {
+  nao_sei: () => NAO_SEI,
+  certo: pergunta => pergunta.certa,
+  errado: pergunta => (pergunta.certa + 1) % pergunta.opcoes.length,
+};
+
+const jeitoDaPergunta = (roteiro, tipo, ordem) => roteiro[tipo]?.[ordem] ?? 'certo';
+
 function rodar(lang, inicial, roteiro) {
   const quiz = QuizDeNivel.iniciar(lang, inicial);
   const vistos = [];
   const contagem = {};
   for (let pergunta = quiz.pergunta(); pergunta; pergunta = quiz.pergunta()) {
     const ordem = contagem[pergunta.tipo] = (contagem[pergunta.tipo] ?? -1) + 1;
-    const jeito = roteiro[pergunta.tipo]?.[ordem] ?? 'certo';
     vistos.push(pergunta.tipo);
-    quiz.responder(jeito === 'nao_sei' ? NAO_SEI : jeito === 'certo' ? pergunta.certa : (pergunta.certa + 1) % pergunta.opcoes.length);
+    quiz.responder(RESPOSTA_DO_JEITO[jeitoDaPergunta(roteiro, pergunta.tipo, ordem)](pergunta));
   }
   return { vistos, resultado: quiz.resultado() };
 }
