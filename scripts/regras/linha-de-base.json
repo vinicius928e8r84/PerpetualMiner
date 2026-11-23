@@ -119,7 +119,6 @@
     "scripts/ci/selecao-de-testes.js": 7,
     "scripts/empacotar-extensao.mjs": 7,
     "scripts/ganchos/test_pre_push.js": 11,
-    "scripts/grupos-de-teste.js": 4,
     "scripts/regras/apoio-da-tabela-de-regras.js": 4,
     "scripts/regras/e2e-estado-final.js": 13,
     "scripts/regras/e2e-funcao-interna.js": 4,
