@@ -142,17 +142,13 @@ class RealFirst:
         return downloaded
 
     def _ask_the_judge(self, candidates: list, mode: str) -> dict:
-        return image_judge.rank_candidates(
+        card = image_judge.CardForTheJudge(self.keyword, self.phrase, self.context, self.card_text)
+        judge = image_judge.TheJudge(
             **self.pipeline.judge_extra(self.card),
             model=self.pipeline.config["openai"].get("image_judge_model", "gpt-4.1-mini"),
             log_dir=self.pipeline.log_dir,
-            keyword=self.keyword,
-            phrase=self.phrase,
-            context=self.context,
-            card_text=self.card_text,
-            candidates=candidates,
-            mode=mode,
         )
+        return image_judge.rank_candidates(card=card, judge=judge, candidates=candidates, mode=mode)
 
     def _rank_the_photos(self) -> None:
         real_rank = self._ask_the_judge(self.real_candidates, "real_only")

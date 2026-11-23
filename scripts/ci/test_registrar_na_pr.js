@@ -103,110 +103,144 @@ function conferirACoberturaDaProva() {
 conferirORiscoDoRevisor();
 conferirACoberturaDaProva();
 
-(async () => {
-  const github = {};
-  const pedidos = [];
+const VERMELHA = { id: 43593107043, status: 'completed', conclusion: 'failure', created_at: '2026-11-14T12:05:39Z', html_url: 'https://github.test/runs/43593107043' };
+const CANCELADA = { id: 43589465759, status: 'completed', conclusion: 'cancelled', created_at: '2026-11-14T11:19:24Z' };
+const REVISAO = ['revisao', '--pr', '7', '--head', HEAD, '--autor', 'worker a', '--revisor', 'worker b', '--risco', 'baixa'];
+
+function rotasDoGithub(github) {
+  return {
+    'GET /repos/dono/repo/pulls/7': () => ({ body: github.corpo, labels: [], head: { sha: HEAD } }),
+    'GET /repos/dono/repo/issues/7/comments': () => github.comentarios.map((body, i) => ({ body, created_at: `2026-11-14T0${i}:00:00Z`, author_association: 'OWNER' })),
+    'GET /repos/dono/repo/pulls/7/reviews': () => [],
+    'POST /repos/dono/repo/issues/7/comments': () => ({ id: 1 }),
+    'PATCH /repos/dono/repo/pulls/7': () => ({ number: 7 }),
+    'GET /repos/dono/repo/actions/workflows/registro-da-pr.yml/runs': () => ({ workflow_runs: github.execucoes }),
+    'POST /repos/dono/repo/actions/runs/43593107043/rerun': () => '',
+  };
+}
+
+function statusDoGithub(github, resultado) {
+  if (resultado === null) return github.status === 200 ? 404 : github.status;
+  return resultado === '' ? 201 : 200;
+}
+
+function responderDoGithub(github, pedido, resposta, recebido) {
+  const url = new URL(pedido.url, 'http://github.test');
+  github.pedidos.push({ metodo: pedido.method, caminho: `${url.pathname}${url.search}`, corpo: recebido ? JSON.parse(recebido) : null, token: pedido.headers.authorization });
+  const rota = rotasDoGithub(github)[`${pedido.method} ${url.pathname}`];
+  const resultado = rota && github.status === 200 ? rota() : null;
+  resposta.writeHead(statusDoGithub(github, resultado), { 'content-type': 'application/json' });
+  resposta.end(resultado ? JSON.stringify(resultado) : '');
+}
+
+async function abrirOGithubFalso() {
+  const github = { pedidos: [] };
   const servidor = http.createServer((pedido, resposta) => {
     let recebido = '';
     pedido.on('data', pedaco => { recebido += pedaco; });
-    pedido.on('end', () => {
-      const url = new URL(pedido.url, 'http://github.test');
-      pedidos.push({ metodo: pedido.method, caminho: `${url.pathname}${url.search}`, corpo: recebido ? JSON.parse(recebido) : null, token: pedido.headers.authorization });
-      const rotas = {
-        'GET /repos/dono/repo/pulls/7': () => ({ body: github.corpo, labels: [], head: { sha: HEAD } }),
-        'GET /repos/dono/repo/issues/7/comments': () => github.comentarios.map((body, i) => ({ body, created_at: `2026-11-14T0${i}:00:00Z`, author_association: 'OWNER' })),
-        'GET /repos/dono/repo/pulls/7/reviews': () => [],
-        'POST /repos/dono/repo/issues/7/comments': () => ({ id: 1 }),
-        'PATCH /repos/dono/repo/pulls/7': () => ({ number: 7 }),
-        'GET /repos/dono/repo/actions/workflows/registro-da-pr.yml/runs': () => ({ workflow_runs: github.execucoes }),
-        'POST /repos/dono/repo/actions/runs/43593107043/rerun': () => '',
-      };
-      const rota = rotas[`${pedido.method} ${url.pathname}`];
-      const resultado = rota && github.status === 200 ? rota() : null;
-      resposta.writeHead(resultado === null ? (github.status === 200 ? 404 : github.status) : resultado === '' ? 201 : 200, { 'content-type': 'application/json' });
-      resposta.end(resultado ? JSON.stringify(resultado) : '');
-    });
+    pedido.on('end', () => responderDoGithub(github, pedido, resposta, recebido));
   });
   await new Promise(pronto => servidor.listen(0, '127.0.0.1', pronto));
-  const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'registrar-na-pr-'));
-  const nota = path.join(pasta, 'nota.md');
-  fs.writeFileSync(nota, 'Envio real no Anki 25.9.\n');
-  const VERMELHA = { id: 43593107043, status: 'completed', conclusion: 'failure', created_at: '2026-11-14T12:05:39Z', html_url: 'https://github.test/runs/43593107043' };
-  const CANCELADA = { id: 43589465759, status: 'completed', conclusion: 'cancelled', created_at: '2026-11-14T11:19:24Z' };
-  const rodar = (args, estado = {}) => new Promise(pronto => {
+  return { github, servidor };
+}
+
+function registrarNaPr({ github, servidor }) {
+  return (args, estado = {}) => new Promise(pronto => {
     Object.assign(github, { status: 200, corpo: MEDIA, comentarios: [], execucoes: [CANCELADA, VERMELHA] }, estado);
-    pedidos.length = 0;
+    github.pedidos.length = 0;
     execFile('node', [path.join(__dirname, 'registrar-na-pr.js'), ...args], {
       encoding: 'utf8',
       env: { PATH: process.env.PATH, GITHUB_API_URL: `http://127.0.0.1:${servidor.address().port}`, GITHUB_REPOSITORY: 'dono/repo', GITHUB_TOKEN: 'segredo' },
-    }, (erro, stdout) => pronto({ status: erro ? erro.code : 0, stdout, escritas: pedidos.filter(pedido => pedido.metodo !== 'GET') }));
+    }, (erro, stdout) => pronto({ status: erro ? erro.code : 0, stdout, escritas: github.pedidos.filter(pedido => pedido.metodo !== 'GET') }));
   });
-  const REVISAO = ['revisao', '--pr', '7', '--head', HEAD, '--autor', 'worker a', '--revisor', 'worker b', '--risco', 'baixa'];
+}
+
+async function conferirAPublicacaoDaRevisao(rodar, github) {
+  const ensaio = await rodar(REVISAO);
+  assert.strictEqual(ensaio.status, 0, ensaio.stdout);
+  assert.match(ensaio.stdout, /ensaio: nada foi publicado; repita com --publicar[^]*Veredito: CLEAN\n\s+Head: 1d606d78aac180096ca7cc5df8279355f21ac729[^]*registro da PR ok no head/);
+  assert.deepStrictEqual(ensaio.escritas, [], 'o ensaio não escreve no GitHub');
+
+  const publicada = await rodar([...REVISAO, '--publicar']);
+  assert.strictEqual(publicada.status, 0, publicada.stdout);
+  assert.deepStrictEqual(publicada.escritas.map(({ metodo, caminho, corpo, token }) => ({ metodo, caminho, corpo, token })), [
+    { metodo: 'POST', caminho: '/repos/dono/repo/issues/7/comments', corpo: { body: registro(HEAD) }, token: 'Bearer segredo' },
+    { metodo: 'POST', caminho: '/repos/dono/repo/actions/runs/43593107043/rerun', corpo: null, token: 'Bearer segredo' },
+  ]);
+  assert.match(publicada.stdout, /Registro publicado\.[^]*Check rodando de novo \(execução 43593107043\): https:\/\/github\.test\/runs\/43593107043/);
+  assert(github.pedidos.some(pedido => pedido.caminho === `/repos/dono/repo/actions/workflows/registro-da-pr.yml/runs?head_sha=${HEAD}&per_page=20`), 'procura a execução do head');
+  const rodando = await rodar([...REVISAO, '--publicar'], { execucoes: [{ ...VERMELHA, status: 'in_progress' }] });
+  assert.match(rodando.stdout, /já está rodando neste head/);
+  assert.strictEqual(rodando.escritas.length, 1, 'só o comentário: a execução em andamento lê o registro novo');
+}
+
+async function conferirARevisaoQueNaoPassa(rodar) {
+  const atrasada = await rodar(['revisao', '--pr', '7', '--head', ANTERIOR, '--autor', 'a', '--revisor', 'b', '--risco', 'baixa', '--publicar']);
+  assert.strictEqual(atrasada.status, 1);
+  assert.match(atrasada.stdout, new RegExp(`^✗ Nada foi publicado na PR 7: a revisão é do commit ${ANTERIOR}, e o head da PR agora é ${HEAD}`));
+  assert.deepStrictEqual(atrasada.escritas, []);
+
+  const semProva = await rodar([...REVISAO, '--publicar'], { corpo: ALTA, execucoes: [] });
+  assert.strictEqual(semProva.status, 1, 'o registro é publicado, e a saída diz que o check ainda não passa');
+  assert.strictEqual(semProva.escritas.length, 1);
+  assert.match(semProva.stdout, /o corpo não tem a seção "Prova real"[^]*não tem execução neste head, e um comentário não cria uma[^]*gh pr close 7 -R dono\/repo && gh pr reopen 7 -R dono\/repo/);
+  assert.match((await rodar(['conferir', '--pr', '7'], { execucoes: [] })).stdout, /não tem execução neste head/, 'conferir também avisa');
+}
+
+async function conferirAPublicacaoDaProva(rodar, nota) {
   const PROVA = ['prova', '--pr', '7', '--head', HEAD, '--cobertura', 'total', '--nota', nota];
+  const provada = await rodar([...PROVA, '--publicar'], { corpo: ALTA, comentarios: [registro(HEAD)] });
+  assert.strictEqual(provada.status, 0, provada.stdout);
+  assert.deepStrictEqual(provada.escritas.map(({ metodo, caminho, corpo }) => ({ metodo, caminho, corpo })), [
+    { metodo: 'PATCH', caminho: '/repos/dono/repo/pulls/7', corpo: { body: `${ALTA}\n\n## Prova real\n\nPROVADO 100% REAL\nHead: ${HEAD}\n\nEnvio real no Anki 25.9.\n` } },
+  ]);
+  assert.match(provada.stdout, /Corpo gravado[^]*atenção ALTA, \/code-review CLEAN, PROVADO 100% REAL/);
+  assert.match((await rodar([...PROVA, '--publicar'], { corpo: ALTA, comentarios: [registro(HEAD)], execucoes: [] })).stdout, /PROVADO 100% REAL\n$/, 'a edição do corpo cria a execução: nada a avisar');
+
+  const conferida = await rodar(['conferir', '--pr', '7'], { comentarios: [registro(ANTERIOR)] });
+  assert.strictEqual(conferida.status, 1);
+  assert.match(conferida.stdout, new RegExp(`mais recente é do commit ${ANTERIOR}`));
+  assert.deepStrictEqual(conferida.escritas, []);
+}
+
+async function conferirOsUsosErrados(rodar) {
+  for (const [args, padrao] of [
+    [['revisao', '--pr', '7', '--head', HEAD], /revisao pede --autor, --revisor, --risco/], [['prova', '--pr', '7', '--head', HEAD], /prova pede --cobertura, --nota/],
+    [['publicar', '--pr', '7'], /comando desconhecido: publicar/], [['conferir'], /--pr <número> é obrigatório/], [['conferir', '--pr', '7', '--forcar'], /opção desconhecida: --forcar/],
+  ]) {
+    const errado = await rodar(args);
+    assert.strictEqual(errado.status, 2, args.join(' '));
+    assert.match(errado.stdout, padrao);
+    assert.match(errado.stdout, /uso: node scripts\/ci\/registrar-na-pr\.js/);
+  }
+  const foraDoAr = await rodar([...REVISAO, '--publicar'], { status: 500 });
+  assert.strictEqual(foraDoAr.status, 2);
+  assert.match(foraDoAr.stdout, /^✗ o GitHub respondeu 500/);
+  assert.match((await rodar(['--help'])).stdout, /^uso: node scripts\/ci\/registrar-na-pr\.js/);
+}
+
+async function conferirOPublicadorContraOGithubFalso() {
+  const falso = await abrirOGithubFalso();
+  const rodar = registrarNaPr(falso);
+  const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'registrar-na-pr-'));
+  const nota = path.join(pasta, 'nota.md');
+  fs.writeFileSync(nota, 'Envio real no Anki 25.9.\n');
   try {
-    const ensaio = await rodar(REVISAO);
-    assert.strictEqual(ensaio.status, 0, ensaio.stdout);
-    assert.match(ensaio.stdout, /ensaio: nada foi publicado; repita com --publicar[^]*Veredito: CLEAN\n\s+Head: 1d606d78aac180096ca7cc5df8279355f21ac729[^]*registro da PR ok no head/);
-    assert.deepStrictEqual(ensaio.escritas, [], 'o ensaio não escreve no GitHub');
-
-    const publicada = await rodar([...REVISAO, '--publicar']);
-    assert.strictEqual(publicada.status, 0, publicada.stdout);
-    assert.deepStrictEqual(publicada.escritas.map(({ metodo, caminho, corpo, token }) => ({ metodo, caminho, corpo, token })), [
-      { metodo: 'POST', caminho: '/repos/dono/repo/issues/7/comments', corpo: { body: registro(HEAD) }, token: 'Bearer segredo' },
-      { metodo: 'POST', caminho: '/repos/dono/repo/actions/runs/43593107043/rerun', corpo: null, token: 'Bearer segredo' },
-    ]);
-    assert.match(publicada.stdout, /Registro publicado\.[^]*Check rodando de novo \(execução 43593107043\): https:\/\/github\.test\/runs\/43593107043/);
-    assert(pedidos.some(pedido => pedido.caminho === `/repos/dono/repo/actions/workflows/registro-da-pr.yml/runs?head_sha=${HEAD}&per_page=20`), 'procura a execução do head');
-    const rodando = await rodar([...REVISAO, '--publicar'], { execucoes: [{ ...VERMELHA, status: 'in_progress' }] });
-    assert.match(rodando.stdout, /já está rodando neste head/);
-    assert.strictEqual(rodando.escritas.length, 1, 'só o comentário: a execução em andamento lê o registro novo');
-
-    const atrasada = await rodar(['revisao', '--pr', '7', '--head', ANTERIOR, '--autor', 'a', '--revisor', 'b', '--risco', 'baixa', '--publicar']);
-    assert.strictEqual(atrasada.status, 1);
-    assert.match(atrasada.stdout, new RegExp(`^✗ Nada foi publicado na PR 7: a revisão é do commit ${ANTERIOR}, e o head da PR agora é ${HEAD}`));
-    assert.deepStrictEqual(atrasada.escritas, []);
-
-    const semProva = await rodar([...REVISAO, '--publicar'], { corpo: ALTA, execucoes: [] });
-    assert.strictEqual(semProva.status, 1, 'o registro é publicado, e a saída diz que o check ainda não passa');
-    assert.strictEqual(semProva.escritas.length, 1);
-    assert.match(semProva.stdout, /o corpo não tem a seção "Prova real"[^]*não tem execução neste head, e um comentário não cria uma[^]*gh pr close 7 -R dono\/repo && gh pr reopen 7 -R dono\/repo/);
-    assert.match((await rodar(['conferir', '--pr', '7'], { execucoes: [] })).stdout, /não tem execução neste head/, 'conferir também avisa');
-
-    const provada = await rodar([...PROVA, '--publicar'], { corpo: ALTA, comentarios: [registro(HEAD)] });
-    assert.strictEqual(provada.status, 0, provada.stdout);
-    assert.deepStrictEqual(provada.escritas.map(({ metodo, caminho, corpo }) => ({ metodo, caminho, corpo })), [
-      { metodo: 'PATCH', caminho: '/repos/dono/repo/pulls/7', corpo: { body: `${ALTA}\n\n## Prova real\n\nPROVADO 100% REAL\nHead: ${HEAD}\n\nEnvio real no Anki 25.9.\n` } },
-    ]);
-    assert.match(provada.stdout, /Corpo gravado[^]*atenção ALTA, \/code-review CLEAN, PROVADO 100% REAL/);
-    assert.match((await rodar([...PROVA, '--publicar'], { corpo: ALTA, comentarios: [registro(HEAD)], execucoes: [] })).stdout, /PROVADO 100% REAL\n$/, 'a edição do corpo cria a execução: nada a avisar');
-
-    const conferida = await rodar(['conferir', '--pr', '7'], { comentarios: [registro(ANTERIOR)] });
-    assert.strictEqual(conferida.status, 1);
-    assert.match(conferida.stdout, new RegExp(`mais recente é do commit ${ANTERIOR}`));
-    assert.deepStrictEqual(conferida.escritas, []);
-
-    for (const [args, padrao] of [
-      [['revisao', '--pr', '7', '--head', HEAD], /revisao pede --autor, --revisor, --risco/], [['prova', '--pr', '7', '--head', HEAD], /prova pede --cobertura, --nota/],
-      [['publicar', '--pr', '7'], /comando desconhecido: publicar/], [['conferir'], /--pr <número> é obrigatório/], [['conferir', '--pr', '7', '--forcar'], /opção desconhecida: --forcar/],
-    ]) {
-      const errado = await rodar(args);
-      assert.strictEqual(errado.status, 2, args.join(' '));
-      assert.match(errado.stdout, padrao);
-      assert.match(errado.stdout, /uso: node scripts\/ci\/registrar-na-pr\.js/);
-    }
-    const foraDoAr = await rodar([...REVISAO, '--publicar'], { status: 500 });
-    assert.strictEqual(foraDoAr.status, 2);
-    assert.match(foraDoAr.stdout, /^✗ o GitHub respondeu 500/);
-    assert.match((await rodar(['--help'])).stdout, /^uso: node scripts\/ci\/registrar-na-pr\.js/);
+    await conferirAPublicacaoDaRevisao(rodar, falso.github);
+    await conferirARevisaoQueNaoPassa(rodar);
+    await conferirAPublicacaoDaProva(rodar, nota);
+    await conferirOsUsosErrados(rodar);
   } finally {
-    servidor.close();
+    falso.servidor.close();
     fs.rmSync(pasta, { recursive: true, force: true });
   }
+}
 
+conferirOPublicadorContraOGithubFalso().then(() => {
   assert(conferir({ ...pr(), corpo: '' }).mensagem.includes('node scripts/ci/registrar-na-pr.js --help'), 'a mensagem do check vermelho cita o publicador');
   assert(fs.readFileSync(path.join(__dirname, '..', '..', '.github', 'PULL_REQUEST_TEMPLATE.md'), 'utf8').includes('scripts/ci/registrar-na-pr.js'), 'o modelo cita o publicador');
   console.log('test_registrar_na_pr: ok');
-})().catch(erro => {
+}).catch(erro => {
   console.error(erro);
   process.exitCode = 1;
 });

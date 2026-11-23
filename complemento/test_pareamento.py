@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import pareamento, registro
 from complemento.test_pareamento_de_mentira import (
-    CLIENTE, CODIGO, DESAFIO, OUTRO_CLIENTE, OUTRO_SEGREDO, SEGREDO, UM_CLIENTE_NOVO, VETOR, TelaDeMentira, arquivo_do_pareamento, bytes_de, cabecalhos_assinados,
+    CLIENTE, CODIGO, DESAFIO, OUTRO_CLIENTE, OUTRO_SEGREDO, SEGREDO, UM_CLIENTE_NOVO, VETOR, Navegador, TelaDeMentira, arquivo_do_pareamento, bytes_de, cabecalhos_assinados,
     comecar, concluir, json_de, semear,
 )
 from complemento.test_harness import ConexaoNoTeste
@@ -115,7 +115,7 @@ class ConcluirOPareamento(unittest.TestCase):
             _, resposta, _ = concluir(conexao)
             segredo = base64.b64decode(resposta["segredo"])
             conferir = json_de(conexao.pedir("POST", "/pareamento/conferir", corpo={"cliente": UM_CLIENTE_NOVO, "desafio": DESAFIO})[2])
-            cabecalhos = cabecalhos_assinados(conferir["sessao"], "POST", "/ia/estado", b"{}", cliente=UM_CLIENTE_NOVO, segredo=segredo)
+            cabecalhos = Navegador(UM_CLIENTE_NOVO, segredo).assinar(conferir["sessao"], "POST", "/ia/estado", b"{}")
             status, _, _ = conexao.pedir("POST", "/ia/estado", corpo={}, assinar=False, cabecalhos=cabecalhos)
         self.assertEqual(status, 200)
 

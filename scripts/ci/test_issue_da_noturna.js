@@ -11,15 +11,17 @@ const { lerYaml } = require('../yaml-de-workflow.js');
 const script = path.join(__dirname, 'issue-da-noturna.js');
 const URL_DA_EXECUCAO = 'https://github.com/dono/repo/actions/runs/42';
 
-assert.strictEqual(decidir(['success', 'success']), 'verde');
-assert.strictEqual(decidir(['success', 'failure']), 'vermelha');
-assert.strictEqual(decidir(['failure', 'failure']), 'vermelha');
-assert.strictEqual(decidir(['cancelled', 'failure']), 'vermelha', 'uma fatia cancelada não esconde a que falhou');
-assert.strictEqual(decidir(['success', 'cancelled']), 'vermelha', 'um job cortado pelo teto de tempo termina cancelled: é uma travada, não um nada');
-assert.strictEqual(decidir(['cancelled', 'cancelled']), 'vermelha');
-assert.strictEqual(decidir(['skipped', 'success']), 'nada');
-assert.strictEqual(decidir(['success', '']), 'nada', 'resultado ausente');
-assert.strictEqual(decidir([]), 'nada');
+function decisaoPorResultados() {
+  assert.strictEqual(decidir(['success', 'success']), 'verde');
+  assert.strictEqual(decidir(['success', 'failure']), 'vermelha');
+  assert.strictEqual(decidir(['failure', 'failure']), 'vermelha');
+  assert.strictEqual(decidir(['cancelled', 'failure']), 'vermelha', 'uma fatia cancelada não esconde a que falhou');
+  assert.strictEqual(decidir(['success', 'cancelled']), 'vermelha', 'um job cortado pelo teto de tempo termina cancelled: é uma travada, não um nada');
+  assert.strictEqual(decidir(['cancelled', 'cancelled']), 'vermelha');
+  assert.strictEqual(decidir(['skipped', 'success']), 'nada');
+  assert.strictEqual(decidir(['success', '']), 'nada', 'resultado ausente');
+  assert.strictEqual(decidir([]), 'nada');
+}
 
 const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-noturna-'));
 const bin = path.join(pasta, 'bin');
@@ -51,7 +53,7 @@ function rodar({ fatias, conexaoReal, complemento = 'success', aberta, falha }) 
 }
 const valor = (args, opcao) => args[args.indexOf(opcao) + 1];
 
-{
+function abreAIssueQuandoUmaFatiaFalha() {
   const r = rodar({ fatias: 'failure', conexaoReal: 'success' });
   assert.strictEqual(r.status, 0, r.saida);
   assert.strictEqual(r.escritas.length, 1, 'uma só issue');
@@ -62,21 +64,21 @@ const valor = (args, opcao) => args[args.indexOf(opcao) + 1];
   assert(r.todas.some(a => a[0] === 'label' && a[1] === 'create' && a.includes('noturna')), 'o rótulo é garantido antes');
 }
 
-{
+function comentaNaIssueAbertaQuandoAConexaoRealFalha() {
   const r = rodar({ fatias: 'success', conexaoReal: 'failure', aberta: 7 });
   assert.strictEqual(r.status, 0, r.saida);
   assert.deepStrictEqual(r.escritas.map(a => [a[1], a[2]]), [['comment', '7']], 'só um comentário na aberta');
   assert(valor(r.escritas[0], '--body').includes(URL_DA_EXECUCAO) && valor(r.escritas[0], '--body').includes('Conexão real: failure'));
 }
 
-{
+function comentaEFechaAIssueQuandoTudoFicaVerde() {
   const r = rodar({ fatias: 'success', conexaoReal: 'success', aberta: 7 });
   assert.strictEqual(r.status, 0, r.saida);
   assert.deepStrictEqual(r.escritas.map(a => [a[1], a[2]]), [['comment', '7'], ['close', '7']], 'comenta e fecha');
   assert.deepStrictEqual(rodar({ fatias: 'success', conexaoReal: 'success' }).escritas, [], 'verde sem issue');
 }
 
-{
+function abreAIssueQuandoANoiteTravou() {
   const r = rodar({ fatias: 'cancelled', conexaoReal: 'success' });
   assert.strictEqual(r.status, 0, r.saida);
   assert.deepStrictEqual(r.escritas.map(a => a[1]), ['create'], 'uma noite que travou abre a issue');
@@ -85,19 +87,19 @@ const valor = (args, opcao) => args[args.indexOf(opcao) + 1];
   assert.deepStrictEqual(comAberta.escritas.map(a => [a[1], a[2]]), [['comment', '7']]);
 }
 
-{
+function naoChamaOGhQuandoAFatiaFoiPulada() {
   const r = rodar({ fatias: 'skipped', conexaoReal: 'success', aberta: 7 });
   assert.strictEqual(r.status, 0, r.saida);
   assert.deepStrictEqual(r.todas, [], 'não chama o gh');
 }
 
-{
+function reprovaOPassoQuandoOGhFalha() {
   const r = rodar({ fatias: 'failure', conexaoReal: 'success', falha: true });
   assert.notStrictEqual(r.status, 0, 'o passo reprova');
   assert(/gh/.test(r.saida), 'a mensagem fala do gh');
 }
 
-{
+function abreAIssueQuandoOComplementoFalha() {
   const r = rodar({ fatias: 'success', conexaoReal: 'success', complemento: 'failure' });
   assert.strictEqual(r.status, 0, r.saida);
   assert.deepStrictEqual(r.escritas.map(a => a[1]), ['create'], 'o complemento vermelho (teste ou teto de tempo) abre a issue');
@@ -110,47 +112,81 @@ const valor = (args, opcao) => args[args.indexOf(opcao) + 1];
   assert.strictEqual(spawnSync('node', [script, URL_DA_EXECUCAO, 'success', 'success'], { encoding: 'utf8' }).status, 2, 'faltando o resultado do complemento é erro de uso');
 }
 
-{
+function corpoDaIssueNaoFalaSoDaNoite() {
   const r = rodar({ fatias: 'failure', conexaoReal: 'success' });
   const corpo = valor(r.escritas[0], '--body');
   assert(!/esta noite/i.test(corpo), 'a suíte também roda a cada push na main: o corpo não fala só de noite');
   assert(/primeira execução verde/.test(corpo), 'a issue fecha na primeira execução verde, de qualquer gatilho');
 }
 
-{
-  const fluxo = fs.readFileSync(path.join(__dirname, '..', '..', '.github', 'workflows', 'noturna.yml'), 'utf8');
-  const yaml = lerYaml(fluxo);
-  const passoDe = (job, texto) => yaml.jobs[job].steps.find(passo => passo.run === texto);
+const fluxo = fs.readFileSync(path.join(__dirname, '..', '..', '.github', 'workflows', 'noturna.yml'), 'utf8');
+const yaml = lerYaml(fluxo);
+const passoDe = (job, texto) => yaml.jobs[job].steps.find(passo => passo.run === texto);
+const ehTesteDaE2e = passo => /testar\.mjs e2e/.test(passo.run || '');
+
+const SPECS_DA_CONEXAO_REAL = [
+  ['painel-envio-apagar', 'o Apagar tudo chega à fila real'],
+  ['painel-minerar-frases-menu', 'o menu e o modal saíram de painel-minerar-frases e rodam junto dele'],
+  ['painel-anki-continuar', 'a fila do contrato semeada na real'],
+  ['painel-envio-perfil', 'os perfis do Anki na real'],
+  ['configuracoes-ia-copia-em-voo', 'a chave guardada só na Conexão real'],
+  ['configuracoes-chatgpt-plano', 'o login do ChatGPT na Conexão real'],
+  ...['painel-envio-parado', 'painel-envio-plano', 'painel-envio-copia', 'painel-envio-visual'].map(spec => [spec, 'o Envio anda pela fila real']),
+  ...['painel-conserto', 'painel-envio-retido', 'painel-envio-anki-fechado'].map(spec => [spec, 'o Envio criado fica na Conexão real']),
+  ...['boas-vindas-nivel', 'painel-envio-desconhecido'].map(spec => [spec, 'o perfil e a leitura vêm da Conexão real']),
+  ...['overlay-marca', 'overlay-visual', 'seam', 'sincronizacao'].map(spec => [spec, 'o vocabulário vem da Conexão real']),
+];
+
+function fatiasDaE2eTemTetoDeSeteMinutos() {
   const e2e = passoDe('e2e', 'xvfb-run --auto-servernum node scripts/testar.mjs e2e -- --workers=1 $(node scripts/ci/fatias-e2e.js ${{ matrix.fatia }})');
   assert(e2e, 'cada fatia da e2e roda nas fatias balanceadas do PR');
   assert.strictEqual(String(e2e.env.PM_TETO_S), '420', 'cada fatia da e2e tem o teto de 7 minutos');
   assert(!/--shard/.test(fluxo), 'um teto por fatia só diz algo se as fatias forem as balanceadas');
+}
+
+function complementoTemTetoDeSeisMinutos() {
   const complemento = passoDe('complemento', 'node scripts/testar.mjs complemento');
   assert(complemento, 'a noturna roda o grupo complemento');
   assert.strictEqual(String(complemento.env.PM_TETO_S), '360', 'o complemento tem o teto de 6 minutos');
   assert.strictEqual(String(complemento.env.PM_VERSAO_NO_LANCAMENTO), '1', 'a versão fica para o lançamento, como no push: a main atrasada de versão não deixa a noturna vermelha');
-  const real = yaml.jobs['e2e-conexao-real'].steps.find(passo => /testar\.mjs e2e/.test(passo.run || ''));
+}
+
+function conexaoRealRodaAsSpecsDeFalhasEPedidos() {
+  const real = yaml.jobs['e2e-conexao-real'].steps.find(ehTesteDaE2e);
   assert.strictEqual(real.env.PM_CONEXAO, 'real', 'a e2e com a Conexão real roda no modo real');
-  const specsDeFalhasEPedidos = real.run.match(/tests\/[\w-]+\.spec\.js/g) || [];
-  assert.strictEqual(specsDeFalhasEPedidos.length, 41, 'a noturna roda contra a Conexão real as specs de falhas e pedidos, as do vocabulário, as do perfil e as do Envio (C6)');
-  assert(specsDeFalhasEPedidos.includes('tests/painel-envio-apagar.spec.js'), 'painel-envio-apagar: o Apagar tudo chega à fila real');
-  assert(specsDeFalhasEPedidos.includes('tests/painel-minerar-frases-menu.spec.js'), 'painel-minerar-frases-menu: o menu e o modal saíram de painel-minerar-frases e rodam junto dele');
-  assert(specsDeFalhasEPedidos.includes('tests/painel-anki-continuar.spec.js'), 'painel-anki-continuar: a fila do contrato semeada na real');
-  assert(specsDeFalhasEPedidos.includes('tests/painel-envio-perfil.spec.js'), 'painel-envio-perfil: os perfis do Anki na real');
-  assert(specsDeFalhasEPedidos.includes('tests/configuracoes-ia-copia-em-voo.spec.js'), 'configuracoes-ia-copia-em-voo: a chave guardada só na Conexão real');
-  assert(specsDeFalhasEPedidos.includes('tests/configuracoes-chatgpt-plano.spec.js'), 'configuracoes-chatgpt-plano: o login do ChatGPT na Conexão real');
-  for (const spec of ['painel-envio-parado', 'painel-envio-plano', 'painel-envio-copia', 'painel-envio-visual']) assert(specsDeFalhasEPedidos.includes(`tests/${spec}.spec.js`), `${spec}: o Envio anda pela fila real`);
-  for (const spec of ['painel-conserto', 'painel-envio-retido', 'painel-envio-anki-fechado']) assert(specsDeFalhasEPedidos.includes(`tests/${spec}.spec.js`), `${spec}: o Envio criado fica na Conexão real`);
-  for (const spec of ['boas-vindas-nivel', 'painel-envio-desconhecido']) assert(specsDeFalhasEPedidos.includes(`tests/${spec}.spec.js`), `${spec}: o perfil e a leitura vêm da Conexão real`);
-  for (const spec of ['overlay-marca', 'overlay-visual', 'seam', 'sincronizacao']) assert(specsDeFalhasEPedidos.includes(`tests/${spec}.spec.js`), `${spec}: o vocabulário vem da Conexão real`);
-  for (const spec of specsDeFalhasEPedidos) assert(fs.existsSync(path.join(__dirname, '..', '..', 'e2e', spec)), `${spec} existe: um nome errado não roda nada`);
+  const specs = real.run.match(/tests\/[\w-]+\.spec\.js/g) || [];
+  assert.strictEqual(specs.length, 41, 'a noturna roda contra a Conexão real as specs de falhas e pedidos, as do vocabulário, as do perfil e as do Envio (C6)');
+  for (const [spec, motivo] of SPECS_DA_CONEXAO_REAL) assert(specs.includes(`tests/${spec}.spec.js`), `${spec}: ${motivo}`);
+  for (const spec of specs) assert(fs.existsSync(path.join(__dirname, '..', '..', 'e2e', spec)), `${spec} existe: um nome errado não roda nada`);
+}
+
+function issueEsperaOsTresJobsELeOComplemento() {
   const avisar = yaml.jobs.avisar;
   assert.deepStrictEqual(String(avisar.needs).replace(/[[\]\s]/g, '').split(','), ['e2e', 'e2e-conexao-real', 'complemento'], 'a issue espera o complemento');
   assert.strictEqual(avisar.steps.find(passo => /issue-da-noturna/.test(passo.run || '')).env.COMPLEMENTO, '${{ needs.complemento.result }}', 'a issue lê o resultado do complemento');
+}
+
+function suiteRodaNoPushSemCancelarACron() {
   assert(/^on:[\s\S]*?^ {2}push:\n {4}branches: \[main\]$/m.test(fluxo), 'a suíte inteira roda no push para a main');
   assert(/^ {2}group: noturna-\$\{\{ github\.event_name \}\}-\$\{\{ github\.ref \}\}$/m.test(fluxo), 'o grupo separa o push do cron: um push não cancela a noturna agendada');
   assert(/^ {2}cancel-in-progress: \$\{\{ github\.event_name == 'pull_request' \|\| github\.event_name == 'push' \}\}$/m.test(fluxo), 'só a execução mais nova do push segue');
 }
+
+
+decisaoPorResultados();
+abreAIssueQuandoUmaFatiaFalha();
+comentaNaIssueAbertaQuandoAConexaoRealFalha();
+comentaEFechaAIssueQuandoTudoFicaVerde();
+abreAIssueQuandoANoiteTravou();
+naoChamaOGhQuandoAFatiaFoiPulada();
+reprovaOPassoQuandoOGhFalha();
+abreAIssueQuandoOComplementoFalha();
+corpoDaIssueNaoFalaSoDaNoite();
+fatiasDaE2eTemTetoDeSeteMinutos();
+complementoTemTetoDeSeisMinutos();
+conexaoRealRodaAsSpecsDeFalhasEPedidos();
+issueEsperaOsTresJobsELeOComplemento();
+suiteRodaNoPushSemCancelarACron();
 
 fs.rmSync(pasta, { recursive: true, force: true });
 console.log('issue da noturna ok');
