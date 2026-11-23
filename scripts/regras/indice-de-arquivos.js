@@ -40,31 +40,41 @@ function linhasDaTabela(fonte) {
   return saida;
 }
 
-function verificar(arquivo, fonte, raiz) {
-  if (ehDoIndice(arquivo)) {
-    const achados = [];
-    const vistas = new Map();
-    for (const { linha, primeiraColuna } of linhasDaTabela(fonte)) {
-      const chave = primeiraColuna.trim();
-      if (!/^[\s:-]*$/.test(chave)) {
-        if (vistas.has(chave)) achados.push({ linha, detalhe: `a linha repete a primeira coluna da linha ${vistas.get(chave)} (duplicata, talvez de um merge=union): deixe uma só` });
-        else vistas.set(chave, linha);
-      }
-      for (const item of itensDe(primeiraColuna).filter(i => /\/|\.[a-z0-9]+$/i.test(i))) {
-        if (!fs.existsSync(path.join(raiz, item))) {
-          achados.push({ linha, detalhe: `a linha cita \`${item}\`, que não existe` });
-        }
-      }
-    }
-    return achados;
-  }
+const ehSeparador = chave => /^[\s:-]*$/.test(chave);
+const citaUmArquivo = item => /\/|\.[a-z0-9]+$/i.test(item);
+
+function primeiraLinhaDeCadaChave(linhas) {
+  const primeira = new Map();
+  for (const { linha, chave } of linhas) if (!primeira.has(chave)) primeira.set(chave, linha);
+  return primeira;
+}
+
+function repeticao({ linha, chave }, primeira) {
+  if (ehSeparador(chave) || primeira.get(chave) === linha) return [];
+  return [{ linha, detalhe: `a linha repete a primeira coluna da linha ${primeira.get(chave)} (duplicata, talvez de um merge=union): deixe uma só` }];
+}
+
+const citacoesQueNaoExistem = ({ linha, primeiraColuna }, raiz) => itensDe(primeiraColuna)
+  .filter(item => citaUmArquivo(item) && !fs.existsSync(path.join(raiz, item)))
+  .map(item => ({ linha, detalhe: `a linha cita \`${item}\`, que não existe` }));
+
+function achadosDoIndice(fonte, raiz) {
+  const linhas = linhasDaTabela(fonte).map(linha => ({ ...linha, chave: linha.primeiraColuna.trim() }));
+  const primeira = primeiraLinhaDeCadaChave(linhas);
+  return linhas.flatMap(linha => [...repeticao(linha, primeira), ...citacoesQueNaoExistem(linha, raiz)]);
+}
+
+const citadosNoIndice = pasta => new Set(fs.readdirSync(pasta).filter(nomeDoArquivo => ehDoIndice(`${PASTA_DO_INDICE}/${nomeDoArquivo}`))
+  .flatMap(nomeDoArquivo => linhasDaTabela(fs.readFileSync(path.join(pasta, nomeDoArquivo), 'utf8')).flatMap(l => itensDe(l.texto))));
+
+function achadosDoArquivo(arquivo, raiz) {
   const pasta = path.join(raiz, PASTA_DO_INDICE);
   if (!fs.existsSync(pasta)) return [];
-  const citados = new Set(fs.readdirSync(pasta).filter(nomeDoArquivo => ehDoIndice(`${PASTA_DO_INDICE}/${nomeDoArquivo}`))
-    .flatMap(nomeDoArquivo => linhasDaTabela(fs.readFileSync(path.join(pasta, nomeDoArquivo), 'utf8')).flatMap(l => itensDe(l.texto))));
-  const nome = path.posix.basename(arquivo);
-  if (citados.has(arquivo) || citados.has(nome)) return [];
+  const citados = citadosNoIndice(pasta);
+  if (citados.has(arquivo) || citados.has(path.posix.basename(arquivo))) return [];
   return [{ linha: 1, detalhe: `${arquivo} não está em nenhuma tabela de ${PASTA_DO_INDICE}/` }];
 }
+
+const verificar = (arquivo, fonte, raiz) => (ehDoIndice(arquivo) ? achadosDoIndice(fonte, raiz) : achadosDoArquivo(arquivo, raiz));
 
 module.exports = { id, conserto, seAplica, verificar };

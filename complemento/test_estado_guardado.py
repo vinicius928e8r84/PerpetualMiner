@@ -1,5 +1,6 @@
 """O que o contrato confere na repetição de um POST: o estado guardado e a resposta (apoio de `test_servidor.py` e `test_servidor_repeticao.py`)."""
 
+import collections
 import json
 import os
 
@@ -22,11 +23,22 @@ def estado_guardado(conexao):
     return {"arquivos": arquivos, "nuvem": json.loads(json.dumps(conexao.firestore.documentos))}
 
 
-def confere_a_repeticao(caso, exemplo, primeiro, guardado, segundo, guardado_depois):
+class PedidoFeito(collections.namedtuple("PedidoFeito", "resposta guardado")):
+    """A `resposta` de um POST (status, cabeçalhos, corpo) e o `estado_guardado` logo depois dele."""
+
+    @property
+    def status(self):
+        return self.resposta[0]
+
+    @property
+    def corpo(self):
+        return self.resposta[2]
+
+
+def confere_a_repeticao(caso, exemplo, primeiro, segundo):
     """O mesmo POST de novo: a mesma resposta (salvo o instante) e nada novo guardado, ou a exceção que o exemplo declara."""
-    status, _, corpo = segundo
-    igual = status == primeiro[0] and igual_ao_do_contrato(json.loads(corpo), exemplo["resposta"]["json"])
-    intacto = guardado == guardado_depois
+    igual = segundo.status == primeiro.status and igual_ao_do_contrato(json.loads(segundo.corpo), exemplo["resposta"]["json"])
+    intacto = primeiro.guardado == segundo.guardado
     if exemplo.get("repetivel") is False:
         caso.assertTrue(exemplo.get("porque"), 'O exemplo "%s" diz "repetivel": false sem o `porque`.' % exemplo["nome"])
         caso.assertFalse(
@@ -34,14 +46,14 @@ def confere_a_repeticao(caso, exemplo, primeiro, guardado, segundo, guardado_dep
             'O exemplo "%s" diz "repetivel": false, mas pedido duas vezes dá a mesma resposta e o mesmo estado: tire a exceção.' % exemplo["nome"],
         )
         return
-    caso.assertEqual(status, primeiro[0], 'O mesmo POST de novo mudou o status no exemplo "%s".' % exemplo["nome"])
+    caso.assertEqual(segundo.status, primeiro.status, 'O mesmo POST de novo mudou o status no exemplo "%s".' % exemplo["nome"])
     caso.assertTrue(
-        igual_ao_do_contrato(json.loads(corpo), exemplo["resposta"]["json"]),
+        igual_ao_do_contrato(json.loads(segundo.corpo), exemplo["resposta"]["json"]),
         'O mesmo POST de novo respondeu outra coisa no exemplo "%s": %s. Se repetir de propósito muda a resposta ou o estado, '
-        'declare no exemplo `"repetivel": false, "porque": …` (complemento/contrato/LEIA-ME.md).' % (exemplo["nome"], corpo.decode("utf-8")),
+        'declare no exemplo `"repetivel": false, "porque": …` (complemento/contrato/LEIA-ME.md).' % (exemplo["nome"], segundo.corpo.decode("utf-8")),
     )
     caso.assertEqual(
-        guardado, guardado_depois,
+        primeiro.guardado, segundo.guardado,
         'O mesmo POST de novo mudou o que a Conexão guardou no exemplo "%s". Se é de propósito, declare '
         '`"repetivel": false, "porque": …` no exemplo (complemento/contrato/LEIA-ME.md).' % exemplo["nome"],
     )

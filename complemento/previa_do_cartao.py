@@ -55,9 +55,9 @@ def _para_a_pagina(colecao, html):
 def campos_do_exemplo(lang, nivel):
     """Os campos da nota que o Envio gravaria para o Cartão de exemplo do estilo, nos nomes do tipo de nota do idioma."""
     exemplo = estilos.exemplo(lang, nivel)
-    return nota_do_cartao.campos_da_nota(
-        exemplo["texto"], lang, nivel=nivel, palavra=exemplo["palavra"],
-        audio_da_frase=AUDIO_DO_EXEMPLO[0], audio_da_palavra=AUDIO_DO_EXEMPLO[1], imagem=IMAGEM_DO_EXEMPLO)["campos"]
+    alem_do_texto = nota_do_cartao.AlemDoTexto(
+        palavra=exemplo["palavra"], audio_da_frase=AUDIO_DO_EXEMPLO[0], audio_da_palavra=AUDIO_DO_EXEMPLO[1], imagem=IMAGEM_DO_EXEMPLO)
+    return nota_do_cartao.campos_da_nota(exemplo["texto"], lang, nivel=nivel, alem_do_texto=alem_do_texto)["campos"]
 
 
 def _renderizado(colecao, tipo, campos):

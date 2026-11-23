@@ -97,7 +97,7 @@ class MotorDoCartaoDeRoteiro:
 
     def montar(self, cartao, texto, ia, avisar):
         self.ao_montar(cartao)
-        return MOTOR.nota_do_cartao.campos_da_nota(texto, cartao.pedido["lang"], palavra="gave up"), {}
+        return MOTOR.nota_do_cartao.campos_da_nota(texto, cartao.pedido["lang"], alem_do_texto=MOTOR.nota_do_cartao.AlemDoTexto(palavra="gave up")), {}
 
 
 class IaQueNaoPede:

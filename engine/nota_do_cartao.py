@@ -11,6 +11,7 @@ answer (`prompts/*.txt`); standard library only.
 
 import html
 import re
+from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
 if __package__:  # inside the Anki add-on the engine is the package `complemento.motor`
@@ -166,27 +167,29 @@ def _cor_completa(partes: List[str]) -> bool:
     return tres_partes_preenchidas and partes[0].lower() in PEDACOS
 
 
-def campos_da_nota(
-    content: str,
-    lang: str,
-    *,
-    nivel: Optional[str] = None,
-    palavra: Optional[str] = None,
-    audio_da_frase: Optional[str] = None,
-    audio_da_palavra: Optional[str] = None,
-    imagem: Optional[str] = None,
-) -> Dict[str, object]:
+@dataclass(frozen=True)
+class AlemDoTexto:
+    """What the note has besides the card text: `palavra` is the word the card is about when the text does not say it (the
+    Russian card has no headword); the audios and the image are the file names the note cites."""
+    palavra: Optional[str] = None
+    audio_da_frase: Optional[str] = None
+    audio_da_palavra: Optional[str] = None
+    imagem: Optional[str] = None
+
+
+SO_O_TEXTO = AlemDoTexto()
+
+
+def campos_da_nota(content: str, lang: str, *, nivel: Optional[str] = None, alem_do_texto: AlemDoTexto = SO_O_TEXTO) -> Dict[str, object]:
     """`{ campos: { nome do campo: HTML }, campo_da_frente, frente_normalizada, etiquetas }` of one card text.
 
-    Only the fields with something to say are in `campos` (the note type has the rest, empty). `palavra` is the word the
-    card is about when the text does not say it (the Russian card has no headword). The audios and the image are the file
-    names the note cites."""
+    Only the fields with something to say are in `campos` (the note type has the rest, empty)."""
     idioma, estilo = estilos.idioma(lang), estilos.estilo(lang, nivel)
     nomes = idioma["campos"]
     cartao = _TextoDoCartao(content.replace("## Anki Card", "").strip(), lang, estilo)
-    valores = cartao.valores(palavra, imagem)
-    valores["audio_da_frase"] = _som(audio_da_frase)
-    valores["audio_da_palavra"] = _som(audio_da_palavra)
+    valores = cartao.valores(alem_do_texto.palavra, alem_do_texto.imagem)
+    valores["audio_da_frase"] = _som(alem_do_texto.audio_da_frase)
+    valores["audio_da_palavra"] = _som(alem_do_texto.audio_da_palavra)
 
     campos = {nomes[chave]: valor for chave, valor in valores.items() if valor and chave in nomes}
     etiquetas: List[str] = _extract_tags_from_card(cartao.content)

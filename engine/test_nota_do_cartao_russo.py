@@ -84,8 +84,8 @@ Image: A woman arriving at a door, no text.
 """
 
 
-def nota(conteudo, **argumentos):
-    return nota_do_cartao.campos_da_nota(conteudo, "ru", **argumentos)["campos"]
+def nota(conteudo, nivel=None, **alem_do_texto):
+    return nota_do_cartao.campos_da_nota(conteudo, "ru", nivel=nivel, alem_do_texto=nota_do_cartao.AlemDoTexto(**alem_do_texto))["campos"]
 
 
 def cores_de(html):
