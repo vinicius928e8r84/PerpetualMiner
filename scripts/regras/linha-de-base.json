@@ -50,7 +50,6 @@
     "complemento/pareamento.py": 18,
     "complemento/passagem_das_copias.py": 15,
     "complemento/previa_do_cartao.py": 11,
-    "complemento/retencao_dos_envios.py": 7,
     "complemento/rotas_do_pareamento.py": 5,
     "complemento/servidor.py": 30,
     "complemento/test_chatgpt_de_mentira.py": 7,
