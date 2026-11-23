@@ -21,62 +21,89 @@ const MARCA = /Exceção de teste:\s*sem-estado-guardado\b/;
 const ACAO = /\.(?:click|dblclick|fill|press|pressSequentially|check|uncheck|selectOption|setInputFiles|type|tap|dragTo)\s*\(/g;
 const LEITURA_FIXA = /\b(?:lerStorage|estadoFinal\w*)\s*\(|\.frases\s*\(|\bchrome\.storage\.local\.get\b/g;
 
+const MARCA_DE_LEITOR = /@estado-guardado[\s\S]*?\*\/\s*(?:async\s+)?([A-Za-z_$][\w$]*)/g;
+
+const nomesDosLeitoresEm = fonte => [...fonte.matchAll(MARCA_DE_LEITOR)].map(m => m[1]);
+
+function lerLeitoresDosFakes(raiz) {
+  const pasta = path.join(raiz, 'e2e', 'fakes');
+  if (!fs.existsSync(pasta)) return new Set();
+  const arquivos = fs.readdirSync(pasta).filter(n => n.endsWith('.js'));
+  return new Set(arquivos.flatMap(nome => nomesDosLeitoresEm(fs.readFileSync(path.join(pasta, nome), 'utf8'))));
+}
+
 const leitoresPorRaiz = new Map();
 function leitoresDosFakes(raiz) {
-  if (!leitoresPorRaiz.has(raiz)) {
-    const nomes = new Set();
-    const pasta = path.join(raiz, 'e2e', 'fakes');
-    for (const nome of fs.existsSync(pasta) ? fs.readdirSync(pasta).filter(n => n.endsWith('.js')) : []) {
-      const fonte = fs.readFileSync(path.join(pasta, nome), 'utf8');
-      for (const m of fonte.matchAll(/@estado-guardado[\s\S]*?\*\/\s*(?:async\s+)?([A-Za-z_$][\w$]*)/g)) nomes.add(m[1]);
-    }
-    leitoresPorRaiz.set(raiz, nomes);
-  }
+  if (!leitoresPorRaiz.has(raiz)) leitoresPorRaiz.set(raiz, lerLeitoresDosFakes(raiz));
   return leitoresPorRaiz.get(raiz);
+}
+
+const ABRE = '([{';
+const FECHA = ')]}';
+const FIM_DE_INSTRUCAO = '\n;';
+
+const mudancaDeFundura = c => (ABRE.includes(c) ? 1 : 0) - (FECHA.includes(c) ? 1 : 0);
+
+function fimDoBloco(codigo, abre) {
+  const fim = fechamento(codigo, abre);
+  return fim < 0 ? codigo.length : fim + 1;
+}
+
+function fimDaExpressao(codigo, primeiro) {
+  let fundura = 0;
+  for (let i = primeiro; i < codigo.length; i++) {
+    fundura += mudancaDeFundura(codigo[i]);
+    if (fundura <= 0 && FIM_DE_INSTRUCAO.includes(codigo[i])) return i;
+  }
+  return codigo.length;
 }
 
 function fimDoCorpo(codigo, de) {
   const comeco = codigo.slice(de).search(/\S/);
   if (comeco < 0) return codigo.length;
   const primeiro = de + comeco;
-  if (codigo[primeiro] === '{') {
-    const fim = fechamento(codigo, primeiro);
-    return fim < 0 ? codigo.length : fim + 1;
-  }
-  let fundura = 0;
-  for (let i = primeiro; i < codigo.length; i++) {
-    if ('([{'.includes(codigo[i])) fundura++;
-    else if (')]}'.includes(codigo[i])) fundura--;
-    else if ((codigo[i] === '\n' || codigo[i] === ';') && fundura <= 0) return i;
-  }
-  return codigo.length;
+  return codigo[primeiro] === '{' ? fimDoBloco(codigo, primeiro) : fimDaExpressao(codigo, primeiro);
+}
+
+const FUNCAO_DECLARADA = /(?:^|\n)\s*(?:async\s+)?function\s*\*?\s*([A-Za-z_$][\w$]*)\s*\(/g;
+const SETA_NOMEADA = /(?:^|\n)\s*(?:const|let)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*=>/g;
+
+function funcaoDeclarada(codigo, m) {
+  const parametros = fechamento(codigo, m.index + m[0].length - 1);
+  if (parametros < 0) return null;
+  const chave = codigo.indexOf('{', parametros);
+  return chave < 0 ? null : { nome: m[1], corpo: codigo.slice(chave, fimDoCorpo(codigo, chave)) };
+}
+
+function setaNomeada(codigo, m) {
+  const corpo = m.index + m[0].length;
+  return { nome: m[1], corpo: codigo.slice(corpo, fimDoCorpo(codigo, corpo)) };
 }
 
 function funcoes(codigo) {
-  const lista = [];
-  for (const m of codigo.matchAll(/(?:^|\n)\s*(?:async\s+)?function\s*\*?\s*([A-Za-z_$][\w$]*)\s*\(/g)) {
-    const abre = m.index + m[0].length - 1;
-    const parametros = fechamento(codigo, abre);
-    if (parametros < 0) continue;
-    const chave = codigo.indexOf('{', parametros);
-    if (chave >= 0) lista.push({ nome: m[1], corpo: codigo.slice(chave, fimDoCorpo(codigo, chave)) });
+  const declaradas = [...codigo.matchAll(FUNCAO_DECLARADA)].map(m => funcaoDeclarada(codigo, m)).filter(Boolean);
+  const setas = [...codigo.matchAll(SETA_NOMEADA)].map(m => setaNomeada(codigo, m));
+  return [...declaradas, ...setas];
+}
+
+const chamaAlgum = (corpo, nomes) => [...nomes].some(nome => new RegExp(`\\b${nome}\\s*\\(`).test(corpo));
+
+function acrescentarOsQueFazem(defs, nomes, faz) {
+  let mudou = false;
+  for (const def of defs) {
+    if (nomes.has(def.nome) || !faz(def.corpo, nomes)) continue;
+    nomes.add(def.nome);
+    mudou = true;
   }
-  for (const m of codigo.matchAll(/(?:^|\n)\s*(?:const|let)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*=>/g)) {
-    lista.push({ nome: m[1], corpo: codigo.slice(m.index + m[0].length, fimDoCorpo(codigo, m.index + m[0].length)) });
-  }
-  return lista;
+  return mudou;
 }
 
 function quemFaz(defs, padrao) {
   const nomes = new Set();
-  const acha = corpo => new RegExp(padrao.source, padrao.flags.replace('g', '')).test(corpo);
-  for (let mudou = true; mudou;) {
-    mudou = false;
-    for (const def of defs) {
-      if (nomes.has(def.nome)) continue;
-      if (acha(def.corpo) || [...nomes].some(nome => new RegExp(`\\b${nome}\\s*\\(`).test(def.corpo))) { nomes.add(def.nome); mudou = true; }
-    }
-  }
+  const achaNoCorpo = corpo => new RegExp(padrao.source, padrao.flags.replace('g', '')).test(corpo);
+  const faz = (corpo, jaSabidos) => achaNoCorpo(corpo) || chamaAlgum(corpo, jaSabidos);
+  let mudou = true;
+  while (mudou) mudou = acrescentarOsQueFazem(defs, nomes, faz);
   return nomes;
 }
 
@@ -100,103 +127,153 @@ function conferenciasDe(corpo) {
   return lista;
 }
 
+const ABRE_BLOCO_DE_CONTROLE = /(?:\)|=>|\belse|\btry|\bdo)\s*$/;
+
+const abreBlocoDeControle = (corpo, i) => corpo[i] === '{' && ABRE_BLOCO_DE_CONTROLE.test(corpo.slice(Math.max(0, i - 8), i));
+
+function comecaDepoisDe(corpo, i, fundura) {
+  if (corpo[i] === ';') return fundura === 0;
+  return abreBlocoDeControle(corpo, i);
+}
+
 function inicioDaInstrucao(corpo, p) {
   let fundura = 0;
   for (let i = p - 1; i >= 0; i--) {
-    const c = corpo[i];
-    if (')]}'.includes(c)) fundura++;
-    else if ('([{'.includes(c)) {
-      if (fundura > 0) { fundura--; continue; }
-      if (c === '{' && /(?:\)|=>|\belse|\btry|\bdo)\s*$/.test(corpo.slice(Math.max(0, i - 8), i))) return i + 1;
-    } else if (c === ';' && fundura === 0) return i + 1;
+    if (FECHA.includes(corpo[i])) fundura++;
+    else if (ABRE.includes(corpo[i]) && fundura > 0) fundura--;
+    else if (comecaDepoisDe(corpo, i, fundura)) return i + 1;
   }
   return 0;
 }
 
 const ATRIBUICAO = /^\s*(?:(const|let|var)\s+)?(\{[^}]*\}|\[[^\]]*\]|[A-Za-z_$][\w$]*)\s*=(?!=)([^]*)$/;
+const NOME_SIMPLES = /^[A-Za-z_$][\w$]*$/;
+
+function instrucoesDepoisDe(corpo, p, ate) {
+  const partes = [];
+  let comeco = p;
+  for (const parte of corpo.slice(p).split(';')) {
+    if (comeco >= ate) break;
+    partes.push(parte);
+    comeco += parte.length + 1;
+  }
+  return partes;
+}
+
+function atribuicaoAcompanhada(parte) {
+  const a = ATRIBUICAO.exec(parte);
+  if (!a) return null;
+  return a[1] !== undefined || NOME_SIMPLES.test(a[2]) ? a : null;
+}
+
+function acompanharAtribuicao(nomes, [, declaracao, alvo, valor]) {
+  if (identificadores(valor).some(nome => nomes.has(nome))) identificadores(alvo).forEach(nome => nomes.add(nome));
+  else if (!declaracao) nomes.delete(alvo);
+}
 
 function nomesVivos(corpo, p, ate) {
-  const inicio = inicioDaInstrucao(corpo, p);
-  const m = ATRIBUICAO.exec(corpo.slice(inicio, p));
+  const m = ATRIBUICAO.exec(corpo.slice(inicioDaInstrucao(corpo, p), p));
   if (!m) return new Set();
   const nomes = new Set(identificadores(m[2]));
-  let deslocamento = p;
-  for (const parte of corpo.slice(p).split(';')) {
-    const comeco = deslocamento;
-    deslocamento += parte.length + 1;
-    if (comeco >= ate) break;
-    const a = ATRIBUICAO.exec(parte);
-    if (!a || a[1] === undefined && !/^[A-Za-z_$][\w$]*$/.test(a[2])) continue;
-    if (identificadores(a[3]).some(nome => nomes.has(nome))) identificadores(a[2]).forEach(nome => nomes.add(nome));
-    else if (!a[1]) nomes.delete(a[2]);
+  for (const parte of instrucoesDepoisDe(corpo, p, ate)) {
+    const atribuicao = atribuicaoAcompanhada(parte);
+    if (atribuicao) acompanharAtribuicao(nomes, atribuicao);
   }
   return nomes;
 }
 
+function retornoDevolveALeitura(corpo, p, poll, retorno) {
+  const posicaoDoReturn = poll.de + retorno.index;
+  if (posicaoDoReturn > p) return identificadores(retorno[1]).some(nome => nomesVivos(corpo, p, posicaoDoReturn).has(nome));
+  return posicaoDoReturn < p && p < posicaoDoReturn + retorno[0].length;
+}
+
 function leituraDevolvida(corpo, p, poll) {
   const funcao = corpo.slice(poll.de, poll.fim);
-  const relativo = p - poll.de;
   const seta = funcao.search(/=>/);
-  if (seta < 0 || relativo < seta) return false;
-  const depois = funcao.slice(seta + 2);
-  if (!/^\s*\{/.test(depois)) return true;
-  for (const r of funcao.matchAll(/\breturn\b([^;}]*)/g)) {
-    const posicaoDoReturn = poll.de + r.index;
-    if (posicaoDoReturn > p) {
-      if (identificadores(r[1]).some(nome => nomesVivos(corpo, p, posicaoDoReturn).has(nome))) return true;
-    } else if (posicaoDoReturn < p && p < posicaoDoReturn + r[0].length) return true;
-  }
-  return false;
+  if (seta < 0 || p - poll.de < seta) return false;
+  if (!/^\s*\{/.test(funcao.slice(seta + 2))) return true;
+  return [...funcao.matchAll(/\breturn\b([^;}]*)/g)].some(retorno => retornoDevolveALeitura(corpo, p, poll, retorno));
+}
+
+function comparaOQueFoiLido(corpo, p, conferencia) {
+  if (conferencia.de <= p || conferencia.poll) return false;
+  const vivos = nomesVivos(corpo, p, conferencia.de);
+  return identificadores(corpo.slice(conferencia.de, conferencia.fim)).some(nome => vivos.has(nome));
 }
 
 function leituraConferida(corpo, p, conferencias) {
   if (/^estadoFinal\w*\s*\(/.test(corpo.slice(p))) return true;
-  for (const c of conferencias.filter(c => c.de < p && p < c.fim)) {
-    if (!c.poll || leituraDevolvida(corpo, p, c)) return true;
-  }
-  return conferencias.some(c => c.de > p && !c.poll && identificadores(corpo.slice(c.de, c.fim)).some(nome => nomesVivos(corpo, p, c.de).has(nome)));
+  const quePegamALeitura = conferencias.filter(c => c.de < p && p < c.fim);
+  return quePegamALeitura.some(c => !c.poll || leituraDevolvida(corpo, p, c)) || conferencias.some(c => comparaOQueFoiLido(corpo, p, c));
 }
 
-function anotado(comentarios, linhas, primeira, ultima) {
-  for (let linha = primeira; linha <= ultima; linha++) if (MARCA.test(comentarios.get(linha) || '')) return true;
-  for (let linha = primeira - 1, vistas = 0; linha >= 1 && vistas < 12; linha--, vistas++) {
-    if (MARCA.test(comentarios.get(linha) || '')) return true;
-    const instrucao = (linhas[linha - 1] || '').trim();
-    if (instrucao !== '' && /[;{}]$/.test(instrucao)) break;
+const JANELA_ACIMA_DO_TESTE = 12;
+
+const temMarca = (comentarios, linha) => MARCA.test(comentarios.get(linha) || '');
+const terminaInstrucao = (linhas, linha) => /[;{}]$/.test((linhas[linha - 1] || '').trim());
+
+function marcaNoTeste(comentarios, primeira, ultima) {
+  for (let linha = primeira; linha <= ultima; linha++) if (temMarca(comentarios, linha)) return true;
+  return false;
+}
+
+function marcaAcimaDoTeste(comentarios, linhas, primeira) {
+  const maisAlta = Math.max(1, primeira - JANELA_ACIMA_DO_TESTE);
+  for (let linha = primeira - 1; linha >= maisAlta; linha--) {
+    if (temMarca(comentarios, linha)) return true;
+    if (terminaInstrucao(linhas, linha)) return false;
   }
   return false;
 }
 
-function verificar(arquivo, fonte, raiz = process.cwd()) {
+const anotado = (comentarios, linhas, primeira, ultima) => marcaNoTeste(comentarios, primeira, ultima) || marcaAcimaDoTeste(comentarios, linhas, primeira);
+
+function contextoDoArquivo(arquivo, fonte, raiz) {
   const codigo = semComentariosJs(fonte);
-  const linhas = codigo.split('\n');
-  const comentarios = comentariosPorLinha(arquivo, fonte);
   const doFake = [...leitoresDosFakes(raiz)];
   const LEITURA = new RegExp(doFake.length ? `${LEITURA_FIXA.source}|\\.(?:${doFake.join('|')})\\b` : LEITURA_FIXA.source, 'g');
   const defs = funcoes(codigo);
-  const quemAge = quemFaz(defs, ACAO);
-  const quemLe = quemFaz(defs, LEITURA);
-  const achados = [];
-  for (const m of codigo.matchAll(/\btest(?:\.only)?\s*\(\s*(['"`])/g)) {
-    const abre = codigo.indexOf('(', m.index);
-    const fecha = fechamento(codigo, abre);
-    if (fecha < 0) continue;
-    const corpo = codigo.slice(abre + 1, fecha);
-    const acoes = posicoes(corpo, ACAO, quemAge);
-    if (acoes.length === 0) continue;
-    const conferencias = conferenciasDe(corpo);
-    const efetiva = p => (/^estadoFinalInalterado\s*\(/.test(corpo.slice(p)) ? fechamento(corpo, corpo.indexOf('(', p)) : p);
-    const leituras = posicoes(corpo, LEITURA, quemLe).filter(p => efetiva(p) > acoes[acoes.length - 1]);
-    if (leituras.some(p => leituraConferida(corpo, p, conferencias))) continue;
-    const primeira = linhaDe(codigo, m.index);
-    if (anotado(comentarios, linhas, primeira, linhaDe(codigo, fecha))) continue;
-    const titulo = /^\s*(['"`])((?:(?!\1).)*)\1/.exec(codigo.slice(abre + 1, abre + 200).replace(/^\s+/, ''));
-    achados.push({
-      linha: primeira,
-      detalhe: `o teste age (${acoes.length} ação(ões)) e depois da última não lê e compara o que ficou guardado${titulo ? `: “${titulo[2].slice(0, 70)}”` : ''}`,
-    });
-  }
-  return achados;
+  return {
+    codigo,
+    linhas: codigo.split('\n'),
+    comentarios: comentariosPorLinha(arquivo, fonte),
+    LEITURA,
+    quemAge: quemFaz(defs, ACAO),
+    quemLe: quemFaz(defs, LEITURA),
+  };
+}
+
+const fimDaLeitura = (corpo, p) => (/^estadoFinalInalterado\s*\(/.test(corpo.slice(p)) ? fechamento(corpo, corpo.indexOf('(', p)) : p);
+
+function leituraConfereDepoisDaUltimaAcao(contexto, corpo, ultimaAcao) {
+  const conferencias = conferenciasDe(corpo);
+  return posicoes(corpo, contexto.LEITURA, contexto.quemLe)
+    .filter(p => fimDaLeitura(corpo, p) > ultimaAcao)
+    .some(p => leituraConferida(corpo, p, conferencias));
+}
+
+function detalheDoTeste(codigo, abre, acoes) {
+  const titulo = /^\s*(['"`])((?:(?!\1).)*)\1/.exec(codigo.slice(abre + 1, abre + 200).replace(/^\s+/, ''));
+  return `o teste age (${acoes} ação(ões)) e depois da última não lê e compara o que ficou guardado${titulo ? `: “${titulo[2].slice(0, 70)}”` : ''}`;
+}
+
+function achadoDoTeste(contexto, inicio) {
+  const { codigo } = contexto;
+  const abre = codigo.indexOf('(', inicio.index);
+  const fecha = fechamento(codigo, abre);
+  if (fecha < 0) return null;
+  const corpo = codigo.slice(abre + 1, fecha);
+  const acoes = posicoes(corpo, ACAO, contexto.quemAge);
+  if (acoes.length === 0 || leituraConfereDepoisDaUltimaAcao(contexto, corpo, acoes[acoes.length - 1])) return null;
+  const primeira = linhaDe(codigo, inicio.index);
+  if (anotado(contexto.comentarios, contexto.linhas, primeira, linhaDe(codigo, fecha))) return null;
+  return { linha: primeira, detalhe: detalheDoTeste(codigo, abre, acoes.length) };
+}
+
+function verificar(arquivo, fonte, raiz = process.cwd()) {
+  const contexto = contextoDoArquivo(arquivo, fonte, raiz);
+  return [...contexto.codigo.matchAll(/\btest(?:\.only)?\s*\(\s*(['"`])/g)].map(inicio => achadoDoTeste(contexto, inicio)).filter(Boolean);
 }
 
 module.exports = { id, conserto, seAplica, verificar };
