@@ -42,35 +42,48 @@ function conferirCorpo({ corpo, raiz, base, repositorio = repositorioDoRemoto(ra
   ];
 }
 
-function main(argv, pasta) {
+function lerPedido(argv) {
   const posicaoDaBase = argv.indexOf('--base');
   const base = posicaoDaBase >= 0 ? argv[posicaoDaBase + 1] : BASE_PADRAO;
   const [arquivo, ...sobra] = argv.filter((_, i) => posicaoDaBase < 0 || (i !== posicaoDaBase && i !== posicaoDaBase + 1));
-  if (!arquivo || sobra.length || !base || arquivo === '--help') {
+  return { arquivo, base, sobra };
+}
+
+const pedidoCompleto = ({ arquivo, base, sobra }) => [arquivo, base].every(Boolean) && !sobra.length;
+
+const pedeUso = pedido => pedido.arquivo === '--help' || !pedidoCompleto(pedido);
+
+function lerEntradas({ arquivo, base }, pasta) {
+  const corpo = fs.readFileSync(arquivo === '-' ? 0 : arquivo, 'utf8');
+  const raiz = git(pasta, 'rev-parse', '--show-toplevel');
+  git(raiz, 'rev-parse', '--verify', '--quiet', `${base}^{commit}`);
+  return { corpo, raiz };
+}
+
+const relatorioDeFaltas = faltas => [
+  `✗ O corpo da PR seria barrado pelo CI (${faltas.length} falta(s)):`,
+  ...faltas.map(falta => `    - ${falta.split('\n').join('\n      ')}`),
+  '  Conserto: o formato de cada parte está em .github/PULL_REQUEST_TEMPLATE.md.',
+].join('\n');
+
+const relatorioDoCorpoOk = base => `corpo da PR ok contra ${base} (falta só o que não é do corpo: o registro do /code-review do head)`;
+
+function main(argv, pasta) {
+  const pedido = lerPedido(argv);
+  if (pedeUso(pedido)) {
     console.log(USO);
-    return arquivo === '--help' ? 0 : 2;
+    return pedido.arquivo === '--help' ? 0 : 2;
   }
-  let corpo;
-  let raiz;
+  let entradas;
   try {
-    corpo = fs.readFileSync(arquivo === '-' ? 0 : arquivo, 'utf8');
-    raiz = git(pasta, 'rev-parse', '--show-toplevel');
-    git(raiz, 'rev-parse', '--verify', '--quiet', `${base}^{commit}`);
+    entradas = lerEntradas(pedido, pasta);
   } catch (erro) {
-    console.log(`✗ Não consegui ler o corpo "${arquivo}" ou a base "${base}" (git fetch origin main): ${erro.message.split('\n')[0]}`);
+    console.log(`✗ Não consegui ler o corpo "${pedido.arquivo}" ou a base "${pedido.base}" (git fetch origin main): ${erro.message.split('\n')[0]}`);
     return 2;
   }
-  const faltas = conferirCorpo({ corpo, raiz, base });
-  if (!faltas.length) {
-    console.log(`corpo da PR ok contra ${base} (falta só o que não é do corpo: o registro do /code-review do head)`);
-    return 0;
-  }
-  console.log([
-    `✗ O corpo da PR seria barrado pelo CI (${faltas.length} falta(s)):`,
-    ...faltas.map(falta => `    - ${falta.split('\n').join('\n      ')}`),
-    '  Conserto: o formato de cada parte está em .github/PULL_REQUEST_TEMPLATE.md.',
-  ].join('\n'));
-  return 1;
+  const faltas = conferirCorpo({ ...entradas, base: pedido.base });
+  console.log(faltas.length ? relatorioDeFaltas(faltas) : relatorioDoCorpoOk(pedido.base));
+  return faltas.length ? 1 : 0;
 }
 
 if (require.main === module) process.exitCode = main(process.argv.slice(2), process.cwd());
