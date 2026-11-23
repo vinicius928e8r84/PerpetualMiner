@@ -2,6 +2,7 @@
 
 const { test, expect } = require('../fixtures');
 const { fotografar } = require('../evidencias-mineracao');
+const { chaveNaNuvem, VARIANTES_DO_O1 } = require('../apoio-da-chave-autoridade');
 const CHAVE = 'sk-fake-autoridade-primeira-aaaa';
 async function segredosLocais(page) {
   return page.evaluate(() => new Promise((resolve, reject) => {
@@ -64,8 +65,8 @@ for (const bComChave of [false, true]) test(bComChave
   }
   expect(fakes.anki.estadoDaChave()).toEqual(dono);
   expect(syncs()).toBe(antes);
-  expect(fakes.google.chaveDaOpenAIDe('A')?.chave === CHAVE).toBe(true);
-  if (bComChave) expect(fakes.google.chaveDaOpenAIDe('B')?.chave === NOVA).toBe(true);
+  expect(chaveNaNuvem(fakes, 'A') === CHAVE).toBe(true);
+  if (bComChave) expect(chaveNaNuvem(fakes, 'B') === NOVA).toBe(true);
   else expect(fakes.google.chaveDaOpenAIDe('B')).toBeNull();
   expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai.conta).toBe('B');
 });
@@ -91,8 +92,8 @@ test('K1-delete: dono mudou para B durante o modal de A, confirmar não apaga ne
   await expect(card(page).getByRole('button', { name: 'Apagar chave', exact: true })).toHaveCount(0);
   expect(fakes.anki.estadoDaChave()).toEqual(dono);
   expect(fakes.anki.chaveNaConexao()?.endsWith('bbbb')).toBe(true);
-  expect(fakes.google.chaveDaOpenAIDe('A')?.chave === CHAVE).toBe(true);
-  expect(fakes.google.chaveDaOpenAIDe('B')?.chave === NOVA).toBe(true);
+  expect(chaveNaNuvem(fakes, 'A') === CHAVE).toBe(true);
+  expect(chaveNaNuvem(fakes, 'B') === NOVA).toBe(true);
   expect(fakes.anki.requisicoes.filter(r => r.caminho === '/ia/openai/chave/apagar').length).toBe(0);
   expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai.conta).toBe('B');
 });
@@ -124,8 +125,8 @@ test('K1-delete: Apagar tudo em A não apaga o dono de B nem a chave da nuvem de
   await expect(campo(page)).toBeEmpty();
   await expect(resumo(page)).toHaveText('••••••••bbbb');
   expect(fakes.anki.estadoDaChave()).toEqual(dono);
-  expect(fakes.google.chaveDaOpenAIDe('A')?.chave === CHAVE).toBe(true);
-  expect(fakes.google.chaveDaOpenAIDe('B')?.chave === NOVA).toBe(true);
+  expect(chaveNaNuvem(fakes, 'A') === CHAVE).toBe(true);
+  expect(chaveNaNuvem(fakes, 'B') === NOVA).toBe(true);
   expect(fakes.google.frasesDe('A')).toEqual([]);
   expect(await extensao.frases()).toEqual([]);
   expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai.conta).toBe('B');
@@ -156,7 +157,7 @@ test('K1-PC: três reconfirmações idênticas mantêm v1 e não disparam upload
   await expect(resumo(page)).toHaveText('••••••••aaaa');
   expect(fakes.anki.estadoDaChave()).toEqual(antes);
   expect(fakes.google.chaveDaOpenAIDe('A')?.em).toBe(nuvem.em);
-  expect(fakes.google.chaveDaOpenAIDe('A')?.chave === CHAVE).toBe(true);
+  expect(chaveNaNuvem(fakes, 'A') === CHAVE).toBe(true);
   expect(fakes.google.requisicoes.filter(p => p.metodo === 'PATCH').length).toBe(uploads);
   expect(fakes.anki.requisicoes.filter(p => p.caminho === '/ia/openai/chave').length).toBe(4);
   expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai).toEqual({ ultimos4: 'aaaa', conta: 'A', versao: 1, naoEnviada: false });
@@ -164,7 +165,7 @@ test('K1-PC: três reconfirmações idênticas mantêm v1 e não disparam upload
   await fotografar(card(page), 'k1-pc-reconfirmacoes-idempotentes.png');
 });
 
-for (const tudo of [false, true]) test(`O1: sair da conta permite ${tudo ? 'Apagar tudo' : 'Apagar chave'} só deste computador, sem apagar nenhuma chave na nuvem`, async ({ page, extensao, fakes, relogioParado }) => {
+for (const { nome, botao, secao, foto, frasesAoFim, abrirPerigo } of VARIANTES_DO_O1) test(`O1: sair da conta permite ${nome} só deste computador, sem apagar nenhuma chave na nuvem`, async ({ page, extensao, fakes, relogioParado }) => {
   const relogio = await relogioParado();
   await extensao.semearSessao({ uid: 'A' });
   const frases = umaFrase(relogio);
@@ -195,24 +196,23 @@ for (const tudo of [false, true]) test(`O1: sair da conta permite ${tudo ? 'Apag
   await expect(card(page).getByRole('button', { name: 'Apagar chave', exact: true })).toBeVisible();
   await expect(card(page)).toContainText('Esta chave está vinculada a uma conta Google.');
   await expect(card(page)).not.toContainText('entre e confira a chave de novo');
-  if (tudo) await page.getByRole('button', { name: 'Zona de perigo', exact: true }).click();
-  const rotulo = tudo ? 'Apagar 1 frase' : 'Apagar chave';
-  await page.locator(tudo ? '#cfg-perigo' : '#cfg-ia').getByRole('button', { name: rotulo, exact: true }).click();
+  if (abrirPerigo) await page.getByRole('button', { name: 'Zona de perigo', exact: true }).click();
+  await page.locator(secao).getByRole('button', { name: botao, exact: true }).click();
   await expect(page.getByRole('dialog')).toContainText('Nenhuma chave da conta Google é apagada.');
-  await fotografar(page.getByRole('dialog'), `o1-local-${tudo ? 'tudo' : 'chave'}-modal.png`);
-  await page.getByRole('dialog').getByRole('button', { name: rotulo, exact: true }).click();
+  await fotografar(page.getByRole('dialog'), `o1-local-${foto}-modal.png`);
+  await page.getByRole('dialog').getByRole('button', { name: botao, exact: true }).click();
   await expect(resumo(page)).toHaveText('Sem chave');
   expect(fakes.anki.chaveNaConexao()).toBeNull();
   expect(fakes.anki.estadoDaChave().conta).toBe('');
-  expect(fakes.google.chaveDaOpenAIDe('A')?.chave === CHAVE).toBe(true);
-  expect(fakes.google.chaveDaOpenAIDe('B')?.chave === NOVA).toBe(true);
+  expect(chaveNaNuvem(fakes, 'A') === CHAVE).toBe(true);
+  expect(chaveNaNuvem(fakes, 'B') === NOVA).toBe(true);
   expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai.ultimos4).toBe('');
   expect(await segredosLocais(page)).toEqual([]);
   expect(fakes.google.frasesDe('A')).toHaveLength(1);
-  expect(await extensao.frases()).toHaveLength(tudo ? 0 : 1);
+  expect(await extensao.frases()).toHaveLength(frasesAoFim);
   expect(fakes.anki.requisicoes.filter(p => p.caminho === '/ia/openai/sincronizar').length).toBe(syncs);
   expect(fakes.google.requisicoes.length).toBe(nuvem);
-  await fotografar(card(page), `o1-local-${tudo ? 'tudo' : 'chave'}-resultado.png`);
+  await fotografar(card(page), `o1-local-${foto}-resultado.png`);
 });
 
 test('K2: o legado do main com conta A oferece Trocar chave, não um retry sem saída', async ({ page, extensao, fakes }) => {
@@ -241,7 +241,7 @@ test('K2: o legado do main com conta A oferece Trocar chave, não um retry sem s
   await confirmar(page, antiga);
   await expect(page.locator('#shell-chip')).toContainText('Sincronizado agora');
   expect(fakes.anki.estadoDaChave().conta).toBe('A');
-  expect(fakes.google.chaveDaOpenAIDe('A')?.chave === antiga).toBe(true);
+  expect(chaveNaNuvem(fakes, 'A') === antiga).toBe(true);
   expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai.conta).toBe('A');
   expect(await segredosLocais(page)).toEqual([]);
 });
@@ -267,7 +267,7 @@ test('P1 legado: migrar o cache de A com B aberta não vincula o segredo a B', a
   await expect.poll(() => fakes.anki.estadoDaChave().conta).toBe('A');
   await expect(card(page)).toContainText('Esta chave é de outra conta Google.');
   expect(fakes.anki.chaveNaConexao() === legado).toBe(true);
-  expect(fakes.google.chaveDaOpenAIDe('B')?.chave === legado).toBe(false);
+  expect(chaveNaNuvem(fakes, 'B') === legado).toBe(false);
   expect(JSON.stringify(await extensao.lerStorage(null)).includes(legado)).toBe(false);
 });
 
@@ -340,7 +340,7 @@ test('P1: uma chave sem conta não sobe ao abrir perfis A ou B; colar de novo em
   }
   await card(page).getByRole('button', { name: 'Trocar chave' }).click();
   await confirmar(page, CHAVE);
-  await expect.poll(() => fakes.google.chaveDaOpenAIDe('A')?.chave === CHAVE).toBe(true);
+  await expect.poll(() => chaveNaNuvem(fakes, 'A') === CHAVE).toBe(true);
   expect(fakes.google.chaveDaOpenAIDe('B')).toBeNull();
   expect(fakes.anki.estadoDaChave().conta).toBe('A');
   expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai.conta).toBe('A');
@@ -358,7 +358,7 @@ test('L1: abrir e reabrir com OpenAI fora do ar lê a chave da conta sem 409 per
   await expect(page.locator('#shell-chip')).toContainText('Sincronizado', { timeout: 45000 });
   expect(fakes.anki.chaveNaConexao() === CHAVE).toBe(true);
   expect(fakes.anki.estadoDaChave()).toEqual({ versao: 1, conta: 'A', em: 100, naoEnviada: false });
-  expect(fakes.google.chaveDaOpenAIDe('A')?.chave === CHAVE).toBe(true);
+  expect(chaveNaNuvem(fakes, 'A') === CHAVE).toBe(true);
   expect(await segredosLocais(page)).toEqual([]);
   expect(JSON.stringify(await extensao.lerStorage(null)).includes(CHAVE)).toBe(false);
 });
@@ -426,7 +426,7 @@ test('F4: Apagar tudo limpa o dono, a conta e todas as cópias secretas do forma
   await confirmar(page, CHAVE);
   await expect(card(page).getByRole('button', { name: 'Conferindo a chave…' })).toHaveCount(0, { timeout: 45000 });
   await expect(resumo(page)).toHaveText('••••••••aaaa');
-  await expect.poll(() => fakes.google.chaveDaOpenAIDe('A')?.chave === CHAVE).toBe(true);
+  await expect.poll(() => chaveNaNuvem(fakes, 'A') === CHAVE).toBe(true);
   await page.evaluate(() => new Promise((resolve, reject) => {
     const req = indexedDB.open('pm-segredos', 1);
     req.onsuccess = () => {
@@ -442,7 +442,7 @@ test('F4: Apagar tudo limpa o dono, a conta e todas as cópias secretas do forma
   await page.locator('#cfg-perigo').getByRole('button', { name: 'Apagar 1 frase', exact: true }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Apagar 1 frase', exact: true }).click();
   await expect.poll(() => fakes.anki.chaveNaConexao()).toBeNull();
-  await expect.poll(() => fakes.google.chaveDaOpenAIDe('A')?.chave).toBe('');
+  await expect.poll(() => chaveNaNuvem(fakes, 'A')).toBe('');
   expect(await segredosLocais(page)).toEqual([]);
   expect((await extensao.lerStorage('pm_chave_openai')).pm_chave_openai.ultimos4).toBe('');
   expect(JSON.stringify(await extensao.lerStorage(null)).includes(CHAVE)).toBe(false);
