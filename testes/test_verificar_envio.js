@@ -18,13 +18,13 @@ const TRANCA_NO_MUDAR = {
   ]],
 };
 const ESQUECER_SOLTA_A_MARCA = {
-  'lib/envio-gravado.js': [["case EVENTO.ESQUECER: return marcado ? { ...SO_A_MARCA } : null;", "case EVENTO.ESQUECER: return null;"]],
+  'lib/envio-gravado.js': [["const esquecer = gravado => (apagarFrasesMarcado(gravado) ? soAMarca() : null);", "const esquecer = () => null;"]],
 };
 const APAGAR_TUDO_SEM_A_MARCA = {
-  'lib/envio-gravado.js': [["case EVENTO.APAGAR_TUDO: return { ...SO_A_MARCA };", "case EVENTO.APAGAR_TUDO: return { envios: [] };"]],
+  'lib/envio-gravado.js': [["[EVENTO.APAGAR_TUDO, soAMarca],", "[EVENTO.APAGAR_TUDO, () => ({ envios: [] })],"]],
 };
 const CONFIRMOU_ESQUECE_OS_ENVIOS = {
-  'lib/envio-gravado.js': [["case EVENTO.CONFIRMOU: return gravado?.envios?.length ? { envios: gravado.envios } : null;", "case EVENTO.CONFIRMOU: return null;"]],
+  'lib/envio-gravado.js': [["const confirmou = gravado => (gravado?.envios?.length ? { envios: gravado.envios } : null);", "const confirmou = () => null;"]],
 };
 const juntar = (...trocas) => {
   const todas = {};
