@@ -50,6 +50,7 @@ The Conexão keeps its data in the add-on's `user_files` (`complemento/pasta_de_
 | 12 Every test runs in CI | `testes-no-portao` |
 | 13 The contract has every request and answer | `contrato-fechado` (a `fetch` straight to the Conexão); `testes/test_contrato_fechado.js` and the `tearDownModule` of `complemento/test_harness.py` (an example for each request the extension builds and each status the server answers) |
 | 10 Visual references | review; `aprovacao-visual` (a reference PNG outside a `test.fixme` needs its entry in `e2e/aprovados-visuais/<spec>.json`) |
+| Glossary (`glossary.md`) | `glossario-so-linguagem` (no backtick, no `_Nome no código_` line, a definition of at most two sentences) |
 | 11 New files | review; `indice-de-arquivos` (a root, `lib/`, `veio/` or `scripts/` file needs its row in `docs/arquivos/`); `testes/test_empacotar.js` |
 
 A PR that changes a user-facing file (`popup/`, `painel/`, `manifest.json`, `complemento/servidor.py`, …) also needs `.agents/skills/verify-perpetualminer/features/` updated or "feature map unchanged" in its body: the `Mapa de features` step of `.github/workflows/regras.yml` (PRs only).

@@ -26,6 +26,7 @@ const REGRAS = [
   require('./html-cru'),
   require('./dialogo-nativo'),
   require('./saude-do-codigo'),
+  require('./glossario-so-linguagem'),
 ];
 
 const ARQUIVO_DA_LINHA_DE_BASE = 'scripts/regras/linha-de-base.json';
