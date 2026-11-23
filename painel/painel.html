@@ -71,7 +71,7 @@
           <h1 id="titulo-frases" data-voz="SHL-02.frases"></h1>
           <div class="minerar-menu">
             <button class="veio-botao veio-botao--primario" id="btn-minerar-frases"
-                    aria-haspopup="menu" aria-expanded="false" aria-controls="menu-minerar">
+              aria-haspopup="menu" aria-expanded="false" aria-controls="menu-minerar">
               <span data-voz="ADD-01.botao"></span><span data-icone="abaixo"></span>
             </button>
             <div class="minerar-menu__lista" id="menu-minerar" role="menu" data-voz-aria="ADD-01.botao" hidden>
@@ -95,9 +95,9 @@
           <p class="frases-lembrete__texto" id="frases-lembrete-texto"></p>
           <div class="frases-lembrete__acoes">
             <button class="veio-botao veio-botao--fantasma veio-botao--compacto" id="frases-lembrete-ocultar"
-                    data-voz="ONB-15.ocultar"></button>
+              data-voz="ONB-15.ocultar"></button>
             <button class="veio-botao veio-botao--contorno veio-botao--compacto" id="frases-lembrete-continuar"
-                    data-voz="ONB-15.continuar"></button>
+              data-voz="ONB-15.continuar"></button>
           </div>
         </aside>
         <div class="frases-avisos" id="frases-avisos"></div>
@@ -113,9 +113,9 @@
           <label class="veio-busca frases-busca">
             <span class="veio-busca__lupa"><span data-icone="busca"></span></span>
             <input class="veio-campo" id="busca-frases" type="search" autocomplete="off"
-                   data-voz-aria="PAI-23" placeholder="">
+              data-voz-aria="PAI-23" placeholder="">
             <button class="veio-botao-icone veio-busca__limpar" id="btn-limpar-busca"
-                    data-voz-aria="PAI-04.acao" data-voz-title="PAI-04.acao" hidden><span data-icone="fechar"></span></button>
+              data-voz-aria="PAI-04.acao" data-voz-title="PAI-04.acao" hidden><span data-icone="fechar"></span></button>
           </label>
           <label class="veio-toggle">
             <input type="checkbox" role="switch" id="filtro-ocultar">
@@ -130,7 +130,7 @@
           </label>
           <div class="frases-barra" id="frases-barra" hidden>
             <button class="veio-botao-icone" id="btn-desmarcar-todas"
-                    data-voz-aria="PAI-32.desmarcar" data-voz-title="PAI-32.desmarcar"><span data-icone="fechar"></span></button>
+              data-voz-aria="PAI-32.desmarcar" data-voz-title="PAI-32.desmarcar"><span data-icone="fechar"></span></button>
             <span class="frases-barra__contagem" id="selection-count" aria-live="polite"></span>
             <button class="veio-botao veio-botao--link frases-barra__todas" id="btn-sel-todas" hidden></button>
             <span class="frases-barra__acoes">
@@ -263,7 +263,7 @@
                 <span class="veio-busca__lupa"><span data-icone="busca"></span></span>
                 <input class="veio-campo" id="anki-vocabulario-busca" type="search" autocomplete="off" data-voz-aria="BRG-35.buscar">
                 <button class="veio-botao-icone veio-busca__limpar" id="anki-vocabulario-limpar"
-                        data-voz-aria="BRG-35.limparBusca" data-voz-title="BRG-35.limparBusca" hidden><span data-icone="fechar"></span></button>
+                  data-voz-aria="BRG-35.limparBusca" data-voz-title="BRG-35.limparBusca" hidden><span data-icone="fechar"></span></button>
               </label>
             </div>
             <p class="anki-apoio anki-resumo" id="anki-vocabulario-resumo" role="status" hidden></p>
@@ -451,7 +451,7 @@
           <label class="frases-modal__campo">
             <span class="frases-modal__rotulo" data-voz="ADD-12.campo"></span>
             <textarea class="veio-campo minerar-colar__frases" id="minerar-frases" rows="7" spellcheck="false"
-                      aria-describedby="minerar-frases-erro"></textarea>
+              aria-describedby="minerar-frases-erro"></textarea>
             <span class="veio-campo-erro" id="minerar-frases-erro" hidden></span>
           </label>
           <div class="minerar-colar__contexto">
@@ -487,7 +487,7 @@
       <div class="minerar-progresso" id="minerar-progresso" hidden>
         <b class="minerar-progresso__rotulo" id="minerar-progresso-rotulo" aria-live="polite"></b>
         <div class="minerar-progresso__barra" role="progressbar" aria-labelledby="minerar-progresso-rotulo"
-             aria-valuemin="0"><i></i></div>
+          aria-valuemin="0"><i></i></div>
         <p class="minerar-progresso__nota" data-voz="ADD-12.progressoNota"></p>
       </div>
     </div>
@@ -536,6 +536,7 @@
 <script src="/lib/mineracao-do-dia.js"></script>
 <script src="/lib/mineracao-automatica.js"></script>
 <script src="/lib/contexto.js"></script>
+<script src="/lib/filtro-das-frases.js"></script>
 <script src="/lib/atalhos.js"></script>
 <script src="/lib/pedido-ao-anki.js"></script>
 <script src="/lib/pareamento.js"></script>
