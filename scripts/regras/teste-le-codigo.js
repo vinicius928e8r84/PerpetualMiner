@@ -5,7 +5,7 @@ const id = 'teste-le-codigo';
 const conserto = 'Exercite a rota ou a função, não o texto dela: a rota por HTTP '
   + '(complemento/test_servidor.py) ou a função com fakes nas fronteiras '
   + '(complemento/test_envio.py é o modelo). Não leia um .py com read_text/open/inspect.getsource/ast.get_source_segment '
-  + '(docs/CODING_STANDARDS.md regra 9).';
+  + '(CODING_STANDARDS.md regra 9).';
 
 const seAplica = arquivo => /(^|\/)test_[^/]*\.py$/.test(arquivo);
 
