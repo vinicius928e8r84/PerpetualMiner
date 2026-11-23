@@ -7,13 +7,15 @@ require('../painel/painel-envio-estado.js');
 const { SituacaoDoEnvio, FaseDaRemessa } = globalThis.PerpetualMiner;
 
 // ─── A situação de um Envio ───────────────────────────────────────────────────────────────────────────────────────────────────────
-{
-  const { ESTADO, ESPERA, AJUDA, situacaoDoEnvio, terminou, retomavel, foraDoResumo, doCodigo } = SituacaoDoEnvio;
-  const AGORA = Date.parse('2026-09-18T12:00:00Z');
-  const ENVIO = { id: 'e1', jobId: 'e1', falhaAoCriar: null };
-  const de = (job, contexto = {}, envio = ENVIO) => situacaoDoEnvio(envio, job, { agora: AGORA, ...contexto });
-  const rodando = (mais = {}) => ({ status: 'running', stage: 'generate_cards', updatedAt: '2026-09-18T11:59:00Z', ...mais });
+const { ESTADO, ESPERA, AJUDA, situacaoDoEnvio, terminou, retomavel, foraDoResumo, doCodigo } = SituacaoDoEnvio;
+const AGORA = Date.parse('2026-09-18T12:00:00Z');
+const ENVIO = { id: 'e1', jobId: 'e1', falhaAoCriar: null };
+const de = (job, contexto = {}, envio = ENVIO) => situacaoDoEnvio(envio, job, { agora: AGORA, ...contexto });
+const rodando = (mais = {}) => ({ status: 'running', stage: 'generate_cards', updatedAt: '2026-09-18T11:59:00Z', ...mais });
+const espera = (job, contexto) => { const s = de(job, contexto); return [s.estado, s.espera]; };
+const linha = codigo => { const { fala, noPainel, ajuda, chave } = doCodigo(codigo); return [fala, noPainel, ajuda, chave]; };
 
+function provarOsEstadosAntesDeComecar() {
   assert.deepStrictEqual(Object.values(ESTADO).sort(),
     ['andando', 'apagado', 'concluido', 'criando', 'desconhecido', 'emParte', 'esperando', 'naFila', 'naoComecou', 'naoConcluido', 'parado']);
 
@@ -26,10 +28,11 @@ const { SituacaoDoEnvio, FaseDaRemessa } = globalThis.PerpetualMiner;
   assert.strictEqual(de({ status: 'queued', stage: 'queued' }).estado, ESTADO.NA_FILA);
   assert.deepStrictEqual(de(rodando({ stage: 'generate_audio', progress: { done: 1, total: 4 } })), { estado: ESTADO.ANDANDO, etapa: 'generate_audio', feitos: 1, total: 4 });
   assert.deepStrictEqual(de(rodando({ progress: {} })), { estado: ESTADO.ANDANDO, etapa: 'generate_cards', feitos: 0, total: 0 });
+}
 
+function provarAEspera() {
   assert.strictEqual(de(rodando({ waiting: { reason: 'plan_limit' } }), { ankiFechado: true }).estado, ESTADO.PARADO);
   assert.strictEqual(de({ status: 'queued', stage: 'queued' }, { ankiFechado: true }).estado, ESTADO.PARADO);
-  const espera = (job, contexto) => { const s = de(job, contexto); return [s.estado, s.espera]; };
   assert.deepStrictEqual(espera(rodando({ waiting: { reason: 'plan_limit' } })), [ESTADO.ESPERANDO, ESPERA.PLANO]);
   assert.deepStrictEqual(espera(rodando({ waiting: { reason: 'monthly_cap' } })), [ESTADO.ESPERANDO, ESPERA.TETO]);
   assert.deepStrictEqual(espera(rodando({ stage: 'wait_anki', waiting: { reason: 'other_profile', profile: 'A', marked: 'B' } })), [ESTADO.ESPERANDO, ESPERA.OUTRO_PERFIL]);
@@ -38,7 +41,9 @@ const { SituacaoDoEnvio, FaseDaRemessa } = globalThis.PerpetualMiner;
   assert.deepStrictEqual(espera(rodando({ stage: 'wait_anki', updatedAt: '2026-09-18T11:55:00Z' })), [ESTADO.ESPERANDO, ESPERA.ANKI]);
   assert.strictEqual(de({ status: 'queued', stage: 'wait_anki', updatedAt: '2026-09-18T11:00:00Z' }).estado, ESTADO.NA_FILA);
   assert.strictEqual(de(rodando({ waiting: { reason: 'novidade' } })).estado, ESTADO.ANDANDO);
+}
 
+function provarOsEstadosFinais() {
   assert.deepStrictEqual(de({ status: 'completed', stage: 'completed' }), { estado: ESTADO.CONCLUIDO });
   assert.deepStrictEqual(de({ status: 'partial', stage: 'partial', lastError: 'cards_failed' }), { estado: ESTADO.EM_PARTE, motivo: 'cards_failed' });
   assert.deepStrictEqual(de({ status: 'failed', stage: 'failed', lastError: 'openai_key_rejected' }), { estado: ESTADO.NAO_CONCLUIDO, motivo: 'openai_key_rejected' });
@@ -49,7 +54,9 @@ const { SituacaoDoEnvio, FaseDaRemessa } = globalThis.PerpetualMiner;
   assert.deepStrictEqual(de({ status: 'partial', wiped: true, lastError: 'cards_failed' }), { estado: ESTADO.EM_PARTE, motivo: 'cards_failed', apagadas: true });
   assert.strictEqual(retomavel(de({ status: 'partial', wiped: true, lastError: 'cards_failed' })), false);
   assert.strictEqual(retomavel(de({ status: 'partial', lastError: 'cards_failed' })), true);
+}
 
+function provarOQueCadaEstadoPermite() {
   const TABELA = {
     //                        terminou  retomável  fora do resumo
     [ESTADO.CRIANDO]:        [false,    false,     false],
@@ -68,29 +75,30 @@ const { SituacaoDoEnvio, FaseDaRemessa } = globalThis.PerpetualMiner;
   for (const [estado, esperado] of Object.entries(TABELA)) {
     assert.deepStrictEqual([terminou({ estado }), retomavel({ estado }), foraDoResumo({ estado })], esperado, estado);
   }
+}
 
-  {
-    const envios = [
-      { id: 'a', jobId: 'a', lang: 'en', baralho: 'PM::Inglês', ids: [1, 2, 3, 4] },
-      { id: 'b', jobId: null, lang: 'en', ids: [5], falhaAoCriar: { semResposta: true, causa: 'x' } },
-      { id: 'c', jobId: 'c', lang: 'ru', baralho: 'PM::Russo', ids: [6] },
-      { id: 'd', jobId: 'd', lang: 'ru', ids: [7] },
-      { id: 'e', jobId: 'e', lang: 'en', ids: [8] },
-    ];
-    const jobs = {
-      a: { status: 'partial', lastError: 'openai_key_rejected', successfulPhraseIds: [1, 2, 3], failedPhraseIds: [3, 4], duplicatePhraseIds: ['2'] },
-      c: { status: 'completed', successfulPhraseIds: [6] },
-      d: { status: 'failed', lastError: 'frases_apagadas', wiped: true },
-    };
-    const estadoDoJob = envio => jobs[envio.jobId] || null;
-    const situacaoDe = envio => situacaoDoEnvio(envio, estadoDoJob(envio), { desconhecido: envio.id === 'e', agora: AGORA });
-    assert.deepStrictEqual(SituacaoDoEnvio.contagemPorIdioma(envios, situacaoDe, estadoDoJob), [
-      { lang: 'en', baralho: 'PM::Inglês', total: 5, enviadas: [1], duplicadas: [2], falhas: 3, codigo: 'openai_key_rejected' },
-      { lang: 'ru', baralho: 'PM::Russo', total: 1, enviadas: [6], duplicadas: [], falhas: 0, codigo: undefined },
-    ]);
-  }
+function provarAContagemPorIdioma() {
+  const envios = [
+    { id: 'a', jobId: 'a', lang: 'en', baralho: 'PM::Inglês', ids: [1, 2, 3, 4] },
+    { id: 'b', jobId: null, lang: 'en', ids: [5], falhaAoCriar: { semResposta: true, causa: 'x' } },
+    { id: 'c', jobId: 'c', lang: 'ru', baralho: 'PM::Russo', ids: [6] },
+    { id: 'd', jobId: 'd', lang: 'ru', ids: [7] },
+    { id: 'e', jobId: 'e', lang: 'en', ids: [8] },
+  ];
+  const jobs = {
+    a: { status: 'partial', lastError: 'openai_key_rejected', successfulPhraseIds: [1, 2, 3], failedPhraseIds: [3, 4], duplicatePhraseIds: ['2'] },
+    c: { status: 'completed', successfulPhraseIds: [6] },
+    d: { status: 'failed', lastError: 'frases_apagadas', wiped: true },
+  };
+  const estadoDoJob = envio => jobs[envio.jobId] || null;
+  const situacaoDe = envio => situacaoDoEnvio(envio, estadoDoJob(envio), { desconhecido: envio.id === 'e', agora: AGORA });
+  assert.deepStrictEqual(SituacaoDoEnvio.contagemPorIdioma(envios, situacaoDe, estadoDoJob), [
+    { lang: 'en', baralho: 'PM::Inglês', total: 5, enviadas: [1], duplicadas: [2], falhas: 3, codigo: 'openai_key_rejected' },
+    { lang: 'ru', baralho: 'PM::Russo', total: 1, enviadas: [6], duplicadas: [], falhas: 0, codigo: undefined },
+  ]);
+}
 
-  const linha = codigo => { const { fala, noPainel, ajuda, chave } = doCodigo(codigo); return [fala, noPainel, ajuda, chave]; };
+function provarOsMotivosDeCadaCodigo() {
   assert.deepStrictEqual(linha('openai_key_missing'), ['ONB-23.motivoSemChave', 'ONB-23.motivoSemChave', AJUDA.TROCAR_A_CHAVE, true]);
   assert.deepStrictEqual(linha('openai_key_rejected'), ['ONB-23.motivoChaveRecusada', 'ONB-23.motivoChaveRecusada', AJUDA.TROCAR_A_CHAVE, true]);
   assert.deepStrictEqual(linha('openai_no_credit'), ['ONB-23.motivoSemCredito', 'ONB-23.motivoSemCredito', AJUDA.TROCAR_A_CHAVE, true]);
@@ -107,6 +115,9 @@ const { SituacaoDoEnvio, FaseDaRemessa } = globalThis.PerpetualMiner;
   for (const codigo of ['cards_failed', 'novidade', 'toString', null, undefined]) {
     assert.deepStrictEqual(linha(codigo), ['ONB-23.motivoOutro', null, AJUDA.TENTAR, true], String(codigo));
   }
+}
+
+function provarQueCadaCodigoTemTextoNaVoz() {
   require('../lib/voz/catalogo.js');
   require('../lib/voz/catalogo-nivel.js');
   require('../lib/voz/texto.js');
@@ -117,8 +128,9 @@ const { SituacaoDoEnvio, FaseDaRemessa } = globalThis.PerpetualMiner;
 }
 
 // ─── A fase da remessa ────────────────────────────────────────────────────────────────────────────────────────────────────────────
-{
-  const { FASE, EVENTO, PRAZO_DO_PEDIDO_MS, proxima, aceita } = FaseDaRemessa;
+const { FASE, EVENTO, PRAZO_DO_PEDIDO_MS, proxima, aceita } = FaseDaRemessa;
+
+function provarAsTransicoesDaFase() {
   const depoisDe = (eventos, fase = FASE.PARADA) => eventos.reduce((f, evento) => proxima(f, typeof evento === 'string' ? { tipo: evento } : evento), fase);
   const CRIOU = { tipo: EVENTO.CRIOU, sobrou: true };
   const NADA_SOBROU = { tipo: EVENTO.CRIOU, sobrou: false };
@@ -136,7 +148,9 @@ const { SituacaoDoEnvio, FaseDaRemessa } = globalThis.PerpetualMiner;
   assert.strictEqual(depoisDe([EVENTO.CRIAR, CRIOU, EVENTO.CRIAR]), FASE.CRIANDO);
   assert.strictEqual(depoisDe([EVENTO.CRIAR, CRIOU, EVENTO.ESQUECER]), FASE.PARADA);
   for (const fase of Object.values(FASE)) assert.strictEqual(proxima(fase, { tipo: EVENTO.APAGAR_TUDO }), FASE.PARADA, fase);
+}
 
+function provarOQueCadaFaseAceita() {
   const ACEITA = {
     [FASE.PARADA]: [EVENTO.CRIAR, EVENTO.APAGAR_TUDO],
     [FASE.CRIANDO]: [EVENTO.CRIOU, EVENTO.APAGAR_TUDO],
@@ -153,14 +167,14 @@ const { SituacaoDoEnvio, FaseDaRemessa } = globalThis.PerpetualMiner;
 }
 
 // ─── O que fica guardado em `pm_envio` ────────────────────────────────────────────────────────────────────────────────────────────
-(async () => {
-  require('../lib/envio-gravado.js');
-  const { EnvioGravado } = globalThis.PerpetualMiner;
-  const { EVENTO, proximo, criar } = EnvioGravado;
-  const ENVIOS = [{ id: 'a', lang: 'en', ids: [1], jobId: 'a' }];
-  const SO_A_MARCA = { envios: [], apagarFrases: true };
-  const COM_MARCA = { envios: ENVIOS, apagarFrases: true };
+require('../lib/envio-gravado.js');
+const { EnvioGravado } = globalThis.PerpetualMiner;
+const { EVENTO: EVENTO_GRAVADO, proximo, criar } = EnvioGravado;
+const ENVIOS = [{ id: 'a', lang: 'en', ids: [1], jobId: 'a' }];
+const SO_A_MARCA = { envios: [], apagarFrases: true };
+const COM_MARCA = { envios: ENVIOS, apagarFrases: true };
 
+function provarAsTransicoesDoGravado() {
   const TABELA = [
     // guardado          acompanhar(ENVIOS)   esquecer      apagarTudo    confirmou
     [null,               { envios: ENVIOS },  null,         SO_A_MARCA,   null],
@@ -169,12 +183,14 @@ const { SituacaoDoEnvio, FaseDaRemessa } = globalThis.PerpetualMiner;
     [SO_A_MARCA,         COM_MARCA,           SO_A_MARCA,   SO_A_MARCA,   null],
   ];
   for (const [guardado, ...esperados] of TABELA) {
-    [EVENTO.ACOMPANHAR, EVENTO.ESQUECER, EVENTO.APAGAR_TUDO, EVENTO.CONFIRMOU].forEach((tipo, i) => {
+    [EVENTO_GRAVADO.ACOMPANHAR, EVENTO_GRAVADO.ESQUECER, EVENTO_GRAVADO.APAGAR_TUDO, EVENTO_GRAVADO.CONFIRMOU].forEach((tipo, i) => {
       assert.deepStrictEqual(proximo(guardado, { tipo, envios: ENVIOS }), esperados[i], `${JSON.stringify(guardado)} × ${tipo}`);
     });
   }
   assert.deepStrictEqual(proximo(COM_MARCA, { tipo: 'novidade' }), COM_MARCA);
+}
 
+async function provarOGravadoNoStorage() {
   const guardado = {};
   const storage = {
     get: async chaves => Object.fromEntries(Object.keys(chaves).map(chave => [chave, chave in guardado ? guardado[chave] : chaves[chave]])),
@@ -182,16 +198,30 @@ const { SituacaoDoEnvio, FaseDaRemessa } = globalThis.PerpetualMiner;
     remove: async chave => { delete guardado[chave]; },
   };
   const gravado = criar(storage);
-  await gravado.mudar(EVENTO.APAGAR_TUDO);
-  await gravado.mudar(EVENTO.ACOMPANHAR, { envios: ENVIOS });
+  await gravado.mudar(EVENTO_GRAVADO.APAGAR_TUDO);
+  await gravado.mudar(EVENTO_GRAVADO.ACOMPANHAR, { envios: ENVIOS });
   assert.deepStrictEqual(guardado, { pm_envio: COM_MARCA });
   assert.deepStrictEqual(await gravado.ler(), COM_MARCA);
-  await gravado.mudar(EVENTO.ACOMPANHAR, { envios: [], seAinda: () => false });
+  await gravado.mudar(EVENTO_GRAVADO.ACOMPANHAR, { envios: [], seAinda: () => false });
   assert.deepStrictEqual(guardado, { pm_envio: COM_MARCA });
-  await gravado.mudar(EVENTO.CONFIRMOU);
+  await gravado.mudar(EVENTO_GRAVADO.CONFIRMOU);
   assert.deepStrictEqual(guardado, { pm_envio: { envios: ENVIOS } });
-  await gravado.mudar(EVENTO.ESQUECER);
+  await gravado.mudar(EVENTO_GRAVADO.ESQUECER);
   assert.deepStrictEqual(guardado, {});
+}
+
+(async () => {
+  provarOsEstadosAntesDeComecar();
+  provarAEspera();
+  provarOsEstadosFinais();
+  provarOQueCadaEstadoPermite();
+  provarAContagemPorIdioma();
+  provarOsMotivosDeCadaCodigo();
+  provarQueCadaCodigoTemTextoNaVoz();
+  provarAsTransicoesDaFase();
+  provarOQueCadaFaseAceita();
+  provarAsTransicoesDoGravado();
+  await provarOGravadoNoStorage();
 
   console.log('estado do envio ok');
 })().catch(erro => {
