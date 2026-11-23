@@ -49,4 +49,4 @@ function soMergesLimposDaMain({ de, ate, base, raiz = '.' }) {
   }
 }
 
-module.exports = { soMergesLimposDaMain };
+module.exports = { ehAncestral, soMergesLimposDaMain };
