@@ -93,8 +93,12 @@
   }
 
   function erroDeAgora() {
-    const { login } = estado;
-    if (estado.erro || !login || login.entrando || login.conectada) return estado.erro;
+    return estado.erro || falhaDoLogin(estado.login);
+  }
+
+  function falhaDoLogin(login) {
+    if (!login) return null;
+    if (login.entrando || login.conectada) return null;
     const motivo = login.acabou || login.falha;
     return motivo ? { motivo, detalhes: [login.acabou, login.falha].filter(Boolean).join(' · ') } : null;
   }

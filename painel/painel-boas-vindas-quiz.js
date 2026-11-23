@@ -28,6 +28,11 @@
     return lidos.get(chave);
   }
 
+  function resumoDoResultado({ semAlfabeto, acertos, perguntas, melhorSequencia, escuta }) {
+    if (semAlfabeto) return textoDaVoz('ONB-22.semAlfabeto');
+    return textoDaVoz('ONB-22.resumo', { acertos, perguntas, sequencia: melhorSequencia, escutaAcertos: escuta.acertos, escutaPerguntas: escuta.perguntas });
+  }
+
   async function pedir(lang, sotaque, texto) {
     const { PedidoAoAnki, ConversaComOAnki } = raiz;
     const desfecho = await ConversaComOAnki.pedir(PedidoAoAnki.falarAFrase(lang, sotaque, texto), { formato: dados => typeof dados.audio === 'string' && dados.audio !== '' });
@@ -72,7 +77,8 @@
     function escreverASequencia() {
       const antes = sequencia.textContent;
       sequencia.textContent = textoDaVoz('ONB-21.sequencia', { n: estado.sessao.sequencia() });
-      if (antes && antes !== sequencia.textContent && estado.sessao.sequencia() > 0) raiz.FestaNaTela.saltar(sequencia);
+      const trocouONumero = antes && antes !== sequencia.textContent;
+      if (trocouONumero && estado.sessao.sequencia() > 0) raiz.FestaNaTela.saltar(sequencia);
     }
 
     function escreverOPlacar() {
@@ -167,8 +173,7 @@
       progresso.textContent = '';
       sequencia.textContent = '';
       const rascunho = { nivel };
-      const resumo = semAlfabeto ? textoDaVoz('ONB-22.semAlfabeto')
-        : textoDaVoz('ONB-22.resumo', { acertos, perguntas, sequencia: melhorSequencia, escutaAcertos: escuta.acertos, escutaPerguntas: escuta.perguntas });
+      const resumo = resumoDoResultado({ semAlfabeto, acertos, perguntas, melhorSequencia, escuta });
       const usar = botao(textoDaVoz('ONB-22.usar'), 'veio-botao--primario', async () => {
         usar.disabled = true;
         const gravou = await aoUsar(rascunho.nivel);
@@ -183,11 +188,14 @@
         raiz.EstiloDoCartao.campo(lang, rascunho, { prefixo: 'bvq' }),
         elemento('div', 'quiz__acoes', usar),
         elemento('p', 'bv-nota', textoDaVoz('ONB-22.depois'))];
-      if (revelacao) {
-        revelacao.revelado.append(...corpo);
-        mostrar(textoDaVoz('ONB-22.titulo', { idioma }), revelacao.portas, revelacao.revelado);
-      } else mostrar(textoDaVoz('ONB-22.titulo', { idioma }), ...corpo);
+      mostrarAtrasDaRevelacao(textoDaVoz('ONB-22.titulo', { idioma }), revelacao, corpo);
       estado.ranking?.iniciar();
+    }
+
+    function mostrarAtrasDaRevelacao(titulo, revelacao, corpo) {
+      if (!revelacao) return mostrar(titulo, ...corpo);
+      revelacao.revelado.append(...corpo);
+      return mostrar(titulo, revelacao.portas, revelacao.revelado);
     }
 
     function iniciar() {

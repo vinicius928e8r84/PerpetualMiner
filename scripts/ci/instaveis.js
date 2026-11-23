@@ -2,14 +2,12 @@
 
 const fs = require('fs');
 
+function instaveisDaSpec(spec) {
+  return (spec.tests || []).filter(teste => teste.status === 'flaky').map(() => ({ arquivo: spec.file, linha: spec.line, titulo: spec.title }));
+}
+
 function percorrer(suite, achados) {
-  for (const spec of suite.specs || []) {
-    for (const teste of spec.tests || []) {
-      if (teste.status === 'flaky') {
-        achados.push({ arquivo: spec.file, linha: spec.line, titulo: spec.title });
-      }
-    }
-  }
+  for (const spec of suite.specs || []) achados.push(...instaveisDaSpec(spec));
   for (const filha of suite.suites || []) percorrer(filha, achados);
 }
 
@@ -25,10 +23,13 @@ function resumo(lista) {
   return [`### ${lista.length} teste(s) e2e passaram só na segunda tentativa`, '', ...linhas, ''].join('\n');
 }
 
-module.exports = { instaveis, resumo };
+function escreverOResumo(texto) {
+  if (!texto) return;
+  if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, texto);
+  console.log(texto);
+}
 
-if (require.main === module) {
-  const caminho = process.argv[2];
+function avisarNoCI(caminho) {
   if (!caminho || !fs.existsSync(caminho)) {
     console.log('Sem relatório do Playwright: nada a listar.');
     process.exit(0);
@@ -37,8 +38,10 @@ if (require.main === module) {
   for (const t of lista) {
     console.log(`::warning file=e2e/tests/${t.arquivo},line=${t.linha}::Instável: passou só na segunda tentativa: ${t.titulo}`);
   }
-  const texto = resumo(lista);
-  if (texto && process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, texto);
-  if (texto) console.log(texto);
+  escreverOResumo(resumo(lista));
   if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, `achou=${lista.length > 0}\n`);
 }
+
+module.exports = { instaveis, resumo };
+
+if (require.main === module) avisarNoCI(process.argv[2]);

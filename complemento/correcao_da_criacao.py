@@ -44,7 +44,7 @@ class CorrecaoDaCriacao:
                 return
             palavra = re.split(r"\s+-\s+/", nota["palavra"])[0]  # o campo traz a pronúncia depois da Palavra
             try:
-                correcao = self.motor.corrigir_frase.corrigir(config, pedir, palavra, nota["frase"], nota["escrita"])
+                correcao = self.motor.corrigir_frase.corrigir(config, pedir, dict(nota, palavra=palavra))
             except ErroDaOpenAI as erro:
                 self.logger.warning("Envio %s: a correção da Criação parou (%s)", job_id, erro.codigo)
                 return
