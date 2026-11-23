@@ -27,17 +27,25 @@
   };
   let partes = null;
 
+  const LIGADA = SITUACAO.LIGADA;
+  const ligadaSemConfirmar = situacao => situacao === LIGADA && !estado.confirmado;
+  const leituraFalhouSemGravar = () => estado.semResposta === 'falhou' && !estado.gravando;
+  const deveTentarLerDeNovo = situacao => ligadaSemConfirmar(situacao) && leituraFalhouSemGravar();
+  const lerTudo = () => { ler(); lerOsPerfis(); };
+
+  function aoMudarASituacao(situacao) {
+    const voltou = situacao === LIGADA && estado.situacao !== LIGADA;
+    estado.situacao = situacao;
+    if (situacao !== LIGADA) estado.confirmado = false;
+    if (voltou) lerTudo();
+    else if (deveTentarLerDeNovo(situacao)) ler();
+    desenhar();
+  }
+
   function iniciar() {
     desenhar();
-    ConexaoAnki.acompanhar(situacao => {
-      const voltou = situacao === SITUACAO.LIGADA && estado.situacao !== SITUACAO.LIGADA;
-      estado.situacao = situacao;
-      if (situacao !== SITUACAO.LIGADA) estado.confirmado = false;
-      if (voltou) { ler(); lerOsPerfis(); }
-      else if (situacao === SITUACAO.LIGADA && !estado.confirmado && estado.semResposta === 'falhou' && !estado.gravando) ler();
-      desenhar();
-    });
-    Shell.aoEntrarNaArea('configuracoes', () => { if (estado.situacao === SITUACAO.LIGADA) { ler(); lerOsPerfis(); } });
+    ConexaoAnki.acompanhar(aoMudarASituacao);
+    Shell.aoEntrarNaArea('configuracoes', () => { if (estado.situacao === LIGADA) lerTudo(); });
   }
 
   const pedir = (pedido, formato) => ConversaComOAnki.pedir(pedido, { prazoMs: ConexaoAnki.TEMPO_DA_RESPOSTA, formato });
@@ -89,14 +97,19 @@
     partes.interruptor.focus();
   }
 
+  const ehListaDeNomes = lista => Array.isArray(lista) && lista.every(nome => typeof nome === 'string');
+
+  function perfisLidos(desfecho) {
+    const dados = desfecho.ok ? desfecho.dados : null;
+    if (!ehListaDeNomes(dados?.profiles)) return { lista: null, marcado: null };
+    return { lista: dados.profiles, marcado: typeof dados.marked === 'string' ? dados.marked : null };
+  }
+
   async function lerOsPerfis() {
     const leitura = ++perfis.leitura;
     const desfecho = await pedir(raiz.PedidoAoAnki.perfisDoAnki());
-    const dados = desfecho.ok ? desfecho.dados : null;
     if (leitura !== perfis.leitura || perfis.escolhendo) return;
-    const entendida = Array.isArray(dados?.profiles) && dados.profiles.every(nome => typeof nome === 'string');
-    perfis.lista = entendida ? dados.profiles : null;
-    perfis.marcado = entendida && typeof dados.marked === 'string' ? dados.marked : null;
+    Object.assign(perfis, perfisLidos(desfecho));
     if (perfis.falha && perfis.marcado === perfis.falha.nome) perfis.falha = null;
     desenhar();
   }
@@ -170,6 +183,12 @@
     return { aviso, avisoDe: null, nota, interruptor, perfil: [], assinaturaDoPerfil: null };
   }
 
+  function notaDoInterruptor({ ligada, lendo, sabe }) {
+    if (!ligada) return textoDaVoz('CFG-38.indisponivel');
+    if (lendo) return textoDaVoz('CFG-38.lendo');
+    return sabe ? textoDaVoz('CFG-36.nota') : textoDaVoz(`CFG-38.${estado.semResposta}`);
+  }
+
   function desenhar() {
     if (!partes) partes = montar();
     const ligada = estado.situacao === SITUACAO.LIGADA;
@@ -179,10 +198,7 @@
     partes.interruptor.checked = sabe && estado.ligado === true;
     partes.interruptor.disabled = !sabe || estado.gravando;
     partes.interruptor.setAttribute('aria-busy', String(estado.gravando || lendo));
-    partes.nota.textContent = !ligada ? textoDaVoz('CFG-38.indisponivel')
-      : lendo ? textoDaVoz('CFG-38.lendo')
-        : !sabe ? textoDaVoz(`CFG-38.${estado.semResposta}`)
-          : textoDaVoz('CFG-36.nota');
+    partes.nota.textContent = notaDoInterruptor({ ligada, lendo, sabe });
     desenharOResumo(sabe);
     desenharOAviso();
     desenharOPerfil();
