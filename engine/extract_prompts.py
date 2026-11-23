@@ -12,6 +12,7 @@ image pipeline.
 """
 
 import re
+from itertools import takewhile
 from pathlib import Path
 from typing import List, Optional
 
@@ -27,53 +28,57 @@ _QUERY_HEADING_RE = re.compile(
     r"^(google image search queries|image search queries)\s*:\s*$",
     re.IGNORECASE,
 )
+_NEXT_LABEL_RE = re.compile(r"^[A-Za-z][A-Za-z ]+:")
+_LIST_MARKER_RE = re.compile(r"^(?:[-*]|\d+[.)]|[A-Da-d][.)])\s*(.+)$")
+_IMAGE_LINE_RE = re.compile(r"\*{0,2}Image:\*{0,2}\s*(.+)", re.IGNORECASE)
+_SINGLE_QUERY_LINE_RE = re.compile(
+    r"\*{0,2}(?:Google Image Search|Image Search Query):\*{0,2}\s*(.+)",
+    re.IGNORECASE,
+)
+_NO_VALUE = ("none", "none.", "n/a")
+
+
+def _usable_value(raw: str) -> Optional[str]:
+    value = raw.strip().rstrip("*").strip()
+    if not value or value.lower() in _NO_VALUE:
+        return None
+    return value
+
+
+def _value_of_line(pattern: re.Pattern, content: str) -> Optional[str]:
+    match = pattern.search(content)
+    return _usable_value(match.group(1)) if match else None
+
+
+def _is_query_heading(line: str) -> bool:
+    return bool(_QUERY_HEADING_RE.match(line.strip().strip("*").strip()))
+
+
+def _query_of_list_line(raw: str) -> str:
+    bare = raw.strip("*").strip()
+    marker = _LIST_MARKER_RE.match(bare)
+    return (marker.group(1) if marker else bare).strip()
+
+
+def _continues_query_block(raw: str) -> bool:
+    return bool(raw) and not _NEXT_LABEL_RE.match(raw)
+
+
+def _first_query_after_heading(content: str) -> Optional[str]:
+    lines = content.splitlines()
+    heading = next((idx for idx, line in enumerate(lines) if _is_query_heading(line)), None)
+    if heading is None:
+        return None
+    block = takewhile(_continues_query_block, (line.strip() for line in lines[heading + 1 :]))
+    return next((query for query in map(_query_of_list_line, block) if query), None)
 
 
 def _extract_image_prompt(content: str) -> Optional[str]:
-    image_match = re.search(
-        r"\*{0,2}Image:\*{0,2}\s*(.+)",
-        content,
-        re.IGNORECASE,
-    )
-    if not image_match:
-        return None
-
-    prompt = image_match.group(1).strip().rstrip("*").strip()
-    if not prompt or prompt.lower() in ("none", "none.", "n/a"):
-        return None
-    return prompt
+    return _value_of_line(_IMAGE_LINE_RE, content)
 
 
 def _extract_first_search_query(content: str) -> Optional[str]:
-    lines = [line.rstrip() for line in content.splitlines()]
-    for idx, line in enumerate(lines):
-        clean = line.strip().strip("*").strip()
-        if not _QUERY_HEADING_RE.match(clean):
-            continue
-
-        for next_line in lines[idx + 1 :]:
-            raw = next_line.strip()
-            if not raw:
-                break
-            if re.match(r"^[A-Za-z][A-Za-z ]+:", raw):
-                break
-            raw = raw.strip("*").strip()
-            match = re.match(r"^(?:[-*]|\d+[.)]|[A-Da-d][.)])\s*(.+)$", raw)
-            query = (match.group(1) if match else raw).strip()
-            if query:
-                return query
-        break
-
-    single_line = re.search(
-        r"\*{0,2}(?:Google Image Search|Image Search Query):\*{0,2}\s*(.+)",
-        content,
-        re.IGNORECASE,
-    )
-    if single_line:
-        query = single_line.group(1).strip().rstrip("*").strip()
-        if query and query.lower() not in ("none", "none.", "n/a"):
-            return query
-    return None
+    return _first_query_after_heading(content) or _value_of_line(_SINGLE_QUERY_LINE_RE, content)
 
 
 def card_prompt(content: str) -> str:
@@ -81,27 +86,22 @@ def card_prompt(content: str) -> str:
     return _extract_image_prompt(content) or _extract_first_search_query(content) or ""
 
 
+def _expected_stems(entries) -> set:
+    return {job.filename_stem.lower() for entry in entries for job in get_card_jobs(entry)}
+
+
+def _prompt_lines(output_dir: Path, expected_stems_lower: set) -> List[str]:
+    return [
+        f"{card_file.stem}:{card_prompt(card_file.read_text(encoding='utf-8'))}"
+        for card_file in output_dir.glob("*.txt")
+        if card_file.stem.lower() in expected_stems_lower
+    ]
+
+
 def run(entries, config: dict) -> int:
     """Return the number of prompts written to prompts.txt."""
-    output_dir = Path(config["paths"]["output_dir"])
-    prompts_file = Path(config["paths"]["prompts_file"])
-
-    all_jobs = []
-    for entry in entries:
-        all_jobs.extend(get_card_jobs(entry))
-    expected_stems_lower = {job.filename_stem.lower() for job in all_jobs}
-
-    entries_out: List[str] = []
-    for card_file in output_dir.glob("*.txt"):
-        stem = card_file.stem
-        if stem.lower() not in expected_stems_lower:
-            continue
-
-        content = card_file.read_text(encoding="utf-8")
-        prompt = card_prompt(content)
-        entries_out.append(f"{stem}:{prompt}")
-
-    prompts_file.write_text("\n".join(entries_out), encoding="utf-8")
+    entries_out = _prompt_lines(Path(config["paths"]["output_dir"]), _expected_stems(entries))
+    Path(config["paths"]["prompts_file"]).write_text("\n".join(entries_out), encoding="utf-8")
     return len(entries_out)
 
 
