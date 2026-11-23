@@ -50,6 +50,26 @@ def enviar(conexao, *, corpo=None, linha=FRASE):
     return estado, conexao.conexao.colecao.gravadas
 
 
+def fora_do_cofre(arquivos):
+    return b"".join(dados for nome, dados in arquivos.items() if not nome.startswith("chaves"))
+
+
+def imagens_na_pasta(arquivos):
+    return [nome for nome in arquivos if nome.endswith((".png", ".jpg", ".jpeg", ".webp"))]
+
+
+def custos_do_envio(arquivos):
+    return [json.loads(linha) for linha in arquivos[os.path.join("custos", ID, "costs.jsonl")].decode("utf-8").splitlines()]
+
+
+def sem_as_buscas(custo):
+    return not {"queries", "query_stats", "best_real_query"} & custo.keys()
+
+
+def palavras_dos_tokens(custos):
+    return [c["keyword"] for c in custos if c["type"] == "tokens"]
+
+
 class AFotoRealQueOJuizEscolhe(unittest.TestCase):
     def test_o_cartao_leva_a_foto_que_o_juiz_escolheu_e_a_colecao_guarda_os_bytes_dela(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
@@ -240,14 +260,12 @@ class OQueFicaGuardado(unittest.TestCase):
             enviar(conexao, linha="xilofone : O pai toca xilofone muito alto")
             arquivos = conexao.arquivos()
             _, _, pacote = conexao.pedir("POST", "/jobs/debug-bundle", corpo={"jobId": ID})
-        imagem = [nome for nome in arquivos if nome.endswith((".png", ".jpg", ".jpeg", ".webp"))]
-        guardado = b"".join(dados for nome, dados in arquivos.items() if not nome.startswith("chaves")) + pacote
-        self.assertEqual(imagem, [])
-        self.assertNotIn(b"xilofone", guardado)
-        custos = [json.loads(linha) for linha in arquivos[os.path.join("custos", ID, "costs.jsonl")].decode("utf-8").splitlines()]
+        self.assertEqual(imagens_na_pasta(arquivos), [])
+        self.assertNotIn(b"xilofone", fora_do_cofre(arquivos) + pacote)
+        custos = custos_do_envio(arquivos)
         self.assertIn("image_pipeline", [c["type"] for c in custos])
-        self.assertTrue(all("queries" not in c and "query_stats" not in c and "best_real_query" not in c for c in custos))
-        self.assertIn("[image_judge] 1760000000000-0", [c["keyword"] for c in custos if c["type"] == "tokens"])
+        self.assertTrue(all(sem_as_buscas(c) for c in custos))
+        self.assertIn("[image_judge] 1760000000000-0", palavras_dos_tokens(custos))
 
     def test_a_chave_vai_so_para_a_openai_e_nunca_para_o_openverse_nem_para_um_arquivo_fora_do_cofre(self):
         for fonte in ("1", "2"):
@@ -258,7 +276,7 @@ class OQueFicaGuardado(unittest.TestCase):
                 arquivos = conexao.arquivos()
                 _, _, pacote = conexao.pedir("POST", "/jobs/debug-bundle", corpo={"jobId": ID})
                 with open(os.path.join(conexao.logs, "complemento.log"), "rb") as log:
-                    guardado = b"".join(dados for nome, dados in arquivos.items() if not nome.startswith("chaves")) + pacote + log.read()
+                    guardado = fora_do_cofre(arquivos) + pacote + log.read()
                 para_a_openai = [autorizacao for _, caminho, autorizacao in conexao.openai.pedidos if caminho in ("/v1/chat/completions", "/v1/images/generations")]
                 para_o_openverse = list(conexao.openverse.cabecalhos)
             self.assertTrue(conexao.openai.imagens)

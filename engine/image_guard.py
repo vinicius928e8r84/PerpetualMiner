@@ -106,8 +106,6 @@ def _record_the_check(log_dir: str, usage: dict, label: str) -> None:
     if usage:
         cost_tracker.record_tokens(
             log_dir,
-            model="gpt-4o-mini",
-            input_tokens=usage.get("entrada", 0),
-            output_tokens=usage.get("saida", 0),
+            cost_tracker.TokenUsage("gpt-4o-mini", usage.get("entrada", 0), usage.get("saida", 0)),
             keyword=f"[image_guard] {label}",
         )

@@ -27,8 +27,9 @@ Pagador = namedtuple("Pagador", "quem credencial motivo")
 LISTA_NOSSA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "modelos_da_ia.json")
 
 
-class Conta(namedtuple("Conta", "login cofre")):
-    """Quem pode pagar um pedido: o login do ChatGPT (`LoginDoChatGPT`; None: sem login) e o cofre, com a chave da OpenAI."""
+class Conta(namedtuple("Conta", "login cofre openai_base", defaults=(None,))):
+    """Quem pode pagar um pedido: o login do ChatGPT (`LoginDoChatGPT`; None: sem login) e o cofre, com a chave da OpenAI, e o endereço
+    da OpenAI onde se pergunta o que a conta da chave tem."""
 
     def situacao(self):
         """A `situacao()` do login; sem login, `(SEM_LOGIN, None)`."""
@@ -47,22 +48,37 @@ def lista_nossa():
         return json.load(arquivo)["modelos"]
 
 
-class ModeloDosCartoes:
-    """`hoje` devolve o dia (um `date`); `login` e `cofre` dizem quem paga; `lista` é a lista nossa (`lista_nossa()`);
+class ListaDosModelos:
+    """`modelos` é a lista nossa (`lista_nossa()`); `hoje` devolve o dia (um `date`);
     `modelo_do_motor` devolve o `chat_model` do motor, o Automático com a chave."""
 
-    def __init__(self, arquivo, lista, hoje, logger, login, cofre, openai_base, modelo_do_motor):
-        self._arquivo, self._hoje, self.logger = arquivo, hoje, logger
-        self._modelo_do_motor = modelo_do_motor
-        self._login, self._cofre, self._openai_base = login, cofre, openai_base
-        self._com_foto = [m["modelo"] for m in lista if m["texto"] and m["foto"]]
+    def __init__(self, modelos, hoje, modelo_do_motor, logger):
+        self._hoje, self._modelo_do_motor = hoje, modelo_do_motor
+        self.com_foto = [m["modelo"] for m in modelos if m["texto"] and m["foto"]]
         self._saidas = {}
-        for modelo in lista:
+        for modelo in modelos:
             try:
                 if modelo["saida"]:
                     self._saidas[modelo["modelo"]] = date.fromisoformat(modelo["saida"])
             except ValueError:
                 logger.warning("Modelo dos cartões: a data de saída de %s não é um dia (AAAA-MM-DD)", modelo["modelo"])
+
+    def saiu(self, modelo):
+        return modelo in self._saidas and self._hoje() >= self._saidas[modelo]
+
+    def o_do_motor_saiu(self):
+        return self.saiu(self._modelo_do_motor())
+
+    def aviso_da_saida(self, modelo):
+        saida = self._saidas.get(modelo)
+        return {"modelo": modelo, "saida": saida.isoformat()} if saida and self._hoje() < saida else None
+
+
+class ModeloDosCartoes:
+    """`arquivo` guarda a escolha; `lista` é a `ListaDosModelos`; `conta` (`Conta`) diz quem paga."""
+
+    def __init__(self, arquivo, lista, conta, logger):
+        self._arquivo, self._lista, self._conta, self.logger = arquivo, lista, conta, logger
         self._tranca = threading.Lock()
 
     def _ler(self):
@@ -81,22 +97,19 @@ class ModeloDosCartoes:
         with self._tranca:
             gravar_so_do_dono(self._arquivo, {"escolha": escolha, "trocou": trocou, "paga": paga})
 
-    def _saiu(self, modelo):
-        return modelo in self._saidas and self._hoje() >= self._saidas[modelo]
-
     def disponiveis(self, lista):
         """A lista sem os modelos que já saíram do ar, na ordem dela."""
-        return [modelo for modelo in lista if not self._saiu(modelo)]
+        return [modelo for modelo in lista if not self._lista.saiu(modelo)]
 
     def da_chave(self, chave):
         """Os modelos de texto que veem foto que a conta da chave tem (na ordem da lista nossa); levanta `ErroDaChave`."""
-        ids = openai_api.modelos_da_conta(self._openai_base, chave)
-        return self.disponiveis([modelo for modelo in self._com_foto if modelo in ids])
+        ids = openai_api.modelos_da_conta(self._conta.openai_base, chave)
+        return self.disponiveis([modelo for modelo in self._lista.com_foto if modelo in ids])
 
     def automatico_da_chave(self, oferta):
         """O modelo do texto do Automático com a chave: None (o do motor) enquanto ele não saiu do ar; senão o primeiro que a conta oferece
         (None se a lista não veio ou está vazia: então nada é melhor que o do motor)."""
-        if not self._saiu(self._modelo_do_motor()):
+        if not self._lista.o_do_motor_saiu():
             return None
         return oferta[0] if oferta else None
 
@@ -104,11 +117,12 @@ class ModeloDosCartoes:
         """(quem paga, o que ela oferece): quem paga o texto pela tabela (`quem_paga`, a mesma da porta da IA dos cartões): `plano` com o
         login, `chave` com a chave, `None` e `[]` quando ninguém paga (sem nenhum dos dois, ou com o login acabado, até a pessoa escolher)."""
         try:
-            chave = self._cofre.ler("openai")
-            quem, _ = quem_paga(*self._login.situacao(), False, bool(chave))
-            token = self._login.token() if quem == PLANO else None
+            chave = self._conta.chave()
+            login = self._conta.login
+            quem, _ = quem_paga(*login.situacao(), False, bool(chave))
+            token = login.token() if quem == PLANO else None
             if token:
-                return PLANO, self.disponiveis(self._login.modelos(token))
+                return PLANO, self.disponiveis(login.modelos(token))
             return (CHAVE, self.da_chave(chave)) if quem != PARADO and chave else (None, [])
         except (ErroDoPlano, openai_api.ErroDaChave) as erro:
             if getattr(erro, "codigo", None) == SAIU:
@@ -121,7 +135,7 @@ class ModeloDosCartoes:
         `trocou` é `{ de }`, e leva `porque: pagador` quando a conta que não a oferece é outra que a de quando a pessoa escolheu."""
         if escolha == AUTOMATICO:
             return AUTOMATICO, None
-        if self._saiu(escolha):
+        if self._lista.saiu(escolha):
             return AUTOMATICO, {"de": escolha}
         if oferta is not None and escolha not in oferta:
             outro_pagador = quem_escolheu is not None and quem_escolheu != paga
@@ -133,9 +147,7 @@ class ModeloDosCartoes:
         paga, oferta = self.conta()
         escolha, trocou, quem_escolheu = self._ler()
         efetivo, trocada = self._resolver(escolha, oferta if paga else None, paga, quem_escolheu)
-        saida = self._saidas.get(efetivo)
-        aviso = {"modelo": efetivo, "saida": saida.isoformat()} if saida and self._hoje() < saida else None
-        return {"paga": paga, "escolha": efetivo, "modelos": oferta, "aviso": aviso, "trocou": trocada or trocou}
+        return {"paga": paga, "escolha": efetivo, "modelos": oferta, "aviso": self._lista.aviso_da_saida(efetivo), "trocou": trocada or trocou}
 
     def escolher(self, modelo):
         """Guarda a escolha (e apaga a linha do que foi trocado); (status, resposta) do contrato."""

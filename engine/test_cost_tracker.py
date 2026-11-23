@@ -18,8 +18,8 @@ class RegistroDeTokens(unittest.TestCase):
     def test_os_tokens_da_chave_custam_o_preco_do_modelo_e_o_modelo_sem_preco_custa_o_do_gpt_4o(self):
         with tempfile.TemporaryDirectory() as pasta:
             custos = [
-                cost_tracker.record_tokens(pasta, "gpt-4o-mini", 1000, 2000, "olho"),
-                cost_tracker.record_tokens(pasta, model="modelo-sem-preco", input_tokens=3, output_tokens=7),
+                cost_tracker.record_tokens(pasta, cost_tracker.TokenUsage("gpt-4o-mini", 1000, 2000), "olho"),
+                cost_tracker.record_tokens(pasta, cost_tracker.TokenUsage(model="modelo-sem-preco", input_tokens=3, output_tokens=7)),
             ]
             gravado = linhas(pasta)
         hoje = date.today().isoformat()
@@ -34,8 +34,8 @@ class RegistroDeTokens(unittest.TestCase):
     def test_os_tokens_do_plano_custam_zero_e_guardam_o_que_a_chave_teria_cobrado_pelo_modelo_dela(self):
         with tempfile.TemporaryDirectory() as pasta:
             teria = [
-                cost_tracker.record_plan_tokens(pasta, "gpt-5", "gpt-4.1", 1234, 567, "olho"),
-                cost_tracker.record_plan_tokens(pasta, "gpt-5", "modelo-sem-preco", 10, 20),
+                cost_tracker.record_plan_tokens(pasta, cost_tracker.TokenUsage("gpt-5", 1234, 567), "gpt-4.1", "olho"),
+                cost_tracker.record_plan_tokens(pasta, cost_tracker.TokenUsage("gpt-5", 10, 20), "modelo-sem-preco"),
             ]
             gravado = linhas(pasta)
         hoje = date.today().isoformat()
@@ -50,9 +50,9 @@ class RegistroDeTokens(unittest.TestCase):
     def test_a_correcao_paga_pela_chave_custa_o_preco_e_pelo_plano_custa_zero(self):
         with tempfile.TemporaryDirectory() as pasta:
             custos = [
-                cost_tracker.record_correction(pasta, "gpt-4.1-mini", 500, 100),
-                cost_tracker.record_correction(pasta, "gpt-4.1-mini", 500, 100, paid=False),
-                cost_tracker.record_correction(pasta, "modelo-sem-preco", 1, 1, True),
+                cost_tracker.record_correction(pasta, cost_tracker.TokenUsage("gpt-4.1-mini", 500, 100)),
+                cost_tracker.record_correction(pasta, cost_tracker.TokenUsage("gpt-4.1-mini", 500, 100), paid=False),
+                cost_tracker.record_correction(pasta, cost_tracker.TokenUsage("modelo-sem-preco", 1, 1), True),
             ]
             gravado = linhas(pasta)
         hoje = date.today().isoformat()
@@ -69,17 +69,17 @@ class RegistroDeTokens(unittest.TestCase):
     def test_o_registro_cria_a_pasta_e_acrescenta_sem_apagar_o_que_ja_estava(self):
         with tempfile.TemporaryDirectory() as raiz:
             pasta = Path(raiz) / "log"
-            cost_tracker.record_tokens(pasta, "gpt-4o", 1, 1, "a")
-            cost_tracker.record_plan_tokens(str(pasta), "gpt-5", "gpt-4o", 1, 1, "b")
-            cost_tracker.record_correction(pasta, "gpt-4o", 1, 1)
+            cost_tracker.record_tokens(pasta, cost_tracker.TokenUsage("gpt-4o", 1, 1), "a")
+            cost_tracker.record_plan_tokens(str(pasta), cost_tracker.TokenUsage("gpt-5", 1, 1), "gpt-4o", "b")
+            cost_tracker.record_correction(pasta, cost_tracker.TokenUsage("gpt-4o", 1, 1))
             tipos = [(linha["type"], linha.get("keyword")) for linha in linhas(pasta)]
         self.assertEqual(tipos, [("tokens", "a"), ("plan_tokens", "b"), ("correction_tokens", None)])
 
     def test_o_resumo_soma_o_custo_dos_tokens_por_modelo_e_o_plano_e_a_correcao_so_no_total(self):
         with tempfile.TemporaryDirectory() as pasta:
-            cost_tracker.record_tokens(pasta, "gpt-4o", 1000, 1000, "a")
-            cost_tracker.record_plan_tokens(pasta, "gpt-5", "gpt-4o", 1000, 1000, "b")
-            cost_tracker.record_correction(pasta, "gpt-4o-mini", 1000, 1000)
+            cost_tracker.record_tokens(pasta, cost_tracker.TokenUsage("gpt-4o", 1000, 1000), "a")
+            cost_tracker.record_plan_tokens(pasta, cost_tracker.TokenUsage("gpt-5", 1000, 1000), "gpt-4o", "b")
+            cost_tracker.record_correction(pasta, cost_tracker.TokenUsage("gpt-4o-mini", 1000, 1000))
             resumo = cost_tracker.summary(pasta)
         self.assertEqual(resumo["today"], {
             "total_usd": round(0.0125 + 0.00075, 4), "by_model": {"gpt-4o": 0.0125}, "n_cards": 0, "n_images_dalle": 0, "n_images_google": 0,

@@ -28,23 +28,24 @@ def apagar(caminho):
     return True
 
 
+def _provisorios(dados):
+    for pasta in (dados.fila, dados.estado, dados.custos):
+        for raiz, _, nomes in os.walk(pasta):
+            yield from (os.path.join(raiz, nome) for nome in sorted(nomes) if nome.endswith(".novo"))
+
+
 def apagar_os_provisorios(dados, ao_falhar=None):
     """Todo `<nome>.novo` das pastas do Envio (a gravação que morreu entre escrever e renomear) guarda a Palavra e a Frase, e como o
     nome é único por gravação ninguém o reescreve. Quem chama (a subida da Conexão e o Apagar tudo) segura a tranca da fila.
     Sem `ao_falhar`, um arquivo que não dá para apagar levanta (o Apagar tudo não pode dizer "apagado" com a Frase ainda no disco);
     com ele, `ao_falhar(caminho, erro)` é chamado e os outros provisórios saem mesmo assim (a subida não pode perder o Envio por um)."""
-    for pasta in (dados.fila, dados.estado, dados.custos):
-        for raiz, _, nomes in os.walk(pasta):
-            for nome in sorted(nomes):
-                if not nome.endswith(".novo"):
-                    continue
-                caminho = os.path.join(raiz, nome)
-                try:
-                    apagar(caminho)
-                except OSError as erro:
-                    if ao_falhar is None:
-                        raise
-                    ao_falhar(caminho, erro)
+    for caminho in _provisorios(dados):
+        try:
+            apagar(caminho)
+        except OSError as erro:
+            if ao_falhar is None:
+                raise
+            ao_falhar(caminho, erro)
 
 
 def avisar_do_que_ficou(logger):
@@ -67,15 +68,18 @@ def limpar_ao_subir(dados, estado_de, logger=None):
         return avisar(dados.estado, erro)
     for nome in nomes:
         pasta = os.path.join(dados.estado, nome)
-        if not (os.path.isdir(pasta) and estado_de(nome).get("wiped")):
-            continue
+        if os.path.isdir(pasta) and estado_de(nome).get("wiped"):
+            _apagar_os_textos_do_envio(pasta, avisar)
+
+
+def _apagar_os_textos_do_envio(pasta, avisar):
+    try:
+        textos = sorted(arquivo for arquivo in os.listdir(pasta) if arquivo.endswith(".txt"))
+    except OSError as erro:
+        return avisar(pasta, erro)
+    for arquivo in textos:
+        caminho = os.path.join(pasta, arquivo)
         try:
-            textos = sorted(arquivo for arquivo in os.listdir(pasta) if arquivo.endswith(".txt"))
+            apagar(caminho)
         except OSError as erro:
-            avisar(pasta, erro)
-            continue
-        for arquivo in textos:
-            try:
-                apagar(os.path.join(pasta, arquivo))
-            except OSError as erro:
-                avisar(os.path.join(pasta, arquivo), erro)
+            avisar(caminho, erro)

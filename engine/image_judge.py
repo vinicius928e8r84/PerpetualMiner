@@ -62,13 +62,7 @@ Scores are integers from 0 to 100.
 def _record_cost(log_dir: str, model: str, usage: dict, keyword: str) -> None:
     if not usage:
         return
-    cost_tracker.record_tokens(
-        log_dir,
-        model=model,
-        input_tokens=usage.get("entrada", 0),
-        output_tokens=usage.get("saida", 0),
-        keyword=keyword,
-    )
+    cost_tracker.record_tokens(log_dir, cost_tracker.TokenUsage(model, usage.get("entrada", 0), usage.get("saida", 0)), keyword=keyword)
 
 
 def _image_data_url(path: Path) -> str:

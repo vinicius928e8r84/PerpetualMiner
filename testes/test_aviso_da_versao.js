@@ -13,7 +13,8 @@ const VELHA = leitura('0.3.9');
 const NO_DISCO = leitura('0.3.9', { estado: 'instalada', versao: '0.4.5', atualizada: null });
 const NOVA = leitura('0.4.5', { estado: null, versao: null, atualizada: '0.4.5' });
 
-const depoisDe = (eventos, comeco = inicial()) => eventos.reduce((maquina, evento) => proxima(maquina, typeof evento === 'string' ? { tipo: evento } : evento), comeco);
+const comoEvento = evento => (typeof evento === 'string' ? { tipo: evento } : evento);
+const depoisDe = (eventos, comeco = inicial()) => eventos.reduce((maquina, evento) => proxima(maquina, comoEvento(evento)), comeco);
 const visto = maquina => [maquina.estado, maquina.versao];
 
 // --- a lista é fechada ----------------------------------------------------------------------------------------------------------
@@ -85,22 +86,32 @@ for (const tipo of [EVENTO.ATUALIZOU, EVENTO.REINICIOU, EVENTO.NAO_REINICIOU, EV
 }
 
 // --- nenhum estado é um beco: de cada um, algum evento leva a outro -------------------------------------------------------------
-const alcancados = new Set();
+function anotarSaida(saidas, de, para) {
+  if (de === para) return;
+  saidas.set(de, (saidas.get(de) || new Set()).add(para));
+}
+function seguintesDe(maquina, eventos) {
+  return eventos.map(evento => proxima(maquina, comoEvento(evento)));
+}
+function saidasDeCadaEstado(eventos) {
+  const alcancados = new Set();
+  const fila = [inicial()];
+  const saidas = new Map();
+  while (fila.length) {
+    const maquina = fila.pop();
+    const chave = JSON.stringify(maquina);
+    if (alcancados.has(chave)) continue;
+    alcancados.add(chave);
+    for (const seguinte of seguintesDe(maquina, eventos)) {
+      anotarSaida(saidas, maquina.estado, seguinte.estado);
+      fila.push(seguinte);
+    }
+  }
+  return saidas;
+}
 const eventos = [SEM_CONEXAO, VELHA, NO_DISCO, NOVA, leitura('0.4.2'), EVENTO.ATUALIZAR, atualizou({ estado: 'falhou', versao: null }), atualizou({ estado: 'instalada', versao: '0.4.5' }),
   EVENTO.REINICIAR, EVENTO.SEM_PERMISSAO, EVENTO.REINICIOU, EVENTO.NAO_REINICIOU, EVENTO.MOSTROU, EVENTO.FECHOU];
-const fila = [inicial()];
-const saidas = new Map();
-while (fila.length) {
-  const maquina = fila.pop();
-  const chave = JSON.stringify(maquina);
-  if (alcancados.has(chave)) continue;
-  alcancados.add(chave);
-  for (const evento of eventos) {
-    const seguinte = proxima(maquina, typeof evento === 'string' ? { tipo: evento } : evento);
-    if (seguinte.estado !== maquina.estado) saidas.set(maquina.estado, (saidas.get(maquina.estado) || new Set()).add(seguinte.estado));
-    fila.push(seguinte);
-  }
-}
+const saidas = saidasDeCadaEstado(eventos);
 assert.deepStrictEqual([...saidas.keys()].sort(), Object.values(ESTADO).sort(), 'todo estado é alcançado e tem saída');
 
 console.log('aviso da versão ok');

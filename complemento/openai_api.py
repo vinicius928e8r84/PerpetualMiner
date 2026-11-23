@@ -44,13 +44,17 @@ def contexto_tls():
         return ssl.create_default_context()
 
 
-def _pedir(base, metodo, caminho, chave, corpo=None, ler=False):
-    """(status, erro) da OpenAI (com `ler`, o corpo de um 200); levanta `ErroDaChave(FORA_DO_AR)` se nem a resposta chegou."""
+def _pedido(base, chave, caminho, corpo=None):
     dados = None if corpo is None else json.dumps(corpo).encode("utf-8")
-    pedido = urllib.request.Request(base + caminho, data=dados, method=metodo)
+    pedido = urllib.request.Request(base + caminho, data=dados, method="GET" if dados is None else "POST")
     pedido.add_header("Authorization", "Bearer " + chave)
     if dados is not None:
         pedido.add_header("Content-Type", "application/json")
+    return pedido
+
+
+def _pedir(pedido, ler=False):
+    """(status, erro) da OpenAI (com `ler`, o corpo de um 200); levanta `ErroDaChave(FORA_DO_AR)` se nem a resposta chegou."""
     try:
         with urllib.request.urlopen(pedido, timeout=TEMPO_DE_CADA_PEDIDO, context=contexto_tls()) as resposta:
             lido = json.loads(resposta.read(1024 * 1024).decode("utf-8")) if ler and resposta.status == 200 else {}
@@ -71,25 +75,32 @@ def _classificar(status, erro):
         return FORA_DO_AR
     if status == 401:
         return RECUSADA
-    mensagem = str(erro.get("message") or "").lower()
-    if status == 403 and "organization" in mensagem and "verif" in mensagem:
+    if status == 403 and _fala_da_organizacao_nao_verificada(erro):
         return ORGANIZACAO_NAO_VERIFICADA
     if status in (402, 429):
         return SEM_CREDITO
     return None
 
 
+def _fala_da_organizacao_nao_verificada(erro):
+    mensagem = str(erro.get("message") or "").lower()
+    return "organization" in mensagem and "verif" in mensagem
+
+
+def _codigo_da_lista_de_modelos(status, erro):
+    codigo = _classificar(status, erro)
+    if codigo is not None or status == 200:
+        return codigo
+    return RECUSADA if status == 403 else FORA_DO_AR
+
+
 def conferir(base, chave, logger):
     """Levanta `ErroDaChave` se a OpenAI não aceita a chave; volta sem nada se aceita."""
     try:
-        status, erro = _pedir(base, "GET", "/v1/models", chave)
-        codigo = _classificar(status, erro)
-        if codigo is None and status == 403:
-            codigo = RECUSADA
-        if codigo is None and status != 200:
-            codigo = FORA_DO_AR
+        status, erro = _pedir(_pedido(base, chave, "/v1/models"))
+        codigo = _codigo_da_lista_de_modelos(status, erro)
         if codigo is None:
-            status, erro = _pedir(base, "POST", "/v1/embeddings", chave, {"model": "text-embedding-3-small", "input": "ok"})
+            status, erro = _pedir(_pedido(base, chave, "/v1/embeddings", {"model": "text-embedding-3-small", "input": "ok"}))
             codigo = _classificar(status, erro)
     except ErroDaChave as falha:
         logger.warning("Não deu para falar com a OpenAI ao conferir a chave")
@@ -101,7 +112,7 @@ def conferir(base, chave, logger):
 
 def modelos_da_conta(base, chave):
     """Os ids da lista de modelos da conta (`GET /v1/models`, #157); levanta `ErroDaChave` se a lista não veio."""
-    status, corpo = _pedir(base, "GET", "/v1/models", chave, ler=True)
+    status, corpo = _pedir(_pedido(base, chave, "/v1/models"), ler=True)
     if status != 200:
         raise ErroDaChave(_classificar(status, corpo) or FORA_DO_AR)
     return [modelo["id"] for modelo in corpo.get("data", []) if isinstance(modelo, dict) and isinstance(modelo.get("id"), str)]

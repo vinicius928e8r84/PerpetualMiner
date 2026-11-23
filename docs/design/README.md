@@ -10,7 +10,7 @@ O escopo é redesign: auditar, podar, reagrupar e revestir. Nenhuma função nov
 - **A spec vale sobre o protótipo.** Os protótipos ficaram intactos como foram aprovados, com as variantes rejeitadas dentro do arquivo como referência. As specs foram corrigidas na consolidação, então onde um protótipo mostra um texto ou detalhe antigo, a spec corrigida manda.
 - Cada link de protótipo abaixo já aponta para a **variante travada** (`?variant=`). As outras variantes do mesmo arquivo servem só de referência.
 - A cópia de toda tela sai do [catálogo da Voz](voz/README.md). Estado novo que não estiver no catálogo segue as regras V1–V10 e C1–C9.
-- Glossário: [`docs/glossary.md`](../glossary.md) em `docs/` (Frase, Palavra, Minerar, Fonte, Contexto, Mineração automática, Conexão com o Anki…).
+- Glossário: [`glossary.md`](../../glossary.md) na raiz (Frase, Palavra, Minerar, Fonte, Contexto, Mineração automática, Conexão com o Anki…).
 
 ## Fundamentos
 

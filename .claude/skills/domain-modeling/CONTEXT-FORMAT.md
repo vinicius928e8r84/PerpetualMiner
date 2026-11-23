@@ -1,4 +1,4 @@
-# docs/glossary.md Format
+# glossary.md Format
 
 ## Structure
 
@@ -31,7 +31,7 @@ _Avoid_: Client, buyer, account
 
 ## Single vs multi-context repos
 
-**Single context (most repos):** One `docs/glossary.md`.
+**Single context (most repos):** One `glossary.md`.
 
 **Multiple contexts:** A `CONTEXT-MAP.md` at the repo root lists the contexts, where they live, and how they relate to each other:
 
@@ -54,7 +54,7 @@ _Avoid_: Client, buyer, account
 The skill infers which structure applies:
 
 - If `CONTEXT-MAP.md` exists, read it to find contexts
-- If only a `docs/glossary.md` exists, single context
-- If neither exists, create `docs/glossary.md` lazily when the first term is resolved
+- If only a `glossary.md` exists, single context
+- If neither exists, create `glossary.md` lazily when the first term is resolved
 
 When multiple contexts exist, infer which one the current topic relates to. If unclear, ask.
