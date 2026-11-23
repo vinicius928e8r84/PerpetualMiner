@@ -40,6 +40,12 @@ def chamadas_de_fora(conexao):
     return (len(conexao.openai.pedidos), conexao.voz.pedidos[:], conexao.openverse.buscas[:])
 
 
+def o_que_a_troca_nao_pode_tocar(conexao):
+    """As notas, os Cartões e os campos do tipo de nota do inglês, e o que saiu para a IA, a voz e as fotos: tudo, menos o modelo."""
+    colecao = conexao.conexao.colecao
+    return (list(colecao.gravadas), colecao.cartoes_do_baralho("PerpetualMiner::Inglês"), colecao.tipo_de_nota(INGLES), chamadas_de_fora(conexao))
+
+
 @contextlib.contextmanager
 def com_um_cartao_enviado():
     """A Conexão com a coleção nova e um Cartão do inglês já enviado (o que a troca de frente não pode tocar)."""
@@ -52,14 +58,10 @@ def com_um_cartao_enviado():
 class TrocarAFrenteSoEditaOModelo(unittest.TestCase):
     def test_trocar_a_frente_reescreve_so_o_modelo_sem_nota_nova_nem_chamada_a_ia_a_voz_ou_as_fotos(self):
         with com_um_cartao_enviado() as conexao:
-            colecao = conexao.conexao.colecao
-            notas, cartoes, campos = list(colecao.gravadas), colecao.cartoes_do_baralho("PerpetualMiner::Inglês"), colecao.tipo_de_nota(INGLES)
-            fora = chamadas_de_fora(conexao)
+            antes = o_que_a_troca_nao_pode_tocar(conexao)
             self.assertEqual(trocar(conexao, "en", "lacuna"), (200, {"ok": True}))
             self.assertEqual(modelo_do(conexao), tipo_de_nota.definicao("en", frente="lacuna")["modelos"][0])
-            self.assertEqual(
-                (colecao.gravadas, colecao.cartoes_do_baralho("PerpetualMiner::Inglês"), colecao.tipo_de_nota(INGLES), chamadas_de_fora(conexao)),
-                (notas, cartoes, campos, fora))
+            self.assertEqual(o_que_a_troca_nao_pode_tocar(conexao), antes)
 
     def test_o_cartao_enviado_antes_da_troca_ja_tem_os_campos_que_a_frente_lacuna_mostra(self):
         with com_um_cartao_enviado() as conexao:
@@ -120,11 +122,10 @@ class TrocarAFrenteSoEditaOModelo(unittest.TestCase):
 
     def test_trocar_para_a_criacao_so_reescreve_o_modelo_sem_nota_nova_nem_chamada_a_ia_a_voz_ou_as_fotos(self):
         with com_um_cartao_enviado() as conexao:
-            colecao = conexao.conexao.colecao
-            notas, cartoes, campos, fora = list(colecao.gravadas), colecao.cartoes_do_baralho("PerpetualMiner::Inglês"), colecao.tipo_de_nota(INGLES), chamadas_de_fora(conexao)
+            antes = o_que_a_troca_nao_pode_tocar(conexao)
             self.assertEqual(trocar(conexao, "en", "criacao"), (200, {"ok": True}))
             self.assertEqual(modelo_do(conexao), tipo_de_nota.definicao("en", frente="criacao")["modelos"][0])
-            self.assertEqual((colecao.gravadas, colecao.cartoes_do_baralho("PerpetualMiner::Inglês"), colecao.tipo_de_nota(INGLES), chamadas_de_fora(conexao)), (notas, cartoes, campos, fora))
+            self.assertEqual(o_que_a_troca_nao_pode_tocar(conexao), antes)
 
 
 if __name__ == "__main__":
