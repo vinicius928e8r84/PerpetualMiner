@@ -158,7 +158,7 @@ for (const [arquivo, medidas] of Object.entries(DO_PAINEL)) {
 const { raiz, git, gravar, commit } = raizTemporaria();
 const semBaseDoAmbiente = () => {
   const env = { ...process.env };
-  delete env.REGRAS_BASE;
+  for (const nome of ['REGRAS_BASE', 'REGRAS_PR', 'GITHUB_EVENT_NAME']) delete env[nome];
   return env;
 };
 const rodar = (env = {}) => spawnSync('node', [path.join(__dirname, 'verificar.js'), '--raiz', raiz, '--base', 'main'], {

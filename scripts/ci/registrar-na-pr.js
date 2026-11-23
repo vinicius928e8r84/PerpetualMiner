@@ -4,7 +4,7 @@
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const {
-  ATENCOES, FRASE, SECAO_DA_PROVA, conferir, faltaDaProva, faltaDaRevisao, indicesForaDoCodigo, lerDoGitHub, semCaixaNemAcento,
+  ATENCOES, FRASE, SECAO_DA_PROVA, conferir, faltaDaProva, faltaDaRevisao, indicesForaDoCodigo, lerDoGitHub, lotesQueContemOHead, semCaixaNemAcento,
 } = require('./registro-da-pr.js');
 
 const WORKFLOW = 'registro-da-pr.yml';
@@ -18,6 +18,8 @@ const AJUDA = `uso: node scripts/ci/registrar-na-pr.js <comando> --pr <número> 
                [--veredito CLEAN] [--nota <arquivo>]
   prova      escreve (ou troca) a seção "${SECAO_DA_PROVA}" do corpo, com o head
                --head <SHA provado> --cobertura total|parcial --nota <arquivo com o que foi provado no produto de verdade e como>
+             ou, para a prova de um lote de PRs feita num commit que contém o head desta (docs/prova-em-lote.md):
+               --lote <SHA do commit de lote> --cobertura total|parcial --nota <arquivo>   (no lugar de --head)
 
   --risco      o risco que o revisor viu; o check pede a prova real quando ele ou a atenção do corpo é ALTA
   --cobertura  total escreve ${FRASE}; parcial escreve ${PROVA_BLOQUEADA}, e o check não passa com ALTA
@@ -37,7 +39,7 @@ const TITULO = /^ {0,3}(#{1,6})\s+(.*?)\s*#*\s*$/;
 const nomeDoTitulo = texto => texto.replace(/[*_`]/g, '').trim().toLowerCase();
 
 const OPCOES_PEDIDAS = { conferir: [], revisao: ['head', 'autor', 'revisor', 'risco'], prova: ['head', 'cobertura', 'nota'] };
-const OPCOES_COM_VALOR = ['pr', 'head', 'veredito', 'autor', 'revisor', 'risco', 'cobertura', 'nota', 'repo'];
+const OPCOES_COM_VALOR = ['pr', 'head', 'lote', 'veredito', 'autor', 'revisor', 'risco', 'cobertura', 'nota', 'repo'];
 const ESCOLHAS = {
   risco: Object.fromEntries(ATENCOES.map(risco => [semCaixaNemAcento(risco), risco])),
   cobertura: { total: FRASE, parcial: PROVA_BLOQUEADA },
@@ -68,9 +70,17 @@ function lerOpcoes(comando, resto) {
   return opcoes;
 }
 
+function exigirOLoteSoNaProva(opcoes) {
+  if (opcoes.lote === undefined) return;
+  if (opcoes.comando !== 'prova') throw new ErroDeUso('--lote é só do comando prova');
+  if (opcoes.head !== undefined) throw new ErroDeUso('--lote e --head não vão juntos: a prova é do lote ou do head');
+}
+
 function exigirAsOpcoesDoComando(opcoes) {
   if (!/^\d+$/.test(opcoes.pr || '')) throw new ErroDeUso('--pr <número> é obrigatório');
-  const faltam = OPCOES_PEDIDAS[opcoes.comando].filter(nome => !String(opcoes[nome] || '').trim());
+  exigirOLoteSoNaProva(opcoes);
+  const pedidas = OPCOES_PEDIDAS[opcoes.comando].filter(nome => !(nome === 'head' && opcoes.lote !== undefined));
+  const faltam = pedidas.filter(nome => !String(opcoes[nome] || '').trim());
   if (faltam.length) throw new ErroDeUso(`${opcoes.comando} pede ${faltam.map(nome => `--${nome}`).join(', ')}`);
 }
 
@@ -93,6 +103,7 @@ function lerArgumentos(argv) {
   exigirAsOpcoesDoComando(opcoes);
   lerAsEscolhas(opcoes);
   if (opcoes.head) opcoes.head = opcoes.head.trim().toLowerCase();
+  if (opcoes.lote) opcoes.lote = opcoes.lote.trim().toLowerCase();
   return opcoes;
 }
 
@@ -101,7 +112,7 @@ const registroDaRevisao = ({ veredito, head, autor, revisor, risco }, nota) => [
   ...(nota ? ['', nota.trim()] : []),
 ].join('\n');
 
-const secaoDaProva = (head, nota, cobertura = FRASE) => [`## ${SECAO_DA_PROVA}`, '', cobertura, `Head: ${head}`, ...(nota ? ['', nota.trim()] : [])].join('\n');
+const secaoDaProva = (head, nota, cobertura = FRASE, lote) => [`## ${SECAO_DA_PROVA}`, '', cobertura, lote ? `Lote: ${lote}` : `Head: ${head}`, ...(nota ? ['', nota.trim()] : [])].join('\n');
 
 function titulosForaDoCodigo(linhas) {
   return indicesForaDoCodigo(linhas)
@@ -142,21 +153,23 @@ function planoDaRevisao(opcoes, pr, nota) {
   return { comentario, depois: conferir({ ...pr, registros, head }) };
 }
 
-function planoDaProva(opcoes, pr, nota) {
+function planoDaProva(opcoes, pr, nota, raiz) {
   const { head } = pr;
-  const secao = secaoDaProva(head, nota, opcoes.cobertura);
+  if (opcoes.lote && !SHA_INTEIRO.test(opcoes.lote)) return { recusa: `--lote pede o SHA inteiro, de 40 caracteres (git rev-parse <branch do lote>); veio "${opcoes.lote}"` };
+  const secao = secaoDaProva(head, nota, opcoes.cobertura, opcoes.lote);
   const corpo = corpoComAProva(pr.corpo, secao);
-  const falta = opcoes.cobertura === FRASE && faltaDaProva(corpo, head);
+  const lotes = lotesQueContemOHead({ corpo, head, raiz });
+  const falta = opcoes.cobertura === FRASE && faltaDaProva(corpo, head, lotes);
   if (falta) return { recusa: `o check não aceitaria esta prova: ${falta}` };
-  return { corpo, secao, depois: conferir({ ...pr, corpo, head }) };
+  return { corpo, secao, depois: conferir({ ...pr, corpo, head, lotes }) };
 }
 
-function planejar(opcoes, pr, nota) {
+function planejar(opcoes, pr, nota, raiz = process.cwd()) {
   const { head } = pr;
   if (opcoes.comando === 'conferir') return { depois: conferir({ ...pr, head }) };
-  const foraDoHead = faltaDoHeadInformado(opcoes.head, head, opcoes.comando === 'revisao' ? 'a revisão' : 'a prova');
+  const foraDoHead = !opcoes.lote && faltaDoHeadInformado(opcoes.head, head, opcoes.comando === 'revisao' ? 'a revisão' : 'a prova');
   if (foraDoHead) return { recusa: foraDoHead };
-  return opcoes.comando === 'revisao' ? planoDaRevisao(opcoes, pr, nota) : planoDaProva(opcoes, pr, nota);
+  return opcoes.comando === 'revisao' ? planoDaRevisao(opcoes, pr, nota) : planoDaProva(opcoes, pr, nota, raiz);
 }
 
 function cliente(env) {
