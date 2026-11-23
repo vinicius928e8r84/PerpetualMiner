@@ -76,8 +76,23 @@
     return textoDaVoz('ENV-08.etapa', { n: indice + 1, total: ETAPAS.length });
   }
 
+  const etapaFeita = ({ semEtapas, fim, indice }, k) => !semEtapas && Boolean(fim || k < indice);
+
+  function enchimentoDaEtapa(fracao) {
+    const enchendo = document.createElement('b');
+    enchendo.style.width = `${Math.round(fracao * 100)}%`;
+    return enchendo;
+  }
+
+  function segmentoDaEtapa(situacao, k) {
+    const segmento = document.createElement('i');
+    if (etapaFeita(situacao, k)) segmento.className = 'feito';
+    if (!situacao.fim && k === situacao.indice) segmento.append(enchimentoDaEtapa(situacao.fracao));
+    return segmento;
+  }
+
   function montarEtapas(situacao, rotuladoPor) {
-    const { indice, fracao, fim, semEtapas, tom, pct } = situacao;
+    const { indice, tom, pct } = situacao;
     const etapas = elemento('div', `envio-cartao__etapas${tom ? ` envio-cartao__etapas--${tom}` : ''}`);
     etapas.setAttribute('role', 'progressbar');
     etapas.setAttribute('aria-labelledby', rotuladoPor);
@@ -85,16 +100,7 @@
     etapas.setAttribute('aria-valuemax', '100');
     etapas.setAttribute('aria-valuenow', String(pct));
     if (indice != null) etapas.setAttribute('aria-valuetext', etapaDeSete(situacao));
-    ETAPAS.forEach((_, k) => {
-      const segmento = document.createElement('i');
-      if (!semEtapas && (fim || k < indice)) segmento.className = 'feito';
-      if (!fim && k === indice) {
-        const enchendo = document.createElement('b');
-        enchendo.style.width = `${Math.round(fracao * 100)}%`;
-        segmento.append(enchendo);
-      }
-      etapas.append(segmento);
-    });
+    ETAPAS.forEach((_, k) => etapas.append(segmentoDaEtapa(situacao, k)));
     return etapas;
   }
 
@@ -126,6 +132,58 @@
     return lista;
   }
 
+  function montarTitulo(envio) {
+    const idioma = nomeDoIdioma(envio.lang);
+    const titulo = elemento('h3', 'envio-cartao__titulo', textoDaVoz('ENV-08.titulo', { idioma, n: envio.ids.length }));
+    titulo.id = `envio-titulo-${envio.id}`;
+    return titulo;
+  }
+
+  function montarTopo(titulo, retrato) {
+    const rotuloDaEtapa = elemento('span', `envio-cartao__etapa${retrato.tom ? ` envio-cartao__etapa--${retrato.tom}` : ''}`, textoDaVoz(retrato.etapa));
+    return elemento('div', 'envio-cartao__topo', titulo, rotuloDaEtapa);
+  }
+
+  function montarMotivo(pedido) {
+    if (!pedido?.motivo) return null;
+    const motivo = elemento('p', 'envio-cartao__motivo');
+    raiz.EnvioParado.escrever(motivo, pedido.motivo);
+    return motivo;
+  }
+
+  function acaoDaLinhaDeBaixo(pedido) {
+    const acao = botaoLink(pedido.rotulo, pedido.foco, pedido.aoUsar);
+    if (pedido.emAndamento) acao.setAttribute('aria-disabled', 'true');
+    return pedido.ligacao ? [acao, ligacaoDeUso(pedido.ligacao, 'veio-botao veio-botao--link envio-cartao__acao')] : [acao];
+  }
+
+  function montarLinhaDeBaixo(retrato, pedido, atualizadoEm) {
+    const atualizado = textoDaVoz('ENV-08.atualizado', { quando: Contexto.haQuanto(atualizadoEm) });
+    const meta = elemento('div', 'envio-cartao__meta');
+    if (pedido?.rotulo && !pedido.acoes) meta.append(...acaoDaLinhaDeBaixo(pedido));
+    meta.append(elemento('span', '', retrato.indice == null ? atualizado : `${etapaDeSete(retrato)} · ${atualizado}`));
+    return meta;
+  }
+
+  const linhaDoEnvio = (envio, estado) => `${envio.jobId || envio.id} · lang=${envio.lang} · stage=${estado?.stage || 'queued'}`;
+  const linhaDaAtualizacao = (estado, atualizadoEm) => `updatedAt ${estado?.updatedAt || new Date(atualizadoEm).toISOString()}`;
+
+  function causaDoCartao(envio, estado, atualizadoEm, falhaAoContinuar) {
+    if (envio.falhaAoCriar) return envio.falhaAoCriar.causa;
+    return [
+      linhaDoEnvio(envio, estado),
+      linhaDaAtualizacao(estado, atualizadoEm),
+      estado?.lastError || '',
+      falhaAoContinuar || '',
+      raiz.EnvioParado.causa(envio),
+    ].filter(Boolean).join('\n');
+  }
+
+  function assinaturaDoCartao(retrato, pedido, linhaDeBaixo, causa) {
+    const acoes = pedido?.acoes?.map(acao => acao.rotulo + acao.emAndamento) || '';
+    return [retrato.etapa, retrato.pct, retrato.tom, pedido?.motivo || '', acoes, linhaDeBaixo.textContent, causa].join('|');
+  }
+
   function criar({ situacaoDe, estadoDoJob, esquecerOEnvio, falhaAoRetomar, tentarCriarDeNovo, continuarEnvio, pedirAChave, redesenhar }) {
     function retratoDe(situacao) {
       const fora = FORA_DAS_ETAPAS[situacao.estado];
@@ -138,54 +196,28 @@
       return { etapa: `ENV-07.${ETAPAS[indice][1]}`, indice, fracao, pct: Math.round(((indice + fracao) / ETAPAS.length) * 100), tom: '' };
     }
 
+    function estadoDoJobParaOCartao(envio, situacao) {
+      if (!envio.jobId || situacao.estado === ESTADO.DESCONHECIDO) return undefined;
+      return estadoDoJob(envio) || { status: 'queued', stage: 'queued' };
+    }
+
     function montarCartao(envio) {
       const situacao = situacaoDe(envio);
-      const estado = envio.jobId && situacao.estado !== ESTADO.DESCONHECIDO ? estadoDoJob(envio) || { status: 'queued', stage: 'queued' } : undefined;
+      const estado = estadoDoJobParaOCartao(envio, situacao);
       const atualizadoEm = estado?.updatedAt ? Date.parse(estado.updatedAt) : envio.criadoEm;
       const retrato = retratoDe(situacao);
-      const idioma = nomeDoIdioma(envio.lang);
-      const cartao = elemento('section', 'envio-cartao');
-      cartao.setAttribute('role', 'group');
-
-      const titulo = elemento('h3', 'envio-cartao__titulo', textoDaVoz('ENV-08.titulo', { idioma, n: envio.ids.length }));
-      titulo.id = `envio-titulo-${envio.id}`;
-      cartao.setAttribute('aria-labelledby', titulo.id);
+      const titulo = montarTitulo(envio);
       const pedido = pedidoDoCartao(envio, situacao, estado);
       if (pedido) retrato.tom = 'calmo';
-      const rotuloDaEtapa = elemento('span', `envio-cartao__etapa${retrato.tom ? ` envio-cartao__etapa--${retrato.tom}` : ''}`, textoDaVoz(retrato.etapa));
-      const topo = elemento('div', 'envio-cartao__topo', titulo, rotuloDaEtapa);
-
-      cartao.append(topo, montarEtapas(retrato, titulo.id));
-
-      if (pedido?.motivo) {
-        const motivo = elemento('p', 'envio-cartao__motivo');
-        raiz.EnvioParado.escrever(motivo, pedido.motivo);
-        cartao.append(motivo);
-      }
-
-      if (pedido?.acoes) cartao.append(montarAcoes(pedido.acoes));
-      const atualizado = textoDaVoz('ENV-08.atualizado', { quando: Contexto.haQuanto(atualizadoEm) });
-      const meta = elemento('div', 'envio-cartao__meta');
-      if (pedido?.rotulo && !pedido.acoes) {
-        const acao = botaoLink(pedido.rotulo, pedido.foco, pedido.aoUsar);
-        if (pedido.emAndamento) acao.setAttribute('aria-disabled', 'true');
-        meta.append(acao);
-        if (pedido.ligacao) meta.append(ligacaoDeUso(pedido.ligacao, 'veio-botao veio-botao--link envio-cartao__acao'));
-      }
-      meta.append(elemento('span', '', retrato.indice == null ? atualizado : `${etapaDeSete(retrato)} · ${atualizado}`));
-      cartao.append(meta);
-
-      const falhaAoContinuar = falhaAoRetomar(envio);
-      const causa = envio.falhaAoCriar ? envio.falhaAoCriar.causa : [
-          `${envio.jobId || envio.id} · lang=${envio.lang} · stage=${estado?.stage || 'queued'}`,
-          `updatedAt ${estado?.updatedAt || new Date(atualizadoEm).toISOString()}`,
-          estado?.lastError || '',
-          falhaAoContinuar || '',
-          raiz.EnvioParado.causa(envio),
-        ].filter(Boolean).join('\n');
+      const linhaDeBaixo = montarLinhaDeBaixo(retrato, pedido, atualizadoEm);
+      const causa = causaDoCartao(envio, estado, atualizadoEm, falhaAoRetomar(envio));
+      const cartao = elemento('section', 'envio-cartao');
+      cartao.setAttribute('role', 'group');
+      cartao.setAttribute('aria-labelledby', titulo.id);
+      cartao.append(montarTopo(titulo, retrato), montarEtapas(retrato, titulo.id));
+      cartao.append(...[montarMotivo(pedido), pedido?.acoes && montarAcoes(pedido.acoes), linhaDeBaixo].filter(Boolean));
       if (causa) cartao.append(Veio.montarDetalhes(causa));
-
-      cartao.dataset.assinatura = [retrato.etapa, retrato.pct, retrato.tom, pedido?.motivo || '', pedido?.acoes?.map(a => a.rotulo + a.emAndamento) || '', meta.textContent, causa].join('|');
+      cartao.dataset.assinatura = assinaturaDoCartao(retrato, pedido, linhaDeBaixo, causa);
       return cartao;
     }
 
