@@ -86,6 +86,13 @@ for (const tipo of [EVENTO.ATUALIZOU, EVENTO.REINICIOU, EVENTO.NAO_REINICIOU, EV
 }
 
 // --- nenhum estado é um beco: de cada um, algum evento leva a outro -------------------------------------------------------------
+function anotarSaida(saidas, de, para) {
+  if (de === para) return;
+  saidas.set(de, (saidas.get(de) || new Set()).add(para));
+}
+function seguintesDe(maquina, eventos) {
+  return eventos.map(evento => proxima(maquina, comoEvento(evento)));
+}
 function saidasDeCadaEstado(eventos) {
   const alcancados = new Set();
   const fila = [inicial()];
@@ -95,9 +102,8 @@ function saidasDeCadaEstado(eventos) {
     const chave = JSON.stringify(maquina);
     if (alcancados.has(chave)) continue;
     alcancados.add(chave);
-    for (const evento of eventos) {
-      const seguinte = proxima(maquina, comoEvento(evento));
-      if (seguinte.estado !== maquina.estado) saidas.set(maquina.estado, (saidas.get(maquina.estado) || new Set()).add(seguinte.estado));
+    for (const seguinte of seguintesDe(maquina, eventos)) {
+      anotarSaida(saidas, maquina.estado, seguinte.estado);
       fila.push(seguinte);
     }
   }
