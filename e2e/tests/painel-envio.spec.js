@@ -2,7 +2,7 @@
 
 const { test, expect } = require('../fixtures');
 const { estadoFinal } = require('../estado-final');
-const { AGORA, INGLESAS, RUSSA, SACK, ARM, LATE, abrirPainel, cartao, marcar, enviarAoAnki, progresso, resumo, envio, baralho, toasts, marcarEEnviar, enviosCriados, pedirConferenciaDaConexao } = require('../apoio-do-envio');
+const { AGORA, INGLESAS, RUSSA, SACK, ARM, LATE, abrirPainel, cartao, marcar, enviarAoAnki, progresso, resumo, envio, baralho, toasts, marcarEEnviar, enviosCriados, pedirConferenciaDaConexao, falharAPrimeiraLeitura } = require('../apoio-do-envio');
 
 // veio/tokens.css zera toda transição com movimento reduzido. O cartão é redesenhado
 // quando o Envio ganha o jobId; num elemento que saiu da página o estilo calculado
@@ -153,19 +153,7 @@ test('bug #9: o POST do envio caindo na rede mostra o erro com Tentar de novo, e
 test('se a leitura dos ajustes falha, o envio não começa e Tentar de novo o cria uma vez', async ({ page, extensao, fakes }) => {
   await extensao.gravarStorage({ frases: [SACK], ankiBridgePresets: { en: { deckName: 'Especial' } } });
   await abrirPainel(page, extensao);
-  await page.evaluate(() => {
-    const ler = chrome.storage.local.get.bind(chrome.storage.local);
-    let falhou = false;
-    chrome.storage.local.get = (chaves, callback) => {
-      if (!falhou && chaves && typeof chaves === 'object' && 'ankiBridgePresets' in chaves) {
-        falhou = true;
-        Object.defineProperty(chrome.runtime, 'lastError', { configurable: true, value: { message: 'Falha de leitura' } });
-        try { callback(undefined); } finally { delete chrome.runtime.lastError; }
-        return;
-      }
-      return ler(chaves, callback);
-    };
-  });
+  await falharAPrimeiraLeitura(page, 'ankiBridgePresets', 'Falha de leitura');
 
   await marcarEEnviar(page, [SACK.texto]);
   const cartaoIngles = envio(page, 'Envio em inglês · 1 frase');
