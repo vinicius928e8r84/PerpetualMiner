@@ -70,7 +70,6 @@
     "complemento/test_estado_guardado.py": 3,
     "complemento/test_harness.py": 61,
     "complemento/test_modelos_em_memoria.py": 3,
-    "complemento/test_openai_de_mentira.py": 11,
     "complemento/test_pareamento_de_mentira.py": 6,
     "complemento/test_qt_do_anki.py": 29,
     "complemento/test_qt_do_anki_pareamento.py": 13,
