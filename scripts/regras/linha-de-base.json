@@ -117,7 +117,6 @@
     "scripts/ci/corpo-da-pr.js": 7,
     "scripts/ci/fatias-e2e.js": 7,
     "scripts/ci/selecao-de-testes.js": 7,
-    "scripts/ci/test_registro_da_pr.js": 3,
     "scripts/empacotar-extensao.mjs": 7,
     "scripts/ganchos/test_pre_push.js": 11,
     "scripts/grupos-de-teste.js": 4,
