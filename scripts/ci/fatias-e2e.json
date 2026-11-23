@@ -23,6 +23,7 @@
     "cartao-do-russo-visual.spec.js": 1,
     "catalogo-da-voz.spec.js": 12,
     "chave-autoridade.spec.js": 54,
+    "chave-legado-vinculado.spec.js": 4,
     "componentes-veio.spec.js": 73,
     "conexao-anki.spec.js": 41,
     "conexao-na-tela.spec.js": 13,
