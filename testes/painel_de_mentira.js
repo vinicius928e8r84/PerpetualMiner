@@ -41,6 +41,14 @@ function resumo(no) {
   };
 }
 
+function noComId(documento, id, classe = '') {
+  const no = documento.createElement('div');
+  no.id = id;
+  no.className = classe;
+  documento.body.append(no);
+  return no;
+}
+
 const esperar = () => new Promise(resolver => setImmediate(resolver));
 
-module.exports = { prepararAPagina, resumo, retrato, retratoDoQueHaEm, esperar };
+module.exports = { prepararAPagina, noComId, resumo, retrato, retratoDoQueHaEm, esperar };
