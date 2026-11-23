@@ -96,19 +96,38 @@ def _modelo(executavel):
     return variaveis, conserto_do_anki.FUNCOES_DO_PS1
 
 
-def processo(pid, ppid, caminho, linha, ouve=False, sai_com_o_filho=False, criado="2026-10-29T10:00:00", renasce=None):
-    dados = {"pid": pid, "ppid": ppid, "caminho": caminho, "linha": linha, "ouve": ouve, "sai_com_o_filho": sai_com_o_filho, "criado": criado}
-    if renasce:
-        dados["renasce"] = renasce
-    return dados
+O_LAUNCHER = (LAUNCHER, LINHA_DO_LAUNCHER)
+CONHOST = (r"C:\Windows\System32\conhost.exe", "conhost.exe")
+EXPLORER = (r"C:\Windows\explorer.exe", "explorer.exe")
+
+
+def o_aqt(caminho):
+    return caminho, LINHA_DO_AQT % caminho
+
+
+def outro_programa(caminho):
+    return caminho, OUTRA_LINHA % caminho
+
+
+def processo(pid, ppid, programa, criado="2026-10-29T10:00:00"):
+    caminho, linha = programa
+    return {"pid": pid, "ppid": ppid, "caminho": caminho, "linha": linha, "ouve": False, "sai_com_o_filho": False, "criado": criado}
+
+
+def que_ouve_a_porta(um_processo, ouve=True):
+    return dict(um_processo, ouve=ouve)
+
+
+def que_sai_com_o_filho(um_processo):
+    return dict(um_processo, sai_com_o_filho=True)
 
 
 def anki_do_launcher(porta_no_filho=True):
     """anki.exe (25340) → redirecionador (25384) → CPython (1648), o do PC do dono."""
     return [
-        processo(25340, 4000, LAUNCHER, LINHA_DO_LAUNCHER),
-        processo(25384, 25340, REDIRECIONADOR, LINHA_DO_AQT % REDIRECIONADOR, sai_com_o_filho=True, criado="2026-10-29T10:00:01"),
-        processo(1648, 25384, CPYTHON, LINHA_DO_AQT % CPYTHON, ouve=porta_no_filho, criado="2026-10-29T10:00:02"),
+        processo(25340, 4000, O_LAUNCHER),
+        que_sai_com_o_filho(processo(25384, 25340, o_aqt(REDIRECIONADOR), criado="2026-10-29T10:00:01")),
+        que_ouve_a_porta(processo(1648, 25384, o_aqt(CPYTHON), criado="2026-10-29T10:00:02"), porta_no_filho),
     ]
 
 
@@ -167,9 +186,9 @@ class AnkiDoLauncherNoWindows(unittest.TestCase):
 
     def test_o_launcher_so_e_encerrado_depois_de_o_anki_sair_e_so_o_que_e_pai_do_anki_que_foi_fechado(self):
         mundo = anki_do_launcher() + [
-            processo(31000, 4000, LAUNCHER, LINHA_DO_LAUNCHER),
-            processo(31001, 31000, r"C:\Windows\System32\conhost.exe", "conhost.exe"),
-            processo(32000, 4000, LAUNCHER, LINHA_DO_LAUNCHER),
+            processo(31000, 4000, O_LAUNCHER),
+            processo(31001, 31000, CONHOST),
+            processo(32000, 4000, O_LAUNCHER),
         ]
         resposta, feito = self.reparar(mundo)
         self.assertEqual(resposta, {"situacao": "reiniciado"})
@@ -193,7 +212,7 @@ class AnkiDoLauncherNoWindows(unittest.TestCase):
         self.assertIn(25340, feito["vivos"])
 
     def test_o_launcher_que_ainda_tem_filho_vivo_nao_e_encerrado(self):
-        mundo = anki_do_launcher() + [processo(26000, 25340, r"C:\Windows\System32\conhost.exe", "conhost.exe")]
+        mundo = anki_do_launcher() + [processo(26000, 25340, CONHOST)]
         resposta, feito = self.reparar(mundo)
         self.assertEqual(resposta, {"situacao": "reiniciado"})
         self.assertEqual(feito["sinais"], [1648])
@@ -214,7 +233,7 @@ class AnkiDoLauncherNoWindows(unittest.TestCase):
         self.assertIn(25340, feito["vivos"])
 
     def test_o_anki_cujo_programa_anotado_e_o_proprio_ouvinte_nao_tem_launcher_a_encerrar(self):
-        mundo = [processo(50, 4000, CPYTHON, LINHA_DO_AQT % CPYTHON, ouve=True)]
+        mundo = [que_ouve_a_porta(processo(50, 4000, o_aqt(CPYTHON)))]
         resposta, feito = self.reparar(mundo, executavel=CPYTHON)
         self.assertEqual(feito["sinais"], [50])
 
@@ -242,10 +261,10 @@ class AnkiDoLauncherNoWindows(unittest.TestCase):
 
     def test_o_ouvinte_cuja_arvore_nao_tem_o_programa_do_anki_e_recusado_e_nada_e_sinalizado(self):
         mundo = [
-            processo(25340, 4000, LAUNCHER, LINHA_DO_LAUNCHER),
-            processo(25384, 25340, REDIRECIONADOR, LINHA_DO_AQT % REDIRECIONADOR, sai_com_o_filho=True),
-            processo(777, 600, CPYTHON, LINHA_DO_AQT % CPYTHON, ouve=True),
-            processo(600, 500, r"C:\Windows\explorer.exe", "explorer.exe"),
+            processo(25340, 4000, O_LAUNCHER),
+            que_sai_com_o_filho(processo(25384, 25340, o_aqt(REDIRECIONADOR))),
+            que_ouve_a_porta(processo(777, 600, o_aqt(CPYTHON))),
+            processo(600, 500, EXPLORER),
         ]
         resposta, feito = self.reparar(mundo)
         self.assertEqual(resposta, {"situacao": "falhou", "motivo": "conexao_fora"})
@@ -253,8 +272,8 @@ class AnkiDoLauncherNoWindows(unittest.TestCase):
 
     def test_o_python_vizinho_que_divide_o_redirecionador_fora_da_arvore_do_anki_nao_e_sinalizado(self):
         mundo = anki_do_launcher() + [
-            processo(300, 4001, REDIRECIONADOR, OUTRA_LINHA % REDIRECIONADOR, sai_com_o_filho=True),
-            processo(301, 300, CPYTHON, OUTRA_LINHA % CPYTHON),
+            que_sai_com_o_filho(processo(300, 4001, outro_programa(REDIRECIONADOR))),
+            processo(301, 300, outro_programa(CPYTHON)),
         ]
         resposta, feito = self.reparar(mundo)
         self.assertEqual(feito["sinais"], [1648])
@@ -263,8 +282,8 @@ class AnkiDoLauncherNoWindows(unittest.TestCase):
 
     def test_o_python_vizinho_do_redirecionador_que_ouve_a_porta_sem_ser_o_anki_e_recusado(self):
         mundo = anki_do_launcher(porta_no_filho=False) + [
-            processo(300, 4001, REDIRECIONADOR, OUTRA_LINHA % REDIRECIONADOR, sai_com_o_filho=True),
-            processo(301, 300, CPYTHON, OUTRA_LINHA % CPYTHON, ouve=True),
+            que_sai_com_o_filho(processo(300, 4001, outro_programa(REDIRECIONADOR))),
+            que_ouve_a_porta(processo(301, 300, outro_programa(CPYTHON))),
         ]
         resposta, feito = self.reparar(mundo)
         self.assertEqual(resposta, {"situacao": "falhou", "motivo": "conexao_fora"})
@@ -272,8 +291,8 @@ class AnkiDoLauncherNoWindows(unittest.TestCase):
 
     def test_o_filho_com_a_linha_do_aqt_mas_de_um_pai_com_outra_linha_nao_e_do_anki(self):
         mundo = [
-            processo(300, 4001, REDIRECIONADOR, OUTRA_LINHA % REDIRECIONADOR),
-            processo(301, 300, CPYTHON, LINHA_DO_AQT % CPYTHON, ouve=True),
+            processo(300, 4001, outro_programa(REDIRECIONADOR)),
+            que_ouve_a_porta(processo(301, 300, o_aqt(CPYTHON))),
         ]
         resposta, feito = self.reparar(mundo)
         self.assertEqual(resposta, {"situacao": "falhou", "motivo": "conexao_fora"})
@@ -281,7 +300,7 @@ class AnkiDoLauncherNoWindows(unittest.TestCase):
 
     def test_so_o_nome_do_programa_nao_basta_o_pythonw_de_outra_pasta_que_ouve_a_porta_e_recusado(self):
         mundo = anki_do_launcher(porta_no_filho=False) + [
-            processo(900, 4002, r"C:\Python313\pythonw.exe", LINHA_DO_AQT % r"C:\Python313\pythonw.exe", ouve=True),
+            que_ouve_a_porta(processo(900, 4002, o_aqt(r"C:\Python313\pythonw.exe"))),
         ]
         resposta, feito = self.reparar(mundo)
         self.assertEqual(resposta, {"situacao": "falhou", "motivo": "conexao_fora"})
@@ -295,7 +314,7 @@ class AnkiDoLauncherNoWindows(unittest.TestCase):
         self.assertEqual(feito["sinais"], [])
 
     def test_o_anki_cujo_programa_anotado_e_o_proprio_ouvinte_continua_reconhecido(self):
-        mundo = [processo(50, 4000, CPYTHON, LINHA_DO_AQT % CPYTHON, ouve=True)]
+        mundo = [que_ouve_a_porta(processo(50, 4000, o_aqt(CPYTHON)))]
         resposta, feito = self.reparar(mundo, executavel=CPYTHON)
         self.assertEqual(resposta, {"situacao": "reiniciado"})
         self.assertEqual(feito["sinais"], [50])
