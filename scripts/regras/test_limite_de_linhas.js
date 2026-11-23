@@ -80,15 +80,15 @@ assert.match(r.saida, /bookreader\/bookreader\.js: 1038 linhas; o teto é 1000 \
 total += 3;
 const menos = `${[...base, ...base.slice(0, regra.LIMITE + 10 - base.length)].join('\n')}\n`;
 r = verificar(comLinhas(menos, BASE_COM_O_ARQUIVO(37)));
-assert.strictEqual(r.status, 1, 'encolher sem baixar a linha de base falha');
-assert.match(r.saida, /bookreader\/bookreader\.js tem 1010 linhas e a linha de base ainda o deixa em 1037: baixe-a/);
+assert.strictEqual(r.status, 0, `encolher sem baixar a linha de base passa: ela desce depois do merge\n${r.saida}`);
+assert.match(r.saida, /a linha de base pode descer[^]*limite-de-linhas bookreader\/bookreader\.js: 37 → 10/);
 r = verificar(comLinhas(menos, BASE_COM_O_ARQUIVO(10)));
 assert.strictEqual(r.status, 0, r.saida);
 total += 3;
 r = verificar(comLinhas(bookreader, BASE_COM_O_ARQUIVO(37)));
-assert.strictEqual(r.status, 1, 'o arquivo que voltou ao limite sai da lista');
-assert.match(r.saida, /bookreader\/bookreader\.js ficou em 1000 linhas ou menos: tire-o da linha de base/);
-total += 2;
+assert.strictEqual(r.status, 0, `o arquivo que voltou ao limite passa, e a linha de base pode descer\n${r.saida}`);
+assert.match(r.saida, /limite-de-linhas bookreader\/bookreader\.js: 37 → 0/);
+total += 3;
 
 function atualizar(arquivos) {
   const pasta = repositorioDeTestes(arquivos);

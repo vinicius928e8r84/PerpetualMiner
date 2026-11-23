@@ -65,7 +65,7 @@ assert.strictEqual(mensagemDeErro({ estado: 'cresceu', caminho: 'docs/guia.md', 
   '    2. Deixe o arquivo antigo como índice: o título, um parágrafo e um link para cada arquivo novo.',
   '    3. Procure no repositório os links para o arquivo e para as âncoras que mudaram de arquivo e corrija (`grep -rn "<nome-do-arquivo>" .`).',
   ...PASSOS_COMUNS,
-  '  Depois de dividir docs/guia.md, baixe a linha de base: node scripts/ganchos/limite-de-tokens.js --atualizar-linha-de-base && git add b.json',
+  '  Depois de dividir docs/guia.md, não edite b.json na PR: a linha de base desce depois do merge, por node scripts/regras/baixar-no-merge.js',
 ].join('\n'));
 
 const TOKENS_DO_CABECALHO = [

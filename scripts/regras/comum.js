@@ -14,6 +14,20 @@ function arquivosDoRepositorio(raiz) {
     .sort();
 }
 
+function renomeacoes(raiz, desde) {
+  if (!desde) return {};
+  let saida;
+  try {
+    saida = execFileSync('git', ['diff', '-M', '--name-status', '--diff-filter=R', '-z', desde], { cwd: raiz, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024 });
+  } catch {
+    return {};
+  }
+  const partes = saida.split('\0').filter(Boolean);
+  const velhoDe = {};
+  for (let i = 0; i + 2 < partes.length; i += 3) velhoDe[partes[i + 2]] = partes[i + 1];
+  return velhoDe;
+}
+
 function ehJsDaExtensao(arquivo) {
   return arquivo.endsWith('.js') && ehDaExtensao(arquivo) && !/^test_/.test(arquivo);
 }
@@ -456,6 +470,6 @@ function fechamento(texto, abre) {
 }
 
 module.exports = {
-  arquivosDoRepositorio, ehJsDaExtensao, linhaDe, semComentariosJs, semComentariosCss, semComentariosHtml,
+  arquivosDoRepositorio, renomeacoes, ehJsDaExtensao, linhaDe, semComentariosJs, semComentariosCss, semComentariosHtml,
   comentariosPorLinha, fechamento, trechosDeComentario,
 };

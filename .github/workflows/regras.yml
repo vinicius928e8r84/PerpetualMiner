@@ -80,3 +80,25 @@ jobs:
       - run: node scripts/ci/pr-de-versao.js "$HEAD"
         env:
           HEAD: ${{ github.event.pull_request.head.sha }}
+
+  linha-de-base-refeita:
+    name: Linha de base refeita
+    if: github.event_name == 'pull_request'
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: npm ci --prefix scripts/regras/analisador
+      - run: node scripts/ci/linha-de-base-refeita.js "$HEAD" --desde "origin/$BASE"
+        env:
+          BASE: ${{ github.base_ref }}
+          HEAD: ${{ github.event.pull_request.head.sha }}

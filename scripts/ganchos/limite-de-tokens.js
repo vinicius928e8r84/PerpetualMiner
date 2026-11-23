@@ -113,8 +113,8 @@ function atualizarLinhaDeBase(linhaDeBase, tamanhosAtuais, limite = LIMITE_DE_BY
 }
 
 const DESCRICAO_DA_LINHA_DE_BASE = 'Arquivos que já passavam do limite quando o gancho entrou (caminho: bytes). Cada um pode ser '
-  + 'editado, não pode crescer além do tamanho daqui (nem do que tinha no último commit); esta lista só desce: entrada nova ou maior barra o commit. Depois de dividir um deles, rode '
-  + '`node scripts/ganchos/limite-de-tokens.js --atualizar-linha-de-base`. Arquivo novo não entra aqui: tem de caber no limite. '
+  + 'editado, não pode crescer além do tamanho daqui (nem do que tinha no último commit); esta lista só desce: entrada nova ou maior barra o commit. A PR não a edita: depois do merge, '
+  + '`node scripts/regras/baixar-no-merge.js` a baixa. Arquivo novo não entra aqui: tem de caber no limite. '
   + 'Apagar este arquivo liga o modo estrito (tudo acima do limite barra o commit).';
 
 function gravarLinhaDeBase(raiz, config, arquivos) {
@@ -241,7 +241,7 @@ function conferirPreparados(raiz, config, problemasDaConfiguracao, comparacao = 
 function gerarLinhaDeBase(raiz, config, doIndice) {
   if (lerLinhaDeBase(raiz, config, '') || lerLinhaDeBaseDoHead(raiz, config)) {
     process.stderr.write(`A linha de base já existe (${config.linhaDeBase}) e só desce: ela não é refeita do zero. `
-      + 'Depois de dividir um arquivo, rode `node scripts/ganchos/limite-de-tokens.js --atualizar-linha-de-base`.\n');
+      + 'Ela desce depois do merge, por `node scripts/regras/baixar-no-merge.js`.\n');
     return 1;
   }
   const grandes = {};

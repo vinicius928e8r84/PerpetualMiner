@@ -4,7 +4,7 @@
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const { arquivosDoRepositorio, comentariosPorLinha } = require('./comum');
+const { arquivosDoRepositorio, comentariosPorLinha, renomeacoes } = require('./comum');
 
 const REGRAS = [
   require('./tokens-veio'),
@@ -20,6 +20,7 @@ const REGRAS = [
   require('./aprovacao-visual'),
   require('./relogio-fora-da-fixture'),
   require('./versoes-publicadas'),
+  require('./linha-de-base-no-merge'),
   require('./link-de-doc'),
   require('./limite-de-linhas'),
   require('./sem-comentario-novo'),
@@ -37,7 +38,7 @@ Confere as regras de revisão de scripts/regras/ (uma por arquivo; a tabela regr
 está em AGENTS.md § Rules and what enforces them).
 
   (sem bandeira)          confere o repositório; sai com 1 se alguma regra falhar
-  --atualizar             depois de um conserto, baixa scripts/regras/linha-de-base.json (nunca sobe)
+  --atualizar             baixa scripts/regras/linha-de-base.json (nunca sobe); quem o roda é baixar-no-merge.js, depois do merge, e não a PR
   --criar-linha-de-base   cria a linha de base das regras que ainda não têm a sua (o arquivo, se ele não existe)
   --raiz <pasta>          confere outro repositório (os testes usam)
   --base <ref>            o commit cuja linha de base é o teto (padrão: $REGRAS_BASE, senão origin/main);
@@ -221,14 +222,6 @@ function linhasNovas(raiz, base, arquivo) {
 
 const COMMIT_VAZIO = /^0+$/;
 
-function renomeacoes(raiz, desde) {
-  const saida = desde ? git(raiz, ['diff', '-M', '--name-status', '--diff-filter=R', '-z', desde]) : null;
-  const partes = (saida || '').split('\0').filter(Boolean);
-  const velhoDe = {};
-  for (let i = 0; i + 2 < partes.length; i += 3) velhoDe[partes[i + 2]] = partes[i + 1];
-  return velhoDe;
-}
-
 function recusarBaseInexistente(pedida, doAmbiente) {
   if (pedida) throw new ErroDeUso(`--base ${pedida}: não é um commit deste repositório`);
   if (doAmbiente) {
@@ -307,8 +300,7 @@ class Catraca {
   }
 
   anotarFolga(regra, { arquivo, tem, pode }) {
-    if (regra.baixarObrigatorio && !this.atualizar) this.erros.push(regra.mensagemDeFolga({ arquivo, tem, pode }));
-    else this.podeBaixar.push(`${regra.id} ${arquivo}: ${pode} → ${tem}`);
+    this.podeBaixar.push(`${regra.id} ${arquivo}: ${pode} → ${tem}`);
   }
 
   mensagemDoExcesso(regra, excesso) {
@@ -338,7 +330,7 @@ class Catraca {
       this.avisos.push(`${ref} ainda não tem a regra ${regra.id}: esta é a primeira linha de base dela (${total(this.linhaDeBase[regra.id])})`);
       return;
     }
-    if (regra.baixarObrigatorio || regra.folgaPresaAoArquivo) this.compararArquivosComABase(regra, antes[regra.id] || {});
+    if (regra.folgaPresaAoArquivo) this.compararArquivosComABase(regra, antes[regra.id] || {});
     if (total(this.linhaDeBase[regra.id]) > total(antes[regra.id])) {
       this.erros.push(`✗ ${ARQUIVO_DA_LINHA_DE_BASE}: ${regra.id} tem ${total(this.linhaDeBase[regra.id])}, mais que os `
         + `${total(antes[regra.id])} de ${ref}. A linha de base só desce: se ${ref} baixou depois que este ramo `
@@ -424,7 +416,7 @@ function relatar({ erros, avisos, podeBaixar }, agora) {
   const resumo = REGRAS.map(regra => `${regra.id} ${total(agora[regra.id])}`).join(', ');
   console.log(`regras ok (na linha de base: ${resumo})`);
   if (podeBaixar.length) {
-    console.log(`a linha de base pode descer (rode com --atualizar e versione):\n  ${podeBaixar.join('\n  ')}`);
+    console.log(`a linha de base pode descer: ${podeBaixar.length} entrada(s); ela desce depois do merge, por node scripts/regras/baixar-no-merge.js, e a PR não a edita:\n  ${podeBaixar.join('\n  ')}`);
   }
   return 0;
 }
