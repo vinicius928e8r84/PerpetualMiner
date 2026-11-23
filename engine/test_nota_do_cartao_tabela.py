@@ -6,8 +6,8 @@ morfologia que se lê do texto, a explicação das cores e a frase pintada pelos
 
 import unittest
 
-from nota_do_cartao import _explicacao_das_cores, _pintar, campos_da_nota, morfologia_do_texto
-from test_nota_do_cartao import AVANCADO, INGLES, INTERMEDIARIO, RUSSO
+from nota_do_cartao import _explicacao_das_cores, _pintar, morfologia_do_texto
+from test_nota_do_cartao import AVANCADO, INGLES, INTERMEDIARIO, RUSSO, nota
 from test_nota_do_cartao_russo import RUSSO_AVANCADO, RUSSO_INTERMEDIARIO
 
 NOTAS = [
@@ -267,8 +267,8 @@ PINTURAS = [
 
 
 def nota_em_ordem(texto, lang, argumentos):
-    nota = campos_da_nota(texto, lang, **argumentos)
-    return dict(nota, campos=list(nota["campos"].items()))
+    pronta = nota(texto, lang, **argumentos)
+    return dict(pronta, campos=list(pronta["campos"].items()))
 
 
 class ANotaDoCartao(unittest.TestCase):

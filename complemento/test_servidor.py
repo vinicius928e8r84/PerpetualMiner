@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from complemento import configuracao
 from test_harness import ORIGEM, CONTRATO, ConexaoNoTeste, conexao_do_exemplo, deve_repetir, exemplos_do_contrato
 from complemento.test_comparar_com_o_contrato import igual_ao_do_contrato
-from complemento.test_estado_guardado import confere_a_repeticao, estado_guardado
+from complemento.test_estado_guardado import PedidoFeito, confere_a_repeticao, estado_guardado
 from complemento.test_pareamento_de_mentira import pedir_como_o_exemplo
 from test_harness import tearDownModule
 
@@ -36,11 +36,11 @@ class ContratoDaConexao(unittest.TestCase):
                     self.skipTest("quem é root, ou o Windows, grava onde a pasta é só de leitura")
                 with conexao_do_exemplo(pasta, exemplo) as conexao:
                     pedido = exemplo["pedido"]
-                    status, _, corpo = pedir_como_o_exemplo(conexao, pedido)
+                    resposta = pedir_como_o_exemplo(conexao, pedido)
+                    status, _, corpo = resposta
                     repetir = deve_repetir(exemplo)
-                    guardado = estado_guardado(conexao) if repetir else None
-                    segundo = pedir_como_o_exemplo(conexao, pedido) if repetir else None
-                    guardado_depois = estado_guardado(conexao) if repetir else None
+                    primeiro = PedidoFeito(resposta, estado_guardado(conexao)) if repetir else None
+                    segundo = PedidoFeito(pedir_como_o_exemplo(conexao, pedido), estado_guardado(conexao)) if repetir else None
                 self.assertEqual(status, exemplo["resposta"]["status"])
                 self.assertTrue(
                     igual_ao_do_contrato(json.loads(corpo), exemplo["resposta"]["json"]),
@@ -49,7 +49,7 @@ class ContratoDaConexao(unittest.TestCase):
                     % exemplo["nome"] + " Obtido: %s" % corpo.decode("utf-8"),
                 )
                 if segundo:
-                    confere_a_repeticao(self, exemplo, (status, corpo), guardado, segundo, guardado_depois)
+                    confere_a_repeticao(self, exemplo, primeiro, segundo)
 
     def test_o_contrato_tem_a_origem_da_extensao_que_o_complemento_aceita(self):
         with open(CONTRATO, encoding="utf-8") as arquivo:
