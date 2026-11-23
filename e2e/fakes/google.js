@@ -35,6 +35,8 @@ function estadoInicial() {
 function criarFakeGoogle() {
   const estado = estadoInicial();
   const tratarPedido = route => tratar(estado, route);
+  const marcar = campo => (valor = true) => { estado[campo] = valor; };
+  const ligar = (campo, valor) => () => { estado[campo] = valor; };
 
   /**
    * A página de login do Google (servida pelo servidor HTTPS do fixture, porque
@@ -43,10 +45,7 @@ function criarFakeGoogle() {
    *   'janela'  a janela fica aberta esperando (o teste pode fechá-la: cancelar);
    *   'falhar'  a página não carrega.
    */
-  function responderLogin(url, req, res) {
-    const responder = RESPOSTAS_DO_LOGIN.get(estado.modoDoLogin) || voltarParaAExtensaoComOsTokens;
-    responder(url, req, res);
-  }
+  const responderLogin = (url, req, res) => respostaDoLogin(estado.modoDoLogin)(url, req, res);
 
   return {
     padrao: /^https:\/\/(firestore|securetoken|identitytoolkit|www)\.googleapis\.com\//,
@@ -56,19 +55,19 @@ function criarFakeGoogle() {
     /** @estado-guardado Frases do usuário no Firestore, já convertidas de campos para objetos. */
     frasesDe: uid => objetosComOPrefixo(estado.documentos, `usuarios/${uid}/frases/`),
     /** @estado-guardado Ids com tombstone no Firestore do usuário (`usuarios/{uid}/meta/deleted`). */
-    apagadasDe: uid => Object.keys(estado.documentos.get(`usuarios/${uid}/meta/deleted`)?.ids?.mapValue?.fields || {}),
+    apagadasDe: uid => idsApagadosDe(estado.documentos, uid),
     /**
      * @estado-guardado A chave da OpenAI da conta (`usuarios/{uid}/segredos/openai`), já convertida em objeto:
      * `{ chave, em }`, o tombstone `{ apagada: true, em }`, ou null se a conta nunca teve chave.
      */
     chaveDaOpenAIDe: uid => objetoDoDocumento(estado.documentos, `usuarios/${uid}/segredos/openai`),
     gravarChaveDaOpenAI: (uid, documento) => { estado.documentos.set(`usuarios/${uid}/segredos/openai`, objetoParaCampos(documento)); },
-    recusarEscritas: (valor = true) => { estado.recusarEscritas = valor; },
-    segurarLeituras: () => { estado.leituraDasFrases = 'segurar'; },
-    recusarLeituras: () => { estado.leituraDasFrases = 'recusar'; },
-    ficarForaDoAr: (valor = true) => { estado.foraDoAr = valor; },
-    recusarAcesso: (valor = true) => { estado.acessoRecusado = valor; },
-    expirarSessao: (valor = true) => { estado.sessaoExpirada = valor; },
+    recusarEscritas: marcar('recusarEscritas'),
+    segurarLeituras: ligar('leituraDasFrases', 'segurar'),
+    recusarLeituras: ligar('leituraDasFrases', 'recusar'),
+    ficarForaDoAr: marcar('foraDoAr'),
+    recusarAcesso: marcar('acessoRecusado'),
+    expirarSessao: marcar('sessaoExpirada'),
     gravarFrases: (uid, frases) => gravarObjetos(estado.documentos, frases, frase => `usuarios/${uid}/frases/${frase.id}`),
     /** @estado-guardado O ranking do grupo no idioma (`ranking/{idioma}_{uid}`), já convertido em objetos: só quem topou está lá. */
     rankingDe: idioma => objetosComOPrefixo(estado.documentos, `ranking/${idioma}_`),
@@ -329,6 +328,8 @@ const RESPOSTAS_DO_LOGIN = new Map([
   ['janela', deixarAJanelaDeLoginEsperando],
 ]);
 
+const respostaDoLogin = modo => RESPOSTAS_DO_LOGIN.get(modo) || voltarParaAExtensaoComOsTokens;
+
 function rotaDoPedidoDaConexao({ metodo, uid, token, fields }, aoResponder) {
   const url = `${URL_DOS_DOCUMENTOS}/usuarios/${encodeURIComponent(uid)}/segredos/openai`;
   const request = () => ({ url: () => url, method: () => metodo, headers: () => ({ authorization: `Bearer ${token}` }), postDataJSON: () => ({ fields }) });
@@ -345,6 +346,11 @@ function objetosComOPrefixo(documentos, prefixo) {
   return [...documentos]
     .filter(([doc]) => doc.startsWith(prefixo))
     .map(([, fields]) => camposParaObjeto(fields));
+}
+
+function idsApagadosDe(documentos, uid) {
+  const tombstone = documentos.get(`usuarios/${uid}/meta/deleted`);
+  return Object.keys(tombstone?.ids?.mapValue?.fields || {});
 }
 
 function objetoDoDocumento(documentos, caminho) {
