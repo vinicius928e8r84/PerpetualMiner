@@ -10,13 +10,24 @@ function criarFakeFrente({ contrato, erro, colecao }) {
   const mexidos = new Set();
   const doCaminho = contrato.exemplos.filter(e => e.daExtensao && e.pedido.caminho === CAMINHO);
 
+  function motivoDaRecusa(corpo) {
+    if (!['en', 'ru'].includes(corpo.lang)) return 'invalid_lang';
+    if (!FRENTES.includes(corpo.frente)) return 'invalid_front';
+    if (mexidos.has(corpo.lang)) return 'note_type_changed';
+    return null;
+  }
+
+  function exemploDeRecusa(corpo) {
+    const doExemplo = doCaminho.find(e => 'colecao' in e.contexto && e.contexto.colecao === colecao() && isDeepStrictEqual(e.pedido.corpo, corpo));
+    return doExemplo && doExemplo.resposta.status !== 200 ? doExemplo.resposta : null;
+  }
+
   function responder(metodo, caminho, corpo = {}) {
     if (metodo !== 'POST' || caminho !== CAMINHO) return null;
-    if (!['en', 'ru'].includes(corpo.lang)) return erro(CAMINHO, 'invalid_lang');
-    if (!FRENTES.includes(corpo.frente)) return erro(CAMINHO, 'invalid_front');
-    if (mexidos.has(corpo.lang)) return erro(CAMINHO, 'note_type_changed');
-    const doExemplo = doCaminho.find(e => 'colecao' in e.contexto && e.contexto.colecao === colecao() && isDeepStrictEqual(e.pedido.corpo, corpo));
-    if (doExemplo && doExemplo.resposta.status !== 200) return doExemplo.resposta;
+    const motivo = motivoDaRecusa(corpo);
+    if (motivo) return erro(CAMINHO, motivo);
+    const recusa = exemploDeRecusa(corpo);
+    if (recusa) return recusa;
     guardadas[corpo.lang] = corpo.frente;
     return doCaminho.find(e => e.resposta.status === 200).resposta;
   }
