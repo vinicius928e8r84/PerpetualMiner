@@ -43,7 +43,6 @@
   "saude-do-codigo": {
     "background.js": 41,
     "complemento/chaves.py": 29,
-    "complemento/correcao_da_criacao.py": 8,
     "complemento/envio.py": 10,
     "complemento/inicio.py": 16,
     "complemento/no_anki.py": 28,
