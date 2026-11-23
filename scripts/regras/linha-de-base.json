@@ -114,7 +114,6 @@
     "painel/painel-ia-modelo.js": 4,
     "painel/painel-shell.js": 8,
     "painel/painel.js": 86,
-    "scripts/ci/corpo-da-pr.js": 7,
     "scripts/ci/fatias-e2e.js": 7,
     "scripts/ci/selecao-de-testes.js": 7,
     "scripts/ci/test_registro_da_pr.js": 3,
