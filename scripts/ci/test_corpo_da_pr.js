@@ -82,6 +82,9 @@ r = rodar(['-', '--base', 'main'], `${COMPLETO}\n\nfeature map unchanged`);
 assert.strictEqual(r.status, 0, r.stdout);
 assert.match(r.stdout, /corpo da PR ok contra main/);
 assert.strictEqual(rodar([]).status, 2, 'sem o arquivo, mostra o uso');
+assert.strictEqual(rodar(['--help']).status, 0, 'pedir ajuda mostra o uso e sai bem');
+assert.strictEqual(rodar([arquivo, '--base']).status, 2, 'a base sem valor mostra o uso');
+assert.strictEqual(rodar([arquivo, 'outro', '--base', 'main']).status, 2, 'argumento de sobra mostra o uso');
 assert.strictEqual(rodar([arquivo, '--base', 'nao-existe']).status, 2, 'a base que não existe não passa em silêncio');
 assert.strictEqual(rodar([path.join(repo, 'nao-existe.md'), '--base', 'main']).status, 2, 'o arquivo que não existe não passa em silêncio');
 
