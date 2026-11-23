@@ -74,30 +74,40 @@ def _verso(idioma, partes):
     return "\n".join(blocos[parte]() for parte in partes if parte in blocos)
 
 
+def _frente_com_lacuna(nomes):
+    """Lacuna: a Frase sem a Palavra e a Dica, sem áudio (ele entregaria a resposta); o verso tem a Frase com o áudio. Uma nota sem a Frase com lacuna
+    (a Palavra não estava na Frase) mostra a Frase, também sem áudio."""
+    frase, audio, lacuna, dica = nomes["frase"], nomes["audio_da_frase"], nomes["lacuna"], nomes["dica"]
+    return ('<div class="frase">{{#%s}}{{%s}}{{/%s}}{{^%s}}{{%s}}{{/%s}}</div>\n{{#%s}}<div class="dica cena">{{%s}}</div>{{/%s}}' % (
+        lacuna, lacuna, lacuna, lacuna, frase, lacuna, dica, dica, dica), '<div class="frase">{{%s}}</div>\n{{%s}}' % (frase, audio))
+
+
+def _frente_ouvir_primeiro(nomes):
+    """Ouvir primeiro: só o ▶ e, no verso, a Frase com a Palavra marcada (o negrito do campo)."""
+    return '<div class="ouvir">{{%s}}</div>' % nomes["audio_da_frase"], '{{FrontSide}}\n<div class="frase">{{%s}}</div>' % nomes["frase"]
+
+
+def _frente_ditado(nomes):
+    na_frente = '<div class="ouvir">{{%s}}</div>\n{{type:%s}}' % (nomes["audio_da_frase"], nomes["frase"])
+    return na_frente, na_frente
+
+
+def _frente_producao(nomes):
+    natural, definicao = nomes["natural"], nomes["definicao"]
+    na_frente = '<div class="frase">{{#%s}}{{%s}}{{/%s}}{{^%s}}{{%s}}{{/%s}}</div>\n{{type:%s}}' % (natural, natural, natural, natural, definicao, natural, nomes["frase"])
+    return na_frente, na_frente + "\n{{%s}}" % nomes["audio_da_frase"]
+
+
+def _frente_com_audio(nomes):
+    return '<div class="frase">{{%s}}</div>\n{{%s}}' % (nomes["frase"], nomes["audio_da_frase"]), "{{FrontSide}}"
+
+
 def _frente(frente, nomes):
-    """A frente e o começo do verso (o que vem antes das partes do nível) de cada frente. Ouvir primeiro: só o ▶ e, no verso, a Frase com a Palavra
-    marcada (o negrito do campo). Lacuna: a Frase sem a Palavra e a Dica, sem áudio (ele entregaria a resposta); o verso tem a Frase com o áudio. Uma
-    nota sem a Frase com lacuna (a Palavra não estava na Frase) mostra a Frase, também sem áudio.
+    """A frente e o começo do verso (o que vem antes das partes do nível) de cada frente.
     Produção e Ditado (#167) usam o campo de digitação do Anki (`{{type:Frase}}`): a pessoa escreve e o Anki compara com a Frase original. A Produção
     mostra a Frase em português (a Tradução natural; nos níveis que não a preenchem, que a extensão nem oferece, a Definição, para a frente nunca ficar só com o campo) e o Ditado só o ▶. Como no Basic (digitando a resposta) do
     Anki, o verso repete a frente (com o `{{type:Frase}}`, que vira a comparação letra por letra) em vez de `{{FrontSide}}`."""
-    frase, audio, lacuna, dica = nomes["frase"], nomes["audio_da_frase"], nomes["lacuna"], nomes["dica"]
-    if frente == "criacao":
-        return _criacao(nomes)
-    if frente in ("producao", "ditado"):
-        digitar = "{{type:%s}}" % frase
-        if frente == "ditado":
-            na_frente = '<div class="ouvir">{{%s}}</div>\n%s' % (audio, digitar)
-            return na_frente, na_frente
-        natural, definicao = nomes["natural"], nomes["definicao"]
-        na_frente = '<div class="frase">{{#%s}}{{%s}}{{/%s}}{{^%s}}{{%s}}{{/%s}}</div>\n%s' % (natural, natural, natural, natural, definicao, natural, digitar)
-        return na_frente, na_frente + "\n{{%s}}" % audio
-    if frente == "ouvir_primeiro":
-        return '<div class="ouvir">{{%s}}</div>' % audio, '{{FrontSide}}\n<div class="frase">{{%s}}</div>' % frase
-    if frente == "lacuna":
-        return ('<div class="frase">{{#%s}}{{%s}}{{/%s}}{{^%s}}{{%s}}{{/%s}}</div>\n{{#%s}}<div class="dica cena">{{%s}}</div>{{/%s}}' % (
-            lacuna, lacuna, lacuna, lacuna, frase, lacuna, dica, dica, dica), '<div class="frase">{{%s}}</div>\n{{%s}}' % (frase, audio))
-    return '<div class="frase">{{%s}}</div>\n{{%s}}' % (frase, audio), "{{FrontSide}}"
+    return FRENTES_DO_MODELO.get(frente, _frente_com_audio)(nomes)
 
 
 def _script_da_criacao():
@@ -129,15 +139,39 @@ def _criacao(nomes):
     return frente, comeco_do_verso
 
 
+FRENTES_DO_MODELO = {"criacao": _criacao, "producao": _frente_producao, "ditado": _frente_ditado, "ouvir_primeiro": _frente_ouvir_primeiro, "lacuna": _frente_com_lacuna}
+
+
+def _repete_a_frase(nivel):
+    return nivel.get("repete_a_frase") is not False
+
+
+def _partes_so_dos_niveis_sem_a_frase(niveis):
+    sem = [set(nivel["verso"]) for nivel in niveis if not _repete_a_frase(nivel)]
+    com = [set(nivel["verso"]) for nivel in niveis if _repete_a_frase(nivel)]
+    if not sem:
+        return set()
+    return set.intersection(*sem) - set().union(*com)
+
+
 def _campo_do_verso_sem_a_frase(idioma, lang):
     """O campo que só os níveis cujo verso não repete a Frase (`repete_a_frase: false`) preenchem, ou None se todos a repetem: o verso do
     modelo só traz a frente (`{{FrontSide}}`) quando ele está vazio. O primeiro na ordem do verso, para ser o mesmo a cada vez."""
-    niveis = [estilos.estilo(lang, nivel) for nivel in estilos.niveis(lang)]
-    sem, com = [n for n in niveis if n.get("repete_a_frase") is False], [n for n in niveis if n.get("repete_a_frase") is not False]
-    if not sem:
-        return None
-    so_dos_sem = set.intersection(*(set(n["verso"]) for n in sem)) - set().union(*(set(n["verso"]) for n in com))
+    so_dos_sem = _partes_so_dos_niveis_sem_a_frase([estilos.estilo(lang, nivel) for nivel in estilos.niveis(lang)])
     return next((idioma["campos"][parte] for parte in idioma.get("ordem_do_verso", []) if parte in so_dos_sem), None)
+
+
+def _frente_no_verso(idioma, lang, frente, comeco_do_verso):
+    frente_no_verso = comeco_do_verso + "\n<hr id=answer>"
+    marca = _campo_do_verso_sem_a_frase(idioma, lang)
+    if marca and frente == FRENTE_PADRAO:
+        return "{{^%s}}%s{{/%s}}" % (marca, frente_no_verso, marca)
+    return frente_no_verso
+
+
+def _campos_do_cartao(nomes, estilo):
+    escritos = ("frase", "audio_da_frase", "audio_da_palavra", "fonte") + tuple(estilo["verso"]) + tuple(estilo.get("guarda", []))
+    return [nomes[chave] for chave in escritos]
 
 
 def definicao(lang, nivel=None, frente=FRENTE_PADRAO, sem=()):
@@ -152,15 +186,10 @@ def definicao(lang, nivel=None, frente=FRENTE_PADRAO, sem=()):
     if frente not in NOMES_DAS_FRENTES:
         raise KeyError(frente)
     na_frente, comeco_do_verso = _frente(frente, nomes)
-    frente_no_verso = comeco_do_verso + "\n<hr id=answer>"
-    marca = _campo_do_verso_sem_a_frase(idioma, lang)
-    if marca and frente == FRENTE_PADRAO:
-        frente_no_verso = "{{^%s}}%s{{/%s}}" % (marca, frente_no_verso, marca)
     partes = [parte for parte in (idioma.get("ordem_do_verso") or estilos.estilo(lang)["verso"]) if nomes[parte] not in sem]
-    verso = frente_no_verso + "\n" + _verso(idioma, partes)
-    escritos = ("frase", "audio_da_frase", "audio_da_palavra", "fonte") + tuple(estilo["verso"]) + tuple(estilo.get("guarda", []))
+    verso = _frente_no_verso(idioma, lang, frente, comeco_do_verso) + "\n" + _verso(idioma, partes)
     return {
-        "nome": idioma["tipo_de_nota"], "campos": list(nomes.values()), "campos_do_cartao": [nomes[chave] for chave in escritos],
+        "nome": idioma["tipo_de_nota"], "campos": list(nomes.values()), "campos_do_cartao": _campos_do_cartao(nomes, estilo),
         "opcionais": {nomes[chave]: nomes[onde] for chave, onde in idioma.get("opcionais", {}).items()},
         "modelos": [{"nome": NOMES_DAS_FRENTES[frente], "frente": na_frente, "verso": verso}], "css": CSS + (CSS_DA_CRIACAO if frente == "criacao" else "")}
 
@@ -190,8 +219,8 @@ def atualizar_a_criacao(colecao, lang):
     """Regrava o modelo do Cartão Criação (frente, verso e estilo) se o que a Conexão entrega mudou (#390). Só se o tipo de nota do idioma ainda tem o nosso
     modelo Criação sozinho: a pessoa que o mexeu, ou que trocou de frente, fica como está. Nenhuma nota nem campo é tocado. Devolve se regravou."""
     nome = definicao(lang, frente="criacao")["nome"]
-    modelos = colecao.modelos_do_tipo_de_nota(nome)
-    if not (modelos and len(modelos) == 1 and modelos[0]["nome"] == NOMES_DAS_FRENTES["criacao"]):
+    nomes_dos_modelos = [modelo["nome"] for modelo in colecao.modelos_do_tipo_de_nota(nome) or ()]
+    if nomes_dos_modelos != [NOMES_DAS_FRENTES["criacao"]]:
         return False
     try:
         return trocar_a_frente(colecao, lang, "criacao")
