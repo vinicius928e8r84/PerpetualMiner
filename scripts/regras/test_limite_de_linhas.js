@@ -48,7 +48,7 @@ function verificar(arquivos) {
   const pasta = repositorioDeTestes(arquivos);
   try {
     const env = { ...process.env };
-    delete env.REGRAS_BASE;
+    for (const nome of ['REGRAS_BASE', 'REGRAS_PR', 'GITHUB_EVENT_NAME']) delete env[nome];
     const r = spawnSync('node', [path.join(__dirname, 'verificar.js'), '--raiz', pasta, '--base', '0000000000000000000000000000000000000000'], { cwd: pasta, encoding: 'utf8', env });
     return { status: r.status, saida: r.stdout, pasta };
   } finally {
@@ -94,7 +94,7 @@ function atualizar(arquivos) {
   const pasta = repositorioDeTestes(arquivos);
   try {
     const env = { ...process.env };
-    delete env.REGRAS_BASE;
+    for (const nome of ['REGRAS_BASE', 'REGRAS_PR', 'GITHUB_EVENT_NAME']) delete env[nome];
     const r = spawnSync('node', [path.join(__dirname, 'verificar.js'), '--raiz', pasta, '--base', '0000000000000000000000000000000000000000', '--atualizar'], { cwd: pasta, encoding: 'utf8', env });
     const gravada = JSON.parse(fs.readFileSync(path.join(pasta, 'scripts/regras/linha-de-base.json'), 'utf8'));
     return { status: r.status, saida: r.stdout, gravada: gravada['limite-de-linhas'] };
@@ -118,7 +118,7 @@ function contraAMain(naMain, noRamo) {
     git('commit', '-q', '-m', 'main');
     for (const [arquivo, texto] of Object.entries(noRamo)) fs.writeFileSync(path.join(pasta, arquivo), texto);
     const env = { ...process.env };
-    delete env.REGRAS_BASE;
+    for (const nome of ['REGRAS_BASE', 'REGRAS_PR', 'GITHUB_EVENT_NAME']) delete env[nome];
     const r = spawnSync('node', [path.join(__dirname, 'verificar.js'), '--raiz', pasta, '--base', 'HEAD'], { cwd: pasta, encoding: 'utf8', env });
     return { status: r.status, saida: r.stdout };
   } finally {
