@@ -35,78 +35,84 @@ const recusa = (pr, padrao, caso) => {
 };
 
 // 1. O corpo segue o modelo do /pr e tem a atenção preenchida.
-assert.match(passa({}, 'atenção BAIXA com a revisão'), /atenção BAIXA, \/code-review CLEAN$/);
-assert.match(passa({ corpo: corpoCom('Atencao: media') }, 'sem negrito, sem acento, em minúsculas'), /atenção MÉDIA/);
-passa({ corpo: BAIXA.replace(/\n/g, '\r\n'), registros: [revisao().replace(/\n/g, '\r\n')] }, 'o que é escrito no site chega com CRLF');
-recusa({ corpo: '' }, /não segue o modelo do \/pr: falta a seção Summary, a seção Evidence, a seção Merge Danger, o campo "Door:" preenchido, o campo "Blast Radius:" preenchido, o campo "Política:" preenchido\n.*campo de atenção/, 'corpo vazio');
-recusa({ corpo: null }, /falta a seção Summary/, 'PR sem corpo');
-for (const [caso, corpo] of [
-  ['sem a linha', BAIXA.replace('**Política:** sem mudança\n', '')],
-  ['o campo vazio do modelo', BAIXA.replace('sem mudança', '')],
-  ['a linha num comentário', BAIXA.replace('**Política:** sem mudança', '<!-- Política: sem mudança -->')],
-  ['a linha num bloco de código', BAIXA.replace('**Política:** sem mudança', '```\nPolítica: sem mudança\n```')],
-]) recusa({ corpo }, /falta o campo "Política:" preenchido\n/, `Política: ${caso}`);
-for (const valor of ['sem mudança', 'sem mudança: só documentação', 'https://github.com/vinicius928e8r84/perpetualminer-site/pull/41']) passa({ corpo: BAIXA.replace('sem mudança', valor) }, `Política: ${valor}`);
-recusa({ corpo: BAIXA.replace('## Evidence', 'Evidence') }, /falta a seção Evidence\n/, 'uma seção do modelo que falta');
-recusa({ corpo: BAIXA.replace('two-way', '').replace('**Blast Radius:** CI', '') }, /falta o campo "Door:" preenchido, o campo "Blast Radius:" preenchido\n/, 'os campos do Merge Danger vazios ou ausentes');
-recusa({ corpo: `\`\`\`markdown\n${BAIXA}\n\`\`\`` }, /falta a seção Summary[^]*campo de atenção/, 'o modelo dentro de um bloco de código não é o corpo');
-for (const [caso, ...linhas] of [
-  ['sem o campo', ''], ['o campo vazio do modelo', '**Atenção:**'], ['o campo num comentário', '<!-- Atenção: BAIXA -->'],
-  ['o campo num bloco de código', '```', 'Atenção: BAIXA', '```'], ['o campo numa citação', '> Atenção: BAIXA'],
-]) recusa({ corpo: corpoCom(...linhas) }, /não tem o campo de atenção preenchido/, caso);
-for (const [caso, valor] of [['as opções sem escolher', 'BAIXA | MÉDIA | ALTA'], ['um valor que não existe', 'URGENTE'], ['o porquê na mesma linha', 'MÉDIA — mexe no CI']]) {
-  recusa({ corpo: corpoCom(`**Atenção:** ${valor}`) }, new RegExp(`a atenção "${valor.replace(/\|/g, '\\|')}" do corpo não é BAIXA nem MÉDIA nem ALTA \\(o valor sozinho na linha\\)`), caso);
+function testarCorpoDoModelo() {
+  assert.match(passa({}, 'atenção BAIXA com a revisão'), /atenção BAIXA, \/code-review CLEAN$/);
+  assert.match(passa({ corpo: corpoCom('Atencao: media') }, 'sem negrito, sem acento, em minúsculas'), /atenção MÉDIA/);
+  passa({ corpo: BAIXA.replace(/\n/g, '\r\n'), registros: [revisao().replace(/\n/g, '\r\n')] }, 'o que é escrito no site chega com CRLF');
+  recusa({ corpo: '' }, /não segue o modelo do \/pr: falta a seção Summary, a seção Evidence, a seção Merge Danger, o campo "Door:" preenchido, o campo "Blast Radius:" preenchido, o campo "Política:" preenchido\n.*campo de atenção/, 'corpo vazio');
+  recusa({ corpo: null }, /falta a seção Summary/, 'PR sem corpo');
+  for (const [caso, corpo] of [
+    ['sem a linha', BAIXA.replace('**Política:** sem mudança\n', '')],
+    ['o campo vazio do modelo', BAIXA.replace('sem mudança', '')],
+    ['a linha num comentário', BAIXA.replace('**Política:** sem mudança', '<!-- Política: sem mudança -->')],
+    ['a linha num bloco de código', BAIXA.replace('**Política:** sem mudança', '```\nPolítica: sem mudança\n```')],
+  ]) recusa({ corpo }, /falta o campo "Política:" preenchido\n/, `Política: ${caso}`);
+  for (const valor of ['sem mudança', 'sem mudança: só documentação', 'https://github.com/vinicius928e8r84/perpetualminer-site/pull/41']) passa({ corpo: BAIXA.replace('sem mudança', valor) }, `Política: ${valor}`);
+  recusa({ corpo: BAIXA.replace('## Evidence', 'Evidence') }, /falta a seção Evidence\n/, 'uma seção do modelo que falta');
+  recusa({ corpo: BAIXA.replace('two-way', '').replace('**Blast Radius:** CI', '') }, /falta o campo "Door:" preenchido, o campo "Blast Radius:" preenchido\n/, 'os campos do Merge Danger vazios ou ausentes');
+  recusa({ corpo: `\`\`\`markdown\n${BAIXA}\n\`\`\`` }, /falta a seção Summary[^]*campo de atenção/, 'o modelo dentro de um bloco de código não é o corpo');
+  for (const [caso, ...linhas] of [
+    ['sem o campo', ''], ['o campo vazio do modelo', '**Atenção:**'], ['o campo num comentário', '<!-- Atenção: BAIXA -->'],
+    ['o campo num bloco de código', '```', 'Atenção: BAIXA', '```'], ['o campo numa citação', '> Atenção: BAIXA'],
+  ]) recusa({ corpo: corpoCom(...linhas) }, /não tem o campo de atenção preenchido/, caso);
+  for (const [caso, valor] of [['as opções sem escolher', 'BAIXA | MÉDIA | ALTA'], ['um valor que não existe', 'URGENTE'], ['o porquê na mesma linha', 'MÉDIA — mexe no CI']]) {
+    recusa({ corpo: corpoCom(`**Atenção:** ${valor}`) }, new RegExp(`a atenção "${valor.replace(/\|/g, '\\|')}" do corpo não é BAIXA nem MÉDIA nem ALTA \\(o valor sozinho na linha\\)`), caso);
+  }
 }
 recusa({ corpo: corpoCom('Atenção: BAIXA', 'Atenção: ALTA') }, /mais de uma atenção \(BAIXA e ALTA\)/, 'duas atenções');
 recusa({ corpo: corpoCom('Atenção: BAIXA', 'Atenção: talvez ALTA') }, /mais de uma atenção \(BAIXA e talvez ALTA\)/, 'uma atenção certa e outra fora do formato');
 
 // 2. O registro do /code-review do head exato: CLEAN, e o revisor não é o autor. Vale o mais recente com o "Head:" deste head.
-const citado = registro => `Discordo, a primeira revisão já tinha dito:\n\n${registro.split('\n').map(linha => `> ${linha}`).join('\n')}`;
-recusa({ registros: [] }, /nenhum comentário ou revisão da PR é o registro do \/code-review/, 'sem registro');
-recusa({ registros: ['[vc]: deploy ok', `Olhei o ${HEAD} e está CLEAN.`] }, /nenhum comentário ou revisão/, 'um comentário sem a linha do veredito não é o registro');
-recusa({ registros: [`\`\`\`\n${revisao()}\n\`\`\``] }, /nenhum comentário ou revisão/, 'o formato citado num bloco de código não é o registro');
-recusa({ registros: [revisao({ head: OUTRO })] }, new RegExp(`mais recente é do commit ${OUTRO}[^]*o head mudou`), 'o registro de outro commit');
-recusa({ registros: [revisao({ head: HEAD.slice(0, 7) })] }, /abreviado/, 'o SHA abreviado');
-recusa({ registros: [revisao({ head: '' })] }, /não tem a linha "Head:" com o SHA do head/, 'o registro sem SHA');
-recusa({ registros: [`${revisao({ head: OUTRO })}\nNota: falta revisar o ${HEAD}`] }, new RegExp(`mais recente é do commit ${OUTRO}`), 'o head citado fora da linha "Head:" não faz do registro o deste head');
-recusa({ registros: [citado(revisao())] }, /nenhum comentário ou revisão/, 'a resposta que cita um registro não é um registro');
-recusa({ registros: [revisao(), revisao({ veredito: 'FINDINGS' }), citado(revisao())] }, /é FINDINGS, não CLEAN/, 'citar a revisão CLEAN antiga não derruba a FINDINGS mais nova');
-for (const veredito of ['FINDINGS', 'NOT CLEAN', 'CLEAN com ressalvas', 'clean']) recusa({ registros: [revisao({ veredito })] }, /não CLEAN/, `veredito ${veredito}`);
-recusa({ registros: [revisao(), revisao({ veredito: 'FINDINGS' })] }, /é FINDINGS, não CLEAN/, 'uma revisão mais nova do mesmo head derruba a CLEAN');
-passa({ registros: [revisao({ veredito: 'FINDINGS' }), revisao()] }, 'a revisão refeita no mesmo head');
-passa({ registros: [revisao(), revisao({ veredito: 'FINDINGS', head: OUTRO })] }, 'a revisão de outro commit não fala por este head');
-recusa({ registros: [`${revisao()}\nVeredito: FINDINGS`] }, /é CLEAN e FINDINGS, não CLEAN/, 'dois vereditos no mesmo registro');
-recusa({ registros: [revisao().replace(/\nRevisor:.*/, '')] }, /não diz quem é o autor e quem é o revisor/, 'sem o revisor');
-recusa({ registros: [revisao({ autor: '' })] }, /não diz quem é o autor e quem é o revisor/, 'sem o autor');
-recusa({ registros: [revisao({ autor: 'Sessão A', revisor: '`sessao a`' })] }, /o revisor do registro do \/code-review é o próprio autor/, 'o autor revisando a si mesmo');
-
-// 3. Atenção ALTA (ou o rótulo de risco alto): a seção "Prova real" com a frase e o SHA inteiro do head.
-assert.match(passa({ corpo: ALTA }, 'a prova do head exato'), /atenção ALTA, \/code-review CLEAN, PROVADO 100% REAL$/);
-passa({ corpo: altaCom(`**${FRASE}**`, '', `- Head: \`${HEAD}\``) }, 'a marcação do Markdown em volta não atrapalha');
-passa({ corpo: altaCom(FRASE, `Head: https://github.com/dono/repo/commit/${HEAD.toUpperCase()}`) }, 'o SHA dentro de um endereço, em maiúsculas');
-passa({ corpo: altaCom('### Como', '', '```sh', '# o comando', 'node x.js', '```', FRASE, `Head: ${HEAD}`) }, 'um subtítulo e um comentário de shell num bloco de código não fecham a seção');
-recusa({ corpo: corpoCom('**Atenção:** ALTA') }, /atenção ALTA: o corpo não tem a seção "Prova real"/, 'ALTA sem a seção');
-recusa({ rotulos: ['bug', 'Risco:Alto'] }, /atenção ALTA: o corpo não tem a seção "Prova real"/, `o rótulo ${ROTULO_DE_RISCO_ALTO} pede a prova mesmo com a atenção BAIXA`);
-passa({ rotulos: ['bug', 'risco:baixo'] }, 'outro rótulo não pede a prova');
-passa({ corpo: ALTA, rotulos: [ROTULO_DE_RISCO_ALTO] }, 'o rótulo e a atenção ALTA, com a prova');
-recusa({ corpo: corpoCom('**Atenção:** ALTA', '', '## Prova real', '', 'Ainda não.', '', '## Depois', '', FRASE, `Head: ${HEAD}`) }, /não tem a linha PROVADO 100% REAL/, 'a seção acaba no título seguinte');
-recusa({ corpo: altaCom(`Head: ${HEAD}`) }, /não tem a linha PROVADO 100% REAL/, 'a seção sem a frase');
-recusa({ corpo: altaCom(`NÃO ${FRASE}`, `Head: ${HEAD}`) }, /não tem a linha PROVADO 100% REAL/, 'o veredito negado não é a frase');
-recusa({ corpo: altaCom(`Falta pouco para ficar ${FRASE}.`, `Head: ${HEAD}`) }, /sozinha na linha/, 'a frase no meio de outra');
-recusa({ corpo: altaCom(FRASE) }, /a seção "Prova real" não tem a linha "Head:" com o SHA do head/, 'a seção sem SHA');
-recusa({ corpo: altaCom(FRASE, `Provei o ${HEAD}.`) }, /não tem a linha "Head:" com o SHA do head/, 'o SHA fora da linha "Head:"');
-recusa({ corpo: altaCom(`> ${FRASE}`, `> Head: ${HEAD}`) }, /não tem a linha PROVADO 100% REAL/, 'a prova dentro de uma citação');
-recusa({ corpo: altaCom(FRASE, `Head: ${HEAD.slice(0, 7)}`) }, /abreviado/, 'o SHA abreviado');
-recusa({ corpo: altaCom(FRASE, `Head: ${HEAD}0`) }, /não tem a linha "Head:" com o SHA do head/, 'um texto maior que contém o SHA não é o SHA');
-recusa({ corpo: altaCom('```', FRASE, `Head: ${HEAD}`, '```') }, /não tem a linha PROVADO 100% REAL/, 'a prova dentro de um bloco de código');
-
-{
-  const { ok, mensagem } = conferir({ corpo: ALTA, rotulos: [], registros: [revisao()], head: OUTRO });
-  assert.strictEqual(ok, false, 'o mesmo corpo e o mesmo registro depois de um commit novo');
-  assert.match(mensagem, new RegExp(`- o registro do /code-review mais recente é do commit ${HEAD}[^]*- atenção ALTA: a seção "Prova real" é do commit ${HEAD}`));
+function testarRegistroDaRevisao() {
+  const citado = registro => `Discordo, a primeira revisão já tinha dito:\n\n${registro.split('\n').map(linha => `> ${linha}`).join('\n')}`;
+  recusa({ registros: [] }, /nenhum comentário ou revisão da PR é o registro do \/code-review/, 'sem registro');
+  recusa({ registros: ['[vc]: deploy ok', `Olhei o ${HEAD} e está CLEAN.`] }, /nenhum comentário ou revisão/, 'um comentário sem a linha do veredito não é o registro');
+  recusa({ registros: [`\`\`\`\n${revisao()}\n\`\`\``] }, /nenhum comentário ou revisão/, 'o formato citado num bloco de código não é o registro');
+  recusa({ registros: [revisao({ head: OUTRO })] }, new RegExp(`mais recente é do commit ${OUTRO}[^]*o head mudou`), 'o registro de outro commit');
+  recusa({ registros: [revisao({ head: HEAD.slice(0, 7) })] }, /abreviado/, 'o SHA abreviado');
+  recusa({ registros: [revisao({ head: '' })] }, /não tem a linha "Head:" com o SHA do head/, 'o registro sem SHA');
+  recusa({ registros: [`${revisao({ head: OUTRO })}\nNota: falta revisar o ${HEAD}`] }, new RegExp(`mais recente é do commit ${OUTRO}`), 'o head citado fora da linha "Head:" não faz do registro o deste head');
+  recusa({ registros: [citado(revisao())] }, /nenhum comentário ou revisão/, 'a resposta que cita um registro não é um registro');
+  recusa({ registros: [revisao(), revisao({ veredito: 'FINDINGS' }), citado(revisao())] }, /é FINDINGS, não CLEAN/, 'citar a revisão CLEAN antiga não derruba a FINDINGS mais nova');
+  for (const veredito of ['FINDINGS', 'NOT CLEAN', 'CLEAN com ressalvas', 'clean']) recusa({ registros: [revisao({ veredito })] }, /não CLEAN/, `veredito ${veredito}`);
+  recusa({ registros: [revisao(), revisao({ veredito: 'FINDINGS' })] }, /é FINDINGS, não CLEAN/, 'uma revisão mais nova do mesmo head derruba a CLEAN');
+  passa({ registros: [revisao({ veredito: 'FINDINGS' }), revisao()] }, 'a revisão refeita no mesmo head');
+  passa({ registros: [revisao(), revisao({ veredito: 'FINDINGS', head: OUTRO })] }, 'a revisão de outro commit não fala por este head');
+  recusa({ registros: [`${revisao()}\nVeredito: FINDINGS`] }, /é CLEAN e FINDINGS, não CLEAN/, 'dois vereditos no mesmo registro');
+  recusa({ registros: [revisao().replace(/\nRevisor:.*/, '')] }, /não diz quem é o autor e quem é o revisor/, 'sem o revisor');
+  recusa({ registros: [revisao({ autor: '' })] }, /não diz quem é o autor e quem é o revisor/, 'sem o autor');
+  recusa({ registros: [revisao({ autor: 'Sessão A', revisor: '`sessao a`' })] }, /o revisor do registro do \/code-review é o próprio autor/, 'o autor revisando a si mesmo');
 }
 
-{
+// 3. Atenção ALTA (ou o rótulo de risco alto): a seção "Prova real" com a frase e o SHA inteiro do head.
+function testarProvaReal() {
+  assert.match(passa({ corpo: ALTA }, 'a prova do head exato'), /atenção ALTA, \/code-review CLEAN, PROVADO 100% REAL$/);
+  passa({ corpo: altaCom(`**${FRASE}**`, '', `- Head: \`${HEAD}\``) }, 'a marcação do Markdown em volta não atrapalha');
+  passa({ corpo: altaCom(FRASE, `Head: https://github.com/dono/repo/commit/${HEAD.toUpperCase()}`) }, 'o SHA dentro de um endereço, em maiúsculas');
+  passa({ corpo: altaCom('### Como', '', '```sh', '# o comando', 'node x.js', '```', FRASE, `Head: ${HEAD}`) }, 'um subtítulo e um comentário de shell num bloco de código não fecham a seção');
+  recusa({ corpo: corpoCom('**Atenção:** ALTA') }, /atenção ALTA: o corpo não tem a seção "Prova real"/, 'ALTA sem a seção');
+  recusa({ rotulos: ['bug', 'Risco:Alto'] }, /atenção ALTA: o corpo não tem a seção "Prova real"/, `o rótulo ${ROTULO_DE_RISCO_ALTO} pede a prova mesmo com a atenção BAIXA`);
+  passa({ rotulos: ['bug', 'risco:baixo'] }, 'outro rótulo não pede a prova');
+  passa({ corpo: ALTA, rotulos: [ROTULO_DE_RISCO_ALTO] }, 'o rótulo e a atenção ALTA, com a prova');
+  recusa({ corpo: corpoCom('**Atenção:** ALTA', '', '## Prova real', '', 'Ainda não.', '', '## Depois', '', FRASE, `Head: ${HEAD}`) }, /não tem a linha PROVADO 100% REAL/, 'a seção acaba no título seguinte');
+  recusa({ corpo: altaCom(`Head: ${HEAD}`) }, /não tem a linha PROVADO 100% REAL/, 'a seção sem a frase');
+  recusa({ corpo: altaCom(`NÃO ${FRASE}`, `Head: ${HEAD}`) }, /não tem a linha PROVADO 100% REAL/, 'o veredito negado não é a frase');
+  recusa({ corpo: altaCom(`Falta pouco para ficar ${FRASE}.`, `Head: ${HEAD}`) }, /sozinha na linha/, 'a frase no meio de outra');
+  recusa({ corpo: altaCom(FRASE) }, /a seção "Prova real" não tem a linha "Head:" com o SHA do head/, 'a seção sem SHA');
+  recusa({ corpo: altaCom(FRASE, `Provei o ${HEAD}.`) }, /não tem a linha "Head:" com o SHA do head/, 'o SHA fora da linha "Head:"');
+  recusa({ corpo: altaCom(`> ${FRASE}`, `> Head: ${HEAD}`) }, /não tem a linha PROVADO 100% REAL/, 'a prova dentro de uma citação');
+  recusa({ corpo: altaCom(FRASE, `Head: ${HEAD.slice(0, 7)}`) }, /abreviado/, 'o SHA abreviado');
+  recusa({ corpo: altaCom(FRASE, `Head: ${HEAD}0`) }, /não tem a linha "Head:" com o SHA do head/, 'um texto maior que contém o SHA não é o SHA');
+  recusa({ corpo: altaCom('```', FRASE, `Head: ${HEAD}`, '```') }, /não tem a linha PROVADO 100% REAL/, 'a prova dentro de um bloco de código');
+
+  {
+    const { ok, mensagem } = conferir({ corpo: ALTA, rotulos: [], registros: [revisao()], head: OUTRO });
+    assert.strictEqual(ok, false, 'o mesmo corpo e o mesmo registro depois de um commit novo');
+    assert.match(mensagem, new RegExp(`- o registro do /code-review mais recente é do commit ${HEAD}[^]*- atenção ALTA: a seção "Prova real" é do commit ${HEAD}`));
+  }
+}
+
+function testarModeloDaPR() {
   const modelo = fs.readFileSync(path.join(RAIZ, '.github', 'PULL_REQUEST_TEMPLATE.md'), 'utf8');
   recusa({ corpo: modelo, registros: [modelo] }, /campo de atenção preenchido[^]*nenhum comentário ou revisão/, 'o modelo sem preencher');
   const exemplo = /<!--([^]*?)-->/.exec(modelo)[1].replace(/<SHA[^>]*>/g, HEAD).replace(/<quem escreveu[^>]*>/, 'a').replace(/<quem revisou[^>]*>/, 'b').replace(/<BAIXA, MÉDIA ou ALTA[^>]*>/, 'BAIXA').replace(/<URL[^>]*>/g, 'https://github.com/dono/repo/issues/12').replace(/<o que falta[^>]*>/, 'o envio real');
@@ -122,7 +128,7 @@ recusa({ corpo: altaCom('```', FRASE, `Head: ${HEAD}`, '```') }, /não tem a lin
   assert(modelo.includes('perpetualminer-site') && modelo.includes('sem mudança: <motivo>'), 'o modelo explica a linha Política: o link da PR do site ou sem mudança com o motivo');
 }
 
-{
+function testarWorkflow() {
   const workflow = lerYaml(fs.readFileSync(path.join(RAIZ, '.github', 'workflows', 'registro-da-pr.yml'), 'utf8'));
   assert(rodaNoPR(workflow), 'roda em pull_request');
   const tipos = String(workflow.on.pull_request.types).replace(/[[\]\s]/g, '').split(',');
@@ -138,6 +144,12 @@ recusa({ corpo: altaCom('```', FRASE, `Head: ${HEAD}`, '```') }, /não tem a lin
     GITHUB_TOKEN: '${{ github.token }}', PR: '${{ github.event.pull_request.number }}', HEAD: '${{ github.event.pull_request.head.sha }}',
   }, 'o head é o da PR (não o commit de merge do checkout), e nada da PR entra no comando');
 }
+
+testarCorpoDoModelo();
+testarRegistroDaRevisao();
+testarProvaReal();
+testarModeloDaPR();
+testarWorkflow();
 
 (async () => {
   const github = {};

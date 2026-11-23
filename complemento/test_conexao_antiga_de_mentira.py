@@ -10,6 +10,7 @@ import hashlib
 import json
 import os
 import threading
+from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 PID = 424242
@@ -20,6 +21,31 @@ def _gravar(caminho, texto):
     os.makedirs(os.path.dirname(caminho), exist_ok=True)
     with open(caminho, "w", encoding="utf-8", newline="") as arquivo:
         arquivo.write(texto)
+
+
+@dataclass(frozen=True)
+class Envio:
+    id_: str
+    status: str
+    frases: list
+    lang: str = "en"
+    baralho: str = "Inglês"
+    prontas: tuple = ()
+    falharam: tuple = ()
+    custos: tuple = ()
+    criado: str = CRIADO
+
+    def job(self):
+        return {
+            "jobId": self.id_, "createdAt": self.criado, "lang": self.lang, "deckName": self.baralho, "imageSource": "1",
+            "tts": {"wordTld": "com", "phraseTld": "co.uk"}, "status": self.status,
+            "entries": [{"phraseId": numero, "line": linha} for numero, linha in self.frases]}
+
+    def item_da_fila(self):
+        return {"jobId": self.id_, "lang": self.lang, "status": self.status, "createdAt": self.criado}
+
+    def custos_em_linhas(self):
+        return "".join(json.dumps(c, ensure_ascii=False) + "\n" for c in self.custos)
 
 
 class ConexaoAntigaDeMentira:
@@ -37,17 +63,17 @@ class ConexaoAntigaDeMentira:
         _gravar(self.fila, json.dumps({"jobs": []}))
         self.servidor = None
 
-    def envio(self, id_, status, frases, *, lang="en", baralho="Inglês", prontas=(), falharam=(), custos=(), criado=CRIADO):
+    def envio(self, id_, status, frases, **campos):
         """`frases`: [(phraseId, linha)]. `prontas`/`falharam`: os phraseId que o estado de hoje diz já enviados/falhados."""
-        _gravar(os.path.join(self.jobs, id_, "job.json"), json.dumps({
-            "jobId": id_, "createdAt": criado, "lang": lang, "deckName": baralho, "imageSource": "1",
-            "tts": {"wordTld": "com", "phraseTld": "co.uk"}, "status": status,
-            "entries": [{"phraseId": numero, "line": linha} for numero, linha in frases]}, ensure_ascii=False))
-        self.estado(id_, status, prontas, falharam)
-        if custos:
-            _gravar(os.path.join(self.jobs, id_, "log", "costs.jsonl"), "".join(json.dumps(c, ensure_ascii=False) + "\n" for c in custos))
+        self._gravar_envio(Envio(id_, status, frases, **campos))
+
+    def _gravar_envio(self, envio):
+        _gravar(os.path.join(self.jobs, envio.id_, "job.json"), json.dumps(envio.job(), ensure_ascii=False))
+        self.estado(envio.id_, envio.status, envio.prontas, envio.falharam)
+        if envio.custos:
+            _gravar(os.path.join(self.jobs, envio.id_, "log", "costs.jsonl"), envio.custos_em_linhas())
         fila = self._fila()
-        fila["jobs"] = [item for item in fila["jobs"] if item["jobId"] != id_] + [{"jobId": id_, "lang": lang, "status": status, "createdAt": criado}]
+        fila["jobs"] = [item for item in fila["jobs"] if item["jobId"] != envio.id_] + [envio.item_da_fila()]
         _gravar(self.fila, json.dumps(fila))
 
     def estado(self, id_, status, prontas=(), falharam=()):
