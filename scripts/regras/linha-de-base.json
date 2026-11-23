@@ -120,7 +120,6 @@
     "scripts/empacotar-extensao.mjs": 7,
     "scripts/ganchos/test_pre_push.js": 11,
     "scripts/regras/e2e-estado-final.js": 13,
-    "scripts/regras/e2e-funcao-interna.js": 4,
     "scripts/regras/relogio-fora-da-fixture.js": 9,
     "scripts/regras/teste-le-codigo.js": 7,
     "scripts/regras/versoes-publicadas.js": 7,
