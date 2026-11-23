@@ -228,6 +228,12 @@ assert.throws(() => lerRegistro(pasta), erro => /não é um JSON válido \(erro 
   && /node scripts\/testar\.mjs --listar/.test(erro.message) && !/Expected/.test(erro.message));
 fs.writeFileSync(path.join(pasta, 'scripts', 'testes.json'), '{ "fora": [] }');
 assert.throws(() => lerRegistro(pasta), /não tem o objeto "grupos"/);
+for (const texto of ['null', '0', '""', '{ "grupos": null }', '{ "grupos": [] }', '{ "grupos": "node" }']) {
+  fs.writeFileSync(path.join(pasta, 'scripts', 'testes.json'), texto);
+  assert.throws(() => lerRegistro(pasta), /não tem o objeto "grupos"/, texto);
+}
+fs.writeFileSync(path.join(pasta, 'scripts', 'testes.json'), '{ "grupos": {}, "fora": ["a"] }');
+assert.deepEqual(lerRegistro(pasta), { grupos: {}, fora: ['a'] });
 fs.rmSync(pasta, { recursive: true, force: true });
 
 assert.equal(baseDaVersao({}, 'fm/uma-tarefa', true), 'origin/main');
@@ -236,5 +242,8 @@ assert.equal(baseDaVersao({}, 'HEAD', true), null);
 assert.equal(baseDaVersao({ CI: 'true' }, 'fm/uma-tarefa', true), null);
 assert.equal(baseDaVersao({ PM_VERSAO_BASE: '' }, 'fm/uma-tarefa', true), null);
 assert.equal(baseDaVersao({}, 'fm/uma-tarefa', false), null);
+assert.equal(baseDaVersao({}, '', true), null);
+assert.equal(baseDaVersao({}, undefined, true), null);
+assert.equal(baseDaVersao({ CI: '' }, 'fm/uma-tarefa', true), 'origin/main');
 
 console.log('testar tests passed');
