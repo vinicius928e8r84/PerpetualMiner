@@ -60,7 +60,6 @@
     "complemento/test_openai_de_mentira.py": 11,
     "complemento/test_qt_do_anki.py": 29,
     "complemento/test_qt_do_anki_pareamento.py": 13,
-    "complemento/versao_no_merge.py": 7,
     "content.js": 51,
     "e2e/apoio-das-configuracoes.js": 1,
     "e2e/apoio-do-quiz.js": 2,
