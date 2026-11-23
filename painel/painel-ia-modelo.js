@@ -11,12 +11,14 @@
 
   const pedir = pedido => raiz.ConversaComOAnki.pedir(pedido, { prazoMs: 8000 });
 
+  const ehEstadoDoModelo = lido => Array.isArray(lido?.modelos) && typeof lido.escolha === 'string';
+
   async function reler() {
     const minha = ++rodada;
     const resposta = await pedir(raiz.PedidoAoAnki.estadoDoModelo());
     if (minha !== rodada) return;
     const lido = resposta.status === 200 ? resposta.dados : null;
-    estado.modelo = lido && Array.isArray(lido.modelos) && typeof lido.escolha === 'string' ? lido : null;
+    estado.modelo = ehEstadoDoModelo(lido) ? lido : null;
     estado.erro = resposta.status === 503;
     desenharTudo();
   }
@@ -72,16 +74,22 @@
     return [elemento('p', 'cfg-nota', textoDaVoz('CFG-44.erro')), botao(textoDaVoz('CFG-35.erroTentarDeNovo'), reler)];
   }
 
+  const semNadaParaMostrar = () => !estado.erro && !estado.modelo?.paga;
+
+  const temNovidade = ({ aviso, trocou }) => Boolean(aviso || trocou);
+
+  const novidadeAbreOPainel = modelo => !estado.erro && temNovidade(modelo);
+
   function desenhar(lugar) {
     const registro = lugares.get(lugar);
     const assinatura = JSON.stringify([estado.erro, estado.modelo]);
     if (assinatura === registro.assinatura) return;
     registro.assinatura = assinatura;
     const { modelo } = estado;
-    if (!estado.erro && (!modelo || !modelo.paga)) return registro.no.replaceChildren();
+    if (semNadaParaMostrar()) return registro.no.replaceChildren();
     const detalhes = elemento('details', 'anki-avancado ia-avancado', elemento('summary', '', textoDaVoz('BRG-32.titulo')),
       elemento('div', 'anki-avancado__corpo', ...(estado.erro ? semALista() : corpo(lugar, modelo))));
-    detalhes.open = estado.aberto ?? Boolean(!estado.erro && (modelo.aviso || modelo.trocou));
+    detalhes.open = estado.aberto ?? novidadeAbreOPainel(modelo);
     detalhes.addEventListener('toggle', () => { estado.aberto = detalhes.open; });
     registro.no.replaceChildren(detalhes);
   }
@@ -98,17 +106,21 @@
     return lugares.get(lugar).no;
   }
 
+  const temEstadoParaEsquecer = () => Boolean(estado.modelo || estado.erro);
+
+  function esquecer() {
+    rodada += 1;
+    Object.assign(estado, { modelo: null, erro: false });
+    desenharTudo();
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     let antes = null;
     raiz.ConexaoAnki.acompanhar(situacao => {
       const ligou = situacao === raiz.ConexaoAnki.SITUACAO.LIGADA && antes !== situacao;
       if (situacao !== raiz.ConexaoAnki.SITUACAO.CONECTANDO) antes = situacao;
       if (ligou) reler();
-      else if (antes === raiz.ConexaoAnki.SITUACAO.DESLIGADA && (estado.modelo || estado.erro)) {
-        rodada += 1;
-        Object.assign(estado, { modelo: null, erro: false });
-        desenharTudo();
-      }
+      else if (antes === raiz.ConexaoAnki.SITUACAO.DESLIGADA && temEstadoParaEsquecer()) esquecer();
     });
     raiz.Shell.aoAbrirASecao('ia', reler);
     chrome.storage.onChanged.addListener((mudancas, area) => {
