@@ -9,8 +9,18 @@ const conserto = 'Exercite a rota ou a função, não o texto dela: a rota por H
 
 const seAplica = arquivo => /(^|\/)test_[^/]*\.py$/.test(arquivo);
 
-function semComentarios(fonte) {
-  return fonte.split('\n').map(linha => (/^\s*#/.test(linha) ? '' : linha)).join('\n');
+const ehComentario = linha => /^\s*#/.test(linha);
+
+const semComentarios = fonte => fonte.split('\n').map(linha => (ehComentario(linha) ? '' : linha)).join('\n');
+
+const recuoDe = linha => /^\s*/.exec(linha)[0].length;
+
+const continuaNaFuncao = (linha, recuo) => linha.trim() === '' || recuoDe(linha) > recuo;
+
+function fimDaFuncao(linhas, inicio, recuo) {
+  let fim = inicio + 1;
+  while (fim < linhas.length && continuaNaFuncao(linhas[fim], recuo)) fim++;
+  return fim;
 }
 
 function funcoes(codigo) {
@@ -18,44 +28,63 @@ function funcoes(codigo) {
   const lista = [];
   linhas.forEach((linha, i) => {
     const m = /^(\s*)def\s+(\w+)\s*\(/.exec(linha);
-    if (!m) return;
-    const recuo = m[1].length;
-    let fim = i + 1;
-    while (fim < linhas.length && (linhas[fim].trim() === '' || /^\s*/.exec(linhas[fim])[0].length > recuo)) fim++;
-    lista.push({ nome: m[2], de: i + 1, ate: fim });
+    if (m) lista.push({ nome: m[2], de: i + 1, ate: fimDaFuncao(linhas, i, m[1].length) });
   });
   return lista;
+}
+
+const chamaAlgum = (nomes, linha) => [...nomes].some(nome => new RegExp(`\\b${nome}\\s*\\(`).test(linha));
+
+const mencionaAlgum = (nomes, linha) => [...nomes].some(nome => new RegExp(`\\b${nome}\\b`).test(linha));
+
+const nomesDeCaminhosDeCodigo = codigo => new Set([...codigo.matchAll(/^(\w+)\s*=.*['"][\w./-]+\.py['"]/gm)].map(m => m[1]));
+
+const pedeOCodigoDireto = linha => /\b(?:inspect\.)?getsource\s*\(|\bget_source_segment\s*\(/.test(linha);
+
+const abreArquivo = linha => /\.read_text\s*\(|\bopen\s*\(|\.read_bytes\s*\(/.test(linha);
+
+const citaArquivoDeCodigo = linha => /['"][\w./-]+\.py['"]/.test(linha);
+
+const abreArquivoDeCodigo = (linha, caminhosDeCodigo) => abreArquivo(linha)
+  && (citaArquivoDeCodigo(linha) || mencionaAlgum(caminhosDeCodigo, linha));
+
+const leCodigoComOs = caminhosDeCodigo => linha => pedeOCodigoDireto(linha) || abreArquivoDeCodigo(linha, caminhosDeCodigo);
+
+function leitoresDe(defs, linhas, leCodigo) {
+  const leitores = new Set();
+  const ehLeitor = def => {
+    const corpo = linhas.slice(def.de, def.ate);
+    return corpo.some(leCodigo) || corpo.some(linha => chamaAlgum(leitores, linha));
+  };
+  let novos;
+  do {
+    novos = defs.filter(def => !leitores.has(def.nome) && ehLeitor(def));
+    novos.forEach(def => leitores.add(def.nome));
+  } while (novos.length);
+  return leitores;
+}
+
+const dentroDeAlgumLeitor = (defsLeitoras, numero) => defsLeitoras.some(def => numero > def.de && numero <= def.ate);
+
+function achadoDaLinha(linha, numero, leitores, leCodigo) {
+  const chamado = [...leitores].find(nome => chamaAlgum([nome], linha));
+  if (chamado) return { linha: numero, detalhe: `lê o código com ${chamado}()` };
+  if (leCodigo(linha)) return { linha: numero, detalhe: `lê o código: ${linha.trim().slice(0, 100)}` };
+  return null;
 }
 
 function verificar(arquivo, fonte) {
   const codigo = semComentarios(fonte);
   const linhas = codigo.split('\n');
-  const caminhosDeCodigo = new Set();
-  for (const m of codigo.matchAll(/^(\w+)\s*=.*['"][\w./-]+\.py['"]/gm)) caminhosDeCodigo.add(m[1]);
-  const leCodigo = linha => /\b(?:inspect\.)?getsource\s*\(|\bget_source_segment\s*\(/.test(linha)
-    || (/\.read_text\s*\(|\bopen\s*\(|\.read_bytes\s*\(/.test(linha)
-      && (/['"][\w./-]+\.py['"]/.test(linha) || [...caminhosDeCodigo].some(nome => new RegExp(`\\b${nome}\\b`).test(linha))));
-
+  const leCodigo = leCodigoComOs(nomesDeCaminhosDeCodigo(codigo));
   const defs = funcoes(codigo).filter(def => !/^test/.test(def.nome));
-  const leitores = new Set();
-  for (let mudou = true; mudou;) {
-    mudou = false;
-    for (const def of defs) {
-      if (leitores.has(def.nome)) continue;
-      const corpo = linhas.slice(def.de, def.ate);
-      const chamaLeitor = corpo.some(l => [...leitores].some(nome => new RegExp(`\\b${nome}\\s*\\(`).test(l)));
-      if (corpo.some(leCodigo) || chamaLeitor) { leitores.add(def.nome); mudou = true; }
-    }
-  }
-  const dentroDeUmLeitor = numero => defs.some(def => leitores.has(def.nome) && numero > def.de && numero <= def.ate);
-
+  const leitores = leitoresDe(defs, linhas, leCodigo);
+  const defsLeitoras = defs.filter(def => leitores.has(def.nome));
   const achados = [];
   linhas.forEach((linha, i) => {
-    const numero = i + 1;
-    if (dentroDeUmLeitor(numero) || /^\s*def\s/.test(linha)) return;
-    const chamado = [...leitores].find(nome => new RegExp(`\\b${nome}\\s*\\(`).test(linha));
-    if (chamado) achados.push({ linha: numero, detalhe: `lê o código com ${chamado}()` });
-    else if (leCodigo(linha)) achados.push({ linha: numero, detalhe: `lê o código: ${linha.trim().slice(0, 100)}` });
+    if (dentroDeAlgumLeitor(defsLeitoras, i + 1) || /^\s*def\s/.test(linha)) return;
+    const achado = achadoDaLinha(linha, i + 1, leitores, leCodigo);
+    if (achado) achados.push(achado);
   });
   return achados;
 }
