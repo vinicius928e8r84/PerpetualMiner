@@ -47,6 +47,11 @@ O check "Registro da PR" (.github/workflows/registro-da-pr.yml, scripts/ci/regis
 
    `node scripts/ci/registrar-na-pr.js prova --cobertura total` escreve a seção com o head lido no GitHub.
 
+   Várias PRs na fila podem dividir uma prova: a prova feita num commit de lote (uma branch que junta os heads delas)
+   vale para cada PR cujo head o commit contém. No lugar da linha "Head:", a seção diz "Lote: <SHA inteiro do commit
+   de lote>" (`prova --lote <SHA>`). O check confere que o commit existe no repositório e contém o head da PR; um commit
+   novo na PR tira o head do lote, e a prova se refaz (docs/prova-em-lote.md).
+
 4. O corpo diz a issue da PR, em linhas sozinhas:
 
    Closes <URL completa da issue>
