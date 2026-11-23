@@ -38,19 +38,31 @@ function montarFatias(duracoes, quantas = NUMERO_DE_FATIAS) {
   return fatias.map(fatia => fatia.specs.sort());
 }
 
-function problemas({ duracoes, fatias }, specs) {
-  const achados = [];
+function lugaresDosSpecs(fatias) {
   const lugares = new Map();
-  fatias.forEach((lista, i) => lista.forEach(spec => lugares.set(spec, [...(lugares.get(spec) || []), i + 1])));
-  for (const spec of specs) {
-    const onde = lugares.get(spec) || [];
-    if (onde.length === 0) achados.push(`${spec} não está em nenhuma fatia`);
-    if (onde.length > 1) achados.push(`${spec} está em ${onde.length} fatias (${onde.join(', ')})`);
-    if (!(spec in duracoes)) achados.push(`${spec} não tem duração`);
+  for (const [i, lista] of fatias.entries()) {
+    for (const spec of lista) lugares.set(spec, [...(lugares.get(spec) || []), i + 1]);
   }
-  for (const spec of lugares.keys()) if (!specs.includes(spec)) achados.push(`${spec} está numa fatia mas não existe em e2e/tests`);
-  for (const spec of Object.keys(duracoes)) if (!specs.includes(spec)) achados.push(`${spec} tem duração mas não existe em e2e/tests`);
+  return lugares;
+}
+
+function achadosDoSpec(spec, onde, duracoes) {
+  const achados = [];
+  if (onde.length === 0) achados.push(`${spec} não está em nenhuma fatia`);
+  if (onde.length > 1) achados.push(`${spec} está em ${onde.length} fatias (${onde.join(', ')})`);
+  if (!(spec in duracoes)) achados.push(`${spec} não tem duração`);
   return achados;
+}
+
+const semSpecNoDisco = (nomes, specs, descricao) => nomes.filter(nome => !specs.includes(nome)).map(nome => `${nome} ${descricao}`);
+
+function problemas({ duracoes, fatias }, specs) {
+  const lugares = lugaresDosSpecs(fatias);
+  return [
+    ...specs.flatMap(spec => achadosDoSpec(spec, lugares.get(spec) || [], duracoes)),
+    ...semSpecNoDisco([...lugares.keys()], specs, 'está numa fatia mas não existe em e2e/tests'),
+    ...semSpecNoDisco(Object.keys(duracoes), specs, 'tem duração mas não existe em e2e/tests'),
+  ];
 }
 
 function filtros(specs) {
@@ -96,22 +108,30 @@ function duracoesParaOsSpecs(duracoes, specs) {
 
 module.exports = { ARQUIVO, ESTIMATIVA_DO_SPEC_NOVO, NUMERO_DE_FATIAS, duracoesDosLogs, duracoesParaOsSpecs, fatiasDe, filtros, ler, montarFatias, problemas, specsDoDisco };
 
-if (require.main === module) {
-  const [pedido, ...resto] = process.argv.slice(2);
-  const specs = specsDoDisco();
-  if (pedido === '--medir' && resto.length) {
-    const medidas = duracoesDosLogs(resto.map(arquivo => fs.readFileSync(arquivo, 'utf8')));
-    gravar(Object.fromEntries(specs.map(spec => [spec, Math.max(1, Math.round(medidas[spec] || 0))])));
-  } else if (/^\d+$/.test(pedido || '')) {
-    const fatias = fatiasDe(ler().duracoes, specs);
-    const numero = Number(pedido);
-    if (numero < 1 || numero > fatias.length) {
-      console.error(`fatia ${numero} não existe: são ${fatias.length}`);
-      process.exit(2);
-    }
-    console.log(filtros(fatias[numero - 1]).join(' '));
-  } else {
-    console.error('uso: node scripts/ci/fatias-e2e.js <N> | --medir <log>...');
-    process.exit(2);
+function medirNosLogs(arquivos, specs) {
+  const medidas = duracoesDosLogs(arquivos.map(arquivo => fs.readFileSync(arquivo, 'utf8')));
+  gravar(Object.fromEntries(specs.map(spec => [spec, Math.max(1, Math.round(medidas[spec] || 0))])));
+  return 0;
+}
+
+function imprimirFatia(numero, specs) {
+  const fatias = fatiasDe(ler().duracoes, specs);
+  if (numero < 1 || numero > fatias.length) {
+    console.error(`fatia ${numero} não existe: são ${fatias.length}`);
+    return 2;
   }
+  console.log(filtros(fatias[numero - 1]).join(' '));
+  return 0;
+}
+
+function executar([pedido = '', ...resto], specs) {
+  if (pedido === '--medir' && resto.length) return medirNosLogs(resto, specs);
+  if (/^\d+$/.test(pedido)) return imprimirFatia(Number(pedido), specs);
+  console.error('uso: node scripts/ci/fatias-e2e.js <N> | --medir <log>...');
+  return 2;
+}
+
+if (require.main === module) {
+  const codigo = executar(process.argv.slice(2), specsDoDisco());
+  if (codigo !== 0) process.exit(codigo);
 }
