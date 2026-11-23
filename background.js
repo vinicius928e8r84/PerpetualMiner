@@ -1,6 +1,6 @@
 'use strict';
 
-importScripts('lib/voz/catalogo.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/mineracao.js', 'lib/ajustes-de-envio.js', 'lib/mineracao-do-dia.js', 'lib/vocabulario-da-mineracao.js', 'lib/palavra-automatica.js', 'lib/mineracao-automatica-decisao.js', 'lib/pedido-ao-anki.js', 'lib/pareamento.js', 'lib/envio-gravado.js', 'lib/apagar-frases-pendente.js', 'lib/historico.js', 'lib/sincronizacao.js');
+importScripts('lib/voz/catalogo.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/mineracao.js', 'lib/ajustes-de-envio.js', 'lib/mineracao-do-dia.js', 'lib/vocabulario-da-mineracao.js', 'lib/palavra-automatica.js', 'lib/mineracao-automatica-decisao.js', 'lib/pedido-ao-anki.js', 'lib/pareamento.js', 'lib/envio-gravado.js', 'lib/apagar-frases-pendente.js', 'lib/historico.js', 'lib/sincronizacao.js', 'lib/ouvinte-de-mensagens.js');
 const { textoDaVoz, detectarIdioma, idiomaDe, IDIOMAS, MineracaoDoDia, Mineracao, MineracaoAutomatica, VocabularioDaMineracao, PalavraAutomatica, Sincronizacao } = PerpetualMiner;
 
 if (chrome.storage.local.setAccessLevel) {
@@ -58,68 +58,67 @@ function minerarSelecaoDoMenu(info, tab) {
   salvarFrase(selecao, contexto.fonte, contexto, detectarIdioma(selecao));
 }
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  // Um player em iframe sem permissão de clipboard pede a cópia ao frame de cima
-  // da mesma aba. Só o content script desta extensão alcança este canal; uma
-  // página não, então ela não consegue sobrescrever o clipboard por aqui. A
-  // resposta diz se a cópia saiu, para o overlay só afirmar o que aconteceu.
-  if (request.type === 'COPIAR_NO_FRAME_DE_CIMA') {
-    const texto = request.texto;
-    if (sender.id !== chrome.runtime.id || sender.tab?.id == null) return;
-    if (typeof texto !== 'string' || !texto.trim()) return;
-    chrome.tabs.sendMessage(sender.tab.id, { type: 'COPIAR_PARA_CLIPBOARD', texto }, { frameId: 0 })
-      .then(resposta => sendResponse({ ok: resposta?.ok === true }))
-      .catch(() => sendResponse({ ok: false }));
-    return true;
-  }
+const textoPedidoParaCopiar = request => typeof request.texto === 'string' && request.texto.trim() !== '';
 
-  if (request.type === 'HA_VIDEO_EM_OUTRO_FRAME') {
-    if (sender.id !== chrome.runtime.id || sender.tab?.id == null) return;
-    chrome.tabs.sendMessage(sender.tab.id, { type: 'TEM_VIDEO_NESTE_FRAME' })
-      .then(resposta => sendResponse({ temVideo: resposta?.temVideo === true }))
-      .catch(() => sendResponse({ temVideo: false }));
-    return true;
-  }
+const respostaDeFalha = codigo => erro => ({ ok: false, error: erro?.message || codigo });
 
-  if (request.type === 'SALVAR_HISTORICO') {
-    const palavras = Array.isArray(request.palavras) ? request.palavras.map(String) : null;
-    salvarFrase(
-      request.texto,
-      request.origem,
-      request.contexto  || null,
-      request.idioma    || IDIOMAS.INGLES,
-      palavras?.length ? { keywords: palavras, autoKeyword: false } : {},
-      { comPalavraAutomatica: !palavras, comNuvem: !request.semNuvem },
-    )
-      .then(frase => sendResponse({ ok: true, frase }))
-      .catch(err => sendResponse({ ok: false, error: err?.message || 'save_failed' }));
-    return true;
-  }
+function salvarDoContentScript(request) {
+  const palavras = Array.isArray(request.palavras) ? request.palavras.map(String) : null;
+  return salvarFrase(
+    request.texto,
+    request.origem,
+    request.contexto  || null,
+    request.idioma    || IDIOMAS.INGLES,
+    palavras?.length ? { keywords: palavras, autoKeyword: false } : {},
+    { comPalavraAutomatica: !palavras, comNuvem: !request.semNuvem },
+  ).then(frase => ({ ok: true, frase }));
+}
 
-  if (request.type === 'AUTO_MINER_GET_STATE') {
-    getAutoMinerState()
-      .then(state => sendResponse({ ok: true, state }))
-      .catch(err => sendResponse({ ok: false, error: err?.message || 'auto_miner_state_failed' }));
-    return true;
-  }
+function mudarAjustesDaAutomatica(request) {
+  return setAutoMinerSettings(request.settings || {}).then(state => {
+    publicarEstadoDaAutomatica(state);
+    return { ok: true, state };
+  });
+}
 
-  if (request.type === 'AUTO_MINER_SET_SETTINGS') {
-    setAutoMinerSettings(request.settings || {})
-      .then(state => {
-        publicarEstadoDaAutomatica(state);
-        sendResponse({ ok: true, state });
-      })
-      .catch(err => sendResponse({ ok: false, error: err?.message || 'auto_miner_settings_failed' }));
-    return true;
-  }
+const MENSAGENS_DO_SERVICE_WORKER = {
+  COPIAR_NO_FRAME_DE_CIMA: {
+    soDaExtensaoComAba: true,
+    aceita: textoPedidoParaCopiar,
+    responder: (request, remetente) => chrome.tabs
+      .sendMessage(remetente.tab.id, { type: 'COPIAR_PARA_CLIPBOARD', texto: request.texto }, { frameId: 0 })
+      .then(resposta => ({ ok: resposta?.ok === true })),
+    quandoFalhar: () => ({ ok: false }),
+  },
+  HA_VIDEO_EM_OUTRO_FRAME: {
+    soDaExtensaoComAba: true,
+    responder: (_request, remetente) => chrome.tabs
+      .sendMessage(remetente.tab.id, { type: 'TEM_VIDEO_NESTE_FRAME' })
+      .then(resposta => ({ temVideo: resposta?.temVideo === true })),
+    quandoFalhar: () => ({ temVideo: false }),
+  },
+  SALVAR_HISTORICO: {
+    responder: salvarDoContentScript,
+    quandoFalhar: respostaDeFalha('save_failed'),
+  },
+  AUTO_MINER_GET_STATE: {
+    responder: () => getAutoMinerState().then(state => ({ ok: true, state })),
+    quandoFalhar: respostaDeFalha('auto_miner_state_failed'),
+  },
+  AUTO_MINER_SET_SETTINGS: {
+    responder: mudarAjustesDaAutomatica,
+    quandoFalhar: respostaDeFalha('auto_miner_settings_failed'),
+  },
+  AUTO_MINER_CANDIDATE: {
+    responder: request => handleAutoMinerCandidate(request).then(resultado => ({ ok: true, ...resultado })),
+    quandoFalhar: erro => ({ ok: false, action: 'skip', reason: erro?.message || 'auto_miner_failed' }),
+  },
+};
 
-  if (request.type === 'AUTO_MINER_CANDIDATE') {
-    handleAutoMinerCandidate(request)
-      .then(result => sendResponse({ ok: true, ...result }))
-      .catch(err => sendResponse({ ok: false, action: 'skip', reason: err?.message || 'auto_miner_failed' }));
-    return true;
-  }
-});
+chrome.runtime.onMessage.addListener(PerpetualMiner.OuvinteDeMensagens.criar({
+  idDaExtensao: chrome.runtime.id,
+  mensagens: MENSAGENS_DO_SERVICE_WORKER,
+}));
 
 const historico = PerpetualMiner.Historico.criar({ armazenamento: { get: chromeGet, set: chromeSet } });
 
