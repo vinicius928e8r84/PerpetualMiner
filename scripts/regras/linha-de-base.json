@@ -43,7 +43,6 @@
   "saude-do-codigo": {
     "background.js": 41,
     "complemento/chaves.py": 29,
-    "complemento/correcao_da_criacao.py": 8,
     "complemento/envio.py": 10,
     "complemento/gravacao_de_json.py": 4,
     "complemento/inicio.py": 16,
@@ -118,7 +117,6 @@
     "lib/envio-gravado.js": 5,
     "lib/palavra-automatica.js": 20,
     "lib/pedido-ao-anki.js": 1,
-    "lib/sincronizacao.js": 8,
     "painel/painel-abrir-anki.js": 10,
     "painel/painel-anki-primeira-conexao-estado.js": 25,
     "painel/painel-anki-primeira-conexao.js": 9,
@@ -131,7 +129,6 @@
     "painel/painel-envio-estado.js": 21,
     "painel/painel-envio.js": 54,
     "painel/painel-ia-modelo.js": 4,
-    "painel/painel-shell.js": 8,
     "painel/painel.js": 86,
     "scripts/ci/corpo-da-pr.js": 7,
     "scripts/ci/fatias-e2e.js": 7,
