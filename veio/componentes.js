@@ -279,11 +279,11 @@
     fechavel = true,
     documento = document,
   }) {
-    if (fechavel && !rotuloDeFechar) throw new Error('O aviso precisa do rótulo de fechar, vindo do catálogo da Voz');
-    if (!TONS_DO_AVISO.includes(tom)) throw new Error(`Tom de aviso fora da Base Veio: ${tom}`);
+    exigirRotuloDeFechar(fechavel, rotuloDeFechar);
+    const { classe, papel } = aparenciaDoAviso(tom);
     const aviso = documento.createElement('div');
-    aviso.className = tom === 'info' ? 'veio-aviso veio-aviso--info' : 'veio-aviso';
-    aviso.setAttribute('role', tom === 'info' ? 'status' : 'alert');
+    aviso.className = classe;
+    aviso.setAttribute('role', papel);
     aviso.append(textoDoAviso(texto, abertura, icone, documento), acoesDoAviso(aviso, { acao, fechavel, rotuloDeFechar, aoFechar }, documento));
     if (detalhes) aviso.append(montarDetalhes(detalhes, documento));
     return aviso;
@@ -324,7 +324,20 @@
     return acoes;
   }
 
-  const TONS_DO_AVISO = ['perigo', 'info'];
+  const APARENCIA_DO_AVISO_POR_TOM = new Map([
+    ['perigo', { classe: 'veio-aviso', papel: 'alert' }],
+    ['info', { classe: 'veio-aviso veio-aviso--info', papel: 'status' }],
+  ]);
+
+  function exigirRotuloDeFechar(fechavel, rotuloDeFechar) {
+    if (fechavel && !rotuloDeFechar) throw new Error('O aviso precisa do rótulo de fechar, vindo do catálogo da Voz');
+  }
+
+  function aparenciaDoAviso(tom) {
+    const aparencia = APARENCIA_DO_AVISO_POR_TOM.get(tom);
+    if (!aparencia) throw new Error(`Tom de aviso fora da Base Veio: ${tom}`);
+    return aparencia;
+  }
 
   function montarDetalhes(causa, documento = document, rotulo = ROTULOS_DO_PADRAO.detalhes) {
     const recolhido = documento.createElement('details');
