@@ -92,7 +92,6 @@
     "e2e/fakes/rotas-dos-servicos.js": 3,
     "e2e/fixtures.js": 5,
     "e2e/loja/validar.js": 9,
-    "e2e/pagina-de-mentira-do-pareamento.js": 4,
     "e2e/tests/base-veio.spec.js": 1,
     "e2e/tests/boas-vindas-quiz-ranking.spec.js": 2,
     "e2e/tests/chave-autoridade.spec.js": 3,
