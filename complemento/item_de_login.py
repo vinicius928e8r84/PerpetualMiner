@@ -175,23 +175,36 @@ def _lista_do_alvo(alvo):
     if len(unidade) != 2 or unidade[1] != ":":
         return b""
     partes = [parte for parte in resto.split("\\") if parte]
-    itens = [struct.pack("<HBB", 20, 0x1F, 0x50) + _MEU_COMPUTADOR]
-    itens.append(struct.pack("<HB", 25, 0x2F) + (unidade + "\\").encode("cp1252", "replace").ljust(22, b"\x00"))
-    for posicao, parte in enumerate(partes):
-        eh_arquivo = posicao == len(partes) - 1
-        tipo = 0x32 if eh_arquivo else 0x31
-        if parte.isascii():
-            nome = parte.encode("ascii") + b"\x00"
-            if len(nome) % 2:
-                nome += b"\x00"
-        else:
-            # Fora do ASCII o nome vai em UTF-16: em bytes da página ANSI o Windows não acha a pasta cujo nome ela não guarda (“João” só
-            # cabe na cp1252, “Ωμέγα” nem nela), e o atalho não abre.
-            tipo |= _NOME_EM_UNICODE
-            nome = (parte + "\x00").encode("utf-16-le")
-        itens.append(struct.pack("<HBBIHHH", 14 + len(nome), tipo, 0, 0, 0x21, 0, 0x20 if eh_arquivo else 0x10) + nome)
+    itens = [_item_de_meu_computador(), _item_da_unidade(unidade)]
+    itens += [_item_da_parte(parte, eh_arquivo=posicao == len(partes) - 1) for posicao, parte in enumerate(partes)]
     lista = b"".join(itens) + b"\x00\x00"
     return struct.pack("<H", len(lista)) + lista
+
+
+def _item_de_meu_computador():
+    return struct.pack("<HBB", 20, 0x1F, 0x50) + _MEU_COMPUTADOR
+
+
+def _item_da_unidade(unidade):
+    return struct.pack("<HB", 25, 0x2F) + (unidade + "\\").encode("cp1252", "replace").ljust(22, b"\x00")
+
+
+def _nome_do_item(parte):
+    """O nome como o item o guarda, e a marca de que ele está em UTF-16.
+
+    Fora do ASCII o nome vai em UTF-16: em bytes da página ANSI o Windows não acha a pasta cujo nome ela não guarda (“João” só
+    cabe na cp1252, “Ωμέγα” nem nela), e o atalho não abre.
+    """
+    if not parte.isascii():
+        return (parte + "\x00").encode("utf-16-le"), _NOME_EM_UNICODE
+    nome = parte.encode("ascii") + b"\x00"
+    return (nome + b"\x00" if len(nome) % 2 else nome), 0
+
+
+def _item_da_parte(parte, *, eh_arquivo):
+    nome, em_unicode = _nome_do_item(parte)
+    tipo = (0x32 if eh_arquivo else 0x31) | em_unicode
+    return struct.pack("<HBBIHHH", 14 + len(nome), tipo, 0, 0, 0x21, 0, 0x20 if eh_arquivo else 0x10) + nome
 
 
 def _link_info(alvo):
