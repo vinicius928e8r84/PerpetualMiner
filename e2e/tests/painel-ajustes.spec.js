@@ -1,6 +1,7 @@
 'use strict';
 
 const { test, expect } = require('../fixtures');
+const { falharAPrimeiraLeitura } = require('../apoio-da-leitura-dos-ajustes');
 const DEN = 'PerpetualMiner::Inglês', DRU = 'PerpetualMiner::Russo', LEN = DEN.replace('::', ' › '), LRU = DRU.replace('::', ' › ');
 
 const AGORA = new Date('2026-09-18T12:00:00');
@@ -126,19 +127,7 @@ test('edição feita durante o salvamento permanece como rascunho não salvo', a
 test('falha ao ler os ajustes antes de salvar não sobrescreve o gravado', async ({ page, extensao }) => {
   await abrirAjustes(page, extensao, { gravado: { [CHAVE]: AJUSTES } });
   await baralho(page).fill('Rascunho');
-  await page.evaluate(() => {
-    const ler = chrome.storage.local.get.bind(chrome.storage.local);
-    let falhou = false;
-    chrome.storage.local.get = (chaves, callback) => {
-      if (!falhou && chaves && typeof chaves === 'object' && 'ankiBridgePresets' in chaves) {
-        falhou = true;
-        Object.defineProperty(chrome.runtime, 'lastError', { configurable: true, value: { message: 'Falha de leitura' } });
-        try { callback(undefined); } finally { delete chrome.runtime.lastError; }
-        return;
-      }
-      return ler(chaves, callback);
-    };
-  });
+  await falharAPrimeiraLeitura(page, CHAVE, 'Falha de leitura');
 
   await salvar(page).click();
   await expect(page.getByRole('alert')).toContainText('Não deu para salvar os ajustes de envio. Tente de novo.');
