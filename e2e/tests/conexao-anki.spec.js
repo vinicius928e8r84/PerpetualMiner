@@ -2,6 +2,7 @@
 
 const { test, expect } = require('../fixtures');
 const path = require('path');
+const { deixarALeituraSemResposta, recusarALeitura } = require('../apoio-da-leitura-do-fato');
 
 const fotografar = async (page, nome) => {
   if (process.env.PM_EVIDENCE_DIR) {
@@ -44,13 +45,7 @@ test('painel: uma porta que aceita e não responde conta como desligada em 3 s, 
 
 test('painel: a porta muda é detectada mesmo se a leitura do fato não termina', async ({ page, extensao, fakes }) => {
   fakes.anki.silenciar();
-  await page.addInitScript(() => {
-    const ler = chrome.storage.local.get.bind(chrome.storage.local);
-    chrome.storage.local.get = (...args) => {
-      if (args[0] && typeof args[0] === 'object' && 'pm_anki_ja_conectou' in args[0]) return new Promise(() => {});
-      return ler(...args);
-    };
-  });
+  await deixarALeituraSemResposta(page, 'pm_anki_ja_conectou');
   // A inicialização do Chromium pode demorar; os 3 s são medidos só a partir
   // do pedido HTTP, não a partir da navegação.
   const inicio = inicioDoHealth(page);
@@ -62,13 +57,7 @@ test('painel: a porta muda é detectada mesmo se a leitura do fato não termina'
 
 test('painel: falha na leitura do fato não impede conferir a Conexão', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
-  await page.addInitScript(() => {
-    const ler = chrome.storage.local.get.bind(chrome.storage.local);
-    chrome.storage.local.get = (...args) => {
-      if (args[0] && typeof args[0] === 'object' && 'pm_anki_ja_conectou' in args[0]) return Promise.reject(new Error('storage unavailable'));
-      return ler(...args);
-    };
-  });
+  await recusarALeitura(page, 'pm_anki_ja_conectou', 'storage unavailable');
   await page.goto(extensao.url('painel.html#anki/custos'));
   await expect(pontoDaConexao(page)).toHaveAttribute('data-estado', 'desligada');
   await expect(faixaF1(page)).toBeVisible();
