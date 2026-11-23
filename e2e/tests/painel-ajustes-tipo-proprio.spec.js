@@ -3,36 +3,14 @@
 const { test, expect } = require('../fixtures');
 const { estadoFinal } = require('../estado-final');
 const { AGORA, INGLESAS, SACK, abrirPainel, marcarEEnviar, enviosCriados } = require('../apoio-do-envio');
-
-const CHAVE = 'ankiBridgePresets';
-const AJUSTES = {
-  en: { deckName: 'Inglês', imageSource: '1', ttsWordTld: 'com', ttsPhraseTld: 'co.uk', versao: 1 },
-  ru: { deckName: 'Русский', imageSource: '1', ttsWordTld: 'ru', ttsPhraseTld: 'ru', versao: 1 },
-};
-const MEU_TIPO = { name: 'Meu Inglês', fields: ['Pergunta', 'Resposta', 'Anotações', 'Som'] };
-const TIPO_DE_UM_CAMPO = { name: 'Só um campo', fields: ['Texto'] };
-
-const formulario = (page, idioma = 'Inglês') => page.getByRole('form', { name: `Ajustes de envio · ${idioma}` });
-const abrirOTipo = page => formulario(page).getByRole('button', { name: 'Usar um tipo que já tenho' });
-const painelDoTipo = page => formulario(page).getByRole('group', { name: 'Usar um tipo que já tenho' });
-const campo = (page, nome) => painelDoTipo(page).getByLabel(nome, { exact: true });
-const continuar = page => painelDoTipo(page).getByRole('button', { name: 'Continuar' });
-const salvar = page => formulario(page).getByRole('button', { name: 'Salvar ajustes' });
-const situacao = page => formulario(page).getByRole('status').filter({ hasText: /Salvo|Alterações não salvas/ });
-const pedidosDaPrevia = fakes => fakes.anki.requisicoes.filter(r => r.caminho === '/anki/card-preview' && r.dados?.tipoProprio).map(r => r.dados);
-
-async function abrirAjustes(page, extensao, fakes, { tipos = [MEU_TIPO, TIPO_DE_UM_CAMPO], gravado = AJUSTES } = {}) {
-  fakes.anki.previa.tiposDeNota.definir(tipos);
-  await extensao.gravarStorage({ pm_anki_ja_conectou: true, [CHAVE]: gravado });
-  await page.clock.setFixedTime(AGORA);
-  await page.goto(extensao.url('painel.html#anki/ajustes'));
-  await expect(formulario(page)).toBeVisible();
-}
+const {
+  CHAVE, AJUSTES, MEU_TIPO, TIPO_DE_UM_CAMPO,
+  formulario, abrirOTipo, painelDoTipo, campo, continuar, salvar, situacao, pedidosDaPrevia,
+  abrirAjustes, abrirOPainelDoTipo,
+} = require('../apoio-do-tipo-proprio');
 
 test('mapear o tipo que a pessoa já tem: a prévia aparece, Continuar liga e Salvar ajustes guarda o mapeamento', async ({ page, extensao, fakes }) => {
-  await abrirAjustes(page, extensao, fakes);
-
-  await abrirOTipo(page).click();
+  await abrirOPainelDoTipo(page, extensao, fakes);
   await expect(continuar(page)).toBeDisabled();
   await campo(page, 'Tipo de nota').selectOption('Meu Inglês');
   await expect(campo(page, 'Frase')).toHaveValue('Pergunta');
@@ -76,9 +54,7 @@ test('o tipo que a pessoa já tem fica com a frente que ela já tem: a escolha d
 });
 
 test('um tipo sem campo para a Frase e outro para a resposta: Continuar fica desligado, a tela explica, oferece o estilo pronto e nada é gravado', async ({ page, extensao, fakes }) => {
-  await abrirAjustes(page, extensao, fakes);
-
-  await abrirOTipo(page).click();
+  await abrirOPainelDoTipo(page, extensao, fakes);
   await campo(page, 'Tipo de nota').selectOption('Só um campo');
   await expect(painelDoTipo(page).getByRole('alert')).toContainText('Este tipo de nota não tem um campo para a frase e outro para a resposta. Nada foi alterado no Anki.');
   await expect(continuar(page)).toBeDisabled();
@@ -92,8 +68,7 @@ test('um tipo sem campo para a Frase e outro para a resposta: Continuar fica des
 });
 
 test('a Frase e a resposta no mesmo campo, ou uma delas sem campo, desligam o Continuar até haver dois campos diferentes', async ({ page, extensao, fakes }) => {
-  await abrirAjustes(page, extensao, fakes);
-  await abrirOTipo(page).click();
+  await abrirOPainelDoTipo(page, extensao, fakes);
   await campo(page, 'Tipo de nota').selectOption('Meu Inglês');
   await expect(continuar(page)).toBeEnabled();
 
@@ -109,8 +84,7 @@ test('a Frase e a resposta no mesmo campo, ou uma delas sem campo, desligam o Co
 });
 
 test('o tipo de nota que some do Anki depois de lido: a prévia diz isso, sem mandar atualizar a Conexão, e Tentar de novo a mostra quando ele volta', async ({ page, extensao, fakes }) => {
-  await abrirAjustes(page, extensao, fakes);
-  await abrirOTipo(page).click();
+  await abrirOPainelDoTipo(page, extensao, fakes);
   await expect(campo(page, 'Tipo de nota')).toBeVisible();
   fakes.anki.previa.tiposDeNota.definir([TIPO_DE_UM_CAMPO]);
   await campo(page, 'Tipo de nota').selectOption('Meu Inglês');
@@ -124,29 +98,32 @@ test('o tipo de nota que some do Anki depois de lido: a prévia diz isso, sem ma
   await estadoFinal(extensao, { [CHAVE]: { en: { versao: 1 } } });
 });
 
-test('sem a Conexão com o Anki ligada a lista não vem, a tela diz e o Tentar de novo lê de novo', async ({ page, extensao, fakes }) => {
-  await abrirAjustes(page, extensao, fakes);
-  fakes.anki.abrirPerfil(null);
+const SEM_A_LISTA = [
+  {
+    nome: 'sem a Conexão com o Anki ligada a lista não vem, a tela diz e o Tentar de novo lê de novo',
+    perderAConexao: fakes => fakes.anki.abrirPerfil(null),
+    recuperarAConexao: fakes => fakes.anki.abrirPerfil('Usuário 1'),
+  },
+  {
+    nome: 'com a Conexão com o Anki sem responder a lista não vem, a tela diz e o Tentar de novo lê de novo',
+    perderAConexao: fakes => fakes.anki.desligar(),
+    recuperarAConexao: fakes => fakes.anki.ligar(),
+  },
+];
 
-  await abrirOTipo(page).click();
-  await expect(painelDoTipo(page)).toContainText('Os tipos de nota aparecem com a Conexão com o Anki ligada.');
-  fakes.anki.abrirPerfil('Usuário 1');
-  await painelDoTipo(page).getByRole('button', { name: 'Tentar de novo' }).click();
-  await expect(campo(page, 'Tipo de nota')).toBeVisible();
-  await estadoFinal(extensao, { [CHAVE]: { en: { versao: 1 } } });
-});
+for (const { nome, perderAConexao, recuperarAConexao } of SEM_A_LISTA) {
+  test(nome, async ({ page, extensao, fakes }) => {
+    await abrirAjustes(page, extensao, fakes);
+    perderAConexao(fakes);
 
-test('com a Conexão com o Anki sem responder a lista não vem, a tela diz e o Tentar de novo lê de novo', async ({ page, extensao, fakes }) => {
-  await abrirAjustes(page, extensao, fakes);
-  fakes.anki.desligar();
-
-  await abrirOTipo(page).click();
-  await expect(painelDoTipo(page)).toContainText('Os tipos de nota aparecem com a Conexão com o Anki ligada.');
-  fakes.anki.ligar();
-  await painelDoTipo(page).getByRole('button', { name: 'Tentar de novo' }).click();
-  await expect(campo(page, 'Tipo de nota')).toBeVisible();
-  await estadoFinal(extensao, { [CHAVE]: { en: { versao: 1 } } });
-});
+    await abrirOTipo(page).click();
+    await expect(painelDoTipo(page)).toContainText('Os tipos de nota aparecem com a Conexão com o Anki ligada.');
+    recuperarAConexao(fakes);
+    await painelDoTipo(page).getByRole('button', { name: 'Tentar de novo' }).click();
+    await expect(campo(page, 'Tipo de nota')).toBeVisible();
+    await estadoFinal(extensao, { [CHAVE]: { en: { versao: 1 } } });
+  });
+}
 
 test('uma Conexão com o Anki que não conhece os tipos de nota pede a atualização, sem Tentar de novo', async ({ page, extensao, fakes }) => {
   await abrirAjustes(page, extensao, fakes);
