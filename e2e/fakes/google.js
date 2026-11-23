@@ -364,6 +364,19 @@ function nomeDoCaminho(caminho) {
   return `${RAIZ_DOS_DOCUMENTOS}/${caminho}`;
 }
 
+const SEGMENTO_SIMPLES = /^[A-Za-z_][A-Za-z_0-9]*/;
+const SEGMENTO_ENTRE_CRASES = /^`((?:[^`\\]|\\.)+)`/;
+
+const caminhoInvalido = caminho => new Error(`Invalid property path "${caminho}".`);
+
+function primeiroSegmento(resto, caminho) {
+  const simples = resto.match(SEGMENTO_SIMPLES);
+  if (simples) return { nome: simples[0], tamanho: simples[0].length };
+  const citado = resto.match(SEGMENTO_ENTRE_CRASES);
+  if (citado) return { nome: citado[1].replace(/\\(.)/g, '$1'), tamanho: citado[0].length };
+  throw caminhoInvalido(caminho);
+}
+
 // Caminho de campo como a API REST aceita: segmentos separados por ponto, cada um
 // um nome simples (letras, dígitos e _, sem começar com dígito) ou um nome entre
 // crases, com \ escapando. `ids.123` é recusado; `ids.\`123\`` vale.
@@ -371,13 +384,11 @@ function segmentosDoCaminhoDeCampo(caminho) {
   const segmentos = [];
   let resto = caminho;
   while (true) {
-    const simples = resto.match(/^[A-Za-z_][A-Za-z_0-9]*/);
-    const citado = resto.match(/^`((?:[^`\\]|\\.)+)`/);
-    if (!simples && !citado) throw new Error(`Invalid property path "${caminho}".`);
-    segmentos.push(simples ? simples[0] : citado[1].replace(/\\(.)/g, '$1'));
-    resto = resto.slice((simples || citado)[0].length);
+    const { nome, tamanho } = primeiroSegmento(resto, caminho);
+    segmentos.push(nome);
+    resto = resto.slice(tamanho);
     if (resto === '') return segmentos;
-    if (resto[0] !== '.') throw new Error(`Invalid property path "${caminho}".`);
+    if (resto[0] !== '.') throw caminhoInvalido(caminho);
     resto = resto.slice(1);
   }
 }
@@ -400,14 +411,19 @@ function gravarCampo(fields, [primeiro, ...resto], valor) {
   gravarCampo(fields[primeiro].mapValue.fields, resto, valor);
 }
 
+const ESCRITORES_DO_VALOR = [
+  [valor => typeof valor === 'string', valor => ({ stringValue: valor })],
+  [valor => typeof valor === 'number', valor => ({ integerValue: String(valor) })],
+  [valor => typeof valor === 'boolean', valor => ({ booleanValue: valor })],
+  [Array.isArray, valor => ({ arrayValue: { values: valor.map(v => ({ stringValue: String(v) })) } })],
+  [valor => valor && typeof valor === 'object', valor => ({ mapValue: { fields: objetoParaCampos(valor) } })],
+];
+
 function objetoParaCampos(obj) {
   const fields = {};
   for (const [chave, valor] of Object.entries(obj)) {
-    if (typeof valor === 'string') fields[chave] = { stringValue: valor };
-    else if (typeof valor === 'number') fields[chave] = { integerValue: String(valor) };
-    else if (typeof valor === 'boolean') fields[chave] = { booleanValue: valor };
-    else if (Array.isArray(valor)) fields[chave] = { arrayValue: { values: valor.map(v => ({ stringValue: String(v) })) } };
-    else if (valor && typeof valor === 'object') fields[chave] = { mapValue: { fields: objetoParaCampos(valor) } };
+    const escritor = ESCRITORES_DO_VALOR.find(([ehDoTipo]) => ehDoTipo(valor));
+    if (escritor) fields[chave] = escritor[1](valor);
   }
   return fields;
 }
