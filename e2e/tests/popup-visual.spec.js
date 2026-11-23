@@ -114,7 +114,7 @@ test('carregando: esqueleto', async ({ page, extensao }) => {
   await page.addInitScript(() => {
     const ler = chrome.storage.local.get.bind(chrome.storage.local);
     chrome.storage.local.get = (chaves, callback) => {
-      if (chaves && typeof chaves === 'object' && 'frases' in chaves) return undefined;
+      if ('frases' in Object(chaves)) return undefined;
       return ler(chaves, callback);
     };
   });
