@@ -7,6 +7,7 @@ A regra `indice-de-arquivos` (`scripts/regras/indice-de-arquivos.js`) exige uma 
 | File | Role |
 |------|------|
 | `painel/painel.html/js/css` | Full dashboard to view, copy, and delete all saved phrases; Google login and Firestore sync |
+| `painel/esqueleto-frases.js` | The markup of the Frases area (header and Minerar frases menu, the ONB-15 strip, filters, selection bar, list placeholder, pager), built with `Veio.elemento` and put first in `main.shell-conteudo` before the other panel scripts run. It has no logic: `painel/painel.js` and the modules bind the events to its ids. The tree is held by `testes/test_esqueleto_das_frases.js` |
 | `painel/painel-shell.js` | The panel's “Ilhas” shell: one page, one area per address (`#frases`, `#anki/<aba>`, `#configuracoes[/<seção>]`), the sidebar indicators (phrase total, Conexão com o Anki dot), the rail below ~1000 px, the F1 strip and the Configurações cards opening and closing. See “Panel shell” in `docs/arquitetura.md` |
 | `painel/painel-conta.js` | The account in the panel: one state drawn in the Configurações › Conta & sync card, its closed-row summary and the sidebar chip (CFG-01…10). See “Account (Conta & sync)” in the `configuracoes` skill |
 | `painel/painel-atalhos.js` | The shortcut recorder (`PerpetualMiner.GravadorDeAtalhos.montar`): records “Minerar legenda” and “Minerar seleção” in their own row (CFG-11…14, 19, 21, 22, 33, 34), mounted in Configurações › Atalhos and in step 2 of the Boas-vindas. See “Shortcuts (Atalhos)” in the `configuracoes` skill |
