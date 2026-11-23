@@ -74,53 +74,40 @@ function semearMineracaoAutomatica(extensao, { en, ru, dia = diaDe(new Date()) }
   });
 }
 
-test('o badge soma só os idiomas ligados', async ({ extensao }) => {
-  await semearMineracaoAutomatica(extensao, {
+const CASOS_DO_BADGE = [
+  {
+    nome: 'o badge soma só os idiomas ligados',
     en: { ligado: true, limite: 20, hoje: 12 },
     ru: { ligado: false, limite: 20, hoje: 13 },
-  });
-
-  await expect.poll(() => naToolbar(extensao)).toEqual({
-    badge: '12',
-    tooltip: 'Mineração automática: 12 hoje',
-  });
-});
-
-test('com os dois idiomas desligados não há badge', async ({ extensao }) => {
-  await semearMineracaoAutomatica(extensao, {
+    esperado: { badge: '12', tooltip: 'Mineração automática: 12 hoje' },
+  },
+  {
+    nome: 'com os dois idiomas desligados não há badge',
     en: { ligado: false, limite: 20, hoje: 12 },
     ru: { ligado: false, limite: 20, hoje: 13 },
-  });
-
-  await expect.poll(() => naToolbar(extensao)).toEqual({
-    badge: '',
-    tooltip: 'PerpetualMiner',
-  });
-});
-
-test('quando todos os ligados bateram o limite, o tooltip diz isso', async ({ extensao }) => {
-  await semearMineracaoAutomatica(extensao, {
+    esperado: { badge: '', tooltip: 'PerpetualMiner' },
+  },
+  {
+    nome: 'quando todos os ligados bateram o limite, o tooltip diz isso',
     en: { ligado: true, limite: 15, hoje: 15 },
     ru: { ligado: true, limite: 10, hoje: 10 },
-  });
-
-  await expect.poll(() => naToolbar(extensao)).toEqual({
-    badge: '25',
-    tooltip: 'Mineração automática: limite de hoje atingido',
-  });
-});
-
-test('um só dos ligados no limite ainda mostra o contador', async ({ extensao }) => {
-  await semearMineracaoAutomatica(extensao, {
+    esperado: { badge: '25', tooltip: 'Mineração automática: limite de hoje atingido' },
+  },
+  {
+    nome: 'um só dos ligados no limite ainda mostra o contador',
     en: { ligado: true, limite: 15, hoje: 15 },
     ru: { ligado: true, limite: 20, hoje: 3 },
-  });
+    esperado: { badge: '18', tooltip: 'Mineração automática: 18 hoje' },
+  },
+];
 
-  await expect.poll(() => naToolbar(extensao)).toEqual({
-    badge: '18',
-    tooltip: 'Mineração automática: 18 hoje',
+for (const { nome, en, ru, esperado } of CASOS_DO_BADGE) {
+  test(nome, async ({ extensao }) => {
+    await semearMineracaoAutomatica(extensao, { en, ru });
+
+    await expect.poll(() => naToolbar(extensao)).toEqual(esperado);
   });
-});
+}
 
 test('ligar e desligar um idioma no popup muda o badge na hora', async ({ page, extensao }) => {
   await semearMineracaoAutomatica(extensao, {
