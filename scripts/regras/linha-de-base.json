@@ -145,5 +145,6 @@
     "testes/test_estado_do_envio.js": 5,
     "testes/test_preview.js": 4,
     "testes/test_primeira_conexao.js": 13
-  }
+  },
+  "glossario-so-linguagem": {}
 }
