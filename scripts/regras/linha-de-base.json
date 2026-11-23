@@ -92,7 +92,6 @@
     "e2e/tests/painel-envio.spec.js": 2,
     "e2e/tests/popup-visual.spec.js": 1,
     "e2e/tests/popup.spec.js": 3,
-    "engine/extract_prompts.py": 5,
     "engine/openai_http.py": 13,
     "engine/rodar_imagens.py": 5,
     "lib/abrir-o-anki.js": 7,
