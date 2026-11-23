@@ -113,22 +113,21 @@
       });
     }
 
-    function corpoDoPainel() {
-      const { leitura } = estado;
-      if (!leitura || leitura.estado === 'carregando') return [elemento('p', 'ajustes-campo__ajuda', textoDaVoz('BRG-45.carregando'))];
-      if (leitura.estado !== 'pronta') {
-        return [Veio.montarAviso({
-          tom: 'info',
-          texto: textoDaVoz(`BRG-45.${leitura.estado}`),
-          fechavel: false,
-          ...(leitura.estado !== 'antiga' && { acao: { rotulo: textoDaVoz('BRG-45.tentarDeNovo'), aoUsar: () => { estado.leitura = null; lerEMostrar(); } } }),
-        })];
-      }
+    function avisoDaLeitura(motivo) {
+      return Veio.montarAviso({
+        tom: 'info',
+        texto: textoDaVoz(`BRG-45.${motivo}`),
+        fechavel: false,
+        ...(motivo !== 'antiga' && { acao: { rotulo: textoDaVoz('BRG-45.tentarDeNovo'), aoUsar: () => { estado.leitura = null; lerEMostrar(); } } }),
+      });
+    }
+
+    function escolhaDoTipo(tipos) {
       const escolha = elemento('select', 'veio-campo');
       escolha.id = `${id}-tipo`;
       const nenhum = elemento('option', '', textoDaVoz('BRG-45.escolherTipo'));
       nenhum.value = '';
-      escolha.append(nenhum, ...leitura.tipos.map(tipo => {
+      escolha.append(nenhum, ...tipos.map(tipo => {
         const opcao = elemento('option', '', tipo.name);
         opcao.value = tipo.name;
         return opcao;
@@ -137,27 +136,39 @@
       escolha.addEventListener('change', () => escolherOTipo(escolha.value));
       const rotulo = elemento('label', 'ajustes-campo__ajuda', textoDaVoz('BRG-45.tipo'));
       rotulo.htmlFor = escolha.id;
-      const blocos = [elemento('div', 'ajustes-proprio__campo', rotulo, elemento('span', 'veio-select', escolha))];
-      if (!leitura.tipos.length) return [elemento('p', 'ajustes-campo__ajuda', textoDaVoz('BRG-45.semTipos'))];
+      return elemento('div', 'ajustes-proprio__campo', rotulo, elemento('span', 'veio-select', escolha));
+    }
+
+    function camposDoTipo(tipo) {
+      const problema = problemaDoMapa(tipo, estado.mapa);
+      return [...PARTES.map(parte => selecaoDeCampo(parte, tipo)), problema ? avisoDeFalta(problema) : previaNoTipo(tipo)];
+    }
+
+    function mapaPronto() {
       const tipo = tipoEscolhido();
-      let problema = null;
-      if (tipo) {
-        blocos.push(...PARTES.map(parte => selecaoDeCampo(parte, tipo)));
-        problema = problemaDoMapa(tipo, estado.mapa);
-        if (problema) blocos.push(avisoDeFalta(problema));
-        else blocos.push(previaNoTipo(tipo));
-      }
+      return Boolean(tipo) && !problemaDoMapa(tipo, estado.mapa);
+    }
+
+    function acoesDoPainel() {
       const continuar = elemento('button', 'veio-botao veio-botao--primario', textoDaVoz('BRG-45.continuar'));
       continuar.type = 'button';
       continuar.id = `${id}-continuar`;
-      continuar.disabled = !tipo || Boolean(problema);
+      continuar.disabled = !mapaPronto();
       continuar.addEventListener('click', confirmar);
       const pronto = elemento('button', 'veio-botao veio-botao--link', textoDaVoz('BRG-45.usarOPronto'));
       pronto.type = 'button';
       pronto.id = `${id}-pronto`;
       pronto.addEventListener('click', usarOPronto);
-      blocos.push(elemento('div', 'ajustes-acoes', continuar, pronto));
-      return blocos;
+      return elemento('div', 'ajustes-acoes', continuar, pronto);
+    }
+
+    function corpoDoPainel() {
+      const { leitura } = estado;
+      if (!leitura || leitura.estado === 'carregando') return [elemento('p', 'ajustes-campo__ajuda', textoDaVoz('BRG-45.carregando'))];
+      if (leitura.estado !== 'pronta') return [avisoDaLeitura(leitura.estado)];
+      if (!leitura.tipos.length) return [elemento('p', 'ajustes-campo__ajuda', textoDaVoz('BRG-45.semTipos'))];
+      const tipo = tipoEscolhido();
+      return [escolhaDoTipo(leitura.tipos), ...(tipo ? camposDoTipo(tipo) : []), acoesDoPainel()];
     }
 
     function previaNoTipo() {
@@ -184,7 +195,7 @@
     }
 
     function mostrarNivel() {
-      if (estado.aberto && tipoEscolhido() && !problemaDoMapa(tipoEscolhido(), estado.mapa)) desenhar();
+      if (estado.aberto && mapaPronto()) desenhar();
     }
 
     desenhar();

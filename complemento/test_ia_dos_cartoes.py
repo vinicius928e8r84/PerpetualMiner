@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import envio
 from complemento.chaves import Cofre
-from complemento.ia_dos_cartoes import CORRECAO, ETAPAS, IMAGEM, JUIZ, OUVIR, TEXTO, VOZ, IaDosCartoes, Situacao, quem_paga_a_etapa
+from complemento.ia_dos_cartoes import CORRECAO, ETAPAS, IMAGEM, JUIZ, OUVIR, TEXTO, VOZ, IaDosCartoes, MotorNaOpenAI, Situacao, quem_paga_a_etapa
 from complemento.login_do_chatgpt import ACABOU, CONECTADA, SAIU, SEM_LOGIN, ErroDoPlano, LoginDoChatGPT
 from complemento.modelo_dos_cartoes import CHAVE, PARADO, PLANO, Conta, ListaDosModelos, ModeloDosCartoes, lista_nossa
 from complemento.test_correcao_de_mentira import COMECO_DO_PROMPT
@@ -61,7 +61,7 @@ def guardar(pasta, login, tem_chave, api="http://127.0.0.1:9"):
 
 def porta(pasta, situacao):
     login, _, _, tem_chave = SITUACOES[situacao]
-    return IaDosCartoes(*guardar(pasta, login, tem_chave), modelos=None, motor=envio.motor_do_complemento(), openai_base="http://127.0.0.1:9")
+    return IaDosCartoes(Conta(*guardar(pasta, login, tem_chave)), modelos=None, motor=MotorNaOpenAI(envio.motor_do_complemento(), "http://127.0.0.1:9"))
 
 
 class ATabelaDeQuemPaga(unittest.TestCase):
@@ -117,7 +117,7 @@ class ACredencialDeCadaEtapa(unittest.TestCase):
 
     def test_usar_a_minha_chave_sem_chave_guardada_para_o_texto_mesmo_com_o_login(self):
         with tempfile.TemporaryDirectory() as pasta:
-            ia = IaDosCartoes(*guardar(pasta, CONECTADA, False), modelos=None)
+            ia = IaDosCartoes(Conta(*guardar(pasta, CONECTADA, False)), modelos=None)
             pagador = ia.para_o_texto(True)
         self.assertEqual((pagador.quem, pagador.motivo), (PARADO, SEM_CHAVE))
 
@@ -155,10 +155,11 @@ def porta_e_modelos_na_openai(pasta, situacao, openai):
     motor = envio.motor_do_complemento()
     login, cofre = guardar(pasta, SITUACOES[situacao][0], SITUACOES[situacao][3], api=openai.base)
     lista = ListaDosModelos(lista_nossa(), date.today, lambda: motor.config_loader.base_config()["openai"]["chat_model"], logging.getLogger("teste"))
-    modelos = ModeloDosCartoes(os.path.join(pasta, "modelo-dos-cartoes.json"), lista, Conta(login, cofre, openai.base), logging.getLogger("teste"))
+    conta = Conta(login, cofre, openai.base)
+    modelos = ModeloDosCartoes(os.path.join(pasta, "modelo-dos-cartoes.json"), lista, conta, logging.getLogger("teste"))
     config = motor.config_loader.base_config()
     config["paths"]["log_dir"] = os.path.join(pasta, "custos")
-    return IaDosCartoes(login, cofre, modelos, motor=motor, openai_base=openai.base), modelos, config
+    return IaDosCartoes(conta, modelos, motor=MotorNaOpenAI(motor, openai.base)), modelos, config
 
 
 def custos(config):
@@ -336,7 +337,7 @@ class ACorrecaoPelaPorta(unittest.TestCase):
 
     def test_so_o_texto_e_a_correcao_sao_pedidos_pela_porta(self):
         with self.assertRaises(ValueError):
-            IaDosCartoes(None, None, None).pedido_do_texto(None, {"paths": {"log_dir": "."}}, IMAGEM)
+            IaDosCartoes(Conta(None, None), None).pedido_do_texto(None, {"paths": {"log_dir": "."}}, IMAGEM)
 
 
 if __name__ == "__main__":

@@ -27,7 +27,7 @@ Pagador = namedtuple("Pagador", "quem credencial motivo")
 LISTA_NOSSA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "modelos_da_ia.json")
 
 
-class Conta(namedtuple("Conta", "login cofre openai_base")):
+class Conta(namedtuple("Conta", "login cofre openai_base", defaults=(None,))):
     """Quem pode pagar um pedido: o login do ChatGPT (`LoginDoChatGPT`; None: sem login) e o cofre, com a chave da OpenAI, e o endereço
     da OpenAI onde se pergunta o que a conta da chave tem."""
 

@@ -114,8 +114,8 @@ def cores_de(html):
     return re.findall(r'<span style="color: (#[0-9a-f]{6});">(.*?)</span>', html)
 
 
-def nota(conteudo, lang, **argumentos):
-    return nota_do_cartao.campos_da_nota(conteudo, lang, **argumentos)
+def nota(conteudo, lang, nivel=None, **alem_do_texto):
+    return nota_do_cartao.campos_da_nota(conteudo, lang, nivel=nivel, alem_do_texto=nota_do_cartao.AlemDoTexto(**alem_do_texto))
 
 
 class OCartaoDosOutrosNiveisDoIngles(unittest.TestCase):

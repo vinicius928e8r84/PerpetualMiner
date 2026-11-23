@@ -58,10 +58,9 @@ const nulo = (achados, quantas, porque) => { assert.strictEqual(achados.length, 
     "test.fixme('proposta', async ({ page }) => {", "  await expect(page).toHaveScreenshot('proposta.png');", '});',
     "test('outra', async ({ page }) => {", "  await expect(page).toHaveScreenshot('sem-data.png');", '});',
   ].join('\n');
-  const livro = telas => JSON.stringify({ telas });
   const pngs = Object.fromEntries(['pronta', 'sem-entrada', 'proposta', 'sem-data'].map(n => [`e2e/tests/x-visual.spec.js-snapshots/${n}-linux.png`, 'png']));
   const achadosDoLivro = telas => {
-    const pasta = repositorioDeTestes({ ...pngs, 'e2e/aprovados-visuais.json': livro(telas) });
+    const pasta = repositorioDeTestes({ ...pngs, ...(telas ? { 'e2e/aprovados-visuais/x-visual.json': JSON.stringify(telas) } : {}) });
     try {
       return regras['aprovacao-visual'].verificar('e2e/tests/x-visual.spec.js', SPEC, pasta);
     } finally {
@@ -69,11 +68,11 @@ const nulo = (achados, quantas, porque) => { assert.strictEqual(achados.length, 
     }
   };
   const aprovada = { data: '2026-10-20', resposta: 'Lavish telas-julgar' };
-  const achados = nulo(achadosDoLivro({ 'x-visual': { 'pronta.png': aprovada, 'sem-data.png': { resposta: 'Lavish' } } }), 2, 'sem entrada e sem data; a pronta e a proposta em fixme passam');
+  const achados = nulo(achadosDoLivro({ 'pronta.png': aprovada, 'sem-data.png': { resposta: 'Lavish' } }), 2, 'sem entrada e sem data; a pronta e a proposta em fixme passam');
   assert.match(achados.map(a => a.detalhe).join('\n'), /sem-entrada\.png não tem entrada/);
   assert.match(achados.map(a => a.detalhe).join('\n'), /sem-data\.png tem entrada .* sem data/);
-  nulo(achadosDoLivro({ 'x-visual': { 'pronta.png': aprovada, 'sem-entrada.png': aprovada, 'sem-data.png': aprovada } }), 0, 'todas aprovadas ou em fixme');
-  nulo(achadosDoLivro({}), 3, 'livro vazio: três sem entrada (a proposta em fixme não conta)');
+  nulo(achadosDoLivro({ 'pronta.png': aprovada, 'sem-entrada.png': aprovada, 'sem-data.png': aprovada }), 0, 'todas aprovadas ou em fixme');
+  nulo(achadosDoLivro(null), 3, 'sem arquivo do spec: três sem entrada (a proposta em fixme não conta)');
   assert.strictEqual(regras['aprovacao-visual'].seAplica('e2e/tests/popup-visual.spec.js'), true);
   assert.strictEqual(regras['aprovacao-visual'].seAplica('e2e/tests/popup.spec.js'), false);
   total += 2;

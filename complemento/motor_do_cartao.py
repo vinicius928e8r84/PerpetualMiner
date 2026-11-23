@@ -88,6 +88,6 @@ class MotorDoCartao:
         imagem, da_imagem = self._imagem.imagem(cartao, texto, ia, avisar)
         arquivos.update(imagem)
         pedido = cartao.pedido
-        nota = self.motor.nota_do_cartao.campos_da_nota(
-            texto, pedido["lang"], nivel=pedido.get("nivel"), palavra=palavra, audio_da_frase=da_frase, audio_da_palavra=da_palavra, imagem=da_imagem)
+        alem_do_texto = self.motor.nota_do_cartao.AlemDoTexto(palavra=palavra, audio_da_frase=da_frase, audio_da_palavra=da_palavra, imagem=da_imagem)
+        nota = self.motor.nota_do_cartao.campos_da_nota(texto, pedido["lang"], nivel=pedido.get("nivel"), alem_do_texto=alem_do_texto)
         return nota, arquivos

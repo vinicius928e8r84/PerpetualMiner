@@ -7,18 +7,21 @@
 
   const estado = { n: null, ids: [], comConta: false, temChave: false, contaDaChave: '', uid: '' };
 
+  function guardarAChave(marca) {
+    estado.temChave = Boolean(marca?.ultimos4);
+    estado.contaDaChave = marca?.conta || '';
+  }
+
+  const uidDaConta = info => info?.uid || '';
+
   chrome.storage.local.get({ [ChaveDaOpenAI.MARCA]: null, pm_user_info: null }, dados => {
-    estado.temChave = Boolean(dados[ChaveDaOpenAI.MARCA]?.ultimos4);
-    estado.contaDaChave = dados[ChaveDaOpenAI.MARCA]?.conta || '';
-    estado.uid = dados.pm_user_info?.uid || '';
+    guardarAChave(dados[ChaveDaOpenAI.MARCA]);
+    estado.uid = uidDaConta(dados.pm_user_info);
   });
   chrome.storage.onChanged.addListener((mudancas, area) => {
     if (area !== 'local') return;
-    if (ChaveDaOpenAI.MARCA in mudancas) {
-      estado.temChave = Boolean(mudancas[ChaveDaOpenAI.MARCA].newValue?.ultimos4);
-      estado.contaDaChave = mudancas[ChaveDaOpenAI.MARCA].newValue?.conta || '';
-    }
-    if ('pm_user_info' in mudancas) estado.uid = mudancas.pm_user_info.newValue?.uid || '';
+    if (ChaveDaOpenAI.MARCA in mudancas) guardarAChave(mudancas[ChaveDaOpenAI.MARCA].newValue);
+    if ('pm_user_info' in mudancas) estado.uid = uidDaConta(mudancas.pm_user_info.newValue);
   });
   let avisoDaRecusa = null;
   const tirarARecusa = () => {
@@ -89,18 +92,23 @@
     porId('cfg-perigo-corpo').append(avisoDaRecusa);
   }
 
+  function vozDaChave(comConta) {
+    if (!comConta) return 'CFG-17.chaveSemConta';
+    const outraConta = estado.contaDaChave && estado.contaDaChave !== estado.uid;
+    return outraConta ? 'CFG-17.chaveOutraConta' : 'CFG-17.chave';
+  }
+
   function confirmarApagarTudo() {
     const { n, comConta } = estado;
     if (!estado.n) return;
 
-    const outraConta = comConta && estado.contaDaChave && estado.contaDaChave !== estado.uid;
     const confirmado = { ids: estado.ids, em: Date.now() };
     abrirConfirmacao({
       id: 'cfg-perigo-modal',
       titulo: n === 1 ? textoDaVoz('CFG-17.tituloUma') : textoDaVoz('CFG-17.titulo', { n }),
       corpo: [
         textoDaVoz(comConta ? 'CFG-17.corpo' : 'CFG-17.corpoSemConta'),
-        ...(estado.temChave ? [textoDaVoz(outraConta ? 'CFG-17.chaveOutraConta' : comConta ? 'CFG-17.chave' : 'CFG-17.chaveSemConta')] : []),
+        ...(estado.temChave ? [textoDaVoz(vozDaChave(comConta))] : []),
       ].join(' '),
       cancelar: textoDaVoz('CFG-17.cancelar'),
       confirmar: textoDaVoz('CFG-17.confirmar', { n }),

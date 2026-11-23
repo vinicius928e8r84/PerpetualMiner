@@ -62,34 +62,47 @@ class RepeticaoDeCadaRotaQueMuda(unittest.TestCase):
         """O `repetivel: false` do exemplo é a exceção já declarada, com o `porque`, e conferida por `confere_a_repeticao`.
         A resposta combinada vale salvo o que o contrato marca como variável (`<agora>`, `<url de autorização>`).
         O cliente que já leu a revisão nova a manda de volta ao reconfirmar: é a mesma chave, o mesmo arquivo."""
-        for rota in sorted(rotas):
-            if not matriz[rota].get("muda"):
-                continue
-            for exemplo in self.exemplos_de_sucesso(rota, exemplos):
-                nome = exemplo["nome"]
-                if exemplo.get("repetivel") is False:
+        for regra, exemplo in self.exemplos_repetiveis(rotas, matriz, exemplos):
+            with tempfile.TemporaryDirectory() as pasta, conexao_do_exemplo(pasta, exemplo) as conexao:
+                primeiro = self.pedir_o_exemplo(conexao, exemplo)
+                guardado = estado_guardado(conexao)
+                self.conferir_o_mesmo_pedido_de_novo(conexao, exemplo, primeiro, guardado)
+                if not regra.get("versao"):
                     continue
-                with tempfile.TemporaryDirectory() as pasta, conexao_do_exemplo(pasta, exemplo) as conexao:
-                    primeiro = self.pedir_o_exemplo(conexao, exemplo)
-                    guardado = estado_guardado(conexao)
-                    status, segundo = self.pedir_o_exemplo(conexao, exemplo)
-                    combinada = exemplo["resposta"]["json"]
-                    mesma = segundo == primeiro[1] or (igual_ao_do_contrato(primeiro[1], combinada) and igual_ao_do_contrato(segundo, combinada))
-                    self.assertTrue(status == primeiro[0] and mesma, nome + ": o mesmo pedido de sucesso de novo respondeu outra coisa")
-                    self.assertEqual(guardado, estado_guardado(conexao), nome + ": o mesmo pedido de sucesso de novo mudou o que a Conexão guarda (o arquivo do dono)")
-                    if not matriz[rota].get("versao"):
-                        continue
-                    de_novo = dict(exemplo["pedido"]["corpo"], versao=self.revisao(conexao))
-                    if matriz[rota].get("muda_de_novo"):
-                        self.pedir_o_exemplo(conexao, exemplo, de_novo)
-                        self.assertNotEqual(guardado, estado_guardado(conexao), nome + ": `muda_de_novo` está velho em MATRIZ: reconfirmar já não muda nada, tire a exceção")
-                        continue
-                    for _ in range(3):
-                        self.assertEqual(self.pedir_o_exemplo(conexao, exemplo, de_novo), primeiro, nome + ": reconfirmar na base atual respondeu outra coisa")
-                        self.assertEqual(
-                            guardado, estado_guardado(conexao),
-                            nome + ": reconfirmar na base atual mudou o que a Conexão guarda (a revisão avança a cada reconfirmação, v1→2→3→4)",
-                        )
+                if regra.get("muda_de_novo"):
+                    self.conferir_que_reconfirmar_ainda_muda(conexao, exemplo, guardado)
+                else:
+                    self.conferir_que_reconfirmar_repete(conexao, exemplo, primeiro, guardado)
+
+    def exemplos_repetiveis(self, rotas, matriz, exemplos):
+        return [
+            (matriz[rota], exemplo) for rota in sorted(rotas) if matriz[rota].get("muda")
+            for exemplo in self.exemplos_de_sucesso(rota, exemplos) if exemplo.get("repetivel") is not False
+        ]
+
+    def corpo_na_base_atual(self, conexao, exemplo):
+        return dict(exemplo["pedido"]["corpo"], versao=self.revisao(conexao))
+
+    def conferir_o_mesmo_pedido_de_novo(self, conexao, exemplo, primeiro, guardado):
+        nome = exemplo["nome"]
+        status, segundo = self.pedir_o_exemplo(conexao, exemplo)
+        combinada = exemplo["resposta"]["json"]
+        mesma = segundo == primeiro[1] or (igual_ao_do_contrato(primeiro[1], combinada) and igual_ao_do_contrato(segundo, combinada))
+        self.assertTrue(status == primeiro[0] and mesma, nome + ": o mesmo pedido de sucesso de novo respondeu outra coisa")
+        self.assertEqual(guardado, estado_guardado(conexao), nome + ": o mesmo pedido de sucesso de novo mudou o que a Conexão guarda (o arquivo do dono)")
+
+    def conferir_que_reconfirmar_ainda_muda(self, conexao, exemplo, guardado):
+        self.pedir_o_exemplo(conexao, exemplo, self.corpo_na_base_atual(conexao, exemplo))
+        self.assertNotEqual(guardado, estado_guardado(conexao), exemplo["nome"] + ": `muda_de_novo` está velho em MATRIZ: reconfirmar já não muda nada, tire a exceção")
+
+    def conferir_que_reconfirmar_repete(self, conexao, exemplo, primeiro, guardado):
+        de_novo = self.corpo_na_base_atual(conexao, exemplo)
+        for _ in range(3):
+            self.assertEqual(self.pedir_o_exemplo(conexao, exemplo, de_novo), primeiro, exemplo["nome"] + ": reconfirmar na base atual respondeu outra coisa")
+            self.assertEqual(
+                guardado, estado_guardado(conexao),
+                exemplo["nome"] + ": reconfirmar na base atual mudou o que a Conexão guarda (a revisão avança a cada reconfirmação, v1→2→3→4)",
+            )
 
     def conferir_a_base_velha(self, rotas, matriz, exemplos):
         """Duas mudanças mais novas (`CHAVES_NOVAS`): a base do exemplo deixa de ser nem a atual nem a anterior."""

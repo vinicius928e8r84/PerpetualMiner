@@ -121,6 +121,9 @@ class Mundo:
     def open_nao_abre(self):
         self.escrever_estado("nao_abre", "")
 
+    def complemento_sumido(self):
+        os.remove(os.path.join(self.complemento, "__init__.py"))
+
     def meta_com(self, texto):
         with open(self.meta, "w", encoding="utf-8") as arquivo:
             arquivo.write(texto if isinstance(texto, str) else json.dumps(texto, indent=4))
@@ -163,6 +166,20 @@ class Mundo:
 
     def consertar(self, perfil="Usuário 1", **conserto):
         return conversar(self.abridor(perfil, **conserto), CONSERTAR)
+
+
+MUNDO_DE_CADA_CONTEXTO = {
+    "anki_travado": lambda mundo: None,
+    "anki_fechado": Mundo.anki_fechado,
+    "anki_fechou_na_espera": lambda mundo: mundo.pessoa_fecha_o_anki_em(8),
+    "conexao_responde": lambda mundo: mundo.conexao_responde_em(0),
+    "conexao_fora": lambda mundo: mundo.porta_ouvida_por(9999),
+    "complemento_desativado": lambda mundo: mundo.meta_com(META_DESATIVADO),
+    "complemento_sumiu": Mundo.complemento_sumido,
+    "anki_nao_fecha": lambda mundo: mundo.kill_nao_funciona_com("-KILL"),
+    "anki_nao_abre": Mundo.open_nao_abre,
+    "meta_ilegivel": lambda mundo: mundo.meta_com("{"),
+}
 
 
 @unittest.skipIf(os.name == "nt", "o script do Mac roda num sh")
@@ -255,7 +272,7 @@ class NoMac(unittest.TestCase):
         self.assertEqual(self.mundo.passos()[1], "kill -KILL %d" % PID)
 
     def test_complemento_que_sumiu_da_pasta_do_anki_nao_fecha_nem_abre_nada(self):
-        os.remove(os.path.join(self.mundo.complemento, "__init__.py"))
+        self.mundo.complemento_sumido()
         self.assertEqual(self.mundo.consertar(), {"situacao": "sumiu"})
         self.assertEqual(self.mundo.passos(), [])
 
@@ -271,25 +288,7 @@ class NoMac(unittest.TestCase):
         for exemplo in EXEMPLOS:
             with self.subTest(exemplo["nome"]):
                 mundo = Mundo(tempfile.mkdtemp(dir=self._raiz.name))
-                situacao = exemplo["contexto"]["conserto"]
-                if situacao == "anki_fechado":
-                    mundo.anki_fechado()
-                elif situacao == "conexao_responde":
-                    mundo.conexao_responde_em(0)
-                elif situacao == "complemento_desativado":
-                    mundo.meta_com(META_DESATIVADO)
-                elif situacao == "complemento_sumiu":
-                    os.remove(os.path.join(mundo.complemento, "__init__.py"))
-                elif situacao == "anki_nao_fecha":
-                    mundo.kill_nao_funciona_com("-KILL")
-                elif situacao == "anki_nao_abre":
-                    mundo.open_nao_abre()
-                elif situacao == "meta_ilegivel":
-                    mundo.meta_com("{")
-                elif situacao == "anki_fechou_na_espera":
-                    mundo.pessoa_fecha_o_anki_em(8)
-                elif situacao == "conexao_fora":
-                    mundo.porta_ouvida_por(9999)
+                MUNDO_DE_CADA_CONTEXTO[exemplo["contexto"]["conserto"]](mundo)
                 self.assertEqual(
                     conversar(mundo.abridor(), exemplo["mensagem"]), exemplo["resposta"],
                     'O abridor e o contrato (complemento/contrato/exemplos-do-conserto.json) se separaram no exemplo "%s".' % exemplo["nome"],

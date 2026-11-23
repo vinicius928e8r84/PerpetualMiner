@@ -15,8 +15,8 @@ from unittest import mock
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import envio, motor_do_envio
-from complemento.ia_dos_cartoes import IaDosCartoes
-from complemento.modelo_dos_cartoes import CHAVE, Pagador
+from complemento.ia_dos_cartoes import IaDosCartoes, MotorNaOpenAI
+from complemento.modelo_dos_cartoes import CHAVE, Conta, Pagador
 from complemento.palavras_do_cartao import cartoes_da_frase
 from complemento.test_imagens_de_mentira import JPEG_DE_MENTIRA, png_de
 from complemento.test_openai_de_mentira import OpenAIDeMentira
@@ -42,7 +42,7 @@ class MotorPelaChave:
 
     def pedido_do_texto(self):
         """O `pedir` do texto que a IA dos cartões dá ao motor quando a chave de `config` paga."""
-        ia = IaDosCartoes(None, None, None, motor=self.motor, openai_base=self.openai_base)
+        ia = IaDosCartoes(Conta(None, None), None, motor=MotorNaOpenAI(self.motor, self.openai_base))
         return ia.pedido_do_texto(Pagador(CHAVE, {"provedor": "openai", "segredo": self.config["openai_api_key"], "modelo": None}, None), self.config)
 
     def gerar_a_imagem(self, cartao, destino):

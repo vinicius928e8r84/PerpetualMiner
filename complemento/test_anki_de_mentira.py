@@ -109,13 +109,7 @@ class ColecaoDoAnkiDeMentira:
             self._baralhos.append(types.SimpleNamespace(id=indice, name=baralho["nome"]))
             for nota in baralho.get("notas", []):
                 proxima += 1
-                campos = list((nota.get("campos") or {"Frente": nota["frente"], "Verso": nota["verso"]}).items())
-                modelo = self._modelos.setdefault(tuple(nome for nome, _ in campos), len(self._modelos) + 1)
-                self._sqlite.execute("insert into notes (id, mid, flds) values (?, ?, ?)", (proxima, modelo, "\x1f".join(valor for _, valor in campos)))
-                for cartao in nota.get("cartoes", [{"tipo": 0, "intervalo": 0}]):
-                    self._sqlite.execute(
-                        "insert into cards (nid, did, odid, type, ivl) values (?, ?, 0, ?, ?)", (proxima, indice, cartao["tipo"], cartao["intervalo"])
-                    )
+                self._gravar_a_nota(proxima, indice, nota)
         tipos = descricao.get("tiposDeNota") or {"Básico": ["Frente", "Verso"]}
         self._nomes_dos_modelos = {nome: tuple(campos) for nome, campos in tipos.items()}
         for nomes in self._nomes_dos_modelos.values():
@@ -137,6 +131,14 @@ class ColecaoDoAnkiDeMentira:
         self._pasta_da_midia = tempfile.TemporaryDirectory()
         self.media = types.SimpleNamespace(
             write_data=self._conferido(self._guardar_a_midia), dir=lambda: self._pasta_da_midia.name)
+
+    def _gravar_a_nota(self, nid, baralho, nota):
+        """A nota da descrição no sqlite, com o tipo de nota pelos nomes dos campos (o primeiro que os tem, ou um novo) e os cartões dela no Baralho."""
+        campos = list((nota.get("campos") or {"Frente": nota["frente"], "Verso": nota["verso"]}).items())
+        modelo = self._modelos.setdefault(tuple(nome for nome, _ in campos), len(self._modelos) + 1)
+        self._sqlite.execute("insert into notes (id, mid, flds) values (?, ?, ?)", (nid, modelo, "\x1f".join(valor for _, valor in campos)))
+        for cartao in nota.get("cartoes", [{"tipo": 0, "intervalo": 0}]):
+            self._sqlite.execute("insert into cards (nid, did, odid, type, ivl) values (?, ?, 0, ?, ?)", (nid, baralho, cartao["tipo"], cartao["intervalo"]))
 
     def _conferido(self, funcao):
         def chamada(*argumentos):
