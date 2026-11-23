@@ -136,6 +136,31 @@ async function soOPedidoDeUmConstrutor() {
   assert.strictEqual(pedidos, 0, 'o pedido escrito à mão é erro de quem chama, não um desfecho, e nem sai');
 }
 
+function oConstrutorRecusaOQueNaoServe() {
+  const mesmaFrase = 'a'.repeat(200);
+  assert.strictEqual(PedidoAoAnki.falarAFrase('en', 'co.uk', mesmaFrase).corpo.texto, mesmaFrase, '200 letras ainda cabem na fala');
+  for (const texto of ['a'.repeat(201), '', '   ', undefined, 7, null]) {
+    assert.throws(() => PedidoAoAnki.falarAFrase('en', 'co.uk', texto), /falarAFrase pede 1 a 200 letras/, `a fala de ${JSON.stringify(texto)}`);
+  }
+  assert.deepStrictEqual(PedidoAoAnki.concluirOPareamento('123456', 'abc', 'Chrome').corpo, { codigo: '123456', cliente: 'abc', nome: 'Chrome' });
+  for (const trio of [[1, 'abc', 'Chrome'], ['123456', null, 'Chrome'], ['123456', 'abc', undefined]]) {
+    assert.throws(() => PedidoAoAnki.concluirOPareamento(...trio), /concluirOPareamento pede o código, o navegador e o nome como texto/, `o pareamento de ${JSON.stringify(trio)}`);
+  }
+}
+
+async function oDesfechoPorStatusECodigo() {
+  const pedido = PedidoAoAnki.tiposDeNota();
+  const motivoDe = async (status, texto) => (await respondendo(status, texto).pedir(pedido)).motivo;
+  assert.strictEqual(await motivoDe(401, '{"error":"pairing_revoked"}'), 'a_parear');
+  assert.strictEqual(await motivoDe(404, '{"error":"not_found"}'), 'antiga');
+  assert.strictEqual(await motivoDe(503, '{"error":"anki_busy","detail":"sincronizando"}'), 'anki_ocupado');
+  assert.strictEqual(await motivoDe(503, '{"error":"anki_busy","detail":3}'), 'recusado');
+  assert.strictEqual(await motivoDe(404, '[]'), 'antiga', 'um corpo que não é objeto não tem código');
+  assert.strictEqual(await motivoDe(401, '{"error":7}'), 'recusado');
+  assert.deepStrictEqual(await respondendo(299, '{"a":1}').pedir(pedido), { ok: true, status: 299, dados: { a: 1 } });
+  assert.strictEqual((await respondendo(300, '{"a":1}').pedir(pedido)).ok, false, 'o 300 já não é resposta aceita');
+}
+
 async function peloHttpAssinado() {
   {
     const conexao = criarConexao();
@@ -217,6 +242,8 @@ async function main() {
   await aRespostaForaDoContrato();
   await quandoOPareamentoNaoDeixaPedir();
   await soOPedidoDeUmConstrutor();
+  oConstrutorRecusaOQueNaoServe();
+  await oDesfechoPorStatusECodigo();
   await peloHttpAssinado();
   await ondeNaoHaConexaoAnki();
   console.log('conversa com o Anki tests passed');
