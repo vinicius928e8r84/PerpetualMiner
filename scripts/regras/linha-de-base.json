@@ -115,7 +115,6 @@
     "painel/painel-shell.js": 8,
     "painel/painel.js": 86,
     "scripts/ci/test_registro_da_pr.js": 3,
-    "scripts/empacotar-extensao.mjs": 7,
     "scripts/ganchos/test_pre_push.js": 11,
     "scripts/grupos-de-teste.js": 4,
     "scripts/regras/apoio-da-tabela-de-regras.js": 4,
