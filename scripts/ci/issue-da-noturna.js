@@ -4,11 +4,12 @@ const { execFileSync } = require('child_process');
 
 const ROTULO = 'noturna';
 const TITULO = 'Suíte noturna vermelha na main';
+const RESULTADOS_VERMELHOS = new Set(['failure', 'timed_out', 'cancelled']);
 
 function decidir(resultados) {
   // `cancelled` conta como vermelha: o `timeout-minutes` corta o job e ele termina cancelled, que é a travada que a noturna procura.
   // O cancelamento manual da execução não chega aqui (o job do workflow tem `!cancelled()`).
-  if (resultados.some(r => r === 'failure' || r === 'timed_out' || r === 'cancelled')) return 'vermelha';
+  if (resultados.some(r => RESULTADOS_VERMELHOS.has(r))) return 'vermelha';
   if (resultados.length > 0 && resultados.every(r => r === 'success')) return 'verde';
   return 'nada';
 }
