@@ -5,6 +5,8 @@
   const ABAS_DA_CONEXAO = ['custos', 'baralhos', 'vocabulario', 'ajustes'];
   const SECOES_DE_CONFIGURACOES = ['conta', 'atalhos', 'ia', 'chave', 'anki', 'aparencia', 'perigo'];
 
+  const TECLAS_QUE_MUDAM_O_CLIQUE = ['ctrlKey', 'metaKey', 'shiftKey'];
+
   const MASCARA_DA_CHAVE = '••••••••';
 
   const estado = { area: null };
@@ -75,24 +77,37 @@
   }
 
   function aplicarEndereco() {
-    const { area, aba, secao } = lerEndereco(location.hash);
-    const entrou = area !== estado.area;
-    estado.area = area;
+    const endereco = lerEndereco(location.hash);
+    const entrou = endereco.area !== estado.area;
+    estado.area = endereco.area;
 
+    mostrarAArea(endereco.area);
+    if (endereco.aba) mostrarAba(endereco.aba);
+    posicionarNoEndereco(endereco, entrou);
+
+    if (entrou) for (const ouvinte of ouvintesDeArea.get(endereco.area) || []) ouvinte();
+  }
+
+  function mostrarAArea(area) {
     $('.shell').hidden = area === 'boas-vindas';
     porId('boas-vindas').hidden = area !== 'boas-vindas';
     for (const vista of $$('.shell-area')) vista.hidden = vista.dataset.area !== area;
-    for (const item of $$('.shell-item')) {
-      if (item.dataset.area === area) item.setAttribute('aria-current', 'page');
-      else item.removeAttribute('aria-current');
-    }
-    if (aba) mostrarAba(aba);
+    for (const item of $$('.shell-item')) marcarItemDaArea(item, area);
+  }
 
+  function marcarItemDaArea(item, area) {
+    if (item.dataset.area === area) item.setAttribute('aria-current', 'page');
+    else item.removeAttribute('aria-current');
+  }
+
+  function posicionarNoEndereco({ area, secao }, entrou) {
     if (area === 'configuracoes' && !secao) fecharOsCards();
     if (secao) rolarAteASecao(secao);
     else if (entrou) $('.shell-conteudo').scrollTo(0, 0);
+  }
 
-    if (entrou) for (const ouvinte of ouvintesDeArea.get(area) || []) ouvinte();
+  function ehCliqueSimples(evento) {
+    return evento.button === 0 && !TECLAS_QUE_MUDAM_O_CLIQUE.some(tecla => evento[tecla]);
   }
 
   /**
@@ -100,7 +115,7 @@
    * sem isto, clicar no chip já em #configuracoes/conta não levaria de volta ao card.
    */
   function reaplicarOMesmoEndereco(evento) {
-    if (evento.defaultPrevented || evento.button !== 0 || evento.ctrlKey || evento.metaKey || evento.shiftKey) return;
+    if (evento.defaultPrevented || !ehCliqueSimples(evento)) return;
     const link = evento.target.closest('a[href^="#"]');
     if (link && link.getAttribute('href') === location.hash) aplicarEndereco();
   }
