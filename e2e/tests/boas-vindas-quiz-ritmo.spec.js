@@ -7,10 +7,27 @@ const {
   card, grupo, quiz, pergunta, dizeres, pedidosDaPrevia, abrirOQuiz, responderAParte1, fraseDaPergunta, responder, percorrer, usarOEstilo,
 } = require('../apoio-do-quiz');
 
+const CINCO_CERTAS_E_UMA_ERRADA = ['certo', 'certo', 'certo', 'certo', 'certo', 'errado'];
+
+async function naParte2(page, extensao, relogioParado, nivel = 'iniciante') {
+  const relogio = await abrirOQuiz(page, extensao, relogioParado);
+  await responderAParte1(page, 'Inglês', nivel);
+  return relogio;
+}
+
+async function chegarAoNivelSugerido({ page, extensao, fakes, relogioParado }, roteiro, nivel = 'iniciante') {
+  const relogio = await naParte2(page, extensao, relogioParado, nivel);
+  await percorrer(page, 'Inglês', fakes, relogio, roteiro);
+}
+
+async function escolherAPrimeiraAlternativaEEsperarAPausa(page, relogio) {
+  await quiz(page, 'Inglês').locator('.quiz__opcao').first().click();
+  await relogio.avancar(PAUSA_DA_RESPOSTA_MS);
+}
+
 test.describe('o ritmo e a sequência', () => {
   test('a certa aparece marcada, a próxima pergunta só entra sozinha depois de 1 s e o áudio toca sozinho', async ({ page, extensao, fakes, relogioParado }) => {
-    const relogio = await abrirOQuiz(page, extensao, relogioParado);
-    await responderAParte1(page, 'Inglês', 'iniciante');
+    const relogio = await naParte2(page, extensao, relogioParado);
     expect(dizeres(fakes)).toEqual([]);
 
     await quiz(page, 'Inglês').locator('.quiz__opcao').nth(0).click();
@@ -27,8 +44,7 @@ test.describe('o ritmo e a sequência', () => {
   });
 
   test('“Não sei” pausa a sequência: ela não sobe nem zera, e a certa aparece marcada', async ({ page, extensao, fakes, relogioParado }) => {
-    const relogio = await abrirOQuiz(page, extensao, relogioParado);
-    await responderAParte1(page, 'Inglês', 'iniciante');
+    const relogio = await naParte2(page, extensao, relogioParado);
     await expect(quiz(page, 'Inglês')).toContainText('Sequência: 0');
 
     await responder(page, 'Inglês', fakes, relogio, 'certo');
@@ -50,8 +66,7 @@ test.describe('o ritmo e a sequência', () => {
   });
 
   test('o chute errado zera a sequência, e a melhor continua no resumo', async ({ page, extensao, fakes, relogioParado }) => {
-    const relogio = await abrirOQuiz(page, extensao, relogioParado);
-    await responderAParte1(page, 'Inglês', 'iniciante');
+    const relogio = await naParte2(page, extensao, relogioParado);
     await responder(page, 'Inglês', fakes, relogio, 'certo');
     await responder(page, 'Inglês', fakes, relogio, 'certo');
     await expect(quiz(page, 'Inglês')).toContainText('Sequência: 2');
@@ -67,8 +82,7 @@ test.describe('o ritmo e a sequência', () => {
   });
 
   test('errar mostra a certa marcada e a errada, sem tirar a pessoa da pergunta', async ({ page, extensao, fakes, relogioParado }) => {
-    const relogio = await abrirOQuiz(page, extensao, relogioParado);
-    await responderAParte1(page, 'Inglês', 'iniciante');
+    const relogio = await naParte2(page, extensao, relogioParado);
     const certa = CERTA[await fraseDaPergunta(page, 'Inglês', fakes)];
 
     await quiz(page, 'Inglês').locator('.quiz__opcao').filter({ hasNotText: certa }).first().click();
@@ -85,9 +99,7 @@ test.describe('o ritmo e a sequência', () => {
 
 test.describe('o resultado', () => {
   test('mostra a prévia do Cartão do nível sugerido e deixa trocar o nível ali, antes de usar', async ({ page, extensao, fakes, relogioParado }) => {
-    const relogio = await abrirOQuiz(page, extensao, relogioParado);
-    await responderAParte1(page, 'Inglês', 'iniciante');
-    await percorrer(page, 'Inglês', fakes, relogio, ['certo', 'certo', 'certo', 'certo', 'certo', 'errado']);
+    await chegarAoNivelSugerido({ page, extensao, fakes, relogioParado }, CINCO_CERTAS_E_UMA_ERRADA);
 
     await expect(quiz(page, 'Inglês')).toContainText('Prefere outro nível? Troque aqui.');
     await expect(quiz(page, 'Inglês')).toContainText('Dá para trocar depois em Ajustes de envio › Estilo do cartão.');
@@ -105,9 +117,7 @@ test.describe('o resultado', () => {
   });
 
   test('usar o estilo fecha o quiz, volta ao controle com o nível salvo e marca o passo como feito', async ({ page, extensao, fakes, relogioParado }) => {
-    const relogio = await abrirOQuiz(page, extensao, relogioParado);
-    await responderAParte1(page, 'Inglês', 'intermediario');
-    await percorrer(page, 'Inglês', fakes, relogio, ['certo', 'certo', 'certo']);
+    await chegarAoNivelSugerido({ page, extensao, fakes, relogioParado }, ['certo', 'certo', 'certo'], 'intermediario');
     await expect(page.getByRole('navigation', { name: 'Passos da configuração' }).getByRole('button', { name: /^Escolher o nível do cartão/ })).not.toHaveAccessibleName(/feito/);
 
     await usarOEstilo(page, 'Inglês');
@@ -135,9 +145,7 @@ test.describe('o resultado', () => {
 test.describe('quando a prévia do resultado não vem', () => {
   test('o tipo de nota que sumiu do Anki: a prévia diz isso e oferece Tentar de novo, sem mandar atualizar a Conexão', async ({ page, extensao, fakes, relogioParado }) => {
     fakes.anki.responder('POST', '/anki/card-preview', () => ({ status: 404, json: { error: 'note_type_missing' } }));
-    const relogio = await abrirOQuiz(page, extensao, relogioParado);
-    await responderAParte1(page, 'Inglês', 'iniciante');
-    await percorrer(page, 'Inglês', fakes, relogio, ['certo', 'certo', 'certo', 'certo', 'certo', 'errado']);
+    await chegarAoNivelSugerido({ page, extensao, fakes, relogioParado }, CINCO_CERTAS_E_UMA_ERRADA);
 
     const previa = quiz(page, 'Inglês').locator('.previa');
     await expect(previa).toContainText('O tipo de nota não está mais no Anki.');
@@ -148,11 +156,23 @@ test.describe('quando a prévia do resultado não vem', () => {
   });
 });
 
+const FALAS_QUE_NAO_VEM = [
+  {
+    nome: 'uma Conexão sem a rota da fala pede para atualizar',
+    fala: { status: 404, json: { error: 'not_found' } },
+    aviso: 'Atualize a Conexão com o Anki para ouvir as perguntas.',
+  },
+  {
+    nome: 'uma fala que vem sem o áudio diz que não deu para tocar',
+    fala: { status: 200, json: { audio: '' } },
+    aviso: 'Não deu para tocar o áudio. Tente de novo.',
+  },
+];
+
 test.describe('quando o áudio não vem', () => {
   test('com a Conexão desligada, a pergunta de áudio diz o que falta, segue respondível e Ouvir de novo toca quando ela volta', async ({ page, extensao, fakes, relogioParado }) => {
     fakes.anki.desligar();
-    const relogio = await abrirOQuiz(page, extensao, relogioParado);
-    await responderAParte1(page, 'Inglês', 'iniciante');
+    const relogio = await naParte2(page, extensao, relogioParado);
     await responder(page, 'Inglês', fakes, relogio, 'certo');
 
     await expect(pergunta(page, 'Inglês')).toHaveText(ESCUTA);
@@ -167,36 +187,22 @@ test.describe('quando o áudio não vem', () => {
     expect((await extensao.lerStorage(CHAVE))[CHAVE]).toBeUndefined();
   });
 
-  test('uma Conexão sem a rota da fala pede para atualizar', async ({ page, extensao, fakes, relogioParado }) => {
-    fakes.anki.responder('POST', FALAR, () => ({ status: 404, json: { error: 'not_found' } }));
-    const relogio = await abrirOQuiz(page, extensao, relogioParado);
-    await responderAParte1(page, 'Inglês', 'iniciante');
-    await quiz(page, 'Inglês').locator('.quiz__opcao').first().click();
-    await relogio.avancar(PAUSA_DA_RESPOSTA_MS);
+  for (const { nome, fala, aviso } of FALAS_QUE_NAO_VEM) {
+    test(nome, async ({ page, extensao, fakes, relogioParado }) => {
+      fakes.anki.responder('POST', FALAR, () => fala);
+      const relogio = await naParte2(page, extensao, relogioParado);
+      await escolherAPrimeiraAlternativaEEsperarAPausa(page, relogio);
 
-    await expect(quiz(page, 'Inglês').locator('.quiz__aviso')).toHaveText('Atualize a Conexão com o Anki para ouvir as perguntas.');
-    // Exceção de teste: sem-estado-guardado
-    expect((await extensao.lerStorage(CHAVE))[CHAVE]).toBeUndefined();
-  });
-
-  test('uma fala que vem sem o áudio diz que não deu para tocar', async ({ page, extensao, fakes, relogioParado }) => {
-    fakes.anki.responder('POST', FALAR, () => ({ status: 200, json: { audio: '' } }));
-    const relogio = await abrirOQuiz(page, extensao, relogioParado);
-    await responderAParte1(page, 'Inglês', 'iniciante');
-    await quiz(page, 'Inglês').locator('.quiz__opcao').first().click();
-    await relogio.avancar(PAUSA_DA_RESPOSTA_MS);
-
-    await expect(quiz(page, 'Inglês').locator('.quiz__aviso')).toHaveText('Não deu para tocar o áudio. Tente de novo.');
-    // Exceção de teste: sem-estado-guardado — o aviso do áudio é só o que aparece na tela.
-    expect((await extensao.lerStorage(CHAVE))[CHAVE]).toBeUndefined();
-  });
+      await expect(quiz(page, 'Inglês').locator('.quiz__aviso')).toHaveText(aviso);
+      // Exceção de teste: sem-estado-guardado — o aviso do áudio é só o que aparece na tela.
+      expect((await extensao.lerStorage(CHAVE))[CHAVE]).toBeUndefined();
+    });
+  }
 
   test('o Google recusando a fala diz que não deu para tocar, e a pergunta segue respondível', async ({ page, extensao, fakes, relogioParado }) => {
     fakes.anki.responder('POST', FALAR, () => ({ status: 502, json: { error: 'tts_rejected' } }));
-    const relogio = await abrirOQuiz(page, extensao, relogioParado);
-    await responderAParte1(page, 'Inglês', 'iniciante');
-    await quiz(page, 'Inglês').locator('.quiz__opcao').first().click();
-    await relogio.avancar(PAUSA_DA_RESPOSTA_MS);
+    const relogio = await naParte2(page, extensao, relogioParado);
+    await escolherAPrimeiraAlternativaEEsperarAPausa(page, relogio);
 
     await expect(quiz(page, 'Inglês').locator('.quiz__aviso')).toHaveText('Não deu para tocar o áudio. Tente de novo.');
     await quiz(page, 'Inglês').locator('.quiz__opcao').first().click();
