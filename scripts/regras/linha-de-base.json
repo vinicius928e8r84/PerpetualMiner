@@ -93,7 +93,6 @@
     "e2e/tests/popup-visual.spec.js": 1,
     "e2e/tests/popup.spec.js": 3,
     "engine/openai_http.py": 13,
-    "engine/rodar_imagens.py": 5,
     "lib/abrir-o-anki.js": 7,
     "lib/ajustes-de-envio.js": 14,
     "lib/arquivos-da-extensao.js": 17,
