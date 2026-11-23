@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Prime Video</title>
+  <style>
+    body { margin: 0; background: #111; font-family: sans-serif; color: #fff; }
+    .player { position: relative; width: 640px; height: 360px; margin: 24px; }
+    video { width: 640px; height: 360px; background: #000; display: block; }
+    .xray { position: absolute; left: 0; top: 230px; width: 150px; }
+    .interface { position: absolute; right: 12px; bottom: 12px; }
+    .tempo { position: absolute; left: 200px; bottom: 12px; }
+    .fala { position: absolute; left: 200px; bottom: 60px; font-size: 22px; }
+    .outra { position: absolute; left: 200px; bottom: 90px; font-size: 22px; }
+  </style>
+</head>
+<body>
+  <div class="player">
+    <video muted></video>
+    <div class="fala"><span id="fala">You never told me about the boys.</span></div>
+    <div class="xray"><span>Kevin Costner</span></div>
+    <div class="interface"><span>Skip intro</span><span>Temporada 4, Ep. 2</span></div>
+    <div class="tempo"><span>00:12 / 45:00</span></div>
+  </div>
+</body>
+</html>

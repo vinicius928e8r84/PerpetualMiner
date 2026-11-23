@@ -55,6 +55,7 @@
     "historico-trancado.spec.js": 11,
     "id-fixo.spec.js": 1,
     "legenda-da-max.spec.js": 20,
+    "legenda-do-prime-video.spec.js": 15,
     "lembrete-configuracao.spec.js": 22,
     "mineracao-automatica-publicacao.spec.js": 9,
     "mineracao-automatica-virada.spec.js": 10,
