@@ -16,56 +16,85 @@ const conserto = 'Confira pela tela (locators) e pelo que ficou gravado (`extens
 
 const seAplica = arquivo => /^e2e\/tests\/.+\.spec\.js$/.test(arquivo);
 
+const DECLARACAO_DE_FUNCAO = /^(?:async\s+)?function\s*\*?\s*([A-Za-z_$][\w$]*)/gm;
+const CHAMADA_DE_FUNCAO = /(?<![.\w$])([A-Za-z_$][\w$]*)\s*\(/g;
+const USO_DO_NAMESPACE = /\bPerpetualMiner((?:\.[A-Za-z_$][\w$]*)+)/g;
+const CHAMADA_DE_EVALUATE = /\.evaluate(?:Handle)?\s*\(/g;
+const LINHAS_ACIMA_DA_MARCA = 12;
+
+const MARCA = new RegExp(`Exceção de teste:\\s*(${EXCECOES.join('|')})\\b`);
+
 const globaisPorRaiz = new Map();
+
+const arquivosDaPasta = (raiz, pasta) => fs.readdirSync(path.join(raiz, pasta), { recursive: true })
+  .map(nome => `${pasta}/${nome.split(path.sep).join('/')}`);
+
+function arquivosJsDaExtensao(raiz) {
+  const dasPastas = PASTAS_DA_EXTENSAO.filter(pasta => fs.existsSync(path.join(raiz, pasta)))
+    .flatMap(pasta => arquivosDaPasta(raiz, pasta));
+  return [...fs.readdirSync(raiz), ...dasPastas]
+    .filter(arquivo => ehJsDaExtensao(arquivo) && fs.statSync(path.join(raiz, arquivo)).isFile());
+}
+
+const funcoesDeclaradasEm = fonte => [...fonte.matchAll(DECLARACAO_DE_FUNCAO)].map(declaracao => declaracao[1]);
+
 function funcoesDaExtensao(raiz) {
   if (globaisPorRaiz.has(raiz)) return globaisPorRaiz.get(raiz);
   const globais = new Set();
   globaisPorRaiz.set(raiz, globais);
-  const daRaiz = fs.readdirSync(raiz);
-  const dasPastas = PASTAS_DA_EXTENSAO.filter(pasta => fs.existsSync(path.join(raiz, pasta)))
-    .flatMap(pasta => fs.readdirSync(path.join(raiz, pasta), { recursive: true }).map(nome => `${pasta}/${nome.split(path.sep).join('/')}`));
-  for (const arquivo of [...daRaiz, ...dasPastas]) {
-    if (!ehJsDaExtensao(arquivo) || !fs.statSync(path.join(raiz, arquivo)).isFile()) continue;
-    const fonte = fs.readFileSync(path.join(raiz, arquivo), 'utf8');
-    for (const m of fonte.matchAll(/^(?:async\s+)?function\s*\*?\s*([A-Za-z_$][\w$]*)/gm)) globais.add(m[1]);
+  for (const arquivo of arquivosJsDaExtensao(raiz)) {
+    for (const nome of funcoesDeclaradasEm(fs.readFileSync(path.join(raiz, arquivo), 'utf8'))) globais.add(nome);
   }
   return globais;
 }
 
-const MARCA = new RegExp(`Exceção de teste:\\s*(${EXCECOES.join('|')})\\b`);
+const linhaMarcada = (comentarios, linha) => MARCA.test(comentarios.get(linha) || '');
 
-function anotado(comentarios, codigo, primeira, ultima) {
-  const marcada = linha => MARCA.test(comentarios.get(linha) || '');
-  for (let linha = primeira; linha <= ultima; linha++) if (marcada(linha)) return true;
-  for (let linha = primeira - 1, vistas = 0; linha >= 1 && vistas < 12; linha--, vistas++) {
-    if (marcada(linha)) return true;
-    const instrucao = (codigo[linha - 1] || '').trim();
-    if (instrucao === '') continue;
-    if (/[;{}]$/.test(instrucao)) break;
+const instrucaoEncerrada = instrucao => /[;{}]$/.test(instrucao);
+
+function marcaEntre(comentarios, primeira, ultima) {
+  for (let linha = primeira; linha <= ultima; linha++) if (linhaMarcada(comentarios, linha)) return true;
+  return false;
+}
+
+function marcaAcima(comentarios, codigo, primeira) {
+  const ultimaAcima = Math.max(primeira - LINHAS_ACIMA_DA_MARCA, 1);
+  for (let linha = primeira - 1; linha >= ultimaAcima; linha--) {
+    if (linhaMarcada(comentarios, linha)) return true;
+    if (instrucaoEncerrada((codigo[linha - 1] || '').trim())) return false;
   }
   return false;
+}
+
+const anotado = (comentarios, codigo, primeira, ultima) => marcaEntre(comentarios, primeira, ultima)
+  || marcaAcima(comentarios, codigo, primeira);
+
+function usosDaExtensao(corpo, nomes) {
+  const funcoes = [...corpo.matchAll(CHAMADA_DE_FUNCAO)].map(chamada => chamada[1]).filter(nome => nomes.has(nome));
+  const namespace = [...corpo.matchAll(USO_DO_NAMESPACE)].map(uso => `PerpetualMiner${uso[1]}`);
+  return new Set([...funcoes.map(nome => `${nome}()`), ...namespace]);
+}
+
+function chamadasDeEvaluate(codigo) {
+  return [...codigo.matchAll(CHAMADA_DE_EVALUATE)]
+    .map(chamada => ({ inicio: chamada.index, abre: chamada.index + chamada[0].length - 1 }))
+    .map(chamada => ({ ...chamada, fecha: fechamento(codigo, chamada.abre) }))
+    .filter(chamada => chamada.fecha >= 0);
+}
+
+function achadosDoEvaluate({ inicio, abre, fecha }, { codigo, linhasDeCodigo, comentarios, nomes }) {
+  const usadas = usosDaExtensao(codigo.slice(abre + 1, fecha), nomes);
+  if (usadas.size === 0) return [];
+  const primeira = linhaDe(codigo, inicio);
+  if (anotado(comentarios, linhasDeCodigo, primeira, linhaDe(codigo, fecha))) return [];
+  return [{ linha: primeira, detalhe: `evaluate chama o código da extensão: ${[...usadas].join(', ')}` }];
 }
 
 function verificar(arquivo, fonte, raiz = process.cwd()) {
   const nomes = funcoesDaExtensao(raiz);
   const codigo = semComentariosJs(fonte);
-  const linhasDeCodigo = codigo.split('\n');
-  const comentarios = comentariosPorLinha(arquivo, fonte);
-  const achados = [];
-  for (const m of codigo.matchAll(/\.evaluate(?:Handle)?\s*\(/g)) {
-    const abre = m.index + m[0].length - 1;
-    const fecha = fechamento(codigo, abre);
-    if (fecha < 0) continue;
-    const corpo = codigo.slice(abre + 1, fecha);
-    const usadas = new Set();
-    for (const c of corpo.matchAll(/(?<![.\w$])([A-Za-z_$][\w$]*)\s*\(/g)) if (nomes.has(c[1])) usadas.add(`${c[1]}()`);
-    for (const c of corpo.matchAll(/\bPerpetualMiner((?:\.[A-Za-z_$][\w$]*)+)/g)) usadas.add(`PerpetualMiner${c[1]}`);
-    if (usadas.size === 0) continue;
-    const primeira = linhaDe(codigo, m.index);
-    if (anotado(comentarios, linhasDeCodigo, primeira, linhaDe(codigo, fecha))) continue;
-    achados.push({ linha: primeira, detalhe: `evaluate chama o código da extensão: ${[...usadas].join(', ')}` });
-  }
-  return achados;
+  const leitura = { codigo, linhasDeCodigo: codigo.split('\n'), comentarios: comentariosPorLinha(arquivo, fonte), nomes };
+  return chamadasDeEvaluate(codigo).flatMap(chamada => achadosDoEvaluate(chamada, leitura));
 }
 
 module.exports = { id, conserto, seAplica, verificar, EXCECOES };

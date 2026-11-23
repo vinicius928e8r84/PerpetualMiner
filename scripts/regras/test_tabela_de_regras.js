@@ -28,6 +28,14 @@ prova(divergencias(tabela(['| 1 A | `regra-um` |', '| 2 B | `regra-dois`; `regra
   'a tabela que cita uma regra que não existe falha');
 prova(divergencias(completa, doisIds, ['regra-dois']).map(d => d.regra), ['regra-dois'], 'a exceção que passou a constar na tabela falha');
 prova(divergencias(completa, doisIds, ['regra-sumida']).map(d => d.regra), ['regra-sumida'], 'a exceção de uma regra que não existe mais falha');
+prova(divergencias(tabela(['| 1 A | `regra-um` |', '| 2 B | `regra-fantasma` |']), ['regra-um', 'regra-nova', 'regra-sobra'], ['regra-um', 'regra-sumida']),
+  [
+    { regra: 'regra-nova', detalhe: 'existe em scripts/regras/ e a tabela não a cita; ponha a linha na tabela do AGENTS.md ou, com a aprovação do dono, na lista do teste' },
+    { regra: 'regra-sobra', detalhe: 'existe em scripts/regras/ e a tabela não a cita; ponha a linha na tabela do AGENTS.md ou, com a aprovação do dono, na lista do teste' },
+    { regra: 'regra-fantasma', detalhe: 'a tabela cita e não existe em scripts/regras/' },
+    { regra: 'regra-um', detalhe: 'já consta na tabela; tire-a da lista de exceções do teste' },
+    { regra: 'regra-sumida', detalhe: 'a exceção é de uma regra que não existe mais em scripts/regras/; tire-a da lista' },
+  ], 'as divergências saem na ordem: sem linha, só na tabela, exceções inúteis, com a mensagem de cada uma');
 assert.throws(() => regrasDaTabela('# sem a seção'), /Rules and what enforces them/, 'sem a seção, o teste não passa em silêncio');
 total++;
 
