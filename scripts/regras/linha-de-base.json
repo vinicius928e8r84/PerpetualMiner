@@ -136,7 +136,6 @@
     "scripts/ci/corpo-da-pr.js": 7,
     "scripts/ci/fatias-e2e.js": 7,
     "scripts/ci/selecao-de-testes.js": 7,
-    "scripts/ci/so-merge-da-main.js": 6,
     "scripts/ci/test_issue_da_noturna.js": 5,
     "scripts/ci/test_registrar_na_pr.js": 6,
     "scripts/ci/test_registro_da_pr.js": 3,

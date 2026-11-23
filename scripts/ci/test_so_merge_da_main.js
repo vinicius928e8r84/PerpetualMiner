@@ -43,6 +43,7 @@ try {
   assert.strictEqual(vale('0'.repeat(40), doisMerges), false, 'um commit que o clone não tem');
   assert.strictEqual(soMergesLimposDaMain({ de: revisado, ate: doisMerges, base: 'main;rm', raiz }), false, 'a base é um nome de branch');
   assert.strictEqual(soMergesLimposDaMain({ de: revisado, ate: doisMerges, base: 'nao-existe', raiz }), false, 'sem a base no clone');
+  assert.strictEqual(soMergesLimposDaMain({ de: revisado, ate: doisMerges, raiz }), false, 'sem o nome da base');
 
   const novo = commita('novo.txt', 'código novo depois da revisão');
   git('merge', '-q', '--no-ff', '-m', 'Merge origin/main', m2);
