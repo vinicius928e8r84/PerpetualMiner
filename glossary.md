@@ -9,7 +9,7 @@ Como ler: o nome em negrito é o único nome do conceito, na tela, nos docs, nas
 ### Frases e origem
 
 **Frase**:
-O texto que a pessoa minerou, guardado no Histórico com o seu Idioma e o seu Contexto. Qualquer tamanho conta, e o que ainda não foi minerado não é Frase.
+O texto que a pessoa minerou, guardado no Histórico com o seu Idioma e o seu Contexto, e de onde saem os Cartões. Qualquer tamanho conta, e o que ainda não foi minerado não é Frase.
 _Avoid_: Trecho, sentença, item
 
 **Histórico**:
@@ -151,4 +151,4 @@ _Avoid_: Excluir, remover, deletar, descartar (é desistir de Frases ainda não 
 - **cartão**: só o item do Anki. Um bloco de tela, como o da IA dos cartões, não é cartão.
 - **termo e palavra**: o Termo é o que o Cartão ensina, com uma ou mais palavras, e “palavra” é só a palavra solta.
 - **nível, estilo e sub-baralho**: o Nível é a escolha (Iniciante, Intermediário, Avançado) e o Estilo do cartão é o que ela define. A parte do nome de um Baralho depois de “::” é um sub-baralho, nunca “nível”.
-- **trecho**: não é Frase; é Marcação até ser minerado.
+- **trecho**: não é Frase, e o texto marcado no livro é Marcação até ser minerado.
