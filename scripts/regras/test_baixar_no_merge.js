@@ -5,7 +5,7 @@ const fs = require('fs');
 
 const { EMAIL_DO_DONO } = require('../ci/autoria');
 const { ARQUIVOS, ASSUNTO } = require('./linha-de-base-no-merge');
-const { repositorioDeMentira, linhasDe, bytesDe } = require('./apoio-de-linha-de-base');
+const { repositorioDeMentira, linhasDe, bytesDe, ARQUIVO_DE_TAMANHO } = require('./apoio-de-linha-de-base');
 
 let total = 0;
 const prova = (achado, esperado, porque) => { assert.deepStrictEqual(achado, esperado, porque); total++; };
@@ -114,6 +114,21 @@ function recusaOQueNaoPodeBaixar() {
   }
 }
 
-for (const caso of [naoHaNadaParaBaixar, umCommitSoComAutoriaDoDono, naoEmpurra, umaRodadaBaixaTudoOQueEntrouDesdeAUltima, recusaOQueNaoPodeBaixar]) caso();
+function desfazAPrimeiraQuandoASegundaFalha() {
+  const repo = repositorioDeMentira();
+  try {
+    repo.gravar({ 'grande.js': linhasDe(1000), [ARQUIVO_DE_TAMANHO]: '{ não é json' });
+    repo.commit('conserta e estraga a lista de tamanho');
+    const antes = repo.git('rev-parse', 'HEAD');
+    const r = repo.baixar();
+    prova(r.status, 1, `a segunda linha de base não baixou: recusa\n${r.saida}`);
+    prova([repo.git('rev-parse', 'HEAD'), repo.git('status', '--porcelain'), repo.lerLinhaDeBase()['limite-de-linhas']], [antes, '', { 'grande.js': 20 }],
+      'a das regras, que já tinha sido baixada, volta ao que era: nada commitado, árvore limpa');
+  } finally {
+    repo.limpar();
+  }
+}
+
+for (const caso of [naoHaNadaParaBaixar, umCommitSoComAutoriaDoDono, naoEmpurra, umaRodadaBaixaTudoOQueEntrouDesdeAUltima, recusaOQueNaoPodeBaixar, desfazAPrimeiraQuandoASegundaFalha]) caso();
 
 console.log(`baixar-no-merge: ${total} provas ok`);
