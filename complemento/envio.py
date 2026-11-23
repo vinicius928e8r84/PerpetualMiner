@@ -223,7 +223,7 @@ class Trabalho:
             feitos = sum(1 for c in estado["cards"].values() if c["status"] in NO_ANKI)
             self._etapa(job_id, "generate_cards", progress={"done": feitos, "total": total})
             parada = self._um_cartao(envio, cartao_id, cartao, parada) or parada
-        self.correcao.corrigir(job_id, envio.pedido, envio.config, envio.ia, parada)
+        self.correcao.corrigir(envio, parada)
         self._etapa(job_id, "send_to_anki", concluida=True)
         self._terminar(job_id, envio.pedido, parada)
 

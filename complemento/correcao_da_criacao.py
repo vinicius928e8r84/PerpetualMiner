@@ -16,53 +16,80 @@ from .motor.openai_http import ErroDaOpenAI
 LIMITE_POR_ENVIO = 20
 
 
+class _ParouACorrecao(Exception):
+    """A correção da Criação deste Envio acabou aqui: o que falta fica para o próximo Envio."""
+
+
+def palavra_sem_a_pronuncia(campo):
+    return re.split(r"\s+-\s+/", campo)[0]
+
+
 class CorrecaoDaCriacao:
     """O que o `Trabalho` chama depois do último Cartão para corrigir as frases da Criação."""
 
     def __init__(self, fila, colecao, motor, logger):
         self.fila, self.colecao, self.motor, self.logger = fila, colecao, motor, logger
 
-    def corrigir(self, job_id, pedido, config, ia, parada):
-        """`ia` é a porta presa ao Envio (`ia_do_envio.IaDoEnvio`: quem paga e o teto); `parada`, o código que parou o Envio, ou None: a chave
-        que o parou não corrige nada."""
+    def corrigir(self, envio, parada):
+        """`envio` é o `EnvioEmAndamento` (a porta presa ao Envio, `ia_do_envio.IaDoEnvio`, diz quem paga e o teto); `parada` é o código que
+        parou o Envio, ou None: a chave que o parou não corrige nada."""
         if parada:
             return
         try:
-            notas = self.colecao.frases_a_corrigir(pedido["lang"], LIMITE_POR_ENVIO)
-        except baralhos.ColecaoIndisponivel:
+            self._corrigir_as_frases(envio)
+        except _ParouACorrecao:
             return
-        except Exception as erro:
-            self.logger.warning("Envio %s: não deu para ler as frases da Criação (%s)", job_id, type(erro).__name__)
-            return
+
+    def _corrigir_as_frases(self, envio):
         verso_em_dia = False
-        for nota in notas:
-            if self.fila.estado(job_id).get("wiped") or ia.teto_chegou():
-                return
-            try:
-                pedir = ia.pedido_do_texto(config, CORRECAO)
-            except SemQuemPague:
-                return
-            palavra = re.split(r"\s+-\s+/", nota["palavra"])[0]  # o campo traz a pronúncia depois da Palavra
-            try:
-                correcao = self.motor.corrigir_frase.corrigir(config, pedir, dict(nota, palavra=palavra))
-            except ErroDaOpenAI as erro:
-                self.logger.warning("Envio %s: a correção da Criação parou (%s)", job_id, erro.codigo)
-                return
-            except Exception as erro:
-                self.logger.warning("Envio %s: a correção da Criação falhou (%s)", job_id, type(erro).__name__)
-                return
+        for nota in self._frases_da_criacao(envio):
+            self._conferir_que_o_envio_segue(envio)
+            correcao = self._pedir_a_correcao(envio, nota)
             if not correcao:
                 continue
-            try:
-                self.colecao.gravar_correcao(nota["guid"], nota["escrita"], correcao)
-            except baralhos.ColecaoIndisponivel:
-                return
-            except Exception as erro:
-                self.logger.warning("Envio %s: o Anki não gravou a correção (%s)", job_id, type(erro).__name__)
-                return
+            self._gravar_a_correcao(envio, nota, correcao)
             if not verso_em_dia:
                 verso_em_dia = True
-                self._atualizar_o_verso(job_id, pedido["lang"])
+                self._atualizar_o_verso(envio.job_id, envio.pedido["lang"])
+
+    def _frases_da_criacao(self, envio):
+        try:
+            return self.colecao.frases_a_corrigir(envio.pedido["lang"], LIMITE_POR_ENVIO)
+        except baralhos.ColecaoIndisponivel:
+            raise _ParouACorrecao()
+        except Exception as erro:
+            self._avisar(envio, "não deu para ler as frases da Criação", type(erro).__name__)
+            raise _ParouACorrecao()
+
+    def _conferir_que_o_envio_segue(self, envio):
+        if self.fila.estado(envio.job_id).get("wiped") or envio.ia.teto_chegou():
+            raise _ParouACorrecao()
+
+    def _pedir_a_correcao(self, envio, nota):
+        try:
+            pedir = envio.ia.pedido_do_texto(envio.config, CORRECAO)
+        except SemQuemPague:
+            raise _ParouACorrecao()
+        palavra = palavra_sem_a_pronuncia(nota["palavra"])
+        try:
+            return self.motor.corrigir_frase.corrigir(envio.config, pedir, dict(nota, palavra=palavra))
+        except ErroDaOpenAI as erro:
+            self._avisar(envio, "a correção da Criação parou", erro.codigo)
+        except Exception as erro:
+            self._avisar(envio, "a correção da Criação falhou", type(erro).__name__)
+        raise _ParouACorrecao()
+
+    def _gravar_a_correcao(self, envio, nota, correcao):
+        try:
+            self.colecao.gravar_correcao(nota["guid"], nota["escrita"], correcao)
+        except baralhos.ColecaoIndisponivel:
+            raise _ParouACorrecao()
+        except Exception as erro:
+            self._avisar(envio, "o Anki não gravou a correção", type(erro).__name__)
+            raise _ParouACorrecao()
+
+    def _avisar(self, envio, o_que_houve, motivo):
+        self.logger.warning("Envio %s: %s (%s)", envio.job_id, o_que_houve, motivo)
 
     def _atualizar_o_verso(self, job_id, lang):
         """O Cartão da Criação que a pessoa já tinha antes da correção não tem o “Da última vez você escreveu …” no verso: o modelo dele é regravado, como
