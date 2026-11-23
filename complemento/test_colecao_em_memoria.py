@@ -31,6 +31,23 @@ def guardar_na_midia(arquivos, nome, dados):
     return nome
 
 
+TIPOS_DE_NOTA_DA_INSTALACAO = {"Básico": ["Frente", "Verso"]}
+PRIMEIRO_ID_DE_NOTA = 1700000000000
+
+
+def frente_repete(valor, frente_normalizada, normalizar):
+    """O valor do campo é a frente que já estava no baralho (`normalizar` o deixa como `frente_normalizada`)?"""
+    return bool(valor) and normalizar(valor) == frente_normalizada
+
+
+def normalizar_a_frente(valor):
+    return valor.strip().lower()
+
+
+def campos_da_nota_descrita(nota):
+    return list((nota.get("campos") or {"Frente": nota.get("frente", ""), "Verso": nota.get("verso", "")}).items())
+
+
 class ColecaoEmMemoria(PreviaEmMemoria, ModelosEmMemoria):
     """A coleção de um perfil aberto, descrita como nos exemplos do contrato:
 
@@ -57,28 +74,29 @@ class ColecaoEmMemoria(PreviaEmMemoria, ModelosEmMemoria):
         self._fixo = None
         self.entradas = []
         self.trocas = []
-        self._quebra = bool((descricao or {}).get("quebra"))
-        self._padrao = (descricao or {}).get("baralhoPadrao", "Default")  # o nome do Baralho padrão segue o idioma do Anki (“Padrão” em português)
-        self._tipos = {nome: list(campos) for nome, campos in ((descricao or {}).get("tiposDeNota") or {"Básico": ["Frente", "Verso"]}).items()}
+        descricao = descricao or {}
+        self._quebra = bool(descricao.get("quebra"))
+        self._padrao = descricao.get("baralhoPadrao", "Default")
+        self._tipos = {nome: list(campos) for nome, campos in (descricao.get("tiposDeNota") or TIPOS_DE_NOTA_DA_INSTALACAO).items()}
         self._guids = set()
         self._cartoes_dos_tipos = {}
         self._notas = {}
         self.gravadas = []
         self.midia = {}
         self.sincronizando = False
-        self._baralhos = {}
-        proxima = 1700000000000
-        for baralho in (descricao or {}).get("baralhos", []):
-            cartoes = []
-            for nota in baralho.get("notas", []):
-                proxima += 1
-                campos = list((nota.get("campos") or {"Frente": nota.get("frente", ""), "Verso": nota.get("verso", "")}).items())
-                for cartao in nota.get("cartoes", [{"tipo": 0, "intervalo": 0}]):
-                    cartoes.append({"nota": proxima, "campos": campos, "tipo": cartao["tipo"], "intervalo": cartao["intervalo"]})
-                if nota.get("guid"):
-                    self._notas[nota["guid"]] = {"baralho": baralho["nome"], "tipo_de_nota": nota.get("tipo", "Básico"), "campos": dict(campos)}
-            self._baralhos[baralho["nome"]] = cartoes
-        self._proxima = proxima
+        self._proxima = PRIMEIRO_ID_DE_NOTA
+        self._baralhos = {baralho["nome"]: self._cartoes_do_baralho_descrito(baralho) for baralho in descricao.get("baralhos", [])}
+
+    def _cartoes_do_baralho_descrito(self, baralho):
+        cartoes = []
+        for nota in baralho.get("notas", []):
+            self._proxima += 1
+            campos = campos_da_nota_descrita(nota)
+            cartoes += [{"nota": self._proxima, "campos": campos, "tipo": cartao["tipo"], "intervalo": cartao["intervalo"]}
+                        for cartao in nota.get("cartoes", [{"tipo": 0, "intervalo": 0}])]
+            if nota.get("guid"):
+                self._notas[nota["guid"]] = {"baralho": baralho["nome"], "tipo_de_nota": nota.get("tipo", "Básico"), "campos": dict(campos)}
+        return cartoes
 
     @classmethod
     def fechada(cls, perfis=("Usuário 1",)):
@@ -103,7 +121,8 @@ class ColecaoEmMemoria(PreviaEmMemoria, ModelosEmMemoria):
 
     def entrar_no_perfil_fixo(self):
         marcado = self._fixo.marcado() if self._fixo else None
-        if self._aberta or self._anki_inteiro or marcado not in self._perfis:
+        sem_tela_de_perfis = self._aberta or self._anki_inteiro
+        if sem_tela_de_perfis or marcado not in self._perfis:
             return False
         self.entradas.append(marcado)
         self.abrir(marcado)
@@ -185,7 +204,7 @@ class ColecaoEmMemoria(PreviaEmMemoria, ModelosEmMemoria):
             return "added"
         frentes = (campos_da_frente,) if isinstance(campos_da_frente, str) else tuple(campos_da_frente)
         for cartao in self.cartoes_do_baralho(baralho):
-            if any(nome in frentes and valor and normalizar(valor) == frente_normalizada for nome, valor in cartao["campos"]):
+            if any(nome in frentes and frente_repete(valor, frente_normalizada, normalizar) for nome, valor in cartao["campos"]):
                 return "duplicate"
         self.adicionar_nota(baralho, tipo_de_nota, campos, etiquetas, guid, midia)
         return "added"
@@ -284,8 +303,7 @@ class ContratoDoAdaptadorDaColecao:
         self.assertEqual(len(colecao.cartoes_do_baralho("PerpetualMiner")), 1)
 
     def gravar_o_cartao(self, colecao, guid="guid-1", frente="a"):
-        return colecao.gravar_cartao(
-            "Inglês", "Básico", {"Frente": frente, "Verso": "b"}, [], guid, "Frente", frente.strip().lower(), lambda valor: valor.strip().lower())
+        return colecao.gravar_cartao("Inglês", "Básico", {"Frente": frente, "Verso": "b"}, [], guid, "Frente", normalizar_a_frente(frente), normalizar_a_frente)
 
     def test_gravar_o_cartao_de_novo_pelo_mesmo_guid_diz_added_sem_dobrar_nem_virar_duplicata(self):
         colecao = self.adaptador({"baralhos": [{"nome": "Inglês"}]})
@@ -306,9 +324,9 @@ class ContratoDoAdaptadorDaColecao:
             colecao.adicionar_nota("Inglês", "Basic", {"Front": "a", "Back": "b"}, [], "guid-1")
         self.assertEqual(colecao.guids_existentes(["guid-1"]), set())
 
-    def gravar_com_midia(self, colecao, guid, frente, midia, tipo_de_nota="Básico"):
+    def gravar_com_midia(self, colecao, guid, frente, midia):
         return colecao.gravar_cartao(
-            "Inglês", tipo_de_nota, {"Frente": frente, "Verso": "b"}, [], guid, "Frente", frente.strip().lower(), lambda valor: valor.strip().lower(), midia)
+            "Inglês", "Básico", {"Frente": frente, "Verso": "b"}, [], guid, "Frente", normalizar_a_frente(frente), normalizar_a_frente, midia)
 
     def frentes(self, colecao):
         return [dict(cartao["campos"])["Frente"] for cartao in colecao.cartoes_do_baralho("Inglês")]
@@ -338,7 +356,7 @@ class ContratoDoAdaptadorDaColecao:
     def test_sem_o_tipo_de_nota_nenhuma_midia_fica_na_colecao(self):
         colecao = self.adaptador({"baralhos": [{"nome": "Inglês"}]})
         with self.assertRaises(baralhos.TipoDeNotaAusente):
-            self.gravar_com_midia(colecao, "guid-1", "a", {"x.mp3": b"um"}, tipo_de_nota="Basic")
+            colecao.gravar_cartao("Inglês", "Basic", {"Frente": "a", "Verso": "b"}, [], "guid-1", "Frente", "a", normalizar_a_frente, {"x.mp3": b"um"})
         self.assertEqual(self.midia_guardada(colecao), {})
 
     def test_gravar_de_novo_o_mesmo_guid_nao_dobra_a_nota(self):
