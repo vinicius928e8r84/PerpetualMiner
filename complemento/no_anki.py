@@ -9,6 +9,7 @@ import time
 
 from . import cartoes_do_anki, criacao_na_revisao, inicio, janela, registro
 from .criacao_no_anki import CriacaoNoAnki
+from .nota_a_gravar import FrenteDoCartao, NotaAGravar
 from .baralhos import ColecaoIndisponivel, PerfilIlegivel, TipoDeNotaAusente
 from .atualizacao_do_anki import AnkiWebDoAnki
 from .configuracao import OPENAI_BASE, OPENVERSE_BASE, PORTA, VERSAO, VOZ_BASE
@@ -23,6 +24,10 @@ def perfil_aberto(mw):
     if getattr(mw, "col", None) is None:
         return None
     return getattr(getattr(mw, "pm", None), "name", None)
+
+
+def _na_tela_de_perfis_sem_colecao(mw):
+    return getattr(mw, "col", None) is None and getattr(mw, "state", None) == "profileManager"
 
 
 class ColecaoDoAnki(CriacaoNoAnki):
@@ -117,7 +122,7 @@ class ColecaoDoAnki(CriacaoNoAnki):
     def _entrar_no_marcado(self, mw):
         """Na thread principal. Só da tela de perfis (`mw.state`), sem coleção aberta, e uma vez por `espera_da_entrada_s`."""
         marcado = self._marcado_que_existe(mw)
-        if marcado is None or getattr(mw, "col", None) is not None or getattr(mw, "state", None) != "profileManager":
+        if marcado is None or not _na_tela_de_perfis_sem_colecao(mw):
             return False
         if not self._janela_de_perfis_livre(mw):
             return False
@@ -187,7 +192,8 @@ class ColecaoDoAnki(CriacaoNoAnki):
         return self._gravando(lambda colecao: {linha[0] for linha in colecao.db.all("select guid from notes where guid in (%s)" % marcas, *guids)})
 
     def adicionar_nota(self, baralho, tipo_de_nota, campos, etiquetas, guid, midia=None):
-        return self._gravando(lambda colecao: _adicionar_nota(colecao, baralho, tipo_de_nota, campos, etiquetas, guid, midia))
+        nota = NotaAGravar(baralho, tipo_de_nota, campos, etiquetas, guid, midia)
+        return self._gravando(lambda colecao: _adicionar_nota(colecao, nota))
 
     def cartao_renderizado(self, tipo_de_nota, campos):
         """O Cartão como o Anki o desenha (#164, `cartoes_do_anki.py`): `{ frente, verso, css }`, ou None se a coleção não tem o tipo."""
@@ -227,31 +233,33 @@ class ColecaoDoAnki(CriacaoNoAnki):
         de outra nota). A busca da frente fica aqui dentro: uma função que o Anki ocupado atrasou, e que a thread de trabalho
         deixou de esperar, não faz a volta seguinte contar a própria nota como duplicata. A `midia` (`{nome: bytes}`, o áudio e a imagem do
         Cartão) é guardada pela coleção junto com a nota nova, e só com ela."""
-        return self._gravando(lambda colecao: _gravar_cartao(
-            colecao, baralho, tipo_de_nota, campos, etiquetas, guid, campos_da_frente, frente_normalizada, normalizar, midia))
+        nota = NotaAGravar(baralho, tipo_de_nota, campos, etiquetas, guid, midia)
+        frente = FrenteDoCartao(campos_da_frente, frente_normalizada, normalizar)
+        return self._gravando(lambda colecao: _gravar_cartao(colecao, nota, frente))
 
 
-def _adicionar_nota(colecao, baralho, tipo_de_nota, campos, etiquetas, guid, midia=None):
+def _adicionar_nota(colecao, nota_a_gravar):
     """Uma nota nova, na thread principal: o Baralho é criado se falta (`decks.id`), o tipo de nota tem de existir com os campos.
     A `midia` vai para a pasta de mídia da coleção (`media.write_data`) antes da nota; se a coleção deu outro nome ao arquivo (já
     havia um de mesmo nome e outro conteúdo), o `[sound:…]` da nota cita o nome que ficou (um `<img src>` segue o nome pedido).
 
     Uma nota com o mesmo `guid` já gravada fica como está: é a gravação que o Anki ocupado atrasou (o Envio desistiu de
     esperar e pediu de novo), e o Anki não impede dois `guid` iguais."""
-    if colecao.db.all("select 1 from notes where guid = ?", guid):
+    if colecao.db.all("select 1 from notes where guid = ?", nota_a_gravar.guid):
         return
-    modelo = colecao.models.by_name(tipo_de_nota)
-    if modelo is None or not set(campos) <= set(cartoes_do_anki.campos_do_tipo(modelo)):
-        raise TipoDeNotaAusente(tipo_de_nota)
-    for nome, dados in (midia or {}).items():
+    modelo = colecao.models.by_name(nota_a_gravar.tipo_de_nota)
+    if modelo is None or not set(nota_a_gravar.campos) <= set(cartoes_do_anki.campos_do_tipo(modelo)):
+        raise TipoDeNotaAusente(nota_a_gravar.tipo_de_nota)
+    campos = nota_a_gravar.campos
+    for nome, dados in (nota_a_gravar.midia or {}).items():
         guardado = colecao.media.write_data(nome, dados)
         campos = {campo: valor.replace("[sound:%s]" % nome, "[sound:%s]" % guardado) for campo, valor in campos.items()}
     nota = colecao.new_note(modelo)
     for nome, valor in campos.items():
         nota[nome] = valor
-    nota.tags = list(etiquetas)
-    nota.guid = guid
-    colecao.add_note(nota, colecao.decks.id(baralho))
+    nota.tags = list(nota_a_gravar.etiquetas)
+    nota.guid = nota_a_gravar.guid
+    colecao.add_note(nota, colecao.decks.id(nota_a_gravar.baralho))
 
 
 def _criar_tipo_de_nota(colecao, definicao):
@@ -280,24 +288,52 @@ def _criar_baralhos_da_instalacao_nova(colecao, nomes):
     return list(nomes)
 
 
-def _gravar_cartao(colecao, baralho, tipo_de_nota, campos, etiquetas, guid, campos_da_frente, frente_normalizada, normalizar, midia=None):
-    if colecao.db.all("select 1 from notes where guid = ?", guid):
+def _e_a_frente(campo, frentes, frente):
+    nome, valor = campo
+    return nome in frentes and bool(valor) and frente.normalizar(valor) == frente.frente_normalizada
+
+
+def _gravar_cartao(colecao, nota, frente):
+    if colecao.db.all("select 1 from notes where guid = ?", nota.guid):
         return "added"
+    campos_da_frente = frente.campos_da_frente
     frentes = (campos_da_frente,) if isinstance(campos_da_frente, str) else tuple(campos_da_frente)
-    for cartao in _cartoes_do_baralho(colecao, baralho):
-        if any(nome in frentes and valor and normalizar(valor) == frente_normalizada for nome, valor in cartao["campos"]):
+    for cartao in _cartoes_do_baralho(colecao, nota.baralho):
+        if any(_e_a_frente(campo, frentes, frente) for campo in cartao["campos"]):
             return "duplicate"
-    _adicionar_nota(colecao, baralho, tipo_de_nota, campos, etiquetas, guid, midia)
+    _adicionar_nota(colecao, nota)
     return "added"
 
 
-def _cartoes_do_baralho(colecao, nome):
-    """Os Cartões do Baralho e dos subbaralhos (e os que um Baralho filtrado emprestou), como a busca `deck:` do Anki."""
-    ids = [
+def _ids_do_baralho(colecao, nome):
+    return [
         int(baralho.id)
         for baralho in colecao.decks.all_names_and_ids()
         if baralho.name == nome or baralho.name.startswith(nome + "::")
     ]
+
+
+def _nomes_dos_campos(colecao, modelo):
+    tipo_de_nota = colecao.models.get(modelo)
+    if not tipo_de_nota:
+        return []
+    return [campo["name"] for campo in sorted(tipo_de_nota["flds"], key=lambda c: c["ord"])]
+
+
+def _cartao_da_linha(linha, nomes):
+    nota, tipo, intervalo, campos = linha
+    valores = str(campos or "").split("\x1f")
+    return {
+        "nota": nota,
+        "campos": [(nomes[posicao] if posicao < len(nomes) else "", valor) for posicao, valor in enumerate(valores)],
+        "tipo": tipo,
+        "intervalo": intervalo,
+    }
+
+
+def _cartoes_do_baralho(colecao, nome):
+    """Os Cartões do Baralho e dos subbaralhos (e os que um Baralho filtrado emprestou), como a busca `deck:` do Anki."""
+    ids = _ids_do_baralho(colecao, nome)
     if not ids:
         return []
     lista = ",".join(str(id_) for id_ in ids)
@@ -306,20 +342,10 @@ def _cartoes_do_baralho(colecao, nome):
         "where c.did in (%s) or c.odid in (%s)" % (lista, lista)
     )
     nomes_dos_campos = {}
-    cartoes = []
-    for nota, tipo, intervalo, modelo, campos in linhas:
+    for _, _, _, modelo, _ in linhas:
         if modelo not in nomes_dos_campos:
-            tipo_de_nota = colecao.models.get(modelo)
-            nomes_dos_campos[modelo] = [campo["name"] for campo in sorted(tipo_de_nota["flds"], key=lambda c: c["ord"])] if tipo_de_nota else []
-        nomes = nomes_dos_campos[modelo]
-        valores = str(campos or "").split("\x1f")
-        cartoes.append({
-            "nota": nota,
-            "campos": [(nomes[posicao] if posicao < len(nomes) else "", valor) for posicao, valor in enumerate(valores)],
-            "tipo": tipo,
-            "intervalo": intervalo,
-        })
-    return cartoes
+            nomes_dos_campos[modelo] = _nomes_dos_campos(colecao, modelo)
+    return [_cartao_da_linha((nota, tipo, intervalo, campos), nomes_dos_campos[modelo]) for nota, tipo, intervalo, modelo, campos in linhas]
 
 
 def _ao_abrir_o_perfil(funcao):
