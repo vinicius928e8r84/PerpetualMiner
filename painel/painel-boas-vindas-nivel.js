@@ -11,12 +11,35 @@
       .map(({ chave, idioma }) => textoDaVoz('ONB-13.nivel', { idioma, nivel: textoDaVoz(VOZ_DO_NIVEL[AjustesDeEnvio.atual()[chave].nivel]) })).join(' · ');
   }
 
+  const nivelJaSalvo = (ajustes, nivel) => ajustes.versao > 0 && ajustes.nivel === nivel;
+
+  function mudouPorFora(bloco, nivelSalvo) {
+    return nivelSalvo !== bloco.salvo && nivelSalvo !== bloco.rascunho.nivel;
+  }
+
+  function blocoPrecisaSerRefeito(bloco, nivelSalvo) {
+    if (!bloco) return true;
+    return !bloco.quiz && mudouPorFora(bloco, nivelSalvo);
+  }
+
+  function novoBloco(idioma, nivelSalvo) {
+    const corpo = elemento('div', 'bv-nivel__corpo');
+    const grupo = elemento('div', 'bv-nivel', elemento('h3', 'bv-nivel__idioma', idioma), corpo);
+    grupo.setAttribute('role', 'group');
+    grupo.setAttribute('aria-label', idioma);
+    return { grupo, corpo, rascunho: { nivel: nivelSalvo }, salvo: nivelSalvo, quiz: null };
+  }
+
+  function listaMudou(grupos, campos) {
+    return grupos.length !== campos.children.length || grupos.some((g, i) => g !== campos.children[i]);
+  }
+
   function guardarONivel(passo, lang, nivel, { soSeNaoSalvo = false } = {}) {
     passo.gravando = passo.gravando.then(async () => {
       passo.falha.hidden = true;
       try {
         const atuais = await AjustesDeEnvio.ler();
-        if (soSeNaoSalvo && atuais[lang].versao > 0 && atuais[lang].nivel === nivel) return;
+        if (soSeNaoSalvo && nivelJaSalvo(atuais[lang], nivel)) return;
         let resposta = await AjustesDeEnvio.salvar(lang, { ...atuais[lang], nivel }, atuais[lang].versao);
         if (!resposta.ok) resposta = await AjustesDeEnvio.salvar(lang, { ...resposta.ajustes[lang], nivel }, resposta.ajustes[lang].versao);
         if (!resposta.ok) throw new Error('ajustes_desatualizados');
@@ -70,28 +93,25 @@
       mostrarOCampo(chave, bloco);
     }
 
+    function grupoDoIdioma(chave, idioma) {
+      const nivelSalvo = AjustesDeEnvio.atual()[chave].nivel;
+      let bloco = passo.blocos.get(chave);
+      if (blocoPrecisaSerRefeito(bloco, nivelSalvo)) {
+        bloco?.quiz?.parar();
+        bloco = novoBloco(idioma, nivelSalvo);
+        passo.blocos.set(chave, bloco);
+        mostrarOCampo(chave, bloco);
+      }
+      if (!bloco.quiz) bloco.salvo = nivelSalvo;
+      return bloco.grupo;
+    }
+
     function desenhar(estado) {
       const ligados = IDIOMAS_DO_PASSO.filter(({ chave }) => estado?.automatica[chave]);
       semIdioma.hidden = !estado || ligados.length > 0;
-      const grupos = ligados.map(({ chave, idioma }) => {
-        const salvo = AjustesDeEnvio.atual()[chave];
-        let bloco = passo.blocos.get(chave);
-        const veioDeFora = bloco && salvo.nivel !== bloco.salvo && salvo.nivel !== bloco.rascunho.nivel;
-        if (!bloco || (!bloco.quiz && veioDeFora)) {
-          bloco?.quiz?.parar();
-          const corpo = elemento('div', 'bv-nivel__corpo');
-          const grupo = elemento('div', 'bv-nivel', elemento('h3', 'bv-nivel__idioma', idioma), corpo);
-          grupo.setAttribute('role', 'group');
-          grupo.setAttribute('aria-label', idioma);
-          bloco = { grupo, corpo, rascunho: { nivel: salvo.nivel }, salvo: salvo.nivel, quiz: null };
-          passo.blocos.set(chave, bloco);
-          mostrarOCampo(chave, bloco);
-        }
-        if (!bloco.quiz) bloco.salvo = salvo.nivel;
-        return bloco.grupo;
-      });
+      const grupos = ligados.map(({ chave, idioma }) => grupoDoIdioma(chave, idioma));
       // Refazer a lista com os mesmos nós os tira da página e o foco cai no body: só troca quando a lista mudou.
-      if (grupos.length !== campos.children.length || grupos.some((g, i) => g !== campos.children[i])) campos.replaceChildren(...grupos);
+      if (listaMudou(grupos, campos)) campos.replaceChildren(...grupos);
     }
 
     return { no, desenhar };
