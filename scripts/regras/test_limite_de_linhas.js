@@ -10,6 +10,12 @@ const regra = require('./limite-de-linhas');
 const saude = require('./saude-do-codigo');
 
 const RAIZ = path.resolve(__dirname, '..', '..');
+
+function rodarVerificar(pasta, args) {
+  const env = { ...process.env };
+  for (const nome of ['REGRAS_BASE', 'REGRAS_PR', 'GITHUB_EVENT_NAME']) delete env[nome];
+  return spawnSync('node', [path.join(__dirname, 'verificar.js'), '--raiz', pasta, ...args], { cwd: pasta, encoding: 'utf8', env });
+}
 const real = arquivo => fs.readFileSync(path.join(RAIZ, arquivo), 'utf8');
 const linhas = fonte => fonte.split('\n').slice(0, -1);
 
@@ -47,9 +53,7 @@ const BASE_COM_O_ARQUIVO = excesso => JSON.stringify({ 'limite-de-linhas': { 'bo
 function verificar(arquivos) {
   const pasta = repositorioDeTestes(arquivos);
   try {
-    const env = { ...process.env };
-    for (const nome of ['REGRAS_BASE', 'REGRAS_PR', 'GITHUB_EVENT_NAME']) delete env[nome];
-    const r = spawnSync('node', [path.join(__dirname, 'verificar.js'), '--raiz', pasta, '--base', '0000000000000000000000000000000000000000'], { cwd: pasta, encoding: 'utf8', env });
+    const r = rodarVerificar(pasta, ['--base', '0000000000000000000000000000000000000000']);
     return { status: r.status, saida: r.stdout, pasta };
   } finally {
     fs.rmSync(pasta, { recursive: true, force: true });
@@ -93,9 +97,7 @@ total += 3;
 function atualizar(arquivos) {
   const pasta = repositorioDeTestes(arquivos);
   try {
-    const env = { ...process.env };
-    for (const nome of ['REGRAS_BASE', 'REGRAS_PR', 'GITHUB_EVENT_NAME']) delete env[nome];
-    const r = spawnSync('node', [path.join(__dirname, 'verificar.js'), '--raiz', pasta, '--base', '0000000000000000000000000000000000000000', '--atualizar'], { cwd: pasta, encoding: 'utf8', env });
+    const r = rodarVerificar(pasta, ['--base', '0000000000000000000000000000000000000000', '--atualizar']);
     const gravada = JSON.parse(fs.readFileSync(path.join(pasta, 'scripts/regras/linha-de-base.json'), 'utf8'));
     return { status: r.status, saida: r.stdout, gravada: gravada['limite-de-linhas'] };
   } finally {
@@ -117,9 +119,7 @@ function contraAMain(naMain, noRamo) {
     git('add', '-A');
     git('commit', '-q', '-m', 'main');
     for (const [arquivo, texto] of Object.entries(noRamo)) fs.writeFileSync(path.join(pasta, arquivo), texto);
-    const env = { ...process.env };
-    for (const nome of ['REGRAS_BASE', 'REGRAS_PR', 'GITHUB_EVENT_NAME']) delete env[nome];
-    const r = spawnSync('node', [path.join(__dirname, 'verificar.js'), '--raiz', pasta, '--base', 'HEAD'], { cwd: pasta, encoding: 'utf8', env });
+    const r = rodarVerificar(pasta, ['--base', 'HEAD']);
     return { status: r.status, saida: r.stdout };
   } finally {
     fs.rmSync(pasta, { recursive: true, force: true });
