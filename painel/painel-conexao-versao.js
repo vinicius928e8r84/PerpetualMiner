@@ -80,15 +80,15 @@
     [AVISO.ATUALIZADA]: versao => ({ texto: textoDaVoz('BRG-50.atualizada', { versao }), tom: 'info', fechavel: true }),
   };
 
-  function desenhar() {
-    const { estado, versao } = maquina;
-    const fala = FALA[estado]?.(versao);
+  function falaDaVersao() {
+    const fala = FALA[maquina.estado]?.(maquina.versao);
     if (fala && maquina.leitura?.antiga) fala.acao = null;
-    const nova = fala ? JSON.stringify([estado, versao, fala.texto, Boolean(fala.acao)]) : '';
-    if (nova === assinatura) return;
-    assinatura = nova;
-    porId('painel-conexao-versao')?.remove();
-    if (!fala) return;
+    return fala;
+  }
+
+  const assinaturaDaFala = fala => (fala ? JSON.stringify([maquina.estado, maquina.versao, fala.texto, Boolean(fala.acao)]) : '');
+
+  function montarOAvisoDaVersao(fala) {
     const aviso = Veio.montarAviso({
       texto: fala.texto,
       tom: fala.tom,
@@ -98,11 +98,25 @@
       aoFechar: fala.fechavel ? () => despachar({ tipo: EVENTO.FECHOU }) : undefined,
     });
     aviso.id = 'painel-conexao-versao';
-    document.querySelector('.shell-conteudo').prepend(aviso);
-    if (estado === AVISO.ATUALIZADA && maquina.mostrada !== versao) {
-      chrome.storage.local.set({ [CHAVE_DA_ATUALIZADA_VISTA]: versao });
-      despachar({ tipo: EVENTO.MOSTROU });
-    }
+    return aviso;
+  }
+
+  function registrarAAtualizadaMostrada() {
+    const { estado, versao, mostrada } = maquina;
+    if (estado !== AVISO.ATUALIZADA || mostrada === versao) return;
+    chrome.storage.local.set({ [CHAVE_DA_ATUALIZADA_VISTA]: versao });
+    despachar({ tipo: EVENTO.MOSTROU });
+  }
+
+  function desenhar() {
+    const fala = falaDaVersao();
+    const nova = assinaturaDaFala(fala);
+    if (nova === assinatura) return;
+    assinatura = nova;
+    porId('painel-conexao-versao')?.remove();
+    if (!fala) return;
+    document.querySelector('.shell-conteudo').prepend(montarOAvisoDaVersao(fala));
+    registrarAAtualizadaMostrada();
   }
 
   const conectando = {
@@ -172,45 +186,64 @@
     return { tipo: conectando.fase === 'codigo' ? 'codigo' : 'inicio' };
   }
 
+  const codigoJaDesenhado = aberto => conectando.desenhado === 'codigo' && Boolean(aberto);
+  const soTrocaAResposta = (atual, aberto) => atual?.tipo === 'codigo' && codigoJaDesenhado(aberto);
+  const escreverAResposta = no => { no.querySelector('#painel-pareamento-resposta').textContent = dizer(conectando.mensagem); };
+
+  function montarOAvisoDoPareamento(naoConfirmada) {
+    return Veio.montarAviso({
+      texto: dizer(conectando.mensagem) || textoDaVoz(naoConfirmada ? 'BRG-52.naoConfirmou' : 'BRG-52.conectar'),
+      tom: naoConfirmada || conectando.mensagem ? 'perigo' : 'info',
+      acao: naoConfirmada
+        ? { rotulo: textoDaVoz('BRG-50.tentarDeNovo'), aoUsar: () => ConexaoAnki.tentarDeNovo() }
+        : { rotulo: textoDaVoz('BRG-52.botao'), aoUsar: conectar },
+      fechavel: false,
+    });
+  }
+
+  function montarOPareamento(atual) {
+    if (atual.tipo !== 'codigo') return montarOAvisoDoPareamento(atual.tipo === 'naoConfirmada');
+    const no = montarOCodigo();
+    escreverAResposta(no);
+    return no;
+  }
+
+  function trocarOPareamento(atual, aberto) {
+    const tinhaFoco = aberto?.contains(document.activeElement);
+    aberto?.remove();
+    conectando.desenhado = atual?.tipo ?? null;
+    if (!atual) return;
+    const no = montarOPareamento(atual);
+    no.id = 'painel-pareamento';
+    ponhaNoLugar(no);
+    if (tinhaFoco) no.querySelector('input, button')?.focus();
+  }
+
   function desenharOPareamento() {
     const atual = visaoDoPareamento();
     const assinatura = atual ? JSON.stringify([atual.tipo, conectando.mensagem]) : '';
     if (assinatura === conectando.assinatura) return;
     conectando.assinatura = assinatura;
     const aberto = porId('painel-pareamento');
-    if (atual?.tipo === 'codigo' && conectando.desenhado === 'codigo' && aberto) {
-      aberto.querySelector('#painel-pareamento-resposta').textContent = dizer(conectando.mensagem);
-      return;
-    }
-    const tinhaFoco = aberto?.contains(document.activeElement);
-    aberto?.remove();
-    conectando.desenhado = atual?.tipo ?? null;
-    if (!atual) return;
-    let no;
-    if (atual.tipo === 'codigo') {
-      no = montarOCodigo();
-      no.querySelector('#painel-pareamento-resposta').textContent = dizer(conectando.mensagem);
-    } else {
-      const naoConfirmada = atual.tipo === 'naoConfirmada';
-      no = Veio.montarAviso({
-        texto: dizer(conectando.mensagem) || textoDaVoz(naoConfirmada ? 'BRG-52.naoConfirmou' : 'BRG-52.conectar'),
-        tom: naoConfirmada || conectando.mensagem ? 'perigo' : 'info',
-        acao: naoConfirmada
-          ? { rotulo: textoDaVoz('BRG-50.tentarDeNovo'), aoUsar: () => ConexaoAnki.tentarDeNovo() }
-          : { rotulo: textoDaVoz('BRG-52.botao'), aoUsar: conectar },
-        fechavel: false,
-      });
-    }
-    no.id = 'painel-pareamento';
-    ponhaNoLugar(no);
-    if (tinhaFoco) no.querySelector('input, button')?.focus();
+    if (soTrocaAResposta(atual, aberto)) escreverAResposta(aberto);
+    else trocarOPareamento(atual, aberto);
+  }
+
+  function boasVindasAbertas() {
+    const boasVindas = porId('boas-vindas');
+    return boasVindas && !boasVindas.hidden ? boasVindas : null;
+  }
+
+  function vagaDoPasso4() {
+    const vaga = porId('bv4-pareamento');
+    return vaga && !vaga.closest('[hidden]') ? vaga : null;
   }
 
   function ponhaNoLugar(no) {
-    const boasVindas = porId('boas-vindas');
-    const vagaDoPasso4 = porId('bv4-pareamento');
-    if (boasVindas && !boasVindas.hidden && vagaDoPasso4 && !vagaDoPasso4.closest('[hidden]')) vagaDoPasso4.append(no);
-    else if (boasVindas && !boasVindas.hidden) boasVindas.insertBefore(no, boasVindas.querySelector('.bv-grade'));
+    const boasVindas = boasVindasAbertas();
+    const vaga = boasVindas && vagaDoPasso4();
+    if (vaga) vaga.append(no);
+    else if (boasVindas) boasVindas.insertBefore(no, boasVindas.querySelector('.bv-grade'));
     else document.querySelector('.shell-conteudo').prepend(no);
   }
 
