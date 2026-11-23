@@ -4,7 +4,7 @@
 const { execFileSync, spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const { faltasDoCorpo } = require('./registro-da-pr.js');
+const { faltasDoCorpo, lotesQueContemOHead } = require('./registro-da-pr.js');
 const politicaDoSite = require('./politica-do-site.js');
 
 const MAPA_DE_FEATURES = '.agents/skills/verify-perpetualminer/scripts/mapa-de-features.sh';
@@ -36,7 +36,7 @@ function conferirCorpo({ corpo, raiz, base, repositorio = repositorioDoRemoto(ra
   const head = git(raiz, 'rev-parse', 'HEAD');
   const daPolitica = politicaDoSite.conferir({ raiz, base, ponta: 'HEAD', corpo });
   return [
-    ...faltasDoCorpo({ corpo, rotulos: [], head, repositorio }),
+    ...faltasDoCorpo({ corpo, rotulos: [], head, repositorio, lotes: lotesQueContemOHead({ corpo, head, raiz }) }),
     ...faltasDoMapaDeFeatures({ raiz, base, corpo }),
     ...(daPolitica.codigo ? [daPolitica.mensagem] : []),
   ];

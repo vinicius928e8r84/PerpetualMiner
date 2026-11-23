@@ -11,7 +11,7 @@ const VEREDITO_LIMPO = 'CLEAN';
 // Num repositório público qualquer pessoa comenta: só vale o registro de quem pode escrever no repositório.
 const QUEM_REGISTRA = ['OWNER', 'MEMBER', 'COLLABORATOR'];
 const MODELO = '.github/PULL_REQUEST_TEMPLATE.md';
-const { soMergesLimposDaMain } = require('./so-merge-da-main.js');
+const { ehAncestral, soMergesLimposDaMain } = require('./so-merge-da-main.js');
 const PUBLICADOR = 'scripts/ci/registrar-na-pr.js';
 const CONFERIDOR_DO_CORPO = 'scripts/ci/corpo-da-pr.js';
 
@@ -174,13 +174,27 @@ function faltasDaIssue(linhas, repositorio) {
   return faltas;
 }
 
-function faltaDaProva(corpo, head) {
+const lotesCitados = prova => hexasDe(valoresDe(prova, 'Lote')).filter(hexa => SHA_INTEIRO.test(hexa));
+
+function lotesQueContemOHead({ corpo, head, raiz = '.' }) {
+  const prova = secao(linhasQueValem(corpo), SECAO_DA_PROVA) || [];
+  return [...new Set(lotesCitados(prova))].filter(lote => ehAncestral(raiz, head, lote));
+}
+
+function faltaDoLote(prova, head, lotes) {
+  const citados = lotesCitados(prova);
+  if (citados.some(lote => lotes.includes(lote))) return null;
+  return `a seção "${SECAO_DA_PROVA}" é do lote ${citados[0]}, que não contém o head ${head} (o head mudou depois do lote, ou o lote não foi baixado: git fetch origin; um lote vale só para os heads que ele contém)`;
+}
+
+function faltaDaProva(corpo, head, lotes = []) {
   const prova = secao(linhasQueValem(corpo), SECAO_DA_PROVA);
   if (!prova) return `o corpo não tem a seção "${SECAO_DA_PROVA}"`;
   const lacuna = secaoInteira(corpo, SECAO_DA_PROVA).find(texto => LACUNA_DA_PROVA.test(semCaixaNemAcento(texto)));
   if (lacuna) return `a seção "${SECAO_DA_PROVA}" diz "${lacuna}": com uma parte não coberta ou bloqueada, a prova não é ${FRASE}`;
   if (!prova.includes(FRASE)) return `a seção "${SECAO_DA_PROVA}" não tem a linha ${FRASE} (a frase sozinha na linha)`;
-  return faltaDoHead(prova, head, `a seção "${SECAO_DA_PROVA}"`);
+  const doHead = faltaDoHead(prova, head, `a seção "${SECAO_DA_PROVA}"`);
+  return doHead && (lotesCitados(prova).length ? faltaDoLote(prova, head, lotes) : doHead);
 }
 
 const MOTIVOS_DA_PROVA = [
@@ -191,8 +205,8 @@ const MOTIVOS_DA_PROVA = [
 
 const motivoDaProva = pr => (MOTIVOS_DA_PROVA.find(([pede]) => pede(pr)) || [])[1];
 
-function faltaDaProvaPedida(motivo, corpo, head) {
-  const falta = motivo && faltaDaProva(corpo, head);
+function faltaDaProvaPedida(motivo, corpo, head, lotes) {
+  const falta = motivo && faltaDaProva(corpo, head, lotes);
   return falta && `${motivo}: ${falta}`;
 }
 
@@ -201,7 +215,7 @@ function atencaoQueVale(atencao, risco) {
   return vale === atencao ? atencao : `${vale} (o corpo diz ${atencao}, o revisor ${risco})`;
 }
 
-function partesDoCorpo({ corpo, rotulos, head, repositorio, risco }) {
+function partesDoCorpo({ corpo, rotulos, head, repositorio, risco, lotes }) {
   const linhas = linhasQueValem(corpo);
   const textos = linhas.map(linha => linha.texto);
   const foraDoModelo = [
@@ -218,7 +232,7 @@ function partesDoCorpo({ corpo, rotulos, head, repositorio, risco }) {
       semAtencao,
       ...faltasDaIssue(linhas, repositorio),
     ].filter(Boolean),
-    daProva: faltaDaProvaPedida(motivo, corpo, head),
+    daProva: faltaDaProvaPedida(motivo, corpo, head, lotes),
   };
 }
 
@@ -227,9 +241,9 @@ function faltasDoCorpo(pr) {
   return [...doModelo, daProva].filter(Boolean);
 }
 
-function conferir({ corpo, rotulos, registros, head, repositorio, headsEquivalentes = [] }) {
+function conferir({ corpo, rotulos, registros, head, repositorio, headsEquivalentes = [], lotes = [] }) {
   const risco = riscoDoRevisor(registros, head, headsEquivalentes);
-  const { atencao, alta, doModelo, daProva } = partesDoCorpo({ corpo, rotulos, head, repositorio, risco });
+  const { atencao, alta, doModelo, daProva } = partesDoCorpo({ corpo, rotulos, head, repositorio, risco, lotes });
   const faltas = [...doModelo, faltaDaRevisao(registros, head, headsEquivalentes), daProva].filter(Boolean);
   if (!faltas.length) {
     const { headDoRegistro } = registroQueVale(registros, head, headsEquivalentes);
@@ -280,7 +294,8 @@ async function lerDoGitHub(env, headConferido) {
   const pr = await lerDaApi(env, `pulls/${env.PR}`);
   const registros = registrosPorData([...await lerTodasAsPaginas(env, `issues/${env.PR}/comments`), ...await lerTodasAsPaginas(env, `pulls/${env.PR}/reviews`)]);
   const headsEquivalentes = headsSoComMergeDaMain(registros, headConferido || pr.head.sha, pr.base && pr.base.ref, env.RAIZ_DO_GIT || process.cwd());
-  return { corpo: pr.body, rotulos: pr.labels.map(rotulo => rotulo.name), registros, head: pr.head.sha, repositorio: env.GITHUB_REPOSITORY, headsEquivalentes };
+  const lotes = lotesQueContemOHead({ corpo: pr.body, head: pr.head.sha, raiz: env.RAIZ_DO_GIT || process.cwd() });
+  return { corpo: pr.body, rotulos: pr.labels.map(rotulo => rotulo.name), registros, head: pr.head.sha, repositorio: env.GITHUB_REPOSITORY, headsEquivalentes, lotes };
 }
 
 function headDoAmbiente(env) {
@@ -313,4 +328,4 @@ async function main(env) {
 
 if (require.main === module) main(process.env).then(codigo => { process.exitCode = codigo; });
 
-module.exports = { ATENCOES, FRASE, ROTULO_DE_RISCO_ALTO, SECAO_DA_PROVA, conferir, faltaDaProva, faltaDaRevisao, faltasDoCorpo, indicesForaDoCodigo, lerDoGitHub, linhasQueValem, semCaixaNemAcento };
+module.exports = { ATENCOES, FRASE, ROTULO_DE_RISCO_ALTO, SECAO_DA_PROVA, conferir, faltaDaProva, faltaDaRevisao, faltasDoCorpo, indicesForaDoCodigo, lerDoGitHub, linhasQueValem, lotesQueContemOHead, semCaixaNemAcento };

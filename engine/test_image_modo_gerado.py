@@ -7,6 +7,7 @@ from pathlib import Path
 
 import generate_images
 import image_guard
+import image_pipeline
 from rodar_imagens import _run_images
 
 CARD_TEXT = """Anki Card
@@ -55,7 +56,8 @@ class GeneratedImageModeTests(unittest.TestCase):
             output_dir.mkdir()
             log_dir.mkdir()
             (output_dir / "saw.txt").write_text(CARD_TEXT, encoding="utf-8")
-            result = _run_images(_config(output_dir, log_dir), ["saw:A person witnessing an event"], output_dir, "2", "test", str(log_dir))
+            pipeline = image_pipeline.build(_config(output_dir, log_dir), output_dir, "2", "test", str(log_dir))
+            result = _run_images(pipeline, ["saw:A person witnessing an event"])
             return result, calls, sorted(p.name for p in output_dir.glob("*.png")), _records(log_dir)
 
     def test_a_concrete_word_is_generated_and_recorded_as_a_generated_image(self):
@@ -73,6 +75,24 @@ class GeneratedImageModeTests(unittest.TestCase):
         (files, skipped, sources), calls, pngs, records = self.run_mode(wants=True, generated=False)
         self.assertEqual((files, skipped, sources, pngs), ([], 0, {}, []))
         self.assertEqual([(r["type"], r["result"]) for r in records], [("image_pipeline", "generation_failed")])
+
+    def test_a_line_without_a_colon_is_ignored_and_a_picture_already_on_disk_is_kept_without_asking_the_pipeline(self):
+        class PipelineThatMustNotBeAsked:
+            img_source = "2"
+            img_sources: dict = {}
+
+            def __init__(self, output_dir):
+                self.output_dir = output_dir
+
+            def generate_direct(self, stem, prompt, dest):
+                raise AssertionError("the picture on disk should have been kept")
+
+        with tempfile.TemporaryDirectory() as td:
+            output_dir = Path(td)
+            (output_dir / "saw.png").write_bytes(b"png")
+            (output_dir / "empty.png").write_bytes(b"")
+            made = _run_images(PipelineThatMustNotBeAsked(output_dir), ["no colon here", "saw: any prompt"])
+        self.assertEqual(made, (["saw.png"], 0, {}))
 
 
 if __name__ == "__main__":

@@ -73,7 +73,7 @@ function mensagemDeErro(achado, config) {
     : `✗ ${caminho}: ${tamanho} bytes (~${tokensDe(tamanho, bytesPorToken)} tokens), acima do limite de ${limite} bytes (${tokensDe(limite, bytesPorToken)} tokens).`;
   const passos = [...PASSOS_POR_TIPO[tipoDe(caminho)], ...PASSOS_COMUNS].map((p, i) => `    ${i + 1}. ${p}`);
   const fim = achado.estado === 'cresceu'
-    ? [`  Depois de dividir ${caminho}, baixe a linha de base: node scripts/ganchos/limite-de-tokens.js --atualizar-linha-de-base && git add ${config.linhaDeBase}`]
+    ? [`  Depois de dividir ${caminho}, não edite ${config.linhaDeBase} na PR: a linha de base desce depois do merge, por node scripts/regras/baixar-no-merge.js`]
     : [`  Não ponha ${caminho} na linha de base (${config.linhaDeBase}): arquivo novo precisa caber no limite.`,
       `  Se ele é gerado por uma ferramenta (ninguém o edita à mão), acrescente o glob dele em "ignorar" de scripts/ganchos/limite-de-tokens.json em vez de dividir.`];
   return [cabecalho, '  Como dividir:', ...passos, ...fim].join('\n');

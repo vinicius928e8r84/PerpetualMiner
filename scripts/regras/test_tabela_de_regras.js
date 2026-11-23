@@ -8,6 +8,7 @@ const { REGRAS } = require('./verificar');
 const { regrasDaTabela, divergencias } = require('./apoio-da-tabela-de-regras');
 
 const RAIZ = path.resolve(__dirname, '..', '..');
+const FERRAMENTAS_DA_PASTA = ['baixar-no-merge'];
 const SEM_LINHA_NA_TABELA = ['doc-datado', 'link-de-doc', 'limite-de-linhas', 'sem-comentario-novo', 'saude-do-codigo'];
 
 let total = 0;
@@ -28,13 +29,21 @@ prova(divergencias(tabela(['| 1 A | `regra-um` |', '| 2 B | `regra-dois`; `regra
   'a tabela que cita uma regra que não existe falha');
 prova(divergencias(completa, doisIds, ['regra-dois']).map(d => d.regra), ['regra-dois'], 'a exceção que passou a constar na tabela falha');
 prova(divergencias(completa, doisIds, ['regra-sumida']).map(d => d.regra), ['regra-sumida'], 'a exceção de uma regra que não existe mais falha');
+prova(divergencias(tabela(['| 1 A | `regra-um` |', '| 2 B | `regra-fantasma` |']), ['regra-um', 'regra-nova', 'regra-sobra'], ['regra-um', 'regra-sumida']),
+  [
+    { regra: 'regra-nova', detalhe: 'existe em scripts/regras/ e a tabela não a cita; ponha a linha na tabela do AGENTS.md ou, com a aprovação do dono, na lista do teste' },
+    { regra: 'regra-sobra', detalhe: 'existe em scripts/regras/ e a tabela não a cita; ponha a linha na tabela do AGENTS.md ou, com a aprovação do dono, na lista do teste' },
+    { regra: 'regra-fantasma', detalhe: 'a tabela cita e não existe em scripts/regras/' },
+    { regra: 'regra-um', detalhe: 'já consta na tabela; tire-a da lista de exceções do teste' },
+    { regra: 'regra-sumida', detalhe: 'a exceção é de uma regra que não existe mais em scripts/regras/; tire-a da lista' },
+  ], 'as divergências saem na ordem: sem linha, só na tabela, exceções inúteis, com a mensagem de cada uma');
 assert.throws(() => regrasDaTabela('# sem a seção'), /Rules and what enforces them/, 'sem a seção, o teste não passa em silêncio');
 total++;
 
 const agentes = fs.readFileSync(path.join(RAIZ, 'AGENTS.md'), 'utf8');
 const ids = REGRAS.map(regra => regra.id);
 prova(divergencias(agentes, ids, SEM_LINHA_NA_TABELA), [], 'a tabela do AGENTS.md e as regras de scripts/regras/ dizem as mesmas regras');
-const arquivosDeRegra = fs.readdirSync(__dirname).filter(arquivo => !arquivo.startsWith('apoio-') && /^[a-z0-9]+(-[a-z0-9]+)+\.js$/.test(arquivo)).map(arquivo => arquivo.slice(0, -3)).sort();
-prova(arquivosDeRegra, [...ids].sort(), 'cada arquivo de regra de scripts/regras/ está em REGRAS e cada regra de REGRAS tem o seu arquivo');
+const arquivosDeRegra = fs.readdirSync(__dirname).filter(arquivo => !arquivo.startsWith('apoio-') && /^[a-z0-9]+(-[a-z0-9]+)+\.js$/.test(arquivo)).map(arquivo => arquivo.slice(0, -3)).filter(arquivo => !FERRAMENTAS_DA_PASTA.includes(arquivo)).sort();
+prova(arquivosDeRegra, [...ids].sort(), 'cada arquivo de regra de scripts/regras/ (fora as ferramentas da pasta) está em REGRAS e cada regra de REGRAS tem o seu arquivo');
 
 console.log(`test_tabela_de_regras: ${total} provas ok`);

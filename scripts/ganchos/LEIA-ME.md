@@ -33,11 +33,10 @@ Isso é `git config core.hooksPath scripts/ganchos`, e vale para os dois ganchos
 
 A lista só desce, e o gancho confere isso a cada commit: lê a lista do índice (o que será commitado, nunca a cópia de trabalho) e barra entrada nova ou com tamanho maior que o da lista no `HEAD`. Só o que o `HEAD` já tinha acima do limite pode entrar numa lista nova. `--gerar-linha-de-base` só cria a lista quando ela ainda não existe (modo estrito → lista).
 
-Depois de dividir um arquivo da lista (ou encolhê-lo):
+Depois de dividir um arquivo da lista (ou encolhê-lo), a PR não edita a lista: ela desce depois do merge, num commit só com a linha de base das regras (`node scripts/regras/baixar-no-merge.js`, na `main` com a árvore limpa; a regra `linha-de-base-no-merge` barra a edição à mão na PR). Esse comando roda por dentro:
 
 ```
 node scripts/ganchos/limite-de-tokens.js --atualizar-linha-de-base
-git add scripts/ganchos/linha-de-base-de-tamanho.json
 ```
 
 O comando lê o índice, baixa cada entrada para o tamanho atual e tira a que voltou ao limite, foi apagada ou passou a ser ignorada; nunca sobe um tamanho nem acrescenta arquivo. Renomear um arquivo da lista não é aceito: o gancho o vê como arquivo novo e ele precisa caber no limite. Divida-o no mesmo commit da mudança de nome.

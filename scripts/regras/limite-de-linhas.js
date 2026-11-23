@@ -9,7 +9,7 @@ const id = 'limite-de-linhas';
 const LIMITE = 1000;
 
 const conserto = `Divida o arquivo por responsabilidade em módulos menores (no máximo ${LIMITE} linhas cada) e leve o código novo para um módulo novo, não para ele. `
-  + 'Depois de encolher um arquivo da linha de base (ou de levá-lo ao teto), rode `node scripts/regras/verificar.js --atualizar` e versione scripts/regras/linha-de-base.json.';
+  + 'A PR não edita scripts/regras/linha-de-base.json: o que encolher um arquivo da linha de base (ou o levar ao teto) é baixado depois do merge, por `node scripts/regras/baixar-no-merge.js`.';
 
 const EXTENSOES = /\.(?:js|mjs|cjs|jsx|ts|tsx|py|html|css|sh|bash)$/;
 const FORA = /^(?:docs|dist|build|coverage|node_modules|vendor|third_party)\/|(?:^|\/)(?:fixtures?|dist|node_modules|vendor|third_party)\/|\.min\.[^/]+$/;
@@ -65,11 +65,4 @@ function mensagem({ arquivo, tem, pode }) {
   return [`✗ ${id} — ${arquivo}: ${linhas} linhas; o teto é ${LIMITE} (${tem} acima). ${naLista}`, `  Conserto: ${conserto}`].join('\n');
 }
 
-function mensagemDeFolga({ arquivo, tem, pode }) {
-  const o = tem === 0
-    ? `ficou em ${LIMITE} linhas ou menos: tire-o da linha de base`
-    : `tem ${LIMITE + tem} linhas e a linha de base ainda o deixa em ${LIMITE + pode}: baixe-a`;
-  return `✗ ${id} — ${arquivo} ${o}. Rode \`node scripts/regras/verificar.js --atualizar\` e versione scripts/regras/linha-de-base.json: o teto de cada arquivo da lista é o tamanho que ele tem hoje.`;
-}
-
-module.exports = { id, LIMITE, conserto, seAplica, verificar, mensagem, mensagemDeFolga, contarLinhas, baixarObrigatorio: true };
+module.exports = { id, LIMITE, conserto, seAplica, verificar, mensagem, contarLinhas, folgaPresaAoArquivo: true };

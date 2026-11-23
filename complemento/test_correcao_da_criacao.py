@@ -13,7 +13,8 @@ from types import SimpleNamespace
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import motor_do_envio
-from complemento.correcao_da_criacao import CorrecaoDaCriacao
+from complemento.correcao_da_criacao import CorrecaoDaCriacao, palavra_sem_a_pronuncia
+from complemento.envio import EnvioEmAndamento
 from complemento.ia_do_envio import SemQuemPague
 from complemento.test_envio_correcao import CORRIGIDA, ESCRITA, campos, colecao_com_a_criacao
 
@@ -44,7 +45,7 @@ def corrigir(colecao, porta, apagado=False, parada=None):
     fila = SimpleNamespace(dados=SimpleNamespace(raiz="sem-pasta-do-dono"), pasta_dos_textos=lambda job_id: "textos",
                            pasta_dos_custos=lambda job_id: "custos", estado=lambda job_id: {"wiped": apagado})
     config = motor_do_envio.configuracao_do_motor(motor, fila, pedido)
-    CorrecaoDaCriacao(fila, colecao, motor, LOGGER).corrigir("j1", pedido, config, porta, parada)
+    CorrecaoDaCriacao(fila, colecao, motor, LOGGER).corrigir(EnvioEmAndamento("j1", pedido, config, porta, None), parada)
 
 
 class ACorrecaoPelaPortaDoEnvio(unittest.TestCase):
@@ -68,6 +69,10 @@ class ACorrecaoPelaPortaDoEnvio(unittest.TestCase):
                 antes = dict(campos(colecao))
                 corrigir(colecao, **argumentos)
                 self.assertEqual((argumentos["porta"].pedidos, campos(colecao)), ([], antes))
+
+    def test_a_palavra_pedida_a_ia_vem_sem_a_pronuncia_que_o_campo_traz_depois_dela(self):
+        self.assertEqual(palavra_sem_a_pronuncia("give up - /ɡɪv ʌp/"), "give up")
+        self.assertEqual(palavra_sem_a_pronuncia("give up"), "give up")
 
 
 if __name__ == "__main__":

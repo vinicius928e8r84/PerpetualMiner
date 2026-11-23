@@ -40,6 +40,8 @@ function ondeQuebrou(texto, erro) {
   return ` perto da linha ${antes.split('\n').length}, coluna ${antes.length - antes.lastIndexOf('\n')}`;
 }
 
+const ehMapa = valor => Object.prototype.toString.call(valor) === '[object Object]';
+
 function lerRegistro(raiz) {
   const caminho = path.join(raiz, ARQUIVO_DO_REGISTRO);
   if (!fs.existsSync(caminho)) throw new Error(`falta ${ARQUIVO_DO_REGISTRO}, o cadastro dos grupos de teste; ${RESTAURAR}`);
@@ -50,7 +52,7 @@ function lerRegistro(raiz) {
   } catch (erro) {
     throw new Error(`${ARQUIVO_DO_REGISTRO} não é um JSON válido (erro${ondeQuebrou(texto, erro)}: vírgula, aspas ou chave fora do lugar); ${RESTAURAR}`);
   }
-  if (!registro || typeof registro.grupos !== 'object' || registro.grupos === null || Array.isArray(registro.grupos)) {
+  if (!ehMapa(registro?.grupos)) {
     throw new Error(`${ARQUIVO_DO_REGISTRO} não tem o objeto "grupos" (nome do grupo → { executor, … }); ${RESTAURAR}`);
   }
   return { grupos: registro.grupos, fora: registro.fora || [] };
@@ -80,9 +82,15 @@ function dicaDeModulo(nome, grupo, saidaDeErro, python) {
     + (precisa ? `; o grupo precisa de: ${precisa}` : '') + preparo;
 }
 
+const RAMOS_SEM_BASE = new Set(['main', 'HEAD']);
+
+const versaoJaFixada = env => env.PM_VERSAO_BASE !== undefined || Boolean(env.CI);
+
+const ehRamoDeTrabalho = ramo => Boolean(ramo) && !RAMOS_SEM_BASE.has(ramo);
+
 function baseDaVersao(env, ramo, temOrigemMain) {
-  if (env.PM_VERSAO_BASE !== undefined || env.CI || !temOrigemMain) return null;
-  return ramo && ramo !== 'main' && ramo !== 'HEAD' ? 'origin/main' : null;
+  if (versaoJaFixada(env) || !temOrigemMain) return null;
+  return ehRamoDeTrabalho(ramo) ? 'origin/main' : null;
 }
 
 function trabalhadoresDoGrupo(grupo, env) {
