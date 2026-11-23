@@ -15,7 +15,7 @@ const conserto = 'Refatore de verdade a função que piorou: separe decidir de f
   + `${LIMITES.complexidade}, aninhamento até ${LIMITES.aninhamento}, ${LIMITES.blocos} bloco aninhado por função, `
   + `${LIMITES.operadores} operador lógico por condição, ${LIMITES.argumentos} argumentos, ${LIMITES.linhas} linhas por função, `
   + `complexidade média abaixo de ${LIMITES.mediaDoArquivo} e ${LIMITES.linhasDoPython} linhas de código por arquivo Python. `
-  + 'Depois de melhorar um arquivo da linha de base, rode `node scripts/regras/verificar.js --atualizar` e versione scripts/regras/linha-de-base.json. '
+  + 'A PR não edita scripts/regras/linha-de-base.json: o que melhorou um arquivo da linha de base é baixado depois do merge, por `node scripts/regras/baixar-no-merge.js`. '
   + 'A folga é de cada arquivo: código que sai para um módulo novo chega lá dentro dos limites (um arquivo movido com `git mv` leva a sua).';
 
 const porQueOArquivoNovoNaoEntra = 'arquivo novo nasce dentro dos limites, e a folga de um arquivo não passa para outro '

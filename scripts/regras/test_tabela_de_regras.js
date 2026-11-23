@@ -8,6 +8,7 @@ const { REGRAS } = require('./verificar');
 const { regrasDaTabela, divergencias } = require('./apoio-da-tabela-de-regras');
 
 const RAIZ = path.resolve(__dirname, '..', '..');
+const FERRAMENTAS_DA_PASTA = ['baixar-no-merge'];
 const SEM_LINHA_NA_TABELA = ['doc-datado', 'link-de-doc', 'limite-de-linhas', 'sem-comentario-novo', 'saude-do-codigo'];
 
 let total = 0;
@@ -34,7 +35,7 @@ total++;
 const agentes = fs.readFileSync(path.join(RAIZ, 'AGENTS.md'), 'utf8');
 const ids = REGRAS.map(regra => regra.id);
 prova(divergencias(agentes, ids, SEM_LINHA_NA_TABELA), [], 'a tabela do AGENTS.md e as regras de scripts/regras/ dizem as mesmas regras');
-const arquivosDeRegra = fs.readdirSync(__dirname).filter(arquivo => !arquivo.startsWith('apoio-') && /^[a-z0-9]+(-[a-z0-9]+)+\.js$/.test(arquivo)).map(arquivo => arquivo.slice(0, -3)).sort();
-prova(arquivosDeRegra, [...ids].sort(), 'cada arquivo de regra de scripts/regras/ está em REGRAS e cada regra de REGRAS tem o seu arquivo');
+const arquivosDeRegra = fs.readdirSync(__dirname).filter(arquivo => !arquivo.startsWith('apoio-') && /^[a-z0-9]+(-[a-z0-9]+)+\.js$/.test(arquivo)).map(arquivo => arquivo.slice(0, -3)).filter(arquivo => !FERRAMENTAS_DA_PASTA.includes(arquivo)).sort();
+prova(arquivosDeRegra, [...ids].sort(), 'cada arquivo de regra de scripts/regras/ (fora as ferramentas da pasta) está em REGRAS e cada regra de REGRAS tem o seu arquivo');
 
 console.log(`test_tabela_de_regras: ${total} provas ok`);

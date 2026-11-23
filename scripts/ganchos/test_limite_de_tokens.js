@@ -115,7 +115,7 @@ function provarSugestaoPorTipoDeArquivo() {
 function provarMensagemDeCrescimentoSobreALinhaDeBase() {
   const mensagem = aviso('painel.js', 78001, { 'painel.js': 78000 });
   assert.ok(mensagem.includes('linha de base') && mensagem.includes('78000') && mensagem.includes('78001'), mensagem);
-  assert.ok(mensagem.includes('--atualizar-linha-de-base'));
+  assert.ok(mensagem.includes('baixar-no-merge'));
 }
 
 const LINHA_DE_BASE = 'scripts/ganchos/linha-de-base-de-tamanho.json';
@@ -234,7 +234,7 @@ function provarGerarRecusadoQuandoJaHaBase({ git, escrever, barra, apagar, baseG
   escrever('b/um.js', 'a'.repeat(21000));
   git('add', 'b/um.js');
   const r = barra('--gerar-linha-de-base');
-  assert.ok(r.stderr.includes('--atualizar-linha-de-base'), r.stderr);
+  assert.ok(r.stderr.includes('baixar-no-merge'), r.stderr);
   assert.deepStrictEqual(baseGravada(), { 'grande.js': 30000 });
   git('reset', '-q', 'b/um.js');
   apagar('b');

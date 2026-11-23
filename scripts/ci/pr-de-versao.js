@@ -85,4 +85,4 @@ if (require.main === module) {
   process.exit(ok ? 0 : 1);
 }
 
-module.exports = { conferir, opcoesDoNumero };
+module.exports = { conferir, opcoesDoNumero, git, arvore };
