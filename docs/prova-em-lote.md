@@ -46,6 +46,8 @@ node scripts/ci/registrar-na-pr.js prova --pr <N> --lote <SHA do commit de lote>
 node scripts/ci/registrar-na-pr.js prova --pr <N> --lote <SHA do commit de lote> --cobertura total --nota <arquivo com o que foi provado e como> --publicar
 ```
 
+O comando troca a seção “Prova real” inteira: uma linha que estava debaixo desse título (um `Closes <URL>` ou um `Prova que falta:`) some junto, então essas linhas ficam fora da seção antes de rodar o comando. Sem `--publicar` é um ensaio: mostra o texto e o que o check diria.
+
 O comando recusa, sem escrever nada, o lote que não contém o head da PR (e diz para baixar o lote com `git fetch origin`). A edição do corpo roda o check de novo.
 
 A prova que não cobriu tudo usa `--cobertura parcial`, que escreve `BLOQUEADA-Mac-Windows` e não passa.
