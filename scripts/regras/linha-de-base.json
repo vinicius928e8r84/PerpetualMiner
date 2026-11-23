@@ -52,7 +52,7 @@
     "complemento/modelo_dos_cartoes.py": 4,
     "complemento/no_anki.py": 28,
     "complemento/openai_api.py": 4,
-    "complemento/pareamento.py": 18,
+    "complemento/pareamento.py": 6,
     "complemento/passagem_das_copias.py": 15,
     "complemento/previa_do_cartao.py": 11,
     "complemento/retencao_dos_envios.py": 7,
