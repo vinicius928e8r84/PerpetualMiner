@@ -150,3 +150,54 @@ test('os controles da lista têm nome, e o foco do teclado aparece', async ({ pa
     expect(await focoAparece(controle), await controle.evaluate(el => el.outerHTML.slice(0, 80))).toBe(true);
   }
 });
+
+const PARA_COMBINAR = [
+  frase(6, 'Break a leg tonight.', { streaming: 'amazon', idioma: undefined }),
+  frase(5, 'Call me tomorrow, Ted.', { streaming: 'netflix', exportadaTxt: true, contexto: { fonte: 'netflix', titulo: 'Call Centre', detalhe: '' } }),
+  frase(4, 'That was a close call.', { streaming: 'netflix', contexto: { fonte: 'netflix', titulo: 'The Bear', detalhe: '' } }),
+  frase(3, 'Я тебе потом перезвоню.', { streaming: 'youtube', idioma: 'Russo', contexto: { fonte: 'youtube', titulo: 'Russian with Max', detalhe: '' } }),
+  frase(2, 'It is a long shot, but worth trying.', { streaming: 'netflix', status: 'exported', contexto: { fonte: 'netflix', titulo: 'Ted Lasso', detalhe: '' } }),
+  frase(1, 'Let us call it a day.', { streaming: 'youtube', contexto: { fonte: 'youtube', titulo: 'Veritasium', detalhe: '' } }),
+];
+
+const SEM_FILTRO = { fonte: 'Todas as fontes', idioma: 'Todos os idiomas', ordem: 'Mais novas primeiro', ocultar: false, busca: '' };
+
+const COMBINACOES = [
+  { nome: 'sem filtro', filtros: {}, ids: [6, 5, 4, 3, 2, 1] },
+  { nome: 'só a Fonte', filtros: { fonte: 'Netflix' }, ids: [5, 4, 2] },
+  { nome: 'a Fonte pelo nome que o selo mostra', filtros: { fonte: 'Prime Video' }, ids: [6] },
+  { nome: 'só o idioma Russo', filtros: { idioma: 'Russo' }, ids: [3] },
+  { nome: 'o idioma Inglês traz a Frase sem idioma', filtros: { idioma: 'Inglês' }, ids: [6, 5, 4, 2, 1] },
+  { nome: 'só ocultar enviadas e exportadas', filtros: { ocultar: true }, ids: [6, 4, 3, 1] },
+  { nome: 'só a busca, sem diferença de maiúsculas, no texto e no Título', filtros: { busca: 'CALL' }, ids: [5, 4, 1] },
+  { nome: 'a busca ignora os espaços nas pontas', filtros: { busca: '  ted  ' }, ids: [5, 2] },
+  { nome: 'só a ordem das mais antigas', filtros: { ordem: 'Mais antigas primeiro' }, ids: [1, 2, 3, 4, 5, 6] },
+  { nome: 'Fonte, ocultar e busca juntos', filtros: { fonte: 'Netflix', ocultar: true, busca: 'call' }, ids: [4] },
+  { nome: 'idioma e ocultar juntos', filtros: { idioma: 'Inglês', ocultar: true }, ids: [6, 4, 1] },
+  { nome: 'Fonte, idioma e busca juntos', filtros: { fonte: 'YouTube', idioma: 'Inglês', busca: 'day' }, ids: [1] },
+  { nome: 'filtros juntos nas mais antigas', filtros: { fonte: 'Netflix', ocultar: true, ordem: 'Mais antigas primeiro' }, ids: [4] },
+  { nome: 'idioma e ordem juntos', filtros: { idioma: 'Inglês', ordem: 'Mais antigas primeiro' }, ids: [1, 2, 4, 5, 6] },
+  { nome: 'filtros que não deixam nada', filtros: { fonte: 'YouTube', idioma: 'Inglês', ocultar: true, busca: 'tomorrow' }, ids: [] },
+];
+
+async function aplicarFiltros(page, pedidos) {
+  const { fonte, idioma, ordem, ocultar: querOcultar, busca: termo } = { ...SEM_FILTRO, ...pedidos };
+  await filtro(page, 'Fonte').selectOption({ label: fonte });
+  await filtro(page, 'Idioma').selectOption({ label: idioma });
+  await filtro(page, 'Ordem').selectOption({ label: ordem });
+  if ((await ocultar(page).isChecked()) !== querOcultar) await page.locator('.veio-toggle').getByText('Ocultar enviadas e exportadas').click();
+  await busca(page).fill(termo);
+}
+
+// Exceção de teste: sem-estado-guardado — os filtros e a ordem só mudam a tela; nada é gravado.
+test('cada filtro sozinho, os filtros juntos e as duas ordens escolhem as mesmas Frases', async ({ page, extensao }) => {
+  await extensao.gravarStorage({ frases: PARA_COMBINAR });
+  await abrirFrases(page, extensao);
+  const textoDe = id => PARA_COMBINAR.find(f => f.id === id).texto;
+
+  for (const { nome, filtros, ids } of COMBINACOES) {
+    await aplicarFiltros(page, filtros);
+    await expect(cartoes(page), nome).toHaveCount(ids.length);
+    if (ids.length) await expect(cartoes(page), nome).toHaveText(ids.map(id => new RegExp(textoDe(id).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))));
+  }
+});
