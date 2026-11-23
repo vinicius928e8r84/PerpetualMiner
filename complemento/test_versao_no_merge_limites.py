@@ -7,11 +7,13 @@ import json
 import os
 import sys
 import unittest
+from unittest import mock
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(AQUI))
 
 from complemento import test_versao_no_merge as base  # noqa: E402
+from complemento import versao_no_merge  # noqa: E402
 
 
 class VersaoRespeitaOsLimites(base.Casa):
@@ -50,6 +52,28 @@ class VersaoRespeitaOsLimites(base.Casa):
         erro = self.pedir([baixa], "--versao", baixa)
         self.assertIn(baixa, erro)
         self.assertIn(publicada, erro)
+
+
+class RecusaDaVersaoPedida(unittest.TestCase):
+
+    def recusa(self, pedida, reservadas, registradas, acima_de=None):
+        with mock.patch.object(versao_no_merge, "reservadas", return_value=reservadas):
+            return versao_no_merge.recusa_da_versao_pedida(pedida, registradas, acima_de)
+
+    def test_numero_reservado_acima_do_maior_registrado_nao_e_recusado(self):
+        self.assertIsNone(self.recusa("0.4.12", ["0.4.12"], {"0.4.9": "a", "0.4.10": "b"}))
+
+    def test_numero_fora_da_lista_de_reservadas_e_recusado(self):
+        self.assertIn("versoes-reservadas.json", self.recusa("0.4.12", [], {"0.4.10": "b"}))
+
+    def test_numero_ja_registrado_e_recusado(self):
+        self.assertIn("versoes-reservadas.json", self.recusa("0.4.10", ["0.4.10"], {"0.4.10": "b"}))
+
+    def test_numero_abaixo_do_maior_registrado_e_comparado_como_numero(self):
+        self.assertIn("0.4.10", self.recusa("0.4.9", ["0.4.9"], {"0.4.10": "b"}))
+
+    def test_numero_no_teto_de_acima_de_e_recusado(self):
+        self.assertIn("--acima-de 0.4.12", self.recusa("0.4.12", ["0.4.12"], {"0.4.10": "b"}, "0.4.12"))
 
 
 if __name__ == "__main__":
