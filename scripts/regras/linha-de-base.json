@@ -59,7 +59,6 @@
     "complemento/test_chatgpt_de_mentira.py": 7,
     "complemento/test_colecao_em_memoria.py": 15,
     "complemento/test_comparar_com_o_contrato.py": 12,
-    "complemento/test_conexao_antiga_de_mentira.py": 5,
     "complemento/test_conserto_arvore_windows.py": 4,
     "complemento/test_envio.py": 33,
     "complemento/test_envio_fronteiras.py": 4,
@@ -128,7 +127,6 @@
     "painel/painel-envio-cartao.js": 34,
     "painel/painel-envio-estado.js": 21,
     "painel/painel-envio.js": 54,
-    "painel/painel-ia-modelo.js": 4,
     "painel/painel-shell.js": 8,
     "painel/painel.js": 86,
     "scripts/ci/corpo-da-pr.js": 7,
@@ -140,16 +138,13 @@
     "scripts/empacotar-extensao.mjs": 7,
     "scripts/ganchos/test_limite_de_tokens.js": 6,
     "scripts/ganchos/test_pre_push.js": 11,
-    "scripts/regras/apoio-da-tabela-de-regras.js": 4,
     "scripts/regras/e2e-estado-final.js": 13,
-    "scripts/regras/e2e-funcao-interna.js": 4,
     "scripts/regras/relogio-fora-da-fixture.js": 9,
     "scripts/regras/teste-le-codigo.js": 7,
     "scripts/regras/versoes-publicadas.js": 7,
     "testes/test_abridor.js": 22,
     "testes/test_aviso_da_versao.js": 3,
     "testes/test_estado_do_envio.js": 5,
-    "testes/test_preview.js": 4,
     "testes/test_primeira_conexao.js": 13
   }
 }
