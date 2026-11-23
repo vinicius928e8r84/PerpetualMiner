@@ -11,6 +11,8 @@ const aviso = page => card(page).getByRole('status').filter({ hasText: 'sai do a
 const linhaVerde = page => card(page).getByText(/saiu do ar\. O Envio passou para o Automático\./);
 const opcoes = page => seletor(page).locator('option').allTextContents();
 
+const NA_CONEXAO = 'o modelo dos cartões na Conexão';
+const guardado = fakes => () => fakes.anki.modelo.guardado();
 const AUTOMATICO = { escolha: 'automatico', trocou: null };
 
 async function abrirIA(page, extensao, { abrir = true } = {}) {
@@ -24,12 +26,23 @@ async function comAChave(extensao, fakes) {
   await extensao.gravarStorage({ pm_chave_openai: { ultimos4: '9f3a' } });
 }
 
+async function abrirIAComOModelo(page, extensao, fakes, cenario) {
+  await comAChave(extensao, fakes);
+  fakes.anki.modelo.definir(cenario);
+  await abrirIA(page, extensao, { abrir: false });
+}
+
+async function abrirIAComOAvisoDaSaida(page, extensao, fakes, relogioParado) {
+  await relogioParado({ em: new Date('2026-11-01T12:00:00') });
+  await abrirIAComOModelo(page, extensao, fakes, 'gpt-4.1-mini sai em 20/11');
+}
+
 test('sem chave e sem login, o card não oferece escolher o modelo', async ({ page, extensao, fakes }) => {
   await abrirIA(page, extensao, { abrir: false });
   await expect(card(page).getByRole('region', { name: 'Chave da OpenAI' })).toBeVisible();
   await expect(avancado(page)).toHaveCount(0);
 
-  await estadoFinalEm('o modelo dos cartões na Conexão', () => fakes.anki.modelo.guardado(), AUTOMATICO);
+  await estadoFinalEm(NA_CONEXAO, guardado(fakes), AUTOMATICO);
 });
 
 test('com a chave, o Avançado traz o Modelo dos cartões em Automático, só com modelos de texto que veem foto, e diz que a chave paga', async ({ page, extensao, fakes }) => {
@@ -46,7 +59,7 @@ test('com a chave, o Avançado traz o Modelo dos cartões em Automático, só co
   await expect(aviso(page)).toHaveCount(0);
   await expect(linhaVerde(page)).toHaveCount(0);
 
-  await estadoFinalEm('o modelo dos cartões na Conexão', () => fakes.anki.modelo.guardado(), AUTOMATICO);
+  await estadoFinalEm(NA_CONEXAO, guardado(fakes), AUTOMATICO);
 });
 
 test('com o login do ChatGPT, a lista é a do plano e a linha de baixo diz Usando o plano do ChatGPT · Gerenciar uso', async ({ page, extensao, fakes }) => {
@@ -60,7 +73,7 @@ test('com o login do ChatGPT, a lista é a do plano e a linha de baixo diz Usand
   await expect(avancado(page).getByRole('link', { name: 'Gerenciar uso' })).toHaveAttribute('href', 'https://chatgpt.com/settings/usage');
   await expect(avancado(page)).not.toContainText('Pago pela sua chave');
 
-  await estadoFinalEm('o modelo dos cartões na Conexão', () => fakes.anki.modelo.guardado(), AUTOMATICO);
+  await estadoFinalEm(NA_CONEXAO, guardado(fakes), AUTOMATICO);
 });
 
 test('escolher outro modelo da lista fica guardado na Conexão e continua escolhido ao reabrir', async ({ page, extensao, fakes }) => {
@@ -69,19 +82,16 @@ test('escolher outro modelo da lista fica guardado na Conexão e continua escolh
 
   await seletor(page).selectOption('gpt-4.1-mini');
   await expect(seletor(page)).toHaveValue('gpt-4.1-mini');
-  await estadoFinalEm('o modelo dos cartões na Conexão', () => fakes.anki.modelo.guardado(), { escolha: 'gpt-4.1-mini', trocou: null });
+  await estadoFinalEm(NA_CONEXAO, guardado(fakes), { escolha: 'gpt-4.1-mini', trocou: null });
 
   await page.reload();
   await avancado(page).locator('summary').click();
   await expect(seletor(page)).toHaveValue('gpt-4.1-mini');
-  await estadoFinalEm('o modelo dos cartões na Conexão depois de reabrir', () => fakes.anki.modelo.guardado(), { escolha: 'gpt-4.1-mini', trocou: null });
+  await estadoFinalEm(`${NA_CONEXAO} depois de reabrir`, guardado(fakes), { escolha: 'gpt-4.1-mini', trocou: null });
 });
 
 test('antes da saída, o aviso âmbar diz a data, com Trocar agora e Escolher outro', async ({ page, extensao, fakes, relogioParado }) => {
-  await relogioParado({ em: new Date('2026-11-01T12:00:00') });
-  await comAChave(extensao, fakes);
-  fakes.anki.modelo.definir('gpt-4.1-mini sai em 20/11');
-  await abrirIA(page, extensao, { abrir: false });
+  await abrirIAComOAvisoDaSaida(page, extensao, fakes, relogioParado);
 
   await expect(avancado(page)).toHaveAttribute('open', '');
   await expect(aviso(page)).toContainText('gpt-4.1-mini sai do ar em 20 de novembro. No dia, o Envio passa sozinho para o Automático.');
@@ -90,34 +100,28 @@ test('antes da saída, o aviso âmbar diz a data, com Trocar agora e Escolher ou
   await expect(seletor(page)).toHaveValue('gpt-4.1-mini');
   await expect(linhaVerde(page)).toHaveCount(0);
 
-  await estadoFinalEm('o modelo dos cartões na Conexão', () => fakes.anki.modelo.guardado(), { escolha: 'gpt-4.1-mini', trocou: null });
+  await estadoFinalEm(NA_CONEXAO, guardado(fakes), { escolha: 'gpt-4.1-mini', trocou: null });
 });
 
 test('Trocar agora passa para o Automático e o aviso some', async ({ page, extensao, fakes, relogioParado }) => {
-  await relogioParado({ em: new Date('2026-11-01T12:00:00') });
-  await comAChave(extensao, fakes);
-  fakes.anki.modelo.definir('gpt-4.1-mini sai em 20/11');
-  await abrirIA(page, extensao, { abrir: false });
+  await abrirIAComOAvisoDaSaida(page, extensao, fakes, relogioParado);
 
   await aviso(page).getByRole('button', { name: 'Trocar agora' }).click();
   await expect(aviso(page)).toHaveCount(0);
   await expect(seletor(page)).toHaveValue('automatico');
 
-  await estadoFinalEm('o modelo dos cartões na Conexão', () => fakes.anki.modelo.guardado(), AUTOMATICO);
+  await estadoFinalEm(NA_CONEXAO, guardado(fakes), AUTOMATICO);
 });
 
 test('Escolher outro leva ao seletor, e escolher um modelo tira o aviso', async ({ page, extensao, fakes, relogioParado }) => {
-  await relogioParado({ em: new Date('2026-11-01T12:00:00') });
-  await comAChave(extensao, fakes);
-  fakes.anki.modelo.definir('gpt-4.1-mini sai em 20/11');
-  await abrirIA(page, extensao, { abrir: false });
+  await abrirIAComOAvisoDaSaida(page, extensao, fakes, relogioParado);
 
   await aviso(page).getByRole('button', { name: 'Escolher outro' }).click();
   await expect(seletor(page)).toBeFocused();
   await seletor(page).selectOption('gpt-4o');
   await expect(aviso(page)).toHaveCount(0);
 
-  await estadoFinalEm('o modelo dos cartões na Conexão', () => fakes.anki.modelo.guardado(), { escolha: 'gpt-4o', trocou: null });
+  await estadoFinalEm(NA_CONEXAO, guardado(fakes), { escolha: 'gpt-4o', trocou: null });
 });
 
 for (const [cenario, de] of [['gpt-4.1-mini sai em 20/11', 'gpt-4.1-mini'], ['gpt-4.1 sumiu da conta', 'gpt-4.1']]) {
@@ -138,32 +142,28 @@ for (const [cenario, de] of [['gpt-4.1-mini sai em 20/11', 'gpt-4.1-mini'], ['gp
     await expect(avancado(page)).toHaveAttribute('open', '');
     await expect(seletor(page)).toHaveValue('automatico');
 
-    await estadoFinalEm('o modelo dos cartões na Conexão', () => fakes.anki.modelo.guardado(), { escolha: 'automatico', trocou: { de } });
+    await estadoFinalEm(NA_CONEXAO, guardado(fakes), { escolha: 'automatico', trocou: { de } });
   });
 }
 
 test('a troca de quem paga tem a sua linha verde: não diz que o modelo saiu do ar', async ({ page, extensao, fakes }) => {
-  await comAChave(extensao, fakes);
-  fakes.anki.modelo.definir('gpt-6-sol ficou sem lugar na troca de pagador');
-  await abrirIA(page, extensao, { abrir: false });
+  await abrirIAComOModelo(page, extensao, fakes, 'gpt-6-sol ficou sem lugar na troca de pagador');
 
   await expect(card(page).getByText('A forma de pagar mudou e a nova não tem o gpt-6-sol. O Envio passou para o Automático.')).toBeVisible();
   await expect(linhaVerde(page)).toHaveCount(0);
   await expect(avancado(page)).toHaveAttribute('open', '');
 
-  await estadoFinalEm('o modelo dos cartões na Conexão', () => fakes.anki.modelo.guardado(), { escolha: 'automatico', trocou: { de: 'gpt-6-sol', porque: 'pagador' } });
+  await estadoFinalEm(NA_CONEXAO, guardado(fakes), { escolha: 'automatico', trocou: { de: 'gpt-6-sol', porque: 'pagador' } });
 });
 
 test('escolher outro modelo depois da troca apaga a linha verde', async ({ page, extensao, fakes }) => {
-  await comAChave(extensao, fakes);
-  fakes.anki.modelo.definir('gpt-4.1 sumiu da conta');
-  await abrirIA(page, extensao, { abrir: false });
+  await abrirIAComOModelo(page, extensao, fakes, 'gpt-4.1 sumiu da conta');
   await expect(linhaVerde(page)).toBeVisible();
 
   await seletor(page).selectOption('gpt-4o');
   await expect(linhaVerde(page)).toHaveCount(0);
 
-  await estadoFinalEm('o modelo dos cartões na Conexão', () => fakes.anki.modelo.guardado(), { escolha: 'gpt-4o', trocou: null });
+  await estadoFinalEm(NA_CONEXAO, guardado(fakes), { escolha: 'gpt-4o', trocou: null });
 });
 
 test('com a OpenAI fora do ar, o Avançado diz que não deu para ler os modelos da conta e nada se afirma da lista', async ({ page, extensao, fakes }) => {
@@ -175,7 +175,7 @@ test('com a OpenAI fora do ar, o Avançado diz que não deu para ler os modelos 
   await expect(seletor(page)).toHaveCount(0);
   await expect(avancado(page)).not.toContainText('Pago pela sua chave');
 
-  await estadoFinalEm('o modelo dos cartões na Conexão', () => fakes.anki.modelo.guardado(), AUTOMATICO);
+  await estadoFinalEm(NA_CONEXAO, guardado(fakes), AUTOMATICO);
 });
 
 test('com uma Conexão antiga, sem as rotas do modelo, o card não mostra o Avançado', async ({ page, extensao, fakes }) => {
@@ -185,5 +185,5 @@ test('com uma Conexão antiga, sem as rotas do modelo, o card não mostra o Avan
   await expect(card(page).getByRole('region', { name: 'Chave da OpenAI' })).toBeVisible();
   await expect(avancado(page)).toHaveCount(0);
 
-  await estadoFinalEm('o modelo dos cartões na Conexão', () => fakes.anki.modelo.guardado(), AUTOMATICO);
+  await estadoFinalEm(NA_CONEXAO, guardado(fakes), AUTOMATICO);
 });
