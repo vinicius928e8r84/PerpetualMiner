@@ -203,37 +203,42 @@
       return { motivo: textoDaVoz('ENV-22.demora') };
     }
 
+    const esquecer = (envio, motivo) => ({ motivo, rotulo: textoDaVoz('ENV-23.esquecer'), foco: 'esquecer', aoUsar: () => esquecerOEnvio(envio) });
+    const continuar = envio => ({ rotulo: textoDaVoz('ENV-03.tentarDeNovo'), foco: 'continuar', aoUsar: () => continuarEnvio(envio) });
+
+    function pedidoDeNaoComecou({ envio, situacao }) {
+      return { motivo: textoDaVoz(MOTIVO_DE_NAO_COMECAR[situacao.causa]), rotulo: textoDaVoz('ENV-03.tentarDeNovo'), foco: 'tentar', aoUsar: () => tentarCriarDeNovo(envio) };
+    }
+
+    function pedidoDeEspera({ envio, situacao, estado, noLimite }) {
+      return pedidoDaEspera(envio, situacao, estado, noLimite) || undefined;
+    }
+
+    function pedidoDeRetomar({ envio, situacao, falhou }) {
+      if (falhou) return undefined;
+      if (!SituacaoDoEnvio.retomavel(situacao)) return null;
+      const dito = doMotivo(situacao.motivo);
+      if (!dito) return continuar(envio);
+      if (ROTULO_DA_CHAVE[dito.ajuda]) return { motivo: dito.motivo, rotulo: textoDaVoz(ROTULO_DA_CHAVE[dito.ajuda]), foco: 'usar-chave', aoUsar: usarAChave };
+      return { motivo: dito.motivo, ligacao: gerenciarUso(dito.ajuda), ...continuar(envio) };
+    }
+
+    const PEDIDO_POR_ESTADO = {
+      [ESTADO.NAO_COMECOU]: pedidoDeNaoComecou,
+      [ESTADO.DESCONHECIDO]: ({ envio }) => esquecer(envio, textoDaVoz('ENV-23.motivo')),
+      [ESTADO.APAGADO]: ({ envio }) => esquecer(envio, textoDaVoz('ENV-24.apagado')),
+      [ESTADO.PARADO]: ({ envio, estado }) => raiz.EnvioParado.pedido(envio, estado),
+      [ESTADO.ESPERANDO]: pedidoDeEspera,
+      [ESTADO.EM_PARTE]: pedidoDeRetomar,
+      [ESTADO.NAO_CONCLUIDO]: pedidoDeRetomar,
+    };
+
     function pedidoDoCartao(envio, situacao, estado) {
-      const esquecer = motivo => ({ motivo, rotulo: textoDaVoz('ENV-23.esquecer'), foco: 'esquecer', aoUsar: () => esquecerOEnvio(envio) });
-      const continuar = { rotulo: textoDaVoz('ENV-03.tentarDeNovo'), foco: 'continuar', aoUsar: () => continuarEnvio(envio) };
       const falhou = Boolean(falhaAoRetomar(envio));
       const noLimite = estado ? raiz.EnvioNoLimite.pedido(envio, estado, { tentarDeNovo: () => continuarEnvio(envio), usarAChave: () => pedirAChave(envio), falhou, redesenhar }) : null;
-      switch (situacao.estado) {
-        case ESTADO.NAO_COMECOU:
-          return { motivo: textoDaVoz(MOTIVO_DE_NAO_COMECAR[situacao.causa]), rotulo: textoDaVoz('ENV-03.tentarDeNovo'), foco: 'tentar', aoUsar: () => tentarCriarDeNovo(envio) };
-        case ESTADO.DESCONHECIDO:
-          return esquecer(textoDaVoz('ENV-23.motivo'));
-        case ESTADO.APAGADO:
-          return esquecer(textoDaVoz('ENV-24.apagado'));
-        case ESTADO.PARADO:
-          return raiz.EnvioParado.pedido(envio, estado);
-        case ESTADO.ESPERANDO: {
-          const pedido = pedidoDaEspera(envio, situacao, estado, noLimite);
-          if (pedido) return pedido;
-          break;
-        }
-        case ESTADO.EM_PARTE:
-        case ESTADO.NAO_CONCLUIDO: {
-          if (falhou) break;
-          if (!SituacaoDoEnvio.retomavel(situacao)) return null;
-          const dito = doMotivo(situacao.motivo);
-          if (!dito) return continuar;
-          if (ROTULO_DA_CHAVE[dito.ajuda]) return { motivo: dito.motivo, rotulo: textoDaVoz(ROTULO_DA_CHAVE[dito.ajuda]), foco: 'usar-chave', aoUsar: usarAChave };
-          return { motivo: dito.motivo, ligacao: gerenciarUso(dito.ajuda), ...continuar };
-        }
-        default:
-      }
-      return falhou ? { motivo: textoDaVoz('ENV-14.falha'), ...continuar } : null;
+      const pedido = PEDIDO_POR_ESTADO[situacao.estado]?.({ envio, situacao, estado, noLimite, falhou });
+      if (pedido !== undefined) return pedido;
+      return falhou ? { motivo: textoDaVoz('ENV-14.falha'), ...continuar(envio) } : null;
     }
 
     return { montarCartao };

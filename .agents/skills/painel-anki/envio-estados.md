@@ -7,7 +7,7 @@ Three pure pieces, no screen, proven without a browser by `node testes/test_esta
   never “Na fila”), `naoComecou` (`causa`: `ajustes`, `semResposta`, `erro`), `desconhecido` (#245), `apagado` (`lastError: frases_apagadas`: the
   Apagar tudo of another browser stopped it in the Conexão; ENV-24 and only **Esquecer**, never Tentar de novo), `concluido`, `emParte` and
   `naoConcluido` (with `motivo`, the `lastError`), `parado` (Anki closed, #151), `esperando` (`espera`: plan, cap, other profile, missing profile, the
-  Anki after 5 min), `naFila`, `andando`. `painel-envio-cartao.js` only draws the state (`pedidoDoCartao` is a `switch` on it); `painel-envio.js`
+  Anki after 5 min), `naFila`, `andando`. `painel-envio-cartao.js` only draws the state (`pedidoDoCartao` looks the state up in `PEDIDO_POR_ESTADO`; a state with no entry asks nothing, bar the “could not resume” line; pinned by `node testes/test_pedido_do_cartao_do_envio.js`); `painel-envio.js`
   asks it `terminou`, `retomavel` and `foraDoResumo`. A new state enters there, with its line in the test, not as one more `if` in the card.
 - **Why an Envio did not conclude: `SituacaoDoEnvio.doCodigo(lastError)`.** One table for the card, the summary block and the Boas-vindas
   (`painel-boas-vindas-envio.js`): the sentence (`fala`; `noPainel` when the panel says it differently, `null` when it says nothing) and the help
