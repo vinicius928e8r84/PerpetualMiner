@@ -117,7 +117,7 @@ recusa({ corpo: altaCom('```', FRASE, `Head: ${HEAD}`, '```') }, /não tem a lin
   assert(modelo.includes(ROTULO_DE_RISCO_ALTO), 'o modelo cita o rótulo');
   const comProvaPendente = /^ *(\S+) <URL[^>]*>\n *Prova que falta:/m.exec(modelo);
   assert.strictEqual(comProvaPendente && comProvaPendente[1], 'Closes', 'com a prova real pendente o modelo mostra Closes e a linha Prova que falta: a issue fecha no merge');
-  const regra15 = fs.readFileSync(path.join(RAIZ, 'docs/CODING_STANDARDS.md'), 'utf8').split('\n').find(linha => linha.startsWith('15. '));
+  const regra15 = fs.readFileSync(path.join(RAIZ, 'CODING_STANDARDS.md'), 'utf8').split('\n').find(linha => linha.startsWith('15. '));
   assert(/pending[^.]*`Closes`/.test(regra15) && !/pending[^.]*`Refs/.test(regra15), 'a regra 15 manda Closes, e não Refs, quando a prova real está pendente');
   assert(modelo.includes('perpetualminer-site') && modelo.includes('sem mudança: <motivo>'), 'o modelo explica a linha Política: o link da PR do site ou sem mudança com o motivo');
 }

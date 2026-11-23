@@ -6,7 +6,7 @@ const id = 'idioma-solto';
 
 const conserto = 'Use lib/idioma.js: `PerpetualMiner.IDIOMAS.RUSSO` / `.INGLES` para o nome gravado, '
   + '`PerpetualMiner.detectarIdioma(texto)` para detectar e `PerpetualMiner.ehRussa(frase)` para decidir; '
-  + 'não escreva \'Russo\'/\'Inglês\' nem um /[\\u0400-\\u04FF]/ novo (docs/CODING_STANDARDS.md regra 5).';
+  + 'não escreva \'Russo\'/\'Inglês\' nem um /[\\u0400-\\u04FF]/ novo (CODING_STANDARDS.md regra 5).';
 
 const seAplica = arquivo => ehJsDaExtensao(arquivo) && arquivo !== 'lib/idioma.js';
 

@@ -6,7 +6,7 @@ const id = 'dialogo-nativo';
 
 const conserto = 'Use os componentes de veio/componentes.js: `Veio.abrirConfirmacao` para confirmar (o perigo abre o modal e '
   + 'confirma dentro dele), `Veio.montarAviso` para um erro que pede ação e `Veio.mostrarToastDeSucesso` para o sucesso; '
-  + 'o `confirm()`, o `alert()` e o `prompt()` do navegador não entram (docs/CODING_STANDARDS.md regra 3).';
+  + 'o `confirm()`, o `alert()` e o `prompt()` do navegador não entram (CODING_STANDARDS.md regra 3).';
 
 const seAplica = ehJsDaExtensao;
 

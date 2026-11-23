@@ -20,7 +20,7 @@ const conserto = 'Peça a fixture `relogioParado` (e2e/fixtures.js) antes de nav
   + '`const relogio = await relogioParado({ em: new Date(\'2026-09-18T12:00:00\') })`; o tempo só anda por `await relogio.avancar(ms)`. '
   + `A montagem do relógio (\`clock.install\`/\`pauseAt\`) fica em ${DONO}, com a margem maior que o prazo do teste; `
   + 'não aumente o timeout nem o retry do teste, nem apelide `page.clock`, desestruture-o ou chame o `montarRelogio` '
-  + `(só ${PROVA} o chama) (docs/CODING_STANDARDS.md regra 8).`;
+  + `(só ${PROVA} o chama) (CODING_STANDARDS.md regra 8).`;
 
 const seAplica = arquivo => /^e2e\/.+\.js$/.test(arquivo) && arquivo !== DONO;
 
