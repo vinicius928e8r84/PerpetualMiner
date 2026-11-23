@@ -12,6 +12,7 @@ import generate_images
 import google_images
 import image_guard
 import image_judge
+import image_pipeline
 from image_queries import CardToSearch
 from rodar_imagens import _build_card_google_queries, _run_images
 
@@ -280,14 +281,8 @@ class ImageFallbackPolicyTests(unittest.TestCase):
     def mine(self, card: Card, fake: FakePipeline, lang: str = "en") -> ImagesMade:
         (self.output_dir / f"{card.stem}.txt").write_text(card.text, encoding="utf-8")
         with _patched_pipeline(fake):
-            made = _run_images(
-                _config(self.log_dir, lang=lang),
-                [f"{card.stem}:{card.prompt}"],
-                self.output_dir,
-                "1",
-                "test",
-                str(self.log_dir),
-            )
+            pipeline = image_pipeline.build(_config(self.log_dir, lang=lang), self.output_dir, "1", "test", str(self.log_dir))
+            made = _run_images(pipeline, [f"{card.stem}:{card.prompt}"])
         return ImagesMade(*made)
 
     def assert_real_photo_kept(self, made: ImagesMade, stem: str):
