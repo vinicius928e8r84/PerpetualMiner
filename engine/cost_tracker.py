@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 from datetime import date, timedelta
 from pathlib import Path
-from typing import Optional
+from typing import NamedTuple, Optional
 
 
 PRICES = {
@@ -29,72 +29,47 @@ def _log_path(log_dir: str | Path) -> Path:
     return Path(log_dir) / "costs.jsonl"
 
 
-def record_tokens(
-    log_dir: str | Path,
-    model: str,
-    input_tokens: int,
-    output_tokens: int,
-    keyword: str = "",
-) -> float:
-    """Append a token-usage record. Returns USD cost."""
-    price = PRICES.get(model, PRICES["gpt-4o"])
-    cost = (input_tokens * price["input"] + output_tokens * price["output"]) / 1000
-    _append(log_dir, {
+class TokenUsage(NamedTuple):
+    model: str
+    input_tokens: int
+    output_tokens: int
+
+    def priced_as(self, model: str) -> float:
+        price = PRICES.get(model, PRICES["gpt-4o"])
+        return (self.input_tokens * price["input"] + self.output_tokens * price["output"]) / 1000
+
+
+def _token_record(kind: str, usage: TokenUsage, cost: float) -> dict:
+    return {
         "date": date.today().isoformat(),
-        "type": "tokens",
-        "model": model,
-        "input_tokens": input_tokens,
-        "output_tokens": output_tokens,
+        "type": kind,
+        "model": usage.model,
+        "input_tokens": usage.input_tokens,
+        "output_tokens": usage.output_tokens,
         "cost_usd": round(cost, 6),
-        "keyword": keyword,
-    })
+    }
+
+
+def record_tokens(log_dir: str | Path, usage: TokenUsage, keyword: str = "") -> float:
+    """Append a token-usage record. Returns USD cost."""
+    cost = usage.priced_as(usage.model)
+    _append(log_dir, dict(_token_record("tokens", usage, cost), keyword=keyword))
     return cost
 
 
-def record_plan_tokens(
-    log_dir: str | Path,
-    plan_model: str,
-    key_model: str,
-    input_tokens: int,
-    output_tokens: int,
-    keyword: str = "",
-) -> float:
-    """Append the usage of a card made through the ChatGPT plan. Returns what the key would have charged (USD):
+def record_plan_tokens(log_dir: str | Path, usage: TokenUsage, key_model: str, keyword: str = "") -> float:
+    """Append the usage of a card made through the ChatGPT plan (`usage.model` is the plan's). Returns what the key would have charged (USD):
     the plan costs nothing per card, so `cost_usd` stays 0 and `would_cost_usd` is priced as `key_model`."""
-    price = PRICES.get(key_model, PRICES["gpt-4o"])
-    would = (input_tokens * price["input"] + output_tokens * price["output"]) / 1000
-    _append(log_dir, {
-        "date": date.today().isoformat(),
-        "type": "plan_tokens",
-        "model": plan_model,
-        "input_tokens": input_tokens,
-        "output_tokens": output_tokens,
-        "cost_usd": 0.0,
-        "would_cost_usd": round(would, 6),
-        "keyword": keyword,
-    })
+    would = usage.priced_as(key_model)
+    _append(log_dir, dict(_token_record("plan_tokens", usage, 0.0), would_cost_usd=round(would, 6), keyword=keyword))
     return would
 
 
-def record_correction(
-    log_dir: str | Path,
-    model: str,
-    input_tokens: int,
-    output_tokens: int,
-    paid: bool = True,
-) -> float:
+def record_correction(log_dir: str | Path, usage: TokenUsage, paid: bool = True) -> float:
     """Append the usage of the correction of a sentence the person wrote (#169), apart from the cards' own `tokens` records.
     Returns USD cost; through the ChatGPT plan (`paid=False`) `cost_usd` is 0."""
-    price = PRICES.get(model, PRICES["gpt-4o"])
-    cost = (input_tokens * price["input"] + output_tokens * price["output"]) / 1000 if paid else 0.0
-    _append(log_dir, {
-        "date": date.today().isoformat(),
-        "type": "correction_tokens",
-        "model": model,
-        "input_tokens": input_tokens,
-        "output_tokens": output_tokens,
-        "cost_usd": round(cost, 6),
-    })
+    cost = usage.priced_as(usage.model) if paid else 0.0
+    _append(log_dir, _token_record("correction_tokens", usage, cost))
     return cost
 
 

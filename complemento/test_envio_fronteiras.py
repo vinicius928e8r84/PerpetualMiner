@@ -151,6 +151,42 @@ def sobras_da_frase(pasta):
     return sorted(sobras)
 
 
+def palavra_da_nota(nota):
+    return nota["campos"]["Palavra"].split(" - ")[0]
+
+
+def pedidos_sobre(palavra, pedidos):
+    return [pedido_ for pedido_ in pedidos if "Target keyword for this card: %s" % palavra in pedido_ or palavra + " : " in pedido_]
+
+
+def tem_pedido_e_estado(pasta):
+    return os.path.exists(os.path.join(pasta, "fila", ID + ".json")) and os.path.exists(os.path.join(pasta, "estado", ID + ".json"))
+
+
+def provisorios_fora_das_chaves(pasta):
+    provisorios = []
+    for raiz, _, nomes in os.walk(pasta):
+        provisorios += [os.path.join(raiz, nome) for nome in nomes if nome.endswith(".novo") and "chaves" not in raiz]
+    return provisorios
+
+
+class MorteAoRenomear:
+    def __init__(self, morrer_em):
+        self.morrer_em = morrer_em
+        self.renomear = os.replace
+        self.contadas = []
+        self.morta = []
+
+    def __call__(self, origem, destino, *argumentos, **nomeados):
+        if not str(origem).endswith(".novo"):
+            return self.renomear(origem, destino, *argumentos, **nomeados)
+        if self.morta or len(self.contadas) == self.morrer_em:
+            self.morta.append(origem)
+            raise Morte()
+        self.contadas.append(origem)
+        return self.renomear(origem, destino, *argumentos, **nomeados)
+
+
 class AMorteEmCadaGravacaoDoCriarEDoTrabalho(unittest.TestCase):
     def rodar(self, morrer_em):
         """Mata na gravação `morrer_em`; devolve (quantas gravações houve, o que o teste conferiu no fim)."""
@@ -162,7 +198,7 @@ class AMorteEmCadaGravacaoDoCriarEDoTrabalho(unittest.TestCase):
                     tentar(conexao.criar, dois_cartoes())
                     esperar_ate(lambda: fronteiras.morta or ler_estado(pasta).get("status") in envio.FIM)
                     time.sleep(0.15)
-            gravadas_ao_morrer = {nota["guid"]: nota["campos"]["Palavra"].split(" - ")[0] for nota in colecao.gravadas}
+            gravadas_ao_morrer = {nota["guid"]: palavra_da_nota(nota) for nota in colecao.gravadas}
             na_fila_ao_morrer = ler_a_fila(pasta)
             with EnvioNoTeste(pasta, colecao=colecao) as conexao:
                 time.sleep(0.15)
@@ -172,8 +208,7 @@ class AMorteEmCadaGravacaoDoCriarEDoTrabalho(unittest.TestCase):
                 estado = conexao.esperar(ID)
                 depois = [p[1]["messages"][1]["content"] for p in chats(conexao.openai)]
                 fila = ler_a_fila(pasta)
-                pedido_gravado = os.path.exists(os.path.join(pasta, "fila", ID + ".json"))
-                estado_gravado = os.path.exists(os.path.join(pasta, "estado", ID + ".json"))
+                sem_encalhar = tem_pedido_e_estado(pasta)
                 restos = sobras_da_frase(pasta)
         rotulo = "morrendo na gravação %s" % morrer_em
         self.assertEqual(resposta[0], 201, "%s: o mesmo corpo não pode dar 409 nem erro" % rotulo)
@@ -181,12 +216,10 @@ class AMorteEmCadaGravacaoDoCriarEDoTrabalho(unittest.TestCase):
         self.assertEqual(restos, [], "%s: terminado o Envio, a Frase e o texto pago não ficam em user_files" % rotulo)
         self.assertEqual(estado["duplicatePhraseIds"], [], "%s: a nota que o próprio Envio gravou não é duplicata" % rotulo)
         self.assertEqual([item["jobId"] for item in fila], [ID], "%s: o Envio entra na fila uma vez" % rotulo)
-        self.assertTrue(pedido_gravado and estado_gravado, "%s: id encalhado (a fila tem um id sem pedido ou sem estado)" % rotulo)
-        self.assertEqual(sorted(nota["campos"]["Palavra"].split(" - ")[0] for nota in colecao.gravadas), ["give up", "late"], rotulo)
+        self.assertTrue(sem_encalhar, "%s: id encalhado (a fila tem um id sem pedido ou sem estado)" % rotulo)
+        self.assertEqual(sorted(palavra_da_nota(nota) for nota in colecao.gravadas), ["give up", "late"], rotulo)
         for guid, palavra in gravadas_ao_morrer.items():
-            self.assertFalse(
-                [pedido_ for pedido_ in depois if "Target keyword for this card: %s" % palavra in pedido_ or palavra + " : " in pedido_],
-                "%s: a OpenAI foi chamada de novo para %r, que já estava no Anki" % (rotulo, palavra))
+            self.assertFalse(pedidos_sobre(palavra, depois), "%s: a OpenAI foi chamada de novo para %r, que já estava no Anki" % (rotulo, palavra))
         self.assertEqual(na_fila_na_subida, na_fila_ao_morrer, "%s: a Conexão que sobe não põe na fila um pedido que ninguém acompanha" % rotulo)
         return fronteiras.contadas
 
@@ -252,33 +285,19 @@ class AMorteDepoisDoArquivoProvisorioEAntesDoRenomear(unittest.TestCase):
     `user_files`: o Apagar tudo tem de levá-lo também (a fronteira acima morre antes de o provisório existir)."""
 
     def rodar(self, morrer_em):
-        renomear = os.replace
-        contadas = []
-        morta = []
-
-        def replace(origem, destino, *argumentos, **nomeados):
-            if not str(origem).endswith(".novo"):
-                return renomear(origem, destino, *argumentos, **nomeados)
-            if morta or len(contadas) == morrer_em:
-                morta.append(origem)
-                raise Morte()
-            contadas.append(origem)
-            return renomear(origem, destino, *argumentos, **nomeados)
-
+        replace = MorteAoRenomear(morrer_em)
         colecao = ColecaoEmMemoria(INGLES)
         with tempfile.TemporaryDirectory() as pasta:
             with mock.patch.object(os, "replace", replace):
                 with EnvioNoTeste(pasta, colecao=colecao) as conexao:
                     tentar(conexao.criar, dois_cartoes())
-                    esperar_ate(lambda: morta or ler_estado(pasta).get("status") in envio.FIM)
+                    esperar_ate(lambda: replace.morta or ler_estado(pasta).get("status") in envio.FIM)
                     time.sleep(0.15)
-            provisorios = []
-            for raiz, _, nomes in os.walk(pasta):
-                provisorios += [os.path.join(raiz, nome) for nome in nomes if nome.endswith(".novo") and "chaves" not in raiz]
+            provisorios = provisorios_fora_das_chaves(pasta)
             with EnvioNoTeste(pasta, colecao=colecao, trabalhando=False) as conexao:
                 apagar_as_frases(conexao)
                 restos = arquivos_sem_o_log(conexao)
-        return len(contadas) if morrer_em is None else (provisorios, restos)
+        return len(replace.contadas) if morrer_em is None else (provisorios, restos)
 
     def test_em_cada_renomeacao_a_morte_deixa_o_provisorio_e_o_apagar_tudo_o_leva(self):
         total = self.rodar(None)
