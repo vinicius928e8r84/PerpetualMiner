@@ -43,11 +43,13 @@ const rotaParaAConexaoReal = (conexao, { depois = async () => {}, perder = false
   }
 };
 
+const navegadorDoCliente = cliente => Object.values(NAVEGADORES).find(navegador => navegador.cliente === cliente);
+
 function cabecalhosDaProva(req, status, corpo) {
   const cabecalho = nome => req.headers()[nome];
-  const navegador = Object.values(NAVEGADORES).find(n => n.cliente === cabecalho('x-perpetualminer-cliente'));
+  const navegador = navegadorDoCliente(cabecalho('x-perpetualminer-cliente'));
   const [sessao, nonce] = [cabecalho('x-perpetualminer-sessao'), cabecalho('x-perpetualminer-nonce')];
-  if (!navegador || !sessao || !nonce) return {};
+  if (![navegador, sessao, nonce].every(Boolean)) return {};
   return {
     'X-PerpetualMiner-Prova': provaDaResposta(navegador.segredo, { sessao, nonce, status, corpo: Buffer.from(corpo, 'utf8') }),
     'Access-Control-Expose-Headers': 'X-PerpetualMiner-Prova',
@@ -59,41 +61,51 @@ const espelharOsPerfis = (conexao, anki) => async () => anki.espelharPerfis((awa
 const espelharAChave = (conexao, anki) => async () => anki.espelharChave((await conexao.enviar({ estado: true })).cofre);
 const espelharOLogin = (conexao, anki) => async () => anki.chatgpt.espelhar((await conexao.enviar({ login: true })).login);
 
+const ESPELHOS_POR_CAMINHO = [
+  { prefixo: '/anki/profile', espelhar: espelharOsPerfis },
+  { prefixo: '/ia/openai/', espelhar: espelharAChave },
+  { prefixo: '/ia/chatgpt/', espelhar: espelharOLogin },
+  { prefixo: '/jobs', espelhar: espelharOsEnvios, perdeAResposta: true },
+];
+
+async function aplicarOMundoEAFila(conexao, { mundo, fila = [] }) {
+  if (mundo) await conexao.enviar({ mundo });
+  for (const comando of fila) {
+    const { erro } = await conexao.enviar(comando);
+    if (erro) throw new Error(`A fila da Conexão real recusou o que o fake fez com o Envio: ${erro}`);
+  }
+}
+
+async function responderComORoteiro(route, req, url, roteiro) {
+  const { status = 200, json = {} } = await roteiro(req, url);
+  const corpo = JSON.stringify(json);
+  try {
+    return await route.fulfill({ status, contentType: 'application/json', body: corpo, headers: cabecalhosDaProva(req, status, corpo) });
+  } catch (erro) {
+    if (!paginaFechada(erro)) throw erro;
+    return undefined;
+  }
+}
+
+function rotaParaAConexaoRealQueEspelha(conexao, anki, { url, frente }) {
+  const espelho = ESPELHOS_POR_CAMINHO.find(({ prefixo }) => url.pathname.startsWith(prefixo));
+  if (!espelho) return rotaParaAConexaoReal(conexao);
+  return rotaParaAConexaoReal(conexao, { depois: espelho.espelhar(conexao, anki), perder: Boolean(espelho.perdeAResposta && frente.perder) });
+}
+
 const rotaComFalhasNaFrente = (conexao, anki) => {
-  const adiante = rotaParaAConexaoReal(conexao);
-  const doEnvio = { depois: espelharOsEnvios(conexao, anki) };
-  const doPerfil = { depois: espelharOsPerfis(conexao, anki) };
-  const daChave = { depois: espelharAChave(conexao, anki) };
-  const doLogin = { depois: espelharOLogin(conexao, anki) };
   let mundoAplicado = Promise.resolve();
-  const aplicar = async ({ mundo, fila = [] }) => {
-    if (mundo) await conexao.enviar({ mundo });
-    for (const comando of fila) {
-      const { erro } = await conexao.enviar(comando);
-      if (erro) throw new Error(`A fila da Conexão real recusou o que o fake fez com o Envio: ${erro}`);
-    }
-  };
   return async route => {
     const req = route.request();
     const url = new URL(req.url());
     const frente = anki.naFrente(req, url);
     if (frente.recusar) return route.abort('connectionrefused');
     if (frente.calar) return new Promise(() => {});
-    if (frente.mundo || frente.fila) mundoAplicado = mundoAplicado.then(() => aplicar(frente));
+    if (frente.mundo || frente.fila) mundoAplicado = mundoAplicado.then(() => aplicarOMundoEAFila(conexao, frente));
     await mundoAplicado;
     if (frente.perder) anki.perdeuAResposta();
-    if (!frente.roteiro && url.pathname.startsWith('/anki/profile')) return rotaParaAConexaoReal(conexao, doPerfil)(route);
-    if (!frente.roteiro && url.pathname.startsWith('/ia/openai/')) return rotaParaAConexaoReal(conexao, daChave)(route);
-    if (!frente.roteiro && url.pathname.startsWith('/ia/chatgpt/')) return rotaParaAConexaoReal(conexao, doLogin)(route);
-    if (!frente.roteiro) return url.pathname.startsWith('/jobs') ? rotaParaAConexaoReal(conexao, { ...doEnvio, perder: frente.perder })(route) : adiante(route);
-    const { status = 200, json = {} } = await frente.roteiro(req, url);
-    const corpo = JSON.stringify(json);
-    try {
-      return await route.fulfill({ status, contentType: 'application/json', body: corpo, headers: cabecalhosDaProva(req, status, corpo) });
-    } catch (erro) {
-      if (!paginaFechada(erro)) throw erro;
-      return undefined;
-    }
+    if (frente.roteiro) return responderComORoteiro(route, req, url, frente.roteiro);
+    return rotaParaAConexaoRealQueEspelha(conexao, anki, { url, frente })(route);
   };
 };
 

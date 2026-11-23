@@ -81,7 +81,6 @@
     "content.js": 51,
     "e2e/apoio-das-configuracoes.js": 1,
     "e2e/apoio-do-quiz.js": 2,
-    "e2e/conexao-real.js": 9,
     "e2e/conexao-real/servir.py": 81,
     "e2e/estado-final.js": 2,
     "e2e/fakes/frente.js": 2,
