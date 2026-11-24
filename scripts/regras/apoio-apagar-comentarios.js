@@ -60,6 +60,7 @@ function reduzirMarcasDeFake(arquivo, fonte) {
 const MARCA_SEM_TEXTO = /^(?:\/\/+|#+)\s*$/;
 
 function semLinhasDeMarcaVazia(arquivo, fonte) {
+  if (/[.]html$/.test(arquivo)) return fonte;
   const vazias = trechosDeComentario(arquivo, fonte).filter(([de, ate]) => MARCA_SEM_TEXTO.test(fonte.slice(de, ate)));
   return vazias.reverse().reduce((texto, [de, ate]) => {
     const inicio = texto.lastIndexOf('\n', de - 1) + 1;
