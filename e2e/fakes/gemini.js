@@ -3,32 +3,35 @@
 const { responderJson } = require('./http');
 
 const SENTINEL_VAZIO = 'NENHUM_TRECHO';
+const pedidoCancelado = () => {};
 
 function criarFakeGemini() {
   const fila = [];
   const chamadas = [];
 
-  async function tratar(route) {
-    const pedido = route.request();
+  function imagemDoPedido(pedido) {
     const corpo = pedido.postDataJSON() || {};
-    const imagem = corpo.contents?.[0]?.parts?.find(parte => parte.inlineData)?.inlineData;
+    return corpo.contents?.[0]?.parts?.find(parte => parte.inlineData)?.inlineData;
+  }
+
+  function registrarChamada(pedido) {
     chamadas.push({
       chave: pedido.headers()['x-goog-api-key'] ?? null,
       url: pedido.url(),
-      mimeType: imagem?.mimeType ?? null,
+      mimeType: imagemDoPedido(pedido)?.mimeType ?? null,
     });
+  }
 
-    let resposta = fila.length ? fila.shift() : [];
-    if (resposta.espera) {
-      const { espera, respondida } = resposta;
-      await espera;
-      // A página pode ter desistido do pedido enquanto ele esperava
-      // (Cancelar, Recomeçar): responder a um pedido cancelado falha, e isso
-      // não é erro do teste.
-      await responder(route, resposta.resposta).catch(() => {});
-      respondida();
-      return undefined;
-    }
+  async function responderDepoisDaEspera(route, { espera, respondida, resposta }) {
+    await espera;
+    await responder(route, resposta).catch(pedidoCancelado);
+    respondida();
+  }
+
+  async function tratar(route) {
+    registrarChamada(route.request());
+    const resposta = fila.length ? fila.shift() : [];
+    if (resposta.espera) return responderDepoisDaEspera(route, resposta);
     return responder(route, resposta);
   }
 
