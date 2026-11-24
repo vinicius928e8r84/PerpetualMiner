@@ -53,9 +53,9 @@ function semAProsa(arquivo, fonte) {
 function apagar(raiz, filtro) {
   const relatorio = [];
   for (const arquivo of arquivosDoRepositorio(raiz).filter(semComentario.seAplica).filter(a => filtro.test(a))) {
-    const fonte = fs.readFileSync(path.join(raiz, arquivo), 'utf8');
+    const fonte = fs.readFileSync(path.join(raiz, arquivo), 'utf8').replace(/\r\n/g, '\n');
     const depois = semAProsa(arquivo, fonte);
-    if (depois === fonte.replace(/\r\n/g, '\n')) continue;
+    if (depois === fonte) continue;
     const falta = confereOArquivo(arquivo, fonte, depois);
     if (falta) relatorio.push({ arquivo, falta });
     else fs.writeFileSync(path.join(raiz, arquivo), depois);
