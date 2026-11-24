@@ -1,0 +1,146 @@
+  <div class="veio-scrim" hidden id="modal-contexto">
+   <div aria-describedby="modal-contexto-subtitulo" aria-labelledby="modal-contexto-titulo" class="veio-modal" role="dialog">
+    <button class="veio-botao-icone veio-modal__fechar" data-fechar-modal data-voz-aria="PAI-34" data-voz-title="PAI-34">
+     <span data-icone="fechar">
+    <h2 class="veio-modal__titulo" id="modal-contexto-titulo">
+    <p class="frases-modal__subtitulo veio-modal__corpo" id="modal-contexto-subtitulo">
+    <form class="frases-modal__campos" id="form-contexto">
+     <label class="frases-modal__campo">
+      <span class="frases-modal__rotulo" data-voz="PAI-21.fonte">
+      <input aria-describedby="modal-fonte-ajuda" autocomplete="off" class="veio-campo" id="modal-fonte">
+      <span class="frases-modal__ajuda" data-voz="PAI-21.fonteAjuda" id="modal-fonte-ajuda">
+     <label class="frases-modal__campo">
+      <span class="frases-modal__rotulo" data-voz="PAI-21.titulo">
+      <input autocomplete="off" class="veio-campo" id="modal-titulo">
+     <label class="frases-modal__campo">
+      <span class="frases-modal__rotulo" data-voz="PAI-21.detalhe">
+      <input aria-describedby="modal-detalhe-ajuda" autocomplete="off" class="veio-campo" id="modal-detalhe">
+      <span class="frases-modal__ajuda" data-voz="PAI-21.detalheAjuda" id="modal-detalhe-ajuda">
+     <div class="veio-modal__acoes">
+      <button class="veio-botao veio-botao--fantasma" data-fechar-modal data-voz="PAI-20.cancelar" type="button">
+      <button class="veio-botao veio-botao--primario" data-voz="PAI-20.salvar" type="submit">
+  <div class="veio-scrim" hidden id="modal-apagar">
+   <div aria-describedby="modal-apagar-corpo" aria-labelledby="modal-apagar-titulo" class="veio-modal" role="dialog">
+    <button class="veio-botao-icone veio-modal__fechar" data-fechar-modal data-voz-aria="PAI-34" data-voz-title="PAI-34">
+     <span data-icone="fechar">
+    <h2 class="veio-modal__titulo" id="modal-apagar-titulo">
+    <p class="veio-modal__corpo" id="modal-apagar-corpo">
+    <div class="veio-modal__acoes">
+     <button class="veio-botao veio-botao--fantasma" data-fechar-modal data-foco-seguro id="btn-apagar-cancelar">
+     <button class="veio-botao veio-botao--perigo-cheio" id="btn-apagar-confirmar">
+  <div class="veio-scrim" hidden id="modal-minerar">
+   <div aria-labelledby="modal-minerar-titulo" class="minerar-modal veio-modal" role="dialog">
+    <button class="veio-botao-icone veio-modal__fechar" data-fechar-modal data-voz-aria="PAI-34" data-voz-title="PAI-34">
+     <span data-icone="fechar">
+    <h2 class="veio-modal__titulo" data-voz="ADD-01.botao" id="modal-minerar-titulo">
+    <div id="minerar-edicao">
+     <div class="minerar-abas">
+      <div class="veio-segmentado" data-voz-aria="ADD-01.botao" role="radiogroup">
+       <label class="veio-segmentado__opcao">
+        <input name="aba-minerar" type="radio" value="colar">
+        <span data-voz="ADD-01.colar">
+       <label class="veio-segmentado__opcao">
+        <input name="aba-minerar" type="radio" value="arquivo">
+        <span data-voz="ADD-01.arquivo">
+      <button aria-describedby="minerar-foto-ajuda" class="minerar-abas__foto veio-botao veio-botao--compacto veio-botao--fantasma" id="btn-minerar-foto">
+       <span data-voz="ADD-01.foto">
+       <span data-icone="externo">
+      <span data-voz="ADD-11.fotoAjuda" hidden id="minerar-foto-ajuda">
+     <form class="minerar-colar" id="minerar-colar" novalidate>
+      <label class="frases-modal__campo">
+       <span class="frases-modal__rotulo" data-voz="ADD-12.campo">
+       <textarea aria-describedby="minerar-frases-erro" class="minerar-colar__frases veio-campo" id="minerar-frases" rows="7" spellcheck="false">
+       <span class="veio-campo-erro" hidden id="minerar-frases-erro">
+      <div class="minerar-colar__contexto">
+       <label class="frases-modal__campo">
+        <span class="frases-modal__rotulo" data-voz="PAI-21.fonte">
+        <input autocomplete="off" class="veio-campo" id="minerar-fonte">
+       <label class="frases-modal__campo">
+        <span class="frases-modal__rotulo" data-voz="PAI-21.titulo">
+        <input autocomplete="off" class="veio-campo" id="minerar-titulo">
+      <div class="veio-modal__acoes">
+       <span class="minerar-contagem" id="minerar-contagem">
+       <button class="veio-botao veio-botao--fantasma" data-fechar-modal data-voz="ADD-12.cancelar" type="button">
+       <button class="veio-botao veio-botao--primario" id="btn-minerar-colar" type="submit">
+     <div class="minerar-arquivo" hidden id="minerar-arquivo">
+      <div class="minerar-arquivo__area">
+       <b class="minerar-arquivo__nome" id="minerar-arquivo-nome">
+       <p class="minerar-arquivo__nota" data-voz="ADD-12.arquivoNota">
+       <input accept=".txt,text/plain" hidden id="minerar-arquivo-escolha" type="file">
+       <button class="veio-botao veio-botao--compacto veio-botao--contorno" id="btn-minerar-escolher">
+      <p class="veio-campo-erro" hidden id="minerar-arquivo-erro" role="alert">
+      <p class="minerar-resultado" hidden id="minerar-arquivo-resultado" role="status">
+      <div class="veio-modal__acoes">
+       <button class="veio-botao veio-botao--fantasma" data-fechar-modal id="btn-minerar-arquivo-sair">
+    <div class="minerar-progresso" hidden id="minerar-progresso">
+     <b aria-live="polite" class="minerar-progresso__rotulo" id="minerar-progresso-rotulo">
+     <div aria-labelledby="minerar-progresso-rotulo" aria-valuemin="0" class="minerar-progresso__barra" role="progressbar">
+      <i>
+     <p class="minerar-progresso__nota" data-voz="ADD-12.progressoNota">
+  <div class="veio-scrim" hidden id="modal-envio">
+   <div aria-describedby="modal-envio-detalhe" aria-labelledby="modal-envio-titulo" class="envio-modal veio-modal" role="dialog">
+    <button class="veio-botao-icone veio-modal__fechar" data-voz-aria="PAI-34" data-voz-title="PAI-34" id="modal-envio-fechar">
+     <span data-icone="fechar">
+    <h2 class="veio-modal__titulo" data-voz="ENV-06.titulo" id="modal-envio-titulo">
+    <p class="veio-modal__corpo" id="modal-envio-detalhe">
+    <p class="envio-modal__sem-noticia" data-voz="ENV-09" hidden id="modal-envio-sem-noticia" role="status">
+    <div class="envio-modal__envios" id="modal-envio-lista">
+    <p class="envio-modal__pe" data-voz="ENV-15">
+  <div class="veio-scrim" hidden id="modal-resumo">
+   <div aria-labelledby="modal-resumo-titulo" class="envio-modal veio-modal" role="dialog">
+    <button class="veio-botao-icone veio-modal__fechar" data-voz-aria="PAI-34" data-voz-title="PAI-34" id="modal-resumo-fechar">
+     <span data-icone="fechar">
+    <h2 class="veio-modal__titulo" id="modal-resumo-titulo">
+    <p class="veio-modal__corpo" id="modal-resumo-detalhe">
+    <div class="envio-resumo__baralhos" id="modal-resumo-baralhos">
+    <div class="envio-resumo__historico">
+     <p class="envio-resumo__pergunta" id="modal-resumo-pergunta">
+     <p class="envio-resumo__ajuda" id="modal-resumo-ajuda">
+    <div class="veio-modal__acoes">
+     <button class="veio-botao veio-botao--secundario" id="btn-resumo-manter">
+     <button class="veio-botao veio-botao--primario" id="btn-resumo-apagar">
+      <span data-icone="apagar">
+      <span data-voz="ENV-10.tirar">
+  <iframe hidden id="abridor-ponte" src="../abridor/ponte.html">
+  <script src="/lib/voz/catalogo.js">
+  <script src="/lib/voz/catalogo-nivel.js">
+  <script src="/lib/voz/texto.js">
+  <script src="/lib/ajustes-de-envio.js">
+  <script src="/lib/quiz-de-nivel.js">
+  <script src="/lib/festa-do-quiz.js">
+  <script src="/lib/som-do-quiz.js">
+  <script src="/veio/componentes.js">
+  <script src="/lib/idioma.js">
+  <script src="/lib/mineracao.js">
+  <script src="/lib/mineracao-do-dia.js">
+  <script src="/lib/mineracao-automatica.js">
+  <script src="/lib/contexto.js">
+  <script src="/lib/atalhos.js">
+  <script src="/lib/pedido-ao-anki.js">
+  <script src="/lib/pareamento.js">
+  <script src="/lib/conexao-anki.js">
+  <script src="/lib/conexao-na-tela.js">
+  <script src="/lib/chave-da-openai.js">
+  <script src="/lib/configuracao.js">
+  <script src="/lib/ankiweb.js">
+  <script src="/lib/abridor.js">
+  <script src="/lib/abrir-o-anki.js">
+  <script src="/lib/historico.js">
+  <script src="/lib/sincronizacao.js">
+  <script src="painel-shell.js">
+  <script src="painel-conta.js">
+  <script src="painel-atalhos.js">
+  <script src="painel-conexao-arraste.js">
+  <script src="painel-anki-primeira-conexao-estado.js">
+  <script src="painel-conexao-passos-estado.js">
+  <script src="painel-conexao-passos-pecas.js">
+  <script src="painel-conexao-passos.js">
+  <script src="/lib/ranking.js">
+  <script src="painel-boas-vindas-ranking.js">
+  <script src="painel-boas-vindas-minerar.js">
+  <script src="painel-boas-vindas-festa.js">
+  <script src="painel-boas-vindas-quiz.js">
+  <script src="painel-boas-vindas-nivel.js">
+  <script src="/lib/envio-gravado.js">
+  <script src="painel-envio-estado.js">
+  <script src="painel-boas-vindas-envio.js">
