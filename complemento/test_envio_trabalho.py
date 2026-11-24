@@ -14,6 +14,7 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import baralhos, envio, perfil
+from complemento.esperas import Esperas
 from complemento.limite_do_plano import PLANO_NO_LIMITE, dizer_a_espera
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria
 from complemento.test_envio_fila import FRASE, ID, MOTOR, SEGUNDA, cartao, na_pasta, um_estado, um_pedido
@@ -25,7 +26,8 @@ PEDIDO = um_pedido(ID, {"phraseId": FRASE}, {"phraseId": SEGUNDA})
 def terminar(teste, pedido, estado, erro):
     """Grava o pedido e o estado, pede o fim ao `Trabalho` e devolve o estado gravado e o que o log disse."""
     pasta = na_pasta(teste, lambda p: p.com(pedido, estado).na_fila(ID))
-    trabalho = envio.Trabalho(pasta.fila, None, None, logging.getLogger("test_envio_trabalho"), "http://127.0.0.1:9", threading.Event())
+    pasta.fila.logger = logging.getLogger("test_envio_trabalho")
+    trabalho = envio.Trabalho(pasta.fila, None, None, None, Esperas())
     with teste.assertLogs("test_envio_trabalho", "INFO") as registro:
         trabalho._terminar(ID, pedido, erro)
     return pasta.ler("estado"), registro.output
@@ -116,9 +118,9 @@ class UmEnvioDeDoisCartoes:
         prazo = threading.Timer(10, parar.set)
         prazo.start()
         teste.addCleanup(prazo.cancel)
-        self.trabalho = envio.Trabalho(self.fila, self.colecao, IaQueNaoPede(), logging.getLogger("test_envio_trabalho"), "http://127.0.0.1:9",
-                                       parar, espera_do_anki=0.01)
-        self.motor = self.trabalho.motor_do_cartao = MotorDoCartaoDeRoteiro(self.fila)
+        self.fila.logger = logging.getLogger("test_envio_trabalho")
+        self.motor = MotorDoCartaoDeRoteiro(self.fila)
+        self.trabalho = envio.Trabalho(self.fila, self.colecao, IaQueNaoPede(), self.motor, Esperas(do_anki=0.01, parar=parar))
         corpo = {"jobId": ID, "lang": "en", "deckName": "Inglês", "imageSource": "1", "tts": {},
                  "entries": [{"phraseId": FRASE, "line": "keep running | run : They keep running"}]}
         teste.assertEqual(self.fila.criar(corpo)[0], 201)
