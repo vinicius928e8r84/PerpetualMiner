@@ -24,6 +24,7 @@ const REGRAS = [
   require('./link-de-doc'),
   require('./limite-de-linhas'),
   require('./sem-comentario-novo'),
+  require('./sem-comentario'),
   require('./html-cru'),
   require('./dialogo-nativo'),
   require('./saude-do-codigo'),

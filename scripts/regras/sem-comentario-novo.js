@@ -55,12 +55,12 @@ const corpoDe = (texto, primeira, ultima) => {
   return (ultima ? semInicio.replace(FIM_DO_COMENTARIO, '') : semInicio).trim();
 };
 
-const idsDasOutrasRegras = arquivo => require('./verificar').REGRAS
-  .filter(regra => regra.id !== id && regra.seAplica(arquivo))
+const idsDasOutrasRegras = (arquivo, propria) => require('./verificar').REGRAS
+  .filter(regra => regra.id !== propria && regra.seAplica(arquivo))
   .map(regra => regra.id);
 
-function excecaoDeOutraRegra(arquivo) {
-  const ids = idsDasOutrasRegras(arquivo);
+function excecaoDeOutraRegra(arquivo, propria = id) {
+  const ids = idsDasOutrasRegras(arquivo, propria);
   if (ids.length === 0) return /(?!)/;
   return new RegExp(`^exce[çc][ãa]o\\s+(?:${ids.join('|')})\\s+at[ée]\\s+\\d{4}-\\d{2}-\\d{2}\\s*,\\s*aprovad[ao]\\s+por\\s+[^:]+:\\s*\\S`, 'i');
 }
@@ -271,4 +271,4 @@ function verificar(arquivo, fonte, raiz, base) {
     .flatMap(grupo => achadosDoGrupo(grupo, passa(arquivo, grupo, excecaoDeOutra) ? NENHUMA_LINHA : novas));
 }
 
-module.exports = { id, conserto, seAplica, verificar };
+module.exports = { id, conserto, seAplica, verificar, gruposDeComentario, passa, excecaoDeOutraRegra, resumo };

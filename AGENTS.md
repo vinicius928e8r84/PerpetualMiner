@@ -51,7 +51,11 @@ The Conexão keeps its data in the add-on's `user_files` (`complemento/pasta_de_
 | 10 Visual references | review; `aprovacao-visual` (a reference PNG outside a `test.fixme` needs its entry in `e2e/aprovados-visuais/<spec>.json`) |
 | Glossary (`glossary.md`) | `glossario-so-linguagem` (no backtick, no `_Nome no código_` line, a definition of at most two sentences) |
 | 11 New files | review; `indice-de-arquivos` (a root, `lib/`, `veio/` or `scripts/` file needs its row in `docs/arquivos/`); `testes/test_empacotar.js` |
+<<<<<<< HEAD
 | 17 The baseline goes down at the merge, not in the PR | `linha-de-base-no-merge` (a PR that edits `scripts/regras/linha-de-base.json` or `scripts/ganchos/linha-de-base-de-tamanho.json` by hand); the `Linha de base refeita` job (`scripts/ci/linha-de-base-refeita.js`: a `Linha de base: desce no merge` commit is redone from its parent by `scripts/regras/baixar-no-merge.js` and compared) |
+=======
+| 14 No code comment | `sem-comentario` (the ratchet: each file has a ceiling in `scripts/regras/linha-de-base.json` that only goes down, and a file that reaches zero may not have a comment again; `--atualizar` lowers it) |
+>>>>>>> af4aaf42 (Põe a regra sem-comentario: catraca por arquivo e linha de base de 681 linhas de comentário)
 
 A PR that changes a user-facing file (`popup/`, `painel/`, `manifest.json`, `complemento/servidor.py`, …) also needs `.agents/skills/verify-perpetualminer/features/` updated or "feature map unchanged" in its body: the `Mapa de features` step of `.github/workflows/regras.yml` (PRs only).
 

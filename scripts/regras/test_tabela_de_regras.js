@@ -8,8 +8,12 @@ const { REGRAS } = require('./verificar');
 const { regrasDaTabela, divergencias } = require('./apoio-da-tabela-de-regras');
 
 const RAIZ = path.resolve(__dirname, '..', '..');
+<<<<<<< HEAD
 const FERRAMENTAS_DA_PASTA = ['baixar-no-merge'];
 const SEM_LINHA_NA_TABELA = ['doc-datado', 'link-de-doc', 'limite-de-linhas', 'sem-comentario-novo', 'saude-do-codigo'];
+=======
+const SEM_LINHA_NA_TABELA = ['doc-datado', 'link-de-doc', 'limite-de-linhas', 'saude-do-codigo'];
+>>>>>>> af4aaf42 (Põe a regra sem-comentario: catraca por arquivo e linha de base de 681 linhas de comentário)
 
 let total = 0;
 const prova = (achadas, esperadas, porque) => { assert.deepStrictEqual(achadas, esperadas, porque); total++; };
