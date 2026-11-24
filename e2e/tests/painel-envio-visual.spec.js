@@ -13,7 +13,7 @@ const FRASES = [
   { id: 2, texto: 'Мне всё равно.', data: HOJE, streaming: 'youtube', idioma: 'Russo', contexto: { fonte: 'youtube', titulo: 'Russian with Max', detalhe: '' } },
 ];
 
-const AGUARDA_O_DONO = 'a referência visual espera a aprovação do dono (regra 10)';
+const AGUARDA_O_DONO = 'a referência visual espera a aprovação do dono (regra aprovacao-visual)';
 
 const progresso = page => page.getByRole('dialog', { name: 'Enviando ao Anki…' });
 const resumo = page => page.getByRole('dialog', { name: /^Envio concluído/ });

@@ -3,7 +3,7 @@
 const { test, expect } = require('../fixtures');
 const { semearComoNoPrototipo, abrirConfiguracoes } = require('../apoio-das-configuracoes');
 
-const AGUARDA_O_DONO = 'a referência visual da coluna do ChatGPT com o login espera a aprovação do dono (regra 10)';
+const AGUARDA_O_DONO = 'a referência visual da coluna do ChatGPT com o login espera a aprovação do dono (regra aprovacao-visual)';
 
 test('IA dos cartões com o plano do ChatGPT: a linha de quem paga e Sair do ChatGPT', async ({ page, extensao, fakes }) => {
   test.fixme(true, AGUARDA_O_DONO);

@@ -3,7 +3,7 @@
 const { test, expect } = require('../fixtures');
 const { AGORA, INGLESAS, SACK, ARM, abrirPainel, envio, marcarEEnviar, enviosCriados } = require('../apoio-do-envio');
 
-const AGUARDA_O_DONO = 'a referência visual do perfil fixo do Anki espera a aprovação do dono contra os protótipos do #133 e do #105 (regra 10)';
+const AGUARDA_O_DONO = 'a referência visual do perfil fixo do Anki espera a aprovação do dono contra os protótipos do #133 e do #105 (regra aprovacao-visual)';
 
 test('Configurações › Conexão com o Anki: a linha Perfil do Anki com o marcado que sumiu', async ({ page, extensao, fakes }) => {
   test.fixme(true, AGUARDA_O_DONO);

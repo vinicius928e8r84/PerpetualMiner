@@ -2,7 +2,7 @@
 
 const { test, expect } = require('../fixtures');
 
-const AGUARDA_O_DONO = 'a referência visual espera a aprovação do dono (regra 10)';
+const AGUARDA_O_DONO = 'a referência visual espera a aprovação do dono (regra aprovacao-visual)';
 const OS_DOIS = { en: { enabled: true, dailyLimit: 20 }, ru: { enabled: true, dailyLimit: 20 } };
 
 const grupo = (page, idioma) => page.locator('.bv-card').getByRole('group', { name: idioma, exact: true });
