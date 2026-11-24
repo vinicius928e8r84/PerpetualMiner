@@ -23,10 +23,7 @@
     "e2e/tests/seam.spec.js": 1
   },
   "doc-datado": {},
-  "indice-de-arquivos": {
-    "scripts/com.perpetualminer.atualizar.plist.exemplo": 1,
-    "scripts/preparar-python.sh": 1
-  },
+  "indice-de-arquivos": {},
   "aprovacao-visual": {},
   "relogio-fora-da-fixture": {},
   "versoes-publicadas": {},

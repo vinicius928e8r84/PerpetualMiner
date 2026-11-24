@@ -1,8 +1,8 @@
 # Testes e ferramentas
 
-O papel de `scripts/`, do complemento, dos testes de Node de `testes/`, do `e2e/`, das skills do repositório, do CI e do `preview/`. Lido sob demanda, não em toda sessão. Os arquivos da extensão estão em [extensao.md](extensao.md).
+O papel de `scripts/`, do complemento, do `e2e/`, das skills do repositório, do CI e do `preview/`, em uma frase. Lido sob demanda, não em toda sessão. Os arquivos da extensão estão em [extensao.md](extensao.md).
 
-A regra `indice-de-arquivos` (`scripts/regras/indice-de-arquivos.js`) exige uma linha, aqui ou em `extensao.md`, para cada arquivo novo da raiz, de `lib/`, de `veio/` e do topo de `scripts/`, e acusa a linha que cita um arquivo que não existe mais.
+A regra `indice-de-arquivos` exige uma linha, aqui ou em `extensao.md`, para cada arquivo novo da raiz, de `lib/`, de `veio/` e do topo de `scripts/`, e acusa a linha que cita um arquivo que não existe mais.
 
 | File | Role |
 |------|------|
@@ -44,3 +44,21 @@ A regra `indice-de-arquivos` (`scripts/regras/indice-de-arquivos.js`) exige uma 
 | `.github/workflows/testes.yml` | The PR gate on `ubuntu-24.04`, every job calling `node scripts/testar.mjs <group>`: the fast groups in one job “Testes rápidos”, the add-on (Python 3.9 and 3.13) and the whole e2e suite (8 slices of 2 Playwright workers each, rerun once when a test fails; the Noturna keeps 1 worker per slice). Each of these jobs always runs, so its required check keeps its name, and skips its steps by what the PR touches: `scripts/ci/classificar.sh` asks `scripts/ci/selecao-de-testes.js` (e2e only for the extension, `e2e/`, `lib/`, `veio/` or the contract; the add-on only for `complemento/`, `conexao/`, `engine/` or the contract; `scripts/` or `.github/` run everything; a place it does not know runs everything; a push to `main` skips the e2e here, and the whole suite runs on every push to `main` in `.github/workflows/noturna.yml`, newest run only, opening the `noturna` issue when red); see `docs/testes.md` |
 | `.github/workflows/segunda-opiniao.yml` | On every PR, the job “Segunda opinião (Qlty, informativa)”: downloads Qlty CLI at a pinned version and checks its sha256, runs it with telemetry off and no token, and writes the table of `scripts/qualidade/segunda-opiniao.js` to the job summary (plus an artifact). Not a required check, and every step that can fail has `continue-on-error`, so it never blocks a PR; it does not run on `main`, so it never turns a commit away from `verde/` |
 | `preview/` | The static site Vercel publishes (`vercel.json` deploys only `main` and `vitrine/**` branches (`git.deploymentEnabled`: every other push would still count against Hobby's 100 deployments a day) and runs `ignorar-build.sh` as its `ignoreCommand`, so a push that touches nothing the preview shows skips the build; `scripts/ci/test_ignorar_build_da_vitrine.js` fails when the preview shows a file the script's path list misses; `montar.mjs` assembles it from `arquivosDaExtensao`; `chrome-simulado.js` fakes `chrome.*` in the copied pages) and `site/`, the public `/sobre/` page that Google's OAuth consent screen asks for (the privacy policy lives in the `perpetualminer-site` repository). See `preview/README.md` |
+| `scripts/atualizar-extensao.sh`, `scripts/com.perpetualminer.atualizar.plist.exemplo` | Keeps an unpacked clone on `main` up to date, and the launchd example that schedules it. |
+| `scripts/empacotar-extensao.mjs`, `scripts/arquivos-do-pacote.js` | Builds the Web Store zip, and says which files ship. |
+| `scripts/testes.json`, `scripts/testar.mjs`, `scripts/grupos-de-teste.js`, `scripts/arquivos-em-paralelo.js`, `scripts/unittest-em-paralelo.js`, `scripts/test_testar.mjs` | The test groups and the runner CI calls for every job. |
+| `scripts/preparar-python.sh` | Makes the Python venv of the engine tests. |
+| `scripts/gerar-catalogo-da-voz.js`, `scripts/conferir-voz.js`, `scripts/voz-do-catalogo.js` | Generates and checks the derived copies of the Voice catalog. |
+| `scripts/yaml-de-workflow.js` | Reads workflow YAML for the CI tests. |
+| `scripts/ci/` | The code the workflows run: required checks, the green commit, the PR body checks, the test selection. |
+| `scripts/ganchos/` | The size limit hook (`scripts/ganchos/LEIA-ME.md`). |
+| `scripts/regras/` | The review rules a script can check, one file per rule, with the baseline and the proofs (`node scripts/regras/verificar.js --help`). |
+| `scripts/qualidade/`, `.qlty/qlty.toml` | The second, informative opinion on Code Health. |
+| `complemento/` | The Conexão com o Anki as an Anki add-on (`complemento/LEIA-ME.md`). |
+| `e2e/` | The Playwright suite that runs the unpacked extension in Chromium (`docs/testes.md`, skill `e2e-suite`). |
+| `e2e/estado-final.js` | `estadoFinal`: the e2e check of what ended up stored after a test acts. |
+| `e2e/relogio-parado.js` | `pararRelogio`: the one place that sets up the test clock. |
+| `e2e/fontconfig/fonts.conf` | The only fonts the test Chromium sees, so the visual references render the same everywhere. |
+| `.agents/skills/verify-perpetualminer/` | The skill that drives and proves the extension through the e2e harness, with the feature map. |
+| `.github/workflows/` | One workflow per job; each test job calls `node scripts/testar.mjs <group>`. |
+| `preview/`, `vercel.json` | The static preview site Vercel publishes, copied from the repository files. |

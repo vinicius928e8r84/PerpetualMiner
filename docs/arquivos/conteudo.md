@@ -1,7 +1,0 @@
-# Arquivos do content script
-
-O papel dos módulos que saíram do `content.js` para `lib/` (o que o content script lê da página). O resto da extensão está em [extensao.md](extensao.md); testes e ferramentas, em [testes-e-ferramentas.md](testes-e-ferramentas.md). Lido sob demanda, não em toda sessão.
-
-| File | Role |
-|------|------|
-| `lib/contexto-do-site.js` | `ContextoDoSite.ler(host, documento)`: the Contexto of a mined caption, one table row per player; any other site is `web` |

@@ -87,9 +87,9 @@ assert.strictEqual(manifestoDoComplemento.name, 'PerpetualMiner');
 assert(manifestoDoComplemento.package, 'o manifesto do .ankiaddon precisa do `package`');
 assert(lerBytesDoZip(arquivoDaConexao, '__init__.py').length > 0, 'o .ankiaddon não leva o código do complemento');
 
-const guiaDaLoja = fs.readFileSync('docs/publicar-chrome-web-store.md', 'utf8');
+const guiaDaLoja = fs.readFileSync('docs/loja/permissoes.md', 'utf8');
 const bloco = guiaDaLoja.match(/\*\*Campo "Host permission use"\*\*[^\n]*\n\n(> [^\n]*)/);
-assert(bloco, 'falta o bloco "Host permission use" em docs/publicar-chrome-web-store.md');
+assert(bloco, 'falta o bloco "Host permission use" em docs/loja/permissoes.md');
 const hostsDoBloco = [...bloco[1].matchAll(/`(https?:\/\/[^`]+)`/g)].map(m => m[1]);
 assert.deepStrictEqual(
   [...hostsDoBloco].sort(),
@@ -107,7 +107,7 @@ for (const [onde, manifesto] of [['do repositório', manifestoDoRepo], ['do zip'
     `o manifest ${onde} tem de pedir nativeMessaging como permissão opcional, e só ela`);
 }
 assert(/\| `nativeMessaging` \(opcional\) \|/.test(guiaDaLoja),
-  'falta a justificativa de `nativeMessaging` (opcional) na tabela de permissões de docs/publicar-chrome-web-store.md');
+  'falta a justificativa de `nativeMessaging` (opcional) na tabela de permissões de docs/loja/permissoes.md');
 
 fs.rmSync(saida, { recursive: true, force: true });
 console.log('empacotar tests passed');

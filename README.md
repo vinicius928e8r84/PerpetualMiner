@@ -112,7 +112,7 @@ git clone https://github.com/vinicius928e8r84/PerpetualMiner.git
 2. Clique em Carregar sem compactação e escolha a pasta clonada, a que tem o `manifest.json`.
 3. A aba de Boas-vindas abre sozinha. Ela tem nove passos, e os opcionais dá para pular.
 
-Não há build. A pasta do repositório é a extensão. Carregada assim, ela relê os próprios arquivos a cada minuto e se recarrega depois de um `git pull`. O guia [`docs/instalar-extensao.md`](docs/instalar-extensao.md) ensina a agendar o pull no Mac, no WSL e no Windows.
+Não há build. A pasta do repositório é a extensão. Carregada assim, ela relê os próprios arquivos a cada minuto e se recarrega depois de um `git pull`. O `scripts/atualizar-extensao.sh` faz o pull e o cabeçalho de `scripts/com.perpetualminer.atualizar.plist.exemplo` mostra como agendá-lo no Mac.
 
 ### A Conexão com o Anki
 
@@ -145,7 +145,7 @@ A extensão é JavaScript puro em Manifest V3. O complemento do Anki usa só a b
 | `engine/` | O motor que faz o texto, o áudio e a imagem do cartão |
 | `e2e/` | Os testes de tela, com Playwright |
 | `scripts/` | O executor dos testes, as regras de revisão e o empacotador |
-| `docs/` | Arquitetura, armazenamento, design e os guias de instalação |
+| `docs/` | As decisões (`adr/`), o papel de cada arquivo (`arquivos/`), os textos da loja e os protótipos de design |
 
 ### Testes
 
@@ -188,7 +188,7 @@ node scripts/testar.mjs e2e -- popup --workers=2
 - Comportamento novo da extensão ganha teste em `e2e/`.
 - O corpo da PR segue [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md). Confira com `node scripts/ci/corpo-da-pr.js <arquivo.md>` antes de abrir.
 
-Agentes começam por [`AGENTS.md`](AGENTS.md). O papel de cada arquivo está em [`docs/arquivos/`](docs/arquivos/extensao.md), e o caminho dos dados em [`docs/arquitetura.md`](docs/arquitetura.md).
+Agentes começam por [`AGENTS.md`](AGENTS.md). O papel de cada arquivo está em [`docs/arquivos/`](docs/arquivos/extensao.md), e o porquê das decisões em [`docs/adr/`](docs/adr/).
 
 ## Licença
 

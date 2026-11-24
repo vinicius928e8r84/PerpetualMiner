@@ -140,7 +140,7 @@ sem responder, é `503` com o `error` da rota e o `detail` (`collection_not_open
 
 ## As rotas do Envio (#142)
 
-Todas POST, com a origem da extensão (levam as Frases e os custos da pessoa); o desenho é `docs/design/envio-no-complemento.md`.
+Todas POST, com a origem da extensão (levam as Frases e os custos da pessoa); a decisão: `docs/adr/0009-o-envio-roda-na-conexao-com-um-dono-por-dado.md`.
 
 | Rota | Corpo | Resposta |
 |---|---|---|
