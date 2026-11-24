@@ -1,0 +1,18 @@
+# The Pareamento is a code shown in the Anki, and every request and answer is signed with HMAC
+
+The Conexão com o Anki listens on loopback port 8766. The extension has to know it is talking to the real Conexão, and the Conexão has to know the request comes from a browser the person paired.
+
+**Decision (owner, 2026-11-09): option A.** The secret is born in the Conexão and reaches the extension once, after the person types in the Painel a code that only their Anki showed. From then on every request carries an HMAC-SHA256 signature and every answer comes back signed, so the secret never travels again. The `Origin` header is still required as a layer against web pages, but it stopped being the boundary. There is no grace period, and the person undoes a pairing in the Anki window (Desconectar navegadores). Option B (a Permitir button) and option C (the opener hands over the secret) were discarded; they change only how the secret is born.
+
+**Why not a plain token in a header.** When the Anki is closed, any process can take port 8766. That impostor would receive the token in the first private request (the Painel asks `/ia/estado` at every healthy check) and become a valid client of the real Conexão. With a plain token, the risk of an impostor listener becomes the risk of the client; with a signature, the impostor sees only HMACs, from which the secret cannot be recovered.
+
+**Rules that follow.**
+
+- Only an answer that proves the secret deletes the credential. A revocation (Desconectar navegadores) arrives as `401 pairing_revoked` with proof and removes it; without proof the screen says "não confirmada". A browser that was paired and then gets `401 pairing_required` without proof (the Conexão was reinstalled, another Anki, or an impostor) sees "a parear" and keeps its credential.
+- The credential lives in the IndexedDB database `pm-pareamento`, not in `pm-segredos`: the migration and the Apagar tudo of the OpenAI key delete `pm-segredos` whole, and the credential is not the person's data.
+- Every signed request first asks for a fresh `conferir`, so no proven session is reused. The dot of the Conexão is green only when the Conexão is proven.
+- A code allows five attempts, and the fifth wrong one kills it. After three consecutive codes with their attempts exhausted and nobody paired, `comecar` answers `429 pairing_locked` for 15 minutes. Without that cap a measured 400 guesses per second would hit about 4% a day; with it, about 2 chances in a million a day over 31^6.
+
+**Limits accepted.** A program running as the same system user can read `pareamento.json` and the Chrome profile on disk, as it already reads the OpenAI key; no Keychain or DPAPI is used (DPAPI does not protect from the same user), and on Windows the file inherits the folder's ACL. Root and loopback sniffing are out of reach. A millisecond race (the real Conexão dies right after a proven `conferir`) is narrowed by the fresh `conferir` before each request. An impostor can occupy the port, open the code dialog or burn the five attempts of a code: a visible nuisance, not a leak. `GET /health` and the return page of the ChatGPT login stay open without credential. The one gap that remains: with the Anki closed and an impostor on 8766, a person who types a code they never saw appear in the Anki pairs with the impostor, and the extension cannot tell (no PAKE). The step "the code appeared in the Anki" is the person's, and it is what makes the code authenticate the Conexão.
+
+Not proven by CI: the dialog, the tooltip and the button in the Anki run only against a fake there; the real check is the owner's rehearsal.

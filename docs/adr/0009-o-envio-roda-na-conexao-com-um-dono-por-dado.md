@@ -1,0 +1,14 @@
+# The Envio runs inside the Conexão com o Anki, with one owner for each piece of data
+
+An Envio lives in two processes: the Painel follows it and the Conexão com o Anki does it, spending the OpenAI key the Conexão holds. Every piece of data has exactly one owner, and a copy never becomes a second source of truth.
+
+- **Status.** The state of each Envio and of each Cartão lives only in the Conexão's state file for that Envio. The queue file keeps the order and the id and never a status. The Painel reads the state (`POST /jobs/list`, every 2 s), keeps in `pm_envio` only what it needs to follow the Envio, and never decides the state of a Cartão.
+- **The request is frozen.** The Painel keeps the body in `pm_envio` before the first `POST`; the Conexão records a fingerprint (SHA-256 of the canonical body) once, on creation, and never changes it. Another body with the same `jobId` is a `409`. Creation compares the fingerprint, never the stored request, because the end of an Envio and Apagar tudo rewrite that one.
+- **A Cartão is `(phraseId, position of the Termo in the Frase)`**, written `<phraseId>-<n>`. The Termo and the Frase of each Cartão exist only on the request line: never in the state, the costs or the diagnostic package, and the log names the Cartão by `<phraseId>-<n>`. The text the Conexão holds is a copy kept only while the Envio needs it; it goes away as each Frase reaches the Anki, and Apagar tudo removes it (ADR 0010).
+- **The OpenAI key** is read from the Conexão's vault before each text request and only for it. It is never written to the queue, the state, the costs, the log, the diagnostic package or a response; the body of an OpenAI error is never read, because it can echo the key (ADR 0012).
+- **A Conexão that starts does not enqueue a request that has no queue entry.** Nobody spends the key on an Envio that nobody follows.
+- **Closing the Anki in the middle** must not open an error dialog: the worker is a daemon thread and raises nothing on the main thread.
+
+The Envio that follows the state in the Painel uses one shared module (`EnvioAcompanhado`, in `painel-envio-estado.js`) for the three screens that retry an Envio, because each had its own treatment of the `409`. The module never writes `chrome.storage`; the frozen body belongs to the first Envio of Boas-vindas and the Remessa (the modal's batch of Envios) belongs to the modal. The owner ruled out moving the follow-up to the service worker, adding a Remessa route to the Conexão, and fitting Boas-vindas into the Remessa through options.
+
+Risks accepted: a text can be paid twice if the Anki is killed between the OpenAI answer and the write of that text; two identical Frases in one Envio become two Cartões, and the second is a duplicate of the first; an Envio with a pinned profile waits for it (ADR 0016); a finished Envio loses its queue and state after 30 days while its costs stay.
