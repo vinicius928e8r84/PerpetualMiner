@@ -31,6 +31,10 @@ prova(linhasDe('lib/a.js', 'const url = "http://x//y"; const r = /a\\/\\/b/;\n')
 prova([regra.seAplica('docs/design/a.html'), regra.seAplica('.claude/skills/a.js'), regra.seAplica('lib/a.js'), regra.seAplica('README.md')],
   [false, false, true, false], 'o alcance é o mesmo de sem-comentario-novo');
 
+const { formatar } = require('./apoio-listar-comentarios');
+prova(formatar([{ arquivo: 'a.js', linha: 2, texto: '// x' }, { arquivo: 'a.js', linha: 5, texto: 'f(); // y' }, { arquivo: 'b.js', linha: 1, texto: '// z' }]).split('\n'),
+  ['', '=== a.js (2)', '2: // x', '5: f(); // y', '', '=== b.js (1)', '1: // z'], 'a lista de comentários agrupa por arquivo');
+
 const COMENTADO = n => Array.from({ length: n }, (_, i) => `// linha ${i + 1}`).concat('const a = 1;').join('\n') + '\n';
 const base = objeto => JSON.stringify({ 'sem-comentario': objeto });
 const semEnv = () => {
