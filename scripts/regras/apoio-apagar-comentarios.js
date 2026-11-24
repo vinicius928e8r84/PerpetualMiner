@@ -19,6 +19,56 @@ function diretivaNoComeco(arquivo, texto) {
   return cabeca !== marca[2].trim() && semComentarioNovo.ehDiretiva(arquivo, cabeca) ? `${marca[1]} ${cabeca}` : null;
 }
 
+const MARCA_DE_TESTE = /^(\s*)\/\/\s*Exceção de teste(?::\s*(chrome-nativo|catálogo|componente-base|sem-estado-guardado)\b|\s*\(([^)]*)\))/;
+const LINHA_DE_COMENTARIO = /^(\s*)\/\/(?!\/)/;
+const JSDOC_DO_FAKE = /\/\*\*[^\S\n]*\n[^]*?\*\//g;
+
+function nomeDaExcecao(marca) {
+  if (marca[2]) return marca[2];
+  return /chrome/i.test(marca[3]) ? 'chrome-nativo' : null;
+}
+
+function continuaOBloco(linha, indentacao) {
+  const comentario = LINHA_DE_COMENTARIO.exec(linha || '');
+  return Boolean(comentario) && comentario[1] === indentacao;
+}
+
+function reduzirAMarca(linhas, de, indentacao, nome) {
+  let ate = de + 1;
+  while (continuaOBloco(linhas[ate], indentacao)) ate++;
+  if (ate === de + 1) return linhas;
+  const texto = nome === 'sem-estado-guardado' ? `${indentacao}// Exceção de teste: ${nome}` : `${indentacao}// Exceção de teste: ${nome} (docs/testes.md).`;
+  return [...linhas.slice(0, de), texto, ...linhas.slice(ate)];
+}
+
+function reduzirMarcasDeTeste(arquivo, fonte) {
+  if (!/^e2e\/tests\/.+\.spec\.js$/.test(arquivo)) return fonte;
+  let linhas = fonte.split('\n');
+  for (let i = 0; i < linhas.length; i++) {
+    const marca = MARCA_DE_TESTE.exec(linhas[i]);
+    const nome = marca && nomeDaExcecao(marca);
+    if (nome) linhas = reduzirAMarca(linhas, i, marca[1], nome);
+  }
+  return linhas.join('\n');
+}
+
+function reduzirMarcasDeFake(arquivo, fonte) {
+  if (!/^e2e\/fakes\/.+\.js$/.test(arquivo)) return fonte;
+  return fonte.replace(JSDOC_DO_FAKE, bloco => (/^\/\*\*[^\n]*\n\s*\*?\s*@estado-guardado\b/.test(bloco) ? '/** @estado-guardado */' : bloco));
+}
+
+const MARCA_SEM_TEXTO = /^(?:\/\/+|#+)\s*$/;
+
+function semLinhasDeMarcaVazia(arquivo, fonte) {
+  const vazias = trechosDeComentario(arquivo, fonte).filter(([de, ate]) => MARCA_SEM_TEXTO.test(fonte.slice(de, ate)));
+  return vazias.reverse().reduce((texto, [de, ate]) => {
+    const inicio = texto.lastIndexOf('\n', de - 1) + 1;
+    const fim = texto.indexOf('\n', ate);
+    const sozinha = texto.slice(inicio, de).trim() === '' && texto.slice(ate, fim < 0 ? texto.length : fim).trim() === '';
+    return sozinha ? texto.slice(0, inicio) + texto.slice(fim < 0 ? texto.length : fim + 1) : texto;
+  }, fonte);
+}
+
 function encurtarDiretivas(arquivo, fonte) {
   const trocas = trechosDeComentario(arquivo, fonte)
     .map(([de, ate]) => ({ de, ate, novo: diretivaNoComeco(arquivo, fonte.slice(de, ate)) }))
@@ -41,13 +91,22 @@ function trocarPorPass(fonte, trechos) {
 }
 
 function semAProsa(arquivo, fonte) {
-  const comDiretivasCurtas = encurtarDiretivas(arquivo, fonte);
+  const comMarcasCurtas = reduzirMarcasDeFake(arquivo, reduzirMarcasDeTeste(arquivo, fonte));
+  const comDiretivasCurtas = encurtarDiretivas(arquivo, comMarcasCurtas);
   const docstrings = usaADocstring(comDiretivasCurtas) ? [] : trechosDeDocstring(arquivo, comDiretivasCurtas);
   const sozinhas = docstrings.filter(([, , sozinha]) => sozinha);
   const comPass = trocarPorPass(comDiretivasCurtas, sozinhas);
   const restantes = usaADocstring(comPass) ? [] : trechosDeDocstring(arquivo, comPass).map(([de, ate]) => [de, ate]);
   const prosa = trechosComProsa(arquivo, comPass);
-  return semOsComentarios(comPass, [...prosa, ...restantes]);
+  return semBrancoSobrando(arquivo, fonte, semLinhasDeMarcaVazia(arquivo, semOsComentarios(comPass, [...prosa, ...restantes])));
+}
+
+const DOIS_BRANCOS = /\n{3,}/g;
+
+function semBrancoSobrando(arquivo, antes, depois) {
+  if (antes.includes('\n\n\n')) return depois;
+  const menos = depois.replace(DOIS_BRANCOS, '\n\n');
+  return confereOArquivo(arquivo, antes, menos) ? depois : menos;
 }
 
 function apagar(raiz, filtro) {

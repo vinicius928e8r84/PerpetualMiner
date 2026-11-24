@@ -116,4 +116,14 @@ r = contraAMain(naMain, { 'lib/a.js': COMENTADO(1), 'scripts/regras/linha-de-bas
 assert.strictEqual(r.status, 0, r.saida);
 total += 3;
 
+
+prova(semAProsa('e2e/tests/a.spec.js', "'use strict';\n\n// Exceção de teste (o aviso nativo do Chrome): o aviso é do Chrome\n// e o Playwright não alcança.\n\nconst x = 1;\n"),
+  "'use strict';\n\n// Exceção de teste: chrome-nativo (docs/testes.md).\n\nconst x = 1;\n", 'a marca de exceção de teste de várias linhas fica numa linha só, com o nome');
+prova(semAProsa('e2e/tests/a.spec.js', 'test(1, async () => {\n  // Exceção de teste: sem-estado-guardado — motivo longo\n  // que continua aqui.\n  await x();\n});\n'),
+  'test(1, async () => {\n  // Exceção de teste: sem-estado-guardado\n  await x();\n});\n', 'a marca sem-estado-guardado fica só com o nome');
+prova(semAProsa('e2e/fakes/a.js', 'const o = {\n  /**\n   * @estado-guardado A chave da conta, já convertida:\n   * em objeto.\n   */\n  chave: () => 1,\n};\n'),
+  'const o = {\n  /** @estado-guardado */\n  chave: () => 1,\n};\n', 'o JSDoc do leitor marcado fica só com a marca');
+prova(semAProsa('lib/a.js', "'use strict';\n\n//\n\nconst x = 1;\n"), "'use strict';\n\nconst x = 1;\n", 'a linha com só a marca de comentário sai');
+prova(semAProsa('lib/a.js', "'use strict';\n\n//\n// o que fazia\n\nconst x = 1;\n"), "'use strict';\n\nconst x = 1;\n", 'o bloco que sobra sem texto sai inteiro');
+
 console.log(`sem-comentario: ${total} provas passaram`);
