@@ -34,16 +34,18 @@ function trechosComProsa(arquivo, fonte) {
   });
 }
 
+const usaADocstring = fonte => /__doc__/.test(fonte);
+
 function trocarPorPass(fonte, trechos) {
   return [...trechos].sort((a, b) => b[0] - a[0]).reduce((texto, [de, ate]) => `${texto.slice(0, de)}pass${texto.slice(ate)}`, fonte);
 }
 
 function semAProsa(arquivo, fonte) {
   const comDiretivasCurtas = encurtarDiretivas(arquivo, fonte);
-  const docstrings = trechosDeDocstring(arquivo, comDiretivasCurtas);
+  const docstrings = usaADocstring(comDiretivasCurtas) ? [] : trechosDeDocstring(arquivo, comDiretivasCurtas);
   const sozinhas = docstrings.filter(([, , sozinha]) => sozinha);
   const comPass = trocarPorPass(comDiretivasCurtas, sozinhas);
-  const restantes = trechosDeDocstring(arquivo, comPass).map(([de, ate]) => [de, ate]);
+  const restantes = usaADocstring(comPass) ? [] : trechosDeDocstring(arquivo, comPass).map(([de, ate]) => [de, ate]);
   const prosa = trechosComProsa(arquivo, comPass);
   return semOsComentarios(comPass, [...prosa, ...restantes]);
 }
