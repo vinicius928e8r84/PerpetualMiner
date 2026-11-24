@@ -1,6 +1,8 @@
 'use strict';
 
 const semComentarioNovo = require('./sem-comentario-novo');
+const { linhaDe } = require('./comum');
+const { trechosDeDocstring } = require('./apoio-docstrings');
 
 const id = 'sem-comentario';
 
@@ -12,13 +14,35 @@ const conserto = 'Não volte a pôr comentário: o arquivo só pode ter os comen
 
 const porQueOArquivoNovoNaoEntra = 'um arquivo que não tinha comentário (ou que chegou a zero) não volta a ter; apague o comentário.';
 
-const seAplica = semComentarioNovo.seAplica;
+const PROTOTIPO = /^docs\/design\/.*\.html$/;
 
-function verificar(arquivo, fonte) {
+const seAplica = arquivo => semComentarioNovo.seAplica(arquivo) || PROTOTIPO.test(arquivo);
+
+function linhasDaDocstring(fonte, [de, ate]) {
+  const primeira = linhaDe(fonte, de);
+  const textos = fonte.slice(de, ate).split('\n');
+  return textos.map((texto, i) => {
+    let corpo = texto.trim();
+    if (i === 0) corpo = corpo.replace(/^[rRbBuU]{0,2}(?:"""|'''|"|')/, '');
+    if (i === textos.length - 1) corpo = corpo.replace(/(?:"""|'''|"|')$/, '');
+    return { linha: primeira + i, corpo: corpo.trim() };
+  }).filter(l => l.corpo);
+}
+
+function linhasDeDocstring(arquivo, fonte) {
+  return trechosDeDocstring(arquivo, fonte).flatMap(trecho => linhasDaDocstring(fonte, trecho));
+}
+
+function linhasDeComentario(arquivo, fonte) {
   const excecaoDeOutra = semComentarioNovo.excecaoDeOutraRegra(arquivo, id);
   return semComentarioNovo.gruposDeComentario(arquivo, fonte)
     .filter(grupo => !semComentarioNovo.passa(arquivo, grupo, excecaoDeOutra))
-    .flatMap(grupo => grupo.linhas.filter(l => l.corpo && !semComentarioNovo.passa(arquivo, { ...grupo, linhas: [l] }, excecaoDeOutra)))
+    .flatMap(grupo => grupo.linhas.filter(l => l.corpo && !semComentarioNovo.passa(arquivo, { ...grupo, linhas: [l] }, excecaoDeOutra)));
+}
+
+function verificar(arquivo, fonte) {
+  return [...linhasDeComentario(arquivo, fonte), ...linhasDeDocstring(arquivo, fonte)]
+    .sort((a, b) => a.linha - b.linha)
     .map(({ linha, corpo }) => ({ linha, detalhe: `comentário: “${semComentarioNovo.resumo(corpo)}”` }));
 }
 
@@ -34,4 +58,4 @@ function mensagemDeFolga({ arquivo, tem, pode }) {
     + 'o teto de cada arquivo é o que ele tem hoje, e um arquivo que chega a zero não volta a ter comentário.';
 }
 
-module.exports = { id, conserto, seAplica, verificar, mensagem, mensagemDeFolga, baixarObrigatorio: true, porQueOArquivoNovoNaoEntra };
+module.exports = { id, conserto, seAplica, verificar, linhasDeComentario, linhasDeDocstring, mensagem, mensagemDeFolga, baixarObrigatorio: true, porQueOArquivoNovoNaoEntra };

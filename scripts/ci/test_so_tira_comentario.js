@@ -36,9 +36,17 @@ passa('lib/a.py', juntar('import os  # x', '# y', 'x = 1  # z'), juntar('import 
 passa('lib/a.py', juntar('x = "a # b"  # c'), juntar('x = "a # b"'), 'Python: # em string não é comentário');
 passa('lib/a.py', juntar('class A:', '    # x', '    def f(self):', '        # y', '        return 1'), juntar('class A:', '    def f(self):', '        return 1'), 'Python: o recuo continua');
 recusa('lib/a.py', juntar('x = 1  # a'), juntar('x = 2'), /o código mudou/, 'Python: o valor mudou');
-recusa('lib/a.py', juntar('def f():', '    """doc"""', '    return 1  # a'), juntar('def f():', '    return 1'), /o código mudou/, 'Python: a docstring é código, e tirá-la não vale');
+passa('lib/a.py', juntar('def f():', '    """doc"""', '    return 1  # a'), juntar('def f():', '    return 1'), 'Python: a docstring e o # saem juntos');
 recusa('lib/a.py', juntar('if x:', '    y = 1  # a'), juntar('if x:', '  y = 1'), /o código mudou/, 'Python: o recuo mudou');
 
+passa('lib/a.py', juntar('"""Módulo."""', 'import os', '', 'class A:', '    """Classe."""', '', '    def f(self):', '        """Faz."""', '        return 1'), juntar('import os', '', 'class A:', '', '    def f(self):', '        return 1'), 'Python: a docstring do módulo, da classe e da função saem');
+passa('lib/a.py', juntar('class E(Exception):', '    """Erro."""', '', 'class F(E): """Outro."""'), juntar('class E(Exception):', '    pass', '', 'class F(E): pass'), 'Python: a docstring que era o corpo todo vira pass');
+passa('lib/a.py', juntar('def f():', '    """Uma frase. Outra frase."""', '    return 1'), juntar('def f():', '    """Uma frase."""', '    return 1'), 'Python: a docstring encurtada');
+recusa('lib/a.py', juntar('class E(Exception):', '    """Erro."""'), juntar('class E(Exception):', '    ...'), /o código mudou/, 'Python: reticências no lugar do corpo é outro código');
+recusa('lib/a.py', juntar('def f():', '    """Uma frase."""', '    return 1'), juntar('def f():', '    """Outra coisa."""', '    return 1'), /nenhum comentário a menos|comentário que o antes não tinha/, 'Python: a docstring reescrita não é tirar');
+recusa('lib/a.py', juntar('def f():', '    """d"""', '    """não é docstring"""', '    return 1'), juntar('def f():', '    return 1'), /o código mudou/, 'Python: só a primeira string do corpo é docstring');
+passa('docs/design/a.html', juntar('<!-- x -->', '<p>oi</p>'), juntar('<p>oi</p>'), 'um protótipo de docs/design é conferido como código');
+recusa('docs/design/a.html', juntar('<!-- x -->', '<p>oi</p>'), juntar('<p>tchau</p>'), /o código mudou/, 'um protótipo com texto mudado não passa');
 passa('lib/a.sh', juntar('#!/bin/sh', '# x', 'echo "a # b" # c', 'ls'), juntar('#!/bin/sh', 'echo "a # b"', 'ls'), 'shell: # fora de aspas');
 passa('lib/a.css', juntar('/* x */', '.a { color: red; /* y */ }'), juntar('.a { color: red; }'), 'CSS: o bloco sai');
 passa('lib/a.html', juntar('<!-- x -->', '<p>oi</p>'), juntar('<p>oi</p>'), 'HTML: o comentário sai');

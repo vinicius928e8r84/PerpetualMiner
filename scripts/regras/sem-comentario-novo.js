@@ -272,4 +272,4 @@ function verificar(arquivo, fonte, raiz, base) {
     .flatMap(grupo => achadosDoGrupo(grupo, passa(arquivo, grupo, excecaoDeOutra) ? NENHUMA_LINHA : novas));
 }
 
-module.exports = { id, conserto, seAplica, verificar, gruposDeComentario, passa, excecaoDeOutraRegra, resumo };
+module.exports = { id, conserto, seAplica, verificar, gruposDeComentario, passa, excecaoDeOutraRegra, resumo, ehDiretiva };

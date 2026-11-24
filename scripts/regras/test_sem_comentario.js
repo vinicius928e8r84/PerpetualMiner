@@ -28,8 +28,18 @@ prova(linhasDe('lib/a.js', juntar('// exceção sem-comentario-novo até 2999-01
   'num bloco com prosa, a linha da exceção aprovada não conta');
 prova(linhasDe('painel/a.html', juntar('<!-- cabeçalho -->', '<p>oi</p>')), [1], 'comentário de HTML conta');
 prova(linhasDe('lib/a.js', 'const url = "http://x//y"; const r = /a\\/\\/b/;\n'), [], 'barra dupla em string e regex não é comentário');
-prova([regra.seAplica('docs/design/a.html'), regra.seAplica('.claude/skills/a.js'), regra.seAplica('lib/a.js'), regra.seAplica('README.md')],
-  [false, false, true, false], 'o alcance é o mesmo de sem-comentario-novo');
+prova([regra.seAplica('docs/design/painel/a.html'), regra.seAplica('docs/outro/a.html'), regra.seAplica('.claude/skills/a.js'), regra.seAplica('lib/a.js'), regra.seAplica('README.md')],
+  [true, false, false, true, false], 'o alcance é o de sem-comentario-novo, mais os protótipos de docs/design');
+prova(linhasDe('complemento/a.py', juntar('"""Módulo."""', 'import os', '', 'class A:', '    """Um', '    dois', '    """', '', '    def f(self):', '        """Faz."""', '        return "não é docstring"')),
+  [1, 5, 6, 10], 'a docstring do módulo, da classe e da função conta, uma linha por linha com texto');
+prova(linhasDe('complemento/a.py', juntar('def f():', '    x = """texto"""', '    return x')), [], 'uma string que não é docstring não conta');
+prova(linhasDe('docs/design/a.html', juntar('<!-- legenda -->', '<p>oi</p>')), [1], 'o protótipo de docs/design conta');
+
+const { semAProsa } = require('./apoio-apagar-comentarios');
+prova(semAProsa('lib/a.js', juntar('// topo', '', 'const a = 1; // um', '/**', ' * doc', ' */', '// eslint-disable-next-line no-console', 'console.log(a);')),
+  juntar('const a = 1;', '// eslint-disable-next-line no-console', 'console.log(a);'), 'apagar tira a prosa e deixa a diretiva');
+prova(semAProsa('complemento/a.py', juntar('"""Mod."""', 'import os  # noqa: F401  (usado fora)', 'class E(Exception):', '    """Erro."""', 'def f():', '    """Faz."""', '    return 1  # um')),
+  juntar('import os  # noqa: F401', 'class E(Exception):', '    pass', 'def f():', '    return 1'), 'apagar encurta a diretiva, troca a docstring que era o corpo por pass e tira as outras');
 
 const { formatar } = require('./apoio-listar-comentarios');
 prova(formatar([{ arquivo: 'a.js', linha: 2, texto: '// x' }, { arquivo: 'a.js', linha: 5, texto: 'f(); // y' }, { arquivo: 'b.js', linha: 1, texto: '// z' }]).split('\n'),

@@ -11,6 +11,8 @@ const COM_ACORN = /\.(js|mjs|cjs)$/;
 const COM_TOKENIZE = /\.py$/;
 const COM_TEXTO = /\.(css|html|sh|ya?ml)$|^scripts\/ganchos\/[^./]+$/;
 const TOKENS_DO_PYTHON = path.join(__dirname, 'tokens_py.py');
+const PROTOTIPO = /^docs\/design\/.*\.html$/;
+const ehDocumentoSemComentario = arquivo => ehDocumentacao(arquivo) && !PROTOTIPO.test(arquivo);
 
 function git(raiz, ...args) {
   return execFileSync('git', ['-C', raiz, ...args], { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -69,7 +71,7 @@ function tokensDoPython(fonte) {
   const r = spawnSync(interpretadorDoPython(), ['-I', '-X', 'utf8', TOKENS_DO_PYTHON], { input: Buffer.from(fonte, 'utf8'), maxBuffer: 256 * 1024 * 1024 });
   if (r.status !== 0) return { erro: `o tokenizador do Python falhou: ${String(r.stderr).trim()}` };
   const lido = JSON.parse(r.stdout.toString('ascii'));
-  return lido.erro ? { erro: lido.erro } : { codigo: lido.codigo.map(par => par.join(':')), comentarios: lido.comentarios };
+  return lido.erro ? { erro: lido.erro } : { codigo: lido.codigo, comentarios: lido.comentarios };
 }
 
 const MARCA = '\u0000';
@@ -83,6 +85,22 @@ function juntarOsPedacos(pedacos) {
   return saida;
 }
 
+function linhasSemOsComentarios(marcado) {
+  return marcado.split('\n').map(linha => linha.replace(/\r$/, '')).map(linha => {
+    if (!linha.includes(MARCA)) return linha;
+    const juntada = juntarOsPedacos(linha.split(MARCA));
+    return juntada.trim() === '' ? null : juntada;
+  });
+}
+
+const ABRE_UM_BLOCO = /[:{(\[]$/;
+
+function sobraEmBranco(saida) {
+  if (saida.length === 0) return true;
+  const anterior = saida[saida.length - 1].trim();
+  return anterior === '' || ABRE_UM_BLOCO.test(anterior);
+}
+
 function semOsComentarios(fonte, trechos) {
   let marcado = '';
   let ondeEstou = 0;
@@ -91,11 +109,17 @@ function semOsComentarios(fonte, trechos) {
     ondeEstou = ate;
   }
   marcado += fonte.slice(ondeEstou);
-  return marcado.split('\n').map(linha => linha.replace(/\r$/, '')).flatMap(linha => {
-    if (!linha.includes(MARCA)) return [linha];
-    const juntada = juntarOsPedacos(linha.split(MARCA));
-    return juntada.trim() === '' ? [] : [juntada];
-  }).join('\n');
+  const saida = [];
+  let tirouUmaLinha = false;
+  for (const linha of linhasSemOsComentarios(marcado)) {
+    if (linha === null) tirouUmaLinha = true;
+    else {
+      const repete = tirouUmaLinha && linha.trim() === '' && sobraEmBranco(saida);
+      if (!repete) saida.push(linha);
+      tirouUmaLinha = false;
+    }
+  }
+  return saida.join('\n');
 }
 
 function fichaDeTexto(arquivo, fonte) {
@@ -164,7 +188,7 @@ const noCommit = (raiz, commit, arquivo) => git(raiz, 'show', `${commit}:${arqui
 
 function conferirUmaMudanca(raiz, ancestral, head, { estado, arquivo }) {
   if (arquivo === LINHA_DE_BASE) return estado === 'M' ? confereALinhaDeBase(noCommit(raiz, ancestral, arquivo), noCommit(raiz, head, arquivo)) : `${arquivo}: ${estado}`;
-  if (ehDocumentacao(arquivo)) return estado === 'D' ? `${arquivo}: documento apagado` : null;
+  if (ehDocumentoSemComentario(arquivo)) return estado === 'D' ? `${arquivo}: documento apagado` : null;
   if (estado !== 'M') return `${arquivo}: ${estado === 'A' ? 'arquivo novo' : 'arquivo apagado'} que não é documentação`;
   return confereOArquivo(arquivo, noCommit(raiz, ancestral, arquivo), noCommit(raiz, head, arquivo));
 }
@@ -175,7 +199,7 @@ function soTiraComentario({ raiz = '.', base, head = 'HEAD' }) {
   if (!lista.length) return { ok: false, motivo: 'a PR não muda arquivo nenhum' };
   const falhas = lista.map(mudanca => conferirUmaMudanca(raiz, ancestral, head, mudanca)).filter(Boolean);
   if (falhas.length) return { ok: false, motivo: falhas[0], falhas };
-  const comCodigo = lista.filter(({ arquivo }) => arquivo !== LINHA_DE_BASE && !ehDocumentacao(arquivo));
+  const comCodigo = lista.filter(({ arquivo }) => arquivo !== LINHA_DE_BASE && !ehDocumentoSemComentario(arquivo));
   if (!comCodigo.length) return { ok: false, motivo: 'a PR não tira comentário de arquivo nenhum' };
   return { ok: true, arquivos: comCodigo.map(({ arquivo }) => arquivo) };
 }
@@ -190,4 +214,4 @@ function main(argv) {
 
 if (require.main === module) process.exitCode = main(process.argv.slice(2));
 
-module.exports = { soTiraComentario, fichaDe, confereOArquivo, confereALinhaDeBase };
+module.exports = { soTiraComentario, fichaDe, confereOArquivo, confereALinhaDeBase, semOsComentarios };
