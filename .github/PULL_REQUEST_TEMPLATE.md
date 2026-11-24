@@ -55,8 +55,8 @@ O check "Registro da PR" (.github/workflows/registro-da-pr.yml, scripts/ci/regis
    Uma PR que só tira comentário não pede essa seção: `scripts/ci/so-tira-comentario.js` compara, arquivo por arquivo, o código
    antes e depois sem os comentários (token a token em JavaScript e Python, o texto sem os comentários nos outros), exige menos
    comentários e nenhum novo, e só aceita fora do código a documentação e uma linha de base em que todo número só desceu.
-   Quando prova, o check "Registro da PR" trata a atenção como BAIXA, mesmo que o corpo ou o revisor digam outra; o rótulo
-   `risco:alto` continua pedindo a prova.
+   Quando prova, o check "Registro da PR" trata a atenção como BAIXA, mesmo que o corpo ou o revisor digam outra; o
+   rótulo `risco:alto` continua pedindo a prova.
 
 4. O corpo diz a issue da PR, em linhas sozinhas:
 
