@@ -34,7 +34,7 @@ function trechosComProsa(arquivo, fonte) {
   });
 }
 
-const usaADocstring = fonte => /__doc__/.test(fonte);
+const usaADocstring = fonte => /__doc__/.test(fonte);
 
 function trocarPorPass(fonte, trechos) {
   return [...trechos].sort((a, b) => b[0] - a[0]).reduce((texto, [de, ate]) => `${texto.slice(0, de)}pass${texto.slice(ate)}`, fonte);
