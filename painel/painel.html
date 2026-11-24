@@ -492,36 +492,36 @@
       </div>
     </div>
   </div>
-  <div class="veio-scrim" id="modal-envio" hidden>
-    <div class="veio-modal envio-modal" role="dialog" aria-labelledby="modal-envio-titulo" aria-describedby="modal-envio-detalhe">
-      <button class="veio-botao-icone veio-modal__fechar" id="modal-envio-fechar"
-              data-voz-aria="PAI-34" data-voz-title="PAI-34"><span data-icone="fechar"></span></button>
-      <h2 class="veio-modal__titulo" id="modal-envio-titulo" data-voz="ENV-06.titulo"></h2>
-      <p class="veio-modal__corpo" id="modal-envio-detalhe"></p>
-      <p class="envio-modal__sem-noticia" id="modal-envio-sem-noticia" role="status" data-voz="ENV-09" hidden></p>
-      <div class="envio-modal__envios" id="modal-envio-lista"></div>
-      <p class="envio-modal__pe" data-voz="ENV-15"></p>
+<div class="veio-scrim" id="modal-envio" hidden>
+  <div class="veio-modal envio-modal" role="dialog" aria-labelledby="modal-envio-titulo" aria-describedby="modal-envio-detalhe">
+    <button class="veio-botao-icone veio-modal__fechar" id="modal-envio-fechar"
+            data-voz-aria="PAI-34" data-voz-title="PAI-34"><span data-icone="fechar"></span></button>
+    <h2 class="veio-modal__titulo" id="modal-envio-titulo" data-voz="ENV-06.titulo"></h2>
+    <p class="veio-modal__corpo" id="modal-envio-detalhe"></p>
+    <p class="envio-modal__sem-noticia" id="modal-envio-sem-noticia" role="status" data-voz="ENV-09" hidden></p>
+    <div class="envio-modal__envios" id="modal-envio-lista"></div>
+    <p class="envio-modal__pe" data-voz="ENV-15"></p>
+  </div>
+</div>
+<div class="veio-scrim" id="modal-resumo" hidden>
+  <div class="veio-modal envio-modal" role="dialog" aria-labelledby="modal-resumo-titulo">
+    <button class="veio-botao-icone veio-modal__fechar" id="modal-resumo-fechar"
+            data-voz-aria="PAI-34" data-voz-title="PAI-34"><span data-icone="fechar"></span></button>
+    <h2 class="veio-modal__titulo" id="modal-resumo-titulo"></h2>
+    <p class="veio-modal__corpo" id="modal-resumo-detalhe"></p>
+    <div class="envio-resumo__baralhos" id="modal-resumo-baralhos"></div>
+    <div class="envio-resumo__historico">
+      <p class="envio-resumo__pergunta" id="modal-resumo-pergunta"></p>
+      <p class="envio-resumo__ajuda" id="modal-resumo-ajuda"></p>
+    </div>
+    <div class="veio-modal__acoes">
+      <button class="veio-botao veio-botao--secundario" id="btn-resumo-manter"></button>
+      <button class="veio-botao veio-botao--primario" id="btn-resumo-apagar">
+        <span data-icone="apagar"></span><span data-voz="ENV-10.tirar"></span>
+      </button>
     </div>
   </div>
-  <div class="veio-scrim" id="modal-resumo" hidden>
-    <div class="veio-modal envio-modal" role="dialog" aria-labelledby="modal-resumo-titulo">
-      <button class="veio-botao-icone veio-modal__fechar" id="modal-resumo-fechar"
-              data-voz-aria="PAI-34" data-voz-title="PAI-34"><span data-icone="fechar"></span></button>
-      <h2 class="veio-modal__titulo" id="modal-resumo-titulo"></h2>
-      <p class="veio-modal__corpo" id="modal-resumo-detalhe"></p>
-      <div class="envio-resumo__baralhos" id="modal-resumo-baralhos"></div>
-      <div class="envio-resumo__historico">
-        <p class="envio-resumo__pergunta" id="modal-resumo-pergunta"></p>
-        <p class="envio-resumo__ajuda" id="modal-resumo-ajuda"></p>
-      </div>
-      <div class="veio-modal__acoes">
-        <button class="veio-botao veio-botao--secundario" id="btn-resumo-manter"></button>
-        <button class="veio-botao veio-botao--primario" id="btn-resumo-apagar">
-          <span data-icone="apagar"></span><span data-voz="ENV-10.tirar"></span>
-        </button>
-      </div>
-    </div>
-  </div>
+</div>
 <iframe id="abridor-ponte" src="../abridor/ponte.html" hidden></iframe>
 <script src="/lib/voz/catalogo.js"></script>
 <script src="/lib/voz/catalogo-nivel.js"></script>
@@ -588,6 +588,7 @@
 <script src="painel-anki-continuar.js"></script>
 <script src="painel-anki-envios.js"></script>
 <script src="painel-anki.js"></script>
+<script src="painel-anki-vocabulario.js"></script>
 <script src="painel-anki-baralhos.js"></script>
 <script src="painel-anki-previa.js"></script>
 <script src="painel-anki-tipo-proprio.js"></script>
