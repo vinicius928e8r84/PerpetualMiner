@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from complemento import baralhos, tipo_de_nota
 from complemento.test_contrato_da_correcao import ContratoDaCorrecao
 from complemento.test_contrato_do_gancho_da_criacao import ContratoDoGanchoDaCriacao
+from complemento.nota_a_gravar import FrenteDoCartao, NotaAGravar
 
 # O que os níveis, a morfologia do russo, as frentes e a Criação vão usar (#138, “o nome exato dos campos é da construção”):
 # mudar os campos depois força uma sincronização completa no Anki, então todos nascem juntos.
@@ -140,9 +141,7 @@ class ContratoDaCriacao(ContratoDaCorrecao, ContratoDoGanchoDaCriacao):
         colecao = self.adaptador({"baralhos": [{"nome": "Default"}, {"nome": "Inglês", "notas": [{"frente": "She <b>gave up</b> smoking", "verso": "x"}]}]})
         self.preparar(colecao)
         frentes = ("Frase", "Frente", "Front")
-        gravar = lambda guid, frase: colecao.gravar_cartao(
-            "Inglês", "PerpetualMiner Inglês", {"Frase": frase}, [], guid, frentes, frase.casefold().replace("<b>", "").replace("</b>", ""),
-            lambda valor: valor.casefold().replace("<b>", "").replace("</b>", ""))
+        gravar = lambda guid, frase: colecao.gravar_cartao(NotaAGravar("Inglês", "PerpetualMiner Inglês", {"Frase": frase}, [], guid), FrenteDoCartao(frentes, frase.casefold().replace("<b>", "").replace("</b>", ""), lambda valor: valor.casefold().replace("<b>", "").replace("</b>", "")))
         self.assertEqual(gravar("g1", "She <b>gave up</b> smoking"), "duplicate")
         self.assertEqual(gravar("g2", "They keep running"), "added")
         self.assertEqual(gravar("g3", "They keep <b>running</b>"), "duplicate")
@@ -151,8 +150,7 @@ class ContratoDaCriacao(ContratoDaCorrecao, ContratoDoGanchoDaCriacao):
     def test_o_cartao_novo_do_tipo_proprio_chega_a_leitura_do_vocabulario_como_frente_e_palavra(self):
         colecao = self.adaptador({"baralhos": [{"nome": "Default"}]})
         self.preparar(colecao)
-        colecao.adicionar_nota(
-            "PerpetualMiner::Inglês", "PerpetualMiner Inglês", {"Frase": "She <b>gave up</b> smoking", "Palavra": "gave up – /ɡeɪv ʌp/"}, [], "g1")
+        colecao.adicionar_nota(NotaAGravar("PerpetualMiner::Inglês", "PerpetualMiner Inglês", {"Frase": "She <b>gave up</b> smoking", "Palavra": "gave up – /ɡeɪv ʌp/"}, [], "g1"))
         resposta = baralhos.vocabulario(colecao, "PerpetualMiner::Inglês", "en")
         self.assertEqual([palavra["word"] for palavra in resposta["words"] if palavra["type"] == "term"], ["gave up"])
 
@@ -160,9 +158,7 @@ class ContratoDaCriacao(ContratoDaCorrecao, ContratoDoGanchoDaCriacao):
         """Uma coleção preparada, com um Cartão do inglês já gravado (o que a troca de frente não pode tocar)."""
         colecao = self.adaptador(SO_O_DEFAULT)
         self.preparar(colecao)
-        colecao.adicionar_nota(
-            "PerpetualMiner::Inglês", "PerpetualMiner Inglês",
-            {"Frase": "She <b>gave up</b> smoking", "Áudio da frase": "[sound:a.mp3]", "Palavra": "gave up"}, [], "g1")
+        colecao.adicionar_nota(NotaAGravar("PerpetualMiner::Inglês", "PerpetualMiner Inglês", {"Frase": "She <b>gave up</b> smoking", "Áudio da frase": "[sound:a.mp3]", "Palavra": "gave up"}, [], "g1"))
         return colecao
 
     def a_colecao_toda(self, colecao):

@@ -19,6 +19,7 @@ from complemento.test_modelos_em_memoria import ModelosEmMemoria
 from complemento.test_contrato_da_previa import ContratoDaPrevia
 from complemento.test_contrato_do_perfil_fixo import ContratoDoPerfilFixo
 from complemento.test_renderizador_de_mentira import PreviaEmMemoria
+from complemento.nota_a_gravar import FrenteDoCartao, NotaAGravar
 
 
 def guardar_na_midia(arquivos, nome, dados):
@@ -143,15 +144,16 @@ class ColecaoEmMemoria(PreviaEmMemoria, ModelosEmMemoria):
         self._exigir_gravavel()
         return set(guids) & self._guids
 
-    def adicionar_nota(self, baralho, tipo_de_nota, campos, etiquetas, guid, midia=None):
+    def adicionar_nota(self, nota):
         self._exigir_gravavel()
+        baralho, tipo_de_nota, campos, guid = nota.baralho, nota.tipo_de_nota, nota.campos, nota.guid
         if guid in self._guids:
             return
         nomes = self._tipos.get(tipo_de_nota)
         if nomes is None or not set(campos) <= set(nomes):
             raise baralhos.TipoDeNotaAusente(tipo_de_nota)
         guardada = {}
-        for nome, dados in (midia or {}).items():
+        for nome, dados in (nota.midia or {}).items():
             guardado = guardar_na_midia(self.midia, nome, dados)
             guardada[guardado] = dados
             campos = {campo: valor.replace("[sound:%s]" % nome, "[sound:%s]" % guardado) for campo, valor in campos.items()}
@@ -160,7 +162,7 @@ class ColecaoEmMemoria(PreviaEmMemoria, ModelosEmMemoria):
         self._baralhos.setdefault(baralho, []).append({"nota": self._proxima, "campos": valores, "tipo": 0, "intervalo": 0})
         self._guids.add(guid)
         self._notas[guid] = {"baralho": baralho, "tipo_de_nota": tipo_de_nota, "campos": dict(valores), "id": self._proxima}
-        self.gravadas.append({"baralho": baralho, "tipo": tipo_de_nota, "campos": dict(campos), "etiquetas": list(etiquetas), "guid": guid, "midia": guardada})
+        self.gravadas.append({"baralho": baralho, "tipo": tipo_de_nota, "campos": dict(campos), "etiquetas": list(nota.etiquetas), "guid": guid, "midia": guardada})
 
     def criar_tipo_de_nota(self, definicao):
         self._exigir_gravavel()
@@ -178,16 +180,14 @@ class ColecaoEmMemoria(PreviaEmMemoria, ModelosEmMemoria):
             self._baralhos.setdefault(nome, [])
         return list(nomes)
 
-    def gravar_cartao(self, baralho, tipo_de_nota, campos, etiquetas, guid, campos_da_frente, frente_normalizada, normalizar, midia=None):
+    def gravar_cartao(self, nota, frente):
         """O passo inteiro de gravar um Cartão (ver `no_anki.ColecaoDoAnki.gravar_cartao`): `"added"` ou `"duplicate"`."""
         self._exigir_gravavel()
-        if guid in self._guids:
+        if nota.guid in self._guids:
             return "added"
-        frentes = (campos_da_frente,) if isinstance(campos_da_frente, str) else tuple(campos_da_frente)
-        for cartao in self.cartoes_do_baralho(baralho):
-            if any(nome in frentes and valor and normalizar(valor) == frente_normalizada for nome, valor in cartao["campos"]):
-                return "duplicate"
-        self.adicionar_nota(baralho, tipo_de_nota, campos, etiquetas, guid, midia)
+        if any(frente.esta_em(cartao) for cartao in self.cartoes_do_baralho(nota.baralho)):
+            return "duplicate"
+        self.adicionar_nota(nota)
         return "added"
 
     def perfis(self):
@@ -272,20 +272,19 @@ class ContratoDoAdaptadorDaColecao:
 
     def test_a_nota_gravada_fica_no_baralho_com_os_campos_do_tipo_de_nota(self):
         colecao = self.adaptador(DESCRICAO)
-        colecao.adicionar_nota("Inglês", "Básico", {"Frente": "She <b>gave up</b>", "Verso": "give up"}, ["perpetual_miner"], "guid-1")
+        colecao.adicionar_nota(NotaAGravar("Inglês", "Básico", {"Frente": "She <b>gave up</b>", "Verso": "give up"}, ["perpetual_miner"], "guid-1"))
         frentes = [dict(cartao["campos"]).get("Frente") for cartao in colecao.cartoes_do_baralho("Inglês")]
         self.assertIn("She <b>gave up</b>", frentes)
         self.assertEqual(colecao.guids_existentes(["guid-1", "guid-2"]), {"guid-1"})
 
     def test_um_baralho_que_nao_existe_e_criado_pela_primeira_nota(self):
         colecao = self.adaptador(DESCRICAO)
-        colecao.adicionar_nota("PerpetualMiner::Inglês", "Básico", {"Frente": "a", "Verso": "b"}, [], "guid-1")
+        colecao.adicionar_nota(NotaAGravar("PerpetualMiner::Inglês", "Básico", {"Frente": "a", "Verso": "b"}, [], "guid-1"))
         self.assertIn("PerpetualMiner::Inglês", colecao.nomes_dos_baralhos())
         self.assertEqual(len(colecao.cartoes_do_baralho("PerpetualMiner")), 1)
 
     def gravar_o_cartao(self, colecao, guid="guid-1", frente="a"):
-        return colecao.gravar_cartao(
-            "Inglês", "Básico", {"Frente": frente, "Verso": "b"}, [], guid, "Frente", frente.strip().lower(), lambda valor: valor.strip().lower())
+        return colecao.gravar_cartao(NotaAGravar("Inglês", "Básico", {"Frente": frente, "Verso": "b"}, [], guid), FrenteDoCartao("Frente", frente.strip().lower(), lambda valor: valor.strip().lower()))
 
     def test_gravar_o_cartao_de_novo_pelo_mesmo_guid_diz_added_sem_dobrar_nem_virar_duplicata(self):
         colecao = self.adaptador({"baralhos": [{"nome": "Inglês"}]})
@@ -303,12 +302,11 @@ class ContratoDoAdaptadorDaColecao:
         self.assertEqual(colecao.tipo_de_nota("Básico"), ["Frente", "Verso"])
         self.assertIsNone(colecao.tipo_de_nota("Basic"))
         with self.assertRaises(baralhos.TipoDeNotaAusente):
-            colecao.adicionar_nota("Inglês", "Basic", {"Front": "a", "Back": "b"}, [], "guid-1")
+            colecao.adicionar_nota(NotaAGravar("Inglês", "Basic", {"Front": "a", "Back": "b"}, [], "guid-1"))
         self.assertEqual(colecao.guids_existentes(["guid-1"]), set())
 
     def gravar_com_midia(self, colecao, guid, frente, midia, tipo_de_nota="Básico"):
-        return colecao.gravar_cartao(
-            "Inglês", tipo_de_nota, {"Frente": frente, "Verso": "b"}, [], guid, "Frente", frente.strip().lower(), lambda valor: valor.strip().lower(), midia)
+        return colecao.gravar_cartao(NotaAGravar("Inglês", tipo_de_nota, {"Frente": frente, "Verso": "b"}, [], guid, midia), FrenteDoCartao("Frente", frente.strip().lower(), lambda valor: valor.strip().lower()))
 
     def frentes(self, colecao):
         return [dict(cartao["campos"])["Frente"] for cartao in colecao.cartoes_do_baralho("Inglês")]
@@ -344,14 +342,14 @@ class ContratoDoAdaptadorDaColecao:
     def test_gravar_de_novo_o_mesmo_guid_nao_dobra_a_nota(self):
         colecao = self.adaptador(DESCRICAO)
         for _ in range(2):
-            colecao.adicionar_nota("Inglês", "Básico", {"Frente": "a", "Verso": "b"}, [], "guid-1")
+            colecao.adicionar_nota(NotaAGravar("Inglês", "Básico", {"Frente": "a", "Verso": "b"}, [], "guid-1"))
         frentes = [dict(cartao["campos"]).get("Frente") for cartao in colecao.cartoes_do_baralho("Inglês")]
         self.assertEqual(frentes.count("a"), 1)
 
     def test_sem_colecao_aberta_nada_se_grava(self):
         fechada = self.adaptador_fechado()
         for gravar in (lambda: fechada.tipo_de_nota("Básico"), lambda: fechada.guids_existentes(["g"]),
-                       lambda: fechada.adicionar_nota("Inglês", "Básico", {"Frente": "a", "Verso": "b"}, [], "g")):
+                       lambda: fechada.adicionar_nota(NotaAGravar("Inglês", "Básico", {"Frente": "a", "Verso": "b"}, [], "g"))):
             with self.assertRaises(baralhos.ColecaoIndisponivel):
                 gravar()
 
@@ -359,10 +357,10 @@ class ContratoDoAdaptadorDaColecao:
         colecao = self.adaptador(DESCRICAO)
         self.sincronizar(colecao, True)
         with self.assertRaises(baralhos.ColecaoIndisponivel) as erro:
-            colecao.adicionar_nota("Inglês", "Básico", {"Frente": "a", "Verso": "b"}, [], "g")
+            colecao.adicionar_nota(NotaAGravar("Inglês", "Básico", {"Frente": "a", "Verso": "b"}, [], "g"))
         self.assertEqual(str(erro.exception), "anki_syncing")
         self.sincronizar(colecao, False)
-        colecao.adicionar_nota("Inglês", "Básico", {"Frente": "a", "Verso": "b"}, [], "g")
+        colecao.adicionar_nota(NotaAGravar("Inglês", "Básico", {"Frente": "a", "Verso": "b"}, [], "g"))
         self.assertEqual(colecao.guids_existentes(["g"]), {"g"})
 
 
