@@ -46,22 +46,26 @@ def docstring_do(token, achadas):
     return next((d for d in achadas if d.contem(token)), None)
 
 
+def entrada_do_codigo(token):
+    texto = "" if token.type == tokenize.NEWLINE else token.string
+    return tokenize.tok_name[token.type] + ":" + texto
+
+
+def o_que_fica_do_token(token, doc, aberta):
+    if doc is not None:
+        return []
+    if aberta is not None and token.type == tokenize.NEWLINE:
+        return ["NAME:pass", "NEWLINE:"] if aberta.sozinha else []
+    return [entrada_do_codigo(token)]
+
+
 def codigo_sem_docstrings(tokens, achadas):
     codigo = []
     aberta = None
     for token in tokens:
         doc = docstring_do(token, achadas)
-        if doc is not None:
-            aberta = doc
-            continue
-        if aberta is not None and token.type == tokenize.NEWLINE:
-            if aberta.sozinha:
-                codigo.extend(["NAME:pass", "NEWLINE:"])
-            aberta = None
-            continue
-        aberta = None
-        texto = "" if token.type == tokenize.NEWLINE else token.string
-        codigo.append(tokenize.tok_name[token.type] + ":" + texto)
+        codigo.extend(o_que_fica_do_token(token, doc, aberta))
+        aberta = doc
     return codigo
 
 

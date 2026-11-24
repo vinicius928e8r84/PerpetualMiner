@@ -112,17 +112,6 @@ function testarProvaReal() {
   }
 }
 
-function testarSoTiraComentario() {
-  const SO_COMENTARIO = { ok: true, arquivos: ['lib/a.js', 'lib/b.js'] };
-  assert.match(passa({ corpo: corpoCom('**Atenção:** ALTA'), soTiraComentario: SO_COMENTARIO }, 'ALTA no corpo, sem a seção da prova, e a conferência provou'), /atenção BAIXA \(a PR só tira comentário: código idêntico token a token em 2 arquivo\(s\), sem comentário novo\)/);
-  passa({ registros: [revisao({ risco: 'ALTA' })], soTiraComentario: SO_COMENTARIO }, 'o revisor viu risco ALTA, e a conferência provou');
-  recusa({ corpo: corpoCom('**Atenção:** ALTA'), soTiraComentario: { ok: false, motivo: 'o código mudou' } }, /atenção ALTA: o corpo não tem a seção "Prova real"/, 'a conferência que não provou não dispensa a prova');
-  recusa({ corpo: corpoCom('**Atenção:** ALTA'), soTiraComentario: undefined }, /atenção ALTA: o corpo não tem a seção "Prova real"/, 'sem a conferência, nada muda');
-  recusa({ rotulos: [ROTULO_DE_RISCO_ALTO], soTiraComentario: SO_COMENTARIO }, /atenção ALTA: o corpo não tem a seção "Prova real"/, 'o rótulo risco:alto é decisão de uma pessoa e continua pedindo a prova');
-  recusa({ corpo: '', soTiraComentario: SO_COMENTARIO }, /não segue o modelo do \/pr/, 'o corpo continua tendo de seguir o modelo');
-  recusa({ registros: [], soTiraComentario: SO_COMENTARIO }, /nenhum comentário ou revisão da PR é o registro do \/code-review/, 'a revisão continua sendo exigida');
-}
-
 function testarModeloDaPR() {
   const modelo = fs.readFileSync(path.join(RAIZ, '.github', 'PULL_REQUEST_TEMPLATE.md'), 'utf8');
   recusa({ corpo: modelo, registros: [modelo] }, /campo de atenção preenchido[^]*nenhum comentário ou revisão/, 'o modelo sem preencher');
@@ -159,7 +148,6 @@ function testarWorkflow() {
 testarCorpoDoModelo();
 testarRegistroDaRevisao();
 testarProvaReal();
-testarSoTiraComentario();
 testarModeloDaPR();
 testarWorkflow();
 

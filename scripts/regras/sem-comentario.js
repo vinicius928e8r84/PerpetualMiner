@@ -5,6 +5,7 @@ const { linhaDe } = require('./comum');
 const { trechosDeDocstring } = require('./apoio-docstrings');
 
 const id = 'sem-comentario';
+const ARQUIVO_DA_LINHA_DE_BASE = 'scripts/regras/linha-de-base-sem-comentario.json';
 
 const conserto = 'Não volte a pôr comentário: o arquivo só pode ter os comentários de prosa que a linha de base ainda registra para ele, '
   + 'e um arquivo que chegou a zero saiu da lista e não tem mais nenhum. O que o comentário explicava vai para o nome; '
@@ -52,4 +53,4 @@ function mensagem({ arquivo, tem, pode, achados }) {
   return [`✗ ${id} — ${arquivo}: ${tem} linha(s) de comentário; ${teto}.`, ...mostrados, `  Conserto: ${conserto}`].join('\n');
 }
 
-module.exports = { id, conserto, seAplica, verificar, linhasDeComentario, linhasDeDocstring, mensagem, folgaPresaAoArquivo: true, porQueOArquivoNovoNaoEntra };
+module.exports = { id, conserto, arquivoDaLinhaDeBase: ARQUIVO_DA_LINHA_DE_BASE, seAplica, verificar, linhasDeComentario, linhasDeDocstring, mensagem, folgaPresaAoArquivo: true, porQueOArquivoNovoNaoEntra };

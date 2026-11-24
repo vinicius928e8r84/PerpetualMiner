@@ -5,7 +5,8 @@ const path = require('path');
 const { trechosDeComentario } = require('../regras/comum.js');
 const { ehDocumentacao } = require('./so-documentacao.js');
 
-const LINHA_DE_BASE = 'scripts/regras/linha-de-base.json';
+const LINHAS_DE_BASE = ['scripts/regras/linha-de-base.json', 'scripts/regras/linha-de-base-sem-comentario.json'];
+const ehLinhaDeBase = arquivo => LINHAS_DE_BASE.includes(arquivo);
 const SECAO_DA_CATRACA = 'sem-comentario';
 const COM_ACORN = /\.(js|mjs|cjs)$/;
 const COM_TOKENIZE = /\.py$/;
@@ -101,26 +102,28 @@ function sobraEmBranco(saida) {
   return anterior === '' || ABRE_UM_BLOCO.test(anterior);
 }
 
-function semOsComentarios(fonte, trechos) {
+function fonteMarcada(fonte, trechos) {
   let marcado = '';
   let ondeEstou = 0;
   for (const [de, ate] of [...trechos].sort((a, b) => a[0] - b[0])) {
     marcado += fonte.slice(ondeEstou, de) + MARCA;
     ondeEstou = ate;
   }
-  marcado += fonte.slice(ondeEstou);
+  return marcado + fonte.slice(ondeEstou);
+}
+
+function semBrancoQueSobrou(linhas) {
   const saida = [];
   let tirouUmaLinha = false;
-  for (const linha of linhasSemOsComentarios(marcado)) {
-    if (linha === null) tirouUmaLinha = true;
-    else {
-      const repete = tirouUmaLinha && linha.trim() === '' && sobraEmBranco(saida);
-      if (!repete) saida.push(linha);
-      tirouUmaLinha = false;
-    }
+  for (const linha of linhas) {
+    const repete = tirouUmaLinha && linha !== null && linha.trim() === '' && sobraEmBranco(saida);
+    if (linha !== null && !repete) saida.push(linha);
+    tirouUmaLinha = linha === null;
   }
-  return saida.join('\n');
+  return saida;
 }
+
+const semOsComentarios = (fonte, trechos) => semBrancoQueSobrou(linhasSemOsComentarios(fonteMarcada(fonte, trechos))).join('\n');
 
 function fichaDeTexto(arquivo, fonte) {
   const trechos = trechosDeComentario(arquivo, fonte);
@@ -185,17 +188,17 @@ function subiuEm(antes, depois, caminho) {
   return null;
 }
 
-function confereALinhaDeBase(antes, depois) {
+function confereALinhaDeBase(antes, depois, arquivo = LINHAS_DE_BASE[0]) {
   let a;
   let d;
   try {
     a = JSON.parse(antes);
     d = JSON.parse(depois);
   } catch {
-    return `${LINHA_DE_BASE}: não é um JSON que eu consiga ler`;
+    return `${arquivo}: não é um JSON que eu consiga ler`;
   }
   const subiu = subiuEm(a, d, '');
-  return subiu ? `${LINHA_DE_BASE}: ${subiu.slice(1)} não desceu (a linha de base só pode descer)` : null;
+  return subiu ? `${arquivo}: ${subiu.slice(1)} não desceu (a linha de base só pode descer)` : null;
 }
 
 function mudancas(raiz, ancestral, head) {
@@ -208,7 +211,7 @@ function mudancas(raiz, ancestral, head) {
 const noCommit = (raiz, commit, arquivo) => git(raiz, 'show', `${commit}:${arquivo}`);
 
 function conferirUmaMudanca(raiz, ancestral, head, { estado, arquivo }) {
-  if (arquivo === LINHA_DE_BASE) return estado === 'M' ? confereALinhaDeBase(noCommit(raiz, ancestral, arquivo), noCommit(raiz, head, arquivo)) : `${arquivo}: ${estado}`;
+  if (ehLinhaDeBase(arquivo)) return estado === 'M' ? confereALinhaDeBase(noCommit(raiz, ancestral, arquivo), noCommit(raiz, head, arquivo), arquivo) : `${arquivo}: ${estado}`;
   if (ehDocumentoSemComentario(arquivo)) return estado === 'D' ? `${arquivo}: documento apagado` : null;
   if (estado !== 'M') return `${arquivo}: ${estado === 'A' ? 'arquivo novo' : 'arquivo apagado'} que não é documentação`;
   return confereOArquivo(arquivo, noCommit(raiz, ancestral, arquivo), noCommit(raiz, head, arquivo));
@@ -220,7 +223,7 @@ function soTiraComentario({ raiz = '.', base, head = 'HEAD' }) {
   if (!lista.length) return { ok: false, motivo: 'a PR não muda arquivo nenhum' };
   const falhas = lista.map(mudanca => conferirUmaMudanca(raiz, ancestral, head, mudanca)).filter(Boolean);
   if (falhas.length) return { ok: false, motivo: falhas[0], falhas };
-  const comCodigo = lista.filter(({ arquivo }) => arquivo !== LINHA_DE_BASE && !ehDocumentoSemComentario(arquivo));
+  const comCodigo = lista.filter(({ arquivo }) => !ehLinhaDeBase(arquivo) && !ehDocumentoSemComentario(arquivo));
   if (!comCodigo.length) return { ok: false, motivo: 'a PR não tira comentário de arquivo nenhum' };
   return { ok: true, arquivos: comCodigo.map(({ arquivo }) => arquivo) };
 }

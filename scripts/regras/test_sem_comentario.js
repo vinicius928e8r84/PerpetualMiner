@@ -46,10 +46,12 @@ prova(formatar([{ arquivo: 'a.js', linha: 2, texto: '// x' }, { arquivo: 'a.js',
   ['', '=== a.js (2)', '2: // x', '5: f(); // y', '', '=== b.js (1)', '1: // z'], 'a lista de comentários agrupa por arquivo');
 
 const COMENTADO = n => Array.from({ length: n }, (_, i) => `// linha ${i + 1}`).concat('const a = 1;').join('\n') + '\n';
+const ARQUIVO_DA_BASE = 'scripts/regras/linha-de-base-sem-comentario.json';
+const PRINCIPAL = { 'scripts/regras/linha-de-base.json': '{}' };
 const base = objeto => JSON.stringify({ 'sem-comentario': objeto });
 const semEnv = () => {
   const env = { ...process.env };
-  delete env.REGRAS_BASE;
+  for (const nome of ['REGRAS_BASE', 'REGRAS_PR', 'GITHUB_EVENT_NAME']) delete env[nome];
   return env;
 };
 
@@ -58,14 +60,14 @@ function rodar(arquivos, ...bandeiras) {
   try {
     const r = spawnSync('node', [path.join(__dirname, 'verificar.js'), '--raiz', pasta, '--base', '0'.repeat(40), ...bandeiras],
       { cwd: pasta, encoding: 'utf8', env: semEnv() });
-    const gravada = JSON.parse(fs.readFileSync(path.join(pasta, 'scripts/regras/linha-de-base.json'), 'utf8'))['sem-comentario'];
+    const gravada = JSON.parse(fs.readFileSync(path.join(pasta, ARQUIVO_DA_BASE), 'utf8'))['sem-comentario'];
     return { status: r.status, saida: r.stdout, gravada };
   } finally {
     fs.rmSync(pasta, { recursive: true, force: true });
   }
 }
 
-const com = (n, linhaDeBase) => ({ 'lib/a.js': COMENTADO(n), 'scripts/regras/linha-de-base.json': base(linhaDeBase) });
+const com = (n, linhaDeBase) => ({ ...PRINCIPAL, 'lib/a.js': COMENTADO(n), [ARQUIVO_DA_BASE]: base(linhaDeBase) });
 
 let r = rodar(com(2, { 'lib/a.js': 2 }));
 assert.strictEqual(r.status, 0, `no teto da linha de base: ${r.saida}`);
@@ -107,12 +109,12 @@ function contraAMain(naMain, noRamo) {
   }
 }
 
-const naMain = { 'lib/a.js': COMENTADO(2), 'lib/b.js': 'const b = 1;\n', 'scripts/regras/linha-de-base.json': base({ 'lib/a.js': 2 }) };
+const naMain = { ...PRINCIPAL, 'lib/a.js': COMENTADO(2), 'lib/b.js': 'const b = 1;\n', [ARQUIVO_DA_BASE]: base({ 'lib/a.js': 2 }) };
 r = contraAMain(naMain, { 'lib/a.js': COMENTADO(1), 'lib/b.js': `// volta\n${'const b = 1;\n'}`,
-  'scripts/regras/linha-de-base.json': base({ 'lib/a.js': 1, 'lib/b.js': 1 }) });
+  [ARQUIVO_DA_BASE]: base({ 'lib/a.js': 1, 'lib/b.js': 1 }) });
 assert.strictEqual(r.status, 1, `a folga de um arquivo não passa para outro: ${r.saida}`);
 assert.match(r.saida, /sem-comentario lib\/b\.js não está na linha de base de HEAD\. A linha de base só desce: um arquivo que não tinha comentário/);
-r = contraAMain(naMain, { 'lib/a.js': COMENTADO(1), 'scripts/regras/linha-de-base.json': base({ 'lib/a.js': 1 }) });
+r = contraAMain(naMain, { 'lib/a.js': COMENTADO(1), [ARQUIVO_DA_BASE]: base({ 'lib/a.js': 1 }) });
 assert.strictEqual(r.status, 0, r.saida);
 total += 3;
 

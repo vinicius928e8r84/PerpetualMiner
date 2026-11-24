@@ -2,18 +2,19 @@
 'use strict';
 
 const { execFileSync, spawnSync } = require('child_process');
+const fs = require('fs');
 const path = require('path');
 const { EMAIL_DO_DONO } = require('../ci/autoria');
 const { ARQUIVOS, ASSUNTO } = require('./linha-de-base-no-merge');
 
 const USO = `uso: node scripts/regras/baixar-no-merge.js [--raiz <pasta>]
 
-Baixa as duas linhas de base num commit só, depois do merge (a PR de código não as edita; a regra linha-de-base-no-merge a barra):
+Baixa as linhas de base num commit só, depois do merge (a PR de código não as edita; a regra linha-de-base-no-merge a barra):
   ${ARQUIVOS.join('\n  ')}
 
 Roda numa árvore limpa, na main (ou num ramo recém-criado dela). Lê a árvore e escreve o que ela mede, sem somar nem subtrair:
 uma rodada baixa tudo o que entrou desde a última, e esquecer uma rodada não quebra nada. Se nada desceu, sai com 0 sem commit.
-Senão faz UM commit, "${ASSUNTO}", que toca só esses dois arquivos, com a autoria do dono (o EMAIL_DO_DONO de scripts/ci/autoria.js).
+Senão faz UM commit, "${ASSUNTO}", que toca só esses arquivos, com a autoria do dono (o EMAIL_DO_DONO de scripts/ci/autoria.js).
 Não empurra: abra a PR com esse commit e nada mais. O job "Linha de base refeita" refaz o commit a partir do pai e compara.
 
   --raiz <pasta>   baixa as linhas de base de outro repositório (os testes usam)
@@ -42,11 +43,14 @@ function rodar(raiz, script, args) {
 
 const falhou = (rodado, script) => rodado.status !== 0 || (script === LIMITE_DE_TOKENS && rodado.saida.includes(PULOU_A_CONFERENCIA));
 
+const versionados = raiz => git(raiz, 'ls-files', '--', ...ARQUIVOS).split('\n').filter(Boolean);
+const existentes = raiz => ARQUIVOS.filter(arquivo => fs.existsSync(path.join(raiz, arquivo)));
+
 function desfazer(raiz) {
-  git(raiz, 'restore', '--source=HEAD', '--staged', '--worktree', '--', ...ARQUIVOS);
+  git(raiz, 'restore', '--source=HEAD', '--staged', '--worktree', '--', ...versionados(raiz));
 }
 
-function baixarAsDuas(raiz) {
+function baixarTodas(raiz) {
   const passos = [
     [VERIFICAR, ['--raiz', raiz, '--base', 'HEAD', '--atualizar']],
     [LIMITE_DE_TOKENS, ['--atualizar-linha-de-base']],
@@ -64,7 +68,7 @@ function baixarAsDuas(raiz) {
 }
 
 function commitar(raiz) {
-  git(raiz, 'add', '--', ...ARQUIVOS);
+  git(raiz, 'add', '--', ...existentes(raiz));
   git(raiz, '-c', 'commit.gpgsign=false', 'commit', '-q', '--no-verify', '-m', ASSUNTO);
   return git(raiz, 'rev-parse', '--short', 'HEAD');
 }
@@ -72,11 +76,11 @@ function commitar(raiz) {
 function baixar(raiz) {
   const sujo = git(raiz, 'status', '--porcelain');
   if (sujo) return { codigo: 1, linhas: [`a árvore não está limpa; commite ou descarte antes de baixar a linha de base:\n${sujo}`] };
-  const { erro, saidas } = baixarAsDuas(raiz);
+  const { erro, saidas } = baixarTodas(raiz);
   if (erro) return { codigo: 1, linhas: [erro] };
-  if (!git(raiz, 'status', '--porcelain', '--', ...ARQUIVOS)) return { codigo: 0, linhas: [...saidas, 'nada desceu: as duas linhas de base já estavam em dia; sem commit'] };
+  if (!git(raiz, 'status', '--porcelain', '--', ...existentes(raiz))) return { codigo: 0, linhas: [...saidas, 'nada desceu: as linhas de base já estavam em dia; sem commit'] };
   const sha = commitar(raiz);
-  return { codigo: 0, linhas: [...saidas, `${sha} ${ASSUNTO}: toca só ${ARQUIVOS.join(' e ')}; não empurrei: abra a PR com esse commit e nada mais`] };
+  return { codigo: 0, linhas: [...saidas, `${sha} ${ASSUNTO}: toca só ${existentes(raiz).join(' e ')}; não empurrei: abra a PR com esse commit e nada mais`] };
 }
 
 function raizDoPedido(args) {
