@@ -7,7 +7,7 @@ const vm = require('vm');
 
 const RAIZ = path.join(__dirname, '..');
 const AGORA = new Date(2026, 10, 21, 12, 0, 0).getTime();
-const ARQUIVOS_DA_ABA = ['veio/componentes.js', 'lib/idioma.js', 'painel/painel-anki-plano.js', 'painel/painel-anki.js'];
+const ARQUIVOS_DA_ABA = ['veio/componentes.js', 'lib/idioma.js', 'painel/painel-anki-plano.js', 'painel/painel-anki-envios.js', 'painel/painel-anki.js'];
 const IDS_DA_ABA = [
   'anki-conectando', 'anki-ajustes-nota', 'anki-quatro-casas', 'anki-ids-dos-envios', 'anki-custos-de', 'anki-custos-ate',
   'btn-anki-atualizar', 'anki-custos-antigo', 'anki-custos-azulejos', 'anki-custos-avancado', 'anki-custos-corpo',

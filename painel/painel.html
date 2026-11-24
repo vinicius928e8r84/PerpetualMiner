@@ -30,41 +30,41 @@
     </div>
   </div>
   <div class="shell">
-    <aside class="shell-lateral">
-      <div class="shell-marca">
-        <img class="veio-marca" src="/veio/icones/icone.svg" width="30" height="30" alt="PerpetualMiner">
-        <span class="veio-nome shell-rotulo" aria-hidden="true">Perpetual<b>Miner</b><span class="veio-cursor"></span></span>
+  <aside class="shell-lateral">
+    <div class="shell-marca">
+      <img class="veio-marca" src="/veio/icones/icone.svg" width="30" height="30" alt="PerpetualMiner">
+      <span class="veio-nome shell-rotulo" aria-hidden="true">Perpetual<b>Miner</b><span class="veio-cursor"></span></span>
+    </div>
+    <nav class="shell-nav" data-voz-aria="SHL-01.rotulo">
+      <div class="shell-topo">
+        <a class="shell-item" href="#frases" data-area="frases" aria-describedby="shell-total-descricao">
+          <span data-icone="frases"></span>
+          <span class="shell-rotulo" data-voz="SHL-01.frases"></span>
+          <span class="shell-contador" id="shell-total" aria-hidden="true"></span>
+        </a>
+        <a class="shell-item" href="#anki/custos" data-area="anki" aria-describedby="shell-conexao-descricao">
+          <span data-icone="anki"></span>
+          <span class="shell-rotulo" data-voz="SHL-01.anki"></span>
+          <span class="shell-ponto" data-estado="conectando" aria-hidden="true"></span>
+        </a>
       </div>
-      <nav class="shell-nav" data-voz-aria="SHL-01.rotulo">
-        <div class="shell-topo">
-          <a class="shell-item" href="#frases" data-area="frases" aria-describedby="shell-total-descricao">
-            <span data-icone="frases"></span>
-            <span class="shell-rotulo" data-voz="SHL-01.frases"></span>
-            <span class="shell-contador" id="shell-total" aria-hidden="true"></span>
-          </a>
-          <a class="shell-item" href="#anki/custos" data-area="anki" aria-describedby="shell-conexao-descricao">
-            <span data-icone="anki"></span>
-            <span class="shell-rotulo" data-voz="SHL-01.anki"></span>
-            <span class="shell-ponto" data-estado="conectando" aria-hidden="true"></span>
-          </a>
-        </div>
-        <div class="shell-pe">
-          <a class="shell-item" href="#configuracoes" data-area="configuracoes">
-            <span data-icone="configuracoes"></span>
-            <span class="shell-rotulo" data-voz="SHL-01.configuracoes"></span>
-          </a>
-          <a class="shell-chip" id="shell-chip" href="#configuracoes/conta">
-            <span class="shell-avatar" id="shell-avatar" aria-hidden="true"></span>
-            <span class="shell-chip__quem shell-rotulo">
-              <span class="shell-chip__nome" id="shell-chip-nome"></span>
-              <span class="shell-chip__estado" id="shell-chip-estado"></span>
-            </span>
-          </a>
-        </div>
-      </nav>
-      <span id="shell-total-descricao" hidden></span>
-      <span id="shell-conexao-descricao" hidden></span>
-    </aside>
+      <div class="shell-pe">
+        <a class="shell-item" href="#configuracoes" data-area="configuracoes">
+          <span data-icone="configuracoes"></span>
+          <span class="shell-rotulo" data-voz="SHL-01.configuracoes"></span>
+        </a>
+        <a class="shell-chip" id="shell-chip" href="#configuracoes/conta">
+          <span class="shell-avatar" id="shell-avatar" aria-hidden="true"></span>
+          <span class="shell-chip__quem shell-rotulo">
+            <span class="shell-chip__nome" id="shell-chip-nome"></span>
+            <span class="shell-chip__estado" id="shell-chip-estado"></span>
+          </span>
+        </a>
+      </div>
+    </nav>
+    <span id="shell-total-descricao" hidden></span>
+    <span id="shell-conexao-descricao" hidden></span>
+  </aside>
     <main class="shell-conteudo">
       <section class="shell-area" data-area="frases" aria-labelledby="titulo-frases">
         <header class="shell-cabecalho">
@@ -586,6 +586,7 @@
 <script src="painel-anki-primeira-conexao.js"></script>
 <script src="painel-anki-plano.js"></script>
 <script src="painel-anki-continuar.js"></script>
+<script src="painel-anki-envios.js"></script>
 <script src="painel-anki.js"></script>
 <script src="painel-anki-baralhos.js"></script>
 <script src="painel-anki-previa.js"></script>

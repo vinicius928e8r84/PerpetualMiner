@@ -5,9 +5,9 @@ description: "Use when changing or reviewing the Conexão com o Anki area of the
 
 # Conexão com o Anki area
 
-Notes from the old `CLAUDE.md` § Architecture. Cross-surface rules: `docs/arquitetura.md`; files: `docs/arquivos/`.
+Cross-surface rules: `docs/arquitetura.md`; files: `docs/arquivos/`.
 
-### Conexão com o Anki (`painel-anki.js`, docs/design/painel/anki/, variant C)
+### Conexão com o Anki (`painel-anki.js`, `painel-anki-envios.js`, docs/design/painel/anki/, variant C)
 
 The area follows the Conexão state `ConexaoAnki` reports (`acompanhar`):
 
