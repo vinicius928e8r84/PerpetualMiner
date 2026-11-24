@@ -132,26 +132,43 @@ class _Atendente(BaseHTTPRequestHandler):
         if self.command != "HEAD":
             self.wfile.write(corpo)
 
-    def _pedido_aceito(self, caminho, corpo):
-        """O porteiro, num lugar só e antes de escolher a rota: `None` se o pedido segue; senão `(status, erro)`.
+    def _rota_e_aberta(self, caminho):
+        return (self.command, caminho) in ROTAS_ABERTAS
 
-        Só a extensão pede, pela origem dela; a exceção é `GET /health` (e o retorno do login), que o Chrome manda sem `Origin`. Mas o `Origin`
-        não é autenticação (uma extensão com `extraHeaders`, ou um programa local, o põe): tudo o mais, a rota que não existe inclusive, exige a
-        assinatura de um navegador pareado (`pareamento.py`, `contrato/LEIA-ME.md`). Só o pareamento, o preflight e `POST /anki/responde` (`ROTAS_SEM_ASSINATURA`) a dispensam. `corpo` são os
-        bytes que a assinatura cobre (`None`: passou do limite)."""
+    def _origem_e_aceita(self, aberta):
+        """Sem `Origin` só passa a rota aberta; com `Origin`, só a de uma extensão que a Conexão aceita."""
         origem = self.headers.get("Origin")
-        aberta = (self.command, caminho) in ROTAS_ABERTAS
-        if (origem is None and not aberta) or (origem is not None and origem not in self.conexao.origens_aceitas):
-            return 403, "origin_not_allowed"
-        if corpo is None:
-            return 400, "invalid_json"
-        if aberta or self.command == "OPTIONS" or (self.command, caminho) in ROTAS_SEM_ASSINATURA:
-            return None
+        if origem is None:
+            return aberta
+        return origem in self.conexao.origens_aceitas
+
+    def _dispensa_a_assinatura(self, caminho):
+        return self.command == "OPTIONS" or (self.command, caminho) in ROTAS_SEM_ASSINATURA
+
+    def _assinatura_vale(self, caminho, corpo):
+        """`None` se a assinatura de um navegador pareado cobre o pedido; senão `(status, erro)`. O que a assinatura provou fica em `_assinado`."""
         verificacao = self.conexao.pareamento.verificar(self.command, caminho, corpo, self.headers)
         if verificacao.status != 200:
             return verificacao.status, verificacao.erro
         self._assinado = verificacao
         return None
+
+    def _pedido_aceito(self, caminho, corpo):
+        """O porteiro, num lugar só e antes de escolher a rota: `None` se o pedido segue; senão `(status, erro)`.
+
+        Três perguntas, nesta ordem: a origem é aceita, a rota é aberta, a assinatura vale. Só a extensão pede, pela origem dela; a exceção é
+        `GET /health` (e o retorno do login), que o Chrome manda sem `Origin`. Mas o `Origin` não é autenticação (uma extensão com
+        `extraHeaders`, ou um programa local, o põe): tudo o mais, a rota que não existe inclusive, exige a assinatura de um navegador
+        pareado (`pareamento.py`, `contrato/LEIA-ME.md`). Só o pareamento, o preflight e `POST /anki/responde` (`ROTAS_SEM_ASSINATURA`) a
+        dispensam. `corpo` são os bytes que a assinatura cobre (`None`: passou do limite)."""
+        aberta = self._rota_e_aberta(caminho)
+        if not self._origem_e_aceita(aberta):
+            return 403, "origin_not_allowed"
+        if corpo is None:
+            return 400, "invalid_json"
+        if aberta or self._dispensa_a_assinatura(caminho):
+            return None
+        return self._assinatura_vale(caminho, corpo)
 
     def _ler_o_corpo(self, limite):
         """Os bytes do pedido (`b""` sem corpo), ou None se o tamanho não vale ou passa do `limite`."""
