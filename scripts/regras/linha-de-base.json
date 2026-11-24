@@ -100,7 +100,6 @@
     "lib/chave-da-openai.js": 78,
     "lib/palavra-automatica.js": 20,
     "lib/pedido-ao-anki.js": 1,
-    "painel/painel-boas-vindas-envio.js": 27,
     "painel/painel-boas-vindas-nivel.js": 7,
     "painel/painel-envio-cartao.js": 34,
     "painel/painel-envio-estado.js": 21,
