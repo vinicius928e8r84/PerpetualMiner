@@ -320,6 +320,21 @@ async function oConsertarRapidoNaoPiscaConferindo() {
   assert.strictEqual((await comoValores(andando)).desfecho, 'reiniciado');
 }
 
+function oDesfechoDoConsertoSemEsperaSaiDeUmaTabela() {
+  const { AbrirOAnki, Abridor } = carregar({ extras: { ConexaoAnki: { jaConectou: () => true } } });
+  const { RESULTADO } = Abridor;
+  const desfechoDe = conserto => AbrirOAnki.desfechoDoConserto(conserto) && JSON.parse(JSON.stringify(AbrirOAnki.desfechoDoConserto(conserto)));
+  assert.deepStrictEqual(desfechoDe({ resultado: RESULTADO.RESPONDEU }), { desfecho: 'respondeu' });
+  assert.deepStrictEqual(desfechoDe({ resultado: RESULTADO.FECHOU }), { desfecho: 'fechou' });
+  assert.deepStrictEqual(desfechoDe({ resultado: RESULTADO.SUMIU }), { desfecho: 'sumiu' });
+  assert.deepStrictEqual(desfechoDe({ resultado: RESULTADO.SEM_PERMISSAO }), { desfecho: 'sem_permissao' });
+  assert.deepStrictEqual(desfechoDe({ resultado: RESULTADO.FALHOU, motivo: 'conexao_fora' }), { desfecho: 'falhou', motivo: 'conexao_fora' });
+  assert.deepStrictEqual(desfechoDe({ resultado: RESULTADO.SEM_ABRIDOR, detalhe: 'Native host has exited. not found' }), { desfecho: 'sumiu' });
+  assert.strictEqual(desfechoDe({ resultado: RESULTADO.SEM_ABRIDOR, detalhe: 'outro erro' }), null);
+  assert.strictEqual(desfechoDe({ resultado: RESULTADO.ABRIU }), null);
+  assert.strictEqual(desfechoDe({ resultado: 'constructor' }), null);
+}
+
 const CASOS = [
   oCliquePedeAPermissaoEAbre,
   oCliqueSemPermissaoNaoChegaAoAbridor,
@@ -338,6 +353,7 @@ const CASOS = [
   oAbridorAntigoAindaAbre,
   semAbridorODesfechoDependeDeJaTerConectado,
   oConsertarRapidoNaoPiscaConferindo,
+  oDesfechoDoConsertoSemEsperaSaiDeUmaTabela,
 ];
 
 async function main() {
