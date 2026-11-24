@@ -24,7 +24,10 @@ from .paginas_do_navegador import PAGINAS, ROTAS_DO_CHATGPT, responder_a_pagina
 from .rotas_da_chave import (
     apagar_chave_da_openai, estado_da_ia, guardar_chave_da_openai, sincronizar_chave_da_openai, vincular_legado_da_openai,
 )
-from .configuracao import ENDERECO, OPENAI_BASE, OPENVERSE_BASE, VOZ_BASE
+from .configuracao import ENDERECO, FIRESTORE_BASE, OPENAI_BASE, OPENVERSE_BASE, VOZ_BASE
+from .esperas import ESPERA_DO_CONTATO, Esperas
+from .montagem_do_cartao import motor_do_cartao
+from .servicos_de_fora import ServicosDeFora
 from .colecao_vazia import SemColecao
 from .ia_dos_cartoes import IaDosCartoes, MotorNaOpenAI
 from .modelo_dos_cartoes import Conta, ListaDosModelos, ModeloDosCartoes, lista_nossa
@@ -45,7 +48,6 @@ from .rotas_do_perfil import abrir_o_perfil_marcado, anki_responde, escolher_o_p
 
 LIMITE_DO_CORPO = 64 * 1024
 LIMITE_DO_ENVIO = 4 * 1024 * 1024
-ESPERA_DO_CONTATO = 60.0
 LIMITES_POR_ROTA = {("POST", "/jobs"): LIMITE_DO_ENVIO}
 
 
@@ -259,7 +261,7 @@ class Conexao:
         openverse_base=OPENVERSE_BASE,
         adaptador_de_imagem=None,
         voz_base=VOZ_BASE,
-        firestore_base='https://firestore.googleapis.com/v1/projects/perpetualminer-4c219/databases/(default)/documents',
+        firestore_base=FIRESTORE_BASE,
         chatgpt_base=chatgpt_oficial.LOGIN,
         intervalo_de_parada=0.1,
         trabalhando=True,
@@ -306,13 +308,12 @@ class Conexao:
         self._thread_da_passagem = None
         self.fila = envio.Fila(dados, motor, logger)
         self.teto = TetoDoMes(os.path.join(dados.raiz, "teto-do-mes.json"), self.fila, hoje)
-        trabalho = envio.Trabalho(self.fila, self.colecao, self.ia, logger, openai_base, threading.Event(),
-                                  espera_do_anki=espera_do_anki, esperas_da_openai=esperas_da_openai, espera_do_plano=espera_do_plano, voz_base=voz_base,
-                                  openverse_base=openverse_base, adaptador_de_imagem=adaptador_de_imagem, teto=self.teto, espera_do_teto=espera_do_teto)
+        servicos = ServicosDeFora(openai_base, openverse_base, voz_base, firestore_base, chatgpt_base)
+        esperas = Esperas(espera_do_anki, esperas_da_openai, espera_do_plano, espera_do_teto, espera_do_contato, intervalo_do_envio, intervalo_de_parada,
+                          teto=self.teto)
+        trabalho = envio.Trabalho(self.fila, self.colecao, self.ia, motor_do_cartao(self.fila, servicos, esperas, adaptador_de_imagem), esperas)
         self._trabalhador = trabalhador.Trabalhador(
-            trabalho,
-            intervalo=intervalo_do_envio, contato=self.contato, espera_do_contato=espera_do_contato,
-        ) if trabalhando else None
+            trabalho, intervalo=esperas.do_envio, contato=self.contato, espera_do_contato=esperas.do_contato) if trabalhando else None
 
     @property
     def no_ar(self):
