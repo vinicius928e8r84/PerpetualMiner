@@ -122,7 +122,6 @@
   color: var(--veio-danger);
 }
 
-/* aria-disabled: indisponível, mas ainda focável, para a dica dizer por quê. */
 .veio-botao:disabled,
 .veio-botao-icone:disabled,
 .veio-botao[aria-disabled="true"] {

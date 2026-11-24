@@ -37,8 +37,6 @@
     }
     window.addEventListener('hashchange', aplicarEndereco);
     document.addEventListener('click', reaplicarOMesmoEndereco);
-    // Outra página que leva o painel ao endereço em que ele já está (o “Abrir
-    // Configurações” do Minerar de uma foto) não dispara `hashchange`: ela avisa.
     chrome.runtime.onMessage.addListener(mensagem => {
       if (mensagem?.type === 'PAINEL_REAPLICAR_ENDERECO') aplicarEndereco();
     });
@@ -110,10 +108,6 @@
     return evento.button === 0 && !TECLAS_QUE_MUDAM_O_CLIQUE.some(tecla => evento[tecla]);
   }
 
-  /**
-   * Um link para o endereço em que a pessoa já está não dispara `hashchange`:
-   * sem isto, clicar no chip já em #configuracoes/conta não levaria de volta ao card.
-   */
   function reaplicarOMesmoEndereco(evento) {
     if (evento.defaultPrevented || !ehCliqueSimples(evento)) return;
     const link = evento.target.closest('a[href^="#"]');
