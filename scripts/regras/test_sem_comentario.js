@@ -16,8 +16,8 @@ const juntar = (...linhas) => `${linhas.join('\n')}\n`;
 prova(linhasDe('lib/a.js', juntar('const a = 1;', '// soma um', '// e depois mais um', 'const b = a + 1; // fim')), [2, 3, 4],
   'cada linha de prosa conta, em bloco próprio ou no fim da linha');
 prova(linhasDe('lib/a.js', juntar('/*', ' * explica', ' */', 'const a = 1;')), [2], 'num bloco /* */ só a linha com texto conta');
-prova(linhasDe('scripts/a.sh', juntar('#!/usr/bin/env bash', '# shellcheck disable=SC2034', 'x=1  # um')), [2, 3],
-  'o shebang passa; o resto do shell conta');
+prova(linhasDe('scripts/a.sh', juntar('#!/usr/bin/env bash', '# shellcheck disable=SC2034', 'x=1  # um', '# shellcheck source=lib.sh porque sim')), [3, 4],
+  'o shebang e a diretiva do shellcheck passam; o resto do shell conta');
 prova(linhasDe('complemento/a.py', juntar('import os  # noqa: F401', '# -*- coding: utf-8 -*-', 'x = 1  # um')), [3],
   'noqa e coding passam');
 prova(linhasDe('lib/a.js', juntar('// eslint-disable-next-line no-console', 'console.log(1);')), [], 'a diretiva do eslint passa');
