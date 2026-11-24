@@ -14,7 +14,7 @@ The rule behind it is `sem-comentario` (`scripts/regras/sem-comentario.js`, CODI
 node scripts/regras/apoio-listar-comentarios.js '<regex of the path>'
 ```
 
-It prints each comment line with its file and line number: the same lines the rule counts. Docstrings are not comments here; leave them (the owner decides that separately). Prototypes in `docs/design/` are out of the rule's reach; leave them too.
+It prints each line the rule counts, with its file and line number: prose comments, the lines of Python docstrings (module, class and function) and the comments of the HTML prototypes in `docs/design/`. All three are in scope; `.claude/` and the rest of `docs/` are not.
 
 ## 2. Classify each comment
 
@@ -33,7 +33,13 @@ The codebase is the single source of truth: a fact the code shows needs no comme
 
 ## 3. Act
 
-**Delete** with the comment's whole line (not a half-removed line). Do not change anything but comments: no reformatting, no renamed variable in the same commit, no "while I am here". A rename the comment asked for goes in its own PR.
+**Delete** with the tool, not by hand:
+
+```
+node scripts/regras/apoio-apagar-comentarios.js '<regex of the path>'
+```
+
+It removes the prose of every comment and docstring in the matching files, keeps directives (shortening `# noqa: F401  (why)` to `# noqa: F401`), replaces a docstring that was the whole body of a class or function by `pass`, and refuses (and leaves the file alone) any file where the code would change. It skips the docstrings of a file that reads `__doc__`: deleting those is a code change (replace the `description=__doc__` by a text first, in a PR of its own). A generated file (the voice catalog) is out of reach too: change its generator. Do not change anything but comments: no reformatting, no renamed variable in the same commit. A rename the comment asked for goes in its own PR.
 
 **Excuse → issue.** One issue per hack, not per comment, with `gh issue create` (see `docs/agents/issue-tracker.md`). Title: what to fix, in the glossary's words (`glossary.md`). Body: the file and line the comment was on, its text quoted, what the shortcut is, and what the fixed version looks like. Label `needs-triage`. Quote the text because the comment is gone after the PR. Put the issue URLs in the PR body.
 
@@ -47,7 +53,7 @@ The codebase is the single source of truth: a fact the code shows needs no comme
 node scripts/regras/verificar.js --atualizar
 ```
 
-`--atualizar` rewrites the baseline for every rule. Before committing, `git diff scripts/regras/linha-de-base.json` must show only lowered `sem-comentario` entries (and removed ones, for files that reached zero). Undo any other section it touched. Then `node scripts/regras/verificar.js --base origin/main` must say `regras ok`.
+`--atualizar` rewrites the baseline for every rule. Before committing, `git diff scripts/regras/linha-de-base.json` must show only lowered or removed entries (`sem-comentario`, and `limite-de-linhas` or `saude-do-codigo` for files that got shorter). Undo any entry that went up or a section that was created. On Windows the Python measurer of `saude-do-codigo` can drop `engine/send_to_anki.py` by an encoding error: put it back. Then `node scripts/regras/verificar.js --base origin/main` must say `regras ok`.
 
 ## 5. Prove it only removed comments
 
@@ -55,7 +61,7 @@ node scripts/regras/verificar.js --atualizar
 node scripts/ci/so-tira-comentario.js --base origin/main
 ```
 
-It compares each changed file with the comments taken out: token by token in JavaScript and Python, text in CSS, HTML, shell and YAML. It passes only when the code is identical, there are fewer comments and none new, and the other changes are documentation (the ADRs) and the baseline. The "Registro da PR" check runs the same code: when it proves, the PR counts as Atenção BAIXA and needs no manual Prova real. If it fails, a code change slipped in; split it out.
+It compares each changed file with the comments taken out: token by token in JavaScript and Python, text in CSS, HTML, shell and YAML. It passes only when the code is identical (a docstring is a comment; one that was the whole body counts as `pass`), there are fewer comments and none new, and the other changes are documentation (the ADRs) and a baseline whose every number only went down. The "Registro da PR" check runs the same code: when it proves, the PR counts as Atenção BAIXA and needs no manual Prova real. If it fails, a code change slipped in; split it out.
 
 Run the groups the touched files belong to (`node scripts/testar.mjs <group>`, see `scripts/testes.json`).
 
