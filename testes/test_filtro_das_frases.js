@@ -21,7 +21,7 @@ function abrirAPaginaDeFrases() {
   const contexto = vm.createContext({ document: aberto(), chrome: aberto(), console });
   contexto.globalThis = contexto;
   contexto.PerpetualMiner = {};
-  for (const arquivo of ['lib/idioma.js', 'lib/contexto.js']) vm.runInContext(fs.readFileSync(arquivo, 'utf8'), contexto);
+  for (const arquivo of ['lib/idioma.js', 'lib/contexto.js', 'lib/filtro-das-frases.js']) vm.runInContext(fs.readFileSync(arquivo, 'utf8'), contexto);
   const raiz = contexto.PerpetualMiner;
   for (const nome of ['Atalhos', 'AjustesDeEnvio', 'Mineracao', 'Veio', 'Shell', 'Conta', 'Perigo', 'Envio', 'Sincronizacao', 'ChaveDaOpenAI', 'Historico']) raiz[nome] = aberto();
   raiz.textoDaVoz = aberto();
@@ -113,4 +113,16 @@ test('o estado da página que o teste escreve existe com o valor de partida', ()
     JSON.parse(vm.runInContext(`JSON.stringify([${ESTADO_DA_PAGINA.join(', ')}])`, pagina)),
     ['all', 'all', false, '', 'novas'],
   );
+});
+
+test('o módulo puro filtra e ordena sem tocar na lista que recebe', () => {
+  const contexto = vm.createContext({});
+  contexto.globalThis = contexto;
+  contexto.PerpetualMiner = {};
+  for (const arquivo of ['lib/idioma.js', 'lib/contexto.js', 'lib/filtro-das-frases.js']) vm.runInContext(fs.readFileSync(arquivo, 'utf8'), contexto);
+  const { filtrarFrases } = contexto.PerpetualMiner.FiltroDasFrases;
+  const recebidas = FRASES.map(frase => ({ ...frase }));
+  const filtros = { fonte: 'all', idioma: 'Inglês', esconderEnviadasEExportadas: true, busca: 'hello', ordem: 'antigas' };
+  assert.deepStrictEqual(filtrarFrases(recebidas, filtros).map(frase => frase.id), [5]);
+  assert.deepStrictEqual(recebidas.map(frase => frase.id), [1, 2, 3, 4, 5, 6]);
 });
