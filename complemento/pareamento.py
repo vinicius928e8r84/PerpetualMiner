@@ -99,6 +99,18 @@ def _so_o_codigo(texto):
     return re.sub(r"[^A-Z0-9]", "", texto.upper())
 
 
+def _linha_valida(linha):
+    if not isinstance(linha, dict):
+        return False
+    if not (isinstance(linha.get("cliente"), str) and isinstance(linha.get("segredo"), str)):
+        return False
+    try:
+        base64.b64decode(linha["segredo"], validate=True)
+    except ValueError:
+        return False
+    return True
+
+
 class Pareamento:
     """Os navegadores pareados, o código pendente e a conferência de cada pedido.
 
@@ -132,15 +144,7 @@ class Pareamento:
         linhas = dados.get(campo) if isinstance(dados, dict) else None
         if not isinstance(linhas, list):
             return []
-        validos = []
-        for linha in linhas:
-            if isinstance(linha, dict) and isinstance(linha.get("cliente"), str) and isinstance(linha.get("segredo"), str):
-                try:
-                    base64.b64decode(linha["segredo"], validate=True)
-                except ValueError:
-                    continue
-                validos.append(linha)
-        return validos
+        return [linha for linha in linhas if _linha_valida(linha)]
 
     def _gravar(self, clientes, revogados=None):
         """Grava os navegadores; sem `revogados`, os que já estavam no arquivo ficam."""
@@ -213,9 +217,12 @@ class Pareamento:
                     self._relogio_de_vencer.cancel()
                     self._relogio_de_vencer = None
 
+    def _pendente_gasto(self, pendente):
+        return pendente["vence"] <= self._relogio() or pendente["tentativas"] >= TENTATIVAS
+
     def _pendente_valido(self):
         pendente = self._pendente
-        if pendente is not None and (pendente["vence"] <= self._relogio() or pendente["tentativas"] >= TENTATIVAS):
+        if pendente is not None and self._pendente_gasto(pendente):
             self._acabar_o_pendente()
             return None
         return pendente
@@ -247,42 +254,73 @@ class Pareamento:
             self._esgotados, self._bloqueado_ate = 0, self._relogio() + BLOQUEIO_S
             self._logger.warning("Pareamento: %d códigos gastaram as tentativas; nenhum código novo por %d minutos", CODIGOS_ESGOTADOS_PARA_BLOQUEAR, BLOQUEIO_S // 60)
 
+    def _concluido_com(self, digitado):
+        """O pareamento que acabou de sair com este código, enquanto o código ainda vale."""
+        feito = self._concluido
+        if feito is None or feito["vence"] <= self._relogio():
+            return None
+        return feito if hmac.compare_digest(feito["codigo"].encode("ascii"), digitado) else None
+
+    def _resposta_repetida(self, digitado, cliente):
+        """A resposta perdida, repetida: o mesmo navegador recebe o mesmo segredo, outro recebe 409. `None` se o código não é de um pareamento recente."""
+        feito = self._concluido_com(digitado)
+        if feito is None:
+            return None
+        if feito["cliente"] != cliente:
+            return 409, {"error": "pairing_code_used"}
+        if self._segredo_de(cliente) is not None:
+            return 200, {"cliente": cliente, "segredo": feito["segredo"]}
+        return None
+
+    def _errou_o_codigo(self, pendente):
+        pendente["tentativas"] += 1
+        if pendente["tentativas"] >= TENTATIVAS:
+            self._acabar_o_pendente()
+            self._esgotou_um_codigo()
+            return 410, {"error": "pairing_code_expired"}
+        return 401, {"error": "pairing_code_wrong", "restam": TENTATIVAS - pendente["tentativas"]}
+
+    def _gravar_o_navegador(self, cliente, nome, segredo):
+        """Põe o navegador no fim da lista; os que passam de cinco saem para os revogados, e o que volta a se parear deixa de ser revogado."""
+        clientes = [linha for linha in self._ler() if linha["cliente"] != cliente]
+        clientes.append({"cliente": cliente, "segredo": segredo, "nome": nome, "criadoEm": _agora_iso()})
+        revogados = [linha for linha in self._ler("revogados") if linha["cliente"] != cliente]
+        despejados = clientes[:-MAXIMO_DE_NAVEGADORES]
+        revogados += [{"cliente": s["cliente"], "segredo": s["segredo"], "revogadoEm": _agora_iso()} for s in despejados]
+        self._gravar(clientes[-MAXIMO_DE_NAVEGADORES:], revogados[-MAXIMO_DE_REVOGADOS:])
+
+    def _parear(self, pendente, cliente, nome):
+        """O código certo: grava o navegador com um segredo novo, guarda o que a resposta repetida precisa e encerra o código. Devolve o segredo."""
+        segredo = base64.b64encode(secrets.token_bytes(32)).decode("ascii")
+        self._gravar_o_navegador(cliente, nome, segredo)
+        self._concluido = {"codigo": pendente["codigo"], "cliente": cliente, "segredo": segredo, "vence": pendente["vence"]}
+        self._esgotados, self._bloqueado_ate = 0, None
+        self._acabar_o_pendente()
+        return segredo
+
+    def _avisar_que_conectou(self):
+        if self.na_tela is None:
+            return
+        try:
+            self.na_tela.conectou()
+        except Exception:
+            self._logger.exception("Pareamento: o aviso de conectado não saiu")
+
     def concluir(self, codigo, cliente, nome):
         """A pessoa digitou `codigo` no painel. Certo: grava o segredo do `cliente` e o devolve, uma vez. Devolve (status, json)."""
         digitado = _so_o_codigo(codigo).encode("ascii")
         with self._tranca:
-            feito = self._concluido
-            if feito is not None and feito["vence"] > self._relogio() and hmac.compare_digest(feito["codigo"].encode("ascii"), digitado):
-                if feito["cliente"] != cliente:
-                    return 409, {"error": "pairing_code_used"}
-                if self._segredo_de(cliente) is not None:
-                    return 200, {"cliente": cliente, "segredo": feito["segredo"]}
+            repetida = self._resposta_repetida(digitado, cliente)
+            if repetida is not None:
+                return repetida
             pendente = self._pendente_valido()
             if pendente is None:
                 return 410, {"error": "pairing_code_expired"}
             if not hmac.compare_digest(pendente["codigo"].encode("ascii"), digitado):
-                pendente["tentativas"] += 1
-                if pendente["tentativas"] >= TENTATIVAS:
-                    self._acabar_o_pendente()
-                    self._esgotou_um_codigo()
-                    return 410, {"error": "pairing_code_expired"}
-                return 401, {"error": "pairing_code_wrong", "restam": TENTATIVAS - pendente["tentativas"]}
-            segredo = base64.b64encode(secrets.token_bytes(32)).decode("ascii")
-            clientes = [linha for linha in self._ler() if linha["cliente"] != cliente]
-            clientes.append({"cliente": cliente, "segredo": segredo, "nome": nome, "criadoEm": _agora_iso()})
-            revogados = [linha for linha in self._ler("revogados") if linha["cliente"] != cliente]
-            despejados = clientes[:-MAXIMO_DE_NAVEGADORES]
-            revogados += [{"cliente": s["cliente"], "segredo": s["segredo"], "revogadoEm": _agora_iso()} for s in despejados]
-            self._gravar(clientes[-MAXIMO_DE_NAVEGADORES:], revogados[-MAXIMO_DE_REVOGADOS:])
-            self._concluido = {"codigo": pendente["codigo"], "cliente": cliente, "segredo": segredo, "vence": pendente["vence"]}
-            self._esgotados, self._bloqueado_ate = 0, None
-            self._acabar_o_pendente()
+                return self._errou_o_codigo(pendente)
+            segredo = self._parear(pendente, cliente, nome)
         self._logger.info("Pareamento: um navegador foi conectado")
-        if self.na_tela is not None:
-            try:
-                self.na_tela.conectou()
-            except Exception:
-                self._logger.exception("Pareamento: o aviso de conectado não saiu")
+        self._avisar_que_conectou()
         return 200, {"cliente": cliente, "segredo": segredo}
 
     def conferir(self, cliente, desafio):
