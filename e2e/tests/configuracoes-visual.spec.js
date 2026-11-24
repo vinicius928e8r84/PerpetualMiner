@@ -1,37 +1,32 @@
 'use strict';
 
 const { test, expect } = require('../fixtures');
-const { AGORA, FRASES_DO_PROTOTIPO, semearComoNoPrototipo, abrirConfiguracoes } = require('../apoio-das-configuracoes');
+const { FRASES_DO_PROTOTIPO, semearComoNoPrototipo, abrirConfiguracoes } = require('../apoio-das-configuracoes');
+const {
+  estadoDoChip, campoDaChave, esperarALigacao, semearContaVisual, semearContaDaIA, semearChaveConferida,
+  abrirComContaSincronizada, abrirOCardDoAnki, falharOArmazemDeSegredos,
+} = require('../apoio-visual-das-configuracoes');
 
-const estadoDoChip = page => page.locator('#shell-chip-estado');
+const COM_CONTA_SINCRONIZADA = [
+  { nome: 'Configurações com os cards fechados', endereco: '#configuracoes', imagem: 'configuracoes-fechados.png', opcoes: {} },
+  { nome: 'Conta & sync aberto, sincronizado', endereco: '#configuracoes/conta', imagem: 'conta-sincronizado.png', opcoes: { animations: 'disabled' } },
+  { nome: 'Zona de perigo aberta, com conta', endereco: '#configuracoes/perigo', imagem: 'perigo-com-conta.png', opcoes: { animations: 'disabled' } },
+];
 
-test('Configurações com os cards fechados', async ({ page, extensao, fakes }) => {
-  await extensao.semearSessao({ uid: 'uid-visual', displayName: 'Ana Souza' });
-  await semearComoNoPrototipo(extensao, fakes, 'uid-visual');
-  await abrirConfiguracoes(page, extensao, '#configuracoes');
-  await expect(estadoDoChip(page)).toHaveText('Sincronizado agora');
-  await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
+for (const { nome, endereco, imagem, opcoes } of COM_CONTA_SINCRONIZADA) {
+  test(nome, async ({ page, extensao, fakes }) => {
+    await abrirComContaSincronizada(page, extensao, fakes, endereco);
 
-  await expect(page).toHaveScreenshot('configuracoes-fechados.png');
-});
-
-test('Conta & sync aberto, sincronizado', async ({ page, extensao, fakes }) => {
-  await extensao.semearSessao({ uid: 'uid-visual', displayName: 'Ana Souza' });
-  await semearComoNoPrototipo(extensao, fakes, 'uid-visual');
-  await abrirConfiguracoes(page, extensao, '#configuracoes/conta');
-  await expect(estadoDoChip(page)).toHaveText('Sincronizado agora');
-  await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
-
-  await expect(page).toHaveScreenshot('conta-sincronizado.png', { animations: 'disabled' });
-});
+    await expect(page).toHaveScreenshot(imagem, opcoes);
+  });
+}
 
 test('Conta & sync aberto, sem sincronizar', async ({ page, extensao, fakes }) => {
-  await extensao.semearSessao({ uid: 'uid-visual', displayName: 'Ana Souza' });
-  await semearComoNoPrototipo(extensao, fakes, 'uid-visual');
+  await semearContaVisual(extensao, fakes);
   fakes.google.ficarForaDoAr();
   await abrirConfiguracoes(page, extensao, '#configuracoes/conta');
   await expect(estadoDoChip(page)).toHaveText('Sem sincronizar');
-  await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
+  await esperarALigacao(page);
 
   await expect(page).toHaveScreenshot('conta-sem-sincronizar.png', { animations: 'disabled' });
 });
@@ -42,14 +37,13 @@ test('Conta & sync aberto, sem conta e com o login que falhou', async ({ page, e
   await abrirConfiguracoes(page, extensao, '#configuracoes/conta');
   await page.locator('#cfg-conta').getByRole('button', { name: 'Entrar com Google' }).click();
   await expect(page.locator('#cfg-conta').getByRole('alert')).toBeVisible();
-  await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
+  await esperarALigacao(page);
 
   await expect(page).toHaveScreenshot('conta-login-falhou.png', { animations: 'disabled' });
 });
 
 test('Aparência aberto, no escuro', async ({ page, extensao, fakes }) => {
-  await extensao.semearSessao({ uid: 'uid-visual', displayName: 'Ana Souza' });
-  await semearComoNoPrototipo(extensao, fakes, 'uid-visual');
+  await semearContaVisual(extensao, fakes);
   await abrirConfiguracoes(page, extensao, '#configuracoes/aparencia');
   await expect(page.getByRole('radio', { name: 'Escuro' })).toBeChecked();
 
@@ -57,8 +51,7 @@ test('Aparência aberto, no escuro', async ({ page, extensao, fakes }) => {
 });
 
 test('Aparência aberto, no claro: a mesma tela com os tokens claros', async ({ page, extensao, fakes }) => {
-  await extensao.semearSessao({ uid: 'uid-visual', displayName: 'Ana Souza' });
-  await semearComoNoPrototipo(extensao, fakes, 'uid-visual');
+  await semearContaVisual(extensao, fakes);
   await extensao.gravarStorage({ pm_tema: 'claro' });
   await abrirConfiguracoes(page, extensao, '#configuracoes/aparencia');
   await expect(page.getByRole('radio', { name: 'Claro' })).toBeChecked();
@@ -67,11 +60,10 @@ test('Aparência aberto, no claro: a mesma tela com os tokens claros', async ({ 
 });
 
 test('janela estreita: sem resumo na linha e sem recuo no conteúdo', async ({ page, extensao, fakes }) => {
-  await extensao.semearSessao({ uid: 'uid-visual', displayName: 'Ana Souza' });
-  await semearComoNoPrototipo(extensao, fakes, 'uid-visual');
+  await semearContaVisual(extensao, fakes);
   await abrirConfiguracoes(page, extensao, '#configuracoes/conta', 700);
   await expect(page.locator('#cfg-conta').getByText('Sincronizado agora', { exact: true })).toBeVisible();
-  await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
+  await esperarALigacao(page);
 
   await expect(page).toHaveScreenshot('conta-estreita.png', { animations: 'disabled' });
 });
@@ -79,7 +71,7 @@ test('janela estreita: sem resumo na linha e sem recuo no conteúdo', async ({ p
 async function abrirAtalhos(page, extensao, fakes) {
   await semearComoNoPrototipo(extensao, fakes);
   await abrirConfiguracoes(page, extensao, '#configuracoes/atalhos');
-  await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
+  await esperarALigacao(page);
 }
 
 const gravarAtalho = (page, nome) =>
@@ -114,7 +106,7 @@ test('Chave do Gemini aberta, com a chave salva', async ({ page, extensao, fakes
   await semearComoNoPrototipo(extensao, fakes);
   await abrirConfiguracoes(page, extensao, '#configuracoes/chave');
   await expect(page.locator('#cfg-chave').getByRole('button', { name: 'Trocar chave' })).toBeVisible();
-  await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
+  await esperarALigacao(page);
 
   await expect(page).toHaveScreenshot('chave-salva.png', { animations: 'disabled' });
 });
@@ -126,19 +118,18 @@ test('Chave do Gemini aberta, vazia, depois de salvar vazio', async ({ page, ext
   await page.locator('#cfg-chave').getByRole('button', { name: 'Salvar chave' }).click();
   await expect(page.locator('#cfg-chave').getByText('Cole a chave antes de salvar')).toBeVisible();
   await page.locator('#cfg-chave-campo').blur();
-  await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
+  await esperarALigacao(page);
 
   await expect(page).toHaveScreenshot('chave-vazia-recusada.png', { animations: 'disabled' });
 });
 
 const AGUARDA_O_DONO = 'a referência visual do card IA dos cartões espera a aprovação do dono (regra 10)';
-const campoDaChave = page => page.locator('#cfg-ia .cfg-chave-campo');
 test('IA dos cartões aberta, sem chave: as duas entradas lado a lado', async ({ page, extensao, fakes }) => {
   test.fixme(true, AGUARDA_O_DONO);
   await semearComoNoPrototipo(extensao, fakes);
   await abrirConfiguracoes(page, extensao, '#configuracoes/ia');
   await expect(page.locator('#cfg-ia').getByRole('textbox', { name: 'Chave da OpenAI' })).toBeFocused();
-  await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
+  await esperarALigacao(page);
 
   await expect(page).toHaveScreenshot('ia-sem-chave.png', { animations: 'disabled' });
 });
@@ -146,21 +137,18 @@ test('IA dos cartões aberta, sem chave: as duas entradas lado a lado', async ({
 test('IA dos cartões aberta, com a chave conferida e a cópia na Conexão', async ({ page, extensao, fakes }) => {
   test.fixme(true, AGUARDA_O_DONO);
   await semearComoNoPrototipo(extensao, fakes);
-  await extensao.gravarStorage({ pm_chave_openai: { ultimos4: '9f3a' } });
-  fakes.anki.guardarChaveNaConexao('9f3a');
+  await semearChaveConferida(extensao, fakes);
   await abrirConfiguracoes(page, extensao, '#configuracoes/ia');
   await expect(page.locator('#cfg-ia').getByText('A Conexão com o Anki guarda a chave.')).toBeVisible();
-  await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
+  await esperarALigacao(page);
 
   await expect(page).toHaveScreenshot('ia-conferida.png', { animations: 'disabled' });
 });
 
 test('IA dos cartões com conta: a chave vai junto com a conta Google, com Trocar chave e Apagar chave', async ({ page, extensao, fakes }) => {
   test.fixme(true, AGUARDA_O_DONO);
-  await semearComoNoPrototipo(extensao, fakes, 'uid-ia');
-  await extensao.semearSessao({ uid: 'uid-ia', displayName: 'Vinicius' });
-  await extensao.gravarStorage({ pm_chave_openai: { ultimos4: '9f3a' } });
-  fakes.anki.guardarChaveNaConexao('9f3a');
+  await semearContaDaIA(extensao, fakes);
+  await semearChaveConferida(extensao, fakes);
   await abrirConfiguracoes(page, extensao, '#configuracoes/ia');
   await expect(page.locator('#cfg-ia').getByText('Vai junto com a sua conta Google', { exact: false })).toBeVisible();
   await expect(page.locator('#cfg-ia').getByText('A Conexão com o Anki guarda a chave.')).toBeVisible();
@@ -181,10 +169,8 @@ test('Apagar tudo com a Conexão sem responder: a falha local de hoje, sem aviso
 
 test('o modal de apagar a chave da OpenAI, com conta', async ({ page, extensao, fakes }) => {
   test.fixme(true, AGUARDA_O_DONO);
-  await semearComoNoPrototipo(extensao, fakes, 'uid-ia');
-  await extensao.semearSessao({ uid: 'uid-ia', displayName: 'Vinicius' });
-  await extensao.gravarStorage({ pm_chave_openai: { ultimos4: '9f3a' } });
-  fakes.anki.guardarChaveNaConexao('9f3a');
+  await semearContaDaIA(extensao, fakes);
+  await semearChaveConferida(extensao, fakes);
   await abrirConfiguracoes(page, extensao, '#configuracoes/ia');
   await page.locator('#cfg-ia').getByRole('button', { name: 'Apagar chave' }).click();
   await expect(page.getByRole('dialog')).toHaveAccessibleName('Apagar a chave da OpenAI?');
@@ -201,7 +187,7 @@ test('IA dos cartões com a chave recusada: a faixa diz a qual entrada pertence'
   await page.locator('#cfg-ia').getByRole('button', { name: 'Conferir e salvar' }).click();
   await expect(page.locator('#cfg-ia').getByRole('alert')).toContainText('A OpenAI recusou a chave.');
   await page.locator('#cfg-ia').getByText('Detalhes').click();
-  await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
+  await esperarALigacao(page);
 
   await expect(page).toHaveScreenshot('ia-recusada.png', { animations: 'disabled', mask: [campoDaChave(page)] });
 });
@@ -215,7 +201,7 @@ test('IA dos cartões com a chave sem crédito, no tema claro', async ({ page, e
   await page.locator('#cfg-ia').getByRole('textbox', { name: 'Chave da OpenAI' }).fill('sk-proj-chave-de-exemplo-9f3a');
   await page.locator('#cfg-ia').getByRole('button', { name: 'Conferir e salvar' }).click();
   await expect(page.locator('#cfg-ia').getByRole('alert')).toContainText('sem crédito');
-  await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
+  await esperarALigacao(page);
 
   await expect(page).toHaveScreenshot('ia-sem-credito-claro.png', { animations: 'disabled', mask: [campoDaChave(page)] });
 });
@@ -225,27 +211,13 @@ test('IA dos cartões em janela estreita: as colunas viram linhas', async ({ pag
   await semearComoNoPrototipo(extensao, fakes);
   await abrirConfiguracoes(page, extensao, '#configuracoes/ia', 760);
   await expect(page.locator('#cfg-ia').getByRole('region', { name: /Conta do ChatGPT/ })).toBeVisible();
-  await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
+  await esperarALigacao(page);
 
   await expect(page).toHaveScreenshot('ia-estreita.png', { animations: 'disabled' });
 });
 
-test('Zona de perigo aberta, com conta', async ({ page, extensao, fakes }) => {
-  await extensao.semearSessao({ uid: 'uid-visual', displayName: 'Ana Souza' });
-  await semearComoNoPrototipo(extensao, fakes, 'uid-visual');
-  await abrirConfiguracoes(page, extensao, '#configuracoes/perigo');
-  await expect(estadoDoChip(page)).toHaveText('Sincronizado agora');
-  await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
-
-  await expect(page).toHaveScreenshot('perigo-com-conta.png', { animations: 'disabled' });
-});
-
 test('o modal de apagar todas as frases, com conta', async ({ page, extensao, fakes }) => {
-  await extensao.semearSessao({ uid: 'uid-visual', displayName: 'Ana Souza' });
-  await semearComoNoPrototipo(extensao, fakes, 'uid-visual');
-  await abrirConfiguracoes(page, extensao, '#configuracoes/perigo');
-  await expect(estadoDoChip(page)).toHaveText('Sincronizado agora');
-  await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
+  await abrirComContaSincronizada(page, extensao, fakes, '#configuracoes/perigo');
   await page.getByRole('button', { name: 'Apagar todas as 1.284 frases' }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
 
@@ -253,8 +225,7 @@ test('o modal de apagar todas as frases, com conta', async ({ page, extensao, fa
 });
 
 test.fixme('Conta & sync: só a chave da OpenAI está pendente — aprovação visual pendente', async ({ page, extensao, fakes }) => {
-  await extensao.semearSessao({ uid: 'uid-visual', displayName: 'Ana Souza' });
-  await semearComoNoPrototipo(extensao, fakes, 'uid-visual');
+  await semearContaVisual(extensao, fakes);
   await abrirConfiguracoes(page, extensao, '#configuracoes/ia');
   await expect(estadoDoChip(page)).toHaveText('Sincronizado agora');
   fakes.google.recusarEscritas();
@@ -282,25 +253,13 @@ for (const variante of ['outra-conta', 'apagar-falhou', 'apagar-tudo-parcial']) 
       await page.reload();
       await expect(ia).toContainText('Esta chave é de outra conta Google.');
     } else {
-      await page.evaluate(() => {
-        const abrir = indexedDB.open.bind(indexedDB);
-        indexedDB.open = (...args) => {
-          if (args[0] === 'pm-segredos') throw new DOMException('fake storage failure', 'StorageUnavailable');
-          return abrir(...args);
-        };
-      });
+      await falharOArmazemDeSegredos(page);
       if (variante === 'apagar-falhou') {
         await ia.getByRole('button', { name: 'Apagar chave' }).click();
         await page.getByRole('dialog').getByRole('button', { name: 'Apagar chave' }).click();
       } else {
         await page.goto(extensao.url('painel.html#configuracoes/perigo'));
-        await page.evaluate(() => {
-          const abrir = indexedDB.open.bind(indexedDB);
-          indexedDB.open = (...args) => {
-            if (args[0] === 'pm-segredos') throw new DOMException('fake storage failure', 'StorageUnavailable');
-            return abrir(...args);
-          };
-        });
+        await falharOArmazemDeSegredos(page);
         await page.locator('#btn-apagar-tudo').click();
         await page.getByRole('dialog').locator('.veio-botao--perigo-cheio').click();
       }
@@ -312,31 +271,25 @@ for (const variante of ['outra-conta', 'apagar-falhou', 'apagar-tudo-parcial']) 
 }
 
 test.fixme('Conexão com o Anki aberta, com o interruptor desligado', async ({ page, extensao, fakes }) => {
-  await extensao.semearSessao({ uid: 'uid-visual', displayName: 'Ana Souza' });
-  await semearComoNoPrototipo(extensao, fakes, 'uid-visual');
-  await abrirConfiguracoes(page, extensao, '#configuracoes/anki');
+  await abrirOCardDoAnki(page, extensao, fakes);
   await expect(page.getByRole('switch', { name: 'Abrir o Anki com o computador' })).toBeEnabled();
-  await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
+  await esperarALigacao(page);
 
   await expect(page).toHaveScreenshot('anki-desligado.png', { animations: 'disabled' });
 });
 
 test.fixme('Conexão com o Anki aberta, com o interruptor ligado', async ({ page, extensao, fakes }) => {
-  await extensao.semearSessao({ uid: 'uid-visual', displayName: 'Ana Souza' });
-  await semearComoNoPrototipo(extensao, fakes, 'uid-visual');
   fakes.anki.definirItemDeLogin('ligado');
-  await abrirConfiguracoes(page, extensao, '#configuracoes/anki');
+  await abrirOCardDoAnki(page, extensao, fakes);
   await expect(page.getByRole('switch', { name: 'Abrir o Anki com o computador' })).toBeChecked();
-  await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
+  await esperarALigacao(page);
 
   await expect(page).toHaveScreenshot('anki-ligado.png', { animations: 'disabled' });
 });
 
 test.fixme('Conexão com o Anki aberta, com a Conexão desligada', async ({ page, extensao, fakes }) => {
-  await extensao.semearSessao({ uid: 'uid-visual', displayName: 'Ana Souza' });
-  await semearComoNoPrototipo(extensao, fakes, 'uid-visual');
   fakes.anki.desligar();
-  await abrirConfiguracoes(page, extensao, '#configuracoes/anki');
+  await abrirOCardDoAnki(page, extensao, fakes);
   await expect(page.getByRole('switch', { name: 'Abrir o Anki com o computador' })).toBeDisabled();
   await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'desligada');
 
@@ -344,14 +297,12 @@ test.fixme('Conexão com o Anki aberta, com a Conexão desligada', async ({ page
 });
 
 test.fixme('Conexão com o Anki aberta, com o item que não pôde ser escrito', async ({ page, extensao, fakes }) => {
-  await extensao.semearSessao({ uid: 'uid-visual', displayName: 'Ana Souza' });
-  await semearComoNoPrototipo(extensao, fakes, 'uid-visual');
   fakes.anki.definirItemDeLogin('falha');
-  await abrirConfiguracoes(page, extensao, '#configuracoes/anki');
+  await abrirOCardDoAnki(page, extensao, fakes);
   await expect(page.getByRole('switch', { name: 'Abrir o Anki com o computador' })).toBeEnabled();
   await page.locator('#cfg-anki-corpo .veio-toggle').click();
   await expect(page.locator('#cfg-anki-corpo').getByRole('alert')).toBeVisible();
-  await expect(page.locator('.shell-ponto')).toHaveAttribute('data-estado', 'ligada');
+  await esperarALigacao(page);
 
   await expect(page).toHaveScreenshot('anki-falhou.png', { animations: 'disabled' });
 });
