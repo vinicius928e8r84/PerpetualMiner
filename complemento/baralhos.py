@@ -14,7 +14,7 @@ Anki está sincronizando (`anki_syncing`):
 
 - `tipo_de_nota(nome)`: os nomes dos campos do tipo de nota, ou None se a coleção não o tem;
 - `guids_existentes(guids)`: quais destes `guid` já são de uma nota da coleção;
-- `adicionar_nota(baralho, tipo_de_nota, campos, etiquetas, guid, midia=None)`: grava uma nota (`campos` é `{nome: valor}`), criando o
+- `adicionar_nota(nota)`: grava a `NotaAGravar` (`nota_a_gravar.py`: baralho, tipo de nota, `campos` `{nome: valor}`, etiquetas, `guid`, `midia`), criando o
   Baralho se faltar; a `midia` (`{nome do arquivo: bytes}`, o áudio do Cartão, #143) é guardada pela coleção com a nota, e a nota cita
   o nome que a coleção deu ao arquivo (o Anki troca o nome se já tem outro arquivo com ele e outro conteúdo); uma nota com o mesmo `guid` já gravada fica como está (gravar de novo não dobra); um tipo de nota que falta, ou sem um dos campos, levanta `TipoDeNotaAusente` sem gravar nada.
 
@@ -26,9 +26,9 @@ Anki está sincronizando (`anki_syncing`):
   `TipoDeNotaAusente`; um que não tem exatamente um modelo, `TipoDeNotaAlterado`, sem escrever nada;
 - `criar_baralhos_da_instalacao_nova(nomes)`: cria os Baralhos só se a coleção não tem nenhum além do “Default” (numa instalação nova) e devolve os
   criados; quem já tem Baralho fica com o seu. Os dois repetem sem criar nada de novo;
-- `gravar_cartao(baralho, tipo_de_nota, campos, etiquetas, guid, campos_da_frente, frente_normalizada, normalizar, midia=None)`: **a** função de
+- `gravar_cartao(nota, frente)` (`NotaAGravar` e `FrenteDoCartao`: os campos da frente, a frente normalizada e o `normalizar`): **a** função de
   gravar um Cartão, uma só na thread principal do Anki. Nesta ordem: a sincronização (`ColecaoIndisponivel`, sem gravar), o
-  `guid` (achou: devolve `"added"`, sem gravar), a frente normalizada no Baralho, lida em qualquer dos `campos_da_frente` (o do tipo próprio e os do
+  `guid` (achou: devolve `"added"`, sem gravar), a frente normalizada no Baralho, lida em qualquer dos campos da `frente` (o do tipo próprio e os do
   “Básico” de antes: o Cartão antigo conta, achou: `"duplicate"`, sem gravar) e a nota nova
   (devolve `"added"`; é só aqui que a `midia` é guardada). O que dá errado é devolvido ou levantado para a thread de trabalho, nunca para a thread principal do Anki.
 

@@ -186,8 +186,8 @@ class ColecaoDoAnki(CriacaoNoAnki):
         marcas = ",".join("?" * len(guids))
         return self._gravando(lambda colecao: {linha[0] for linha in colecao.db.all("select guid from notes where guid in (%s)" % marcas, *guids)})
 
-    def adicionar_nota(self, baralho, tipo_de_nota, campos, etiquetas, guid, midia=None):
-        return self._gravando(lambda colecao: _adicionar_nota(colecao, baralho, tipo_de_nota, campos, etiquetas, guid, midia))
+    def adicionar_nota(self, nota):
+        return self._gravando(lambda colecao: _adicionar_nota(colecao, nota))
 
     def cartao_renderizado(self, tipo_de_nota, campos):
         """O Cartão como o Anki o desenha (#164, `cartoes_do_anki.py`): `{ frente, verso, css }`, ou None se a coleção não tem o tipo."""
@@ -220,38 +220,38 @@ class ColecaoDoAnki(CriacaoNoAnki):
         """Cria os Baralhos `nomes` só se a coleção não tem nenhum além do padrão do Anki; devolve os criados (nenhum, para quem já tem Baralho)."""
         return self._gravando(lambda colecao: _criar_baralhos_da_instalacao_nova(colecao, nomes))
 
-    def gravar_cartao(self, baralho, tipo_de_nota, campos, etiquetas, guid, campos_da_frente, frente_normalizada, normalizar, midia=None):
-        """O passo de gravar um Cartão, **uma função só** na thread principal: a sincronização, o `guid`, a frente no Baralho e a nota.
+    def gravar_cartao(self, nota, frente):
+        """O passo de gravar um Cartão, **uma função só** na thread principal: a sincronização, o `guid`, a `frente` no Baralho e a `nota`.
 
         Devolve `"added"` (a nota é deste Cartão: já estava, ou foi gravada agora) ou `"duplicate"` (a frente já estava no Baralho,
         de outra nota). A busca da frente fica aqui dentro: uma função que o Anki ocupado atrasou, e que a thread de trabalho
-        deixou de esperar, não faz a volta seguinte contar a própria nota como duplicata. A `midia` (`{nome: bytes}`, o áudio e a imagem do
+        deixou de esperar, não faz a volta seguinte contar a própria nota como duplicata. A `midia` da nota (o áudio e a imagem do
         Cartão) é guardada pela coleção junto com a nota nova, e só com ela."""
-        return self._gravando(lambda colecao: _gravar_cartao(
-            colecao, baralho, tipo_de_nota, campos, etiquetas, guid, campos_da_frente, frente_normalizada, normalizar, midia))
+        return self._gravando(lambda colecao: _gravar_cartao(colecao, nota, frente))
 
 
-def _adicionar_nota(colecao, baralho, tipo_de_nota, campos, etiquetas, guid, midia=None):
-    """Uma nota nova, na thread principal: o Baralho é criado se falta (`decks.id`), o tipo de nota tem de existir com os campos.
+def _adicionar_nota(colecao, nota):
+    """Uma `nota` nova (`NotaAGravar`), na thread principal: o Baralho é criado se falta (`decks.id`), o tipo de nota tem de existir com os campos.
     A `midia` vai para a pasta de mídia da coleção (`media.write_data`) antes da nota; se a coleção deu outro nome ao arquivo (já
     havia um de mesmo nome e outro conteúdo), o `[sound:…]` da nota cita o nome que ficou (um `<img src>` segue o nome pedido).
 
     Uma nota com o mesmo `guid` já gravada fica como está: é a gravação que o Anki ocupado atrasou (o Envio desistiu de
     esperar e pediu de novo), e o Anki não impede dois `guid` iguais."""
-    if colecao.db.all("select 1 from notes where guid = ?", guid):
+    if colecao.db.all("select 1 from notes where guid = ?", nota.guid):
         return
-    modelo = colecao.models.by_name(tipo_de_nota)
-    if modelo is None or not set(campos) <= set(cartoes_do_anki.campos_do_tipo(modelo)):
-        raise TipoDeNotaAusente(tipo_de_nota)
-    for nome, dados in (midia or {}).items():
+    modelo = colecao.models.by_name(nota.tipo_de_nota)
+    if modelo is None or not set(nota.campos) <= set(cartoes_do_anki.campos_do_tipo(modelo)):
+        raise TipoDeNotaAusente(nota.tipo_de_nota)
+    campos = nota.campos
+    for nome, dados in (nota.midia or {}).items():
         guardado = colecao.media.write_data(nome, dados)
         campos = {campo: valor.replace("[sound:%s]" % nome, "[sound:%s]" % guardado) for campo, valor in campos.items()}
-    nota = colecao.new_note(modelo)
+    nova = colecao.new_note(modelo)
     for nome, valor in campos.items():
-        nota[nome] = valor
-    nota.tags = list(etiquetas)
-    nota.guid = guid
-    colecao.add_note(nota, colecao.decks.id(baralho))
+        nova[nome] = valor
+    nova.tags = list(nota.etiquetas)
+    nova.guid = nota.guid
+    colecao.add_note(nova, colecao.decks.id(nota.baralho))
 
 
 def _criar_tipo_de_nota(colecao, definicao):
@@ -280,14 +280,12 @@ def _criar_baralhos_da_instalacao_nova(colecao, nomes):
     return list(nomes)
 
 
-def _gravar_cartao(colecao, baralho, tipo_de_nota, campos, etiquetas, guid, campos_da_frente, frente_normalizada, normalizar, midia=None):
-    if colecao.db.all("select 1 from notes where guid = ?", guid):
+def _gravar_cartao(colecao, nota, frente):
+    if colecao.db.all("select 1 from notes where guid = ?", nota.guid):
         return "added"
-    frentes = (campos_da_frente,) if isinstance(campos_da_frente, str) else tuple(campos_da_frente)
-    for cartao in _cartoes_do_baralho(colecao, baralho):
-        if any(nome in frentes and valor and normalizar(valor) == frente_normalizada for nome, valor in cartao["campos"]):
-            return "duplicate"
-    _adicionar_nota(colecao, baralho, tipo_de_nota, campos, etiquetas, guid, midia)
+    if any(frente.esta_em(cartao) for cartao in _cartoes_do_baralho(colecao, nota.baralho)):
+        return "duplicate"
+    _adicionar_nota(colecao, nota)
     return "added"
 
 

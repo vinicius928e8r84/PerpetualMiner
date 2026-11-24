@@ -30,6 +30,7 @@ from .limite_do_plano import EsperaDoEnvio, dizer_a_espera
 from .login_do_chatgpt import RECUSOU, SAIU
 from .motor_do_cartao import Cartao, EsperasDaOpenai, MotorDoCartao
 from .motor_do_envio import configuracao_do_motor, motor_do_complemento
+from .nota_a_gravar import FrenteDoCartao, NotaAGravar
 from .paradas_do_envio import Apagado, Interrompido  # noqa: F401  (`envio.Interrompido`)
 from .tipo_do_envio import TipoDoEnvio
 from .pedido_do_envio import ETIQUETA_DE_TESTE, id_que_serve_de_caminho, id_valido, ids_unicos, impressao, visao_do_pedido
@@ -296,10 +297,11 @@ class Trabalho:
         frentes = (nota["campo_da_frente"],) + self.motor.estilos.nomes_da_frente_de_antes()
         nome, frentes, nota = envio.tipo.nota_no_tipo(frentes, nota)
         self._etapa(job_id, "send_to_anki")
+        etiquetas = nota["etiquetas"] + [ETIQUETA_DE_TESTE] * bool(pedido.get("teste"))
+        a_gravar = NotaAGravar(baralho, nome, nota["campos"], etiquetas, guid, arquivos)
+        frente = FrenteDoCartao(frentes, nota["frente_normalizada"], lambda valor: send_to_anki.normalize_front(valor, lang))
         try:
-            resultado = self._com_a_colecao(job_id, lambda: self.colecao.gravar_cartao(
-                baralho, nome, nota["campos"], nota["etiquetas"] + [ETIQUETA_DE_TESTE] * bool(pedido.get("teste")), guid,
-                frentes, nota["frente_normalizada"], lambda valor: send_to_anki.normalize_front(valor, lang), arquivos))
+            resultado = self._com_a_colecao(job_id, lambda: self.colecao.gravar_cartao(a_gravar, frente))
         except baralhos.TipoDeNotaAusente:
             return self._cartao(job_id, cartao_id, status=FALHOU, error=SEM_TIPO_DE_NOTA)
         except (Interrompido, Apagado):

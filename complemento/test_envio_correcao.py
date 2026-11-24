@@ -18,6 +18,7 @@ from complemento.test_colecao_em_memoria import ColecaoEmMemoria
 from complemento.test_chatgpt_de_mentira import MARCA
 from complemento.test_envio import ID, OUTRO_ID, EnvioNoTeste, pedido
 from complemento.test_login_do_chatgpt import entrar_e_voltar
+from complemento.nota_a_gravar import NotaAGravar
 
 INGLES = "PerpetualMiner::Inglês"
 NOVA = "run : They keep running"
@@ -30,7 +31,7 @@ def colecao_com_a_criacao(escrita=ESCRITA):
     """Um Anki com o Cartão `gave up` já feito pelo Envio de antes e a frase que a pessoa escreveu na revisão da Criação."""
     colecao = ColecaoEmMemoria({"baralhos": [{"nome": "Default"}]})
     tipo_de_nota.preparar(colecao)
-    colecao.adicionar_nota(INGLES, "PerpetualMiner Inglês", {"Frase": "She <b>gave up</b> smoking", "Palavra": "gave up - /ɡɪv ʌp/"}, [], "g-criacao")
+    colecao.adicionar_nota(NotaAGravar(INGLES, "PerpetualMiner Inglês", {"Frase": "She <b>gave up</b> smoking", "Palavra": "gave up - /ɡɪv ʌp/"}, [], "g-criacao"))
     if escrita:
         colecao.gravar_frase_escrita("g-criacao", escrita)
     return colecao
@@ -103,7 +104,7 @@ class ACorrecaoVaiNoProximoEnvio(unittest.TestCase):
     def test_a_frase_da_criacao_do_russo_e_corrigida_no_envio_do_russo(self):
         colecao = ColecaoEmMemoria({"baralhos": [{"nome": "Default"}]})
         tipo_de_nota.preparar(colecao)
-        colecao.adicionar_nota("PerpetualMiner::Russo", "PerpetualMiner Russo", {"Frase": "Я не мальчик!", "Palavra": "мальчик"}, [], "g-ru")
+        colecao.adicionar_nota(NotaAGravar("PerpetualMiner::Russo", "PerpetualMiner Russo", {"Frase": "Я не мальчик!", "Palavra": "мальчик"}, [], "g-ru"))
         colecao.gravar_frase_escrita("g-ru", "Он мальчика.")
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta, colecao=colecao) as conexao:
             conexao.openai.correcao_de = lambda escrita: "Он мальчик."

@@ -17,7 +17,7 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento.test_leitura_dos_arquivos import arquivos_da_pasta
-from complemento.test_colecao_em_memoria import ColecaoEmMemoria
+from complemento.test_colecao_em_memoria import ColecaoEmMemoria, NotaAGravar
 from complemento.test_harness import ConexaoNoTeste, ler_o_contrato, semear_a_fila
 
 CHAVE = "sk-proj-chave-do-envio-0000"
@@ -249,8 +249,7 @@ class ARetomada(unittest.TestCase):
         colecao = ColecaoEmMemoria({"baralhos": [{"nome": "Inglês", "notas": [{"frente": "They keep <b>running</b>", "verso": "x"}]}]})
         with tempfile.TemporaryDirectory() as pasta:
             semear_a_fila(pasta, [{"job": job, "state": estado, "custos": [], "textos": textos}])
-            colecao.adicionar_nota("Inglês", "Básico", {"Frente": "She <b>gave up</b> smoking", "Verso": "x"}, [],
-                                   guid=_guid(job["jobId"], "1760270400002-0"))
+            colecao.adicionar_nota(NotaAGravar("Inglês", "Básico", {"Frente": "She <b>gave up</b> smoking", "Verso": "x"}, [], _guid(job["jobId"], "1760270400002-0")))
             colecao.gravadas.clear()
             with EnvioNoTeste(pasta, colecao=colecao) as conexao:
                 final = conexao.esperar(job["jobId"])
@@ -531,7 +530,7 @@ class OGuidAntesDoTexto(unittest.TestCase):
         with tempfile.TemporaryDirectory() as pasta:
             with EnvioNoTeste(pasta, colecao=colecao, trabalhando=False) as conexao:
                 conexao.criar(pedido(ID, "give up : She gave up smoking"))
-            colecao.adicionar_nota("Inglês", "Básico", {"Frente": "x", "Verso": "y"}, [], _guid(ID, "1760000000000-0"))
+            colecao.adicionar_nota(NotaAGravar("Inglês", "Básico", {"Frente": "x", "Verso": "y"}, [], _guid(ID, "1760000000000-0")))
             with EnvioNoTeste(pasta, colecao=colecao) as conexao:
                 estado = conexao.esperar(ID)
                 pedidos = chats(conexao.openai)
