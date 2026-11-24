@@ -146,6 +146,10 @@ class No {
     return no;
   }
 
+  before(...nos) {
+    for (const no of nos) this.parentNode.insertBefore(no, this);
+  }
+
   remove() {
     if (!this.parentNode) return;
     const irmaos = this.parentNode.childNodes;
