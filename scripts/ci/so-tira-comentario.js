@@ -161,16 +161,18 @@ function confereOArquivo(arquivo, antes, depois) {
   return null;
 }
 
+const ehObjeto = valor => valor !== null && typeof valor === 'object';
+
+function subiuUmaEntrada(anterior, valor, onde) {
+  if (typeof valor === 'number') return valor <= anterior ? null : onde;
+  if (ehObjeto(valor)) return subiuEm(anterior, valor, onde);
+  return JSON.stringify(valor) === JSON.stringify(anterior) ? null : onde;
+}
+
 function subiuEm(antes, depois, caminho) {
   for (const [chave, valor] of Object.entries(depois)) {
-    const onde = `${caminho}/${chave}`;
-    const anterior = antes ? antes[chave] : undefined;
-    if (typeof valor === 'number') {
-      if (!(valor <= anterior)) return onde;
-    } else if (valor !== null && typeof valor === 'object') {
-      const dentro = subiuEm(anterior, valor, onde);
-      if (dentro) return dentro;
-    } else if (JSON.stringify(valor) !== JSON.stringify(anterior)) return onde;
+    const subiu = subiuUmaEntrada(antes ? antes[chave] : undefined, valor, `${caminho}/${chave}`);
+    if (subiu) return subiu;
   }
   return null;
 }
