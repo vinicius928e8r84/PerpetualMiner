@@ -1,12 +1,12 @@
 ---
 name: delete-comment
-description: "Classify every code comment of an area as Tautology, Excuse, Stale or Decision Record, delete it, file an issue for each Excuse, move each Decision Record into an ADR, and lower the ratchet. Use to repeat the comment cleanup, or when sem-comentario says a file has comments the baseline does not allow."
+description: "Classify every code comment of an area as Tautology, Excuse, Stale or Decision Record, delete it, file an issue for each Excuse, move each Decision Record into an ADR, and prove the ratchet holds. Use to repeat the comment cleanup, or when sem-comentario says a file has comments the baseline does not allow."
 disable-model-invocation: true
 ---
 
 Take one area of the repo (a folder: `e2e/tests`, `scripts`, `complemento`, …) and remove its code comments by the rules below. One area per PR, on the current `origin/main`, small enough to review. Never touch `fm/*` branches.
 
-The rule behind it is `sem-comentario` (`scripts/regras/sem-comentario.js`, CODING_STANDARDS.md rule 14): each file has a ceiling of comment lines in `scripts/regras/linha-de-base.json` that only goes down, and a file that reaches zero leaves the list and may not have a comment again. It counts prose; it lets through the `#!` line, tool directives (`eslint-disable`, `@ts-*`, `noqa`, `type: ignore`, `istanbul`/`c8 ignore`, `prettier-ignore`, `shellcheck source=`/`disable=`), a license header and the marks another rule reads (`exceção <rule> até …`, `Exceção de teste: …`, `@estado-guardado`). Those stay.
+The rule behind it is `sem-comentario` (`scripts/regras/sem-comentario.js`; its row in the table of `AGENTS.md`): each file has a ceiling of comment lines in `scripts/regras/linha-de-base-sem-comentario.json` (generated) that only goes down, and a file that reaches zero leaves the list and may not have a comment again. It counts prose; it lets through the `#!` line, tool directives (`eslint-disable`, `@ts-*`, `noqa`, `type: ignore`, `istanbul`/`c8 ignore`, `prettier-ignore`, `shellcheck source=`/`disable=`), a license header and the marks another rule reads (`exceção <rule> até …`, `Exceção de teste: …`, `@estado-guardado`). Those stay; the tool only shortens the long ones to the form the rule reads (`// Exceção de teste: <name> (docs/testes.md).`, `/** @estado-guardado */`).
 
 ## 1. List
 
@@ -47,13 +47,15 @@ It removes the prose of every comment and docstring in the matching files, keeps
 
 **Directives and marks stay.** A directive with prose after it (`# noqa: F401  (used outside)`) keeps the directive and loses the prose.
 
-## 4. Lower the ratchet
+## 4. The ratchet
+
+Do not edit `scripts/regras/linha-de-base-sem-comentario.json` or any other baseline file: the ceilings go down at the merge, not in the PR (rule `linha-de-base-no-merge`), by `node scripts/regras/baixar-no-merge.js` run on `main` after the merge. Run:
 
 ```
-node scripts/regras/verificar.js --atualizar
+node scripts/regras/verificar.js --base origin/main
 ```
 
-`--atualizar` rewrites the baseline for every rule. Before committing, `git diff scripts/regras/linha-de-base.json` must show only lowered or removed entries (`sem-comentario`, and `limite-de-linhas` or `saude-do-codigo` for files that got shorter). Undo any entry that went up or a section that was created. On Windows the Python measurer of `saude-do-codigo` can drop `engine/send_to_anki.py` by an encoding error: put it back. Then `node scripts/regras/verificar.js --base origin/main` must say `regras ok`.
+It must say `regras ok` and, for the files that got fewer comments, `a linha de base pode descer`. A file the PR did not touch must not gain comments, and a file that already reached zero may not have one again. On Windows run it with Python in UTF-8 (`PYTHONUTF8=1`), or the Python measurer of `saude-do-codigo` fails on an encoding error.
 
 ## 5. Prove it only removed comments
 
@@ -61,7 +63,7 @@ node scripts/regras/verificar.js --atualizar
 node scripts/ci/so-tira-comentario.js --base origin/main
 ```
 
-It compares each changed file with the comments taken out: token by token in JavaScript and Python, text in CSS, HTML, shell and YAML. It passes only when the code is identical (a docstring is a comment; one that was the whole body counts as `pass`), there are fewer comments and none new, and the other changes are documentation (the ADRs) and a baseline whose every number only went down. The "Registro da PR" check runs the same code: when it proves, the PR counts as Atenção BAIXA and needs no manual Prova real. If it fails, a code change slipped in; split it out.
+It compares each changed file with the comments taken out: token by token in JavaScript and Python, text in CSS, HTML, shell and YAML. It passes only when the code is identical (a docstring is a comment; one that was the whole body counts as `pass`), there are fewer comments and none new, and the other changes are documentation (the ADRs); a baseline file only passes when every number in it only went down, and this PR does not touch it. The "Registro da PR" check runs the same code: when it proves, the PR counts as Atenção BAIXA and needs no manual Prova real. If it fails, a code change slipped in; split it out.
 
 Run the groups the touched files belong to (`node scripts/testar.mjs <group>`, see `scripts/testes.json`).
 
@@ -71,4 +73,4 @@ Body in the repo's model (`.github/PULL_REQUEST_TEMPLATE.md`): Summary with the 
 
 ## Estimating how many lines a cleanup sheds
 
-The baseline total (the sum of the `sem-comentario` section of `scripts/regras/linha-de-base.json`) is the number of prose comment lines. It over-counts the lines that leave the files: a comment at the end of a code line sheds no line, and the delimiter lines of a block (`/**`, `*/`, `<!--`) shed one each without being counted. To get the real number, remove the comments in memory (`semOsComentarios` in `scripts/ci/so-tira-comentario.js` takes a source and the comment spans from `trechosDeComentario` in `scripts/regras/comum.js`) and subtract the line counts before and after. The first cleanup measured 679 counted lines against about 640 lines shed, in about 130,000 lines of code in scope.
+The baseline total (the sum of the `sem-comentario` section of `scripts/regras/linha-de-base-sem-comentario.json`) is the number of prose comment lines. It over-counts the lines that leave the files: a comment at the end of a code line sheds no line, and the delimiter lines of a block (`/**`, `*/`, `<!--`) shed one each without being counted. To get the real number, remove the comments in memory (`semOsComentarios` in `scripts/ci/so-tira-comentario.js` takes a source and the comment spans from `trechosDeComentario` in `scripts/regras/comum.js`) and subtract the line counts before and after. The first cleanup measured 679 counted lines against about 640 lines shed, in about 130,000 lines of code in scope.
