@@ -71,25 +71,35 @@
       : textoDaVoz('ONB-16.conferindo', { segundos });
   }
 
-  function desenhar() {
-    const cobre = cobreAsAbas(maquina);
-    const pronto = maquina.fase === FASE.PRONTO;
+  const focoDentroDoCardVisivel = secao => !secao.hidden && secao.contains(document.activeElement);
+  const cardSumindoComFoco = (secao, cobre) => !cobre && focoDentroDoCardVisivel(secao);
+  const semFocoEmLugarNenhum = ativo => ativo === document.body || ativo === null;
+  const focoSaindoDoCard = secao => secao.contains(document.activeElement) || semFocoEmLugarNenhum(document.activeElement);
+
+  function mostrarOCard(cobre) {
     const secao = porId('anki-primeira-vez');
     document.querySelector('.shell-area[data-area="anki"]').classList.toggle('anki--primeira-vez', cobre);
-    if (!cobre && !secao.hidden && secao.contains(document.activeElement)) {
-      document.querySelector('input[name="aba-anki"]:checked')?.focus();
-    }
+    if (cardSumindoComFoco(secao, cobre)) document.querySelector('input[name="aba-anki"]:checked')?.focus();
     secao.hidden = !cobre;
     estado.prontoDesenhado = estado.prontoDesenhado && cobre;
     passos.mostrar(cobre && Shell.areaAtual() === 'anki');
+  }
+
+  function tituloDoCard(pronto) {
+    if (pronto) return ConexaoNaTela.texto(CONEXAO.LIGADA);
+    return textoDaVoz(maquina.fase === FASE.PASSO4 ? 'ONB-17.titulo' : 'ONB-16.titulo');
+  }
+
+  function desenhar() {
+    const cobre = cobreAsAbas(maquina);
+    mostrarOCard(cobre);
     if (!cobre) return;
-    const ativo = document.activeElement;
-    const focoSaindo = secao.contains(ativo) || ativo === document.body || ativo === null;
+    const pronto = maquina.fase === FASE.PRONTO;
+    const focoSaindo = focoSaindoDoCard(porId('anki-primeira-vez'));
     const entrouNoPronto = pronto && !estado.prontoDesenhado;
     estado.prontoDesenhado = pronto;
 
-    porId('anki-primeira-vez-titulo').textContent = pronto ? ConexaoNaTela.texto(CONEXAO.LIGADA)
-      : textoDaVoz(maquina.fase === FASE.PASSO4 ? 'ONB-17.titulo' : 'ONB-16.titulo');
+    porId('anki-primeira-vez-titulo').textContent = tituloDoCard(pronto);
     porId('apv-apoio').hidden = pronto;
     porId('apv-rodape').hidden = pronto;
     passos.desenhar({ pronto });
