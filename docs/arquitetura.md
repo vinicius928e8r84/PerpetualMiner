@@ -132,7 +132,7 @@ The OpenAI key follows the account (#154): the versioned Conexão owner replicat
 
 ### Cross-Frame Communication
 
-`content.js` never uses `window.postMessage()`: the page could forge it. Each frame saves its own phrase (`SALVAR_HISTORICO`). When the clipboard write fails in an iframe, it sends `COPIAR_NO_FRAME_DE_CIMA` to the service worker, which relays `COPIAR_PARA_CLIPBOARD` to the top frame only (`frameId: 0`), whose `{ ok }` is what makes the overlay say “copiada”. Before saying a page has no video (MIN-10), a frame without one sends `HA_VIDEO_EM_OUTRO_FRAME`; the worker asks every frame (`TEM_VIDEO_NESTE_FRAME`) and no answer means no video.
+`content.js` never uses `window.postMessage()`: the page could forge it. Each frame saves its own phrase (`SALVAR_HISTORICO`). When the clipboard write fails in an iframe, it sends `COPIAR_NO_FRAME_DE_CIMA` to the service worker, which relays `COPIAR_PARA_CLIPBOARD` to the top frame only (`frameId: 0`), whose `{ ok }` is what makes the overlay say “copiada”. Before saying a page has no video (MIN-10), a frame without one sends `HA_VIDEO_EM_OUTRO_FRAME`; the worker asks every frame (`TEM_VIDEO_NESTE_FRAME`) and no answer means no video. Those two are answered only when the sender is a tab of this extension (`soDeUmaAba` in the `ATENDENTES_DE_MENSAGEM` table of `background.js`, one entry per message type), so a page cannot overwrite the clipboard through them; the answer says whether the copy went out, so the overlay only claims what happened.
 
 The capture shortcuts and the floating button only react to trusted events (`event.isTrusted`), so a page cannot mine by dispatching a synthetic keydown or click.
 
