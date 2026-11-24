@@ -4,8 +4,6 @@ const { responderJson } = require('./http');
 
 const RAIZ_DOS_DOCUMENTOS = 'projects/perpetualminer-4c219/databases/(default)/documents';
 const URL_DOS_DOCUMENTOS = `https://firestore.googleapis.com/v1/${RAIZ_DOS_DOCUMENTOS}`;
-// A entrada do Google recusa a URL com mais de 16 KB antes de o Firestore ler o pedido: 400 com uma página HTML
-// (medido no projeto de verdade: 16.381 bytes passam, 16.421 não).
 const LIMITE_DA_URL = 16 * 1024;
 
 const PERMISSAO_NEGADA = { error: { code: 403, status: 'PERMISSION_DENIED', message: 'Missing or insufficient permissions.' } };
@@ -36,13 +34,6 @@ function criarFakeGoogle() {
   const estado = estadoInicial();
   const tratarPedido = route => tratar(estado, route);
 
-  /**
-   * A página de login do Google (servida pelo servidor HTTPS do fixture, porque
-   * a janela de login não passa pelo roteamento do Playwright):
-   *   'entrar'  a pessoa escolhe a conta: volta para a extensão com os tokens;
-   *   'janela'  a janela fica aberta esperando (o teste pode fechá-la: cancelar);
-   *   'falhar'  a página não carrega.
-   */
   function responderLogin(url, req, res) {
     const responder = RESPOSTAS_DO_LOGIN.get(estado.modoDoLogin) || voltarParaAExtensaoComOsTokens;
     responder(url, req, res);
@@ -57,10 +48,7 @@ function criarFakeGoogle() {
     frasesDe: uid => objetosComOPrefixo(estado.documentos, `usuarios/${uid}/frases/`),
     /** @estado-guardado Ids com tombstone no Firestore do usuário (`usuarios/{uid}/meta/deleted`). */
     apagadasDe: uid => Object.keys(estado.documentos.get(`usuarios/${uid}/meta/deleted`)?.ids?.mapValue?.fields || {}),
-    /**
-     * @estado-guardado A chave da OpenAI da conta (`usuarios/{uid}/segredos/openai`), já convertida em objeto:
-     * `{ chave, em }`, o tombstone `{ apagada: true, em }`, ou null se a conta nunca teve chave.
-     */
+    /** @estado-guardado */
     chaveDaOpenAIDe: uid => objetoDoDocumento(estado.documentos, `usuarios/${uid}/segredos/openai`),
     gravarChaveDaOpenAI: (uid, documento) => { estado.documentos.set(`usuarios/${uid}/segredos/openai`, objetoParaCampos(documento)); },
     recusarEscritas: (valor = true) => { estado.recusarEscritas = valor; },
@@ -364,9 +352,6 @@ function nomeDoCaminho(caminho) {
   return `${RAIZ_DOS_DOCUMENTOS}/${caminho}`;
 }
 
-// Caminho de campo como a API REST aceita: segmentos separados por ponto, cada um
-// um nome simples (letras, dígitos e _, sem começar com dígito) ou um nome entre
-// crases, com \ escapando. `ids.123` é recusado; `ids.\`123\`` vale.
 function segmentosDoCaminhoDeCampo(caminho) {
   const segmentos = [];
   let resto = caminho;
@@ -388,7 +373,6 @@ function lerCampo(fields, [primeiro, ...resto]) {
   return lerCampo(valor.mapValue?.fields, resto);
 }
 
-// Campo da máscara ausente no corpo = campo apagado, como no Firestore.
 function gravarCampo(fields, [primeiro, ...resto], valor) {
   if (!resto.length) {
     if (valor === undefined) delete fields[primeiro];

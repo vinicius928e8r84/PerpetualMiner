@@ -1,17 +1,5 @@
 'use strict';
 
-// O seam de teste: a extensão desempacotada rodando no Chromium.
-//
-// Cada teste ganha um perfil novo do Chromium com a extensão carregada da raiz
-// do repositório, a rede falsificada na fronteira HTTP (Conexão com o Anki,
-// Gemini, Firestore/Google) e as páginas-fixture servidas por um servidor local.
-// Qualquer outra requisição externa é bloqueada, então nenhum teste sai para a
-// internet. A página de login do Google é a exceção de mecanismo, não de regra:
-// a janela do `chrome.identity` não passa pelo roteamento do Playwright, então o
-// nome accounts.google.com aponta para um servidor HTTPS local (fakes/login-google.js).
-// O abridor da Conexão com o Anki (#147) não é HTTP: é um host de Native Messaging, e o de
-// mentira (fakes/abridor.js) fica registrado no próprio perfil de teste, onde o Chromium o procura.
-
 const { test: base, expect, chromium } = require('@playwright/test');
 const fs = require('fs');
 const http = require('http');
@@ -60,10 +48,6 @@ function arquivoDoPedido(caminhoPedido) {
     .find(fs.existsSync) || null;
 }
 
-/**
- * A aba que o Chrome abre ao instalar a extensão. Ela nasce em branco e só
- * depois navega, então o endereço é conferido até aparecer.
- */
 async function esperarAbaDaInstalacao(context, id) {
   const painel = `chrome-extension://${id}/painel/painel.html`;
   const limite = Date.now() + 10_000;
@@ -86,8 +70,6 @@ async function abrirPerfil({ fakes, paginas, servidorDoLogin, portaDaConexaoDeTe
   try {
     fakes.abridor.registrarNoPerfil(perfil);
     if (permissaoDoAbridor && process.platform !== 'linux') {
-      // Mac/Windows: o `Secure Preferences` do Chromium reseta o que não tem a assinatura (MAC); a cópia traz
-      // `nativeMessaging` no manifest, o estado de depois do Permitir.
       copiaComAPermissao = copiarComAPermissaoDoAbridor(pastaDaExtensao);
       pastaDaExtensao = copiaComAPermissao;
     } else if (permissaoDoAbridor) {
@@ -105,15 +87,11 @@ async function abrirPerfil({ fakes, paginas, servidorDoLogin, portaDaConexaoDeTe
         `--disable-extensions-except=${pastaDaExtensao}`,
         `--load-extension=${pastaDaExtensao}`,
         `--host-resolver-rules=MAP accounts.google.com 127.0.0.1:${servidorDoLogin.porta}, MAP auth.openai.com 127.0.0.1:${servidorDoLogin.porta}, ${regrasDaPorta8766}`,
-        // Só o servidor local do login usa HTTPS, com certificado autoassinado.
         '--ignore-certificate-errors',
-        // A rede é toda falsificada ou bloqueada aqui: um proxy do ambiente
-        // (HTTPS_PROXY) levaria a janela do login para fora do servidor local.
         '--no-proxy-server',
       ],
     });
 
-    // A última rota registrada tem prioridade: o bloqueio geral vem primeiro.
     const origensLocais = [paginas.origem, paginas.origemCruzada];
     await context.route(url => /^https?:$/.test(url.protocol) && !origensLocais.includes(url.origin),
       route => route.abort('blockedbyclient'));
@@ -251,9 +229,6 @@ const test = base.extend({
     await conexao?.fechar();
   },
 
-  // A permissão opcional `nativeMessaging` já dada, como o Chrome a guarda nas preferências do perfil
-  // depois de a pessoa apertar Permitir no aviso dele: o aviso é do Chrome e o Playwright não o alcança.
-  // Sem esta opção, a extensão chega como da loja: sem a permissão, e o pedido dela espera o aviso.
   permissaoDoAbridor: [false, { option: true }],
 
   pastaDaExtensao: async ({}, use) => {
@@ -292,10 +267,6 @@ const test = base.extend({
     await use(await prepararExtensao(context, { manterAbaDaInstalacao, lembreteDaConfiguracao, navegador: pareada ? 'primeiro' : null }));
   },
 
-  // Um segundo perfil do Chromium com a extensão, aberto como o primeiro (mesma rede falsificada, mesmo
-  // abridor, mesma Conexão com o Anki): a cena de duas contas Google em dois perfis diante de uma Conexão só.
-  // Não é uma segunda aba do mesmo perfil, que dividiria o armazenamento. `context` abre páginas dele;
-  // `extensao` é o mesmo objeto que o teste já tem (semearSessao, lerStorage, …), mas do segundo perfil.
   segundoPerfil: async ({ extensao, fakes, paginas, servidorDoLogin, portaDaConexaoDeTeste, pastaDaExtensao, permissaoDoAbridor, conexaoDoTeste, manterAbaDaInstalacao, lembreteDaConfiguracao, pareada }, use) => {
     const perfil = await abrirPerfil({ fakes, paginas, servidorDoLogin, portaDaConexaoDeTeste, pastaDaExtensao, permissaoDoAbridor, conexaoDoTeste });
     if (pareada) fakes.anki.pareamento.parear('segundo');

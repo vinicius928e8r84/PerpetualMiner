@@ -6,7 +6,6 @@ const LEGENDA = '<img src=x onerror="window.__injetado = \'legenda\'">Hold the l
 const TITULO = '<img src=t onerror="window.__injetado = \'titulo\'"> Episódio';
 const SELECAO = '<img src=x onerror="__injetado=1">Salt wind';
 
-/** Dá tempo a um <img> injetado de falhar o carregamento e disparar o onerror. */
 async function nadaFoiInjetado(page) {
   await page.waitForTimeout(500);
   expect(await page.evaluate(() => ({

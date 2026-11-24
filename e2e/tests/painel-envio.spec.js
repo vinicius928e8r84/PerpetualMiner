@@ -4,9 +4,6 @@ const { test, expect } = require('../fixtures');
 const { estadoFinal } = require('../estado-final');
 const { AGORA, INGLESAS, RUSSA, SACK, ARM, LATE, abrirPainel, cartao, marcar, enviarAoAnki, progresso, resumo, envio, baralho, toasts, marcarEEnviar, enviosCriados, pedirConferenciaDaConexao } = require('../apoio-do-envio');
 
-// veio/tokens.css zera toda transição com movimento reduzido. O cartão é redesenhado
-// quando o Envio ganha o jobId; num elemento que saiu da página o estilo calculado
-// vem vazio (NaN), então espera-se o valor.
 async function transicaoCurta(locator) {
   await expect(locator).toBeAttached();
   await expect.poll(() => locator.evaluate(el => parseFloat(getComputedStyle(el).transitionDuration)))
@@ -496,7 +493,6 @@ test('com a Conexão desligada, Enviar ao Anki fica indisponível e o tooltip di
   await expect(botao).toHaveAccessibleDescription(porque);
   await botao.hover();
   await expect(page.getByRole('tooltip')).toHaveText(porque);
-  // aria-disabled: o Playwright esperaria o botão “habilitar”; o clique de verdade acontece.
   await botao.click({ force: true });
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.mouse.move(0, 0);

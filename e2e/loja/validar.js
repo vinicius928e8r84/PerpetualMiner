@@ -1,11 +1,5 @@
 'use strict';
 
-// Confere as imagens de `docs/loja/` (a lista está em `imagens.js`): PNG de 24
-// bits (RGB, 8 bits por canal), sem canal alfa nem chunk tRNS, no tamanho que a
-// loja pede, e a linha de cada uma na tabela do LEIA-ME.
-//
-//   node e2e/loja/validar.js
-
 const fs = require('fs');
 const path = require('path');
 

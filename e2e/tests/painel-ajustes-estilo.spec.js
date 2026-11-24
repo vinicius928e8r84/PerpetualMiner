@@ -13,7 +13,6 @@ const AJUSTES = {
 const formulario = (page, idioma) => page.getByRole('form', { name: idioma ? `Ajustes de envio · ${idioma}` : /^Ajustes de envio · / });
 const estilo = (page, idioma) => formulario(page, idioma).getByRole('radiogroup', { name: 'Estilo do cartão' });
 const nivel = (page, nome, idioma) => estilo(page, idioma).getByRole('radio', { name: nome });
-// O radio do controle segmentado é invisível: a pessoa clica no rótulo.
 const escolher = (page, nome, idioma) => estilo(page, idioma).locator('label', { hasText: nome }).click();
 const salvar = (page, idioma) => formulario(page, idioma).getByRole('button', { name: 'Salvar ajustes' });
 const situacao = (page, idioma) => formulario(page, idioma).getByRole('status');

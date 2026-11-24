@@ -76,7 +76,6 @@ test('na Max, sem nenhuma fala na tela, o nome do episódio não é minerado', a
 
   await page.keyboard.press('Alt+KeyS');
 
-  // Dá tempo ao content script de responder antes de afirmar a ausência.
   await page.waitForTimeout(1500);
   expect(await textos(extensao)).not.toContain(NOME_DO_EPISODIO);
   expect(await extensao.frases()).toEqual([]);

@@ -59,7 +59,6 @@ function cartoesDe(prontos) {
   return Object.fromEntries(ids.map((id, i) => [id, i < prontos ? 'added' : 'pending']));
 }
 
-/** De quanto em quanto tempo o painel lê os Envios na Conexão (`INTERVALO` em painel-envio.js). */
 const INTERVALO_DO_ENVIO = 2_000;
 
 async function umaVoltaDoEnvio(page, { resposta } = {}) {
