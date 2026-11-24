@@ -10,7 +10,7 @@ const conserto = 'Não volte a pôr comentário: o arquivo só pode ter os comen
   + 'e um arquivo que chegou a zero saiu da lista e não tem mais nenhum. O que o comentário explicava vai para o nome; '
   + 'uma decisão não óbvia vai para um ADR em docs/adr/; um atalho que o comentário desculpava vira issue (skill /delete-comment). '
   + 'Passa o mesmo que passa em sem-comentario-novo (shebang, diretivas de ferramenta, licença, marcas que outra regra lê). '
-  + 'Depois de apagar comentários, rode `node scripts/regras/verificar.js --atualizar` e versione scripts/regras/linha-de-base.json.';
+  + 'A linha de base de quem apagou comentários desce no merge (`node scripts/regras/baixar-no-merge.js`); a PR não a edita.';
 
 const porQueOArquivoNovoNaoEntra = 'um arquivo que não tinha comentário (ou que chegou a zero) não volta a ter; apague o comentário.';
 
@@ -52,10 +52,4 @@ function mensagem({ arquivo, tem, pode, achados }) {
   return [`✗ ${id} — ${arquivo}: ${tem} linha(s) de comentário; ${teto}.`, ...mostrados, `  Conserto: ${conserto}`].join('\n');
 }
 
-function mensagemDeFolga({ arquivo, tem, pode }) {
-  const o = tem === 0 ? 'ficou sem comentário: tire-o da linha de base' : `tem ${tem} linha(s) de comentário e a linha de base ainda deixa ${pode}: baixe-a`;
-  return `✗ ${id} — ${arquivo} ${o}. Rode \`node scripts/regras/verificar.js --atualizar\` e versione scripts/regras/linha-de-base.json: `
-    + 'o teto de cada arquivo é o que ele tem hoje, e um arquivo que chega a zero não volta a ter comentário.';
-}
-
-module.exports = { id, conserto, seAplica, verificar, linhasDeComentario, linhasDeDocstring, mensagem, mensagemDeFolga, baixarObrigatorio: true, porQueOArquivoNovoNaoEntra };
+module.exports = { id, conserto, seAplica, verificar, linhasDeComentario, linhasDeDocstring, mensagem, folgaPresaAoArquivo: true, porQueOArquivoNovoNaoEntra };

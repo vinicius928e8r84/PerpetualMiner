@@ -78,11 +78,11 @@ assert.match(r.saida, /lib\/a\.js: 1 linha\(s\) de comentário; ele não está n
 total += 5;
 
 r = rodar(com(1, { 'lib/a.js': 2 }));
-assert.strictEqual(r.status, 1, 'apagar sem baixar a linha de base falha');
-assert.match(r.saida, /lib\/a\.js tem 1 linha\(s\) de comentário e a linha de base ainda deixa 2: baixe-a/);
+assert.strictEqual(r.status, 0, `apagar sem baixar a linha de base passa, a baixa é do merge: ${r.saida}`);
+assert.match(r.saida, /a linha de base pode descer: 1 entrada/);
 r = rodar(com(0, { 'lib/a.js': 2 }));
-assert.match(r.saida, /lib\/a\.js ficou sem comentário: tire-o da linha de base/);
-total += 3;
+assert.strictEqual(r.status, 0, r.saida);
+total += 4;
 
 r = rodar(com(1, { 'lib/a.js': 2 }), '--atualizar');
 assert.strictEqual(r.status, 0, r.saida);
