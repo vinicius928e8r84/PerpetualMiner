@@ -12,6 +12,7 @@ const VEREDITO_LIMPO = 'CLEAN';
 const QUEM_REGISTRA = ['OWNER', 'MEMBER', 'COLLABORATOR'];
 const MODELO = '.github/PULL_REQUEST_TEMPLATE.md';
 const { ehAncestral, soMergesLimposDaMain } = require('./so-merge-da-main.js');
+const { soTiraComentario } = require('./so-tira-comentario.js');
 const PUBLICADOR = 'scripts/ci/registrar-na-pr.js';
 const CONFERIDOR_DO_CORPO = 'scripts/ci/corpo-da-pr.js';
 
@@ -203,6 +204,8 @@ const MOTIVOS_DA_PROVA = [
   [({ risco }) => risco === 'ALTA', 'risco ALTA do revisor'],
 ];
 
+const motivoDoRotulo = rotulos => (MOTIVOS_DA_PROVA[1][0]({ rotulos }) ? MOTIVOS_DA_PROVA[1][1] : undefined);
+
 const motivoDaProva = pr => (MOTIVOS_DA_PROVA.find(([pede]) => pede(pr)) || [])[1];
 
 function faltaDaProvaPedida(motivo, corpo, head, lotes) {
@@ -215,7 +218,7 @@ function atencaoQueVale(atencao, risco) {
   return vale === atencao ? atencao : `${vale} (o corpo diz ${atencao}, o revisor ${risco})`;
 }
 
-function partesDoCorpo({ corpo, rotulos, head, repositorio, risco, lotes }) {
+function partesDoCorpo({ corpo, rotulos, head, repositorio, risco, lotes, soTiraComentario: provado }) {
   const linhas = linhasQueValem(corpo);
   const textos = linhas.map(linha => linha.texto);
   const foraDoModelo = [
@@ -223,9 +226,10 @@ function partesDoCorpo({ corpo, rotulos, head, repositorio, risco, lotes }) {
     ...CAMPOS_DO_MODELO.filter(campo => !valoresDe(textos, campo).length).map(campo => `o campo "${campo}:" preenchido`),
   ];
   const { atencao, falta: semAtencao } = atencaoDe(textos);
-  const motivo = motivoDaProva({ atencao, rotulos, risco });
+  const soComentario = Boolean(provado && provado.ok);
+  const motivo = soComentario ? motivoDoRotulo(rotulos) : motivoDaProva({ atencao, rotulos, risco });
   return {
-    atencao,
+    atencao: soComentario ? 'BAIXA' : atencao,
     alta: Boolean(motivo),
     doModelo: [
       foraDoModelo.length && `o corpo não segue o modelo do /pr: falta ${foraDoModelo.join(', ')}`,
@@ -241,14 +245,15 @@ function faltasDoCorpo(pr) {
   return [...doModelo, daProva].filter(Boolean);
 }
 
-function conferir({ corpo, rotulos, registros, head, repositorio, headsEquivalentes = [], lotes = [] }) {
+function conferir({ corpo, rotulos, registros, head, repositorio, headsEquivalentes = [], lotes = [], soTiraComentario: provado }) {
   const risco = riscoDoRevisor(registros, head, headsEquivalentes);
-  const { atencao, alta, doModelo, daProva } = partesDoCorpo({ corpo, rotulos, head, repositorio, risco, lotes });
+  const { atencao, alta, doModelo, daProva } = partesDoCorpo({ corpo, rotulos, head, repositorio, risco, lotes, soTiraComentario: provado });
   const faltas = [...doModelo, faltaDaRevisao(registros, head, headsEquivalentes), daProva].filter(Boolean);
   if (!faltas.length) {
     const { headDoRegistro } = registroQueVale(registros, head, headsEquivalentes);
     const viaMerge = headDoRegistro !== head ? ` (registro do head ${headDoRegistro}; daí até este head só há merges limpos da main)` : '';
-    return { ok: true, mensagem: `registro da PR ok no head ${head}: atenção ${atencaoQueVale(atencao, risco)}, /code-review ${VEREDITO_LIMPO}${viaMerge}${alta ? `, ${FRASE}` : ''}` };
+    const vale = provado && provado.ok ? `${atencao} (a PR só tira comentário: código idêntico token a token em ${provado.arquivos.length} arquivo(s), sem comentário novo)` : atencaoQueVale(atencao, risco);
+    return { ok: true, mensagem: `registro da PR ok no head ${head}: atenção ${vale}, /code-review ${VEREDITO_LIMPO}${viaMerge}${alta ? `, ${FRASE}` : ''}` };
   }
   return {
     ok: false,
@@ -290,12 +295,22 @@ function registrosPorData(comentariosERevisoes) {
     .sort((a, b) => a.quando.localeCompare(b.quando)).map(registro => registro.corpo);
 }
 
+function soTiraComentarioNoGit({ raiz, base, head }) {
+  if (!/^[\w][\w./-]*$/.test(base || '')) return undefined;
+  try {
+    return soTiraComentario({ raiz, base: `refs/remotes/origin/${base}`, head });
+  } catch {
+    return undefined;
+  }
+}
+
 async function lerDoGitHub(env, headConferido) {
   const pr = await lerDaApi(env, `pulls/${env.PR}`);
   const registros = registrosPorData([...await lerTodasAsPaginas(env, `issues/${env.PR}/comments`), ...await lerTodasAsPaginas(env, `pulls/${env.PR}/reviews`)]);
   const headsEquivalentes = headsSoComMergeDaMain(registros, headConferido || pr.head.sha, pr.base && pr.base.ref, env.RAIZ_DO_GIT || process.cwd());
   const lotes = lotesQueContemOHead({ corpo: pr.body, head: pr.head.sha, raiz: env.RAIZ_DO_GIT || process.cwd() });
-  return { corpo: pr.body, rotulos: pr.labels.map(rotulo => rotulo.name), registros, head: pr.head.sha, repositorio: env.GITHUB_REPOSITORY, headsEquivalentes, lotes };
+  const provado = soTiraComentarioNoGit({ raiz: env.RAIZ_DO_GIT || process.cwd(), base: pr.base && pr.base.ref, head: pr.head.sha });
+  return { corpo: pr.body, rotulos: pr.labels.map(rotulo => rotulo.name), registros, head: pr.head.sha, repositorio: env.GITHUB_REPOSITORY, headsEquivalentes, lotes, soTiraComentario: provado };
 }
 
 function headDoAmbiente(env) {
