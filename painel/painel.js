@@ -9,6 +9,7 @@ const Shell = PerpetualMiner.Shell;
 const Conta = PerpetualMiner.Conta;
 const Perigo = PerpetualMiner.Perigo;
 const Envio = PerpetualMiner.Envio;
+const MinerarFrases = PerpetualMiner.MinerarFrases;
 const { SITUACOES } = Conta;
 const { Sincronizacao, ChaveDaOpenAI, Historico } = PerpetualMiner;
 const { mostrarToastDeSucesso, abrirModal, montarAviso, criar } = PerpetualMiner.Veio;
@@ -31,7 +32,6 @@ const GOOGLE_USERINFO   = 'https://www.googleapis.com/oauth2/v1/userinfo?alt=jso
 const FIREBASE_API_KEY  = Sincronizacao.CHAVE_DA_API;
 const FB_SIGNIN_URL     = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=${FIREBASE_API_KEY}`;
 
-const FONTE_MANUAL    = 'manual';
 const FONTE_IMPORTADO = 'importado';
 
 const STATUS_ENVIADA_AO_ANKI = 'exported';
@@ -438,7 +438,16 @@ function setupListeners() {
   document.getElementById('sel-pagina').addEventListener('change', selecionarPagina);
   document.getElementById('btn-sel-todas').addEventListener('click', selecionarTodasVisiveis);
   document.getElementById('btn-desmarcar-todas').addEventListener('click', desmarcarTodas);
-  configurarMinerarFrases();
+  MinerarFrases.iniciar({
+    frases: () => todasFrases,
+    sincronizacao: () => sincronizacao,
+    abrirModal: abrirModalDeFrases,
+    avisar: mostrarAvisoNaArea,
+    tirarAviso: tirarAvisoDaArea,
+    falhaNaNuvem: mostrarFalhaNaNuvem,
+    sincronizado: mostrarSincronizado,
+    lerLinhaDoTxt,
+  });
 
   configurarModaisDeFrases();
 
@@ -646,7 +655,7 @@ function montarVazio() {
     const MARCA = '\u0000';
     const [antes, depois] = textoDaVoz('PAI-02.texto', { atalho: MARCA }).split(MARCA);
     texto.append(antes, ...atalhoDoVazio(), depois);
-    acoes.append(botaoDoVazio(textoDaVoz('PAI-02.acao'), () => abrirMinerarFrases('colar'), 'veio-botao--primario'));
+    acoes.append(botaoDoVazio(textoDaVoz('PAI-02.acao'), () => MinerarFrases.abrir('colar'), 'veio-botao--primario'));
     vazio.append(criar('p', 'veio-vazio__titulo', textoDaVoz('PAI-02.titulo')), texto);
   } else if (buscaAtual.trim()) {
     vazio.append(criar('p', 'veio-vazio__titulo', textoDaVoz('PAI-04.texto', { termo: buscaAtual.trim() })));
@@ -1183,6 +1192,7 @@ function abrirModalDeFrases(id, aoFechar) {
   modalAberto = abrirModal(document.getElementById(id), {
     aoFechar: () => { modalAberto = null; aoFechar(); },
   });
+  return modalAberto;
 }
 
 function salvarContexto() {
@@ -1232,321 +1242,6 @@ function salvarContextoDeUmaFrase(id, { fonte, titulo, detalhe }) {
     aplicarFiltro();
   });
   salvarFraseFirestore(todasFrases[idx]);
-}
-
-let mineracaoEmCurso = false;
-let modalDeMinerar = null;
-const idsMineradosForaDaNuvem = new Set();
-
-function configurarMinerarFrases() {
-  const botao = document.getElementById('btn-minerar-frases');
-  const menu  = document.getElementById('menu-minerar');
-
-  botao.addEventListener('click', () => {
-    if (menuDeMinerarAberto()) fecharMenuDeMinerar();
-    else                       abrirMenuDeMinerar(0);
-  });
-  botao.addEventListener('keydown', (e) => {
-    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
-    e.preventDefault();
-    abrirMenuDeMinerar(e.key === 'ArrowUp' ? -1 : 0);
-  });
-  menu.addEventListener('click', (e) => {
-    const item = e.target.closest('[data-minerar]');
-    if (!item) return;
-    fecharMenuDeMinerar();
-    escolherModoDeMinerar(item.dataset.minerar);
-  });
-  menu.addEventListener('keydown', aoTeclarNoMenuDeMinerar);
-  menu.addEventListener('focusout', (e) => {
-    if (e.relatedTarget && !e.relatedTarget.closest('.minerar-menu')) fecharMenuDeMinerar({ devolverFoco: false });
-  });
-  document.addEventListener('click', (e) => {
-    if (menuDeMinerarAberto() && !e.target.closest('.minerar-menu')) fecharMenuDeMinerar({ devolverFoco: false });
-  });
-
-  for (const radio of document.querySelectorAll('input[name="aba-minerar"]')) {
-    radio.addEventListener('change', () => mostrarAbaDeMinerar(radio.value));
-  }
-  document.getElementById('btn-minerar-foto').addEventListener('click', () => {
-    modalDeMinerar?.fechar();
-    abrirFoto();
-  });
-
-  const campo = document.getElementById('minerar-frases');
-  campo.placeholder = textoDaVoz('ADD-02');
-  document.getElementById('minerar-fonte').placeholder  = textoDaVoz('ADD-12.exemploFonte');
-  document.getElementById('minerar-titulo').placeholder = textoDaVoz('ADD-12.exemploTitulo');
-  campo.addEventListener('input', () => {
-    atualizarContagemDeColar();
-    if (linhasColadas().length > 0) mostrarErroDeColar(null);
-  });
-  document.getElementById('minerar-colar').addEventListener('submit', (e) => {
-    e.preventDefault();
-    minerarColadas();
-  });
-
-  const escolha = document.getElementById('minerar-arquivo-escolha');
-  document.getElementById('btn-minerar-escolher').addEventListener('click', () => escolha.click());
-  escolha.addEventListener('change', () => {
-    const arquivo = escolha.files?.[0];
-    escolha.value = '';
-    if (arquivo) importarArquivoTxt(arquivo);
-  });
-}
-
-function itensDoMenuDeMinerar() {
-  return [...document.querySelectorAll('#menu-minerar [role="menuitem"]')];
-}
-
-function menuDeMinerarAberto() {
-  return !document.getElementById('menu-minerar').hidden;
-}
-
-function abrirMenuDeMinerar(indice) {
-  document.getElementById('menu-minerar').hidden = false;
-  document.getElementById('btn-minerar-frases').setAttribute('aria-expanded', 'true');
-  itensDoMenuDeMinerar().at(indice).focus();
-}
-
-function fecharMenuDeMinerar({ devolverFoco = true } = {}) {
-  document.getElementById('menu-minerar').hidden = true;
-  const botao = document.getElementById('btn-minerar-frases');
-  botao.setAttribute('aria-expanded', 'false');
-  if (devolverFoco) botao.focus();
-}
-
-function aoTeclarNoMenuDeMinerar(e) {
-  const itens = itensDoMenuDeMinerar();
-  const atual = itens.indexOf(document.activeElement);
-  const passos = { ArrowDown: 1, ArrowUp: -1 };
-  if (e.key in passos) {
-    e.preventDefault();
-    itens[(atual + passos[e.key] + itens.length) % itens.length].focus();
-  } else if (e.key === 'Home' || e.key === 'End') {
-    e.preventDefault();
-    itens.at(e.key === 'Home' ? 0 : -1).focus();
-  } else if (e.key === 'Escape') {
-    e.preventDefault();
-    fecharMenuDeMinerar();
-  } else if (e.key === 'Tab') {
-    fecharMenuDeMinerar({ devolverFoco: false });
-  }
-}
-
-function escolherModoDeMinerar(modo) {
-  if (modo === 'foto') abrirFoto();
-  else                 abrirMinerarFrases(modo);
-}
-
-function abrirFoto() {
-  chrome.tabs.create({ url: chrome.runtime.getURL('bookreader/bookreader.html') });
-}
-
-function abrirMinerarFrases(aba) {
-  if (mineracaoEmCurso) return;
-  document.getElementById('minerar-frases').value = '';
-  document.getElementById('minerar-fonte').value  = '';
-  document.getElementById('minerar-titulo').value = '';
-  mostrarErroDeColar(null);
-  atualizarContagemDeColar();
-  mostrarArquivoEscolhido(null);
-  document.getElementById('minerar-edicao').hidden    = false;
-  document.getElementById('minerar-progresso').hidden = true;
-  mostrarAbaDeMinerar(aba);
-
-  modalAberto = abrirModal(document.getElementById('modal-minerar'), {
-    aoFechar: () => { modalAberto = null; modalDeMinerar = null; },
-  });
-  modalDeMinerar = modalAberto;
-  focarAbaDeMinerar(aba);
-}
-
-function mostrarAbaDeMinerar(aba) {
-  document.querySelector(`input[name="aba-minerar"][value="${aba}"]`).checked = true;
-  document.getElementById('minerar-colar').hidden   = aba !== 'colar';
-  document.getElementById('minerar-arquivo').hidden = aba !== 'arquivo';
-}
-
-function focarAbaDeMinerar(aba) {
-  document.getElementById(aba === 'colar' ? 'minerar-frases' : 'btn-minerar-escolher').focus();
-}
-
-function mostrarProgressoDeMinerar(feitas, total) {
-  document.getElementById('minerar-edicao').hidden    = true;
-  document.getElementById('minerar-progresso').hidden = false;
-  document.getElementById('minerar-progresso-rotulo').textContent = textoDaVoz('ADD-04', { n: feitas, total });
-  const barra = document.querySelector('#minerar-progresso .minerar-progresso__barra');
-  barra.setAttribute('aria-valuenow', String(feitas));
-  barra.setAttribute('aria-valuemax', String(total));
-  barra.firstElementChild.style.width = `${total ? (feitas / total) * 100 : 0}%`;
-}
-
-function linhasDoTexto(texto) {
-  return texto.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
-}
-
-function linhasColadas() {
-  return linhasDoTexto(document.getElementById('minerar-frases').value);
-}
-
-function atualizarContagemDeColar() {
-  const n = linhasColadas().length;
-  document.getElementById('minerar-contagem').textContent = textoDaVoz('PAI-05', { n });
-  document.getElementById('btn-minerar-colar').textContent = n
-    ? textoDaVoz('ADD-12.minerar', { n })
-    : textoDaVoz('ADD-01.botao');
-}
-
-function mostrarErroDeColar(mensagem) {
-  const campo = document.getElementById('minerar-frases');
-  const erro  = document.getElementById('minerar-frases-erro');
-  erro.textContent = mensagem || '';
-  erro.hidden = !mensagem;
-  if (mensagem) campo.setAttribute('aria-invalid', 'true');
-  else          campo.removeAttribute('aria-invalid');
-}
-
-async function umaMineracaoPorVez(minerar) {
-  if (mineracaoEmCurso) return;
-  mineracaoEmCurso = true;
-  try { await minerar(); }
-  finally { mineracaoEmCurso = false; }
-}
-
-function minerarColadas() {
-  return umaMineracaoPorVez(minerarColadasAgora);
-}
-
-async function minerarColadasAgora() {
-  const linhas = linhasColadas();
-  if (linhas.length === 0) {
-    mostrarErroDeColar(textoDaVoz('ADD-03'));
-    document.getElementById('minerar-frases').focus();
-    return;
-  }
-  const fonte  = document.getElementById('minerar-fonte').value.trim() || FONTE_MANUAL;
-  const titulo = document.getElementById('minerar-titulo').value.trim();
-  const resultado = await minerarEmSequencia(linhas.map(texto => ({ texto, contexto: { fonte, titulo, detalhe: '' } })));
-  concluirMineracao(resultado, n => textoDaVoz('ADD-05', { n }));
-}
-
-function mostrarArquivoEscolhido(nome) {
-  document.getElementById('minerar-arquivo-nome').textContent = nome || textoDaVoz('ADD-12.arquivo');
-  document.getElementById('btn-minerar-escolher').textContent =
-    textoDaVoz(nome ? 'ADD-12.escolherOutro' : 'ADD-12.escolher');
-  document.getElementById('btn-minerar-arquivo-sair').textContent = textoDaVoz('ADD-12.cancelar');
-  mostrarFimDoArquivo({});
-}
-
-function mostrarFimDoArquivo({ erro, resultado }) {
-  const noErro      = document.getElementById('minerar-arquivo-erro');
-  const noResultado = document.getElementById('minerar-arquivo-resultado');
-  noErro.textContent      = erro || '';
-  noErro.hidden           = !erro;
-  noResultado.textContent = resultado || '';
-  noResultado.hidden      = !resultado;
-  if (resultado) document.getElementById('btn-minerar-arquivo-sair').textContent = textoDaVoz('ADD-12.fechar');
-}
-
-function importarArquivoTxt(arquivo) {
-  return umaMineracaoPorVez(() => importarArquivoTxtAgora(arquivo));
-}
-
-async function importarArquivoTxtAgora(arquivo) {
-  mostrarArquivoEscolhido(arquivo.name);
-
-  let conteudo;
-  try { conteudo = await lerArquivoDeTexto(arquivo); }
-  catch { mostrarFimDoArquivo({ erro: textoDaVoz('ADD-07') }); return; }
-
-  const linhas = linhasDoTexto(conteudo);
-  if (linhas.length === 0) { mostrarFimDoArquivo({ erro: textoDaVoz('ADD-08') }); return; }
-
-  const jaExistem = new Set(todasFrases.map(f => chaveDeRepetida(f.texto)));
-  const novas = [];
-  let duplicadas = 0;
-  let invalidas  = 0;
-  for (const linha of linhas) {
-    const lida = lerLinhaDoTxt(linha);
-    if (!lida) { invalidas++; continue; }
-    const chave = chaveDeRepetida(lida.texto);
-    if (jaExistem.has(chave)) { duplicadas++; continue; }
-    jaExistem.add(chave);
-    novas.push(lida);
-  }
-
-  if (novas.length === 0) {
-    const parte = !invalidas ? 'soRepetidas' : !duplicadas ? 'soIlegiveis' : 'ambas';
-    mostrarFimDoArquivo({ resultado: textoDaVoz(`ADD-09.${parte}`, { duplicadas, invalidas }) });
-    return;
-  }
-
-  const resultado = await minerarEmSequencia(novas);
-  concluirMineracao(resultado, n => (duplicadas > 0
-    ? textoDaVoz('ADD-10', { n, duplicadas })
-    : textoDaVoz('ADD-05', { n })));
-}
-
-async function lerArquivoDeTexto(arquivo) {
-  const bytes = new Uint8Array(await arquivo.arrayBuffer());
-  const texto = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-  if (texto.includes('\u0000')) throw new Error('arquivo binário');
-  return texto;
-}
-
-function chaveDeRepetida(texto) {
-  return texto.replace(/\s+/g, ' ').trim().toLowerCase();
-}
-
-async function minerarEmSequencia(frases) {
-  const mineradas = [];
-  let erroLocal = null;
-  mostrarProgressoDeMinerar(0, frases.length);
-  try {
-    for (const { texto, contexto, palavras } of frases) {
-      const resposta = await Mineracao.gravar({ texto, contexto, palavras, semNuvem: true });
-      if (!resposta.ok) throw new Error(resposta.error);
-      mineradas.push(resposta.frase);
-      mostrarProgressoDeMinerar(mineradas.length, frases.length);
-    }
-  } catch (err) {
-    erroLocal = err;
-  }
-  const erroNaNuvem = await sincronizacao.subirFrases(mineradas);
-  return { mineradas, erroLocal, erroNaNuvem };
-}
-
-function concluirMineracao({ mineradas, erroLocal, erroNaNuvem }, textoDoSucesso) {
-  modalDeMinerar?.fechar();
-  if (erroLocal) mostrarAvisoNaArea('minerar', { texto: textoDaVoz('GLB-01'), erro: erroLocal });
-  if (erroNaNuvem) {
-    mineradas.forEach(f => idsMineradosForaDaNuvem.add(f.id));
-    mostrarAvisoForaDaNuvem(erroNaNuvem);
-    return;
-  }
-  if (!erroLocal && mineradas.length > 0) mostrarToastDeSucesso(textoDoSucesso(mineradas.length));
-}
-
-function mostrarAvisoForaDaNuvem(erro) {
-  mostrarFalhaNaNuvem(erro);
-  mostrarAvisoNaArea('fora-da-nuvem', {
-    texto: textoDaVoz('ADD-06.aviso', { n: idsMineradosForaDaNuvem.size }),
-    acao: { rotulo: textoDaVoz('ADD-06.tentarDeNovo'), aoUsar: tentarSubirDeNovo },
-    aoFechar: () => idsMineradosForaDaNuvem.clear(),
-  });
-}
-
-async function tentarSubirDeNovo() {
-  const frases = todasFrases.filter(f => idsMineradosForaDaNuvem.has(f.id));
-  const erro = await sincronizacao.subirFrases(frases);
-  if (erro) {
-    mostrarAvisoForaDaNuvem(erro);
-    return;
-  }
-  idsMineradosForaDaNuvem.clear();
-  tirarAvisoDaArea('fora-da-nuvem');
-  mostrarSincronizado();
 }
 
 function palavrasDoTxt(frase) {
