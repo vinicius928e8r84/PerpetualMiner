@@ -126,6 +126,7 @@
   <script src="/lib/abridor.js">
   <script src="/lib/abrir-o-anki.js">
   <script src="/lib/historico.js">
+  <script src="/lib/nuvem-do-firestore.js">
   <script src="/lib/sincronizacao.js">
   <script src="painel-shell.js">
   <script src="painel-conta.js">
@@ -143,4 +144,3 @@
   <script src="painel-boas-vindas-nivel.js">
   <script src="/lib/envio-gravado.js">
   <script src="painel-envio-estado.js">
-  <script src="painel-boas-vindas-envio.js">
