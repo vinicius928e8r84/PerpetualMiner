@@ -5,7 +5,7 @@ import re
 from collections import namedtuple
 
 from . import openai_api
-from .chaves import OutraContaNaoEnviada, LegadoNaoVinculado
+from .chaves import LegadoNaoVinculado, OutraContaNaoEnviada, Posse
 from .nuvem_da_chave import NuvemDaChave, NuvemIndisponivel
 
 _FORMA_DA_CHAVE = re.compile(r"^[A-Za-z0-9._\-]{8,256}$")
@@ -88,7 +88,7 @@ def vincular_legado_da_openai(conexao, corpo):
     versao, chave, conta, em = _versao_da_chave(corpo), corpo.get('chave'), corpo.get('conta'), corpo.get('em')
     if versao is None or not _legado_bem_formado(chave, conta, em):
         return 400, {'error': 'invalid_request'}
-    if not conexao.cofre.vincular_legado('openai', chave, conta, em, versao):
+    if not conexao.cofre.vincular_legado('openai', Posse(chave, conta, em), versao):
         return 409, {'error': 'legacy_key_mismatch'}
     return 200, {'ok': True}
 
