@@ -122,7 +122,7 @@ test.fixme('passo 4, Abrir o Anki sozinho depois de Agora não', async ({ page, 
   await foto(page, 'passo-4-abridor-agora-nao.png');
 });
 
-const AGUARDA_O_DONO = 'a referência visual do passo da IA espera a aprovação do dono (regra aprovacao-visual)';
+const AGUARDA_O_DONO = 'a referência visual do passo da IA espera a aprovação do dono';
 
 test('passo 5 sem chave: o card IA dos cartões, com as duas entradas lado a lado', async ({ page, extensao }) => {
   test.fixme(true, AGUARDA_O_DONO);

@@ -3,7 +3,7 @@
 const { test, expect } = require('../fixtures');
 const { INGLESAS, enviosCriados } = require('../apoio-do-envio');
 
-const AGUARDA_O_DONO = 'a referência visual espera a aprovação do dono (regra aprovacao-visual)';
+const AGUARDA_O_DONO = 'a referência visual espera a aprovação do dono';
 const SO_O_INGLES = { en: { enabled: true, dailyLimit: 20 }, ru: { enabled: false, dailyLimit: 20 } };
 
 async function abrir(page, extensao, { frases = [], largura = 1100, tema } = {}) {
