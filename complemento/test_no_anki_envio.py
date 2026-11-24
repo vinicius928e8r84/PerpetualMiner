@@ -18,6 +18,7 @@ from complemento.test_pareamento_de_mentira import ao_carregar_pareado, pedir_co
 from complemento.test_colecao_em_memoria import DESCRICAO
 from complemento.test_imagens_de_mentira import OpenverseDeMentira, png_de
 from complemento.test_no_anki import AnkiComColecaoDeMentira, SemRegistroReal, ler_pelo_http
+from complemento.servicos_de_fora import ServicosDeFora
 
 
 def setUpModule():
@@ -36,8 +37,7 @@ class EnvioGravadoNoAnki(SemRegistroReal, unittest.TestCase):
         with tempfile.TemporaryDirectory() as pasta, OpenAIDeMentira() as openai, VozDeMentira() as voz, \
                 OpenverseDeMentira({"keep going": ["rua-1"]}) as openverse:
             conexao = ao_carregar_pareado(
-                anki, pasta, porta=0, abridor=None, ao_sincronizar=lambda colecao: None, openai_base=openai.base,
-                openverse_base=openverse.base, voz_base=voz.base)
+                anki, pasta, porta=0, abridor=None, ao_sincronizar=lambda colecao: None, servicos=ServicosDeFora(openai=openai.base, openverse=openverse.base, voz=voz.base))
             try:
                 conexao.cofre.guardar("openai", "sk-proj-chave-do-anki-0000")
                 job = "11111111-2222-4333-8444-555555555555"

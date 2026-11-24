@@ -22,6 +22,7 @@ from complemento.test_atualizacao import AnkiWebDeMentira
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria
 from complemento.test_abridor import Pastas, RegistroDeMentira, abridor_do_mac, conversar
 from complemento.test_openai_de_mentira import OpenAIDeMentira
+from complemento.servicos_de_fora import ServicosDeFora
 
 ORIGEM = configuracao.ORIGENS_ACEITAS[0]
 
@@ -138,12 +139,12 @@ class AoCarregarNoAnki(unittest.TestCase):
     def test_a_chave_que_a_extensao_manda_fica_em_user_files_chaves_e_a_conexao_a_reconhece_ao_reiniciar(self):
         chave = "sk-proj-DeTesteDoInicio0123456789-f00d"
         with tempfile.TemporaryDirectory() as pasta, OpenAIDeMentira("aceita") as openai:
-            conexao = iniciar_pareado(pasta, lambda: None, porta=0, openai_base=openai.base, abridor=None)
+            conexao = iniciar_pareado(pasta, lambda: None, porta=0, servicos=ServicosDeFora(openai=openai.base), abridor=None)
             try:
                 enviada = pedir_a_chave(conexao.porta, chave)
             finally:
                 parar(conexao)
-            conexao = iniciar_pareado(pasta, lambda: None, porta=0, openai_base=openai.base, abridor=None)
+            conexao = iniciar_pareado(pasta, lambda: None, porta=0, servicos=ServicosDeFora(openai=openai.base), abridor=None)
             try:
                 estado = estado_da_ia(conexao.porta)
             finally:
