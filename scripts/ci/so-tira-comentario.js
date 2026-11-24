@@ -136,9 +136,17 @@ function fichaDe(arquivo, fonte) {
 
 const igual = (a, b) => a.length === b.length && a.every((valor, i) => valor === b[i]);
 
+const MARCA_DO_FAKE_REDUZIDA = '/** @estado-guardado';
+const MARCA_DE_TESTE_REDUZIDA = /^\/\/ Exceção de teste: (?:chrome-nativo|catálogo|componente-base)(?: \(docs\/testes\.md\)\.)?$|^\/\/ Exceção de teste: sem-estado-guardado$/;
+
+function ehMarcaReduzida(texto, candidato) {
+  if (texto === MARCA_DO_FAKE_REDUZIDA) return candidato.includes('@estado-guardado');
+  return MARCA_DE_TESTE_REDUZIDA.test(texto) && candidato.includes('Exceção de teste');
+}
+
 function encurtaAlgumDoAntes(antes, texto) {
   const aparado = texto.trimEnd();
-  const onde = antes.findIndex(candidato => candidato.startsWith(aparado));
+  const onde = antes.findIndex(candidato => candidato.startsWith(aparado) || ehMarcaReduzida(aparado, candidato));
   if (onde < 0) return false;
   antes.splice(onde, 1);
   return true;

@@ -28,6 +28,9 @@ recusa('lib/a.js', juntar('const a = 1;', '// x'), juntar('const a = 1;', '// y'
 passa('lib/a.py', juntar('import os  # noqa: F401  (usado por fora)', 'x = 1'), juntar('import os  # noqa: F401', 'x = 1'), 'Python: a diretiva fica e a prosa atrás dela sai');
 passa('lib/a.js', juntar('// a b c', 'f();'), juntar('// a b', 'f();'), 'JS: um comentário encurtado vale como tirar texto');
 recusa('lib/a.js', juntar('const a = 1;', '// x', '// y'), juntar('const a = 1;', '// z'), /comentário que o antes não tinha/, 'JS: um comentário novo no lugar de dois');
+passa('e2e/tests/a.spec.js', juntar('// Exceção de teste (o aviso nativo do Chrome): o aviso é do Chrome,', '// e o Playwright não alcança.', 'f();'), juntar('// Exceção de teste: chrome-nativo (docs/testes.md).', 'f();'), 'JS: a marca de exceção de teste reduzida ao nome');
+passa('e2e/fakes/a.js', juntar('const o = {', '  /**', '   * @estado-guardado A chave da conta,', '   * em objeto.', '   */', '  k: 1,', '};'), juntar('const o = {', '  /** @estado-guardado */', '  k: 1,', '};'), 'JS: o JSDoc do leitor reduzido à marca');
+recusa('lib/a.js', juntar('// uma explicação bem longa de outra coisa qualquer que não tem nada a ver com testes nem com o Chrome', 'f();'), juntar('// Exceção de teste: chrome-nativo (docs/testes.md).', 'f();'), /comentário que o antes não tinha/, 'JS: a marca reduzida só vale onde o antes tinha uma exceção de teste');
 recusa('lib/a.js', juntar('// x', 'const a = 1;'), juntar('const a = 1;', '', 'const b = 2;'), /o código mudou/, 'JS: um token a mais');
 recusa('lib/a.js', juntar('function f() {', '  return /* a', '  */ 1;', '}'), juntar('function f() {', '  return 1;', '}'), /o código mudou/, 'JS: a quebra de linha que o bloco carregava muda a leitura de return');
 recusa('lib/a.js', juntar('// x', 'const a = "x;'), juntar('const a = "x;'), /não consegui ler/, 'JS: o que o analisador não lê não passa');
