@@ -57,7 +57,9 @@ recusa('lib/a.md', 'a', 'b', /não sabe ler/, 'um tipo de arquivo que a conferê
 prova(confereALinhaDeBase('{"sem-comentario":{"a.js":3,"b.js":2},"x":{"a":1}}', '{"sem-comentario":{"a.js":1},"x":{"a":1}}'), null, 'a catraca desce e um arquivo sai');
 prova(/não desceu/.test(confereALinhaDeBase('{"sem-comentario":{"a.js":3}}', '{"sem-comentario":{"a.js":4}}')), true, 'um teto que sobe não vale');
 prova(/não desceu/.test(confereALinhaDeBase('{"sem-comentario":{"a.js":3}}', '{"sem-comentario":{"a.js":3,"b.js":1}}')), true, 'um arquivo novo na lista não vale');
-prova(/não é a sem-comentario/.test(confereALinhaDeBase('{"sem-comentario":{},"x":{"a":1}}', '{"sem-comentario":{},"x":{"a":0}}')), true, 'outra seção que mudou não vale');
+prova(confereALinhaDeBase('{"sem-comentario":{},"x":{"a":1,"b":2}}', '{"sem-comentario":{},"x":{"a":0}}'), null, 'outra seção que desce ou perde uma entrada vale');
+prova(/x\/a não desceu/.test(confereALinhaDeBase('{"x":{"a":1}}', '{"x":{"a":2}}')), true, 'outra seção que sobe não vale');
+prova(/x\/c não desceu/.test(confereALinhaDeBase('{"x":{"a":1}}', '{"x":{"a":1,"c":1}}')), true, 'outra seção com entrada nova não vale');
 
 const { raiz, git, gravar, commit } = raizTemporaria();
 const mudanca = (nome, arquivos, ...esperado) => {

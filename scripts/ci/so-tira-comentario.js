@@ -161,6 +161,20 @@ function confereOArquivo(arquivo, antes, depois) {
   return null;
 }
 
+function subiuEm(antes, depois, caminho) {
+  for (const [chave, valor] of Object.entries(depois)) {
+    const onde = `${caminho}/${chave}`;
+    const anterior = antes ? antes[chave] : undefined;
+    if (typeof valor === 'number') {
+      if (!(valor <= anterior)) return onde;
+    } else if (valor !== null && typeof valor === 'object') {
+      const dentro = subiuEm(anterior, valor, onde);
+      if (dentro) return dentro;
+    } else if (JSON.stringify(valor) !== JSON.stringify(anterior)) return onde;
+  }
+  return null;
+}
+
 function confereALinhaDeBase(antes, depois) {
   let a;
   let d;
@@ -170,11 +184,8 @@ function confereALinhaDeBase(antes, depois) {
   } catch {
     return `${LINHA_DE_BASE}: não é um JSON que eu consiga ler`;
   }
-  const { [SECAO_DA_CATRACA]: catracaAntes = {}, ...restoAntes } = a;
-  const { [SECAO_DA_CATRACA]: catracaDepois = {}, ...restoDepois } = d;
-  if (JSON.stringify(restoAntes) !== JSON.stringify(restoDepois)) return `${LINHA_DE_BASE}: mudou uma seção que não é a ${SECAO_DA_CATRACA}`;
-  const subiu = Object.entries(catracaDepois).find(([arquivo, teto]) => !(teto <= catracaAntes[arquivo]));
-  return subiu ? `${LINHA_DE_BASE}: o teto de ${subiu[0]} não desceu` : null;
+  const subiu = subiuEm(a, d, '');
+  return subiu ? `${LINHA_DE_BASE}: ${subiu.slice(1)} não desceu (a linha de base só pode descer)` : null;
 }
 
 function mudancas(raiz, ancestral, head) {
