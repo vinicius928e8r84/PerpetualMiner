@@ -31,6 +31,7 @@ const DIRETIVAS = [
   /^istanbul\s+ignore\s+(?:next|if|else|file)$/,
   /^c8\s+ignore\s+(?:next|start|stop|file)(?:\s+\d+)?$/,
   /^prettier-ignore(?:-start|-end)?$/,
+  /^shellcheck\s+(?:source|disable|enable|shell)=[\w,./-]+$/,
 ];
 const DECLARACAO_DE_CODIFICACAO = /^(?:-\*-\s*coding:\s*[\w.-]+\s*-\*-|coding[:=]\s*[\w.-]+)$/;
 const LINHAS_DA_LICENCA = [

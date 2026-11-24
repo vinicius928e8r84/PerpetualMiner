@@ -25,6 +25,8 @@ passa('lib/a.js', juntar('#!/usr/bin/env node', '// x', 'f();'), juntar('#!/usr/
 recusa('lib/a.js', juntar('// x', 'const a = 1;'), juntar('const a = 2;'), /o código mudou/, 'JS: o valor mudou');
 recusa('lib/a.js', juntar('// x', 'const a = "http://y";'), juntar('const a = "http:";'), /o código mudou/, 'JS: o texto de uma string mudou');
 recusa('lib/a.js', juntar('const a = 1;', '// x'), juntar('const a = 1;', '// y', '// z'), /nenhum comentário a menos/, 'JS: comentário que só trocou ou cresceu');
+passa('lib/a.py', juntar('import os  # noqa: F401  (usado por fora)', 'x = 1'), juntar('import os  # noqa: F401', 'x = 1'), 'Python: a diretiva fica e a prosa atrás dela sai');
+passa('lib/a.js', juntar('// a b c', 'f();'), juntar('// a b', 'f();'), 'JS: um comentário encurtado vale como tirar texto');
 recusa('lib/a.js', juntar('const a = 1;', '// x', '// y'), juntar('const a = 1;', '// z'), /comentário que o antes não tinha/, 'JS: um comentário novo no lugar de dois');
 recusa('lib/a.js', juntar('// x', 'const a = 1;'), juntar('const a = 1;', '', 'const b = 2;'), /o código mudou/, 'JS: um token a mais');
 recusa('lib/a.js', juntar('function f() {', '  return /* a', '  */ 1;', '}'), juntar('function f() {', '  return 1;', '}'), /o código mudou/, 'JS: a quebra de linha que o bloco carregava muda a leitura de return');

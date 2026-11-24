@@ -112,22 +112,27 @@ function fichaDe(arquivo, fonte) {
 
 const igual = (a, b) => a.length === b.length && a.every((valor, i) => valor === b[i]);
 
-function sobramSoDoAntes(antes, depois) {
-  const restantes = new Map();
-  for (const texto of antes) restantes.set(texto, (restantes.get(texto) || 0) + 1);
-  for (const texto of depois) {
-    if (!restantes.get(texto)) return false;
-    restantes.set(texto, restantes.get(texto) - 1);
-  }
+function encurtaAlgumDoAntes(antes, texto) {
+  const aparado = texto.trimEnd();
+  const onde = antes.findIndex(candidato => candidato.startsWith(aparado));
+  if (onde < 0) return false;
+  antes.splice(onde, 1);
   return true;
 }
+
+function sobramSoDoAntes(antes, depois) {
+  const restantes = [...antes];
+  return depois.every(texto => encurtaAlgumDoAntes(restantes, texto));
+}
+
+const tamanhoDos = comentarios => comentarios.reduce((soma, texto) => soma + texto.length, 0);
 
 function confereOArquivo(arquivo, antes, depois) {
   const a = fichaDe(arquivo, antes);
   const d = fichaDe(arquivo, depois);
   if (a.erro || d.erro) return `${arquivo}: não consegui ler (${a.erro || d.erro})`;
   if (!igual(a.codigo, d.codigo)) return `${arquivo}: o código mudou (a conferência compara token a token, sem os comentários)`;
-  if (d.comentarios.length >= a.comentarios.length) return `${arquivo}: nenhum comentário a menos (${a.comentarios.length} antes, ${d.comentarios.length} depois)`;
+  if (tamanhoDos(d.comentarios) >= tamanhoDos(a.comentarios)) return `${arquivo}: nenhum comentário a menos (${a.comentarios.length} antes, ${d.comentarios.length} depois)`;
   if (!sobramSoDoAntes(a.comentarios, d.comentarios)) return `${arquivo}: o depois tem um comentário que o antes não tinha`;
   return null;
 }

@@ -38,8 +38,8 @@
   },
   "sem-comentario-novo": {},
   "sem-comentario": {
-    ".agents/skills/verify-perpetualminer/scripts/cleanup.sh": 2,
-    ".agents/skills/verify-perpetualminer/scripts/drive.sh": 3,
+    ".agents/skills/verify-perpetualminer/scripts/cleanup.sh": 1,
+    ".agents/skills/verify-perpetualminer/scripts/drive.sh": 2,
     ".agents/skills/verify-perpetualminer/scripts/lib.sh": 7,
     ".agents/skills/verify-perpetualminer/scripts/test_helpers.sh": 14,
     ".github/workflows/testes.yml": 6,
