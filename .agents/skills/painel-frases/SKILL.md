@@ -43,7 +43,7 @@ the field keeps its pre-glossary name), and `exportadaTxt` is **Exportada** (it 
 writes the Envio's mark, a phrase that has both says Enviada ao Anki, and “Ocultar enviadas e exportadas” hides either.
 For the cloud merge of these marks, see the `carregar` contract in `lib/sincronizacao.js`.
 
-### Minerar frases (`painel.js`, ADD-01…12)
+### Minerar frases (`painel-minerar-frases.js`, ADD-01…12)
 
 The header's **Minerar frases ▾** is a menu button (`aria-haspopup="menu"`): Colar · Arquivo .txt · Foto, each with its
 ADD-11 line. Arrows (wrapping), Home/End move inside it; Esc returns focus to the button; Tab and a click outside
