@@ -28,8 +28,6 @@ export PM_EVIDENCE_DIR="$RUN/evidence" TMPDIR="$RUN/tmp" PLAYWRIGHT_JSON_OUTPUT_
   echo "args: $*"
 } > "$RUN/evidence/run.log"
 
-# The job runs in its own process group (job control), so cleanup.sh can stop it even if this script dies first.
-# --output is outside evidence/: Playwright empties it at the start of every run.
 set -m
 ( sh -c 'ps -o pgid= -p $$' | tr -d ' ' > "$RUN/tmp/pgid"
   $LIMITADOR npx --no-install playwright test "$@" --workers="${PM_WORKERS:-2}" --reporter=list,json --output="$RUN/pw-output" 2>&1

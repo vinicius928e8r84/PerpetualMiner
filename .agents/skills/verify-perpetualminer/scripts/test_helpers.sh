@@ -24,13 +24,11 @@ trap 'for p in "${extras[@]:-}"; do [ -n "$p" ] && kill "$p" 2>/dev/null; done; 
 passou() { echo "ok    $1"; }
 falhou() { echo "FAIL  $1"; falhas=$((falhas + 1)); }
 
-# 1. Bad run IDs are refused by both scripts.
 for id in '../escape' 'a/b' '.' '..' '-rf' '.hidden' ''; do
   "$SCRIPTS/cleanup.sh" "$id" >/dev/null 2>&1 && falhou "cleanup accepted run-id '$id'" || passou "cleanup refuses run-id '$id'"
   "$SCRIPTS/drive.sh" "$id" --list >/dev/null 2>&1 && falhou "drive accepted run-id '$id'" || passou "drive refuses run-id '$id'"
 done
 
-# 2. A run dir that is a symlink to a directory outside the root: refused, and the outside directory is untouched.
 vitima="$TMP/vitima"; mkdir -p "$vitima/tmp" "$vitima/pw-output" "$vitima/evidence"
 echo keep > "$vitima/tmp/a"; echo keep > "$vitima/pw-output/b"; echo keep > "$vitima/evidence/c"
 ln -s "$vitima" "$PM_VERIFY_ROOT/fora"
@@ -39,14 +37,11 @@ ln -s "$vitima" "$PM_VERIFY_ROOT/fora"
 "$SCRIPTS/drive.sh" fora --list >/dev/null 2>&1 && falhou "drive accepted a symlinked run dir" || passou "drive refuses a symlinked run dir"
 [ ! -e "$vitima/drive.pid" ] && [ ! -e "$vitima/evidence/run.log" ] && passou "outside directory untouched by drive" || falhou "drive wrote OUTSIDE the verification root"
 
-# 3. A symlinked tmp inside a real run dir: refused, target intact.
 mkdir -p "$PM_VERIFY_ROOT/ligado/evidence" "$TMP/alvo"; echo keep > "$TMP/alvo/x"
 ln -s "$TMP/alvo" "$PM_VERIFY_ROOT/ligado/tmp"
 "$SCRIPTS/cleanup.sh" ligado >/dev/null 2>&1 && falhou "cleanup accepted a symlinked tmp" || passou "cleanup refuses a symlinked tmp"
 [ -f "$TMP/alvo/x" ] && passou "symlink target intact" || falhou "symlink target deleted"
 
-# 4. A drive.pid that is not a real drive.sh record never gets a process killed: pid only, wrong start time, right
-#    start time but another command, and a fully forged record whose command merely mentions drive.sh and the run id.
 mkdir -p "$PM_VERIFY_ROOT/velho/evidence" "$PM_VERIFY_ROOT/velho/tmp"
 inicio() { ps -o lstart= -p "$1" | tr -s ' ' | sed 's/^ //; s/ $//'; }
 sleep 300 & p1=$!; extras+=("$p1")
@@ -67,7 +62,6 @@ sleep 0.3
 "$SCRIPTS/cleanup.sh" velho >/dev/null 2>&1
 vivo "$p4" && passou "a command that only mentions drive.sh and the run id is not the owner" || falhou "cleanup killed a command that merely mentions drive.sh"
 
-# 5. Evidence is never overwritten: a used run id is refused, a file symlink inside evidence/ is never written through.
 mkdir -p "$PM_VERIFY_ROOT/usado/evidence"; echo FIRST_PROOF > "$PM_VERIFY_ROOT/usado/evidence/run.log"
 "$SCRIPTS/drive.sh" usado --list >/dev/null 2>&1 && falhou "drive accepted a run id that already holds evidence" || passou "drive refuses a run id that already holds evidence"
 grep -q FIRST_PROOF "$PM_VERIFY_ROOT/usado/evidence/run.log" && passou "earlier evidence intact after the refusal" || falhou "earlier evidence was overwritten"
@@ -80,7 +74,6 @@ PM_STUB=rapido "$SCRIPTS/drive.sh" uma-vez --list >/dev/null 2>&1 && rc2=0 || rc
 [ "$rc1" -eq 0 ] && [ "$rc2" -ne 0 ] && passou "a finished run id cannot be driven again" || falhou "second drive of the same run id was accepted (rc $rc1 then $rc2)"
 grep -q 'hi' "$PM_VERIFY_ROOT/uma-vez/evidence/run.log" && [ "$(cat "$PM_VERIFY_ROOT/uma-vez/evidence/exit-code")" = 0 ] && passou "first run's log and exit code kept" || falhou "first run's evidence lost"
 
-# 6. The real drive.sh with a child that ignores TERM: cleanup still stops all of it (SIGKILL after TERM), keeps evidence.
 rm -f "$PM_STUB_MARCA"
 "$SCRIPTS/drive.sh" preso --list >/dev/null 2>&1 & dono=$!; extras+=("$dono")
 esperar '[ -f "$PM_STUB_MARCA" ] && [ "$(wc -l < "$PM_VERIFY_ROOT/preso/drive.pid" 2>/dev/null)" -ge 6 ]' || falhou "drive.sh did not start the stub"
@@ -95,7 +88,6 @@ vivos=""; for p in $filhos "$dono"; do vivo "$p" && ! [ "$(ps -o stat= -p "$p" |
 [ -f "$PM_VERIFY_ROOT/preso/evidence/proof.txt" ] && [ ! -e "$PM_VERIFY_ROOT/preso/tmp" ] && [ ! -e "$PM_VERIFY_ROOT/preso/drive.pid" ] && passou "scratch and record removed, evidence kept" || falhou "scratch/evidence state wrong after cleanup"
 "$SCRIPTS/cleanup.sh" preso >/dev/null 2>&1 && [ -f "$PM_VERIFY_ROOT/preso/evidence/proof.txt" ] && passou "cleanup is re-runnable" || falhou "second cleanup failed or lost evidence"
 
-# 7. drive.sh itself killed (an interrupted run): its orphaned child is still found by its process group and stopped.
 rm -f "$PM_STUB_MARCA"
 "$SCRIPTS/drive.sh" orfao --list >/dev/null 2>&1 & dono=$!; extras+=("$dono")
 esperar '[ -f "$PM_STUB_MARCA" ] && [ "$(wc -l < "$PM_VERIFY_ROOT/orfao/drive.pid" 2>/dev/null)" -ge 6 ]' || falhou "drive.sh did not start the stub"
@@ -108,7 +100,6 @@ vivos=""; for p in $filhos; do vivo "$p" && ! [ "$(ps -o stat= -p "$p" | cut -c1
 [ -z "$vivos" ] && [ "$rc" -eq 0 ] && passou "cleanup stops the orphaned child after drive.sh died" || falhou "orphan still running:$vivos (rc $rc)"
 [ ! -e "$PM_VERIFY_ROOT/orfao/drive.pid" ] && passou "record removed once nothing is left" || falhou "drive.pid kept although everything stopped"
 
-# 8. A run started by another checkout's drive.sh (same run id) is not ours to stop; its own cleanup stops it.
 outro="$TMP/outro/.agents/skills/verify-perpetualminer/scripts"; outro_id=alheio
 mkdir -p "$outro" "$TMP/outro/e2e"; cp "$AQUI"/lib.sh "$AQUI"/drive.sh "$AQUI"/cleanup.sh "$outro/"
 git -C "$TMP/outro" init -q
@@ -122,8 +113,6 @@ saida="$("$outro/cleanup.sh" alheio 2>&1)"; sleep 0.3
 case " $saida " in *" $dono "*) passou "the owning checkout's cleanup lists its drive.sh ($dono) as stopped";; *) falhou "the owning checkout's cleanup did not list its drive.sh: $saida";; esac
 vivo "$dono" && ! [ "$(ps -o stat= -p "$dono" | cut -c1)" = Z ] && falhou "the owning checkout's cleanup did not stop its run" || passou "the owning checkout's cleanup stops it"
 
-# 9. A job that fails but leaves a TERM-resistant child in its group: drive.sh itself stops it before it returns (exit 1),
-#    and never deletes drive.pid while something of the run is alive.
 rm -f "$PM_STUB_MARCA"
 PM_STUB=falha-com-filho "$SCRIPTS/drive.sh" vazou --list >/dev/null 2>&1; rc=$?
 sleep 0.5
@@ -133,7 +122,6 @@ restantes="$(pgrep -f "$TMP/bin/npx" | tr '\n' ' ')"
 [ ! -e "$PM_VERIFY_ROOT/vazou/drive.pid" ] && passou "record removed only after the group is empty" || falhou "drive.pid kept although the group is empty"
 "$SCRIPTS/cleanup.sh" vazou >/dev/null 2>&1 && passou "cleanup after the failed run exits 0" || falhou "cleanup after the failed run failed"
 
-# 10. Cleanup interrupted halfway (SIGKILL after it sent TERM), then run again: the second run finishes the job.
 rm -f "$PM_STUB_MARCA"
 "$SCRIPTS/drive.sh" meio --list >/dev/null 2>&1 & dono=$!; extras+=("$dono")
 esperar '[ -f "$PM_STUB_MARCA" ] && [ "$(wc -l < "$PM_VERIFY_ROOT/meio/drive.pid" 2>/dev/null)" -ge 6 ]' || falhou "drive.sh did not start the stub"
@@ -147,7 +135,6 @@ sleep 0.3
 [ "$rc" -eq 0 ] && [ -z "$(pgrep -f "$TMP/bin/npx" | tr '\n' ' ')" ] && passou "the repeated cleanup stops everything" || falhou "after the repeated cleanup: rc $rc, still running: $(pgrep -f "$TMP/bin/npx" | tr '\n' ' ')"
 [ -f "$PM_VERIFY_ROOT/meio/evidence/proof.txt" ] && [ ! -e "$PM_VERIFY_ROOT/meio/drive.pid" ] && passou "evidence kept, record gone" || falhou "state wrong after the repeated cleanup"
 
-# 11. The feature-map ratchet (mapa-de-features.sh): a surface change needs features/ or the declaration in the PR body.
 repo="$TMP/mapa"; mkdir -p "$repo/.agents/skills/verify-perpetualminer/features"
 (cd "$repo" && git init -q -b main && git config user.email t@t && git config user.name t && mkdir -p popup && echo a > popup/popup.js && echo a > popup/popup.css && echo a > README.md \
   && echo a > .agents/skills/verify-perpetualminer/features/x.md && git add -A && git commit -qm base)
@@ -179,7 +166,6 @@ mapa true; muda lib/voz/outro.js e2e/pages/player.html
 confere && passou "ratchet ignores other lib/ files and html below the root" || falhou "ratchet flagged lib/voz/outro.js or e2e/pages/player.html"
 (cd "$repo" && "$AQUI/mapa-de-features.sh" nao-existe >/dev/null 2>&1); [ $? -eq 2 ] && passou "ratchet refuses a base ref that does not exist" || falhou "ratchet accepted an unknown base ref"
 
-# 12. Playwright's worker count: 2 by default (an inherited PM_WORKERS is removed for that case), PM_WORKERS overrides it (a --workers argument comes before drive.sh's own and loses).
 PM_STUB=rapido PM_STUB_ARGS="$TMP/args-padrao" env -u PM_WORKERS "$SCRIPTS/drive.sh" trabalhadores-1 --list >/dev/null 2>&1
 PM_STUB=rapido PM_STUB_ARGS="$TMP/args-um" PM_WORKERS=1 "$SCRIPTS/drive.sh" trabalhadores-2 --list >/dev/null 2>&1
 grep -q -- '--workers=2' "$TMP/args-padrao" 2>/dev/null && passou "drive passes 2 workers by default" || falhou "default worker count is not 2: $(cat "$TMP/args-padrao" 2>/dev/null)"

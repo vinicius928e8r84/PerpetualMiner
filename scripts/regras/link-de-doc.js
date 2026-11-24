@@ -44,7 +44,6 @@ function semCodigoEmLinha(linha, manterCrases) {
 
 function semCodigo(fonte, { manterCrases = false } = {}) {
   const cerca = new CercaDeCodigo();
-  // Um clone com core.autocrlf=true (Git for Windows) entrega o Markdown com CRLF: o `\r` não pode ficar no fim da linha.
   return fonte.replace(/\r\n/g, '\n').split('\n')
     .map(linha => (cerca.contem(linha) ? branco(linha) : semCodigoEmLinha(linha, manterCrases)))
     .join('\n');
@@ -69,7 +68,6 @@ function linksDaLinha(linha) {
   return achados.filter(a => a.alvo);
 }
 
-/** A âncora que o GitHub dá a um título: minúsculas, sem pontuação, espaços viram `-`. */
 function ancoraDoTitulo(titulo) {
   return titulo
     .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
@@ -115,7 +113,6 @@ function ancorasDosTitulos(titulos) {
 }
 
 function ancorasDe(fonte) {
-  // Os títulos leem o código em linha (o GitHub tira só as crases e mantém o texto); os `id=` não.
   const limpo = semCodigo(fonte);
   const linhas = semCodigo(fonte, { manterCrases: true }).split('\n');
   const explicitas = [...limpo.matchAll(ID_OU_NAME)].map(m => (m[1] ?? m[2]).toLowerCase());

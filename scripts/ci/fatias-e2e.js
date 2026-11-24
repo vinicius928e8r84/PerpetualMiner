@@ -1,11 +1,5 @@
 'use strict';
 
-// As fatias da suíte e2e no CI (workflow Testes, job `e2e`): cada fatia é uma lista de specs, montada pela duração
-// real de cada um. O `--shard=N/8` do Playwright divide pelo número de testes e deixava uma fatia com 9 minutos e outra
-// com 3, porque um teste leva de 0,9 a 9 s; o CI espera a mais lenta (relatório ci-posts-1111, seção 3.4).
-//
-//   node scripts/ci/fatias-e2e.js <N>             os filtros do Playwright da fatia N (o workflow os passa a `testar.mjs e2e`)
-
 const fs = require('fs');
 const path = require('path');
 

@@ -27,7 +27,6 @@ assert.deepStrictEqual(afrouxamentosDaConfiguracao(com({ marcasDeGerado: [...ori
 assert.deepStrictEqual(afrouxamentosDaConfiguracao(com({ marcasDeGerado: original.marcasDeGerado.slice(1) }), original), []);
 
 const raiz = fs.mkdtempSync(path.join(os.tmpdir(), 'configuracao-do-indice-'));
-// Sem ganchos no repositório de mentira: o core.hooksPath de quem roda o teste não pode entrar nos commits daqui.
 const git = (...args) => execFileSync('git', ['-c', 'core.hooksPath=/dev/null', ...args], { cwd: raiz, encoding: 'utf8' });
 const escrever = (caminho, conteudo) => {
   fs.mkdirSync(path.dirname(path.join(raiz, caminho)), { recursive: true });

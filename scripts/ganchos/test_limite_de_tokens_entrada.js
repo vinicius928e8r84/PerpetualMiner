@@ -37,7 +37,6 @@ function barraDizendo(r, ...trechos) {
   for (const trecho of trechos) assert.ok(r.stderr.includes(trecho), `${trecho} não está em: ${r.stderr}`);
 }
 
-// --- A linha de base preparada inválida barra o commit ---
 {
   const { raiz, git } = repositorio();
   try {
@@ -87,7 +86,6 @@ function barraDizendo(r, ...trechos) {
   }
 }
 
-// --- A configuração inválida barra o commit ---
 {
   const { raiz } = repositorio();
   const scripts = pasta('limite-de-tokens-scripts-');
@@ -126,7 +124,6 @@ function barraDizendo(r, ...trechos) {
   }
 }
 
-// --- A configuração preparada com o formato errado barra o commit, com a linha ---
 {
   const { raiz, git } = repositorio();
   try {
@@ -141,7 +138,6 @@ function barraDizendo(r, ...trechos) {
   }
 }
 
-// --- A falha do ambiente continua deixando passar, com o aviso ---
 {
   const { raiz } = repositorio();
   const fora = pasta('limite-de-tokens-fora-');
