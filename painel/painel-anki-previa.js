@@ -13,7 +13,6 @@
 
   const lidas = new Map();
 
-  /** O documento do quadro: o CSS do tipo de nota, o Cartão dentro do `.card` (como o Anki o põe) e a política que só deixa `data:` entrar. */
   function documentoDoQuadro(css, html) {
     return `<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${POLITICA}">`
       + `<style>html { min-height: 100%; } body { margin: 0; } .card { min-height: 100vh; box-sizing: border-box; padding: 16px; } ${css}</style><div class="card">${html}</div>`;
@@ -71,7 +70,7 @@
     function desenharOCartao() {
       const quadro = elemento('iframe', 'previa__quadro');
       quadro.title = textoDaVoz('BRG-43.quadro');
-      quadro.setAttribute('sandbox', 'allow-same-origin');   // sem `allow-scripts`: o Cartão só é lido; a mesma origem é para medir a altura
+      quadro.setAttribute('sandbox', 'allow-same-origin');
       quadro.style.height = `${ALTURA_MINIMA}px`;
       quadro.addEventListener('load', () => {
         const altura = quadro.contentDocument?.documentElement?.scrollHeight || 0;
