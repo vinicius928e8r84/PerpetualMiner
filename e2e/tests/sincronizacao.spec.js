@@ -4,6 +4,8 @@ const fs = require('fs');
 const path = require('path');
 const { test, expect } = require('../fixtures');
 
+const AVISO_DA_LEITURA_INTERROMPIDA = '[Firestore] carregar:';
+
 async function guardarEvidencia(page, nome, estado) {
   if (!process.env.TEST_EVIDENCE_DIR) return;
   await page.screenshot({
@@ -51,9 +53,10 @@ test('sair durante uma renovação não restaura a conta; a próxima mineração
     await expect.poll(() => extensao.lerStorage(['pm_firebase_auth', 'pm_user_info'])).toEqual({});
 
     const respostaDaRenovacao = page.waitForResponse(resposta => resposta.url().includes('securetoken.googleapis.com'));
+    const fimDaLeituraInterrompida = page.waitForEvent('console', mensagem => mensagem.text().startsWith(AVISO_DA_LEITURA_INTERROMPIDA));
     liberar();
     await (await respostaDaRenovacao).finished();
-    await page.waitForTimeout(300);
+    await fimDaLeituraInterrompida;
     expect(await extensao.lerStorage(['pm_firebase_auth', 'pm_user_info'])).toEqual({});
     expect(await extensao.lerSessao()).toBeNull();
     await expect(page.locator('#shell-total')).toHaveText('1');
