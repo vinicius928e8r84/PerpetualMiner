@@ -296,54 +296,47 @@ def _juiz_que_gosta_da_primeira(modo, candidatas):
     return veredito_do_juiz(0, [90] + [10] * (len(candidatas) - 1))
 
 
+class AtendenteDoFirestore(BaseHTTPRequestHandler):
+    def log_message(self, *_args):
+        pass
+
+    def _atender(self):
+        self.server.dono.atender(self)
+
+    do_GET = do_PATCH = _atender
+
+
 class FirestoreDeMentira:
     def __init__(self):
         self.documentos = {}
         self.falha = 0
         self.recusar_escritas = False
         self.pedidos = []
-        dono = self
-
-        class Atendente(BaseHTTPRequestHandler):
-            def log_message(self, *_args):
-                pass
-
-            def atender(self):
-                caminho = unquote(urlsplit(self.path).path)
-                uid = caminho.split('/usuarios/')[-1].split('/')[0]
-                dono.pedidos.append((self.command, uid, self.headers.get('Authorization')))
-                status, dados = 200, {}
-                if dono.falha:
-                    status = dono.falha
-                elif self.command == 'GET':
-                    if uid in dono.documentos:
-                        dados = {'fields': dono.documentos[uid]}
-                    else:
-                        status = 404
-                elif self.command == 'PATCH':
-                    if dono.recusar_escritas:
-                        status = 503
-                    else:
-                        corpo = json.loads(self.rfile.read(int(self.headers['Content-Length'])))
-                        dono.documentos[uid] = corpo['fields']
-                        dados = {'fields': corpo['fields']}
-                else:
-                    status = 400
-                if status >= 400:
-                    dados = {'error': {'code': status, 'message': 'falha externa fictícia'}}
-                corpo = json.dumps(dados).encode('utf-8')
-                self.send_response(status)
-                self.send_header('Content-Type', 'application/json')
-                self.send_header('Content-Length', str(len(corpo)))
-                self.end_headers()
-                self.wfile.write(corpo)
-
-            do_GET = do_PATCH = atender
-
-        self._servidor = ThreadingHTTPServer(('127.0.0.1', 0), Atendente)
+        self._servidor = ThreadingHTTPServer(('127.0.0.1', 0), AtendenteDoFirestore)
+        self._servidor.dono = self
         self._servidor.daemon_threads = True
         self.base = 'http://127.0.0.1:%d/documents' % self._servidor.server_address[1]
         self._thread = threading.Thread(target=lambda: self._servidor.serve_forever(poll_interval=0.005), daemon=True)
+
+    def atender(self, atendente):
+        uid = unquote(urlsplit(atendente.path).path).split('/usuarios/')[-1].split('/')[0]
+        self.pedidos.append((atendente.command, uid, atendente.headers.get('Authorization')))
+        status, dados = (self.falha, {}) if self.falha else METODOS_DO_FIRESTORE[atendente.command](self, atendente, uid)
+        if status >= 400:
+            dados = {'error': {'code': status, 'message': 'falha externa fictícia'}}
+        _enviar(atendente, status, 'application/json', json.dumps(dados).encode('utf-8'))
+
+    def _ler(self, _atendente, uid):
+        if uid not in self.documentos:
+            return 404, {}
+        return 200, {'fields': self.documentos[uid]}
+
+    def _gravar(self, atendente, uid):
+        if self.recusar_escritas:
+            return 503, {}
+        campos = json.loads(atendente.rfile.read(int(atendente.headers['Content-Length'])))['fields']
+        self.documentos[uid] = campos
+        return 200, {'fields': campos}
 
     def __enter__(self):
         self._thread.start()
@@ -353,3 +346,9 @@ class FirestoreDeMentira:
         self._servidor.shutdown()
         self._servidor.server_close()
         self._thread.join(timeout=5)
+
+
+METODOS_DO_FIRESTORE = {
+    'GET': FirestoreDeMentira._ler,
+    'PATCH': FirestoreDeMentira._gravar,
+}
