@@ -4,6 +4,7 @@ import os
 import sys
 import tempfile
 import unittest
+from types import SimpleNamespace
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -16,6 +17,10 @@ FRASE, SEGUNDA = 1760000000000, 1760000000001
 LINHA = "keep running | run : They keep running"
 CRIADO = "2026-11-20T10:00:00-03:00"
 MOTOR = envio.motor_do_complemento()
+
+
+def pecas_do_trabalho(fila, esperas, colecao=None, ia=None):
+    return SimpleNamespace(fila=fila, colecao=colecao, ia=ia, esperas=esperas)
 
 
 def cartao(frase, status, erro=None):

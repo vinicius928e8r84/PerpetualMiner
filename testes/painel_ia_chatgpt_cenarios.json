@@ -1,0 +1,211 @@
+{
+ "login": {
+  "conectada": {
+   "status": 200,
+   "dados": {
+    "conectada": true
+   }
+  },
+  "nenhum": {
+   "status": 200,
+   "dados": {
+    "conectada": false
+   }
+  },
+  "acabou": {
+   "status": 200,
+   "dados": {
+    "conectada": false,
+    "acabou": "chatgpt_signed_out"
+   }
+  },
+  "entrando": {
+   "status": 200,
+   "dados": {
+    "conectada": false,
+    "entrando": true
+   }
+  },
+  "semPlano": {
+   "status": 200,
+   "dados": {
+    "conectada": false,
+    "falha": "chatgpt_not_eligible"
+   }
+  }
+ },
+ "cenarios": {
+  "cadaDesfechoDoSair": [
+   {
+    "nome": "com revogação",
+    "login": "conectada",
+    "rotulo": "CFG-35.chatgptSair",
+    "resposta": {
+     "status": 200,
+     "dados": {
+      "ok": true,
+      "revogada": true
+     }
+    },
+    "depois": "nenhum"
+   },
+   {
+    "nome": "sem revogação",
+    "login": "conectada",
+    "rotulo": "CFG-35.chatgptSair",
+    "resposta": {
+     "status": 200,
+     "dados": {
+      "ok": true,
+      "revogada": false
+     }
+    },
+    "depois": "conectada"
+   },
+   {
+    "nome": "ok falso",
+    "login": "conectada",
+    "rotulo": "CFG-35.chatgptSair",
+    "resposta": {
+     "status": 200,
+     "dados": {
+      "ok": false
+     }
+    }
+   },
+   {
+    "nome": "sem corpo",
+    "login": "conectada",
+    "rotulo": "CFG-35.chatgptSair",
+    "resposta": {
+     "status": 200,
+     "dados": null
+    }
+   },
+   {
+    "nome": "erro do servidor",
+    "login": "conectada",
+    "rotulo": "CFG-35.chatgptSair",
+    "resposta": {
+     "status": 500,
+     "dados": {
+      "error": "internal_error"
+     }
+    }
+   },
+   {
+    "nome": "Conexão antiga",
+    "login": "conectada",
+    "rotulo": "CFG-35.chatgptSair",
+    "resposta": {
+     "status": 404,
+     "dados": null
+    }
+   },
+   {
+    "nome": "sem resposta",
+    "login": "conectada",
+    "rotulo": "CFG-35.chatgptSair",
+    "resposta": {
+     "status": null,
+     "dados": null
+    }
+   }
+  ],
+  "cadaEstadoDaColuna": [
+   {
+    "nome": "plano com chave",
+    "login": "conectada"
+   },
+   {
+    "nome": "plano sem chave",
+    "login": "conectada",
+    "temChave": false
+   },
+   {
+    "nome": "sem login",
+    "login": "nenhum"
+   },
+   {
+    "nome": "esperando",
+    "login": "entrando"
+   },
+   {
+    "nome": "cancelado",
+    "login": "entrando",
+    "rotulo": "CFG-35.chaveCancelar",
+    "soAColuna": true
+   },
+   {
+    "nome": "acabou",
+    "login": "acabou"
+   },
+   {
+    "nome": "semPlano",
+    "login": "semPlano"
+   }
+  ],
+  "cadaEntradaQueNaoAbre": [
+   {
+    "nome": "sem conexão",
+    "login": "nenhum",
+    "rotulo": "CFG-35.chatgptBotao",
+    "entrar": {
+     "status": null,
+     "dados": null
+    }
+   },
+   {
+    "nome": "sem endereço",
+    "login": "nenhum",
+    "rotulo": "CFG-35.chatgptBotao",
+    "entrar": {
+     "status": 200,
+     "dados": {
+      "url": "https://evil.exemplo/"
+     }
+    }
+   }
+  ],
+  "usarAChave": [
+   {
+    "nome": "com o login acabado",
+    "login": "acabou",
+    "rotulo": "CFG-35.erroChatgptUsarChave",
+    "resposta": {
+     "status": 200,
+     "dados": {
+      "ok": true,
+      "revogada": true
+     }
+    },
+    "depois": "nenhum",
+    "comOFoco": true
+   },
+   {
+    "nome": "sem login acabado",
+    "login": "semPlano",
+    "rotulo": "CFG-35.erroChatgptUsarChave",
+    "depois": "nenhum",
+    "comOFoco": true
+   }
+  ],
+  "doisCliquesSeguidos": [
+   {
+    "nome": "dois cliques em Sair",
+    "login": "conectada",
+    "rotulo": "CFG-35.chatgptSair",
+    "resposta": {
+     "status": 200,
+     "dados": {
+      "ok": true,
+      "revogada": true
+     }
+    },
+    "depois": "nenhum",
+    "cliques": 2,
+    "soOsPedidos": true
+   }
+  ]
+ }
+}
