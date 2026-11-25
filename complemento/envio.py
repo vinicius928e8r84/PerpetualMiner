@@ -270,20 +270,30 @@ class Trabalho:
         return True, None
 
     def _gravar_a_nota(self, envio, cartao_id, guid, arquivo):
-        job_id, pedido = envio.job_id, envio.pedido
-        send_to_anki = self.motor.send_to_anki
-        lang, baralho = pedido["lang"], pedido["deckName"]
+        montada = self._montar_a_nota(envio, cartao_id, guid, arquivo)
+        if montada is not None:
+            self._enviar_a_nota(envio, cartao_id, guid, montada)
+
+    def _montar_a_nota(self, envio, cartao_id, guid, arquivo):
+        job_id = envio.job_id
         with open(arquivo, encoding="utf-8") as texto:
             conteudo = texto.read()
         linha = self.fila.linha_do_cartao(job_id, int(cartao_id.rsplit("-", 1)[0]))
         if linha is None:
             return self._cartao(job_id, cartao_id, status=FALHOU, error=FRASE_APAGADA)
         try:
-            nota, arquivos = self.motor_do_cartao.montar(envio.cartao(cartao_id, guid, linha), conteudo, envio.ia, lambda etapa: self._etapa(job_id, etapa))
+            montada = self.motor_do_cartao.montar(envio.cartao(cartao_id, guid, linha), conteudo, envio.ia, lambda etapa: self._etapa(job_id, etapa))
         except voz.ErroDaVoz as erro:
             return self._cartao(job_id, cartao_id, status=FALHOU, error=erro.codigo)
         if self.fila.estado(job_id).get("wiped"):
             raise Apagado()
+        return montada
+
+    def _enviar_a_nota(self, envio, cartao_id, guid, montada):
+        job_id, pedido = envio.job_id, envio.pedido
+        nota, arquivos = montada
+        send_to_anki = self.motor.send_to_anki
+        lang, baralho = pedido["lang"], pedido["deckName"]
         frentes = (nota["campo_da_frente"],) + self.motor.estilos.nomes_da_frente_de_antes()
         nome, frentes, nota = envio.tipo.nota_no_tipo(frentes, nota)
         self._etapa(job_id, "send_to_anki")
