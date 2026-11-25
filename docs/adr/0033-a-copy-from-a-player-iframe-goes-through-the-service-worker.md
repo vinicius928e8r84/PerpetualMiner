@@ -1,0 +1,3 @@
+# A copy from a player iframe goes through the service worker
+
+A player in an iframe without the clipboard permission asks the frame above it, in the same tab, to do the copy, and waits for its answer, which says whether the copy happened so the overlay only states what happened. Nothing goes through `window.postMessage`: the page shares the window with the content script and sees the messages between frames, so it could forge them. The request goes through the service worker, which delivers it only to the top frame of the same tab; only this extension's content script reaches that channel, so a page cannot overwrite the clipboard through it.

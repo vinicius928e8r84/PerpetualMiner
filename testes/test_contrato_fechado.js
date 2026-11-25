@@ -10,7 +10,7 @@ const { criarFakeAnki, exemploDaExtensao } = require('../e2e/fakes/anki');
 const contrato = require('../complemento/contrato/carregar');
 
 const enviados = [];
-const comoValores = valor => JSON.parse(JSON.stringify(valor)); // os objetos do `vm` têm outro protótipo
+const comoValores = valor => JSON.parse(JSON.stringify(valor));
 const respostaDeMentira = { ok: true, status: 200, text: () => Promise.resolve('{}') };
 const contexto = vm.createContext({
   fetch: (url, opcoes) => { enviados.push({ url, ...opcoes }); return Promise.resolve(respostaDeMentira); },

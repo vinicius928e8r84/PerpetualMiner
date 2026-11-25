@@ -18,9 +18,6 @@ const mineracaoAutomatica = MineracaoAutomaticaNaPagina.criar({
 });
 mineracaoAutomatica.ligar();
 
-// Mouse — fase de captura, para interceptar antes de o navegador navegar (voltar
-// e avançar). O botão só é tomado quando há o que minerar: numa página sem
-// legenda ou sem seleção, ele continua fazendo o que sempre fez.
 document.addEventListener('mousedown', (e) => {
   if (Atalhos.correspondeAoAtalho(_atalhos.legenda, e) && lerLegenda()?.texto) {
     _tomarOBotao(e);
@@ -36,8 +33,6 @@ document.addEventListener('mousedown', (e) => {
   _ativarCaptura(texto, e);
 }, true);
 
-// O botão é tomado inteiro: o `mousedown` e a soltura, que é quando voltar e
-// avançar navegariam.
 function _tomarOBotao(e) {
   e.preventDefault();
   e.stopImmediatePropagation();
@@ -99,10 +94,6 @@ function mostrarFalha(id) {
   Overlay.mostrar({ tipo: 'erro', icone: 'alerta', titulo: textoDaVoz(`${id}.titulo`), dica: textoDaVoz(`${id}.dica`) });
 }
 
-/**
- * MIN-10, só quando nenhum frame da página tem vídeo: um player num iframe de
- * outra origem não aparece neste frame, então os outros são perguntados antes.
- */
 async function dizerSeNaoHaVideo() {
   if (obterVideoAtivo() || await haVideoEmOutroFrame()) return;
   mostrarFalha('MIN-10');
@@ -129,10 +120,6 @@ function codigoDoIdioma(idioma) {
   return idioma === IDIOMAS.RUSSO ? 'ru' : 'en';
 }
 
-/**
- * Copia a frase e diz se deu certo. Num iframe sem permissão de clipboard, pede
- * ao frame de cima (pelo service worker) e espera a resposta dele.
- */
 async function copiar(texto) {
   try {
     await navigator.clipboard.writeText(texto);
@@ -162,11 +149,6 @@ function palavraDe(frase) {
   }
   return { palavras, palavraDetectada: frase?.autoKeyword !== false };
 }
-
-// Nada passa por window.postMessage: a página divide a janela com o content
-// script e vê as mensagens entre frames, então poderia forjá-las. Quando o
-// clipboard falha num iframe, o pedido de cópia vai pelo service worker, que o
-// entrega só ao frame de cima da mesma aba; a resposta diz se a cópia saiu.
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message?.type !== 'COPIAR_PARA_CLIPBOARD') return;
@@ -199,8 +181,6 @@ setInterval(() => {
     mineracaoAutomatica.atualizarSelo();
 }, 1000);
 
-// O botão vive no container do player, como antes: em tela cheia, só o que está
-// dentro do elemento em tela cheia aparece.
 function containerDoPlayer(video) {
     if (window.location.hostname.includes('youtube.com')) {
         return document.querySelector('#movie_player') || document.querySelector('.html5-video-player');
@@ -212,11 +192,6 @@ function lerLegenda() {
     return LegendaDaPagina.lerLegenda({ amazon: minerarAmazon });
 }
 
-/**
- * Onde a seleção capturada está: a faixa dela, enquanto ela ainda cobre o texto
- * minerado. Uma seleção num `<input>`/`<textarea>` não tem faixa no texto da
- * página (o texto está dentro do campo), então vai para a pílula.
- */
 function lugarDaSelecao(texto) {
     const selecao = window.getSelection();
     if (!selecao?.rangeCount) return null;

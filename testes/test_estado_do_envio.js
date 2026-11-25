@@ -6,7 +6,6 @@ globalThis.PerpetualMiner = {};
 require('../painel/painel-envio-estado.js');
 const { SituacaoDoEnvio, FaseDaRemessa } = globalThis.PerpetualMiner;
 
-// ─── A situação de um Envio ───────────────────────────────────────────────────────────────────────────────────────────────────────
 const { ESTADO, ESPERA, AJUDA, situacaoDoEnvio, terminou, retomavel, foraDoResumo, doCodigo } = SituacaoDoEnvio;
 const AGORA = Date.parse('2026-09-18T12:00:00Z');
 const ENVIO = { id: 'e1', jobId: 'e1', falhaAoCriar: null };
@@ -58,7 +57,6 @@ function provarOsEstadosFinais() {
 
 function provarOQueCadaEstadoPermite() {
   const TABELA = {
-    //                        terminou  retomável  fora do resumo
     [ESTADO.CRIANDO]:        [false,    false,     false],
     [ESTADO.NAO_COMECOU]:    [true,     false,     false],
     [ESTADO.DESCONHECIDO]:   [true,     false,     true],
@@ -127,7 +125,6 @@ function provarQueCadaCodigoTemTextoNaVoz() {
   }
 }
 
-// ─── A fase da remessa ────────────────────────────────────────────────────────────────────────────────────────────────────────────
 const { FASE, EVENTO, PRAZO_DO_PEDIDO_MS, proxima, aceita } = FaseDaRemessa;
 
 function provarAsTransicoesDaFase() {
@@ -166,7 +163,6 @@ function provarOQueCadaFaseAceita() {
   for (const fase of Object.values(FASE)) assert.ok(ACEITA[fase].some(tipo => proxima(fase, { tipo, sobrou: true, tentar: true }) !== fase), fase);
 }
 
-// ─── O que fica guardado em `pm_envio` ────────────────────────────────────────────────────────────────────────────────────────────
 require('../lib/envio-gravado.js');
 const { EnvioGravado } = globalThis.PerpetualMiner;
 const { EVENTO: EVENTO_GRAVADO, proximo, criar } = EnvioGravado;
@@ -176,7 +172,6 @@ const COM_MARCA = { envios: ENVIOS, apagarFrases: true };
 
 function provarAsTransicoesDoGravado() {
   const TABELA = [
-    // guardado          acompanhar(ENVIOS)   esquecer      apagarTudo    confirmou
     [null,               { envios: ENVIOS },  null,         SO_A_MARCA,   null],
     [{ envios: ENVIOS }, { envios: ENVIOS },  null,         SO_A_MARCA,   { envios: ENVIOS }],
     [COM_MARCA,          COM_MARCA,           SO_A_MARCA,   SO_A_MARCA,   { envios: ENVIOS }],

@@ -18,8 +18,6 @@ const AUTO_MINER_DAILY_KEY = MineracaoDoDia.CHAVES.diario;
 const AUTO_MINER_LAST_EVENT_KEY = MineracaoDoDia.CHAVES.ultimoEvento;
 const MENU_MINERAR_SELECAO = 'minerar-perpetualminer';
 
-// Os itens do menu ficam gravados entre versões, e o id mudou junto com a cópia
-// (MIN-08). Sem o removeAll, quem atualiza a extensão fica com dois itens.
 function registrarMenuDeContexto() {
   return new Promise(resolve => {
     chrome.contextMenus.removeAll(() => {
@@ -58,10 +56,6 @@ function minerarSelecaoDoMenu(info, tab) {
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  // Um player em iframe sem permissão de clipboard pede a cópia ao frame de cima
-  // da mesma aba. Só o content script desta extensão alcança este canal; uma
-  // página não, então ela não consegue sobrescrever o clipboard por aqui. A
-  // resposta diz se a cópia saiu, para o overlay só afirmar o que aconteceu.
   if (request.type === 'COPIAR_NO_FRAME_DE_CIMA') {
     const texto = request.texto;
     if (sender.id !== chrome.runtime.id || sender.tab?.id == null) return;
@@ -252,9 +246,6 @@ async function incrementAutoMinerDaily(lang) {
   return { settings: state.settings, daily };
 }
 
-// As cores do badge são as únicas cores escritas fora de `veio/tokens.css`:
-// `chrome.action` não lê CSS. São cópias de `--veio-accent` e `--veio-accent-ink`,
-// e a exceção está registrada em `veio/README.md`, junto com a do `icone.svg`.
 const BADGE_COR_DE_FUNDO = '#F5B83D';
 const BADGE_COR_DO_TEXTO = '#1A1204';
 const ALARME_VIRADA_DO_DIA = 'pm-virada-do-dia';
@@ -266,9 +257,6 @@ function badgeDaMineracaoAutomatica(state) {
   const total = ligados.reduce((soma, lang) => soma + MineracaoDoDia.contagemDeHoje(state, lang), 0);
   const todosNoLimite = ligados.every(lang => MineracaoDoDia.noLimiteDeHoje(state, lang));
 
-  // O número do badge não passa pelo catálogo: o limite de cada idioma é no
-  // máximo 100, então a soma nunca chega aos milhares onde o PT-BR poria ponto —
-  // e o badge do Chrome corta em poucos caracteres. O tooltip, esse é do catálogo.
   return {
     texto: String(total),
     titulo: todosNoLimite
@@ -277,7 +265,6 @@ function badgeDaMineracaoAutomatica(state) {
   };
 }
 
-// O `chrome` mínimo de `test_auto_keyword.js` não tem `alarms` nem `onChanged`: a API que falta só deixa de agir.
 function metodoDoChrome(alvo, nome) {
   if (!alvo || typeof alvo[nome] !== 'function') return null;
   return alvo[nome].bind(alvo);
@@ -293,8 +280,6 @@ async function atualizarBadgeDaToolbar() {
 
   const badge = badgeDaMineracaoAutomatica(await getAutoMinerState());
 
-  // Sem badge, o tooltip volta a ser o nome da extensão. Escrito por extenso: um
-  // título vazio deixa `getTitle` vazio, e não devolve o padrão do manifesto.
   await chrome.action.setBadgeText({ text: badge ? badge.texto : '' });
   await chrome.action.setTitle({ title: badge ? badge.titulo : chrome.runtime.getManifest().name });
   if (!badge) return;
@@ -303,21 +288,7 @@ async function atualizarBadgeDaToolbar() {
   await chrome.action.setBadgeTextColor({ color: BADGE_COR_DO_TEXTO });
 }
 
-/**
- * Agenda a virada da mineração automática após a próxima meia-noite local.
- *
- * O alarme dispara uma vez só e é reagendado a cada disparo, em vez de repetir a
- * cada 24 h: um período fixo escorregaria uma hora para sempre na primeira
- * mudança de horário de verão, e o badge de ontem ficaria na toolbar até 1h.
- *
- * A virada não regrava o diário: `getAutoMinerState` o normaliza pelas regras
- * de `MineracaoDoDia`. O listener renova o badge e chama
- * `publicarEstadoDaAutomatica` mesmo sem uma nova frase ou um ajuste gravado.
- * Regressão: `e2e/tests/mineracao-automatica-virada.spec.js`.
- */
 async function agendarViradaDoDia() {
-  // O alarme sobrevive ao service worker: recriá-lo a cada despertar empurraria a meia-noite. Depois de disparar ele some,
-  // e esta chamada agenda o da seguinte.
   const lerAlarme = metodoDoChrome(chrome.alarms, 'get');
   const criarAlarme = metodoDoChrome(chrome.alarms, 'create');
   if (!lerAlarme || !criarAlarme) return;
@@ -335,7 +306,6 @@ ouvirChrome(chrome.alarms && chrome.alarms.onAlarm, alarme => {
   getAutoMinerState().then(publicarEstadoDaAutomatica);
 });
 
-// Na partida do Chrome o badge não volta sozinho: escutar a partida acorda o service worker, que faz o trabalho do fim do arquivo.
 ouvirChrome(chrome.runtime.onStartup, () => {});
 
 ouvirChrome(chrome.storage.onChanged, (changes, area) => {
