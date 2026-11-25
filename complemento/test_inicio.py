@@ -65,7 +65,7 @@ class AoCarregarNoAnki(unittest.TestCase):
         for plataforma in ("darwin", "win32"):
             with self.subTest(plataforma=plataforma), tempfile.TemporaryDirectory() as pasta:
                 with patch.object(sys, "platform", plataforma):
-                    conexao = inicio.iniciar(pasta, lambda: None, porta=0, abridor=None)
+                    conexao = inicio.iniciar(pasta, lambda: None, inicio.Arredores(porta=0, abridor=None))
                     try:
                         self.assertIsNotNone(conexao)
                         self.assertEqual(saude(conexao.porta)[0], 200)
@@ -75,7 +75,7 @@ class AoCarregarNoAnki(unittest.TestCase):
 
     def test_a_conexao_sobe_e_responde_a_saude_com_o_perfil_aberto(self):
         with tempfile.TemporaryDirectory() as pasta:
-            conexao = inicio.iniciar(pasta, lambda: "Usuário 1", porta=0, abridor=None)
+            conexao = inicio.iniciar(pasta, lambda: "Usuário 1", inicio.Arredores(porta=0, abridor=None))
             try:
                 status, corpo = saude(conexao.porta)
             finally:
@@ -86,7 +86,7 @@ class AoCarregarNoAnki(unittest.TestCase):
     def test_a_conexao_instalada_pelo_ankiweb_se_marca_e_consulta_sozinha_por_padrao(self):
         ankiweb = AnkiWebDeMentira()
         with tempfile.TemporaryDirectory() as pasta:
-            conexao = inicio.iniciar(pasta, lambda: None, porta=0, abridor=None, anki_web=ankiweb)
+            conexao = inicio.iniciar(pasta, lambda: None, inicio.Arredores(porta=0, abridor=None, anki_web=ankiweb))
             try:
                 self.assertFalse(ankiweb.update_enabled, "o diálogo do Anki não aparece: a Conexão se atualiza sozinha")
             finally:
@@ -97,7 +97,7 @@ class AoCarregarNoAnki(unittest.TestCase):
         with tempfile.TemporaryDirectory() as pasta:
             os.makedirs(os.path.join(pasta, "user_files"))
             open(os.path.join(pasta, "user_files", atualizacao.ARQUIVO_DE_QUEM_DESLIGOU), "w").close()
-            conexao = inicio.iniciar(pasta, lambda: None, porta=0, abridor=None, anki_web=ankiweb)
+            conexao = inicio.iniciar(pasta, lambda: None, inicio.Arredores(porta=0, abridor=None, anki_web=ankiweb))
             try:
                 self.assertTrue(ankiweb.update_enabled)
                 self.assertEqual(ankiweb.consultas, [])
@@ -106,7 +106,7 @@ class AoCarregarNoAnki(unittest.TestCase):
 
     def test_user_files_ganha_as_pastas_da_fila_do_estado_dos_custos_dos_logs_das_chaves_e_dos_prompts(self):
         with tempfile.TemporaryDirectory() as pasta:
-            parar(inicio.iniciar(pasta, lambda: None, porta=0, abridor=None))
+            parar(inicio.iniciar(pasta, lambda: None, inicio.Arredores(porta=0, abridor=None)))
             criadas = sorted(os.listdir(os.path.join(pasta, "user_files")))
         self.assertEqual(criadas, ["chaves", "custos", "estado", "fila", "logs", "prompts"])
 
@@ -115,7 +115,7 @@ class AoCarregarNoAnki(unittest.TestCase):
         antes = os.umask(0o000)
         try:
             with tempfile.TemporaryDirectory() as pasta:
-                parar(inicio.iniciar(pasta, lambda: None, porta=0, abridor=None))
+                parar(inicio.iniciar(pasta, lambda: None, inicio.Arredores(porta=0, abridor=None)))
                 modo = os.stat(os.path.join(pasta, "user_files", "chaves")).st_mode & 0o777
         finally:
             os.umask(antes)
@@ -127,7 +127,7 @@ class AoCarregarNoAnki(unittest.TestCase):
             antiga = os.path.join(pasta, "user_files", "chaves")
             os.makedirs(antiga)
             os.chmod(antiga, 0o755)
-            parar(inicio.iniciar(pasta, lambda: None, porta=0, abridor=None))
+            parar(inicio.iniciar(pasta, lambda: None, inicio.Arredores(porta=0, abridor=None)))
             modo = os.stat(antiga).st_mode & 0o777
         self.assertEqual(modo, 0o700)
 
@@ -155,7 +155,7 @@ class AoCarregarNoAnki(unittest.TestCase):
             os.makedirs(fila)
             with open(os.path.join(fila, "envio.json"), "w", encoding="utf-8") as arquivo:
                 arquivo.write('{"jobId": "job-1"}')
-            parar(inicio.iniciar(pasta, lambda: None, porta=0, abridor=None))
+            parar(inicio.iniciar(pasta, lambda: None, inicio.Arredores(porta=0, abridor=None)))
             with open(os.path.join(fila, "envio.json"), encoding="utf-8") as arquivo:
                 guardado = arquivo.read()
         self.assertEqual(guardado, '{"jobId": "job-1"}')
@@ -176,7 +176,7 @@ class AoCarregarNoAnki(unittest.TestCase):
     def test_ao_carregar_escreve_o_abridor_e_o_registra_para_o_chrome(self):
         with tempfile.TemporaryDirectory() as raiz:
             pastas = Pastas(raiz)
-            conexao = inicio.iniciar(os.path.join(raiz, "complemento"), lambda: None, porta=0, abridor=abridor_do_mac(pastas))
+            conexao = inicio.iniciar(os.path.join(raiz, "complemento"), lambda: None, inicio.Arredores(porta=0, abridor=abridor_do_mac(pastas)))
             parar(conexao)
             registrados = os.listdir(pastas.hosts_do_chrome)
             resposta = conversar(os.path.join(pastas.abridor, "abrir-o-anki.sh"), {"acao": "conferir"})
@@ -188,10 +188,7 @@ class AoCarregarNoAnki(unittest.TestCase):
         perfil = {"aberto": None}
         with tempfile.TemporaryDirectory() as raiz:
             pastas = Pastas(raiz)
-            conexao = inicio.iniciar(
-                os.path.join(raiz, "complemento"), lambda: perfil["aberto"], porta=0,
-                abridor=abridor_do_mac(pastas), ao_abrir_o_perfil=ganchos.append,
-            )
+            conexao = inicio.iniciar(os.path.join(raiz, "complemento"), lambda: perfil["aberto"], inicio.Arredores(porta=0, abridor=abridor_do_mac(pastas), ao_abrir_o_perfil=ganchos.append))
             parar(conexao)
             perfil["aberto"] = "Maria"
             for gancho in ganchos:
@@ -206,10 +203,7 @@ class AoCarregarNoAnki(unittest.TestCase):
         perfil = {"aberto": None}
         with tempfile.TemporaryDirectory() as raiz:
             pastas = Pastas(raiz)
-            conexao = inicio.iniciar(
-                os.path.join(raiz, "complemento"), lambda: perfil["aberto"], porta=0,
-                abridor=abridor_do_mac(pastas), ao_abrir_o_perfil=ganchos.append,
-            )
+            conexao = inicio.iniciar(os.path.join(raiz, "complemento"), lambda: perfil["aberto"], inicio.Arredores(porta=0, abridor=abridor_do_mac(pastas), ao_abrir_o_perfil=ganchos.append))
             parar(conexao)
             for aberto in ("Maria", "Joana"):
                 perfil["aberto"] = aberto
@@ -244,9 +238,7 @@ class AoCarregarNoAnki(unittest.TestCase):
             with open(os.path.join(raiz, "complemento", "user_files", "perfil.json"), "w", encoding="utf-8") as arquivo:
                 json.dump({"perfil": "Ana"}, arquivo)
             colecao = ColecaoEmMemoria(perfis=("Beto", "Carla"), perfil_aberto="Beto")
-            conexao = inicio.iniciar(
-                os.path.join(raiz, "complemento"), lambda: "Beto", porta=0, colecao=colecao, abridor=abridor_do_mac(pastas),
-            )
+            conexao = inicio.iniciar(os.path.join(raiz, "complemento"), lambda: "Beto", inicio.Arredores(porta=0, colecao=colecao, abridor=abridor_do_mac(pastas)))
             parar(conexao)
             conversar(os.path.join(pastas.abridor, "abrir-o-anki.sh"), {"acao": "abrir"})
             recebeu = pastas.open.recebeu()
@@ -258,7 +250,7 @@ class AoCarregarNoAnki(unittest.TestCase):
             pasta = os.path.join(raiz, "complemento")
             erro = io.StringIO()
             with contextlib.redirect_stderr(erro):
-                conexao = inicio.iniciar(pasta, lambda: None, porta=0, abridor=abridor_do_mac(pastas, programa=""))
+                conexao = inicio.iniciar(pasta, lambda: None, inicio.Arredores(porta=0, abridor=abridor_do_mac(pastas, programa="")))
                 try:
                     status, _ = saude(conexao.porta)
                 finally:
@@ -274,10 +266,7 @@ class AoCarregarNoAnki(unittest.TestCase):
             raise ImportError("sem aqt")
 
         with tempfile.TemporaryDirectory() as raiz:
-            conexao = inicio.iniciar(
-                os.path.join(raiz, "complemento"), lambda: None, porta=0,
-                abridor=abridor_do_mac(Pastas(raiz)), ao_abrir_o_perfil=gancho_quebrado,
-            )
+            conexao = inicio.iniciar(os.path.join(raiz, "complemento"), lambda: None, inicio.Arredores(porta=0, abridor=abridor_do_mac(Pastas(raiz)), ao_abrir_o_perfil=gancho_quebrado))
             try:
                 status, _ = saude(conexao.porta)
             finally:
@@ -293,7 +282,7 @@ class AoCarregarNoAnki(unittest.TestCase):
         try:
             with tempfile.TemporaryDirectory() as pasta:
                 with contextlib.redirect_stdout(saida), contextlib.redirect_stderr(erro):
-                    conexao = inicio.iniciar(pasta, lambda: None, porta=porta, abridor=None)
+                    conexao = inicio.iniciar(pasta, lambda: None, inicio.Arredores(porta=porta, abridor=None))
                 with open(os.path.join(pasta, "user_files", "logs", "complemento.log"), encoding="utf-8") as arquivo:
                     registrado = arquivo.read()
         finally:
@@ -307,7 +296,7 @@ class AoCarregarNoAnki(unittest.TestCase):
             os.makedirs(os.path.join(pasta, "user_files", "logs", "complemento.log"))
             erro = io.StringIO()
             with contextlib.redirect_stderr(erro):
-                conexao = inicio.iniciar(pasta, lambda: "Usuário 1", porta=0, abridor=None)
+                conexao = inicio.iniciar(pasta, lambda: "Usuário 1", inicio.Arredores(porta=0, abridor=None))
                 try:
                     status, corpo = saude(conexao.porta)
                     conexao.logger.error("um erro que não tem para onde ir")
@@ -323,7 +312,7 @@ class AoCarregarNoAnki(unittest.TestCase):
                 arquivo.write("não sou uma pasta")
             erro = io.StringIO()
             with contextlib.redirect_stderr(erro):
-                conexao = inicio.iniciar(pasta, lambda: None, porta=0, abridor=None)
+                conexao = inicio.iniciar(pasta, lambda: None, inicio.Arredores(porta=0, abridor=None))
         self.assertIsNone(conexao)
         self.assertEqual(erro.getvalue(), "")
 
@@ -339,7 +328,7 @@ class InicioDeProducaoIsolado(unittest.TestCase):
                     programa=os.path.join(raiz, "anki.exe"),
                 )
                 with patch("complemento.abridor.deste_computador", return_value=injetado) as fabrica:
-                    conexao = inicio.iniciar(os.path.join(raiz, "complemento"), lambda: None, porta=0)
+                    conexao = inicio.iniciar(os.path.join(raiz, "complemento"), lambda: None, inicio.Arredores(porta=0))
                     try:
                         self.assertIsNotNone(conexao)
                         fabrica.assert_called_once()
@@ -356,7 +345,7 @@ class InicioDeProducaoIsolado(unittest.TestCase):
 class OAbridorDesteComputador(unittest.TestCase):
     def test_o_abridor_anota_o_programa_que_roda_o_anki_e_a_pasta_do_complemento(self):
         with tempfile.TemporaryDirectory() as pasta, patch("complemento.abridor.deste_computador", return_value=None) as deste:
-            parar(inicio.iniciar(pasta, lambda: None, porta=0, item_de_login=item_de_login.ItemDeLogin(sistema="mac", pasta=pasta, comando=None)))
+            parar(inicio.iniciar(pasta, lambda: None, inicio.Arredores(porta=0, item_de_login=item_de_login.ItemDeLogin(sistema="mac", pasta=pasta, comando=None))))
         self.assertEqual((deste.call_args.kwargs["computador"].executavel, deste.call_args.kwargs["complemento"]), (sys.executable, pasta))
 
 

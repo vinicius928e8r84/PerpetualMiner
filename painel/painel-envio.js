@@ -45,28 +45,43 @@
   async function usar(operacoes) {
     if (doPainel) return;
     doPainel = operacoes;
-    porId('btn-send-anki').addEventListener('click', () => enviar());
-    porId('modal-envio-fechar').addEventListener('click', () => progresso?.fechar());
-    porId('modal-resumo-fechar').addEventListener('click', () => resumoDoEnvio.fechar());
-    porId('btn-resumo-manter').addEventListener('click', () => resumoDoEnvio.fechar());
-    porId('btn-resumo-apagar').addEventListener('click', () => resumoDoEnvio.responder(ResumoDoEnvio.RESPOSTA.APAGAR));
-    chrome.storage.onChanged.addListener((mudancas, area) => {
-      const nova = mudancas[EnvioGravado.CHAVE]?.newValue;
-      if (area === 'local' && nova?.apagarFrases && !nova.envios?.length && remessa) encerrarOAcompanhamento();
-    });
+    ligarOsBotoes();
+    ligarAoArmazenamento();
     ConexaoAnki.acompanhar(situacao => {
       mostrarConexao(situacao);
       if (situacao !== CONEXAO.DESLIGADA) EnvioApagarFrases.pedir();
     });
     ankiFechado = EnvioComOAnkiFechado.criar({ aoLigar: aoLigarOAnki });
     for (const area of AREAS_DO_PAINEL) Shell.aoEntrarNaArea(area, resumoDoEnvio.tentarAbrir);
+    await retomarAGravada();
+  }
 
+  function ligarOsBotoes() {
+    porId('btn-send-anki').addEventListener('click', () => enviar());
+    porId('modal-envio-fechar').addEventListener('click', () => progresso?.fechar());
+    porId('modal-resumo-fechar').addEventListener('click', () => resumoDoEnvio.fechar());
+    porId('btn-resumo-manter').addEventListener('click', () => resumoDoEnvio.fechar());
+    porId('btn-resumo-apagar').addEventListener('click', () => resumoDoEnvio.responder(ResumoDoEnvio.RESPOSTA.APAGAR));
+  }
+
+  const apagouTudoDeFora = nova => Boolean(nova?.apagarFrases) && !nova.envios?.length;
+  const apagouNoLocal = (mudancas, area) => area === 'local' && apagouTudoDeFora(mudancas[EnvioGravado.CHAVE]?.newValue);
+
+  function ligarAoArmazenamento() {
+    chrome.storage.onChanged.addListener((mudancas, area) => {
+      if (remessa && apagouNoLocal(mudancas, area)) encerrarOAcompanhamento();
+    });
+  }
+
+  const temEnvioParaRetomar = guardada => Boolean(guardada?.envios?.some(e => e.jobId || e.corpo));
+  const faltaCriar = envio => !envio.jobId && !envio.falhaAoCriar && envio.corpo;
+
+  async function retomarAGravada() {
     const guardada = await gravado.ler();
-    if (!remessa && guardada?.envios?.some(e => e.jobId || e.corpo)) {
-      remessa = guardada;
-      await criarOsEnvios(remessa.envios.filter(e => !e.jobId && !e.falhaAoCriar && e.corpo));
-      acompanhar();
-    }
+    if (remessa || !temEnvioParaRetomar(guardada)) return;
+    remessa = guardada;
+    await criarOsEnvios(remessa.envios.filter(faltaCriar));
+    acompanhar();
   }
 
   async function criarOsEnvios(envios, sobrou = () => true) {
@@ -92,20 +107,17 @@
 
   async function enviar(ids) {
     if (!doPainel || !FaseDaRemessa.aceita(fase, EVENTO.CRIAR)) return;
-    const acompanhadas = new Set((remessa?.envios || []).flatMap(e => e.ids));
-    const novas = (ids ? doPainel.frasesPorId(ids) : doPainel.selecionadas()).filter(f => !acompanhadas.has(f.id));
-    if (conexaoDesligada && novas.length) return ConexaoAnki.jaConectou() ? ankiFechado.pedir(novas.map(f => f.id)) : undefined;
+    const novas = frasesNovas(ids);
+    if (conexaoDesligada && novas.length) return pedirOAnkiAberto(novas);
     if (novas.length === 0) {
       if (remessa) abrirProgresso();
       return;
     }
+    await enviarAsNovas(novas);
+  }
 
-    const porLang = { en: [], ru: [] };
-    for (const frase of novas) porLang[ehRussa(frase) ? 'ru' : 'en'].push(frase.id);
-    const envios = ['en', 'ru']
-      .filter(lang => porLang[lang].length)
-      .map(lang => ({ id: crypto.randomUUID(), lang, ids: porLang[lang], jobId: null, criadoEm: Date.now(), falhaAoCriar: null }));
-
+  async function enviarAsNovas(novas) {
+    const envios = enviosPorIdioma(novas);
     desistiuDasPendencias = false;
     remessa = remessa || { envios: [] };
     remessa.envios.push(...envios);
@@ -118,6 +130,23 @@
     acompanhar();
   }
 
+  function frasesNovas(ids) {
+    const acompanhadas = new Set((remessa?.envios || []).flatMap(e => e.ids));
+    return (ids ? doPainel.frasesPorId(ids) : doPainel.selecionadas()).filter(f => !acompanhadas.has(f.id));
+  }
+
+  function pedirOAnkiAberto(novas) {
+    return ConexaoAnki.jaConectou() ? ankiFechado.pedir(novas.map(f => f.id)) : undefined;
+  }
+
+  function enviosPorIdioma(novas) {
+    const porLang = { en: [], ru: [] };
+    for (const frase of novas) porLang[ehRussa(frase) ? 'ru' : 'en'].push(frase.id);
+    return ['en', 'ru']
+      .filter(lang => porLang[lang].length)
+      .map(lang => ({ id: crypto.randomUUID(), lang, ids: porLang[lang], jobId: null, criadoEm: Date.now(), falhaAoCriar: null }));
+  }
+
   function semRespostaAoCriar(envio) {
     return !envio.jobId && Boolean(envio.falhaAoCriar?.semResposta);
   }
@@ -125,28 +154,34 @@
   async function criarEnvio(envio) {
     const aRemessaDoEnvio = remessa;
     envio.falhaAoCriar = null;
-    if (!envio.corpo) {
-      envio.criadoEm = Date.now();
-      let preset;
-      try {
-        preset = (await AjustesDeEnvio.ler())[envio.lang];
-      } catch (erro) {
-        envio.falhaAoCriar = { motivo: 'ENV-03.motivoAjustes', causa: String(erro.message || erro) };
-        return;
-      }
-      envio.baralho = preset.deckName;
-      envio.corpo = {
-        jobId: envio.id,
-        lang: envio.lang,
-        deckName: preset.deckName,
-        imageSource: preset.imageSource,
-        ...AjustesDeEnvio.vozENivel(preset),
-        entries: doPainel.frasesPorId(envio.ids).map(frase => ({ phraseId: frase.id, line: doPainel.linha(frase) })),
-      };
-      await gravar();
-    }
+    if (!envio.corpo && !await montarOCorpo(envio)) return;
     if (remessa !== aRemessaDoEnvio) return;
-    const desfecho = await pedir(PedidoAoAnki.criarEnvio(envio.corpo));
+    anotarOQueOAnkiRespondeu(envio, await pedir(PedidoAoAnki.criarEnvio(envio.corpo)));
+  }
+
+  async function montarOCorpo(envio) {
+    envio.criadoEm = Date.now();
+    let preset;
+    try {
+      preset = (await AjustesDeEnvio.ler())[envio.lang];
+    } catch (erro) {
+      envio.falhaAoCriar = { motivo: 'ENV-03.motivoAjustes', causa: String(erro.message || erro) };
+      return false;
+    }
+    envio.baralho = preset.deckName;
+    envio.corpo = {
+      jobId: envio.id,
+      lang: envio.lang,
+      deckName: preset.deckName,
+      imageSource: preset.imageSource,
+      ...AjustesDeEnvio.vozENivel(preset),
+      entries: doPainel.frasesPorId(envio.ids).map(frase => ({ phraseId: frase.id, line: doPainel.linha(frase) })),
+    };
+    await gravar();
+    return true;
+  }
+
+  function anotarOQueOAnkiRespondeu(envio, desfecho) {
     if (desfecho.motivo === MOTIVO.SEM_RESPOSTA) {
       envio.falhaAoCriar = { semResposta: true, causa: `POST /jobs → ${desfecho.detalhes}` };
       return;
@@ -186,13 +221,13 @@
     semNoticia = !desfecho.ok;
     if (semNoticia) return;
     const porJob = new Map((desfecho.dados.jobs || []).map(job => [job.jobId, job]));
-    for (const envio of remessa?.envios || []) {
-      if (!envio.jobId) continue;
-      const job = porJob.get(envio.jobId);
-      desconhecidos[job ? 'delete' : 'add'](envio.jobId);
-      if (job) jobs.set(envio.jobId, job);
-      else jobs.delete(envio.jobId);
-    }
+    for (const envio of (remessa?.envios || []).filter(e => e.jobId)) guardarOJob(envio.jobId, porJob.get(envio.jobId));
+  }
+
+  function guardarOJob(jobId, job) {
+    desconhecidos[job ? 'delete' : 'add'](jobId);
+    if (job) jobs.set(jobId, job);
+    else jobs.delete(jobId);
   }
 
   function estadoDoJob(envio) {
@@ -282,28 +317,35 @@
     return Boolean(envio.falhaAoCriar) || Boolean(envio.jobId && (falhasAoRetomar.has(envio.jobId) || foraDoResumo(envio)));
   }
 
+  const desenhavel = mesmoFechado => progresso || mesmoFechado;
+
   function desenharProgresso({ mesmoFechado = false } = {}) {
-    if (!remessa || (!progresso && !mesmoFechado)) return;
+    if (!remessa || !desenhavel(mesmoFechado)) return;
     const { envios } = remessa;
+    desenharOResumoDaRemessa(envios);
+    const lista = porId('modal-envio-lista');
+    for (const envio of envios) desenharOCartao(lista, envio);
+  }
+
+  function desenharOResumoDaRemessa(envios) {
     const idiomas = new Intl.ListFormat('pt-BR', { type: 'conjunction' })
       .format([...new Set(envios.map(e => nomeDoIdioma(e.lang)))]);
     porId('modal-envio-detalhe').textContent = textoDaVoz('ENV-06.detalhe', { n: envios.length, idiomas });
     porId('modal-envio-sem-noticia').hidden = !semNoticia || conexaoDesligada;
+  }
 
-    const lista = porId('modal-envio-lista');
-    for (const envio of envios) {
-      const chave = envio.id;
-      const cartao = montarCartao(envio);
-      const assinatura = cartao.dataset.assinatura;
-      const atual = lista.querySelector(`[data-envio="${chave}"]`);
-      cartao.dataset.envio = chave;
-      if (atual && assinaturas.get(chave) === assinatura) continue;
-      const focoDentro = atual?.contains(document.activeElement) ? document.activeElement.dataset.foco : null;
-      if (atual) atual.replaceWith(cartao);
-      else lista.append(cartao);
-      assinaturas.set(chave, assinatura);
-      if (focoDentro) cartao.querySelector(`[data-foco="${focoDentro}"]`)?.focus();
-    }
+  function desenharOCartao(lista, envio) {
+    const chave = envio.id;
+    const cartao = montarCartao(envio);
+    const assinatura = cartao.dataset.assinatura;
+    const atual = lista.querySelector(`[data-envio="${chave}"]`);
+    cartao.dataset.envio = chave;
+    if (atual && assinaturas.get(chave) === assinatura) return;
+    const focoDentro = atual?.contains(document.activeElement) ? document.activeElement.dataset.foco : null;
+    if (atual) atual.replaceWith(cartao);
+    else lista.append(cartao);
+    assinaturas.set(chave, assinatura);
+    if (focoDentro) cartao.querySelector(`[data-foco="${focoDentro}"]`)?.focus();
   }
 
   async function esquecerOEnvio(envio) {
@@ -327,8 +369,13 @@
     return recomecar(() => criarEnvio(envio));
   }
 
+  async function ankiFechadoSemResposta(envio) {
+    if (!semRespostaAoCriar(envio)) return false;
+    return await ConexaoAnki.conferir() === CONEXAO.DESLIGADA && ConexaoAnki.jaConectou();
+  }
+
   async function pedirOAnkiFechado(envio) {
-    if (!semRespostaAoCriar(envio) || await ConexaoAnki.conferir() !== CONEXAO.DESLIGADA || !ConexaoAnki.jaConectou()) return false;
+    if (!await ankiFechadoSemResposta(envio)) return false;
     if (remessa?.envios.includes(envio)) {
       aguardandoOAbridor = envio;
       await ankiFechado.pedir(envio.ids);
