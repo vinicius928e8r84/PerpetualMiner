@@ -49,7 +49,8 @@ const tela = () => ({
   faixa: faixa().textContent,
 });
 const feitos = () => pedidos.splice(0);
-const sair = () => textoDaVoz('CFG-35.chatgptSair');
+const SAIU = { status: 200, dados: { ok: true, revogada: true } };
+const RECOMECO = { login: 'conectada', rotulo: 'CFG-35.chatgptSair', resposta: SAIU, depois: 'nenhum' };
 
 async function lerComoLogin(login) {
   fila.estado.push(LOGIN[login]);
@@ -58,47 +59,43 @@ async function lerComoLogin(login) {
   assert.deepStrictEqual(feitos(), ['estado']);
 }
 
-async function clicar(rotulo, resposta, depois, cliques = 1) {
+async function clicar({ rotulo, resposta, depois, cliques = 1 }) {
   const avisosAntes = avisos.length;
   if (resposta) fila.sair.push(resposta);
   if (resposta && depois) fila.estado.push(LOGIN[depois]);
-  for (let vez = 0; vez < cliques; vez++) botao(rotulo).disparar('click');
+  for (let vez = 0; vez < cliques; vez++) botao(textoDaVoz(rotulo)).disparar('click');
   await esperar();
   await esperar();
   return { pedidos: feitos(), avisos: avisos.slice(avisosAntes), ...tela() };
 }
 
-const SAIU = { status: 200, dados: { ok: true, revogada: true } };
-async function rodar({ login, temChave = true, rotulo, resposta, depois, entrar, cliques, soAColuna, soOsPedidos, comOFoco }) {
-  mundo.temChave = temChave;
+const DO_RESULTADO = {
+  soAColuna: visto => visto.coluna,
+  soOsPedidos: visto => visto.pedidos,
+  comOFoco: visto => ({ ...visto, campos: campos.slice() }),
+};
+
+async function rodar(cenario) {
+  mundo.temChave = cenario.temChave ?? true;
   campos.length = 0;
-  await lerComoLogin(login);
-  if (entrar) fila.entrar.push(entrar);
-  if (!rotulo) return tela();
-  const visto = await clicar(textoDaVoz(rotulo), resposta, depois, cliques);
-  if (soAColuna) return visto.coluna;
-  if (soOsPedidos) return visto.pedidos;
-  return comOFoco ? { ...visto, campos: campos.slice() } : visto;
-}
-
-async function recomecar() {
-  await lerComoLogin('conectada');
-  await clicar(sair(), SAIU, 'nenhum');
-}
-
-async function coletar(entradas, passo) {
-  const vistos = {};
-  for (const [nome, entrada] of entradas) vistos[nome] = await passo(entrada);
-  return vistos;
+  await lerComoLogin(cenario.login);
+  if (cenario.entrar) fila.entrar.push(cenario.entrar);
+  if (!cenario.rotulo) return tela();
+  const visto = await clicar(cenario);
+  const forma = Object.keys(DO_RESULTADO).find(nome => cenario[nome]);
+  return forma ? DO_RESULTADO[forma](visto) : visto;
 }
 
 async function percorrer(cenarios) {
-  await recomecar();
-  return coletar(cenarios.map(cenario => [cenario.nome, cenario]), rodar);
+  await rodar(RECOMECO);
+  const vistos = {};
+  for (const cenario of cenarios) vistos[cenario.nome] = await rodar(cenario);
+  return vistos;
 }
 
 async function main() {
-  const vistos = await coletar(Object.entries(CENARIOS), percorrer);
+  const vistos = {};
+  for (const [nome, cenarios] of Object.entries(CENARIOS)) vistos[nome] = await percorrer(cenarios);
   assert.deepStrictEqual(JSON.parse(JSON.stringify(vistos)), require('./painel_ia_chatgpt_esperado.js'));
   console.log('painel ia chatgpt tests passed');
 }
