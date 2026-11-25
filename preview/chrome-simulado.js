@@ -10,37 +10,18 @@
     return data.toLocaleDateString('pt-BR');
   };
 
+  const fraseDeExemplo = ([id, texto, contexto, streaming, idioma, deslocamento, extras]) => (
+    { id, texto, contexto, streaming, idioma, data: dia(deslocamento), ...extras }
+  );
+
   const FRASES = [
-    {
-      id: 1001, texto: "I'm not saying it's your fault, I'm saying it's your responsibility.",
-      contexto: 'The Bear · T2 · E7', streaming: 'netflix', idioma: 'Inglês', data: dia(0),
-      keywords: ['responsibility'], autoKeyword: 'responsibility',
-    },
-    {
-      id: 1002, texto: 'Мы с тобой одной крови — ты и я.',
-      contexto: 'Маугли · cap. 3', streaming: 'livro', idioma: 'Russo', data: dia(0),
-      keywords: ['крови'], autoKeyword: 'крови',
-    },
-    {
-      id: 1003, texto: 'The devil is in the details.',
-      contexto: 'The Atlantic', streaming: 'web', idioma: 'Inglês', data: dia(1),
-      status: 'exported', keywords: ['details'],
-    },
-    {
-      id: 1004, texto: 'Не всё то золото, что блестит.',
-      contexto: 'Редакция · canal', streaming: 'youtube', idioma: 'Russo', data: dia(1),
-      status: 'exported', keywords: ['золото'],
-    },
-    {
-      id: 1005, texto: 'All that glitters is not gold.',
-      contexto: 'Shakespeare · O Mercador de Veneza', streaming: 'livro', idioma: 'Inglês', data: dia(2),
-      keywords: ['glitters'],
-    },
-    {
-      id: 1006, texto: 'Тихая гавань проснулась раньше чаек.',
-      contexto: 'Página fotografada · p. 42', streaming: 'manual', idioma: 'Russo', data: dia(3),
-    },
-  ];
+    [1001, "I'm not saying it's your fault, I'm saying it's your responsibility.", 'The Bear · T2 · E7', 'netflix', 'Inglês', 0, { keywords: ['responsibility'], autoKeyword: 'responsibility' }],
+    [1002, 'Мы с тобой одной крови — ты и я.', 'Маугли · cap. 3', 'livro', 'Russo', 0, { keywords: ['крови'], autoKeyword: 'крови' }],
+    [1003, 'The devil is in the details.', 'The Atlantic', 'web', 'Inglês', 1, { status: 'exported', keywords: ['details'] }],
+    [1004, 'Не всё то золото, что блестит.', 'Редакция · canal', 'youtube', 'Russo', 1, { status: 'exported', keywords: ['золото'] }],
+    [1005, 'All that glitters is not gold.', 'Shakespeare · O Mercador de Veneza', 'livro', 'Inglês', 2, { keywords: ['glitters'] }],
+    [1006, 'Тихая гавань проснулась раньше чаек.', 'Página fotografada · p. 42', 'manual', 'Russo', 3],
+  ].map(fraseDeExemplo);
 
   const ESTADO_AUTO_MINER = {
     settings: { en: { enabled: true, dailyLimit: 20 }, ru: { enabled: false, dailyLimit: 15 } },
