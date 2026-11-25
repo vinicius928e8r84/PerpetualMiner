@@ -61,7 +61,7 @@ def parar(conexao):
 
 class AoCarregarNoAnki(unittest.TestCase):
     def setUp(self):
-        remendo = patch("complemento.inicio.abridores.deste_computador", side_effect=AssertionError("registro real proibido no teste"))
+        remendo = patch("complemento.abridor.deste_computador", side_effect=AssertionError("registro real proibido no teste"))
         self.fabrica_real = remendo.start()
         self.addCleanup(remendo.stop)
         self.addCleanup(self.fabrica_real.assert_not_called)
@@ -69,7 +69,7 @@ class AoCarregarNoAnki(unittest.TestCase):
     def test_desativar_o_abridor_nao_descobre_nem_registra_host_no_mac_ou_no_windows(self):
         for plataforma in ("darwin", "win32"):
             with self.subTest(plataforma=plataforma), tempfile.TemporaryDirectory() as pasta:
-                with patch.object(inicio.sys, "platform", plataforma):
+                with patch.object(sys, "platform", plataforma):
                     conexao = inicio.iniciar(pasta, lambda: None, porta=0, abridor=None)
                     try:
                         self.assertIsNotNone(conexao)
@@ -343,7 +343,7 @@ class InicioDeProducaoIsolado(unittest.TestCase):
                     sistema=abridor.NoWindows({"Chrome": "HKCU-de-mentira"}, registro), pasta=pastas.abridor,
                     programa=os.path.join(raiz, "anki.exe"),
                 )
-                with patch("complemento.inicio.abridores.deste_computador", return_value=injetado) as fabrica:
+                with patch("complemento.abridor.deste_computador", return_value=injetado) as fabrica:
                     conexao = inicio.iniciar(os.path.join(raiz, "complemento"), lambda: None, porta=0)
                     try:
                         self.assertIsNotNone(conexao)
@@ -360,7 +360,7 @@ class InicioDeProducaoIsolado(unittest.TestCase):
 
 class OAbridorDesteComputador(unittest.TestCase):
     def test_o_abridor_anota_o_programa_que_roda_o_anki_e_a_pasta_do_complemento(self):
-        with tempfile.TemporaryDirectory() as pasta, patch("complemento.inicio.abridores.deste_computador", return_value=None) as deste:
+        with tempfile.TemporaryDirectory() as pasta, patch("complemento.abridor.deste_computador", return_value=None) as deste:
             parar(inicio.iniciar(pasta, lambda: None, porta=0, item_de_login=item_de_login.ItemDeLogin(sistema="mac", pasta=pasta, comando=None)))
         self.assertEqual((deste.call_args.kwargs["computador"].executavel, deste.call_args.kwargs["complemento"]), (sys.executable, pasta))
 

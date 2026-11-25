@@ -4,20 +4,14 @@ Nada aqui levanta erro: um erro no carregamento abriria o diálogo de erro do An
 culpando o complemento. Tudo vai ao logger.
 """
 
-import os
-import sys
-
-from . import abridor as abridores, item_de_login as itens_de_login, passagem as passagens, pasta_de_dados, registro, tipo_de_nota
+from . import do_computador, pasta_de_dados, registro, tipo_de_nota
 from .baralhos import ColecaoIndisponivel
-from .atualizacao import ARQUIVO_DE_QUEM_DESLIGOU, AnkiWebAusente, Atualizacao, RegistroDaAtualizacao
 from .configuracao import ATUALIZACAO_AUTOMATICA, PORTA, VERSAO
+from .do_computador import ABRIDOR_DESTE_COMPUTADOR, PASSAGEM_DESTE_COMPUTADOR
 from .esperas import Esperas
 from .montagem_da_conexao import Ambiente, Fronteiras, Porta, montar
 from .servicos_de_fora import ServicosDeFora
 from .servidor import Conexao
-
-ABRIDOR_DESTE_COMPUTADOR = object()
-PASSAGEM_DESTE_COMPUTADOR = object()
 
 
 def iniciar(
@@ -53,44 +47,20 @@ def iniciar(
     try:
         dados = pasta_de_dados.preparar(pasta_do_complemento)
         logger = registro.criar(dados.logs)
+        ambiente = Ambiente(dados, logger, VERSAO)
         fronteiras = Fronteiras(
-            colecao=colecao,
-            item_de_login=_item_de_login_deste_computador(item_de_login),
-            atualizacao=_atualizacao_do_anki(dados, anki_web, atualizacao_automatica, logger))
-        conexao = Conexao(Porta(porta), montar(Ambiente(dados, logger, VERSAO), servicos, esperas or Esperas(), fronteiras), perfil_aberto)
-        _cuidar_do_perfil(conexao, _abridor_deste_computador(abridor, pasta_do_complemento, dados), ao_abrir_o_perfil, logger)
-        return _subir(conexao, passagem, porta)
+            colecao=colecao, item_de_login=do_computador.item_de_login(item_de_login),
+            atualizacao=do_computador.atualizacao(dados, anki_web, atualizacao_automatica, ambiente))
+        conexao = Conexao(Porta(porta), montar(ambiente, servicos, esperas or Esperas(), fronteiras), perfil_aberto)
+        _cuidar_do_perfil(conexao, do_computador.abridor(abridor, pasta_do_complemento, dados), ao_abrir_o_perfil, logger)
+        return _subir(conexao, do_computador.passagem(passagem, porta))
     except Exception:
         logger.exception("O complemento não conseguiu iniciar")
         return None
 
 
-def _abridor_deste_computador(abridor, pasta_do_complemento, dados):
-    if abridor is not ABRIDOR_DESTE_COMPUTADOR:
-        return abridor
-    return abridores.deste_computador(
-        computador=abridores.Computador(sys.platform, os.environ, sys.executable), pasta=os.path.join(dados.raiz, "abridor"),
-        complemento=pasta_do_complemento,
-    )
-
-
-def _item_de_login_deste_computador(item_de_login):
-    if item_de_login is not None:
-        return item_de_login
-    return itens_de_login.deste_computador(plataforma=sys.platform, ambiente=os.environ, executavel=sys.executable)
-
-
-def _atualizacao_do_anki(dados, anki_web, atualizacao_automatica, logger):
-    desligada = os.path.exists(os.path.join(dados.raiz, ARQUIVO_DE_QUEM_DESLIGOU))
-    return Atualizacao(
-        registro=RegistroDaAtualizacao(os.path.join(dados.raiz, "atualizacao.json"), VERSAO, logger), anki_web=anki_web or AnkiWebAusente(), logger=logger,
-        ligada=atualizacao_automatica and not desligada)
-
-
-def _subir(conexao, passagem, porta):
+def _subir(conexao, passagem):
     """Sobe a Conexão: já, ou depois da passagem do Windows (a Conexão de hoje na porta). Devolve a Conexão, ou None se a porta não deixou."""
-    if passagem is PASSAGEM_DESTE_COMPUTADOR:
-        passagem = passagens.deste_computador(plataforma=sys.platform, ambiente=os.environ, porta=porta)
     if passagem is not None and passagem.pendente(conexao):
         conexao.iniciar_depois(lambda cancelado: passagem.fazer(conexao, cancelado))
     elif not conexao.iniciar():
