@@ -23,65 +23,61 @@ const PALAVRAS_QUE_JA_SEI = ['aside', 'babies', 'children', 'clock', 'dependence
 const FRASE_COM_PALAVRA_NOVA = 'Its dependence on rain left it exposed to the depredations of drought.';
 const AJUSTES_LIGADOS = { pm_auto_miner_settings: { en: { enabled: true, dailyLimit: 20 }, ru: { enabled: true, dailyLimit: 20 } } };
 
-function abrirOServiceWorker(armazenamento = {}) {
-  const nuvem = { gravadas: [], falha: null };
-  let aoReceberMensagem = null;
-  let aoClicarNoMenu = null;
-  const contexto = {
-    console: { ...console, warn() {} },
-    navigator: globalThis.navigator,
-    fetch: async () => ({ ok: false }),
-    setTimeout,
-    clearTimeout,
-    Date,
-    chrome: {
-      contextMenus: { create() {}, onClicked: { addListener: funcao => { aoClicarNoMenu = funcao; } } },
-      runtime: {
-        id: ID_DA_EXTENSAO,
-        onInstalled: { addListener() {} },
-        onMessage: { addListener: funcao => { aoReceberMensagem = funcao; } },
-        lastError: null,
-      },
-      storage: {
-        local: {
-          get(padroes, devolver) {
-            const lido = {};
-            for (const [chave, valor] of Object.entries(padroes || {})) {
-              lido[chave] = Object.hasOwn(armazenamento, chave) ? armazenamento[chave] : valor;
-            }
-            devolver(lido);
-          },
-          set(valores, devolver) {
-            Object.assign(armazenamento, valores || {});
-            if (devolver) devolver();
-          },
-        },
-      },
-      tabs: { query: (_filtro, devolver) => devolver([]) },
+function armazenamentoDeMentira(armazenamento) {
+  const valorDe = (chave, padrao) => (Object.hasOwn(armazenamento, chave) ? armazenamento[chave] : padrao);
+  return {
+    get(padroes, devolver) {
+      devolver(Object.fromEntries(Object.entries(padroes || {}).map(([chave, padrao]) => [chave, valorDe(chave, padrao)])));
+    },
+    set(valores, devolver) {
+      Object.assign(armazenamento, valores || {});
+      devolver?.();
     },
   };
+}
+
+function chromeDeMentira(armazenamento, ouvintes) {
+  return {
+    contextMenus: { create() {}, onClicked: { addListener: funcao => { ouvintes.menu = funcao; } } },
+    runtime: {
+      id: ID_DA_EXTENSAO,
+      onInstalled: { addListener() {} },
+      onMessage: { addListener: funcao => { ouvintes.mensagem = funcao; } },
+      lastError: null,
+    },
+    storage: { local: armazenamentoDeMentira(armazenamento) },
+    tabs: { query: (_filtro, devolver) => devolver([]) },
+  };
+}
+
+function carregarOBackground(chrome) {
+  const contexto = { console: { ...console, warn() {} }, navigator: globalThis.navigator, fetch: async () => ({ ok: false }), setTimeout, clearTimeout, Date, chrome };
   contexto.importScripts = (...arquivos) => {
     for (const arquivo of arquivos) vm.runInContext(fs.readFileSync(arquivo, 'utf8'), contexto, { filename: arquivo });
   };
   vm.createContext(contexto);
   vm.runInContext(fs.readFileSync('background.js', 'utf8'), contexto, { filename: 'background.js' });
+  return contexto;
+}
+
+function abrirOServiceWorker(armazenamento = {}) {
+  const nuvem = { gravadas: [], falha: null };
+  const ouvintes = { menu: null, mensagem: null };
+  const contexto = carregarOBackground(chromeDeMentira(armazenamento, ouvintes));
   contexto.nuvemDaConta = async () => ({
     gravarFrase: async frase => {
       if (nuvem.falha) throw nuvem.falha;
       nuvem.gravadas.push(copiaSimples(frase));
     },
   });
+  const pedirPorMensagem = (type, pedido) => new Promise(resolver => ouvintes.mensagem({ type, ...pedido }, DO_PAINEL, resolver));
   return {
     armazenamento,
     nuvem,
     frases: () => copiaSimples(armazenamento.frases || []),
-    clicarNoMenu: (info, aba) => aoClicarNoMenu(info, aba),
-    salvarNoHistorico: pedido => new Promise(resolver => {
-      aoReceberMensagem({ type: 'SALVAR_HISTORICO', ...pedido }, DO_PAINEL, resolver);
-    }),
-    candidata: pedido => new Promise(resolver => {
-      aoReceberMensagem({ type: 'AUTO_MINER_CANDIDATE', ...pedido }, DO_PAINEL, resolver);
-    }),
+    clicarNoMenu: (info, aba) => ouvintes.menu(info, aba),
+    salvarNoHistorico: pedido => pedirPorMensagem('SALVAR_HISTORICO', pedido),
+    candidata: pedido => pedirPorMensagem('AUTO_MINER_CANDIDATE', pedido),
   };
 }
 
