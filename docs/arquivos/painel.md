@@ -28,6 +28,7 @@ A regra `indice-de-arquivos` (`scripts/regras/indice-de-arquivos.js`) exige uma 
 | `painel/painel-envio-anki-fechado.js` | `PerpetualMiner.EnvioComOAnkiFechado` — Enviar ao Anki with the Anki closed (#150): the ENV-16 notice, the pending Envio and the Consertar outcome (BRG-39). See “Envio ao Anki” in the `painel-anki` skill |
 | `painel/painel-envio-cartao.js` | `CartaoDoEnvio`: an Envio's card, “Abrir <perfil>” (ENV-17), Esquecer (ENV-23) |
 | `painel/painel-envio-apagar.js` | `EnvioApagarFrases`: the Apagar tudo request (CFG-17) |
+| `painel/painel-envio-resumo.js` | `ResumoDoEnvio`: the Envio's summary (ENV-10): `oQueFazerComOResumo` decides whether it is time to open it (or to bring the progress modal back), the rest writes it and answers it (Manter, Tirar do histórico, Tentar de novo per language); `painel/painel-envio.js` hands it the state it keeps |
 | `painel/painel-envio-parado.js` | `EnvioParado`: the Envio stopped by a closed Anki (#151): ENV-18, Continuar envio |
 | `painel/painel-envio-limite.js` | `EnvioNoLimite`: the Envio waiting for the ChatGPT plan's limit (#158): ENV-19; Usar a minha chave goes through the Envio's `EnvioAcompanhado` |
 | `painel/painel-teto.js`, `painel/painel-teto.css` | `TetoDoMes` and `EnvioNoTeto`: the monthly cap (#160): the 80% warning, the Custos card, the Envio band (ENV-21) |
