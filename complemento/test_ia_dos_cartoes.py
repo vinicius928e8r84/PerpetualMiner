@@ -242,6 +242,19 @@ class OTextoPelaPorta(unittest.TestCase):
         self.assertFalse(ficou)
 
 
+class OTextoSemCredencial(unittest.TestCase):
+    def test_sem_credencial_o_pedido_do_texto_nao_chega_a_openai_nem_ao_custo(self):
+        for etapa in (TEXTO, CORRECAO):
+            with self.subTest(etapa), tempfile.TemporaryDirectory() as pasta, OpenAIDeMentira() as openai:
+                ia, config = porta_na_openai(pasta, "sem chave", openai)
+                pagador = ia.para_o_texto()
+                self.assertEqual((pagador.quem, pagador.credencial, pagador.motivo), (PARADO, None, SEM_CHAVE))
+                with self.assertRaises(TypeError):
+                    ia.pedido_do_texto(pagador, config, etapa)("o prompt", "give up : She gave up smoking", "17-0")
+                self.assertEqual((openai.chats, openai.respostas, openai.correcoes), ([], [], []))
+                self.assertFalse(os.path.exists(os.path.join(config["paths"]["log_dir"], "costs.jsonl")))
+
+
 class AImagemPelaChavePresa(unittest.TestCase):
     def test_a_triagem_e_a_imagem_gerada_vao_com_a_chave_guardada_sem_o_motor_a_receber(self):
         with tempfile.TemporaryDirectory() as pasta, OpenAIDeMentira() as openai:
