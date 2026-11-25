@@ -85,6 +85,7 @@
   };
   const pedidos = { entrar() {}, sair() {}, tentarDeNovo() {} };
   const outrosLugares = [];
+  const fazer = pedido => () => pedidos[pedido]();
 
   function mostrarConta(usuario) {
     estado.conta = usuario ? { ...usuario } : null;
@@ -207,14 +208,14 @@
   }
 
   function cardSemConta() {
-    const entrar = botao('primario', textoDaVoz('CFG-06.botao'), () => pedidos.entrar());
+    const entrar = botao('primario', textoDaVoz('CFG-06.botao'), fazer('entrar'));
     entrar.prepend(iconeVeio('entrar'));
 
     const principal = linha(
       blocoDaConta(elemento('b', 'cfg-convite', textoDaVoz('CFG-06.ajuda')), elemento('span', 'cfg-nota', textoDaVoz('CFG-06.semConta'))),
       elemento('div', 'cfg-acoes', entrar),
     );
-    const aviso = estado.falhaNoLogin && avisoDoCard('CFG-07.aviso', 'CFG-07.tentarDeNovo', () => pedidos.entrar(), estado.falhaNoLogin);
+    const aviso = estado.falhaNoLogin && avisoDoCard('CFG-07.aviso', 'CFG-07.tentarDeNovo', fazer('entrar'), estado.falhaNoLogin);
     return cardCom(principal, aviso);
   }
 
@@ -233,9 +234,9 @@
 
   function acoesDaConta(situacao) {
     const acoes = elemento('div', 'cfg-acoes');
-    if (situacao?.entrar) acoes.append(botao('primario', textoDaVoz('CFG-08.entrar'), () => pedidos.entrar()));
+    if (situacao?.entrar) acoes.append(botao('primario', textoDaVoz('CFG-08.entrar'), fazer('entrar')));
     const estiloDoSair = situacao ? situacao.sair : 'fantasma';
-    if (estiloDoSair) acoes.append(botao(estiloDoSair, textoDaVoz('CFG-23'), () => pedidos.sair()));
+    if (estiloDoSair) acoes.append(botao(estiloDoSair, textoDaVoz('CFG-23'), fazer('sair')));
     return acoes;
   }
 
@@ -243,7 +244,7 @@
     const detalhes = situacao?.dados.detalhes;
     if (situacao?.aviso) {
       const { texto, acao, aoUsar } = situacao.aviso;
-      return avisoDoCard(texto, acao, aoUsar || (() => pedidos.tentarDeNovo()), detalhes);
+      return avisoDoCard(texto, acao, aoUsar || fazer('tentarDeNovo'), detalhes);
     }
     if (situacao?.erro && detalhes) return montarDetalhes(detalhes);
     return null;
