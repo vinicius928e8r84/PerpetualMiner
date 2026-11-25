@@ -1,10 +1,3 @@
-"""O adaptador da OpenAI pela chave (`openai_http.py`), gravado com o código de antes da refatoração da Onda 3 do CodeScene.
-
-Cada cenário é uma chamada do adaptador e o que a rede responde a cada pedido; o que se grava é o que a chamada devolve (ou o código
-da recusa), cada pedido que saiu (endereço, cabeçalhos, corpo, tempo, quantas vezes) e as esperas entre as tentativas. As recusas da
-chave e as passageiras têm a sua tabela; o plano do ChatGPT está em `test_openai_http_plano_tabela.py`.
-"""
-
 import io
 import json
 import ssl
@@ -84,8 +77,6 @@ def chamada_ou_recusa(chamada):
 
 
 def chamar(funcao, argumentos, opcoes):
-    """Os cenários foram gravados com `completar(base, chave, modelo, mensagens, ...)` e `responder(base, token, modelo, instrucoes, mensagem, ...)`;
-    aqui viram a credencial, a pergunta e a paciência de hoje, sem mexer no que se gravou."""
     if funcao in ("completar", "responder"):
         opcoes = dict(opcoes)
         paciencia = openai_http.Paciencia(opcoes.pop("tempo", openai_http.TEMPO_PADRAO), opcoes.pop("repeticoes", 0))

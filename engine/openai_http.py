@@ -1,21 +1,3 @@
-"""
-openai_http.py - Chat completions, the Responses API of the ChatGPT plan and image generation over plain HTTP (standard library only, Python 3.9+).
-
-The engine's text and image stages talk to OpenAI through this module instead of the SDK, so they also run inside
-the Anki add-on (the Conexão com o Anki), where there is no `openai`, `httpx` or `requests`. The base URL
-is passed by code (each caller passes its own constant, or OPENAI_BASE): nothing in the environment or in
-`engine/config.json` can redirect the key.
-
-The image calls (the judge, the screening, the generation) ask again, twice, after a passing refusal (408/409/429/5xx,
-a timeout or no answer), as the SDK did; the text call does not (the add-on waits and repeats it by itself).
-
-A refusal becomes `ErroDaOpenAI(codigo)`; what OpenAI wrote in the refusal is never kept, because the
-message of a rejected key repeats parts of it.
-
-This module is the `openai` adapter of the provider layer (`provedores.py`): `texto()` and `imagem()` are the interface it
-fulfils, the rest is OpenAI's own protocol.
-"""
-
 import json
 import ssl
 import time
@@ -37,8 +19,6 @@ SEM_CREDITO = "openai_no_credit"
 LIMITE_DE_USO = "openai_rate_limited"
 FORA_DO_AR = "openai_unreachable"
 PEDIDO_RECUSADO = "openai_request_rejected"
-# The ChatGPT plan (Sign in with ChatGPT, #155): the codes its Responses API errors become. Source: the SIWC docs,
-# "Errors and recovery" (https://developers.openai.com/siwc/token-sharing-open-source/errors-and-recovery).
 LIMITE_DO_PLANO = "chatgpt_usage_limit"
 PLANO_NAO_SERVE = "chatgpt_not_eligible"
 PLANO_RECUSOU = "chatgpt_rejected"
@@ -56,8 +36,6 @@ IMAGEM_INVALIDA = "openai_invalid_image"
 
 
 class ErroDaOpenAI(Exception):
-    """OpenAI did not answer the request: `codigo` is one of the codes above."""
-
     def __init__(self, codigo, status=None):
         super().__init__(codigo if status is None else "%s (HTTP %s)" % (codigo, status))
         self.codigo = codigo
@@ -65,7 +43,6 @@ class ErroDaOpenAI(Exception):
 
 
 def contexto_tls():
-    # Anki's Python on the Mac does not always find the system authorities; Anki ships `certifi`.
     try:
         import certifi
 
@@ -115,8 +92,6 @@ def _classificar_do_plano(status, detalhe):
 
 
 class _Pedido:
-    """A POST of a JSON body to OpenAI, with the key or the plan's token as the bearer."""
-
     def __init__(self, url, segredo, corpo, tempo):
         self.url, self.segredo, self.corpo, self.tempo = url, segredo, corpo, tempo
 
@@ -198,7 +173,6 @@ def _tipo_do_evento(evento):
 
 
 def _com_repeticoes(enviar, repeticoes):
-    """`enviar()` once, and again `repeticoes` times after a passing refusal, waiting twice as long each time."""
     espera = ESPERA_ENTRE_TENTATIVAS
     for tentativa in range(repeticoes + 1):
         try:
@@ -211,8 +185,6 @@ def _com_repeticoes(enviar, repeticoes):
 
 
 class PerguntaDaResponses(namedtuple("PerguntaDaResponses", "instrucoes mensagem formato_json", defaults=(False,))):
-    """What the ChatGPT plan is asked: the system prompt as `instructions`, the user's message and whether the answer is a JSON object."""
-
     def corpo(self, modelo):
         corpo = {"model": modelo, "instructions": self.instrucoes, "input": [{"role": "user", "content": self.mensagem}], "store": False, "stream": True}
         if self.formato_json:
@@ -225,23 +197,15 @@ def _base_de(cred):
 
 
 def responder(cred, pergunta, paciencia=PACIENCIA_DO_TEXTO):
-    """POST /v1/responses with the ChatGPT plan's access token (`cred["segredo"]`): no `temperature`, the system prompt as `instructions`,
-    `store: false` and `stream: true` (the SIWC "Preview limitations"). The `pergunta`'s message is a text, or the parts of the user's
-    message (`input_text` and `input_image`, the image judge); its `formato_json` asks for a JSON object by `text.format`. Returns
-    (text, usage) only after `response.completed`; anything else is `ErroDaOpenAI` with a code, never what the plan wrote. A passing
-    refusal (`passageira`) is asked again `paciencia.repeticoes` times."""
     pedido = _Pedido(_base_de(cred) + "/v1/responses", cred["segredo"], pergunta.corpo(cred["modelo"]), paciencia.tempo)
     return _com_repeticoes(pedido.stream, paciencia.repeticoes)
 
 
 def passageira(codigo, status):
-    """A refusal worth asking again: the server or the network failed, or OpenAI asked to slow down (never the key or the billing)."""
     return codigo == FORA_DO_AR or codigo == LIMITE_DE_USO or status in (408, 409)
 
 
 class PerguntaDoChat(namedtuple("PerguntaDoChat", "mensagens temperatura formato_json max_tokens", defaults=(None, False, None))):
-    """What the key is asked: the chat's messages, and how the text must come (a `temperatura`, a JSON object, a `max_tokens`)."""
-
     def corpo(self, modelo):
         corpo = {"model": modelo, "messages": self.mensagens}
         if self.temperatura is not None:
@@ -259,14 +223,12 @@ def _texto_da_primeira_escolha(dados):
 
 
 def completar(cred, pergunta, paciencia=PACIENCIA_DO_TEXTO):
-    """POST /v1/chat/completions. Returns (text, usage): the first choice's text ('' if none) and the `usage` dict."""
     pedido = _Pedido(_base_de(cred) + "/v1/chat/completions", cred["segredo"], pergunta.corpo(cred["modelo"]), paciencia.tempo)
     dados = _com_repeticoes(pedido.resposta, paciencia.repeticoes)
     return _texto_da_primeira_escolha(dados), dados.get("usage") or {}
 
 
 def _partes_da_responses(partes):
-    """The chat's parts as the Responses API's: `input_text` and `input_image`. `json_object` needs the word JSON in the input."""
     convertidas = [
         {"type": "input_image", "image_url": parte["image_url"]["url"]} if parte["type"] == "image_url" else {"type": "input_text", "text": parte["text"]}
         for parte in partes
@@ -290,9 +252,6 @@ def _texto_da_chave(cred, pergunta, paciencia):
 
 
 def texto(cred, sistema, mensagem, json=False, temperatura=None, max_tokens=None, tempo=None, repeticoes=0):
-    """The provider layer's `texto` for OpenAI: the key's chat completions, or the ChatGPT plan's Responses API when `cred["via"]` is `plano`
-    (no `temperature` or `max_tokens` there; a list `mensagem` is converted to the Responses API's parts). Returns (text, {entrada, saida}):
-    `{}` when the answer had no usage and the key is the one paying."""
     paciencia = Paciencia(tempo or TEMPO_PADRAO, repeticoes)
     if cred.get("via") == "plano":
         partes = _partes_da_responses(mensagem) if isinstance(mensagem, list) else mensagem
@@ -302,8 +261,6 @@ def texto(cred, sistema, mensagem, json=False, temperatura=None, max_tokens=None
 
 
 def imagem(cred, prompt, tamanho):
-    """The provider layer's `imagem` for OpenAI, POST /v1/images/generations: the first image of the answer, `{"b64_json": ...}` or
-    `{"url": ...}` (`{}` if none)."""
     url, segredo = (cred.get("base") or OPENAI_BASE) + "/v1/images/generations", cred["segredo"]
     pedido = _Pedido(url, segredo, {"model": cred["modelo"], "prompt": prompt, "n": 1, "size": tamanho}, TEMPO_DA_IMAGEM)
     primeira = (_com_repeticoes(pedido.resposta, REPETICOES_DA_IMAGEM).get("data") or [{}])[0]

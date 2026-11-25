@@ -1,6 +1,3 @@
-"""What a card says, seen from outside: which text is spoken, in which language and accent. `voices()` answers it with the
-standard library only; the Anki add-on asks Google for the MP3 (`complemento/voz.py`)."""
-
 import unittest
 
 import config_loader
@@ -9,7 +6,6 @@ import parser as mining_parser
 
 
 def falado(linha, ru=False, card_text=None, profiles=None):
-    """The (text, language, accent) of the word and of the phrase of a mining line's first card."""
     config = config_loader.base_config()
     if profiles:
         config["tts"]["profiles"].update(profiles)
