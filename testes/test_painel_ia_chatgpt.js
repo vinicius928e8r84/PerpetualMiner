@@ -104,12 +104,7 @@ async function percorrer(cenarios) {
 
 async function main() {
   const vistos = await coletar(Object.entries(CENARIOS), percorrer);
-  if (process.env.GRAVAR_O_ESPERADO === '1') {
-    console.log(`'use strict';\n\nmodule.exports = {\n${Object.entries(vistos).map(([nome, valor]) => `  ${nome}: ${JSON.stringify(valor)},`).join('\n')}\n};`);
-    return;
-  }
-  const esperado = require('./painel_ia_chatgpt_esperado.js');
-  assert.deepStrictEqual(JSON.parse(JSON.stringify(vistos)), esperado);
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(vistos)), require('./painel_ia_chatgpt_esperado.js'));
   console.log('painel ia chatgpt tests passed');
 }
 
