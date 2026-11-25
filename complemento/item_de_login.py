@@ -1,19 +1,3 @@
-"""O item de login de “Abrir o Anki com o computador”: o que faz o Anki abrir quando a pessoa entra.
-
-No Mac é um LaunchAgent (um `.plist` em `~/Library/LaunchAgents`); no Windows, um atalho na
-pasta Inicializar. Ligar escreve o item, desligar o apaga; ao abrir o perfil, o item que já existe e difere do que a
-Conexão escreveria é reescrito (#401), nunca criado. Nada mais é tocado, e nenhum dos dois
-roda nada na hora (o Mac só lê os LaunchAgents ao entrar, e o Windows só roda a Inicializar ao entrar).
-
-Só a biblioteca padrão: o `.lnk` do Windows é escrito byte a byte (MS-SHLLINK), porque o Python do
-Anki não tem COM nem se pode contar com o PowerShell. Leva a lista do alvo (`LinkTargetIDList`), o
-alvo (`LinkInfo`) e a pasta de trabalho: sem a lista o Windows recusa o atalho (“não há aplicativos
-associados”).
-
-Os testes conferem o que fica no disco; o que o sistema faz com o item (abrir o Anki no login) só um
-computador de verdade mostra.
-"""
-
 import ntpath
 import os
 import plistlib
@@ -26,16 +10,10 @@ NOME_DO_ATALHO = "Anki (PerpetualMiner).lnk"
 
 
 class AnkiNaoEncontrado(Exception):
-    """Não se sabe onde o Anki está, então não há o que abrir no login."""
+    pass
 
 
 class ItemDeLogin:
-    """O item numa `pasta`, para um `sistema` (`"mac"` ou `"windows"`) e um `comando` que abre o Anki.
-
-    O `comando` é a lista de argumentos no Mac e o caminho do programa no Windows; `None` é que
-    não se sabe como abrir o Anki.
-    """
-
     def __init__(self, *, sistema, pasta, comando):
         if sistema not in _FORMATOS:
             raise ValueError("sistema sem item de login: %r" % (sistema,))
@@ -52,18 +30,11 @@ class ItemDeLogin:
         return os.path.isfile(self.caminho)
 
     def ligar(self):
-        """Escreve o item (troca o que já havia). Levanta `AnkiNaoEncontrado` ou o `OSError` da escrita."""
         if not self.comando:
             raise AnkiNaoEncontrado("não se sabe como abrir o Anki neste computador")
         self._gravar(self._serializar(self.comando))
 
     def reescrever_se_difere(self):
-        """Troca o item que já existe por o que a Conexão escreveria agora, se for outro (#401): um item de uma Conexão antiga
-        (o atalho do Windows das 0.4.21 em diante não abria o Anki) ou de um Anki que mudou de lugar. Devolve se trocou.
-
-        Sem item não cria nenhum (o interruptor desligado segue desligado), e sem saber como abrir o Anki deixa o que está.
-        Levanta o `OSError` da leitura ou da escrita.
-        """
         if not self.comando or not self.ligado():
             return False
         conteudo = self._serializar(self.comando)
@@ -85,12 +56,10 @@ class ItemDeLogin:
             raise
 
     def desligar(self):
-        """Apaga o item. Sem item não há o que fazer."""
         _apagar(self.caminho)
 
 
 def deste_computador(*, plataforma, ambiente, executavel, existe=os.path.exists):
-    """O item deste computador, pelo ambiente em que o complemento roda; `None` onde não há item (só Mac e Windows)."""
     if plataforma == "darwin":
         pasta = posixpath.join(ambiente.get("HOME") or os.path.expanduser("~"), "Library", "LaunchAgents")
         return ItemDeLogin(sistema="mac", pasta=pasta, comando=_como_abrir_no_mac(ambiente, executavel))
@@ -101,7 +70,6 @@ def deste_computador(*, plataforma, ambiente, executavel, existe=os.path.exists)
 
 
 def aplicativo_do_anki_no_mac(ambiente, executavel):
-    """O `.app` de onde o Anki roda (pelo abridor do Anki novo ou pelo programa que roda o complemento), ou None."""
     for caminho in (ambiente.get("ANKI_LAUNCHER"), executavel):
         if caminho and ".app/" in caminho:
             return caminho[: caminho.index(".app/") + len(".app")]
@@ -109,13 +77,11 @@ def aplicativo_do_anki_no_mac(ambiente, executavel):
 
 
 def _como_abrir_no_mac(ambiente, executavel):
-    """Abre o aplicativo de onde o Anki roda; sem saber qual é, o aplicativo que o sistema conhece por “Anki”."""
     aplicativo = aplicativo_do_anki_no_mac(ambiente, executavel)
     return ["/usr/bin/open", aplicativo] if aplicativo else ["/usr/bin/open", "-a", "Anki"]
 
 
 def programa_do_anki_no_windows(ambiente, executavel, existe=os.path.exists):
-    """O programa do Anki: o abridor que o próprio Anki diz, o que roda o complemento, ou onde o instalador o põe."""
     abridor = ambiente.get("ANKI_LAUNCHER")
     if abridor:
         return abridor
@@ -154,23 +120,19 @@ def _atalho_do_windows(alvo):
     cabecalho = struct.pack(
         "<I16sIIQQQIIIHHII",
         0x4C, _CLSID_DO_ATALHO, flags,
-        0x20, 0, 0, 0,  # atributos (arquivo) e as três datas, sem valor
-        0, 0, 1,        # tamanho do alvo e ícone sem valor; janela normal
-        0, 0, 0, 0,     # tecla de atalho e reservados
+        0x20, 0, 0, 0,
+        0, 0, 1,
+        0, 0, 0, 0,
     )
     pasta_de_trabalho = ntpath.dirname(alvo)
     return cabecalho + lista + _link_info(alvo) + _texto_do_atalho(pasta_de_trabalho) + b"\x00\x00\x00\x00"
 
 
 _MEU_COMPUTADOR = bytes.fromhex("e04fd020ea3a6910a2d808002b30309d")
-_NOME_EM_UNICODE = 0x04  # no tipo do item de pasta (0x31) ou de arquivo (0x32): o nome está em UTF-16, não na página ANSI
+_NOME_EM_UNICODE = 0x04
 
 
 def _lista_do_alvo(alvo):
-    """`LinkTargetIDList` (Meu Computador, a unidade, as pastas, o arquivo): o Windows não abre um `.lnk` que só tem o `LinkInfo`.
-
-    Vazia (sem a lista) quando o alvo não começa por uma letra de unidade (caminho de rede).
-    """
     unidade, resto = ntpath.splitdrive(alvo)
     if len(unidade) != 2 or unidade[1] != ":":
         return b""
@@ -185,8 +147,6 @@ def _lista_do_alvo(alvo):
             if len(nome) % 2:
                 nome += b"\x00"
         else:
-            # Fora do ASCII o nome vai em UTF-16: em bytes da página ANSI o Windows não acha a pasta cujo nome ela não guarda (“João” só
-            # cabe na cp1252, “Ωμέγα” nem nela), e o atalho não abre.
             tipo |= _NOME_EM_UNICODE
             nome = (parte + "\x00").encode("utf-16-le")
         itens.append(struct.pack("<HBBIHHH", 14 + len(nome), tipo, 0, 0, 0x21, 0, 0x20 if eh_arquivo else 0x10) + nome)
@@ -195,7 +155,6 @@ def _lista_do_alvo(alvo):
 
 
 def _link_info(alvo):
-    """Onde o alvo está, em disco local; o texto vai também em Unicode, porque a página ANSI não guarda todo nome."""
     volume = struct.pack("<IIII", 17, _DISCO_FIXO, 0, 16) + b"\x00"
     alvo_ansi = alvo.encode("cp1252", "replace") + b"\x00"
     sufixo_ansi = b"\x00"
@@ -216,7 +175,6 @@ def _link_info(alvo):
 
 
 def _texto_do_atalho(texto):
-    """Um texto de `StringData`: o tamanho é em unidades de UTF-16 (um caractere fora do plano básico vale duas)."""
     codificado = texto.encode("utf-16-le")
     return struct.pack("<H", len(codificado) // 2) + codificado
 

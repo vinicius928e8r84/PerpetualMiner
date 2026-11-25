@@ -2,7 +2,6 @@
   var CHAVE = 'perpetualminer_escrita';
   var MENSAGEM = 'perpetualminer:criacao:';
 
-  // “Anki Persistence”: o que a página guarda de uma tela para a outra. O sessionStorage quando há; senão, um objeto da janela.
   var Persistence = (function () {
     try {
       window.sessionStorage.setItem(CHAVE + '_teste', '1');
@@ -40,7 +39,7 @@
     var escritas = palavras(frase);
     var radicalDado = normalizar(raiz).replace(/[^\p{L}\p{N}]/gu, '');
     if (radicalDado.length >= 2 && escritas.some(function (escrita) { return escrita.indexOf(radicalDado) !== -1; })) return true;
-    var procuradas = palavras(String(palavra || '').split(/\s+[\u2013\u2014-]\s+\//)[0]); // o campo traz a pronúncia depois da Palavra (“give up – /ɡeɪv ʌp/”)
+    var procuradas = palavras(String(palavra || '').split(/\s+[\u2013\u2014-]\s+\//)[0]);
     if (!procuradas.length) return false;
     var radicais = escritas.map(radical);
     return procuradas.every(function (procurada) {
@@ -58,7 +57,7 @@
     function enviar() {
       if (enviado === campo.value) return;
       enviado = campo.value;
-      if (typeof pycmd === 'function') pycmd(MENSAGEM + campo.value); // só o Anki do computador tem pycmd; nos outros, o verso lê o que a página guardou
+      if (typeof pycmd === 'function') pycmd(MENSAGEM + campo.value);
     }
     var espera = null;
     Persistence.gravar(CHAVE, '');

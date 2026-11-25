@@ -1,12 +1,8 @@
-"""As rotas de leitura da coleção do Anki (`/anki/decks`, `/anki/stats/decks`, `/anki/vocabulary`): cada uma é uma função `(conexao, corpo) -> (status, json)`,
-listada em `servidor.ROTAS`. Sem coleção aberta (ou com o Anki sem responder) é 503 com o `error` da rota."""
-
 from . import baralhos
 from .motor import estilos
 
 
 def _lendo_a_colecao(erro_do_contrato, leitura):
-    """Roda a leitura da coleção; sem coleção aberta (ou com o Anki sem responder) é 503 com o `erro_do_contrato`."""
     try:
         return 200, leitura()
     except baralhos.ColecaoIndisponivel as motivo:

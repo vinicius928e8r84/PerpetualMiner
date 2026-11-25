@@ -1,9 +1,3 @@
-"""A leitura do vocabulário e dos números de um Baralho: as funções puras, sem I/O e sem estado.
-
-Só a biblioteca padrão e o Python 3.9. O normalizador da frase russa (que no motor é `parser.normalize_ru_phrase`)
-vem embutido em `normalizar_frase_ru`.
-"""
-
 from __future__ import annotations
 
 import re
@@ -60,12 +54,6 @@ FINAIS_DO_INGLES = (
 
 
 def _apply_normalize_ru(normalize_ru: NormalizeRu | None, text: str) -> str:
-    """Aplica o normalizador RU injetado; se ausente, sinaliza para o fallback.
-
-    Espelha exatamente o `self.modules["parser"].normalize_ru_phrase(text)` do
-    original, que ficava dentro de um try/except Exception. Sem normalizador,
-    levanta para que o caller caia no ramo de fallback regex identico.
-    """
     if normalize_ru is None:
         raise RuntimeError("normalize_ru_unavailable")
     return str(normalize_ru(text))
@@ -415,7 +403,6 @@ def deck_stats_totals(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def normalizar_frase_ru(text: str) -> str:
-    """A identidade de uma frase russa: sem o contexto entre colchetes no fim, ё como е, espaços únicos."""
     text = re.sub(r"\s*\[(?:Context|Contexto):.*?\]\s*$", "", text, flags=re.IGNORECASE).strip()
     text = re.sub(r"\s*\[[^\]]+\]\s*$", "", text).strip()
     text = text.replace("ё", "е").replace("Ё", "Е")

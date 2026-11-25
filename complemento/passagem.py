@@ -1,20 +1,3 @@
-"""A passagem do Windows do dono (#178): na primeira vez que abre, a Conexão nova acha a de hoje na porta 8766 e faz a passagem sozinha.
-
-O que a pessoa vê é só o fim: a Conexão de hoje sai e esta ocupa a porta. Antes disso, nesta ordem, e sem perguntar nada:
-
-1. espera o Envio de agora terminar (“Esperando o Envio de agora terminar”, na janela de dentro do Anki);
-2. copia a chave, o histórico de custos e só os prompts editados, marca o perfil do Anki da configuração de hoje (a única coisa que
-   se aproveita dela) e passa os Envios (a fila que não começou entra na fila daqui; o que terminou entra como histórico);
-3. apaga o início automático (as três entradas e o vigia) e encerra o processo da Conexão de hoje;
-4. espera a porta ficar livre e anota em `user_files/passagem.json` que acabou. Só então a Conexão nova sobe (`Conexao.iniciar_depois`).
-
-**Copiar, nunca mover:** a pasta do projeto de hoje, os Cartões no Anki e o que se copiou ficam onde estavam. Qualquer passo que falha deixa a Conexão
-de hoje no ar (a porta só é liberada depois de tudo copiado) e a passagem tenta de novo na próxima vez que o Anki abrir.
-
-Este código só serve ao PC do dono e sai numa versão seguinte: `inicio.py` o chama por um gancho só (`passagem=None` o desliga).
-O sistema (Windows) entra por `sistema` (`passagem_do_windows.py`); os testes põem um de mentira.
-"""
-
 import http.client
 import json
 import os
@@ -36,9 +19,7 @@ OQueSeCopiou = namedtuple("OQueSeCopiou", "chave custos prompts perfil fila")
 
 
 def achar_a_antiga(porta=PORTA, espera=1.0):
-    """A Conexão de hoje na porta (`Antiga`), ou None: a porta livre, outro programa, ou esta própria Conexão não são ela.
-    Ela se descreve no `GET /health` (`bridge: "running"`, o processo, a pasta do projeto e onde ficam o motor, a fila e os Envios)."""
-    ligacao = http.client.HTTPConnection(ENDERECO, porta, timeout=espera)  # sem `urlopen`: ele monta o contexto TLS, que não vale aqui
+    ligacao = http.client.HTTPConnection(ENDERECO, porta, timeout=espera)
     try:
         ligacao.request("GET", "/health")
         saude = json.loads(ligacao.getresponse().read().decode("utf-8"))
@@ -65,7 +46,6 @@ class Passagem:
         self.antiga = None
 
     def pendente(self, conexao):
-        """Há uma Conexão de hoje na porta, e a passagem ainda não acabou neste computador?"""
         if os.path.exists(os.path.join(conexao.dados.raiz, ARQUIVO_DA_MARCA)):
             return False
         self.antiga = achar_a_antiga(self.porta)
@@ -109,7 +89,6 @@ class Passagem:
         return total
 
     def fazer(self, conexao, cancelado=lambda: False):
-        """Toda a passagem, ou `PassagemFalhou`/um erro: a Conexão de hoje só sai depois de tudo copiado."""
         antiga = self.antiga or achar_a_antiga(self.porta)
         if antiga is None:
             return None
@@ -129,7 +108,6 @@ class Passagem:
         return True
 
     def _copiar(self, antiga, conexao):
-        """A chave, os custos, os prompts editados, o perfil marcado e os Envios de hoje, copiados para esta Conexão (`OQueSeCopiou`)."""
         copiado = OQueSeCopiou(
             chave=copias.copiar_a_chave(antiga, conexao.cofre),
             custos=copias.copiar_os_custos(antiga, conexao.fila),
@@ -157,7 +135,6 @@ class Passagem:
 
 
 def deste_computador(*, plataforma, ambiente, porta=PORTA):
-    """A passagem deste computador: só no Windows (a Conexão de hoje do dono é a dele); em outro sistema, None."""
     if plataforma != "win32":
         return None
     return Passagem(sistema=SistemaDoWindows(ambiente=ambiente), porta=porta)

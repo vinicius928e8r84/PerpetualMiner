@@ -1,8 +1,3 @@
-"""O `.ps1` do `consertar` do Windows (#152): as funções que o abridor escreve junto das variáveis de `conserto_do_anki.variaveis_do_ps1`.
-
-O que o `consertar` faz e por quê está em `conserto_do_anki.py`; aqui só moram os trechos do PowerShell.
-"""
-
 FUNCOES_DO_PS1 = r"""
 # A pasta onde o Anki nasce: o Chrome roda o abridor com `user_files\abridor` como diretório corrente, e o Anki que herdasse essa
 # pasta a seguraria aberta (o Remover da Conexão e a atualização dela falham com WinError 32). A pasta da pessoa, ou a do Windows.

@@ -1,9 +1,3 @@
-"""O que o complemento faz ao carregar no Anki: a pasta de dados, o log, o abridor e a Conexão.
-
-Nada aqui levanta erro: um erro no carregamento abriria o diálogo de erro do Anki,
-culpando o complemento. Tudo vai ao logger.
-"""
-
 import os
 import sys
 
@@ -34,19 +28,6 @@ def iniciar(
     anki_web=None,
     atualizacao_automatica=ATUALIZACAO_AUTOMATICA,
 ):
-    """Prepara `user_files`, escreve o abridor e sobe a Conexão, com o adaptador da coleção que ela lê. Devolve a Conexão, ou None se ela não subiu.
-
-    O `item_de_login` é o de “Abrir o Anki com o computador”; sem ele, o deste computador (None onde não há).
-    O `abridor` é o de “Abrir o Anki sozinho” (`abridor.py`); omitido, o deste computador, em `user_files/abridor`.
-    `abridor=None` desativa a escrita e o registro (testes); um abridor injetado só usa os destinos dele.
-    Ele é escrito agora e de novo a cada perfil que abre (`ao_abrir_o_perfil` recebe a função que o reescreve; no Anki, o gancho
-    `profile_did_open`), sempre com o perfil **marcado** (#149): o que estava aberto na primeira conexão, até a pessoa escolher outro.
-    A mesma função marca o perfil aberto quando ainda não há marcado.
-    A `passagem` é a do Windows do dono (#178, `passagem.py`): a Conexão de hoje na porta é esperada, copiada e encerrada antes de esta subir.
-    Omitida, a deste computador (só o Windows tem); `passagem=None` a desliga.
-    O `anki_web` é a fronteira da atualização pelo AnkiWeb (#177, `atualizacao.py`); sem ele (fora do Anki) não há de onde atualizar. Com
-    `atualizacao_automatica`, a Conexão consulta o AnkiWeb ao subir e a cada 6 h, a menos que a pessoa tenha criado o `ARQUIVO_DE_QUEM_DESLIGOU`.
-    """
     logger = registro.silencioso()
     try:
         dados = pasta_de_dados.preparar(pasta_do_complemento)
@@ -91,8 +72,6 @@ def iniciar(
 
 
 def _preparar_a_colecao(conexao, logger):
-    """Os tipos de nota de cada idioma e, numa instalação nova, os Baralhos (#161): agora e a cada perfil que abre, só no perfil marcado. Sem
-    coleção aberta, sincronizando ou noutro perfil, fica para a próxima vez (o Envio cria o tipo de nota que faltar). Nada aqui levanta erro."""
     try:
         feito = tipo_de_nota.preparar(conexao.colecao)
     except ColecaoIndisponivel:
@@ -105,7 +84,6 @@ def _preparar_a_colecao(conexao, logger):
 
 
 def _atualizar_o_item_de_login(item, logger):
-    """O item de login que já existe passa a ser o que esta Conexão escreveria (#401). Falha vai ao log; nada aqui derruba a Conexão."""
     if item is None:
         return
     try:
@@ -116,8 +94,6 @@ def _atualizar_o_item_de_login(item, logger):
 
 
 def _cuidar_do_perfil(conexao, abridor, ao_abrir_o_perfil, logger):
-    """Confere o item de login (#401), marca o perfil aberto na primeira conexão (#149) e escreve o abridor com o perfil marcado, agora e a
-    cada perfil que abre (`ao_abrir_o_perfil`); a Conexão o reescreve também quando a pessoa escolhe outro perfil. Nada aqui derruba a Conexão."""
     def reagir():
         _atualizar_o_item_de_login(conexao.item_de_login, logger)
         try:
@@ -133,7 +109,7 @@ def _cuidar_do_perfil(conexao, abridor, ao_abrir_o_perfil, logger):
         except Exception:
             perfis = []
         if perfis and marcado not in perfis:
-            marcado = None  # `-p` com um perfil que o Anki não tem: os Anki mais antigos não abrem; sem ele abrem a tela de perfis
+            marcado = None
         try:
             abridor.escrever(marcado)
         except Exception as erro:

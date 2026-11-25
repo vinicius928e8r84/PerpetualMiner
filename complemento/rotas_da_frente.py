@@ -1,6 +1,3 @@
-"""A rota da frente do Cartão (`/anki/card-front`, #166): a troca da frente de um idioma. É uma função `(conexao, corpo) -> (status, json)`, listada em
-`servidor.ROTAS`. Só reescreve o modelo de Cartão do tipo de nota do idioma (`tipo_de_nota.trocar_a_frente`): nenhuma nota, nenhuma chamada à IA."""
-
 from . import baralhos, tipo_de_nota
 from .motor import estilos
 
@@ -14,7 +11,6 @@ def _recusa_do_pedido(lang, frente):
 
 
 def trocar_a_frente(conexao, corpo):
-    """“Frente” dos Ajustes de envio › Estilo do cartão: os Cartões do idioma passam a ter a frente na hora. Repetir responde igual e não muda nada."""
     lang, frente = corpo.get("lang"), corpo.get("frente")
     recusa = _recusa_do_pedido(lang, frente)
     if recusa:

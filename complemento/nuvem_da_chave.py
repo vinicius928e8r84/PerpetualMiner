@@ -1,9 +1,3 @@
-"""Firestore da chave: stdlib, credencial transitória, erros só por código.
-
-A URL vem do código, nunca do pedido HTTP. O token e os corpos não são
-persistidos nem registrados. O cofre é quem decide/serializa o valor a replicar.
-"""
-
 import json
 import re
 from urllib.error import HTTPError, URLError

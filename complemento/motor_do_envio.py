@@ -1,5 +1,3 @@
-"""O motor de `engine/` como o Envio o usa: os módulos (`complemento.motor`, ver `motor/__init__.py`) e a configuração de um Envio."""
-
 import os
 from types import SimpleNamespace
 
@@ -7,7 +5,6 @@ from .audio_do_cartao import aplicar_os_sotaques
 
 
 def motor_do_complemento():
-    """Os módulos do motor que o Envio usa: o texto, a correção da Criação, a voz e a imagem; e os provedores e o custo, que a IA dos cartões usa."""
     from .motor import (
         config_loader, corrigir_frase, cost_tracker, estilos, extract_prompts, generate_audio, generate_cards, image_pipeline, image_utils, nota_do_cartao, parser,
         provedores, send_to_anki)
@@ -19,8 +16,6 @@ def motor_do_complemento():
 
 
 def prompt_do_dono(fila, padrao):
-    """O prompt de um Envio: o arquivo de mesmo nome na pasta de prompts da pasta de dados (`user_files/prompts`), se existe e tem texto,
-    vale no lugar do padrão que o complemento traz; apagá-lo volta ao padrão. Lido a cada Envio, então a edição vale no Envio seguinte."""
     do_dono = os.path.join(fila.dados.raiz, "prompts", os.path.basename(padrao))
     try:
         with open(do_dono, encoding="utf-8") as arquivo:
@@ -30,7 +25,6 @@ def prompt_do_dono(fila, padrao):
 
 
 def configuracao_do_motor(motor, fila, pedido):
-    """A base do motor com o idioma, o Baralho, o estilo do idioma e do nível do pedido (o prompt do nível, como a linha se lê), o tipo de nota e os sotaques do pedido."""
     config = motor.config_loader.base_config()
     config["lang"] = pedido["lang"]
     config["anki"]["deck_name"] = pedido["deckName"]
