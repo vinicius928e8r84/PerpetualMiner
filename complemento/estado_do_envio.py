@@ -15,6 +15,7 @@ TRANSICOES = {
     APAGADO: set(),
 }
 _DO_APAGADO = ("status", "stage", "waiting", "wiped", "lastError", "progress")
+_CAMPOS_DA_SITUACAO = ("status", "stage", "waiting", "wiped")
 
 
 class TransicaoInvalida(ValueError):
@@ -29,10 +30,20 @@ def situacao(estado):
 
 
 def coerente(estado):
-    status, etapa = estado.get("status"), estado.get("stage")
-    if status == RUNNING:
-        return etapa not in FIM and not estado.get("wiped")
-    return status in STATUS and etapa == status and not estado.get("waiting") and not (estado.get("wiped") and status == QUEUED)
+    if estado.get("status") == RUNNING:
+        return estado.get("stage") not in FIM and not estado.get("wiped")
+    return _etapa_e_o_status(estado) and not _espera_ou_apagado_na_fila(estado)
+
+
+def _etapa_e_o_status(estado):
+    status = estado.get("status")
+    return status in STATUS and estado.get("stage") == status
+
+
+def _espera_ou_apagado_na_fila(estado):
+    if estado.get("waiting"):
+        return True
+    return bool(estado.get("wiped")) and estado.get("status") == QUEUED
 
 
 def terminou(estado):
@@ -46,15 +57,29 @@ def retrato(estado):
 def conferir(antes, estado):
     de = situacao(antes)
     if de == APAGADO:
-        for campo in _DO_APAGADO:
-            estado.pop(campo, None)
-        estado.update(antes)
+        _devolver_ao_apagado(antes, estado)
         return
-    para = situacao(estado)
+    _exigir_transicao_da_tabela(de, situacao(estado))
+    _exigir_estado_coerente(antes, estado)
+
+
+def _devolver_ao_apagado(antes, estado):
+    for campo in _DO_APAGADO:
+        estado.pop(campo, None)
+    estado.update(antes)
+
+
+def _exigir_transicao_da_tabela(de, para):
     if para != de and para not in TRANSICOES.get(de, ()):
         raise TransicaoInvalida("Envio não pode ir de %s para %s" % (de, para))
-    mexeu = any(antes.get(campo) != estado.get(campo) for campo in ("status", "stage", "waiting", "wiped"))
-    if mexeu and not coerente(estado):
+
+
+def _mexeu_na_situacao(antes, estado):
+    return any(antes.get(campo) != estado.get(campo) for campo in _CAMPOS_DA_SITUACAO)
+
+
+def _exigir_estado_coerente(antes, estado):
+    if _mexeu_na_situacao(antes, estado) and not coerente(estado):
         raise TransicaoInvalida("Envio %s não pode ficar na etapa %s%s" % (estado.get("status"), estado.get("stage"), " esperando" if estado.get("waiting") else ""))
 
 
