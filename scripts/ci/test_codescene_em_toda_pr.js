@@ -6,7 +6,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { NOME_DO_CHECK, PRIMEIRA_PR_COBRADA, cobranca, liberacaoDoDono, situacaoDoCheck, conferir } = require('./codescene-em-toda-pr');
+const { NOME_DO_CHECK, APP_DA_NUVEM, PRIMEIRA_PR_COBRADA, cobranca, liberacaoDoDono, situacaoDoCheck, conferir } = require('./codescene-em-toda-pr');
 const { lerYaml } = require('../yaml-de-workflow.js');
 
 const RAIZ = path.resolve(__dirname, '..', '..');
@@ -18,7 +18,8 @@ const prova = (achado, esperado, porque) => { assert.deepStrictEqual(achado, esp
 
 const pr = (numero, corpo = '') => ({ numero, corpo, head: HEAD });
 const LIBERACAO = `Liberação do dono (CodeScene): ${HEAD.slice(0, 7)} — o CodeScene está fora do ar`;
-const check = (id, status, conclusion = null) => ({ id, name: NOME_DO_CHECK, status, conclusion, app: 'codescene-local' });
+const check = (id, status, conclusion = null) => ({ id, name: NOME_DO_CHECK, status, conclusion, app: APP_DA_NUVEM });
+const LOCAL = (id, status, conclusion = null) => ({ ...check(id, status, conclusion), app: 'codescene-perpetualminer-vinicius' });
 
 prova(PRIMEIRA_PR_COBRADA, 639, 'o corte continua na #639: as PRs anteriores seguem isentas');
 prova(cobranca(pr(638)).cobra, false, 'a PR anterior à #639 fica isenta');
@@ -44,14 +45,18 @@ for (const conclusao of ['failure', 'neutral', 'cancelled', 'timed_out', 'action
 }
 prova(situacaoDoCheck([check(1, 'completed', 'success'), check(2, 'completed', 'failure')]).estado, 'reprovou', 'vale a rodada mais nova do check');
 prova(situacaoDoCheck([check(2, 'completed', 'success'), check(1, 'completed', 'failure')]).estado, 'passou', 'vale a mais nova, em qualquer ordem');
-const DA_NUVEM = (id, status, conclusion) => ({ ...check(id, status, conclusion), app: 'codescene-cloud' });
-prova(situacaoDoCheck([check(1, 'completed', 'success'), DA_NUVEM(2, 'completed', 'failure')]), { estado: 'reprovou', conclusao: 'failure' },
-  'os dois apps do CodeScene contam: um em failure reprova, mesmo com o outro em success');
-prova(situacaoDoCheck([check(1, 'completed', 'success'), DA_NUVEM(2, 'in_progress')]).estado, 'rodando', 'com um app ainda rodando, espera');
-prova(situacaoDoCheck([DA_NUVEM(1, 'completed', 'failure'), check(2, 'completed', 'success')]).estado, 'reprovou',
-  'a rodada mais nova de um app não apaga a reprovação do outro');
-prova(situacaoDoCheck([DA_NUVEM(1, 'completed', 'failure'), check(2, 'completed', 'success'), DA_NUVEM(3, 'completed', 'success')]).estado, 'passou',
-  'a rodada nova de um app substitui a antiga do mesmo app');
+prova(APP_DA_NUVEM, 'codescene-access', 'o app que conta é o da nuvem');
+prova(situacaoDoCheck([LOCAL(1, 'completed', 'success')]), { estado: 'ausente' }, 'só o app local em success: a nuvem não reportou, e o check segue ausente');
+prova(situacaoDoCheck([LOCAL(1, 'queued')]), { estado: 'ausente' }, 'o app local pendente sozinho não conta');
+prova(situacaoDoCheck([check(1, 'completed', 'success'), LOCAL(2, 'in_progress')]), { estado: 'passou', conclusao: 'success' },
+  'o app local pendente não segura a nuvem em success');
+prova(situacaoDoCheck([check(1, 'completed', 'success'), LOCAL(2, 'completed', 'failure')]), { estado: 'passou', conclusao: 'success' },
+  'o app local reprovado não segura a nuvem em success');
+prova(situacaoDoCheck([LOCAL(1, 'completed', 'success'), check(2, 'completed', 'failure')]), { estado: 'reprovou', conclusao: 'failure' },
+  'a nuvem reprovada segura, mesmo com o app local em success');
+prova(situacaoDoCheck([LOCAL(1, 'completed', 'success'), check(2, 'in_progress')]).estado, 'rodando', 'a nuvem rodando segura, mesmo com o app local em success');
+prova(situacaoDoCheck([check(1, 'completed', 'failure'), LOCAL(2, 'completed', 'success'), check(3, 'completed', 'success')]).estado, 'passou',
+  'a rodada nova da nuvem substitui a antiga dela');
 
 function portasCom(respostas) {
   const relogio = { agora: 0, lidas: 0, avisos: [] };
@@ -90,6 +95,14 @@ async function provarAEspera() {
     `o check que nunca chega falha no prazo, sem passar em silêncio e sem esperar para sempre: ${r.mensagem}`);
 
   prova(r.mensagem.includes('Liberação do dono (CodeScene): <head>'), true, `a falha diz como o dono libera a PR: ${r.mensagem}`);
+
+  ({ portas, relogio } = portasCom([[LOCAL(1, 'completed', 'success')]]));
+  r = await conferir(COMUM, portas, 600);
+  prova([r.ok, /ainda não reportou em 600 s/.test(r.mensagem)], [false, true], `o app local em success não vale pela nuvem ausente: ${r.mensagem}`);
+
+  ({ portas, relogio } = portasCom([[check(1, 'completed', 'success'), LOCAL(2, 'queued')]]));
+  r = await conferir(COMUM, portas, 600);
+  prova([r.ok, relogio.lidas], [true, 1], `o app local pendente não segura a PR: ${r.mensagem}`);
 
   ({ portas, relogio } = portasCom([[check(1, 'queued')]]));
   r = await conferir(COMUM, portas, 60);

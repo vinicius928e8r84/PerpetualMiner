@@ -3,6 +3,7 @@
 const { execFileSync } = require('child_process');
 
 const NOME_DO_CHECK = 'CodeScene Code Health Review (main)';
+const APP_DA_NUVEM = 'codescene-access';
 const PRIMEIRA_PR_COBRADA = 639;
 const LIBERACAO_DO_DONO = 'Liberação do dono (CodeScene)';
 const PRAZO_PADRAO_S = 600;
@@ -12,8 +13,8 @@ const AJUDA = `uso: PR_NUMERO=… PR_CORPO=… PR_HEAD=<sha> GITHUB_REPOSITORY=d
 
 O passo "CodeScene em toda PR" do job "Regras de revisão": toda PR de número ${PRIMEIRA_PR_COBRADA} ou maior só passa com o check
 "${NOME_DO_CHECK}" do head em success, seja qual for o título ou o rótulo. As PRs anteriores à #${PRIMEIRA_PR_COBRADA} ficam isentas.
-Há dois apps do CodeScene com esse check (o da nuvem e o do servidor local): vale a rodada mais nova de cada um, e todas têm de
-estar em success.
+Só conta o app da nuvem (${APP_DA_NUVEM}): vale a rodada mais nova dele, que tem de estar em success. O app do servidor local
+(codescene-perpetualminer-vinicius) é ignorado, pendente, reprovado ou em success; sem a rodada da nuvem, o check está ausente.
 
 O job pode rodar antes de o CodeScene reportar: o passo espera o check terminar, conferindo a cada ${INTERVALO_S} s, por até
 PM_PRAZO_CODESCENE_S segundos (padrão ${PRAZO_PADRAO_S}). Sem o check terminado no prazo, falha dizendo isso: nunca passa sem
@@ -33,14 +34,13 @@ function cobranca(pr) {
   return { cobra: true, motivo: `a PR #${pr.numero} é cobrada` };
 }
 
-function ultimaRodadaPorApp(checkRuns) {
-  const ultimas = new Map();
-  for (const check of checkRuns.filter(c => c.name === NOME_DO_CHECK).sort((a, b) => a.id - b.id)) ultimas.set(check.app, check);
-  return [...ultimas.values()];
+function ultimaRodadaDaNuvem(checkRuns) {
+  const daNuvem = checkRuns.filter(c => c.name === NOME_DO_CHECK && c.app === APP_DA_NUVEM).sort((a, b) => a.id - b.id);
+  return daNuvem.slice(-1);
 }
 
 function situacaoDoCheck(checkRuns) {
-  const ultimas = ultimaRodadaPorApp(checkRuns);
+  const ultimas = ultimaRodadaDaNuvem(checkRuns);
   if (!ultimas.length) return { estado: 'ausente' };
   if (ultimas.some(check => check.status !== 'completed')) return { estado: 'rodando' };
   const reprovada = ultimas.find(check => check.conclusion !== 'success');
@@ -118,7 +118,7 @@ async function principal(argv, env) {
   return ok ? 0 : 1;
 }
 
-module.exports = { NOME_DO_CHECK, PRIMEIRA_PR_COBRADA, cobranca, liberacaoDoDono, situacaoDoCheck, conferir };
+module.exports = { NOME_DO_CHECK, APP_DA_NUVEM, PRIMEIRA_PR_COBRADA, cobranca, liberacaoDoDono, situacaoDoCheck, conferir };
 
 if (require.main === module) {
   principal(process.argv.slice(2), process.env).then(codigo => process.exit(codigo), erro => {
