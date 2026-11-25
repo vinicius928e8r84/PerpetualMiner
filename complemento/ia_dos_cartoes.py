@@ -1,10 +1,3 @@
-"""A IA dos cartões como porta (C5): quem paga cada pedido pago do Envio e do Ouvir, num lugar só. A tabela etapa × situação é `quem_paga_a_etapa`.
-
-A porta é a única do Envio e das rotas que lê o login do ChatGPT e o cofre para decidir quem paga; o Modelo dos cartões, que diz quem
-paga na tela dele (`ModeloDosCartoes.conta`), pergunta à mesma tabela (`quem_paga`). Ela embrulha as funções de hoje
-(`modelo_dos_cartoes.credencial` e `credencial_da_imagem`) e entrega a credencial de cada etapa; o texto do Cartão ela mesma pede e anota
-o custo, e a correção da Criação também (`pedido_do_texto`): o motor só recebe a função. O modelo do texto lido uma vez por Envio fica aqui (`novo_envio` o esquece)."""
-
 import logging
 from collections import namedtuple
 
@@ -18,8 +11,7 @@ ETAPAS = PELO_PLANO + SO_PELA_CHAVE
 
 
 class Situacao(namedtuple("Situacao", "login motivo pela_chave tem_chave")):
-    """A outra entrada da tabela, a de quem pode pagar agora: `login` e `motivo` são a `situacao()` do login; `pela_chave`, o Usar a minha
-    chave do Envio (#158); `tem_chave`, se o cofre tem a chave da OpenAI."""
+    pass
 
 
 MotorNaOpenAI = namedtuple("MotorNaOpenAI", "motor openai_base")
@@ -27,8 +19,6 @@ SEM_MOTOR = MotorNaOpenAI(None, None)
 
 
 def quem_paga_a_etapa(etapa, situacao):
-    """`(PLANO | CHAVE | PARADO, o motivo do parado)` de um pedido da `etapa` na `Situacao` de agora. Parado é ninguém paga: o que a
-    etapa faz então (parar o Envio, pular, seguir sem imagem ou sem voz, 409) é dela."""
     if etapa in PELO_PLANO:
         return quem_paga(*situacao)
     if etapa in SO_PELA_CHAVE:
@@ -37,15 +27,10 @@ def quem_paga_a_etapa(etapa, situacao):
 
 
 class JuizDaImagem:
-    """O juiz da imagem do próximo Cartão: pelo plano do ChatGPT quando há (`plano`: a credencial dele, com o endereço, o token renovado e o
-    Automático da conta), senão
-    pela chave presa (`presa`). O plano que recusa de passagem deixa a chave decidir; outra recusa dele (o limite, a conta) sobe e para o Envio."""
-
     def __init__(self, provedores, plano, presa, logger):
         self._provedores, self._plano, self._presa, self._logger = provedores, plano, presa, logger
 
     def julgar(self, modelo_da_chave, sistema, conteudo, rotulo):
-        """`(o JSON do veredito, o uso, se a chave pagou)`. Levanta o `ErroDoProvedor` do motor."""
         p = self._provedores
         if self._plano:
             try:
@@ -60,9 +45,6 @@ class JuizDaImagem:
 
 
 class IaDosCartoes:
-    """`conta` é a `Conta` (o `LoginDoChatGPT`, None sem login, e o cofre das chaves), `modelos` o `ModeloDosCartoes`, `motor` o
-    `MotorNaOpenAI`: o de `engine/` (`envio.motor_do_complemento()`) e o endereço da OpenAI; `logger` é o da Conexão."""
-
     def __init__(self, conta, modelos, motor=SEM_MOTOR, logger=None):
         self._conta, self._modelos = conta, modelos
         self._motor, self._openai_base = motor
@@ -73,18 +55,12 @@ class IaDosCartoes:
         self._do_envio = {}
 
     def pagador(self, etapa, pela_chave=False):
-        """Quem paga agora um pedido da `etapa`, pela tabela, com o login e a chave guardados neste instante."""
         return quem_paga_a_etapa(etapa, Situacao(*self._conta.situacao(), pela_chave, self._conta.chave() is not None))
 
     def para_o_texto(self, pela_chave=False):
-        """O `Pagador` do texto do próximo Cartão e da correção da Criação (`modelo_dos_cartoes.credencial`)."""
         return credencial(self._conta, self._do_envio, self._modelos, pela_chave)
 
     def pedido_do_texto(self, pagador, config, etapa=TEXTO):
-        """A função com que o motor pede o texto de um Cartão (ou, com `etapa` CORRECAO, a correção de uma frase da Criação),
-        `pedir(sistema, mensagem, rotulo)` → o texto: vai por quem o `pagador` de `para_o_texto` diz, e o custo fica no `costs.jsonl` de
-        `config["paths"]["log_dir"]`: o do Cartão com o `rotulo` (o do plano, a zero e com o que a chave teria cobrado), o da correção à
-        parte (`correction_tokens`, a zero pelo plano). Uma recusa é o `ErroDoProvedor` do motor."""
         if etapa not in (TEXTO, CORRECAO):
             raise ValueError(etapa)
         provedores, custos = self._motor.provedores, self._motor.cost_tracker
@@ -110,9 +86,6 @@ class IaDosCartoes:
         return pedir
 
     def para_a_imagem(self, pela_chave=False):
-        """`(o juiz, a chave presa)` do próximo Cartão (`modelo_dos_cartoes.credencial_da_imagem`): o `JuizDaImagem` (None sem plano nem
-        chave) e a chave presa (`provedores.PelaChave` do motor, None sem chave), que paga a triagem e a imagem gerada. O motor não recebe
-        segredo nenhum: nem a chave nem o token do plano."""
         plano, chave = credencial_da_imagem(self._conta, self._do_envio, self._modelos, pela_chave)
         presa = self._motor.provedores.PelaChave(chave, self._openai_base) if chave else None
         plano = self._com_o_endereco(plano) if plano else None
@@ -120,9 +93,7 @@ class IaDosCartoes:
         return juiz, presa
 
     def _com_o_endereco(self, credencial):
-        """A credencial como a camada de provedores do motor a pede: com o endereço da OpenAI (`base`)."""
         return dict(credencial, base=self._openai_base)
 
     def para_a_fala(self):
-        """A chave da voz de reserva e do Ouvir, ou None: o plano do ChatGPT não cobre voz."""
         return self._conta.chave()

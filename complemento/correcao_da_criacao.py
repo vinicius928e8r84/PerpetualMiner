@@ -1,11 +1,3 @@
-"""A correção da Criação no Envio (#169): depois dos Cartões, a IA corrige as frases que a pessoa escreveu na frente Criação (o gancho da revisão as
-grava no campo “Frase escrita”, `criacao_na_revisao.py`). Cada correção vai para a nota (“Escrito antes” é a frase que a IA leu, “Correção” o que ela
-devolveu) e o verso do Cartão passa a mostrar “Da última vez você escreveu … → correção”. Uma frase já lida não é pedida de novo (o adaptador só oferece
-a que é diferente do “Escrito antes”); uma frase que a pessoa escreveu de novo é outra e vai no Envio seguinte.
-
-É um extra do Envio: falhar não o derruba. O que a IA recusa, o plano que chega ao limite, o teto do mês, uma coleção ocupada ou o Anki sem os campos
-deixam as frases que faltam para o próximo Envio, sem erro. O custo vai ao `costs.jsonl` do Envio à parte do custo dos Cartões (`correctionUsd`)."""
-
 import re
 
 from . import baralhos, tipo_de_nota
@@ -17,7 +9,7 @@ LIMITE_POR_ENVIO = 20
 
 
 class _ParouACorrecao(Exception):
-    """A correção da Criação deste Envio acabou aqui: o que falta fica para o próximo Envio."""
+    pass
 
 
 def palavra_sem_a_pronuncia(campo):
@@ -25,14 +17,10 @@ def palavra_sem_a_pronuncia(campo):
 
 
 class CorrecaoDaCriacao:
-    """O que o `Trabalho` chama depois do último Cartão para corrigir as frases da Criação."""
-
     def __init__(self, fila, colecao, motor, logger):
         self.fila, self.colecao, self.motor, self.logger = fila, colecao, motor, logger
 
     def corrigir(self, envio, parada):
-        """`envio` é o `EnvioEmAndamento` (a porta presa ao Envio, `ia_do_envio.IaDoEnvio`, diz quem paga e o teto); `parada` é o código que
-        parou o Envio, ou None: a chave que o parou não corrige nada."""
         if parada:
             return
         try:
@@ -92,9 +80,6 @@ class CorrecaoDaCriacao:
         self.logger.warning("Envio %s: %s (%s)", envio.job_id, o_que_houve, motivo)
 
     def _atualizar_o_verso(self, job_id, lang):
-        """O Cartão da Criação que a pessoa já tinha antes da correção não tem o “Da última vez você escreveu …” no verso: o modelo dele é regravado, como
-        a troca da frente faz (`tipo_de_nota.trocar_a_frente`). Só se o tipo de nota ainda tem o nosso modelo Criação sozinho; a pessoa que o mexeu, ou que
-        trocou de frente, fica como está."""
         try:
             tipo_de_nota.atualizar_a_criacao(self.colecao, lang)
         except Exception as erro:

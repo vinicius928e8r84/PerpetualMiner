@@ -1,11 +1,3 @@
-"""A fronteira da atualização com o Anki de verdade (`atualizacao.py`): o que só existe lá dentro (`aqt.addons`, `mw.addonManager`).
-
-Lido no código do Anki 26.09 (`aqt/addons.py`), sem rodar: `fetch_update_info` e o gerente de complementos dizem se o AnkiWeb tem versão
-mais nova (`AddonManager.get_updated_addons`), `download_and_install_addon` baixa e instala sem janela (é o que o diálogo do Anki chama
-por baixo), e a marca é o `update_enabled` do `meta.json` (`AddonManager.addon_meta` e `write_addon_meta`). `pronto()` confere que tudo
-isso existe antes de qualquer uso: se uma versão do Anki mudar um nome, a Conexão não usa nada e desfaz a marca (`atualizacao.py`).
-"""
-
 import logging
 import os
 import re
@@ -17,8 +9,6 @@ LIMITE_DO_REINICIO_S = 10
 
 
 class AnkiWebDoAnki:
-    """`mw` é a janela do Anki; `pasta_do_complemento`, onde esta Conexão está instalada: o nome dela é o id do AnkiWeb, quando é só dígitos."""
-
     def __init__(self, mw, pasta_do_complemento):
         self._mw = mw
         self._pasta = os.path.abspath(pasta_do_complemento)
@@ -54,8 +44,6 @@ class AnkiWebDoAnki:
         return bool(self._mw.addonManager.get_updated_addons(informacoes))
 
     def instalar(self, id_):
-        # O Anki faz o backup de `user_files` renomeando a pasta, depois do download; no Windows o rename falha com o log aberto (#370).
-        # Até o fim da instalação os handlers de arquivo ficam fechados e mudos: uma linha gravada no meio do download não os reabre.
         mudos = self._calar_os_logs()
         try:
             addons = self._modulo()
@@ -66,7 +54,6 @@ class AnkiWebDoAnki:
         return isinstance(resultado, addons.InstallOk)
 
     def _calar_os_logs(self):
-        """Fecha o arquivo de cada handler do logger da Conexão que grava em `user_files` e o cala; devolve (handler, filtro) para religar."""
         raiz = os.path.join(self._pasta, "user_files") + os.sep
         mudos = []
         for handler in list(logging.getLogger(NOME_DO_LOGGER).handlers):
@@ -79,7 +66,6 @@ class AnkiWebDoAnki:
         return mudos
 
     def versao_instalada(self):
-        """A `VERSAO` do `configuracao.py` que a instalação acabou de pôr na pasta (a Conexão que roda ainda é a de antes)."""
         with open(os.path.join(self._pasta, "configuracao.py"), encoding="utf-8") as lido:
             achada = re.search(r'^VERSAO\s*=\s*"([^"]+)"', lido.read(), re.MULTILINE)
         if achada is None:
@@ -87,7 +73,6 @@ class AnkiWebDoAnki:
         return achada.group(1)
 
     def marcar(self, sem_dialogo):
-        """`update_enabled` do Anki: desligado (`sem_dialogo`), o Anki não mostra o diálogo de atualização deste complemento ao abrir."""
         gerente = self._mw.addonManager
         meta = gerente.addon_meta(os.path.basename(self._pasta))
         if meta.update_enabled == (not sem_dialogo):
@@ -96,11 +81,10 @@ class AnkiWebDoAnki:
         gerente.write_addon_meta(meta)
 
     def fechar_o_anki(self):
-        """Fecha o Anki pelo caminho normal dele (`mw.close`, que salva a coleção), na thread principal. Devolve se o pedido foi entregue."""
         entregue = threading.Event()
 
         def fechar():
-            self._mw.progress.single_shot(500, self._mw.close, False)  # a resposta da Conexão sai antes de a janela fechar
+            self._mw.progress.single_shot(500, self._mw.close, False)
             entregue.set()
 
         self._mw.taskman.run_on_main(fechar)

@@ -1,6 +1,3 @@
-"""As rotas do modelo dos cartões (#157): o estado (a escolha, a lista da conta, o aviso e o que foi trocado) e a escolha. POST com a
-origem da extensão, listadas em `servidor.ROTAS`; nenhuma resposta leva a chave nem um token."""
-
 from .modelo_dos_cartoes import ModelosIndisponiveis
 
 

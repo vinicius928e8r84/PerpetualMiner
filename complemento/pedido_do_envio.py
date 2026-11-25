@@ -1,8 +1,3 @@
-"""O pedido de um Envio (`POST /jobs`) e o id dele: o que vale, o que a Conexão guarda e a impressão do corpo (#142).
-
-Mora à parte de `envio.py` (que o importa e reexporta estes nomes) para a fila e o trabalho ficarem num arquivo só deles.
-"""
-
 import hashlib
 import json
 import re
@@ -22,7 +17,6 @@ def id_valido(job_id):
 
 
 def id_que_serve_de_caminho(job_id):
-    """Um id que as rotas de achar aceitam: texto, sem barra nem `..` (um id fora de UUID só dá 404)."""
     return isinstance(job_id, str) and bool(job_id) and "/" not in job_id and "\\" not in job_id and ".." not in job_id and "\x00" not in job_id
 
 
@@ -31,7 +25,6 @@ def _canonico(dados):
 
 
 def impressao(pedido):
-    """O SHA-256 do JSON canônico do corpo do `POST /jobs` já normalizado (`validar_pedido`): gravado no criar, nunca mudado."""
     return hashlib.sha256(_canonico(pedido).encode("utf-8")).hexdigest()
 
 
@@ -167,7 +160,6 @@ def _pedido_normalizado(corpo):
 
 
 def validar_pedido(corpo):
-    """O pedido de `POST /jobs` normalizado, ou (status, erro) se ele não serve. Frases com o mesmo `phraseId` valem uma vez (a primeira)."""
     recusa = _recusa_do_pedido(corpo)
     if recusa:
         return None, recusa
@@ -175,5 +167,4 @@ def validar_pedido(corpo):
 
 
 def visao_do_pedido(pedido):
-    """O pedido como as rotas o mostram: sem a impressão do corpo (ela é só da Conexão)."""
     return None if pedido is None else {chave: valor for chave, valor in pedido.items() if chave != "corpoSha256"}

@@ -1,10 +1,3 @@
-"""Único dono da chave: valor/conta/revisão no cofre, fora de logs e diagnóstico.
-
-Só o servidor avança a revisão, depois da aceitação. O cliente envia a revisão
-que leu; uma recusa não reserva nada. Valor vazio é ausência de chave, não uma
-marca de apagamento separada. Nenhuma resposta devolve o segredo inteiro.
-"""
-
 import json
 import os
 import threading
@@ -14,7 +7,6 @@ _ARQUIVOS = {"openai": "openai.json"}
 
 
 def gravar_so_do_dono(destino, documento):
-    """Sob a tranca de quem chama: substituição atômica; 0600 em POSIX, ACL herdada no Windows (a chave e o login do ChatGPT)."""
     temporario = destino + ".novo"
     try:
         os.remove(temporario)
@@ -69,7 +61,6 @@ class Cofre:
         gravar_so_do_dono(self._caminho(nome), documento)
 
     def reentrega(self, nome, chave, versao, conta=''):
-        """True: chave/conta já aceitas no CAS atual ou replay; False: conflito."""
         with self._tranca:
             atual = self.documento(nome)
             revisao = atual.get('versao', 0)
@@ -80,7 +71,6 @@ class Cofre:
             return None if versao == revisao else False
 
     def guardar(self, nome, chave, versao=0, conta='', em=None, nao_enviada=True):
-        """CAS após validar; cópia da nuvem mantém a hora dela, não cria mudança."""
         with self._tranca:
             repetida = self.reentrega(nome, chave, versao, conta)
             if repetida is False:
@@ -97,7 +87,6 @@ class Cofre:
             return True
 
     def vincular_legado(self, nome, chave, conta, em, versao):
-        """Prova exata: só transfere os metadados do valor que já é do dono."""
         with self._tranca:
             atual = self.documento(nome)
             if atual.get('chave', '') != chave or (atual.get('conta') and atual['conta'] != conta):
@@ -112,7 +101,6 @@ class Cofre:
         return self.guardar(nome, '', versao, conta)
 
     def sincronizar(self, nome, conta, nuvem, versao):
-        """Um dono, sob a mesma tranca das mutações; nunca manda o valor de A a B."""
         with self._tranca:
             aqui = self.documento(nome)
             if aqui.get('versao', 0) != versao:

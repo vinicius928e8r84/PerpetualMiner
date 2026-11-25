@@ -1,52 +1,3 @@
-"""O que a Conexão lê da coleção: a lista de Baralhos, os números de cada um e o vocabulário.
-
-Fala só com o **lado de leitura** de um adaptador da coleção (o do Anki está em `no_anki.py`; o dos
-testes, em memória, em `test_colecao_em_memoria.py`). O adaptador tem quatro métodos:
-
-- `perfis()`: os nomes dos perfis do Anki; vale também sem coleção aberta (a tela de perfis);
-- `nomes_dos_baralhos()`: todos os Baralhos, com `::` entre os níveis;
-- `cartoes_do_baralho(nome)`: os Cartões do Baralho e dos subbaralhos, cada um
-  `{ "nota": id, "campos": [(nome, valor), ...], "tipo": 0..3, "intervalo": dias }`;
-- os dois últimos levantam `ColecaoIndisponivel` quando não há coleção aberta ou o Anki não respondeu.
-
-O **lado de gravação**, que o Envio usa (`envio.py`), tem mais três; todos levantam `ColecaoIndisponivel` também quando o
-Anki está sincronizando (`anki_syncing`):
-
-- `tipo_de_nota(nome)`: os nomes dos campos do tipo de nota, ou None se a coleção não o tem;
-- `guids_existentes(guids)`: quais destes `guid` já são de uma nota da coleção;
-- `adicionar_nota(nota)`: grava a `NotaAGravar` (`nota_a_gravar.py`: baralho, tipo de nota, `campos` `{nome: valor}`, etiquetas, `guid`, `midia`), criando o
-  Baralho se faltar; a `midia` (`{nome do arquivo: bytes}`, o áudio do Cartão, #143) é guardada pela coleção com a nota, e a nota cita
-  o nome que a coleção deu ao arquivo (o Anki troca o nome se já tem outro arquivo com ele e outro conteúdo); uma nota com o mesmo `guid` já gravada fica como está (gravar de novo não dobra); um tipo de nota que falta, ou sem um dos campos, levanta `TipoDeNotaAusente` sem gravar nada.
-
-- `criar_tipo_de_nota(definicao)` (#161, `tipo_de_nota.definicao`): cria o tipo de nota se a coleção não tem um com o nome e devolve se criou; um que já
-  existe fica como a pessoa o deixou, e nada que já está na coleção é renomeado, convertido nem apagado;
-- `modelos_do_tipo_de_nota(nome)` e `trocar_o_modelo(nome, modelo, css)` (#166, a frente do Cartão): o primeiro lê os modelos de Cartão do tipo
-  (`[{ nome, frente, verso }]`, None se a coleção não o tem); o segundo reescreve o **único** modelo do tipo (`modelo` é `{ nome, frente, verso }`) e o estilo
-  e devolve se mudou algo (repetir devolve False). Só isso: nenhuma nota é criada nem tocada, e o número de Cartões não muda. Um tipo que falta levanta
-  `TipoDeNotaAusente`; um que não tem exatamente um modelo, `TipoDeNotaAlterado`, sem escrever nada;
-- `criar_baralhos_da_instalacao_nova(nomes)`: cria os Baralhos só se a coleção não tem nenhum além do “Default” (numa instalação nova) e devolve os
-  criados; quem já tem Baralho fica com o seu. Os dois repetem sem criar nada de novo;
-- `gravar_cartao(nota, frente)` (`NotaAGravar` e `FrenteDoCartao`: os campos da frente, a frente normalizada e o `normalizar`): **a** função de
-  gravar um Cartão, uma só na thread principal do Anki. Nesta ordem: a sincronização (`ColecaoIndisponivel`, sem gravar), o
-  `guid` (achou: devolve `"added"`, sem gravar), a frente normalizada no Baralho, lida em qualquer dos campos da `frente` (o do tipo próprio e os do
-  “Básico” de antes: o Cartão antigo conta, achou: `"duplicate"`, sem gravar) e a nota nova
-  (devolve `"added"`; é só aqui que a `midia` é guardada). O que dá errado é devolvido ou levantado para a thread de trabalho, nunca para a thread principal do Anki.
-
-O **perfil fixo** (#149, `perfil.py`): a Conexão entrega ao adaptador o `PerfilFixo` por `fixar_o_perfil(fixo)`, e daí em diante
-toda gravação só vale no perfil marcado: com outro perfil aberto levanta `OutroPerfil` e com o marcado apagado, `PerfilSumiu` (os dois
-são `ColecaoIndisponivel`: o Envio espera, nada é gravado). A conferência acontece na hora de gravar, no mesmo passo que a grava.
-Mais três métodos, para a Conexão:
-
-- `perfil_aberto()`: o nome do perfil com a coleção aberta, ou None (a tela de perfis);
-- `entrar_no_perfil_fixo()`: **só** com o Anki na tela de perfis, abre o marcado pelas funções de perfil do Anki; devolve se começou.
-  Com um perfil aberto não faz nada: ninguém é tirado do perfil em que estuda;
-- `trocar_para_o_perfil_fixo()`: o clique em “Abrir <perfil>”: fecha o perfil aberto pelo caminho normal do Anki (que sincroniza) e abre
-  o marcado; na tela de perfis, só abre; já no marcado, não faz nada. Devolve se começou.
-
-A frente e o verso que a leitura entende são os campos “Frente” e “Verso” (ou “Front” e “Back”, do Anki em inglês; “Frase” e “Palavra”, do tipo de
-nota próprio) e, sem eles, o primeiro e o segundo campo.
-"""
-
 from datetime import datetime, timezone
 
 from . import normalizacao
@@ -58,39 +9,32 @@ LIMITE_PADRAO = 1000
 LIMITE_MAXIMO = 10000
 FONTE = "colecao"
 
-_NOMES_DA_FRENTE = ("frente", "front", "frase")  # o “Básico” em português, em inglês e o tipo de nota próprio (#161)
+_NOMES_DA_FRENTE = ("frente", "front", "frase")
 _NOMES_DO_VERSO = ("verso", "back", "palavra")
 
 
 class ColecaoIndisponivel(Exception):
-    """Não há coleção aberta (o Anki está na tela de perfis), o Anki está sincronizando ou não respondeu a tempo."""
+    pass
 
 
 class OutroPerfil(ColecaoIndisponivel):
-    """O Anki está noutro perfil que o marcado (#149): nada se grava, e o Envio espera o marcado abrir (`aberto`, `marcado`)."""
-
     def __init__(self, aberto, marcado):
         super().__init__("anki_other_profile")
         self.aberto, self.marcado = aberto, marcado
 
 
 class PerfilSumiu(ColecaoIndisponivel):
-    """O perfil marcado já não existe no Anki (renomeado ou apagado, #149): nada se grava em perfil nenhum até a pessoa escolher outro."""
-
     def __init__(self, marcado, aberto=None):
         super().__init__("anki_profile_missing")
         self.marcado, self.aberto = marcado, aberto
 
 
 class PerfilIlegivel(ColecaoIndisponivel):
-    """O arquivo do perfil marcado existe e não se lê (#149): não vale por “nenhum perfil marcado”, e nada é marcado nem gravado por cima."""
-
     def __init__(self):
         super().__init__("anki_profile_unreadable")
 
 
 def espera_pelo_perfil(motivo):
-    """O que o estado do Envio diz da espera quando o motivo é o perfil (#149); None para qualquer outro motivo."""
     if isinstance(motivo, OutroPerfil):
         return {"reason": "other_profile", "profile": motivo.aberto, "marked": motivo.marcado}
     if isinstance(motivo, PerfilSumiu):
@@ -99,11 +43,11 @@ def espera_pelo_perfil(motivo):
 
 
 class TipoDeNotaAusente(Exception):
-    """A coleção não tem o tipo de nota pedido (ou ele não tem os campos pedidos): nada foi gravado."""
+    pass
 
 
 class TipoDeNotaAlterado(Exception):
-    """O tipo de nota não tem só o modelo de Cartão que a Conexão cria (a pessoa mexeu nele): a troca da frente (#166) não o regrava."""
+    pass
 
 
 def _agora():
@@ -132,7 +76,6 @@ def _cartoes_para_leitura(colecao, nome):
 
 
 def nomes_dos_baralhos(colecao):
-    """Os Baralhos para a escolha dos Ajustes de envio: sem o “Default” do Anki, em ordem alfabética."""
     limpos = {str(nome or "").strip() for nome in colecao.nomes_dos_baralhos()}
     return sorted((nome for nome in limpos if nome and nome != "Default"), key=str.casefold)
 
@@ -186,8 +129,6 @@ def _pedidos_sem_repetir(pedidos):
 
 
 def numeros_dos_baralhos(colecao, pedidos):
-    """Os números dos Baralhos pedidos (`[{ deckName, lang }]`), na ordem, sem repetir. Um Baralho que o Anki
-    não tem volta como `missing`, com tudo zerado."""
     existentes = set(colecao.nomes_dos_baralhos())
     linhas = []
     for nome, idioma in _pedidos_sem_repetir(pedidos):
@@ -241,8 +182,6 @@ class _FiltrosDoVocabulario:
 
 
 def vocabulario(colecao, nome, idioma, filtros=None):
-    """O vocabulário do Baralho (as Palavras e os Termos do verso dos Cartões), com os filtros da aba aplicados.
-    Um Baralho que o Anki não tem tem vocabulário vazio."""
     escolhidos = _FiltrosDoVocabulario(filtros or {})
     cartoes = _cartoes_para_leitura(colecao, nome) if nome in set(colecao.nomes_dos_baralhos()) else []
     palavras = normalizacao.front_vocabulary_rows_from_cards(cartoes, idioma, normalizacao.normalizar_frase_ru)

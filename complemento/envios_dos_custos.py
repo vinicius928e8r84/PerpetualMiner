@@ -1,6 +1,3 @@
-"""Os Envios de que os custos falam (#243): a fila e os que a retenção apagou (`retencao_dos_envios.py`), cada um com a `ficha` que ela deixou
-em `custos/<jobId>/ficha.json`. A mistura de `envio.Fila`; quem soma custos (a aba Custos, o teto do mês) olha `envios_dos_custos`, nunca só a fila."""
-
 import json
 import os
 
@@ -13,7 +10,6 @@ class EnviosDosCustos:
         return os.path.join(self.pasta_dos_custos(job_id), custos.ARQUIVO_DA_FICHA)
 
     def ficha(self, job_id):
-        """A ficha que a retenção deixou do Envio, ou None (não há, não se lê ou não tem os campos)."""
         if not id_que_serve_de_caminho(job_id):
             return None
         try:
@@ -24,7 +20,6 @@ class EnviosDosCustos:
         return ficha if custos.ficha_valida(ficha) else None
 
     def envios_dos_custos(self):
-        """Os itens da fila, na ordem, e depois os Envios que só têm a ficha (cada um com a `ficha`)."""
         with self.tranca:
             itens = list(self.ordem())
             na_fila = {item.get("jobId") for item in itens}
@@ -36,8 +31,6 @@ class EnviosDosCustos:
             return itens
 
     def listar(self):
-        """`POST /jobs/list`: cada Envio da fila, na ordem, com o `status` do estado; depois, os que a retenção apagou e que enviaram Frases,
-        só com os ids delas (`ficha.successfulPhraseIds`): quem volta depois do prazo as marca como enviadas, sem pagar de novo (#372)."""
         with self.tranca:
             lista = [self._com_o_status(item) for item in self.ordem()]
             na_fila = {item["jobId"] for item in lista}

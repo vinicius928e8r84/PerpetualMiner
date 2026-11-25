@@ -1,48 +1,3 @@
-"""O que o abridor faz quando a Conexão não responde: consertar sem clique (#152, #102).
-
-`{"acao": "consertar"}` (`abridor.py` escreve o script; aqui moram os trechos dele e o que ele precisa saber). A resposta é
-sempre `{"situacao": …}`:
-
-- `fechado`: o Anki não está rodando quando o `consertar` começa. A pessoa o fechou, e **um Anki fechado continua fechado**: nada é
-  fechado, e a extensão, que o pediu, é quem decide abrir.
-- `fechou`: o Anki rodava quando o `consertar` começou e a pessoa o fechou durante a espera (ou ele saiu antes de o abridor
-  conseguir sinalizá-lo): nada é aberto, nem a extensão deve abrir.
-- `respondeu`: a Conexão respondeu antes dos 30 s. Nada a consertar.
-- `reiniciado`: o Anki não respondeu em 30 s; o abridor o fechou à força e o abriu de novo.
-- `ligado`: o Anki tinha desativado a Conexão (`disabled` no `meta.json`); o abridor fechou o Anki pelo caminho normal, ligou
-  o complemento e abriu o Anki.
-- `sumiu`: a pasta do complemento não tem mais o complemento.
-- `falhou`, com `motivo`: `nao_fechou`, `nao_abriu`, `meta_ilegivel`, `meta_nao_gravou` ou `conexao_fora` (o Anki roda e não é ele
-  quem ouve a porta da Conexão: outro programa a ocupa, ou a Conexão não subiu. O Anki está saudável e **nada é fechado**).
-
-O que o abridor sabe do Anki vem do próprio Anki: quem escreve o script é o complemento, dentro do Anki, e anota o programa
-(`sys.executable`) que roda o Anki. Só os processos que rodam exatamente esse programa **agora** (a lista de processos, lida a
-cada passo, só os da própria pessoa) são fechados e, no Windows do instalador novo, também o filho CPython desse programa
-(`FilhosDoAnki`, pela árvore de processos). Nunca se procura por nome (`pkill anki`), e um `pid` anotado não serviria,
-porque com a Conexão desativada o Anki reabre sem o complemento e o `pid` do script já é de um Anki que saiu. Só se fecha à força
-o Anki que **trava de verdade**: todo processo que ouve a porta da Conexão tem que ser do Anki (Mac: `lsof`; Windows:
-`Get-NetTCPConnection`), senão é `conexao_fora` e nada é morto (também quando outro programa divide a porta com o Anki), e a força
-vai só aos pids que ouvem a porta, não a todo processo que roda o programa do Anki. E só se abre o Anki depois que ao menos um
-processo recebeu o sinal (no Windows, `CloseMainWindow()` devolveu verdadeiro): se nenhum recebeu porque o Anki já tinha saído, é
-`fechou`. Perguntar se a Conexão responde é `POST /anki/responde`, que só volta com a thread principal do Anki viva (o `/health` responde
-mesmo com o Anki travado). O script não é um navegador pareado e não assina: por isso a rota é uma das que dispensam a assinatura, e só diz
-`{"ok": true}` (nada de perfil, nada muda). Pedir a lista de perfis (`/anki/profiles`) não serve: sem assinatura é 401 para qualquer Anki,
-e o Anki saudável seria fechado à força.
-
-No Windows do instalador novo o Anki fechado à força deixa vivo o launcher (`anki.exe`, o programa que o abridor abre), sem
-filhos, para sempre (#540): depois de o Anki sair, o `reiniciado` encerra o launcher que era pai direto do Anki fechado, se ele ainda é
-o mesmo processo e não tem filho vivo, e só ele. O Anki que o abridor abre nasce na pasta da pessoa, nunca no diretório corrente do
-abridor (`user_files\\abridor`), que ele seguraria aberta: o Remover da Conexão e a atualização falhavam com WinError 32 (#539).
-
-O `meta.json` só tem uma marca mexida, a `disabled` do topo: o resto fica como estava. O de antes fica em
-`user_files/abridor/meta.json.antes`, e a troca é de uma vez (escreve ao lado e troca). Fechar o Anki **antes** de mexer no
-arquivo evita que ele regrave o dele por cima.
-
-Custo aceito pelo dono: fechar à força pode perder o Cartão que a pessoa estava editando. Fechar à força e ligar pelo
-`meta.json` não foram testados num Mac nem num Windows de verdade (risco 3 do #138): os testes (`test_conserto.py`) rodam o
-script do Mac com programas de mentira, e o `.ps1` do Windows só se confere por inspeção.
-"""
-
 import shlex
 from collections import namedtuple
 
@@ -63,9 +18,6 @@ NOME_DA_COPIA = "meta.json.antes"
 
 
 class ConexaoEsperada(namedtuple("ConexaoEsperada", "porta espera_s", defaults=(PORTA, ESPERA_PADRAO_S))):
-    """A Conexão que o `consertar` espera responder: a `porta` em que ela ouve e `espera_s`, a espera sem resposta antes de fechar à força
-    (os testes passam menos, com o relógio de mentira)."""
-
     @property
     def url(self):
         return "http://%s:%d/anki/responde" % (ENDERECO, self.porta)
@@ -76,12 +28,6 @@ class ConexaoEsperada(namedtuple("ConexaoEsperada", "porta espera_s", defaults=(
 
 
 class Conserto:
-    """O que o abridor precisa saber do Anki que o escreveu para consertá-lo. Sem `executavel`, ele nunca fecha nada.
-
-    `conexao` é a `ConexaoEsperada` (a porta e a espera);
-    `programas` troca `ps`, `curl`, `kill`, `sleep`, `date`, `lsof` e `id` do Mac (os testes passam os de mentira).
-    """
-
     def __init__(self, *, executavel=None, complemento=None, conexao=ConexaoEsperada(), programas=None):
         self.executavel = executavel
         self.complemento = complemento
@@ -90,7 +36,6 @@ class Conserto:
 
 
 def variaveis_do_mac(conserto, pasta_do_abridor):
-    """As linhas `NOME=valor` do script do Mac."""
     valores = [
         ("EXECUTAVEL", conserto.executavel or ""),
         ("COMPLEMENTO", conserto.complemento or ""),
@@ -210,7 +155,6 @@ consertar() {
 
 
 def variaveis_do_ps1(conserto, pasta_do_abridor, texto_do_powershell):
-    """As linhas `$nome = valor` do `.ps1`; `texto_do_powershell` põe um texto entre aspas simples."""
     return "\n".join([
         "$programaDoAnki = " + texto_do_powershell(conserto.executavel or ""),
         "$complemento = " + texto_do_powershell(conserto.complemento or ""),
