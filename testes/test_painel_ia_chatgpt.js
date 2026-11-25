@@ -14,13 +14,7 @@ const avisos = [];
 const campos = [];
 const fila = { estado: [], sair: [], entrar: [] };
 const ROTAS = { '/ia/chatgpt/estado': 'estado', '/ia/chatgpt/sair': 'sair', '/ia/chatgpt/entrar': 'entrar' };
-const LOGIN = {
-  conectada: { status: 200, dados: { conectada: true } },
-  nenhum: { status: 200, dados: { conectada: false } },
-  acabou: { status: 200, dados: { conectada: false, acabou: 'chatgpt_signed_out' } },
-  entrando: { status: 200, dados: { conectada: false, entrando: true } },
-  semPlano: { status: 200, dados: { conectada: false, falha: 'chatgpt_not_eligible' } },
-};
+const { login: LOGIN, cenarios: CENARIOS } = require('./painel_ia_chatgpt_cenarios.json');
 const mundo = { temChave: true };
 
 raiz.ConexaoAnki = {
@@ -79,37 +73,7 @@ async function clicar(rotulo, resposta, depois) {
   return { pedidos: feitos(), avisos: avisos.slice(avisosAntes), ...tela() };
 }
 
-const OK = revogada => ({ status: 200, dados: { ok: true, revogada } });
-const SAIDAS = [
-  ['com revogação', OK(true), 'nenhum'],
-  ['sem revogação', OK(false), 'conectada'],
-  ['ok falso', { status: 200, dados: { ok: false } }],
-  ['sem corpo', { status: 200, dados: null }],
-  ['erro do servidor', { status: 500, dados: { error: 'internal_error' } }],
-  ['Conexão antiga', { status: 404, dados: null }],
-  ['sem resposta', { status: null, dados: null }],
-];
-const ENTRADAS = [['sem conexão', { status: null, dados: null }], ['sem endereço', { status: 200, dados: { url: 'https://evil.exemplo/' } }]];
-const USAR_A_CHAVE = 'CFG-35.erroChatgptUsarChave';
-
-const CENARIOS = {
-  cadaDesfechoDoSair: SAIDAS.map(([nome, resposta, depois]) => ({ nome, login: 'conectada', rotulo: 'CFG-35.chatgptSair', resposta, depois })),
-  cadaEstadoDaColuna: [
-    { nome: 'plano com chave', login: 'conectada' },
-    { nome: 'plano sem chave', login: 'conectada', temChave: false },
-    { nome: 'sem login', login: 'nenhum' },
-    { nome: 'esperando', login: 'entrando' },
-    { nome: 'cancelado', login: 'entrando', rotulo: 'CFG-35.chaveCancelar', soAColuna: true },
-    { nome: 'acabou', login: 'acabou' },
-    { nome: 'semPlano', login: 'semPlano' },
-  ],
-  cadaEntradaQueNaoAbre: ENTRADAS.map(([nome, entrar]) => ({ nome, login: 'nenhum', rotulo: 'CFG-35.chatgptBotao', entrar })),
-  usarAChave: [
-    { nome: 'com o login acabado', login: 'acabou', rotulo: USAR_A_CHAVE, resposta: OK(true), depois: 'nenhum', comOFoco: true },
-    { nome: 'sem login acabado', login: 'semPlano', rotulo: USAR_A_CHAVE, depois: 'nenhum', comOFoco: true },
-  ],
-};
-
+const SAIU = { status: 200, dados: { ok: true, revogada: true } };
 async function rodar({ login, temChave = true, rotulo, resposta, depois, entrar, soAColuna, comOFoco }) {
   mundo.temChave = temChave;
   campos.length = 0;
@@ -123,7 +87,7 @@ async function rodar({ login, temChave = true, rotulo, resposta, depois, entrar,
 
 async function recomecar() {
   await lerComoLogin('conectada');
-  await clicar(sair(), OK(true), 'nenhum');
+  await clicar(sair(), SAIU, 'nenhum');
 }
 
 async function percorrer(cenarios) {
@@ -136,7 +100,7 @@ async function percorrer(cenarios) {
 async function doisCliquesSeguidosPedemUmaSaidaSo() {
   await recomecar();
   await lerComoLogin('conectada');
-  fila.sair.push(OK(true));
+  fila.sair.push(SAIU);
   fila.estado.push(LOGIN.nenhum);
   const botaoDeSair = botao(sair());
   botaoDeSair.disparar('click');

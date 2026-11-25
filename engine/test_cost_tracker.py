@@ -91,59 +91,15 @@ class UmDiaFixo(date):
         return cls(2026, 11, 25)
 
 
-def registro(dia, tipo, custo=None, **campos):
-    return dict({"date": dia, "type": tipo}, **({} if custo is None else {"cost_usd": custo}), **campos)
-
-
-REGISTROS = [
-    registro("2026-11-25", "tokens", 0.5, model="gpt-4o"),
-    registro("2026-11-25", "tokens", 0.25, model="gpt-4o-mini"),
-    registro("2026-11-25", "image", 0.04, model="dall-e-3-1024", source="dalle"),
-    registro("2026-11-25", "image", 0.0, model="dall-e-3-1024", source="google"),
-    registro("2026-11-25", "image", 0.04, model="gpt-image-1"),
-    registro("2026-11-25", "session", 0.0, n_cards=3),
-    registro("2026-11-25", "plan_tokens", 0.0, model="gpt-5", would_cost_usd=0.9),
-    registro("2026-11-25", "correction_tokens", 0.125, model="gpt-4o"),
-    registro("2026-11-25", "image_pipeline"),
-    registro("2026-11-23", "tokens", 1.0, model="gpt-4o"),
-    registro("2026-11-23", "session", n_cards=2),
-    registro("2026-11-22", "tokens", 2.0, model="gpt-4o"),
-    registro("2026-11-22", "image", 0.04, model="dall-e-3-1024"),
-    registro("2026-11-01", "tokens", 4.0, model="gpt-4o-mini"),
-    registro("2026-10-31", "tokens", 8.0, model="gpt-4o"),
-    registro("2026-10-31", "image", 0.02, model="dall-e-3-512", source="google"),
-    registro("2026-10-31", "session", n_cards=10),
-]
-
-
 def vazio():
     return {"total_usd": 0.0, "by_model": {}, "n_cards": 0, "n_images_dalle": 0, "n_images_google": 0}
 
 
-def somado(total, por_modelo=None, **contagens):
-    return dict(vazio(), total_usd=total, by_model=por_modelo or {}, **contagens)
-
-
-HOJE = "2026-11-25"
+with open(Path(__file__).with_name("test_cost_tracker_casos.json"), encoding="utf-8") as arquivo:
+    DADOS = json.load(arquivo)
 PERIODOS = ("today", "week", "month", "alltime")
-DOS_PERIODOS = [
-    ("today", somado(0.955, {"gpt-4o": 0.5, "gpt-4o-mini": 0.25, "dall-e-3-1024": 0.04, "gpt-image-1": 0.04}, n_cards=3, n_images_dalle=2, n_images_google=1)),
-    ("week", somado(1.955, {"gpt-4o": 1.5, "gpt-4o-mini": 0.25, "dall-e-3-1024": 0.04, "gpt-image-1": 0.04}, n_cards=5, n_images_dalle=2, n_images_google=1)),
-    ("month", somado(7.995, {"gpt-4o": 3.5, "gpt-4o-mini": 4.25, "dall-e-3-1024": 0.08, "gpt-image-1": 0.04}, n_cards=5, n_images_dalle=3, n_images_google=1)),
-    ("alltime", somado(16.015, {"gpt-4o": 11.5, "gpt-4o-mini": 4.25, "dall-e-3-1024": 0.08, "gpt-image-1": 0.04}, n_cards=15, n_images_dalle=3, n_images_google=2)),
-]
-CASOS = [(f"o periodo {periodo}", REGISTROS, "", periodo, esperado) for periodo, esperado in DOS_PERIODOS] + [
-    ("a imagem do google conta so a imagem e nao entra por modelo",
-     [registro(HOJE, "image", 0.0, model="dall-e-3-1024", source="google")], "", "today", dict(vazio(), n_images_google=1)),
-    ("a imagem sem fonte e a do dalle e entra por modelo",
-     [registro(HOJE, "image", 0.04, model="gpt-image-1")], "", "today", somado(0.04, {"gpt-image-1": 0.04}, n_images_dalle=1)),
-    ("a sessao soma os cartoes e a sem cartoes soma zero",
-     [registro(HOJE, "session", n_cards=4), registro(HOJE, "session")], "", "today", dict(vazio(), n_cards=4)),
-    ("o registro sem custo vale zero e o total e arredondado em quatro casas",
-     [registro(HOJE, "image_pipeline"), registro(HOJE, "tokens", 0.123456, model="gpt-4o")], "", "today", somado(0.1235, {"gpt-4o": 0.1235})),
-    ("a linha que nao e json e ignorada e o resto e somado",
-     [registro(HOJE, "tokens", 0.5, model="gpt-4o")], "isto nao e json\n\n", "today", somado(0.5, {"gpt-4o": 0.5})),
-] + [(f"sem registro, o periodo {periodo}", [], "", periodo, vazio()) for periodo in PERIODOS]
+CASOS = [(caso["nome"], DADOS["geral"] if caso["registros"] == "geral" else caso["registros"], caso["texto_solto"], caso["periodo"], caso["esperado"])
+         for caso in DADOS["casos"]] + [(f"sem registro, o periodo {periodo}", [], "", periodo, vazio()) for periodo in PERIODOS]
 
 
 class OResumoPorPeriodo(unittest.TestCase):
