@@ -13,6 +13,12 @@ const comOutrosNiveis = { PerpetualMiner: { Sincronizacao, QuizDeNivel: { NIVEIS
 require('vm').runInNewContext(require('fs').readFileSync('./lib/ranking.js', 'utf8'), comOutrosNiveis);
 assert.strictEqual(comOutrosNiveis.PerpetualMiner.Ranking.nota({ nivel: 'fluente', acertos: 0, perguntas: 3 }), 1000);
 
+const rankingAntes = { PerpetualMiner: { Sincronizacao } };
+require('vm').runInNewContext(require('fs').readFileSync('./lib/ranking.js', 'utf8'), rankingAntes);
+rankingAntes.PerpetualMiner.QuizDeNivel = { NIVEIS: { A: 'basico', B: 'fluente' } };
+assert.strictEqual(rankingAntes.PerpetualMiner.Ranking.nota({ nivel: 'fluente', acertos: 0, perguntas: 3 }), 1000,
+  'o ranking carregado antes do quiz de nível lê os níveis quando é usado');
+
 const resultado = (nivel, acertos, perguntas, melhorSequencia) => ({ nivel, acertos, perguntas, melhorSequencia });
 
 assert(Ranking.nota(resultado('intermediario', 0, 6, 0)) > Ranking.nota(resultado('iniciante', 3, 3, 3)), 'o nível pesa mais que os acertos');
