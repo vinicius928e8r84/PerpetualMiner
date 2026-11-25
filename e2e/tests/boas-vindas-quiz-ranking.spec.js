@@ -2,7 +2,7 @@
 
 const { test, expect } = require('../fixtures');
 const { estadoFinalEm } = require('../estado-final');
-const { abrirOQuiz, responderAParte1, percorrer, quiz } = require('../apoio-do-quiz');
+const { abrirOQuiz, responderAParte1, percorrer, quiz, partidaDoQuiz } = require('../apoio-do-quiz');
 
 const outra = (uid, nome, nivel, nota, melhorSequencia) => ({
   uid, idioma: 'en', nome, foto: '', nivel, melhorSequencia, nota, acertos: 1, perguntas: 3, grupos: [], topou: true, em: 1,
@@ -13,7 +13,7 @@ async function ateOResultado(page, extensao, fakes, relogioParado, { conta = tru
   if (conta) await extensao.semearSessao();
   const relogio = await abrirOQuiz(page, extensao, relogioParado);
   await responderAParte1(page, 'Inglês', 'iniciante');
-  await percorrer(page, 'Inglês', fakes, relogio, ['errado', 'certo', 'certo']);
+  await percorrer(partidaDoQuiz(page, fakes, relogio), ['errado', 'certo', 'certo']);
   return quiz(page, 'Inglês').locator('.ranking');
 }
 
