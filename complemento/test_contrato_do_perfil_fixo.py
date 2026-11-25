@@ -10,6 +10,7 @@ import tempfile
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import baralhos, perfil
+from complemento.nota_a_gravar import NotaAGravar
 
 
 class ContratoDoPerfilFixo:
@@ -23,7 +24,7 @@ class ContratoDoPerfilFixo:
         return fixo
 
     def gravar_uma_nota(self, colecao):
-        colecao.adicionar_nota("Inglês", "Básico", {"Frente": "a", "Verso": "b"}, [], "guid-1")
+        colecao.adicionar_nota(NotaAGravar("Inglês", "Básico", {"Frente": "a", "Verso": "b"}, [], "guid-1"))
 
     def test_a_gravacao_e_recusada_com_outro_perfil_aberto_e_nada_e_gravado_nele(self):
         colecao = self.adaptador(self.DESCRICAO, perfis=("Ana", "Beto"), aberto="Beto")

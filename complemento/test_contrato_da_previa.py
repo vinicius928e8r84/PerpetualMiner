@@ -14,6 +14,7 @@ from complemento import baralhos, previa_do_cartao
 from complemento.motor import estilos
 from complemento.test_contrato_da_criacao import ANKI_EM_INGLES, SO_O_DEFAULT
 from complemento.test_contrato_do_navegador import ContratoDoNavegador
+from complemento.nota_a_gravar import NotaAGravar
 
 ESTILOS = [(lang, nivel) for lang in ("en", "ru") for nivel in estilos.niveis(lang)]
 
@@ -94,7 +95,7 @@ class ContratoDaPrevia(ContratoDoNavegador):
     def test_a_previa_de_uma_nota_gravada_mostra_o_cartao_dela_no_baralho_dela(self):
         colecao = self.adaptador(SO_O_DEFAULT)
         previa_do_cartao.previa_do_exemplo(colecao, "en", "iniciante")
-        colecao.adicionar_nota("PerpetualMiner::Inglês", "PerpetualMiner Inglês", {"Frase": "I <b>keep</b> trying", "Palavra": "keep"}, [], "guid-1")
+        colecao.adicionar_nota(NotaAGravar("PerpetualMiner::Inglês", "PerpetualMiner Inglês", {"Frase": "I <b>keep</b> trying", "Palavra": "keep"}, [], "guid-1"))
         previa = previa_do_cartao.previa_da_nota(colecao, "guid-1")
         self.assertEqual((previa["source"], previa["deck"], previa["noteType"]), ("note", "PerpetualMiner::Inglês", "PerpetualMiner Inglês"))
         self.assertEqual(texto_de(previa["front"]), "I keep trying")
@@ -102,7 +103,7 @@ class ContratoDaPrevia(ContratoDoNavegador):
 
     def test_a_previa_de_uma_nota_do_basico_de_antes_mostra_a_frente_e_o_verso(self):
         colecao = self.adaptador({"baralhos": [{"nome": "CIMV"}], "tiposDeNota": {"Básico": ["Frente", "Verso"]}})
-        colecao.adicionar_nota("CIMV", "Básico", {"Frente": "She <b>gave up</b>", "Verso": "give up"}, [], "guid-1")
+        colecao.adicionar_nota(NotaAGravar("CIMV", "Básico", {"Frente": "She <b>gave up</b>", "Verso": "give up"}, [], "guid-1"))
         previa = previa_do_cartao.previa_da_nota(colecao, "guid-1")
         self.assertEqual((texto_de(previa["front"]), texto_de(previa["back"])), ("She gave up", "She gave up give up"))
         self.assertEqual(previa["deck"], "CIMV")
@@ -114,7 +115,7 @@ class ContratoDaPrevia(ContratoDoNavegador):
         colecao = self.adaptador(SO_O_DEFAULT)
         previa_do_cartao.previa_do_exemplo(colecao, "en", "iniciante")
         campos = {"Frase": "I keep trying", "Áudio da frase": "[sound:pm_frase.mp3]", "Imagem": '<img src="pm_foto.png">'}
-        colecao.adicionar_nota("PerpetualMiner::Inglês", "PerpetualMiner Inglês", campos, [], "guid-1", {"pm_frase.mp3": b"mp3", "pm_foto.png": b"\x89PNG"})
+        colecao.adicionar_nota(NotaAGravar("PerpetualMiner::Inglês", "PerpetualMiner Inglês", campos, [], "guid-1", {"pm_frase.mp3": b"mp3", "pm_foto.png": b"\x89PNG"}))
         previa = previa_do_cartao.previa_da_nota(colecao, "guid-1")
         self.assertIn("pm-tocar", previa["front"])
         self.assertNotIn("[sound:", previa["front"] + previa["back"])
@@ -123,12 +124,12 @@ class ContratoDaPrevia(ContratoDoNavegador):
     def test_a_imagem_que_nao_esta_na_pasta_de_midia_ou_nao_e_imagem_vira_o_espaco_da_imagem(self):
         colecao = self.adaptador(SO_O_DEFAULT)
         previa_do_cartao.previa_do_exemplo(colecao, "en", "iniciante")
-        colecao.adicionar_nota("Inglês", "PerpetualMiner Inglês", {"Frase": "a", "Imagem": '<img src="sumiu.jpg"><img src="nota.txt">'}, [], "guid-1", {"nota.txt": b"oi"})
+        colecao.adicionar_nota(NotaAGravar("Inglês", "PerpetualMiner Inglês", {"Frase": "a", "Imagem": '<img src="sumiu.jpg"><img src="nota.txt">'}, [], "guid-1", {"nota.txt": b"oi"}))
         self.assertEqual(previa_do_cartao.previa_da_nota(colecao, "guid-1")["back"].count("data:image/svg+xml;base64,"), 2)
 
     def test_um_nome_de_arquivo_com_caminho_nunca_le_a_pasta_de_midia(self):
         colecao = self.adaptador(SO_O_DEFAULT)
-        colecao.adicionar_nota("Inglês", "Básico", {"Frente": "a", "Verso": "b"}, [], "guid-1", {"foto.jpg": b"x"})
+        colecao.adicionar_nota(NotaAGravar("Inglês", "Básico", {"Frente": "a", "Verso": "b"}, [], "guid-1", {"foto.jpg": b"x"}))
         self.assertEqual(colecao.arquivo_de_midia("foto.jpg", 10), b"x")
         for nome in ("../foto.jpg", "/foto.jpg", "pasta/foto.jpg", ""):
             self.assertIsNone(colecao.arquivo_de_midia(nome, 10), nome)

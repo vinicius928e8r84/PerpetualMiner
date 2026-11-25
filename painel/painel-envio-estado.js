@@ -11,24 +11,42 @@
   const ESPERA_ATE_ORIENTAR_MS = 5 * 60 * 1000;
   const FRASES_APAGADAS = 'frases_apagadas';
 
-  function situacaoDoEnvio(envio, job, { desconhecido = false, ankiFechado = false, agora = Date.now() } = {}) {
-    if (!envio.jobId) {
-      const falha = envio.falhaAoCriar;
-      if (!falha) return { estado: ESTADO.CRIANDO };
-      return { estado: ESTADO.NAO_COMECOU, causa: falha.motivo ? 'ajustes' : falha.semResposta ? 'semResposta' : 'erro' };
-    }
-    if (desconhecido) return { estado: ESTADO.DESCONHECIDO };
-    const { status = 'queued', stage = 'queued', waiting, lastError, wiped, progress, updatedAt } = job || {};
+  const causaDaFalhaAoCriar = falha => (falha.motivo ? 'ajustes' : falha.semResposta ? 'semResposta' : 'erro');
+
+  function situacaoDaCriacao(envio) {
+    const falha = envio.falhaAoCriar;
+    if (!falha) return { estado: ESTADO.CRIANDO };
+    return { estado: ESTADO.NAO_COMECOU, causa: causaDaFalhaAoCriar(falha) };
+  }
+
+  function situacaoDoFim({ status = 'queued', lastError, wiped } = {}) {
     if (lastError === FRASES_APAGADAS) return { estado: ESTADO.APAGADO };
     if (status === 'completed') return { estado: ESTADO.CONCLUIDO };
     if (FIM[status]) return { estado: FIM[status], motivo: lastError || null, ...(wiped ? { apagadas: true } : {}) };
-    const andamento = { etapa: stage, feitos: Number(progress?.done) || 0, total: Number(progress?.total) || 0 };
-    if (ankiFechado) return { estado: ESTADO.PARADO, ...andamento };
+    return null;
+  }
+
+  const esperaDeAnkiSemAviso = ({ stage = 'queued', waiting, updatedAt }, agora) => stage === 'wait_anki' && !waiting && agora - Date.parse(updatedAt) >= ESPERA_ATE_ORIENTAR_MS;
+
+  const andamentoDe = ({ stage = 'queued', progress }) => ({ etapa: stage, feitos: Number(progress?.done) || 0, total: Number(progress?.total) || 0 });
+
+  function situacaoEsperandoOuAndando(job, agora) {
+    const { status = 'queued', waiting } = job;
+    const andamento = andamentoDe(job);
     const espera = ESPERA_DO_MOTIVO[waiting?.reason];
     if (espera) return { estado: ESTADO.ESPERANDO, espera, ...andamento };
     if (status === 'queued') return { estado: ESTADO.NA_FILA, ...andamento };
-    if (stage === 'wait_anki' && !waiting && agora - Date.parse(updatedAt) >= ESPERA_ATE_ORIENTAR_MS) return { estado: ESTADO.ESPERANDO, espera: ESPERA.ANKI, ...andamento };
+    if (esperaDeAnkiSemAviso(job, agora)) return { estado: ESTADO.ESPERANDO, espera: ESPERA.ANKI, ...andamento };
     return { estado: ESTADO.ANDANDO, ...andamento };
+  }
+
+  function situacaoDoEnvio(envio, job, { desconhecido = false, ankiFechado = false, agora = Date.now() } = {}) {
+    if (!envio.jobId) return situacaoDaCriacao(envio);
+    if (desconhecido) return { estado: ESTADO.DESCONHECIDO };
+    const noFim = situacaoDoFim(job || {});
+    if (noFim) return noFim;
+    if (ankiFechado) return { estado: ESTADO.PARADO, ...andamentoDe(job || {}) };
+    return situacaoEsperandoOuAndando(job || {}, agora);
   }
 
   const RETOMAVEIS = [ESTADO.EM_PARTE, ESTADO.NAO_CONCLUIDO];
@@ -38,22 +56,31 @@
   const foraDoResumo = situacao => situacao.estado === ESTADO.DESCONHECIDO || situacao.estado === ESTADO.APAGADO;
 
   const comoNumeros = lista => new Set((lista || []).map(Number));
+
+  const novoIdioma = envio => ({ lang: envio.lang, baralho: envio.baralho, total: 0, enviadas: [], duplicadas: [], falhas: 0 });
+
+  function desfechoDaFrase(id, { sucesso, falha, dup }) {
+    if (!sucesso.has(Number(id)) || falha.has(Number(id))) return 'falhas';
+    return dup.has(Number(id)) ? 'duplicadas' : 'enviadas';
+  }
+
+  function somarOEnvio(idioma, envio, estado) {
+    idioma.baralho = idioma.baralho || envio.baralho;
+    idioma.total += envio.ids.length;
+    idioma.codigo ||= estado.lastError;
+    const [sucesso, falha, dup] = [estado.successfulPhraseIds, estado.failedPhraseIds, estado.duplicatePhraseIds].map(comoNumeros);
+    for (const id of envio.ids) {
+      const desfecho = desfechoDaFrase(id, { sucesso, falha, dup });
+      if (desfecho === 'falhas') idioma.falhas += 1;
+      else idioma[desfecho].push(id);
+    }
+  }
+
   function contagemPorIdioma(envios, situacaoDe, estadoDoJob) {
     const porLang = new Map();
-    for (const envio of envios) {
-      if (foraDoResumo(situacaoDe(envio))) continue;
-      if (!porLang.has(envio.lang)) porLang.set(envio.lang, { lang: envio.lang, baralho: envio.baralho, total: 0, enviadas: [], duplicadas: [], falhas: 0 });
-      const idioma = porLang.get(envio.lang);
-      idioma.baralho = idioma.baralho || envio.baralho;
-      idioma.total += envio.ids.length;
-      const estado = (envio.jobId && estadoDoJob(envio)) || {};
-      idioma.codigo ||= estado.lastError;
-      const [sucesso, falha, dup] = [estado.successfulPhraseIds, estado.failedPhraseIds, estado.duplicatePhraseIds].map(comoNumeros);
-      for (const id of envio.ids) {
-        if (!sucesso.has(Number(id)) || falha.has(Number(id))) idioma.falhas += 1;
-        else if (dup.has(Number(id))) idioma.duplicadas.push(id);
-        else idioma.enviadas.push(id);
-      }
+    for (const envio of envios.filter(daLista => !foraDoResumo(situacaoDe(daLista)))) {
+      if (!porLang.has(envio.lang)) porLang.set(envio.lang, novoIdioma(envio));
+      somarOEnvio(porLang.get(envio.lang), envio, (envio.jobId && estadoDoJob(envio)) || {});
     }
     return ['en', 'ru'].filter(lang => porLang.has(lang)).map(lang => porLang.get(lang));
   }
@@ -150,6 +177,8 @@
       return true;
     }
 
+    const acabouDeLer = leu => leu && terminou(situacao);
+
     async function seguir() {
       if (lendo) return;
       lendo = true;
@@ -157,7 +186,7 @@
       try {
         for (;;) {
           const leu = await ler(minha);
-          if (minha !== vez || (leu && terminou(situacao))) return;
+          if (minha !== vez || acabouDeLer(leu)) return;
           await esperar(intervaloMs);
           if (minha !== vez) return;
         }

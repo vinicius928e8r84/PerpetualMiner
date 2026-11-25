@@ -16,7 +16,6 @@ PerpetualMiner.AutoRecarregar.iniciar();
 const AUTO_MINER_SETTINGS_KEY = MineracaoDoDia.CHAVES.ajustes;
 const AUTO_MINER_DAILY_KEY = MineracaoDoDia.CHAVES.diario;
 const AUTO_MINER_LAST_EVENT_KEY = MineracaoDoDia.CHAVES.ultimoEvento;
-const AUTO_KEYWORD_RENEW_TIMEOUT_MS = 8000;
 const MENU_MINERAR_SELECAO = 'minerar-perpetualminer';
 
 // Os itens do menu ficam gravados entre versões, e o id mudou junto com a cópia
@@ -192,71 +191,12 @@ async function autoKeywordsForPhraseByLang(frase, lang, options = {}) {
   return PalavraAutomatica.escolherCom(frase?.texto || '', lang, () => getAutoKeywordVocabulary(lang === 'ru' ? 'ru' : 'en'), options);
 }
 
-async function getAutoKeywordVocabulary(lang = 'en') {
-  const normalizedLang = lang === 'ru' ? 'ru' : 'en';
-  const deckName = await getAutoKeywordDeckName(normalizedLang);
-  const cacheKey = VocabularioDaMineracao.chaveDoIdioma(normalizedLang);
-  const cached = await chromeGet({ [cacheKey]: null });
-  const ultimaLeitura = VocabularioDaMineracao.doBaralho(cached[cacheKey], deckName);
-  if (ultimaLeitura && VocabularioDaMineracao.estaEmDia(ultimaLeitura)) return autoVocabularyFromCache(ultimaLeitura);
-
-  const desfecho = await PerpetualMiner.ConversaComOAnki.pedir(PerpetualMiner.PedidoAoAnki.vocabulario(deckName, normalizedLang),
-    ultimaLeitura ? { prazoMs: AUTO_KEYWORD_RENEW_TIMEOUT_MS } : {});
-  const data = desfecho.ok ? desfecho.dados : null;
-  if (!data) return ultimaLeitura ? autoVocabularyFromCache(ultimaLeitura) : autoEmptyVocabulary(false);
-
-  const words = [];
-  const terms = [];
-  const wordInfo = {};
-  const termInfo = {};
-  for (const item of data?.words || []) {
-    const text = PalavraAutomatica.chaveDoTermo(item.word || '');
-    if (!text) continue;
-    if (item.type === 'term') {
-      terms.push(text);
-      termInfo[text] = autoVocabularyInfo(item);
-    } else {
-      words.push(text);
-      wordInfo[text] = autoVocabularyInfo(item);
-    }
-  }
-
-  const createdAt = Date.now();
-  const payload = { cacheVersion: VocabularioDaMineracao.VERSAO, deckName, createdAt, words, terms, wordInfo, termInfo };
-  chrome.storage.local.set({ [cacheKey]: payload });
-  return autoVocabularyFromCache(payload);
-}
-
-function autoEmptyVocabulary(available = true) {
-  return { available, words: new Set(), terms: new Set(), wordInfo: new Map(), termInfo: new Map() };
+function getAutoKeywordVocabulary(lang = 'en') {
+  return VocabularioDaMineracao.vocabulario(lang);
 }
 
 function autoVocabularyFromCache(value) {
-  const wordInfo = new Map(Object.entries(value.wordInfo || {}));
-  const termInfo = new Map(Object.entries(value.termInfo || {}));
-  for (const word of value.words || []) {
-    if (!wordInfo.has(word)) wordInfo.set(word, { status: 'seen' });
-  }
-  for (const term of value.terms || []) {
-    if (!termInfo.has(term)) termInfo.set(term, { status: 'seen' });
-  }
-  return {
-    available: true,
-    words: new Set(value.words || []),
-    terms: new Set(value.terms || []),
-    wordInfo,
-    termInfo,
-  };
-}
-
-function autoVocabularyInfo(item) {
-  return {
-    status: String(item.status || 'seen'),
-    cards: Number(item.cards || 0),
-    new: Number(item.new || 0),
-    recent: Number(item.recent || 0),
-    mature: Number(item.mature || 0),
-  };
+  return VocabularioDaMineracao.vocabularioDaLeitura(value);
 }
 
 const mineracaoAutomatica = MineracaoAutomatica.criar({
@@ -421,11 +361,6 @@ function publicarEstadoDaAutomatica(state) {
       } catch {}
     }
   });
-}
-
-async function getAutoKeywordDeckName(lang = 'en') {
-  const normalizedLang = lang === 'ru' ? 'ru' : 'en';
-  return (await PerpetualMiner.AjustesDeEnvio.ler())[normalizedLang].deckName;
 }
 
 function chromeGet(defaults) {

@@ -5,7 +5,9 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-const FONTE = fs.readFileSync(path.join(__dirname, '..', 'lib', 'chave-da-openai.js'), 'utf8');
+const lerDaLib = nome => fs.readFileSync(path.join(__dirname, '..', 'lib', nome), 'utf8');
+const FONTE = lerDaLib('chave-da-openai.js');
+const FONTE_LEGADA = lerDaLib('chave-legada.js');
 const MARCA = 'pm_chave_openai';
 const MOTIVO = { A_PAREAR: 'a_parear', SEM_RESPOSTA: 'sem_resposta' };
 const DONO = { configurada: true, ultimos4: 'abcd', versao: 2, conta: 'A', naoEnviada: false };
@@ -97,6 +99,7 @@ function carregar({ respostas, legado = {}, armazenado = {}, uid = 'A', logado =
     PerpetualMiner: raiz,
   });
   contexto.globalThis = contexto;
+  vm.runInContext(FONTE_LEGADA, contexto, { filename: 'lib/chave-legada.js' });
   vm.runInContext(FONTE, contexto, { filename: 'lib/chave-da-openai.js' });
   const chave = raiz.ChaveDaOpenAI;
   chave.aoMudar(() => ouvidos.push('mudou'));

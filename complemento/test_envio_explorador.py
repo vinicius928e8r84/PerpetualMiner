@@ -26,13 +26,15 @@ import os
 import shutil
 import sys
 import tempfile
-import threading
 import unittest
 from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import envio
+from complemento.esperas import Esperas
+from complemento.montagem_do_cartao import motor_do_cartao
+from complemento.servicos_de_fora import ServicosDeFora
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria
 from complemento.test_envio import ID, INGLES, LINHA, PALAVRA, SENTINELAS, EnvioNoTeste, arquivos_sem_o_log, chats, pedido
 
@@ -50,9 +52,9 @@ def o_envio(cartoes):
 
 
 def o_trabalho_de(conexao, fila, colecao):
-    c = conexao.conexao
-    return envio.Trabalho(fila, colecao, c.ia, c.logger, conexao.openai.base, threading.Event(), espera_do_anki=0.01,
-                          esperas_da_openai=(0, 0), openverse_base=conexao.openverse.base, voz_base=conexao.voz.base)
+    servicos = ServicosDeFora(openai=conexao.openai.base, openverse=conexao.openverse.base, voz=conexao.voz.base)
+    esperas = Esperas(do_anki=0.01, da_openai=(0, 0))
+    return envio.Trabalho(fila, colecao, conexao.conexao.ia, motor_do_cartao(fila, servicos, esperas), esperas)
 
 
 class Explorador:

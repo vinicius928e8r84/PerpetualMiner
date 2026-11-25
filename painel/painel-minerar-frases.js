@@ -1,7 +1,7 @@
 'use strict';
 
 (function (raiz) {
-  const { textoDaVoz, Mineracao } = raiz;
+  const { textoDaVoz, Mineracao, TxtDeFrases } = raiz;
   const { mostrarToastDeSucesso } = raiz.Veio;
 
   const FONTE_MANUAL = 'manual';
@@ -274,7 +274,7 @@
     let duplicadas = 0;
     let invalidas  = 0;
     for (const linha of linhas) {
-      const lida = painel.lerLinhaDoTxt(linha);
+      const lida = TxtDeFrases.ler(linha);
       if (!lida) { invalidas++; continue; }
       const chave = chaveDeRepetida(lida.texto);
       if (jaExistem.has(chave)) { duplicadas++; continue; }

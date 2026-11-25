@@ -1,3 +1,5 @@
+  <script src="/lib/envio-gravado.js">
+  <script src="painel-envio-estado.js">
   <script src="painel-boas-vindas-envio.js">
   <script src="painel-boas-vindas.js">
   <script src="painel-lembrete.js">
@@ -20,10 +22,10 @@
   <script src="painel-anki-primeira-conexao.js">
   <script src="painel-anki-plano.js">
   <script src="painel-anki-continuar.js">
-  <script src="painel-anki-envios.js">
   <script src="painel-anki.js">
-  <script src="painel-anki-vocabulario.js">
+  <script src="painel-anki-envios.js">
   <script src="painel-anki-baralhos.js">
+  <script src="painel-anki-vocabulario.js">
   <script src="painel-anki-previa.js">
   <script src="painel-anki-tipo-proprio.js">
   <script src="painel-anki-estilo.js">
