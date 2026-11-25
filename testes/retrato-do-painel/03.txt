@@ -36,6 +36,7 @@
   <script src="esqueleto-modais.js">
   <script src="esqueleto-anki.js">
   <script src="esqueleto-configuracoes.js">
+  <script src="esqueleto-frases.js">
   <script src="painel-shell.js">
   <script src="painel-conta.js">
   <script src="painel-atalhos.js">

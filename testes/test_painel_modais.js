@@ -38,12 +38,11 @@ function osEsqueletosMontados() {
   require('../painel/esqueleto-anki.js');
   require('../painel/esqueleto-configuracoes.js');
   require('../painel/esqueleto-frases.js');
-  const montadas = conteudo.childNodes.map(canonicaDoFalso);
-  const ehDeFrases = area => area.atributos['data-area'] === 'frases';
+  const areas = conteudo.childNodes.map(canonicaDoFalso);
   esqueletosMontados = {
     modais: ponte.parentNode.childNodes.filter(no => no.className === 'veio-scrim').map(canonicaDoFalso),
-    areas: montadas.filter(area => !ehDeFrases(area)),
-    areaDeFrases: montadas.find(ehDeFrases),
+    areas,
+    areaDeFrases: areas.find(area => area.atributos['data-area'] === 'frases'),
   };
   return structuredClone(esqueletosMontados);
 }
@@ -107,6 +106,8 @@ function oEsqueletoCarregaAntesDoShellENaoDepoisDosModulos() {
   assert.ok(scripts.indexOf('/veio/componentes.js') < scripts.indexOf('esqueleto-anki.js'));
   assert.ok(scripts.indexOf('esqueleto-anki.js') < scripts.indexOf('esqueleto-configuracoes.js'));
   assert.ok(scripts.indexOf('esqueleto-configuracoes.js') < scripts.indexOf('painel-shell.js'));
+  assert.ok(scripts.indexOf('/veio/componentes.js') < scripts.indexOf('esqueleto-frases.js'));
+  assert.ok(scripts.indexOf('esqueleto-frases.js') < scripts.indexOf('painel-shell.js'));
 }
 
 aAreaDeFrasesTemASuaArvore();
