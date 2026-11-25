@@ -3,6 +3,7 @@ import tempfile
 import unittest
 from datetime import date
 from pathlib import Path
+from unittest import mock
 
 import cost_tracker
 
@@ -82,6 +83,91 @@ class RegistroDeTokens(unittest.TestCase):
             "total_usd": round(0.0125 + 0.00075, 4), "by_model": {"gpt-4o": 0.0125}, "n_cards": 0, "n_images_dalle": 0, "n_images_google": 0,
         })
         self.assertEqual(resumo["alltime"], resumo["today"])
+
+
+class UmDiaFixo(date):
+    @classmethod
+    def today(cls):
+        return cls(2026, 11, 25)
+
+
+def registro(dia, tipo, custo=None, **campos):
+    return dict({"date": dia, "type": tipo}, **({} if custo is None else {"cost_usd": custo}), **campos)
+
+
+REGISTROS = [
+    registro("2026-11-25", "tokens", 0.5, model="gpt-4o"),
+    registro("2026-11-25", "tokens", 0.25, model="gpt-4o-mini"),
+    registro("2026-11-25", "image", 0.04, model="dall-e-3-1024", source="dalle"),
+    registro("2026-11-25", "image", 0.0, model="dall-e-3-1024", source="google"),
+    registro("2026-11-25", "image", 0.04, model="gpt-image-1"),
+    registro("2026-11-25", "session", 0.0, n_cards=3),
+    registro("2026-11-25", "plan_tokens", 0.0, model="gpt-5", would_cost_usd=0.9),
+    registro("2026-11-25", "correction_tokens", 0.125, model="gpt-4o"),
+    registro("2026-11-25", "image_pipeline"),
+    registro("2026-11-23", "tokens", 1.0, model="gpt-4o"),
+    registro("2026-11-23", "session", n_cards=2),
+    registro("2026-11-22", "tokens", 2.0, model="gpt-4o"),
+    registro("2026-11-22", "image", 0.04, model="dall-e-3-1024"),
+    registro("2026-11-01", "tokens", 4.0, model="gpt-4o-mini"),
+    registro("2026-10-31", "tokens", 8.0, model="gpt-4o"),
+    registro("2026-10-31", "image", 0.02, model="dall-e-3-512", source="google"),
+    registro("2026-10-31", "session", n_cards=10),
+]
+
+
+def vazio():
+    return {"total_usd": 0.0, "by_model": {}, "n_cards": 0, "n_images_dalle": 0, "n_images_google": 0}
+
+
+class OResumoPorPeriodo(unittest.TestCase):
+    def resumo(self, registros, texto_solto=""):
+        with tempfile.TemporaryDirectory() as pasta:
+            (Path(pasta) / "costs.jsonl").write_text("\n".join(json.dumps(r) for r in registros) + "\n" + texto_solto, encoding="utf-8")
+            with mock.patch.object(cost_tracker, "date", UmDiaFixo):
+                return cost_tracker.summary(pasta)
+
+    def test_cada_periodo_soma_so_os_registros_do_dia_dele_em_diante(self):
+        resumo = self.resumo(REGISTROS)
+        self.assertEqual(resumo["today"], {
+            "total_usd": 0.955, "by_model": {"gpt-4o": 0.5, "gpt-4o-mini": 0.25, "dall-e-3-1024": 0.04, "gpt-image-1": 0.04},
+            "n_cards": 3, "n_images_dalle": 2, "n_images_google": 1,
+        })
+        self.assertEqual(resumo["week"], {
+            "total_usd": 1.955, "by_model": {"gpt-4o": 1.5, "gpt-4o-mini": 0.25, "dall-e-3-1024": 0.04, "gpt-image-1": 0.04},
+            "n_cards": 5, "n_images_dalle": 2, "n_images_google": 1,
+        })
+        self.assertEqual(resumo["month"], {
+            "total_usd": 7.995, "by_model": {"gpt-4o": 3.5, "gpt-4o-mini": 4.25, "dall-e-3-1024": 0.08, "gpt-image-1": 0.04},
+            "n_cards": 5, "n_images_dalle": 3, "n_images_google": 1,
+        })
+        self.assertEqual(resumo["alltime"], {
+            "total_usd": 16.015, "by_model": {"gpt-4o": 11.5, "gpt-4o-mini": 4.25, "dall-e-3-1024": 0.08, "gpt-image-1": 0.04},
+            "n_cards": 15, "n_images_dalle": 3, "n_images_google": 2,
+        })
+
+    def test_a_imagem_do_google_conta_so_a_imagem_e_nao_entra_por_modelo(self):
+        resumo = self.resumo([registro("2026-11-25", "image", 0.0, model="dall-e-3-1024", source="google")])
+        self.assertEqual(resumo["today"], dict(vazio(), n_images_google=1))
+
+    def test_a_imagem_sem_fonte_e_a_do_dalle_e_entra_por_modelo(self):
+        resumo = self.resumo([registro("2026-11-25", "image", 0.04, model="gpt-image-1")])
+        self.assertEqual(resumo["today"], dict(vazio(), total_usd=0.04, by_model={"gpt-image-1": 0.04}, n_images_dalle=1))
+
+    def test_a_sessao_soma_os_cartoes_e_a_sem_cartoes_soma_zero(self):
+        resumo = self.resumo([registro("2026-11-25", "session", n_cards=4), registro("2026-11-25", "session")])
+        self.assertEqual(resumo["today"], dict(vazio(), n_cards=4))
+
+    def test_o_registro_sem_custo_vale_zero_e_o_total_e_arredondado_em_quatro_casas(self):
+        resumo = self.resumo([registro("2026-11-25", "image_pipeline"), registro("2026-11-25", "tokens", 0.123456, model="gpt-4o")])
+        self.assertEqual(resumo["today"], dict(vazio(), total_usd=0.1235, by_model={"gpt-4o": 0.1235}))
+
+    def test_sem_registro_o_resumo_e_de_zeros_em_cada_periodo(self):
+        self.assertEqual(self.resumo([]), {periodo: vazio() for periodo in ("today", "week", "month", "alltime")})
+
+    def test_a_linha_que_nao_e_json_e_ignorada_e_o_resto_e_somado(self):
+        resumo = self.resumo([registro("2026-11-25", "tokens", 0.5, model="gpt-4o")], "isto nao e json\n\n")
+        self.assertEqual(resumo["today"], dict(vazio(), total_usd=0.5, by_model={"gpt-4o": 0.5}))
 
 
 if __name__ == "__main__":
