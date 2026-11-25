@@ -1,5 +1,9 @@
   <iframe hidden id="abridor-ponte" src="../abridor/ponte.html">
   <script src="/lib/voz/catalogo.js">
+  <script src="/lib/voz/catalogo-configuracoes.js">
+  <script src="/lib/voz/catalogo-anki.js">
+  <script src="/lib/voz/catalogo-boas-vindas.js">
+  <script src="/lib/voz/catalogo-envio.js">
   <script src="/lib/voz/catalogo-nivel.js">
   <script src="/lib/voz/texto.js">
   <script src="/lib/ajustes-de-envio.js">
@@ -29,6 +33,7 @@
   <script src="/lib/nuvem-do-firestore.js">
   <script src="/lib/sincronizacao.js">
   <script src="esqueleto-modais.js">
+  <script src="esqueleto-configuracoes.js">
   <script src="painel-shell.js">
   <script src="painel-conta.js">
   <script src="painel-atalhos.js">
@@ -77,4 +82,6 @@
   <script src="painel-anki-estilo.js">
   <script src="painel-ajustes.js">
   <script src="painel-minerar-frases.js">
+  <script src="painel-frases-cartao.js">
+  <script src="painel-frases-acoes.js">
   <script src="painel.js">

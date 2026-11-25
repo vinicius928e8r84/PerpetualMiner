@@ -8,6 +8,10 @@ function prepararAPagina({ ids = [] } = {}) {
   globalThis.PerpetualMiner = {};
   globalThis.chrome = { storage: { local: { get: async padrao => padrao, set: async () => {}, onChanged: { addListener() {} } } } };
   require('../lib/voz/catalogo.js');
+  require('../lib/voz/catalogo-configuracoes.js');
+  require('../lib/voz/catalogo-anki.js');
+  require('../lib/voz/catalogo-boas-vindas.js');
+  require('../lib/voz/catalogo-envio.js');
   require('../lib/voz/catalogo-nivel.js');
   require('../lib/voz/texto.js');
   require('../veio/componentes.js');

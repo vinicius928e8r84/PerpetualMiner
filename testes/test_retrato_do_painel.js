@@ -4,6 +4,9 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 
+const { canonicaDoFalso } = require('./arvore_do_html.js');
+const { prepararAPagina } = require('./painel_de_mentira.js');
+
 const RAIZ = path.join(__dirname, '..');
 const PAGINA = path.join(RAIZ, 'painel', 'painel.html');
 const PASTA_DO_RETRATO = path.join(__dirname, 'retrato-do-painel');
@@ -85,8 +88,26 @@ function pedacosDe(linhas) {
 
 const nomeDoPedaco = indice => `${String(indice + 1).padStart(2, '0')}.txt`;
 
+function marcacaoDe(no) {
+  if (typeof no === 'string') return no;
+  const atributos = Object.entries(no.atributos).map(([nome, valor]) => (valor === '' ? ` ${nome}` : ` ${nome}="${valor}"`)).join('');
+  return `<${no.tag}${atributos}>${SEM_FILHOS.has(no.tag) ? '' : `${no.filhos.map(marcacaoDe).join('')}</${no.tag}>`}`;
+}
+
+function aAreaDeConfiguracoesDoEsqueleto() {
+  const { conteudo } = prepararAPagina();
+  require('../painel/esqueleto-configuracoes.js');
+  return marcacaoDe(canonicaDoFalso(conteudo.childNodes[0]));
+}
+
+function aPaginaComOEsqueleto() {
+  const html = fs.readFileSync(PAGINA, 'utf8');
+  const fimDoConteudo = html.indexOf('</main>', html.indexOf('class="shell-conteudo"'));
+  return `${html.slice(0, fimDoConteudo)}${aAreaDeConfiguracoesDoEsqueleto()}${html.slice(fimDoConteudo)}`;
+}
+
 function retratoDaPagina() {
-  return pedacosDe(arvoreDe(fs.readFileSync(PAGINA, 'utf8')));
+  return pedacosDe(arvoreDe(aPaginaComOEsqueleto()));
 }
 
 function gravar(pedacos) {
