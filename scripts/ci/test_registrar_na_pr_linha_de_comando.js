@@ -38,6 +38,7 @@ const servidorDoGitHub = pedidos => new Promise(pronto => {
     'GET /repos/dono/repo/pulls/7': { body: ALTA, labels: [], head: { sha: HEAD } },
     'GET /repos/dono/repo/issues/7/comments': [],
     'GET /repos/dono/repo/pulls/7/reviews': [],
+    'GET /repos/dono/repo/pulls/7/files': [],
     'PATCH /repos/dono/repo/pulls/7': { number: 7 },
     'GET /repos/dono/repo/actions/workflows/registro-da-pr.yml/runs': { workflow_runs: [] },
   };
@@ -66,7 +67,7 @@ function rodador(servidor, pedidos) {
 }
 
 const USO = /^uso: node scripts\/ci\/registrar-na-pr\.js <comando>[^]*e 2 no erro de uso ou do GitHub\.\n$/;
-const LEITURA = ['GET /repos/dono/repo/pulls/7 Bearer t', 'GET /repos/dono/repo/issues/7/comments Bearer t', 'GET /repos/dono/repo/pulls/7/reviews Bearer t'];
+const LEITURA = ['GET /repos/dono/repo/pulls/7 Bearer t', 'GET /repos/dono/repo/issues/7/comments Bearer t', 'GET /repos/dono/repo/pulls/7/reviews Bearer t', 'GET /repos/dono/repo/pulls/7/files Bearer t'];
 const CONSERTO = [
   '  Conserto: o formato de cada parte está em .github/PULL_REQUEST_TEMPLATE.md. O que está em comentário de HTML, em bloco de código ou em citação não conta; na seção "Prova real", a parte não coberta ou bloqueada conta também no código e na citação.',
   '  O corpo se confere antes de abrir a PR ou de editá-lo, sem o GitHub: node scripts/ci/corpo-da-pr.js <arquivo do corpo>',

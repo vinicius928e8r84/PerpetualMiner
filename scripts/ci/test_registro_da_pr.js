@@ -157,6 +157,7 @@ testarWorkflow();
       '/repos/dono/repo/pulls/7': () => ({ head: { sha: HEAD }, ...github.pr }),
       '/repos/dono/repo/issues/7/comments': () => pagina(github.comentarios),
       '/repos/dono/repo/pulls/7/reviews': () => pagina(github.revisoes),
+      '/repos/dono/repo/pulls/7/files': () => pagina(github.arquivos),
     };
     const rota = github.status === 200 && rotas[url.pathname];
     resposta.writeHead(rota ? 200 : github.status === 200 ? 404 : github.status, { 'content-type': 'application/json' });
@@ -166,7 +167,7 @@ testarWorkflow();
   const comentario = (body, created_at, author_association = 'OWNER') => ({ body, created_at, author_association });
   const revisaoDoSite = (body, submitted_at) => ({ body, submitted_at, author_association: 'COLLABORATOR', state: 'COMMENTED' });
   const rodar = (estado, env = {}) => new Promise(pronto => {
-    Object.assign(github, { status: 200, pr: { body: BAIXA, labels: [] }, comentarios: [], revisoes: [] }, estado);
+    Object.assign(github, { status: 200, pr: { body: BAIXA, labels: [] }, comentarios: [], revisoes: [], arquivos: [] }, estado);
     pedidos.length = 0;
     execFile('node', [path.join(__dirname, 'registro-da-pr.js')], {
       encoding: 'utf8',
@@ -177,7 +178,7 @@ testarWorkflow();
     const limpa = await rodar({ comentarios: [comentario('[vc]: deploy', '2026-01-01T00:00:00Z', 'NONE'), comentario(revisao(), '2026-01-02T00:00:00Z')] });
     assert.strictEqual(limpa.status, 0, `o registro num comentário do dono: ${limpa.stdout}`);
     assert(limpa.stdout.includes(`registro da PR ok no head ${HEAD}`), 'diz o head conferido');
-    assert(pedidos.length === 3 && pedidos.every(pedido => pedido.startsWith('Bearer segredo /repos/dono/repo/')), `a PR, os comentários e as revisões, com o token: ${pedidos}`);
+    assert(pedidos.length === 4 && pedidos.every(pedido => pedido.startsWith('Bearer segredo /repos/dono/repo/')), `a PR, os comentários, as revisões e os arquivos, com o token: ${pedidos}`);
 
     assert.strictEqual((await rodar({ revisoes: [revisaoDoSite(revisao(), '2026-01-02T00:00:00Z')] })).status, 0, 'o registro numa revisão da PR');
     const deFora = await rodar({ comentarios: [comentario(revisao(), '2026-01-02T00:00:00Z', 'NONE')] });
