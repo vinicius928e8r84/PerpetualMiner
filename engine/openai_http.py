@@ -216,6 +216,12 @@ class PerguntaDoChat(namedtuple("PerguntaDoChat", "mensagens temperatura formato
             corpo["max_tokens"] = self.max_tokens
         return corpo
 
+    def para_a_responses(self):
+        sistema, usuario = self.mensagens
+        mensagem = usuario["content"]
+        partes = _partes_da_responses(mensagem) if isinstance(mensagem, list) else mensagem
+        return PerguntaDaResponses(sistema["content"], partes, self.formato_json)
+
 
 def _texto_da_primeira_escolha(dados):
     escolha = (dados.get("choices") or [{}])[0] or {}
@@ -251,13 +257,17 @@ def _texto_da_chave(cred, pergunta, paciencia):
     return resposta, _uso(bruto, "prompt_tokens", "completion_tokens")
 
 
-def texto(cred, sistema, mensagem, json=False, temperatura=None, max_tokens=None, tempo=None, repeticoes=0):
-    paciencia = Paciencia(tempo or TEMPO_PADRAO, repeticoes)
+def texto(cred, pergunta, paciencia):
     if cred.get("via") == "plano":
-        partes = _partes_da_responses(mensagem) if isinstance(mensagem, list) else mensagem
-        return _texto_do_plano(cred, PerguntaDaResponses(sistema, partes, json), paciencia)
+        return _texto_do_plano(cred, pergunta.para_a_responses(), paciencia)
+    return _texto_da_chave(cred, pergunta, paciencia)
+
+
+def perguntar(sistema, mensagem, **opcoes):
+    paciencia = Paciencia(opcoes.pop("tempo", None) or TEMPO_PADRAO, opcoes.pop("repeticoes", 0))
+    campos = {"formato_json" if nome == "json" else nome: valor for nome, valor in opcoes.items()}
     mensagens = [{"role": "system", "content": sistema}, {"role": "user", "content": mensagem}]
-    return _texto_da_chave(cred, PerguntaDoChat(mensagens, temperatura, json, max_tokens), paciencia)
+    return PerguntaDoChat(mensagens, **campos), paciencia
 
 
 def imagem(cred, prompt, tamanho):

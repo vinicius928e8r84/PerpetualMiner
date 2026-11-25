@@ -53,23 +53,52 @@ def _status_por_frase(estado):
     return por_frase
 
 
+def _status_da_parada(no_anki):
+    return PARTIAL if no_anki else FAILED
+
+
 def _status_do_fim(no_anki, falharam):
     if no_anki and not falharam:
         return COMPLETED
-    return PARTIAL if no_anki else FAILED
+    return _status_da_parada(no_anki)
+
+
+@dataclass(frozen=True)
+class Desfecho:
+    status: str
+    no_anki: list
+    falharam: list
+    duplicadas: list
+    erro_que_conta: object
+
+
+def _primeiro_erro_de_cartao(estado):
+    return next((c["error"] for c in estado["cards"].values() if c["status"] == FALHOU and c["error"]), None)
+
+
+def _erro_que_conta(pedido, erro, estado, falharam):
+    return erro or _primeiro_erro_de_cartao(estado) or estado_do_envio.sem_cartao(pedido, falharam)
+
+
+def _decidir_o_desfecho(pedido, erro, estado):
+    status, no_anki, falharam, duplicadas = resolver(pedido, estado)
+    if erro:
+        status = _status_da_parada(no_anki)
+    sem_erro = status == COMPLETED
+    return Desfecho(status, no_anki, falharam, duplicadas, None if sem_erro else _erro_que_conta(pedido, erro, estado, falharam))
+
+
+def _gravar_o_desfecho(estado, desfecho):
+    estado_do_envio.terminar(
+        estado, desfecho.status, successfulPhraseIds=desfecho.no_anki, failedPhraseIds=desfecho.falharam,
+        duplicatePhraseIds=desfecho.duplicadas, lastError=desfecho.erro_que_conta,
+    )
 
 
 def _terminar_o_estado(pedido, erro, estado):
     if estado.get("wiped"):
         return
-    status, no_anki, falharam, duplicadas = resolver(pedido, estado)
-    if erro:
-        status = PARTIAL if no_anki else FAILED
-    primeiro = next((c["error"] for c in estado["cards"].values() if c["status"] == FALHOU and c["error"]), None)
-    estado_do_envio.terminar(
-        estado, status, successfulPhraseIds=no_anki, failedPhraseIds=falharam, duplicatePhraseIds=duplicadas,
-        lastError=None if status == COMPLETED else (erro or primeiro or estado_do_envio.sem_cartao(pedido, falharam)),
-    )
+    _gravar_o_desfecho(estado, _decidir_o_desfecho(pedido, erro, estado))
 
 
 @dataclass(frozen=True)
@@ -85,13 +114,14 @@ class EnvioEmAndamento:
 
 
 class Trabalho:
-    def __init__(self, fila, colecao, ia, motor_do_cartao, esperas):
-        self.fila, self.ia = fila, ia
-        self.logger = fila.logger
-        self.correcao = CorrecaoDaCriacao(fila, colecao, fila.motor, self.logger)
+    def __init__(self, pecas, motor_do_cartao):
+        esperas = pecas.esperas
+        self.fila, self.ia = pecas.fila, pecas.ia
+        self.logger = self.fila.logger
+        self.correcao = CorrecaoDaCriacao(self.fila, pecas.colecao, self.fila.motor, self.logger)
         self.da_porta = EsperasDaPorta(esperas.teto, do_teto=esperas.do_teto, do_plano=esperas.do_plano)
-        self.motor = fila.motor
-        self.colecao = colecao
+        self.motor = self.fila.motor
+        self.colecao = pecas.colecao
         self.parar = esperas.parar
         self.espera_do_anki = esperas.do_anki
         self.motor_do_cartao = motor_do_cartao
@@ -240,20 +270,30 @@ class Trabalho:
         return True, None
 
     def _gravar_a_nota(self, envio, cartao_id, guid, arquivo):
-        job_id, pedido = envio.job_id, envio.pedido
-        send_to_anki = self.motor.send_to_anki
-        lang, baralho = pedido["lang"], pedido["deckName"]
+        montada = self._montar_a_nota(envio, cartao_id, guid, arquivo)
+        if montada is not None:
+            self._enviar_a_nota(envio, cartao_id, guid, montada)
+
+    def _montar_a_nota(self, envio, cartao_id, guid, arquivo):
+        job_id = envio.job_id
         with open(arquivo, encoding="utf-8") as texto:
             conteudo = texto.read()
         linha = self.fila.linha_do_cartao(job_id, int(cartao_id.rsplit("-", 1)[0]))
         if linha is None:
             return self._cartao(job_id, cartao_id, status=FALHOU, error=FRASE_APAGADA)
         try:
-            nota, arquivos = self.motor_do_cartao.montar(envio.cartao(cartao_id, guid, linha), conteudo, envio.ia, lambda etapa: self._etapa(job_id, etapa))
+            montada = self.motor_do_cartao.montar(envio.cartao(cartao_id, guid, linha), conteudo, envio.ia, lambda etapa: self._etapa(job_id, etapa))
         except voz.ErroDaVoz as erro:
             return self._cartao(job_id, cartao_id, status=FALHOU, error=erro.codigo)
         if self.fila.estado(job_id).get("wiped"):
             raise Apagado()
+        return montada
+
+    def _enviar_a_nota(self, envio, cartao_id, guid, montada):
+        job_id, pedido = envio.job_id, envio.pedido
+        nota, arquivos = montada
+        send_to_anki = self.motor.send_to_anki
+        lang, baralho = pedido["lang"], pedido["deckName"]
         frentes = (nota["campo_da_frente"],) + self.motor.estilos.nomes_da_frente_de_antes()
         nome, frentes, nota = envio.tipo.nota_no_tipo(frentes, nota)
         self._etapa(job_id, "send_to_anki")

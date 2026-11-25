@@ -1,4 +1,6 @@
 import unittest
+import urllib.request
+from unittest import mock
 
 import openai_http
 import provedores
@@ -50,6 +52,46 @@ class TextoPelaChave(unittest.TestCase):
         with OpenAIDeMentira([erro(503, "overloaded"), resposta_do_chat("oi")]) as openai:
             texto, _ = provedores.texto(pela_chave(openai.base), "s", "m", repeticoes=provedores.REPETICOES_DA_IMAGEM)
         self.assertEqual((texto, len(openai.pedidos)), ("oi", 2))
+
+
+class AsOpcoesDoTexto(unittest.TestCase):
+    def tempos_do_pedido(self, cred, **opcoes):
+        abrir = urllib.request.urlopen
+        tempos = []
+
+        def espiar(pedido, timeout=None, context=None):
+            tempos.append(timeout)
+            return abrir(pedido, timeout=timeout, context=context)
+
+        with mock.patch.object(openai_http.urllib.request, "urlopen", espiar):
+            provedores.texto(cred, "s", "m", **opcoes)
+        return tempos
+
+    def test_sem_tempo_o_pedido_espera_o_padrao_e_o_tempo_pedido_vale_so_se_vier(self):
+        for opcoes, esperado in (({}, 120), ({"tempo": None}, 120), ({"tempo": 7}, 7), ({"tempo": 0}, 120)):
+            with self.subTest(opcoes), OpenAIDeMentira([resposta_do_chat("oi")]) as openai:
+                self.assertEqual(self.tempos_do_pedido(pela_chave(openai.base), **opcoes), [esperado])
+
+    def test_o_tempo_vale_tambem_para_o_plano(self):
+        with PlanoDeMentira(eventos("oi")) as plano:
+            self.assertEqual(self.tempos_do_pedido(pelo_plano(plano.base), tempo=9), [9])
+
+    def test_uma_opcao_que_a_camada_nao_conhece_e_recusada_sem_pedido_nenhum(self):
+        for cred in (pela_chave, pelo_plano):
+            with self.subTest(cred.__name__), OpenAIDeMentira([]) as openai:
+                with self.assertRaises(TypeError):
+                    provedores.texto(cred(openai.base), "s", "m", cor="azul")
+                self.assertEqual(openai.pedidos, [])
+
+    def test_so_o_chat_leva_a_temperatura_o_limite_e_o_json_sem_eles_o_corpo_nao_os_tem(self):
+        with OpenAIDeMentira([resposta_do_chat("oi")]) as openai:
+            provedores.texto(pela_chave(openai.base), "s", "m")
+        self.assertEqual(openai.pedidos[0]["corpo"], {"model": "gpt-4o", "messages": [{"role": "system", "content": "s"}, {"role": "user", "content": "m"}]})
+
+    def test_o_plano_sem_json_nao_leva_o_formato_e_ignora_a_temperatura_e_o_limite(self):
+        with PlanoDeMentira(eventos("oi")) as plano:
+            provedores.texto(pelo_plano(plano.base), "s", "m", temperatura=0, max_tokens=1)
+        self.assertEqual(plano.pedidos[0]["corpo"], {"model": "gpt-6-luna", "instructions": "s", "input": [{"role": "user", "content": "m"}], "store": False, "stream": True})
 
 
 class TextoPeloPlano(unittest.TestCase):

@@ -10,7 +10,7 @@ from complemento import baralhos, envio, perfil
 from complemento.esperas import Esperas
 from complemento.limite_do_plano import PLANO_NO_LIMITE, dizer_a_espera
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria
-from complemento.test_envio_fila import FRASE, ID, MOTOR, SEGUNDA, cartao, na_pasta, um_estado, um_pedido
+from complemento.test_envio_fila import FRASE, ID, MOTOR, SEGUNDA, cartao, na_pasta, pecas_do_trabalho, um_estado, um_pedido
 from complemento.test_motor_do_cartao import TEXTO
 
 PEDIDO = um_pedido(ID, {"phraseId": FRASE}, {"phraseId": SEGUNDA})
@@ -19,7 +19,7 @@ PEDIDO = um_pedido(ID, {"phraseId": FRASE}, {"phraseId": SEGUNDA})
 def terminar(teste, pedido, estado, erro):
     pasta = na_pasta(teste, lambda p: p.com(pedido, estado).na_fila(ID))
     pasta.fila.logger = logging.getLogger("test_envio_trabalho")
-    trabalho = envio.Trabalho(pasta.fila, None, None, None, Esperas())
+    trabalho = envio.Trabalho(pecas_do_trabalho(pasta.fila, Esperas()), None)
     with teste.assertLogs("test_envio_trabalho", "INFO") as registro:
         trabalho._terminar(ID, pedido, erro)
     return pasta.ler("estado"), registro.output
@@ -105,7 +105,7 @@ class UmEnvioDeDoisCartoes:
         teste.addCleanup(prazo.cancel)
         self.fila.logger = logging.getLogger("test_envio_trabalho")
         self.motor = MotorDoCartaoDeRoteiro(self.fila)
-        self.trabalho = envio.Trabalho(self.fila, self.colecao, IaQueNaoPede(), self.motor, Esperas(do_anki=0.01, parar=parar))
+        self.trabalho = envio.Trabalho(pecas_do_trabalho(self.fila, Esperas(do_anki=0.01, parar=parar), self.colecao, IaQueNaoPede()), self.motor)
         corpo = {"jobId": ID, "lang": "en", "deckName": "Inglês", "imageSource": "1", "tts": {},
                  "entries": [{"phraseId": FRASE, "line": "keep running | run : They keep running"}]}
         teste.assertEqual(self.fila.criar(corpo)[0], 201)

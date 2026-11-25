@@ -1,0 +1,294 @@
+{
+ "geral": [
+  {
+   "date": "2026-11-25",
+   "type": "tokens",
+   "cost_usd": 0.5,
+   "model": "gpt-4o"
+  },
+  {
+   "date": "2026-11-25",
+   "type": "tokens",
+   "cost_usd": 0.25,
+   "model": "gpt-4o-mini"
+  },
+  {
+   "date": "2026-11-25",
+   "type": "image",
+   "cost_usd": 0.04,
+   "model": "dall-e-3-1024",
+   "source": "dalle"
+  },
+  {
+   "date": "2026-11-25",
+   "type": "image",
+   "cost_usd": 0.0,
+   "model": "dall-e-3-1024",
+   "source": "google"
+  },
+  {
+   "date": "2026-11-25",
+   "type": "image",
+   "cost_usd": 0.04,
+   "model": "gpt-image-1"
+  },
+  {
+   "date": "2026-11-25",
+   "type": "session",
+   "cost_usd": 0.0,
+   "n_cards": 3
+  },
+  {
+   "date": "2026-11-25",
+   "type": "plan_tokens",
+   "cost_usd": 0.0,
+   "model": "gpt-5",
+   "would_cost_usd": 0.9
+  },
+  {
+   "date": "2026-11-25",
+   "type": "correction_tokens",
+   "cost_usd": 0.125,
+   "model": "gpt-4o"
+  },
+  {
+   "date": "2026-11-25",
+   "type": "image_pipeline"
+  },
+  {
+   "date": "2026-11-23",
+   "type": "tokens",
+   "cost_usd": 1.0,
+   "model": "gpt-4o"
+  },
+  {
+   "date": "2026-11-23",
+   "type": "session",
+   "n_cards": 2
+  },
+  {
+   "date": "2026-11-22",
+   "type": "tokens",
+   "cost_usd": 2.0,
+   "model": "gpt-4o"
+  },
+  {
+   "date": "2026-11-22",
+   "type": "image",
+   "cost_usd": 0.04,
+   "model": "dall-e-3-1024"
+  },
+  {
+   "date": "2026-11-01",
+   "type": "tokens",
+   "cost_usd": 4.0,
+   "model": "gpt-4o-mini"
+  },
+  {
+   "date": "2026-10-31",
+   "type": "tokens",
+   "cost_usd": 8.0,
+   "model": "gpt-4o"
+  },
+  {
+   "date": "2026-10-31",
+   "type": "image",
+   "cost_usd": 0.02,
+   "model": "dall-e-3-512",
+   "source": "google"
+  },
+  {
+   "date": "2026-10-31",
+   "type": "session",
+   "n_cards": 10
+  }
+ ],
+ "casos": [
+  {
+   "nome": "o periodo today",
+   "registros": "geral",
+   "texto_solto": "",
+   "periodo": "today",
+   "esperado": {
+    "total_usd": 0.955,
+    "by_model": {
+     "gpt-4o": 0.5,
+     "gpt-4o-mini": 0.25,
+     "dall-e-3-1024": 0.04,
+     "gpt-image-1": 0.04
+    },
+    "n_cards": 3,
+    "n_images_dalle": 2,
+    "n_images_google": 1
+   }
+  },
+  {
+   "nome": "o periodo week",
+   "registros": "geral",
+   "texto_solto": "",
+   "periodo": "week",
+   "esperado": {
+    "total_usd": 1.955,
+    "by_model": {
+     "gpt-4o": 1.5,
+     "gpt-4o-mini": 0.25,
+     "dall-e-3-1024": 0.04,
+     "gpt-image-1": 0.04
+    },
+    "n_cards": 5,
+    "n_images_dalle": 2,
+    "n_images_google": 1
+   }
+  },
+  {
+   "nome": "o periodo month",
+   "registros": "geral",
+   "texto_solto": "",
+   "periodo": "month",
+   "esperado": {
+    "total_usd": 7.995,
+    "by_model": {
+     "gpt-4o": 3.5,
+     "gpt-4o-mini": 4.25,
+     "dall-e-3-1024": 0.08,
+     "gpt-image-1": 0.04
+    },
+    "n_cards": 5,
+    "n_images_dalle": 3,
+    "n_images_google": 1
+   }
+  },
+  {
+   "nome": "o periodo alltime",
+   "registros": "geral",
+   "texto_solto": "",
+   "periodo": "alltime",
+   "esperado": {
+    "total_usd": 16.015,
+    "by_model": {
+     "gpt-4o": 11.5,
+     "gpt-4o-mini": 4.25,
+     "dall-e-3-1024": 0.08,
+     "gpt-image-1": 0.04
+    },
+    "n_cards": 15,
+    "n_images_dalle": 3,
+    "n_images_google": 2
+   }
+  },
+  {
+   "nome": "a imagem do google conta so a imagem e nao entra por modelo",
+   "registros": [
+    {
+     "date": "2026-11-25",
+     "type": "image",
+     "cost_usd": 0.0,
+     "model": "dall-e-3-1024",
+     "source": "google"
+    }
+   ],
+   "texto_solto": "",
+   "periodo": "today",
+   "esperado": {
+    "total_usd": 0.0,
+    "by_model": {},
+    "n_cards": 0,
+    "n_images_dalle": 0,
+    "n_images_google": 1
+   }
+  },
+  {
+   "nome": "a imagem sem fonte e a do dalle e entra por modelo",
+   "registros": [
+    {
+     "date": "2026-11-25",
+     "type": "image",
+     "cost_usd": 0.04,
+     "model": "gpt-image-1"
+    }
+   ],
+   "texto_solto": "",
+   "periodo": "today",
+   "esperado": {
+    "total_usd": 0.04,
+    "by_model": {
+     "gpt-image-1": 0.04
+    },
+    "n_cards": 0,
+    "n_images_dalle": 1,
+    "n_images_google": 0
+   }
+  },
+  {
+   "nome": "a sessao soma os cartoes e a sem cartoes soma zero",
+   "registros": [
+    {
+     "date": "2026-11-25",
+     "type": "session",
+     "n_cards": 4
+    },
+    {
+     "date": "2026-11-25",
+     "type": "session"
+    }
+   ],
+   "texto_solto": "",
+   "periodo": "today",
+   "esperado": {
+    "total_usd": 0.0,
+    "by_model": {},
+    "n_cards": 4,
+    "n_images_dalle": 0,
+    "n_images_google": 0
+   }
+  },
+  {
+   "nome": "o registro sem custo vale zero e o total e arredondado em quatro casas",
+   "registros": [
+    {
+     "date": "2026-11-25",
+     "type": "image_pipeline"
+    },
+    {
+     "date": "2026-11-25",
+     "type": "tokens",
+     "cost_usd": 0.123456,
+     "model": "gpt-4o"
+    }
+   ],
+   "texto_solto": "",
+   "periodo": "today",
+   "esperado": {
+    "total_usd": 0.1235,
+    "by_model": {
+     "gpt-4o": 0.1235
+    },
+    "n_cards": 0,
+    "n_images_dalle": 0,
+    "n_images_google": 0
+   }
+  },
+  {
+   "nome": "a linha que nao e json e ignorada e o resto e somado",
+   "registros": [
+    {
+     "date": "2026-11-25",
+     "type": "tokens",
+     "cost_usd": 0.5,
+     "model": "gpt-4o"
+    }
+   ],
+   "texto_solto": "isto nao e json\n\n",
+   "periodo": "today",
+   "esperado": {
+    "total_usd": 0.5,
+    "by_model": {
+     "gpt-4o": 0.5
+    },
+    "n_cards": 0,
+    "n_images_dalle": 0,
+    "n_images_google": 0
+   }
+  }
+ ]
+}
