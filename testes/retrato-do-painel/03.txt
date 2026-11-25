@@ -34,6 +34,7 @@
   <script src="/lib/sincronizacao.js">
   <script src="/lib/entrada-com-google.js">
   <script src="esqueleto-modais.js">
+  <script src="esqueleto-anki.js">
   <script src="esqueleto-configuracoes.js">
   <script src="painel-shell.js">
   <script src="painel-conta.js">
@@ -85,4 +86,7 @@
   <script src="painel-minerar-frases.js">
   <script src="painel-frases-cartao.js">
   <script src="painel-frases-acoes.js">
+  <script src="painel-frases-nuvem.js">
+  <script src="painel-frases-selecao.js">
+  <script src="painel-frases-filtros.js">
   <script src="painel.js">
