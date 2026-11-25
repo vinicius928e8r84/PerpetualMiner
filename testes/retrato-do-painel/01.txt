@@ -7,6 +7,8 @@
   <script src="/veio/tema.js">
   <link href="/veio/componentes.css" rel="stylesheet">
   <link href="painel.css" rel="stylesheet">
+  <link href="painel-anki.css" rel="stylesheet">
+  <link href="painel-primeira-conexao.css" rel="stylesheet">
   <link href="painel-ia-modelo.css" rel="stylesheet">
   <link href="painel-teto.css" rel="stylesheet">
   <link href="painel-previa.css" rel="stylesheet">
@@ -155,7 +157,3 @@
       <button class="veio-botao veio-botao--contorno" data-voz-title="BRG-24" id="btn-anki-atualizar">
        <span data-icone="atualizar">
        <span data-voz="SHL-06">
-     <div class="shell-faixa veio-aviso" hidden id="shell-faixa-conexao" role="status">
-      <p class="veio-aviso__texto" data-voz="ENV-01.aviso">
-      <div class="veio-aviso__acoes">
-       <button class="veio-botao veio-botao--compacto veio-botao--contorno" data-voz="ENV-01.tentarDeNovo" id="shell-tentar-de-novo">

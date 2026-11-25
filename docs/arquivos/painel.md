@@ -19,6 +19,8 @@ A regra `indice-de-arquivos` exige uma linha, aqui ou nas outras tabelas de `doc
 | `painel/painel-minerar-frases.js` | The Minerar frases menu and modal of the Frases area (skill `painel-frases`). |
 | `painel/painel-frases-cartao.js` | The card of one Frase in the list: the drawing, the Palavra (word click, chip, new group) and the in-place text edit. `painel/painel.js` hands it the Frases, the `keywords` map and the selection with `FrasesCartao.iniciar`. The count of the last Palavra group is `Mineracao.palavrasAposMarcar` (`testes/test_marcar_palavra.js`). |
 | `painel/painel-frases-acoes.js` | What the Frases list does to Frases: delete one or the selection (PAI-12…15), delete everything (Configurações › Zona de perigo, with the OpenAI key), export the selection as a .txt (PAI-19) and edit the Contexto of one or many (PAI-20…22). `painel/painel.js` hands it the Frases, the cloud and the redraws with `FrasesAcoes.iniciar`. |
+| `painel/painel-anki.css` | The Conexão com o Anki area's rules (`.anki-*`, `.ajustes-*`, `#anki-*`), cut from `painel/painel.css` with their order kept. It loads right after `painel/painel.css`. |
+| `painel/painel-primeira-conexao.css` | The first-connection rules (`.pc-*`, `.apv-*`), cut from `painel/painel.css` with their order kept. It loads right after `painel/painel-anki.css`. |
 | `painel/painel-perigo.js` | The Zona de perigo card and the Apagar tudo confirmation (skill `configuracoes`). |
 | `painel/painel-abrir-anki.js` | The Conexão com o Anki card of Configurações: open the Anki with the computer, and the Perfil do Anki (skill `configuracoes`). |
 | `painel/painel-anki.js` | The Custos tab and the area's first-connection strip (skill `painel-anki`). |
