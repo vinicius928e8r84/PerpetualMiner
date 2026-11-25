@@ -2,56 +2,11 @@
 
 const { test, expect } = require('../fixtures');
 const { AGORA, INGLESAS, RUSSA, SACK, ARM, abrirPainel, cartoesDe, resumo, envio, marcarEEnviar, enviosCriados } = require('../apoio-do-envio');
+const { copiaDoCatalogo } = require('../apoio-da-copia-do-catalogo');
 
 test.beforeEach(({ fakes }) => {
   fakes.anki.usarRelogio(() => AGORA);
 });
-
-const COPIA_FORA_DO_CATALOGO = seletor => {
-  const { CATALOGO_DA_VOZ, IDIOMAS } = PerpetualMiner;
-  const modelos = [];
-  const juntar = entrada => (typeof entrada === 'string' ? [entrada] : Object.values(entrada).flatMap(juntar));
-  const escapar = texto => texto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const textos = Object.values(CATALOGO_DA_VOZ).flatMap(juntar);
-  const numeros = new Set(['total', 'atual', 'inicio', 'fim', 'limite', 'pct', 'segundos',
-    ...textos.flatMap(t => [...t.matchAll(/\{([^{}|]+)\|/g)].map(m => m[1]))]);
-  for (const modelo of textos) {
-    let fixo = '';
-    const padrao = modelo.split(/(\{[^{}]*\})/).map(pedaco => {
-      if (!/^\{.*\}$/.test(pedaco)) {
-        fixo += pedaco;
-        return escapar(pedaco);
-      }
-      const [nome, ...formas] = pedaco.slice(1, -1).split('|');
-      fixo += formas.join('');
-      if (formas.length) return `(?:${formas.map(escapar).join('|')})`;
-      return numeros.has(nome) ? '\\d[\\d.,]*' : '.+?';
-    }).join('');
-    if (/\p{L}/u.test(fixo)) modelos.push(new RegExp(`^${padrao}$`, 'u'));
-  }
-  const doCatalogo = texto => modelos.some(m => m.test(texto));
-  const permitidos = new Set([...Object.values(IDIOMAS), 'Detalhes']);
-  const vale = texto => permitidos.has(texto) || doCatalogo(texto) || texto.split(' · ').every(doCatalogo);
-
-  const fora = [];
-  const complemento = [];
-  for (const raiz of document.querySelectorAll(seletor)) {
-    for (const no of [raiz, ...raiz.querySelectorAll('*')]) {
-      if (no.closest('details pre') || !no.checkVisibility()) continue;
-      const texto = [...no.childNodes].filter(f => f.nodeType === Node.TEXT_NODE).map(f => f.textContent).join('').replace(/\s+/g, ' ').trim();
-      for (const rotulo of [texto, no.getAttribute('aria-label') || '', no.getAttribute('title') || ''].filter(Boolean)) {
-        if (/complemento/i.test(rotulo)) complemento.push(rotulo);
-        if (!vale(rotulo)) fora.push(rotulo);
-      }
-    }
-  }
-  return { fora, complemento };
-};
-
-async function copiaDoCatalogo(page, seletor) {
-  // Exceção de teste: catálogo (docs/testes.md):
-  await expect.poll(() => page.evaluate(COPIA_FORA_DO_CATALOGO, seletor)).toEqual({ fora: [], complemento: [] });
-}
 
 test('as telas do Envio com a Conexão dentro do Anki só dizem o que o catálogo da Voz tem, e chamam-na de Conexão com o Anki', async ({ page, extensao, fakes }) => {
   await extensao.gravarStorage({ frases: [...INGLESAS, RUSSA] });

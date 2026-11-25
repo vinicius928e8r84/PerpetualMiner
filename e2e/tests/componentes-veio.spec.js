@@ -1,6 +1,7 @@
 'use strict';
 
 const { test, expect } = require('../fixtures');
+const { ensinarAVitrineADesenharOFoco, anotarOFocadoDaVitrine, desenhosDosAnotadosDaVitrineSemFoco } = require('../apoio-do-foco');
 
 const COMPONENTES = [
   'Botões', 'Campos', 'Toggle e checkbox', 'Selos', 'Atalhos',
@@ -36,6 +37,16 @@ async function textosEscritos(page) {
       .map(texto => texto.trim())
       .filter(texto => texto !== '');
   });
+}
+
+const modalEscuro = page => {
+  const scrim = page.locator('[data-modal="escuro"]');
+  return { abrir: page.locator('[data-abre-o-modal="escuro"]'), scrim, dialogo: scrim.locator('[role="dialog"]') };
+};
+
+function anelDoFoco(no) {
+  const estilo = getComputedStyle(no);
+  return [estilo.outlineStyle, estilo.outlineWidth, estilo.outlineColor, estilo.outlineOffset].join(' ');
 }
 
 test('a vitrine mostra cada componente nos dois temas', async ({ page, paginas }) => {
@@ -184,18 +195,11 @@ test('sem atalho gravado, o kbd fica tracejado', async ({ page, paginas }) => {
 test('a amostra de foco parado desenha o mesmo anel do foco de verdade', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
 
-  const parado = await page.locator('[data-tema="escuro"] .veio-botao.amostra-de-foco-parado').first()
-    .evaluate(no => {
-      const estilo = getComputedStyle(no);
-      return [estilo.outlineStyle, estilo.outlineWidth, estilo.outlineColor, estilo.outlineOffset].join(' ');
-    });
+  const parado = await page.locator('[data-tema="escuro"] .veio-botao.amostra-de-foco-parado').first().evaluate(anelDoFoco);
 
-  const deVerdade = await page.locator('[data-tema="escuro"] [data-grupo="Botões"] [data-estado="normal"] .veio-botao').first()
-    .evaluate(no => {
-      no.focus();
-      const estilo = getComputedStyle(no);
-      return [estilo.outlineStyle, estilo.outlineWidth, estilo.outlineColor, estilo.outlineOffset].join(' ');
-    });
+  const botao = page.locator('[data-tema="escuro"] [data-grupo="Botões"] [data-estado="normal"] .veio-botao').first();
+  await botao.focus();
+  const deVerdade = await botao.evaluate(anelDoFoco);
 
   expect(parado).toBe(deVerdade);
 });
@@ -218,9 +222,7 @@ test('o estado vazio ensina o que fazer e leva a ação junto', async ({ page, p
 test('o modal é um diálogo, começa no botão seguro e prende o foco', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
 
-  const abrir = page.locator('[data-abre-o-modal="escuro"]');
-  const scrim = page.locator('[data-modal="escuro"]');
-  const dialogo = scrim.locator('[role="dialog"]');
+  const { abrir, scrim, dialogo } = modalEscuro(page);
 
   await abrir.click();
   await expect(dialogo).toBeVisible();
@@ -246,8 +248,7 @@ test('o modal é um diálogo, começa no botão seguro e prende o foco', async (
 test('Esc fecha o modal e devolve o foco a quem abriu', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
 
-  const abrir = page.locator('[data-abre-o-modal="escuro"]');
-  const scrim = page.locator('[data-modal="escuro"]');
+  const { abrir, scrim } = modalEscuro(page);
 
   await abrir.click();
   await expect(scrim).toBeVisible();
@@ -262,9 +263,7 @@ test('Esc fecha o modal e devolve o foco a quem abriu', async ({ page, paginas }
 test('o clique fora fecha o modal, e dentro dele não', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
 
-  const abrir = page.locator('[data-abre-o-modal="escuro"]');
-  const scrim = page.locator('[data-modal="escuro"]');
-  const dialogo = scrim.locator('[role="dialog"]');
+  const { abrir, scrim, dialogo } = modalEscuro(page);
 
   await abrir.click();
   await dialogo.locator('.veio-modal__titulo').click();
@@ -500,8 +499,7 @@ test('toda a cópia da vitrine vem do catálogo da Voz', async ({ page, paginas 
 
   const soltos = await textosEscritos(page);
 
-  expect(soltos.filter(texto => !aprovados.has(texto) && !doGlossario.has(texto)
-    && !teclasGravadas.has(texto) && !doPadrao.has(texto))).toEqual([]);
+  expect(soltos.filter(texto => ![aprovados, doGlossario, teclasGravadas, doPadrao].some(lista => lista.has(texto)))).toEqual([]);
 });
 
 // Exceção de teste: sem-estado-guardado — a vitrine não tem chrome.storage.
@@ -509,42 +507,17 @@ test('todo controle da vitrine mostra onde o foco está', async ({ page, paginas
   test.setTimeout(90_000);
   await abrirVitrine(page, paginas);
 
-  await page.evaluate(() => {
-    window.desenhoDoFoco = async no => {
-      await Promise.all(no.getAnimations().map(animacao => animacao.finished.catch(() => {})));
-      const estilo = getComputedStyle(no);
-      const anel = estilo.outlineStyle !== 'none' && parseFloat(estilo.outlineWidth) > 0
-        ? `${estilo.outlineStyle} ${estilo.outlineWidth} ${estilo.outlineColor}`
-        : 'sem anel';
-      const pintado = no.nextElementSibling || no;
-      return [anel, estilo.boxShadow, estilo.borderColor, estilo.backgroundColor,
-        getComputedStyle(pintado).outlineStyle].join(' | ');
-    };
-  });
+  await ensinarAVitrineADesenharOFoco(page);
 
   const focados = [];
   for (let ordem = 0; ordem < 120; ordem += 1) {
     await page.keyboard.press('Tab');
-    const focado = await page.evaluate(async ordem => {
-      const no = document.activeElement;
-      if (!no || no === document.body || no.dataset.focoDeTeste) return null;
-      if (no.classList.contains('amostra-de-foco-parado')) return { pular: true };
-      no.dataset.focoDeTeste = String(ordem);
-      return {
-        controle: no.id || `${no.tagName.toLowerCase()}.${no.className}`,
-        desenho: await window.desenhoDoFoco(no),
-      };
-    }, ordem);
+    const focado = await anotarOFocadoDaVitrine(page, ordem);
     if (!focado) break;
     if (!focado.pular) focados.push(focado);
   }
 
-  const desfocados = await page.evaluate(() => {
-    document.activeElement.blur();
-    return Promise.all([...document.querySelectorAll('[data-foco-de-teste]')]
-      .sort((a, b) => a.dataset.focoDeTeste - b.dataset.focoDeTeste)
-      .map(no => window.desenhoDoFoco(no)));
-  });
+  const desfocados = await desenhosDosAnotadosDaVitrineSemFoco(page);
 
   const semFoco = focados
     .filter((focado, i) => focado.desenho === desfocados[i])

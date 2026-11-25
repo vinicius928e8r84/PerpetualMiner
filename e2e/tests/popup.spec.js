@@ -4,6 +4,8 @@ const { test, expect } = require('../fixtures');
 const DEN = 'PerpetualMiner::Inglês', DRU = 'PerpetualMiner::Russo';
 const { fotografar, registrarEstado } = require('../evidencias-mineracao');
 const { leituraDoVocabulario: leitura } = require('../leitura-do-vocabulario');
+const { segurarALeituraDaPagina, segurarALeituraDoServiceWorker, quebrarALeituraDoServiceWorker, controlesSemNome } = require('../apoio-da-leitura-do-popup');
+const { aparenciaDoFocoDoPopup, aparenciaDosControlesDoPopupSemFoco } = require('../apoio-do-foco');
 const POPUP = 'popup/popup.html';
 
 const HOJE = new Date().toLocaleDateString('pt-BR');
@@ -23,6 +25,11 @@ const SETE_FRASES = [
   frase(1, 'That ship has sailed.'),
 ];
 
+const EN_EM_DOZE_RU_DESLIGADO = {
+  en: { ligado: true, limite: 20, hoje: 12 },
+  ru: { ligado: false, limite: 15, hoje: 0 },
+};
+
 const ALT_S = { type: 'keyboard', code: 'KeyS', altKey: true, ctrlKey: false, shiftKey: false, label: 'Alt+S' };
 const CTRL_SHIFT_L = { type: 'keyboard', code: 'KeyL', altKey: false, ctrlKey: true, shiftKey: true, label: 'Ctrl+Shift+L' };
 
@@ -39,6 +46,17 @@ async function semearMineracaoAutomatica(extensao, { en, ru }) {
     },
     pm_auto_miner_daily: { date: dia, en: { count: en.hoje }, ru: { count: ru.hoje } },
   });
+}
+
+async function abrirOPopupComAsFrases(page, extensao) {
+  await extensao.gravarStorage({ frases: SETE_FRASES });
+  await page.goto(extensao.url(POPUP));
+  await expect(ultimas(page)).toHaveCount(5);
+}
+
+async function abrirOPopupComAutomatica(page, extensao, azulejos) {
+  await semearMineracaoAutomatica(extensao, azulejos);
+  await page.goto(extensao.url(POPUP));
 }
 
 async function abaAtiva(extensao) {
@@ -90,9 +108,7 @@ test('Ver todas leva a aba do painel já aberta para Frases', async ({ page, con
 });
 
 test('mineração rápida: Minerar só com texto; Enter minera, o campo limpa e a frase entra no topo, sem toast', async ({ page, extensao }) => {
-  await extensao.gravarStorage({ frases: SETE_FRASES });
-  await page.goto(extensao.url(POPUP));
-  await expect(ultimas(page)).toHaveCount(5);
+  await abrirOPopupComAsFrases(page, extensao);
 
   const minerar = page.getByRole('button', { name: 'Minerar', exact: true });
   await expect(minerar).toBeDisabled();
@@ -129,9 +145,7 @@ test('mineração rápida em russo grava o idioma pelo detector único', async (
 });
 
 test('mineração rápida com o service worker falhando: POP-06 com o alerta, sem Detalhes, e o texto continua no campo', async ({ page, extensao }) => {
-  await extensao.gravarStorage({ frases: SETE_FRASES });
-  await page.goto(extensao.url(POPUP));
-  await expect(ultimas(page)).toHaveCount(5);
+  await abrirOPopupComAsFrases(page, extensao);
 
   await extensao.serviceWorker.evaluate(() => {
     globalThis.gravarDeVerdade = chrome.storage.local.set.bind(chrome.storage.local);
@@ -180,9 +194,7 @@ test('as 5 últimas, só leitura: a Palavra grifada e o Contexto; sem checkbox, 
 });
 
 test('a frase minerada em outra aba aparece no topo na hora', async ({ page, extensao }) => {
-  await extensao.gravarStorage({ frases: SETE_FRASES });
-  await page.goto(extensao.url(POPUP));
-  await expect(ultimas(page)).toHaveCount(5);
+  await abrirOPopupComAsFrases(page, extensao);
 
   await extensao.gravarStorage({ frases: [frase(8, 'Hold your horses.'), ...SETE_FRASES] });
 
@@ -192,16 +204,7 @@ test('a frase minerada em outra aba aparece no topo na hora', async ({ page, ext
 
 test('carregando (POP-01): só esqueleto, sem texto', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: SETE_FRASES });
-  await page.addInitScript(() => {
-    const ler = chrome.storage.local.get.bind(chrome.storage.local);
-    chrome.storage.local.get = (chaves, callback) => {
-      if (chaves && typeof chaves === 'object' && 'frases' in chaves) {
-        window.soltarLeitura = () => ler(chaves, callback);
-        return undefined;
-      }
-      return ler(chaves, callback);
-    };
-  });
+  await segurarALeituraDaPagina(page, 'frases');
   await page.goto(extensao.url(POPUP));
 
   await expect(page.locator('#ultimas .veio-esqueleto')).not.toHaveCount(0);
@@ -278,11 +281,7 @@ test('sem atalho gravado, o rodapé diz “Sem atalho” e Definir atalho abre C
 });
 
 test('os azulejos Inglês | Russo mostram o dia, e o toggle e o limite gravam', async ({ page, extensao }) => {
-  await semearMineracaoAutomatica(extensao, {
-    en: { ligado: true, limite: 20, hoje: 12 },
-    ru: { ligado: false, limite: 15, hoje: 0 },
-  });
-  await page.goto(extensao.url(POPUP));
+  await abrirOPopupComAutomatica(page, extensao, EN_EM_DOZE_RU_DESLIGADO);
 
   await expect(page.getByRole('heading', { name: 'Mineração automática por dia' })).toBeVisible();
   const en = page.locator('.popup-azulejo[data-idioma="en"]');
@@ -315,11 +314,10 @@ test('os azulejos Inglês | Russo mostram o dia, e o toggle e o limite gravam', 
 });
 
 test('Enter no limite grava e o foco do teclado fica no campo', async ({ page, extensao }) => {
-  await semearMineracaoAutomatica(extensao, {
+  await abrirOPopupComAutomatica(page, extensao, {
     en: { ligado: true, limite: 20, hoje: 12 },
     ru: { ligado: true, limite: 15, hoje: 0 },
   });
-  await page.goto(extensao.url(POPUP));
 
   const limite = page.getByRole('spinbutton', { name: 'Limite por dia em russo' });
   await limite.fill('30');
@@ -335,11 +333,10 @@ test('Enter no limite grava e o foco do teclado fica no campo', async ({ page, e
 });
 
 test('o limite atingido enquanto a pessoa está no campo troca o campo por POP-08', async ({ page, extensao }) => {
-  await semearMineracaoAutomatica(extensao, {
+  await abrirOPopupComAutomatica(page, extensao, {
     en: { ligado: true, limite: 20, hoje: 19 },
     ru: { ligado: true, limite: 15, hoje: 4 },
   });
-  await page.goto(extensao.url(POPUP));
   const en = page.locator('.popup-azulejo[data-idioma="en"]');
   await expect(en).toContainText('19 de 20 hoje');
   await page.getByRole('spinbutton', { name: 'Limite por dia em russo' }).focus();
@@ -358,16 +355,7 @@ test('o limite atingido enquanto a pessoa está no campo troca o campo por POP-0
 });
 
 test('mineração automática carregando: esqueleto nos azulejos, sem texto', async ({ page, extensao }) => {
-  await extensao.serviceWorker.evaluate(() => {
-    const ler = chrome.storage.local.get.bind(chrome.storage.local);
-    chrome.storage.local.get = (chaves, callback) => {
-      if (chaves && typeof chaves === 'object' && 'pm_auto_miner_settings' in chaves) {
-        globalThis.soltarLeitura = () => ler(chaves, callback);
-        return undefined;
-      }
-      return ler(chaves, callback);
-    };
-  });
+  await segurarALeituraDoServiceWorker(extensao, 'pm_auto_miner_settings');
   await page.goto(extensao.url(POPUP));
 
   const azulejos = page.locator('#azulejos');
@@ -386,15 +374,7 @@ test('mineração automática sem o estado do service worker: POP-16 diz o que f
     en: { ligado: true, limite: 20, hoje: 3 },
     ru: { ligado: false, limite: 20, hoje: 0 },
   });
-  await extensao.serviceWorker.evaluate(() => {
-    globalThis.lerDeVerdade = chrome.storage.local.get.bind(chrome.storage.local);
-    chrome.storage.local.get = (chaves, callback) => {
-      if (chaves && typeof chaves === 'object' && 'pm_auto_miner_settings' in chaves) {
-        throw new Error('IO error: disco ilegível');
-      }
-      return globalThis.lerDeVerdade(chaves, callback);
-    };
-  });
+  await quebrarALeituraDoServiceWorker(extensao, 'pm_auto_miner_settings', 'IO error: disco ilegível');
   await page.goto(extensao.url(POPUP));
 
   const erro = page.locator('#azulejos').getByRole('alert');
@@ -409,11 +389,10 @@ test('mineração automática sem o estado do service worker: POP-16 diz o que f
 });
 
 test('gravar a mineração automática falhando: o toggle volta ao gravado e POP-16 pede para tentar de novo', async ({ page, extensao }) => {
-  await semearMineracaoAutomatica(extensao, {
+  await abrirOPopupComAutomatica(page, extensao, {
     en: { ligado: true, limite: 20, hoje: 3 },
     ru: { ligado: false, limite: 15, hoje: 0 },
   });
-  await page.goto(extensao.url(POPUP));
   const russo = page.getByRole('switch', { name: 'Mineração automática em russo' });
   await expect(russo).not.toBeChecked();
 
@@ -437,11 +416,10 @@ test('gravar a mineração automática falhando: o toggle volta ao gravado e POP
 });
 
 test('limite de hoje atingido: “Limite de hoje atingido” no lugar do campo, sem repetir a contagem', async ({ page, extensao }) => {
-  await semearMineracaoAutomatica(extensao, {
+  await abrirOPopupComAutomatica(page, extensao, {
     en: { ligado: true, limite: 20, hoje: 20 },
     ru: { ligado: true, limite: 15, hoje: 4 },
   });
-  await page.goto(extensao.url(POPUP));
 
   const en = page.locator('.popup-azulejo[data-idioma="en"]');
   await expect(en.locator('.popup-azulejo__no-limite')).toHaveText('Limite de hoje atingido');
@@ -453,11 +431,7 @@ test('limite de hoje atingido: “Limite de hoje atingido” no lugar do campo, 
 });
 
 test('o contador mostra “12/20” como no protótipo, e o leitor de tela ouve “12 de 20 hoje”', async ({ page, extensao }) => {
-  await semearMineracaoAutomatica(extensao, {
-    en: { ligado: true, limite: 20, hoje: 12 },
-    ru: { ligado: false, limite: 15, hoje: 0 },
-  });
-  await page.goto(extensao.url(POPUP));
+  await abrirOPopupComAutomatica(page, extensao, EN_EM_DOZE_RU_DESLIGADO);
 
   const contador = page.locator('.popup-azulejo[data-idioma="en"] .popup-azulejo__contador');
   await expect(contador.locator('[aria-hidden="true"]')).toHaveText('12/20');
@@ -467,11 +441,10 @@ test('o contador mostra “12/20” como no protótipo, e o leitor de tela ouve 
 });
 
 test('no campo de limite, clicar seleciona o número: digitar troca o limite inteiro', async ({ page, extensao }) => {
-  await semearMineracaoAutomatica(extensao, {
+  await abrirOPopupComAutomatica(page, extensao, {
     en: { ligado: true, limite: 20, hoje: 2 },
     ru: { ligado: false, limite: 15, hoje: 0 },
   });
-  await page.goto(extensao.url(POPUP));
 
   const limite = page.getByRole('spinbutton', { name: 'Limite por dia em inglês' });
   await limite.click();
@@ -493,10 +466,7 @@ const esperando = (page, chave) => page.locator(`.popup-azulejo[data-idioma="${c
 
 test('com a Conexão desligada e uma leitura de ontem, o azulejo segue contando e o selo diz “Vocabulário de ontem, 14:02”', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
-  await semearMineracaoAutomatica(extensao, {
-    en: { ligado: true, limite: 20, hoje: 12 },
-    ru: { ligado: false, limite: 15, hoje: 0 },
-  });
+  await semearMineracaoAutomatica(extensao, EN_EM_DOZE_RU_DESLIGADO);
   await extensao.gravarStorage({ pm_auto_keyword_vocab_en: leitura(DEN, ontemAs1402()) });
   await page.goto(extensao.url(POPUP));
 
@@ -542,11 +512,10 @@ test('com a Conexão respondendo e o Anki aberto, nem o selo nem o esperando apa
 
 test('com a Conexão desligada e nenhuma leitura, o azulejo ligado diz “— esperando o Anki” e quando começa; o desligado, nada', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
-  await semearMineracaoAutomatica(extensao, {
+  await abrirOPopupComAutomatica(page, extensao, {
     en: { ligado: true, limite: 20, hoje: 0 },
     ru: { ligado: false, limite: 15, hoje: 0 },
   });
-  await page.goto(extensao.url(POPUP));
 
   await expect(esperando(page, 'en')).toBeVisible();
   await expect(page.locator('.popup-azulejo[data-idioma="en"]')).toContainText('Começa depois que o Anki abrir uma vez.');
@@ -572,9 +541,7 @@ test('uma leitura de outro Baralho não vale: o azulejo espera o Anki, e a leitu
 
 test('com movimento reduzido, a frase que chega não pisca', async ({ page, extensao }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await extensao.gravarStorage({ frases: SETE_FRASES });
-  await page.goto(extensao.url(POPUP));
-  await expect(ultimas(page)).toHaveCount(5);
+  await abrirOPopupComAsFrases(page, extensao);
 
   await campoRapido(page).fill('Break a leg');
   await campoRapido(page).press('Enter');
@@ -587,9 +554,7 @@ test('com movimento reduzido, a frase que chega não pisca', async ({ page, exte
 });
 
 test('sem movimento reduzido, a frase que chega ganha o realce breve', async ({ page, extensao }) => {
-  await extensao.gravarStorage({ frases: SETE_FRASES });
-  await page.goto(extensao.url(POPUP));
-  await expect(ultimas(page)).toHaveCount(5);
+  await abrirOPopupComAsFrases(page, extensao);
   await expect(page.locator('.popup-ultima--nova')).toHaveCount(0);
 
   await campoRapido(page).fill('Break a leg');
@@ -598,26 +563,15 @@ test('sem movimento reduzido, a frase que chega ganha o realce breve', async ({ 
 });
 
 test('todo controle do popup tem nome para o leitor de tela', async ({ page, extensao }) => {
-  await extensao.gravarStorage({ frases: SETE_FRASES });
-  await page.goto(extensao.url(POPUP));
-  await expect(ultimas(page)).toHaveCount(5);
+  await abrirOPopupComAsFrases(page, extensao);
 
-  const semNome = await page.evaluate(() => [...document.querySelectorAll('button, input, textarea, a[href]')]
-    .filter(no => {
-      const nome = no.getAttribute('aria-label') || no.textContent.trim()
-        || [...(no.labels || [])].map(l => l.textContent.trim()).join('');
-      return !nome;
-    })
-    .map(no => no.outerHTML));
+  const semNome = await controlesSemNome(page);
   expect(semNome).toEqual([]);
 });
 
 test('o Tab passa por todos os controles do popup, em ordem, e cada um mostra o foco', async ({ page, extensao }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await semearMineracaoAutomatica(extensao, {
-    en: { ligado: true, limite: 20, hoje: 12 },
-    ru: { ligado: false, limite: 15, hoje: 0 },
-  });
+  await semearMineracaoAutomatica(extensao, EN_EM_DOZE_RU_DESLIGADO);
   await extensao.gravarStorage({ frases: SETE_FRASES, pm_atalho_legenda: ALT_S });
   await page.goto(extensao.url(POPUP));
   await expect(ultimas(page)).toHaveCount(5);
@@ -628,31 +582,14 @@ test('o Tab passa por todos os controles do popup, em ordem, e cada um mostra o 
     await page.keyboard.press('Shift+Tab');
   }
 
-  const aparencia = () => page.evaluate(() => {
-    const no = document.activeElement;
-    if (!no || no === document.body) return null;
-    const alvo = no.getAttribute('role') === 'switch' ? no.nextElementSibling : no;
-    const { outlineStyle, outlineWidth, boxShadow } = getComputedStyle(alvo);
-    return { nome: no.getAttribute('aria-label') || no.textContent.trim(), visual: `${outlineStyle} ${outlineWidth} ${boxShadow}` };
-  });
-
   const paradas = [];
   for (let i = 0; i < 12; i++) {
     if (i > 0) await page.keyboard.press('Tab');
-    const parada = await aparencia();
+    const parada = await aparenciaDoFocoDoPopup(page);
     if (!parada || paradas.some(p => p.nome === parada.nome)) break;
     paradas.push(parada);
   }
-  const semFoco = await page.evaluate(nomes => {
-    document.activeElement.blur();
-    const controles = [...document.querySelectorAll('button, input, textarea')];
-    return nomes.map(nome => {
-      const no = controles.find(c => (c.getAttribute('aria-label') || c.textContent.trim()) === nome);
-      const alvo = no.getAttribute('role') === 'switch' ? no.nextElementSibling : no;
-      const { outlineStyle, outlineWidth, boxShadow } = getComputedStyle(alvo);
-      return `${outlineStyle} ${outlineWidth} ${boxShadow}`;
-    });
-  }, paradas.map(p => p.nome));
+  const semFoco = await aparenciaDosControlesDoPopupSemFoco(page, paradas.map(p => p.nome));
 
   expect(paradas.map(p => p.nome)).toEqual([
     'Abrir painel',

@@ -1,6 +1,7 @@
 'use strict';
 
 const { criarSincronizacao } = require('../lib/sincronizacao');
+const { areaEmMemoria: area } = require('./area_em_memoria_do_sync');
 
 const clone = v => JSON.parse(JSON.stringify(v));
 const AGORA = 1_000_000;
@@ -13,24 +14,6 @@ const PASSOS_SIMPLES = [['carregar', 'A'], ['carregar', 'B'], ['carregar', 'C']]
 const PASSOS_COM_SYNC_ATRASADO = [...PASSOS_SIMPLES, ['entregar sync', '']];
 const PASSOS_POR_SYNC = { separado: PASSOS_SIMPLES, junto: PASSOS_SIMPLES, atrasado: PASSOS_COM_SYNC_ATRASADO };
 const PASSOS_COM_CONTA = [['carregar', 'A'], ['carregar', 'B'], ['entra em u1', 'A'], ['entra em u2', 'A']];
-
-function area(dados) {
-  return {
-    async get(chaves) {
-      if (chaves === null) return clone(dados);
-      const pedidas = typeof chaves === 'string' ? { [chaves]: undefined }
-        : Array.isArray(chaves) ? Object.fromEntries(chaves.map(k => [k, undefined])) : chaves;
-      const r = {};
-      for (const [k, padrao] of Object.entries(pedidas)) {
-        if (k in dados) r[k] = clone(dados[k]);
-        else if (padrao !== undefined) r[k] = padrao;
-      }
-      return r;
-    },
-    async set(itens) { for (const [k, v] of Object.entries(itens)) dados[k] = clone(v); },
-    async remove(chaves) { for (const k of [].concat(chaves)) delete dados[k]; },
-  };
-}
 
 function mundo({ chromeSync, mascara, engoleTombstone }) {
   const firestore = { 1: { id: 1, texto: 'um' }, 2: { id: 2, texto: 'dois' } };
@@ -106,19 +89,28 @@ async function executarSemRecusar(passo, pc) {
     await pc.entrar(passo.slice('entra em '.length));
     return executarSemRecusar('carregar', pc);
   }
-  if (passo === 'carregar') {
-    const antes = clone(pc.local.frases || []);
-    const r = await pc.s.carregar({ atuais: () => antes });
-    await r.concluida;
-    return r.frases;
-  } else if (passo === 'apagar 1') {
-    pc.local.frases = pc.local.frases.filter(f => f.id !== 1);
-    await pc.s.apagar([1]);
-  } else if (passo === 'apagar tudo') {
-    const ids = pc.local.frases.map(f => f.id);
-    pc.local.frases = [];
-    await pc.s.apagarTudo(ids, AGORA);
-  }
+  if (passo === 'carregar') return carregarEm(pc);
+  if (passo === 'apagar 1') return apagarUmEm(pc);
+  if (passo === 'apagar tudo') return apagarTudoEm(pc);
+  return undefined;
+}
+
+async function carregarEm(pc) {
+  const antes = clone(pc.local.frases || []);
+  const r = await pc.s.carregar({ atuais: () => antes });
+  await r.concluida;
+  return r.frases;
+}
+
+async function apagarUmEm(pc) {
+  pc.local.frases = pc.local.frases.filter(f => f.id !== 1);
+  await pc.s.apagar([1]);
+}
+
+async function apagarTudoEm(pc) {
+  const ids = pc.local.frases.map(f => f.id);
+  pc.local.frases = [];
+  await pc.s.apagarTudo(ids, AGORA);
 }
 
 function frasesFora(lugar, lista, apagadas) {
@@ -281,31 +273,43 @@ function mostrar(achados) {
   for (const [problema, como] of achados) console.log(`      ${problema}\n        ${como}`);
 }
 
-async function rodar() {
+const COMO_ESTA_O_CHROME_SYNC = { separado: 'não chega', junto: 'instantâneo', atrasado: 'atrasado' };
+const segundosDesde = inicio => ((Date.now() - inicio) / 1000).toFixed(1);
+
+async function oExploradorSabeFalhar() {
   console.log('\nO explorador sabe falhar: uma nuvem que engole o tombstone, sem Chrome Sync entre os computadores');
   const quebrada = await explorar({ chromeSync: 'separado', engoleTombstone: true, primeiraFalha: true });
   assert(quebrada.achados.size > 0, 'a Frase apagada que volta é achada');
+}
 
+async function apagadaNaoVoltaEmCadaChromeSync() {
   for (const chromeSync of ['separado', 'junto', 'atrasado']) {
-    console.log(`\nSincronização: uma Frase apagada não volta, nem a não apagada some (Chrome Sync: ${{ separado: 'não chega', junto: 'instantâneo', atrasado: 'atrasado' }[chromeSync]})`);
+    console.log(`\nSincronização: uma Frase apagada não volta, nem a não apagada some (Chrome Sync: ${COMO_ESTA_O_CHROME_SYNC[chromeSync]})`);
     const inicio = Date.now();
     const { corridas, achados } = await explorar({ chromeSync });
-    console.log(`      ${corridas} corridas em ${((Date.now() - inicio) / 1000).toFixed(1)} s`);
+    console.log(`      ${corridas} corridas em ${segundosDesde(inicio)} s`);
     mostrar(achados);
     assert(achados.size === 0, 'depois de todos abrirem o Painel sem falha, nenhuma promessa quebrada');
   }
+}
+
+async function sairEEntrarNaMesmaContaOuNoutra() {
   console.log('\nSair e entrar: na mesma conta a apagada não volta; outra conta não recebe a lista pendente da anterior (Chrome Sync: não chega)');
   const inicioDaConta = Date.now();
   const contas = await explorar({ chromeSync: 'separado', passos: PASSOS_COM_CONTA });
-  console.log(`      ${contas.corridas} corridas em ${((Date.now() - inicioDaConta) / 1000).toFixed(1)} s`);
+  console.log(`      ${contas.corridas} corridas em ${segundosDesde(inicioDaConta)} s`);
   mostrar(contas.achados);
   assert(contas.achados.size === 0, 'nenhuma promessa quebrada ao sair e entrar na mesma conta ou noutra');
+}
 
+async function carregarEApagarJuntosNaoPerdemId() {
   console.log('\nA lista do tombstone pendente não perde um id quando o carregar e o apagar andam juntos');
   let perdidas = 0;
   for (let n = 1; n <= CORRIDAS_CONCORRENTES; n++) if (!(await corridaConcorrente(n))) perdidas++;
   assert(perdidas === 0, `o id de um apagar com o tombstone recusado fica pendente (${CORRIDAS_CONCORRENTES} corridas, ${perdidas} perdidas)`);
+}
 
+async function apagarMarcaOTombstoneAntesDeFalarComANuvem() {
   console.log('\nO apagar marca o tombstone como pendente antes de falar com a nuvem');
   const m = mundo({ chromeSync: 'separado', mascara: [], engoleTombstone: false });
   let pendenteNoPedido = null;
@@ -313,6 +317,14 @@ async function rodar() {
   await executar('apagar 1', m.pcs.A);
   assert(pendenteNoPedido?.includes('1'), 'quando o pedido do tombstone sai, o id já está em pm_tombstone_pendente');
   assert(!(m.pcs.A.local.pm_tombstone_pendente || []).length, 'e sai da lista quando a nuvem grava');
+}
+
+async function rodar() {
+  await oExploradorSabeFalhar();
+  await apagadaNaoVoltaEmCadaChromeSync();
+  await sairEEntrarNaMesmaContaOuNoutra();
+  await carregarEApagarJuntosNaoPerdemId();
+  await apagarMarcaOTombstoneAntesDeFalarComANuvem();
   process.exit(falhas ? 1 : 0);
 }
 
