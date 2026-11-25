@@ -20,15 +20,16 @@ async function detalhesDoCard(page) {
   return detalhes.locator('pre');
 }
 
-async function entrarEEsperarAConta(page) {
+async function entrarEEsperarAConta(page, extensao) {
+  await abrirAConta(page, extensao);
   await entrarComGoogle(page).click();
   await expect(page.locator('#shell-chip-estado')).toHaveText('Sincronizado agora');
 }
 
-test('o pedido ao Google leva o cliente, o endereço de volta, o escopo e o nonce embaralhado', async ({ page, extensao, fakes }) => {
-  await abrirAConta(page, extensao);
+const guardado = extensao => extensao.lerStorage(['pm_user_info']).then(dados => dados.pm_user_info);
 
-  await entrarEEsperarAConta(page);
+test('o pedido ao Google leva o cliente, o endereço de volta, o escopo e o nonce embaralhado', async ({ page, extensao, fakes }) => {
+  await entrarEEsperarAConta(page, extensao);
 
   expect(fakes.google.pedidosDeLogin).toHaveLength(1);
   const pedido = fakes.google.pedidosDeLogin[0];
@@ -41,19 +42,17 @@ test('o pedido ao Google leva o cliente, o endereço de volta, o escopo e o nonc
   });
   expect(pedido.nonce).toMatch(/^[0-9a-f]{64}$/);
   expect(Object.keys(pedido).sort()).toEqual(['client_id', 'nonce', 'prompt', 'redirect_uri', 'response_type', 'scope']);
-  expect((await extensao.lerStorage(['pm_user_info'])).pm_user_info).toMatchObject({ uid: 'uid-teste' });
+  expect(await guardado(extensao)).toMatchObject({ uid: 'uid-teste' });
 });
 
 test('o Firebase recebe o id_token do Google e o nonce de verdade, de que o Google recebeu só o resumo', async ({ page, extensao, fakes }) => {
-  await abrirAConta(page, extensao);
-
-  await entrarEEsperarAConta(page);
+  await entrarEEsperarAConta(page, extensao);
 
   expect(fakes.google.entradasNoFirebase).toHaveLength(1);
   const { chave, tipo, corpo } = fakes.google.entradasNoFirebase[0];
   expect(chave).toMatch(/^AIza/);
   expect(tipo).toBe('application/json');
-  expect(Object.keys(corpo).sort()).toEqual(['requestUri', 'returnIdpCredential', 'returnSecureToken', 'postBody'].sort());
+  expect(Object.keys(corpo).sort()).toEqual(['postBody', 'requestUri', 'returnIdpCredential', 'returnSecureToken']);
   expect(corpo).toMatchObject({
     requestUri: `https://${extensao.id}.chromiumapp.org/`,
     returnIdpCredential: true,
@@ -66,12 +65,12 @@ test('o Firebase recebe o id_token do Google e o nonce de verdade, de que o Goog
   expect(campos.get('nonce')).toMatch(/^[0-9a-f]{64}$/);
   const resumo = createHash('sha256').update(campos.get('nonce')).digest('hex');
   expect(fakes.google.pedidosDeLogin[0].nonce).toBe(resumo);
-  expect((await extensao.lerStorage(['pm_user_info'])).pm_user_info).toMatchObject({ uid: 'uid-teste' });
+  expect(await guardado(extensao)).toMatchObject({ uid: 'uid-teste' });
 });
 
 test('cada entrada sorteia um nonce novo', async ({ page, extensao, fakes }) => {
-  await abrirAConta(page, extensao);
   fakes.google.proximoLogin('falhar');
+  await abrirAConta(page, extensao);
   await entrarComGoogle(page).click();
   await expect(conta(page).getByRole('alert')).toBeVisible();
 
@@ -81,15 +80,14 @@ test('cada entrada sorteia um nonce novo', async ({ page, extensao, fakes }) => 
 
   const { pedidosDeLogin } = fakes.google;
   expect(pedidosDeLogin.at(0).nonce).not.toBe(pedidosDeLogin.at(-1).nonce);
-  expect((await extensao.lerStorage(['pm_user_info'])).pm_user_info).toMatchObject({ uid: 'uid-teste' });
+  expect(await guardado(extensao)).toMatchObject({ uid: 'uid-teste' });
 });
 
 test('o perfil vem do Google com o token de acesso, e a pessoa fica guardada com a sessão do Firebase', async ({ page, extensao, fakes }) => {
   fakes.google.usarPerfil({ name: 'Bruno Lima', email: 'bruno@teste.dev', picture: 'https://fotos.teste.dev/bruno.png' });
-  await abrirAConta(page, extensao);
   const antes = Date.now();
 
-  await entrarEEsperarAConta(page);
+  await entrarEEsperarAConta(page, extensao);
 
   expect(fakes.google.pedidosDoPerfil).toEqual([{ autorizacao: 'Bearer access-token-teste' }]);
   expect(await extensao.lerStorage(['pm_user_info', 'pm_migrated'])).toEqual({
@@ -102,41 +100,42 @@ test('o perfil vem do Google com o token de acesso, e a pessoa fica guardada com
   expect(sessao.expiresAt).toBeLessThanOrEqual(Date.now() + CINQUENTA_E_CINCO_MINUTOS);
 });
 
-test('o Google voltou sem id_token: o erro diz isso e nada fica guardado', async ({ page, extensao, fakes }) => {
-  fakes.google.proximoLogin('sem-token');
-  await abrirAConta(page, extensao);
+const FALHAS = [
+  {
+    nome: 'o Google voltou sem id_token: o erro diz isso e nada fica guardado',
+    provocar: fakes => fakes.google.proximoLogin('sem-token'),
+    detalhe: 'id_token não encontrado na resposta do Google',
+    foiAoPerfil: false,
+    foiAoFirebase: false,
+  },
+  {
+    nome: 'o Google recusou o perfil: o erro diz isso, o Firebase nem é chamado e nada fica guardado',
+    provocar: fakes => fakes.google.deixarOPerfilIndisponivel(),
+    detalhe: 'Falha ao obter dados do usuário Google',
+    foiAoPerfil: true,
+    foiAoFirebase: false,
+  },
+  {
+    nome: 'o Firebase recusou a entrada: o erro traz a mensagem dele e nada fica guardado',
+    provocar: fakes => fakes.google.recusarEntradaNoFirebase(),
+    detalhe: 'Firebase Auth falhou: INVALID_IDP_RESPONSE',
+    foiAoPerfil: true,
+    foiAoFirebase: true,
+  },
+];
 
-  await entrarComGoogle(page).click();
+for (const falha of FALHAS) {
+  test(falha.nome, async ({ page, extensao, fakes }) => {
+    falha.provocar(fakes);
+    await abrirAConta(page, extensao);
 
-  await expect(conta(page).getByRole('alert')).toContainText('Não deu para entrar com o Google. Tente de novo.');
-  await expect(await detalhesDoCard(page)).toContainText('id_token não encontrado na resposta do Google');
-  expect(fakes.google.pedidosDoPerfil).toEqual([]);
-  expect(fakes.google.entradasNoFirebase).toEqual([]);
-  expect(await extensao.lerStorage(['pm_user_info'])).toEqual({});
-  expect(await extensao.lerSessao()).toBeNull();
-});
+    await entrarComGoogle(page).click();
 
-test('o Google recusou o perfil: o erro diz isso, o Firebase nem é chamado e nada fica guardado', async ({ page, extensao, fakes }) => {
-  fakes.google.deixarOPerfilIndisponivel();
-  await abrirAConta(page, extensao);
-
-  await entrarComGoogle(page).click();
-
-  await expect(conta(page).getByRole('alert')).toContainText('Não deu para entrar com o Google. Tente de novo.');
-  await expect(await detalhesDoCard(page)).toContainText('Falha ao obter dados do usuário Google');
-  expect(fakes.google.entradasNoFirebase).toEqual([]);
-  expect(await extensao.lerStorage(['pm_user_info'])).toEqual({});
-  expect(await extensao.lerSessao()).toBeNull();
-});
-
-test('o Firebase recusou a entrada: o erro traz a mensagem dele e nada fica guardado', async ({ page, extensao, fakes }) => {
-  fakes.google.recusarEntradaNoFirebase();
-  await abrirAConta(page, extensao);
-
-  await entrarComGoogle(page).click();
-
-  await expect(conta(page).getByRole('alert')).toContainText('Não deu para entrar com o Google. Tente de novo.');
-  await expect(await detalhesDoCard(page)).toContainText('Firebase Auth falhou: INVALID_IDP_RESPONSE');
-  expect(await extensao.lerStorage(['pm_user_info'])).toEqual({});
-  expect(await extensao.lerSessao()).toBeNull();
-});
+    await expect(conta(page).getByRole('alert')).toContainText('Não deu para entrar com o Google. Tente de novo.');
+    await expect(await detalhesDoCard(page)).toContainText(falha.detalhe);
+    expect(fakes.google.pedidosDoPerfil).toHaveLength(falha.foiAoPerfil ? 1 : 0);
+    expect(fakes.google.entradasNoFirebase).toHaveLength(falha.foiAoFirebase ? 1 : 0);
+    expect(await extensao.lerStorage(['pm_user_info'])).toEqual({});
+    expect(await extensao.lerSessao()).toBeNull();
+  });
+}
