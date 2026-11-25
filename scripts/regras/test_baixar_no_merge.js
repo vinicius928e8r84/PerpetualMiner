@@ -2,10 +2,11 @@
 
 const assert = require('assert');
 const fs = require('fs');
+const path = require('path');
 
 const { EMAIL_DO_DONO } = require('../ci/autoria');
 const { ARQUIVOS, ASSUNTO } = require('./linha-de-base-no-merge');
-const { repositorioDeMentira, linhasDe, bytesDe, ARQUIVO_DE_TAMANHO } = require('./apoio-de-linha-de-base');
+const { repositorioDeMentira, linhasDe, bytesDe, ARQUIVO_DAS_REGRAS, ARQUIVO_DE_TAMANHO, ARQUIVO_DO_SEM_COMENTARIO } = require('./apoio-de-linha-de-base');
 
 let total = 0;
 const prova = (achado, esperado, porque) => { assert.deepStrictEqual(achado, esperado, porque); total++; };
@@ -25,14 +26,18 @@ function naoHaNadaParaBaixar() {
 function umCommitSoComAutoriaDoDono() {
   const repo = repositorioDeMentira();
   try {
-    repo.gravar({ 'grande.js': linhasDe(1010), 'volumoso.txt': bytesDe(20500) });
+    repo.gravar({ 'grande.js': linhasDe(1010), 'volumoso.txt': bytesDe(20500), 'comentado.js': 'const a = 1;\n' });
     repo.commit('conserta');
+    prova(repo.lerSemComentario()['sem-comentario'], { 'comentado.js': 2 }, 'a linha de base dos comentários nasceu com o comentário');
     const antes = repo.git('rev-list', '--count', 'HEAD');
     const r = repo.baixar();
     prova(r.status, 0, r.saida);
     prova(Number(repo.git('rev-list', '--count', 'HEAD')) - Number(antes), 1, 'desceu: um commit só');
     prova(repo.git('log', '-1', '--format=%s'), ASSUNTO, 'o assunto é fixo');
-    prova(repo.git('show', '--name-only', '--format=', 'HEAD').split('\n').sort(), [...ARQUIVOS].sort(), 'o commit toca só os dois arquivos');
+    prova(repo.git('show', '--name-only', '--format=', 'HEAD').split('\n').sort(), [ARQUIVO_DAS_REGRAS, ARQUIVO_DE_TAMANHO, ARQUIVO_DO_SEM_COMENTARIO].sort(), 'o commit toca só as linhas de base');
+    prova(repo.lerSemComentario()['sem-comentario'], {}, 'a dos comentários também desceu, e o arquivo continua marcado como gerado');
+    assert(/@generated/.test(fs.readFileSync(path.join(repo.raiz, ARQUIVO_DO_SEM_COMENTARIO), 'utf8').split('\n').slice(0, 5).join('\n')), 'a marca de gerado fica nas 5 primeiras linhas');
+    total++;
     prova(repo.git('log', '-1', '--format=%ae %ce'), `${EMAIL_DO_DONO} ${EMAIL_DO_DONO}`, 'a autoria é a do dono');
     prova(repo.lerLinhaDeBase()['limite-de-linhas'], { 'grande.js': 10 }, 'a linha de base das regras desceu para o que a árvore mede');
     prova(repo.lerTamanho().arquivos, { 'volumoso.txt': 20500 }, 'a de tamanho também');

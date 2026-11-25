@@ -69,6 +69,10 @@ def resposta_do_chat(texto, entrada=1000, saida=200):
     return 200, {"choices": [{"message": {"role": "assistant", "content": texto}}], "usage": {"prompt_tokens": entrada, "completion_tokens": saida}}
 
 
+def cred(base, segredo, modelo):
+    return {"base": base, "segredo": segredo, "modelo": modelo}
+
+
 def erro(status, mensagem, codigo=None):
     return status, {"error": {"message": mensagem + " " + CHAVE, "type": "x", "code": codigo}}
 
@@ -76,7 +80,7 @@ def erro(status, mensagem, codigo=None):
 class Completar(unittest.TestCase):
     def test_o_pedido_leva_a_chave_no_cabecalho_e_o_modelo_a_temperatura_e_as_mensagens_no_corpo(self):
         with OpenAIDeMentira([resposta_do_chat("oi")]) as openai:
-            texto, uso = openai_http.completar(openai.base, CHAVE, "gpt-4o", [{"role": "user", "content": "olá"}], temperatura=0.2)
+            texto, uso = openai_http.completar(cred(openai.base, CHAVE, "gpt-4o"), openai_http.PerguntaDoChat([{"role": "user", "content": "olá"}], temperatura=0.2))
         self.assertEqual((texto, uso), ("oi", {"prompt_tokens": 1000, "completion_tokens": 200}))
         self.assertEqual(openai.pedidos, [{
             "caminho": "/v1/chat/completions",
@@ -95,7 +99,7 @@ class Completar(unittest.TestCase):
         for resposta, codigo in casos:
             with self.subTest(codigo), OpenAIDeMentira([resposta]) as openai:
                 with self.assertRaises(openai_http.ErroDaOpenAI) as recusa:
-                    openai_http.completar(openai.base, CHAVE, "gpt-4o", [])
+                    openai_http.completar(cred(openai.base, CHAVE, "gpt-4o"), openai_http.PerguntaDoChat([]))
             self.assertEqual(recusa.exception.codigo, codigo)
             self.assertNotIn(CHAVE, str(recusa.exception))
             self.assertNotIn("Incorrect", str(recusa.exception))
@@ -104,7 +108,7 @@ class Completar(unittest.TestCase):
         with OpenAIDeMentira([]) as openai:
             base = openai.base
         with self.assertRaises(openai_http.ErroDaOpenAI) as recusa:
-            openai_http.completar(base, CHAVE, "gpt-4o", [], tempo=2)
+            openai_http.completar(cred(base, CHAVE, "gpt-4o"), openai_http.PerguntaDoChat([]), openai_http.Paciencia(2, 0))
         self.assertEqual(recusa.exception.codigo, openai_http.FORA_DO_AR)
 
 
@@ -239,10 +243,14 @@ def eventos(*pedacos, fim="response.completed", erro_=None):
     return lista
 
 
+def do_plano(plano):
+    return cred(plano.base, TOKEN_DO_PLANO, "gpt-6-luna")
+
+
 class ResponderPeloPlano(unittest.TestCase):
     def test_o_pedido_vai_sem_temperature_com_instructions_store_false_e_stream_e_o_texto_vem_dos_pedacos(self):
         with PlanoDeMentira(eventos("Front: ", "oi")) as plano:
-            texto, uso = openai_http.responder(plano.base, TOKEN_DO_PLANO, "gpt-6-luna", "o prompt de sistema", "give up : She gave up")
+            texto, uso = openai_http.responder(do_plano(plano), openai_http.PerguntaDaResponses("o prompt de sistema", "give up : She gave up"))
         self.assertEqual((texto, uso), ("Front: oi", {"input_tokens": 2061, "output_tokens": 387}))
         self.assertEqual(plano.pedidos, [{
             "caminho": "/v1/responses",
@@ -254,7 +262,7 @@ class ResponderPeloPlano(unittest.TestCase):
     def test_o_json_vai_por_text_format_e_a_mensagem_pode_levar_a_foto_como_input_image(self):
         partes = [{"type": "input_text", "text": "Mode: real_only"}, {"type": "input_image", "image_url": "data:image/png;base64,AAAA"}]
         with PlanoDeMentira(eventos('{"best_index": 1}')) as plano:
-            texto, _ = openai_http.responder(plano.base, TOKEN_DO_PLANO, "gpt-6-luna", "o juiz", partes, formato_json=True)
+            texto, _ = openai_http.responder(do_plano(plano), openai_http.PerguntaDaResponses("o juiz", partes, formato_json=True))
         self.assertEqual(json.loads(texto), {"best_index": 1})
         [pedido] = plano.pedidos
         self.assertEqual(pedido["corpo"]["input"], [{"role": "user", "content": partes}])
@@ -263,7 +271,7 @@ class ResponderPeloPlano(unittest.TestCase):
     def test_a_foto_que_o_plano_nao_le_vira_o_codigo_da_imagem_invalida_e_nao_um_pedido_recusado(self):
         with PlanoDeMentira((400, {"error": {"code": "invalid_image_format", "message": "falhou " + TOKEN_DO_PLANO}})) as plano:
             with self.assertRaises(openai_http.ErroDaOpenAI) as recusa:
-                openai_http.responder(plano.base, TOKEN_DO_PLANO, "gpt-6-luna", "p", "m")
+                openai_http.responder(do_plano(plano), openai_http.PerguntaDaResponses("p", "m"))
         self.assertEqual(recusa.exception.codigo, openai_http.IMAGEM_INVALIDA)
 
     def test_o_plano_so_e_pedido_de_novo_pelo_erro_passageiro_e_quantas_vezes_se_pediu(self):
@@ -276,13 +284,13 @@ class ResponderPeloPlano(unittest.TestCase):
         for resposta, codigo, pedidos in casos:
             with self.subTest(codigo), mock.patch.object(openai_http, "ESPERA_ENTRE_TENTATIVAS", 0), PlanoDeMentira(resposta) as plano:
                 with self.assertRaises(openai_http.ErroDaOpenAI) as recusa:
-                    openai_http.responder(plano.base, TOKEN_DO_PLANO, "gpt-6-luna", "p", "m", repeticoes=2)
+                    openai_http.responder(do_plano(plano), openai_http.PerguntaDaResponses("p", "m"), openai_http.Paciencia(openai_http.TEMPO_PADRAO, 2))
             self.assertEqual((recusa.exception.codigo, len(plano.pedidos)), (codigo, pedidos))
 
     def test_o_plano_sem_repeticoes_pede_uma_vez_so(self):
         with PlanoDeMentira((503, {"error": {"code": "server_error"}})) as plano:
             with self.assertRaises(openai_http.ErroDaOpenAI):
-                openai_http.responder(plano.base, TOKEN_DO_PLANO, "gpt-6-luna", "p", "m")
+                openai_http.responder(do_plano(plano), openai_http.PerguntaDaResponses("p", "m"))
         self.assertEqual(len(plano.pedidos), 1)
 
     def test_so_o_response_completed_e_sucesso(self):
@@ -295,7 +303,7 @@ class ResponderPeloPlano(unittest.TestCase):
         for resposta, codigo in casos:
             with self.subTest(codigo), PlanoDeMentira(resposta) as plano:
                 with self.assertRaises(openai_http.ErroDaOpenAI) as recusa:
-                    openai_http.responder(plano.base, TOKEN_DO_PLANO, "gpt-6-luna", "p", "m")
+                    openai_http.responder(do_plano(plano), openai_http.PerguntaDaResponses("p", "m"))
             self.assertEqual(recusa.exception.codigo, codigo)
             self.assertNotIn(TOKEN_DO_PLANO, str(recusa.exception))
 
@@ -315,7 +323,7 @@ class ResponderPeloPlano(unittest.TestCase):
         for resposta, codigo in casos:
             with self.subTest(codigo=codigo, status=resposta[0]), PlanoDeMentira(resposta) as plano:
                 with self.assertRaises(openai_http.ErroDaOpenAI) as recusa_:
-                    openai_http.responder(plano.base, TOKEN_DO_PLANO, "gpt-6-luna", "p", "m")
+                    openai_http.responder(do_plano(plano), openai_http.PerguntaDaResponses("p", "m"))
             self.assertEqual(recusa_.exception.codigo, codigo)
             self.assertNotIn(TOKEN_DO_PLANO, str(recusa_.exception))
 
