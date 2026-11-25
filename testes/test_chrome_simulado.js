@@ -127,8 +127,14 @@ async function asAbasAbremEVaoParaOEnderecoPedido() {
 async function oRestoDoChromeResponde() {
   const { chrome } = carregar();
   assert.strictEqual(await chrome.windows.update(1, {}), undefined);
+  assert.strictEqual(typeof chrome.windows.update(1, {}).then, 'function', 'sem callback a janela devolve a promessa');
+  assert.strictEqual(chrome.windows.update(1, {}, () => {}), undefined);
+  assert.strictEqual(typeof chrome.tabs.query({}).then, 'function');
+  assert.strictEqual(chrome.tabs.query({}, () => {}), undefined);
   assert.strictEqual(chrome.identity.getRedirectURL(), 'http://preview.local/extensao/painel/painel.html');
   assert.strictEqual(await chrome.identity.launchWebAuthFlow({}), undefined);
+  assert.strictEqual(chrome.identity.launchWebAuthFlow({}), undefined, 'o login do Google não devolve promessa nem com callback');
+  assert.strictEqual(chrome.identity.launchWebAuthFlow({}, () => {}), undefined);
   igual(await comCallback(retorno => chrome.identity.launchWebAuthFlow({}, retorno)), [undefined]);
   igual([chrome.action.setBadgeText({}), chrome.action.setBadgeBackgroundColor({}), chrome.action.setIcon({})], [undefined, undefined, undefined]);
   assert.strictEqual(chrome.runtime.id, 'preview');
