@@ -1,6 +1,7 @@
 'use strict';
 
 const { test, expect } = require('../fixtures');
+const { ensinarAVitrineADesenharOFoco, anotarOFocadoDaVitrine, desenhosDosAnotadosDaVitrineSemFoco } = require('../apoio-do-foco');
 
 const COMPONENTES = [
   'Botões', 'Campos', 'Toggle e checkbox', 'Selos', 'Atalhos',
@@ -506,42 +507,17 @@ test('todo controle da vitrine mostra onde o foco está', async ({ page, paginas
   test.setTimeout(90_000);
   await abrirVitrine(page, paginas);
 
-  await page.evaluate(() => {
-    window.desenhoDoFoco = async no => {
-      await Promise.all(no.getAnimations().map(animacao => animacao.finished.catch(() => {})));
-      const estilo = getComputedStyle(no);
-      const anel = estilo.outlineStyle !== 'none' && parseFloat(estilo.outlineWidth) > 0
-        ? `${estilo.outlineStyle} ${estilo.outlineWidth} ${estilo.outlineColor}`
-        : 'sem anel';
-      const pintado = no.nextElementSibling || no;
-      return [anel, estilo.boxShadow, estilo.borderColor, estilo.backgroundColor,
-        getComputedStyle(pintado).outlineStyle].join(' | ');
-    };
-  });
+  await ensinarAVitrineADesenharOFoco(page);
 
   const focados = [];
   for (let ordem = 0; ordem < 120; ordem += 1) {
     await page.keyboard.press('Tab');
-    const focado = await page.evaluate(async ordem => {
-      const no = document.activeElement;
-      if (!no || no.matches('body, [data-foco-de-teste]')) return null;
-      if (no.classList.contains('amostra-de-foco-parado')) return { pular: true };
-      no.dataset.focoDeTeste = String(ordem);
-      return {
-        controle: no.id || `${no.tagName.toLowerCase()}.${no.className}`,
-        desenho: await window.desenhoDoFoco(no),
-      };
-    }, ordem);
+    const focado = await anotarOFocadoDaVitrine(page, ordem);
     if (!focado) break;
     if (!focado.pular) focados.push(focado);
   }
 
-  const desfocados = await page.evaluate(() => {
-    document.activeElement.blur();
-    return Promise.all([...document.querySelectorAll('[data-foco-de-teste]')]
-      .sort((a, b) => a.dataset.focoDeTeste - b.dataset.focoDeTeste)
-      .map(no => window.desenhoDoFoco(no)));
-  });
+  const desfocados = await desenhosDosAnotadosDaVitrineSemFoco(page);
 
   const semFoco = focados
     .filter((focado, i) => focado.desenho === desfocados[i])

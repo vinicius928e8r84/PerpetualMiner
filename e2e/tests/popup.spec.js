@@ -5,6 +5,7 @@ const DEN = 'PerpetualMiner::Inglês', DRU = 'PerpetualMiner::Russo';
 const { fotografar, registrarEstado } = require('../evidencias-mineracao');
 const { leituraDoVocabulario: leitura } = require('../leitura-do-vocabulario');
 const { segurarALeituraDaPagina, segurarALeituraDoServiceWorker, quebrarALeituraDoServiceWorker, controlesSemNome } = require('../apoio-da-leitura-do-popup');
+const { aparenciaDoFocoDoPopup, aparenciaDosControlesDoPopupSemFoco } = require('../apoio-do-foco');
 const POPUP = 'popup/popup.html';
 
 const HOJE = new Date().toLocaleDateString('pt-BR');
@@ -587,31 +588,14 @@ test('o Tab passa por todos os controles do popup, em ordem, e cada um mostra o 
     await page.keyboard.press('Shift+Tab');
   }
 
-  const aparencia = () => page.evaluate(() => {
-    const no = document.activeElement;
-    if (!no || no === document.body) return null;
-    const alvo = no.getAttribute('role') === 'switch' ? no.nextElementSibling : no;
-    const { outlineStyle, outlineWidth, boxShadow } = getComputedStyle(alvo);
-    return { nome: no.getAttribute('aria-label') || no.textContent.trim(), visual: `${outlineStyle} ${outlineWidth} ${boxShadow}` };
-  });
-
   const paradas = [];
   for (let i = 0; i < 12; i++) {
     if (i > 0) await page.keyboard.press('Tab');
-    const parada = await aparencia();
+    const parada = await aparenciaDoFocoDoPopup(page);
     if (!parada || paradas.some(p => p.nome === parada.nome)) break;
     paradas.push(parada);
   }
-  const semFoco = await page.evaluate(nomes => {
-    document.activeElement.blur();
-    const controles = [...document.querySelectorAll('button, input, textarea')];
-    return nomes.map(nome => {
-      const no = controles.find(c => (c.getAttribute('aria-label') || c.textContent.trim()) === nome);
-      const alvo = no.getAttribute('role') === 'switch' ? no.nextElementSibling : no;
-      const { outlineStyle, outlineWidth, boxShadow } = getComputedStyle(alvo);
-      return `${outlineStyle} ${outlineWidth} ${boxShadow}`;
-    });
-  }, paradas.map(p => p.nome));
+  const semFoco = await aparenciaDosControlesDoPopupSemFoco(page, paradas.map(p => p.nome));
 
   expect(paradas.map(p => p.nome)).toEqual([
     'Abrir painel',
