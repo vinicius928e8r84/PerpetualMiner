@@ -1,7 +1,5 @@
 'use strict';
 
-const assert = require('assert');
-
 const { prepararAPagina, esperar } = require('./painel_de_mentira.js');
 
 const { documento, raiz } = prepararAPagina();

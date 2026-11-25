@@ -5,7 +5,7 @@ const assert = require('assert');
 const T = require('./quiz_na_tela_de_mentira.js');
 const ESPERADO = require('./quiz_na_tela_esperado.js');
 
-const { Quiz, textoDaVoz, chamadas, pedidos, mundo, saidas, usados, esperar, abrir, opcao, botaoDe, botoes, palco, feedback, aviso, cabecalho, vivos, passarOTempo, estados, hashDaTela } = T;
+const { Quiz, textoDaVoz, chamadas, pedidos, mundo, saidas, usados, esperar, abrir, opcao, botaoDe, palco, aviso, cabecalho, vivos, passarOTempo, estados, hashDaTela } = T;
 const MOTIVO = T.raiz.ConversaComOAnki.MOTIVO;
 const gravando = process.env.GRAVAR_O_ESPERADO === '1';
 const gravados = {};
