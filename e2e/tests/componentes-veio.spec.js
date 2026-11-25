@@ -527,7 +527,7 @@ test('todo controle da vitrine mostra onde o foco está', async ({ page, paginas
     await page.keyboard.press('Tab');
     const focado = await page.evaluate(async ordem => {
       const no = document.activeElement;
-      if (!no || no === document.body || no.dataset.focoDeTeste) return null;
+      if (!no || no.matches('body, [data-foco-de-teste]')) return null;
       if (no.classList.contains('amostra-de-foco-parado')) return { pular: true };
       no.dataset.focoDeTeste = String(ordem);
       return {
