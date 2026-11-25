@@ -68,6 +68,34 @@ acusa('e2e/tests/relogio-parado.spec.js', [
 ].join('\n'), 0, 'a prova usa o montarRelogio e embrulha page.clock');
 acusa('e2e/tests/relogio-parado.spec.js', 'await page.clock.install();\n', 1, 'nem a prova instala direto');
 
+const MISTURA = [
+  'const { clock } = page;',
+  'await clock.install();',
+  "await page.clock['pauseAt'](t);",
+  'await montarRelogio(page, { desde: agora });',
+  'const relogio = page.clock;',
+  'await page.clock.runFor(1);',
+  'await page.clock?.install();',
+].join('\n');
+const MONTADO_FORA = (nome) => `\`clock.${nome}\` fora de e2e/relogio-parado.js: o relógio é montado só pela fixture \`relogioParado\``;
+const GUARDADO = '`clock` de uma página guardado, passado adiante ou chamado por nome calculado: e2e/relogio-parado.js é o único que o manipula';
+const DESESTRUTURADO = '`clock` desestruturado de uma página: e2e/relogio-parado.js é o único que o manipula';
+const MONTAR_RELOGIO = '`montarRelogio` fora de e2e/relogio-parado.js e de e2e/tests/relogio-parado.spec.js: um teste usa a fixture `relogioParado`';
+assert.deepStrictEqual(REGRA.verificar('e2e/tests/a.spec.js', MISTURA, RAIZ), [
+  { linha: 1, detalhe: DESESTRUTURADO },
+  { linha: 2, detalhe: MONTADO_FORA('install') },
+  { linha: 3, detalhe: MONTADO_FORA('pauseAt') },
+  { linha: 4, detalhe: MONTAR_RELOGIO },
+  { linha: 5, detalhe: GUARDADO },
+  { linha: 7, detalhe: MONTADO_FORA('install') },
+]);
+assert.deepStrictEqual(REGRA.verificar('e2e/tests/relogio-parado.spec.js', MISTURA, RAIZ), [
+  { linha: 2, detalhe: MONTADO_FORA('install') },
+  { linha: 3, detalhe: MONTADO_FORA('pauseAt') },
+  { linha: 7, detalhe: MONTADO_FORA('install') },
+]);
+total += 2;
+
 confereSeAplica('e2e/relogio-parado.js', false);
 confereSeAplica('e2e/repouso.js', true);
 confereSeAplica('e2e/tests/relogio-parado.spec.js', true);
