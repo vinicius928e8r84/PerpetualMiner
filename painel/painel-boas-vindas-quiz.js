@@ -8,7 +8,44 @@
   const VOZ_DO_TIPO = { escuta: 'ONB-21.escuta', legenda: 'ONB-21.legenda', verso: 'ONB-21.verso' };
   const VOZ_DO_AUDIO = { semConexao: 'ONB-21.audioSemConexao', antiga: 'ONB-21.audioAntiga', falhou: 'ONB-21.semAudio' };
 
+  const DESFECHO_DA_RESPOSTA = Object.freeze({ ACERTOU: 'acertou', PULOU: 'pulou', ERROU: 'errou' });
+  const FALA_DO_DESFECHO = Object.freeze({
+    [DESFECHO_DA_RESPOSTA.ACERTOU]: { voz: 'ONB-21.acertou', marcaAErrada: false },
+    [DESFECHO_DA_RESPOSTA.PULOU]: { voz: 'ONB-21.naoSeiResposta', marcaAErrada: false },
+    [DESFECHO_DA_RESPOSTA.ERROU]: { voz: 'ONB-21.errou', marcaAErrada: true },
+  });
+
   const lidos = new Map();
+
+  function frase(pergunta, lang) {
+    const no = elemento('p', 'quiz__frase', pergunta.texto);
+    no.setAttribute('lang', lang);
+    return no;
+  }
+
+  function feedbackDaPergunta() {
+    const no = elemento('p', 'quiz__feedback');
+    no.setAttribute('role', 'status');
+    return no;
+  }
+
+  function avisoDoAudio() {
+    const no = elemento('p', 'bv-falha quiz__aviso');
+    no.setAttribute('role', 'alert');
+    no.hidden = true;
+    return no;
+  }
+
+  function marcarAsAlternativas(vista, escolha, desfecho) {
+    vista.alternativas[vista.certa].dataset.estado = 'certa';
+    vista.alternativas[vista.certa].setAttribute('aria-current', 'true');
+    if (FALA_DO_DESFECHO[desfecho].marcaAErrada) vista.alternativas[escolha].dataset.estado = 'errada';
+  }
+
+  function desfechoDaResposta({ acertou, naoSei }) {
+    if (acertou) return DESFECHO_DA_RESPOSTA.ACERTOU;
+    return naoSei ? DESFECHO_DA_RESPOSTA.PULOU : DESFECHO_DA_RESPOSTA.ERROU;
+  }
 
   function botao(texto, classe, aoClicar) {
     const no = elemento('button', `veio-botao ${classe}`, texto);
@@ -123,48 +160,65 @@
       }
     }
 
+    function ouvirDeNovo(pergunta, aviso) {
+      return botao(textoDaVoz('ONB-21.ouvirDeNovo'), 'veio-botao--secundario quiz__ouvir', () => tocar(pergunta.texto, aviso));
+    }
+
+    const PECAS_DO_TIPO = {
+      escuta: (pergunta, aviso) => [ouvirDeNovo(pergunta, aviso)],
+      legenda: pergunta => [frase(pergunta, lang)],
+      verso: pergunta => [frase(pergunta, lang)],
+    };
+    const COMECA_TOCANDO = new Set(['escuta']);
+
+    function festejarOAcerto(vista) {
+      const ganho = raiz.FestaNaTela.acertou({ quiz: no, certa: vista.alternativas[vista.certa], sequencia: estado.sessao.sequencia() });
+      estado.som.acerto(ganho.nota);
+      estado.placar += ganho.pontos;
+      escreverOPlacar();
+      raiz.FestaNaTela.saltar(placar);
+    }
+
+    const DEPOIS_DA_RESPOSTA = {
+      [DESFECHO_DA_RESPOSTA.ACERTOU]: festejarOAcerto,
+      [DESFECHO_DA_RESPOSTA.PULOU]: () => estado.som.naoSei(),
+      [DESFECHO_DA_RESPOSTA.ERROU]: () => {},
+    };
+
+    function responder(escolha, vista) {
+      parar();
+      for (const b of vista.botoes) b.disabled = true;
+      const resposta = estado.sessao.responder(escolha);
+      const desfecho = desfechoDaResposta(resposta);
+      vista.certa = resposta.certa;
+      marcarAsAlternativas(vista, escolha, desfecho);
+      vista.feedback.textContent = textoDaVoz(FALA_DO_DESFECHO[desfecho].voz);
+      escreverASequencia();
+      DEPOIS_DA_RESPOSTA[desfecho](vista);
+      estado.pausa = setTimeout(mostrarAPergunta, PAUSA_DA_RESPOSTA_MS);
+    }
+
+    function montarAVista(pergunta) {
+      const aviso = avisoDoAudio();
+      const vista = { feedback: feedbackDaPergunta(), aviso, antes: PECAS_DO_TIPO[pergunta.tipo](pergunta, aviso), certa: null };
+      vista.alternativas = pergunta.opcoes.map((texto, indice) => botao(texto, 'veio-botao--secundario quiz__opcao', () => responder(indice, vista)));
+      vista.naoSei = botao(textoDaVoz('ONB-21.naoSei'), 'veio-botao--link quiz__nao-sei', () => responder(Quiz.NAO_SEI, vista));
+      vista.botoes = [...vista.alternativas, vista.naoSei];
+      vista.grupo = elemento('div', 'quiz__opcoes', ...vista.alternativas);
+      return vista;
+    }
+
     function mostrarAPergunta() {
       const pergunta = estado.sessao.pergunta();
       if (!pergunta) return mostrarOResultado(estado.sessao.resultado());
       progresso.textContent = textoDaVoz('ONB-21.progresso', { n: pergunta.numero, total: pergunta.total });
       escreverASequencia();
       escreverOPlacar();
-      const feedback = elemento('p', 'quiz__feedback');
-      feedback.setAttribute('role', 'status');
-      const aviso = elemento('p', 'bv-falha quiz__aviso');
-      aviso.setAttribute('role', 'alert');
-      aviso.hidden = true;
-      const frase = pergunta.tipo === 'escuta' ? null : elemento('p', 'quiz__frase', pergunta.texto);
-      frase?.setAttribute('lang', lang);
-      const ouvir = pergunta.tipo === 'escuta' ? botao(textoDaVoz('ONB-21.ouvirDeNovo'), 'veio-botao--secundario quiz__ouvir', () => tocar(pergunta.texto, aviso)) : null;
-      const alternativas = pergunta.opcoes.map((texto, indice) => botao(texto, 'veio-botao--secundario quiz__opcao', () => responder(indice)));
-      const naoSei = botao(textoDaVoz('ONB-21.naoSei'), 'veio-botao--link quiz__nao-sei', () => responder(Quiz.NAO_SEI));
-      const botoes = [...alternativas, naoSei];
-
-      function responder(escolha) {
-        parar();
-        for (const b of botoes) b.disabled = true;
-        const { acertou, naoSei: pulou, certa } = estado.sessao.responder(escolha);
-        alternativas[certa].dataset.estado = 'certa';
-        alternativas[certa].setAttribute('aria-current', 'true');
-        if (!acertou && !pulou) alternativas[escolha].dataset.estado = 'errada';
-        feedback.textContent = textoDaVoz(acertou ? 'ONB-21.acertou' : pulou ? 'ONB-21.naoSeiResposta' : 'ONB-21.errou');
-        escreverASequencia();
-        if (acertou) {
-          const ganho = raiz.FestaNaTela.acertou({ quiz: no, certa: alternativas[certa], sequencia: estado.sessao.sequencia() });
-          estado.som.acerto(ganho.nota);
-          estado.placar += ganho.pontos;
-          escreverOPlacar();
-          raiz.FestaNaTela.saltar(placar);
-        } else if (pulou) estado.som.naoSei();
-        estado.pausa = setTimeout(mostrarAPergunta, PAUSA_DA_RESPOSTA_MS);
-      }
-
-      const grupo = elemento('div', 'quiz__opcoes', ...alternativas);
-      const titulo = mostrar(textoDaVoz(VOZ_DO_TIPO[pergunta.tipo]), ...(ouvir ? [ouvir] : []), ...(frase ? [frase] : []), grupo, naoSei, feedback, aviso);
-      grupo.setAttribute('role', 'group');
-      grupo.setAttribute('aria-labelledby', (titulo.id = `quiz-${lang}-pergunta`));
-      if (pergunta.tipo === 'escuta') tocar(pergunta.texto, aviso);
+      const vista = montarAVista(pergunta);
+      const titulo = mostrar(textoDaVoz(VOZ_DO_TIPO[pergunta.tipo]), ...vista.antes, vista.grupo, vista.naoSei, vista.feedback, vista.aviso);
+      vista.grupo.setAttribute('role', 'group');
+      vista.grupo.setAttribute('aria-labelledby', (titulo.id = `quiz-${lang}-pergunta`));
+      if (COMECA_TOCANDO.has(pergunta.tipo)) tocar(pergunta.texto, vista.aviso);
     }
 
     function mostrarOResultado({ nivel, semAlfabeto = false, acertos, perguntas, melhorSequencia, escuta }) {

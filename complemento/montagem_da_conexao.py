@@ -104,9 +104,9 @@ class _Montagem:
     def teto(self, fila):
         return TetoDoMes(self.no_ambiente("teto-do-mes.json"), fila, self.fronteiras.hoje)
 
-    def trabalhador(self, fila, colecao, ia):
-        motor = motor_do_cartao(fila, self.servicos, self.esperas, self.fronteiras.adaptador_de_imagem)
-        trabalho = envio.Trabalho(fila, colecao, ia, motor, self.esperas)
+    def trabalhador(self, pecas):
+        motor = motor_do_cartao(pecas.fila, self.servicos, pecas.esperas, self.fronteiras.adaptador_de_imagem)
+        trabalho = envio.Trabalho(pecas, motor)
         return trabalhador.Trabalhador(trabalho, intervalo=self.esperas.do_envio, contato=self.contato, espera_do_contato=self.esperas.do_contato)
 
     def montar(self):
@@ -122,11 +122,12 @@ class _Montagem:
         fila = envio.Fila(self.dados, motor, self.logger)
         teto = self.teto(fila)
         self.esperas = dataclasses.replace(self.esperas, teto=teto)
-        return PecasDaConexao(
+        pecas = PecasDaConexao(
             ambiente=self.ambiente, servicos=self.servicos, esperas=self.esperas, colecao=colecao, item_de_login=self.fronteiras.item_de_login,
             perfil_fixo=perfil_fixo, cofre=cofre, pareamento=Pareamento(self.no_ambiente("pareamento.json"), self.logger), chatgpt=chatgpt,
             modelos=modelos, ia=ia, atualizacao=self.atualizacao(), fila=fila, teto=teto, contato=self.contato,
-            trabalhador=self.trabalhador(fila, colecao, ia))
+            trabalhador=None)
+        return dataclasses.replace(pecas, trabalhador=self.trabalhador(pecas))
 
 
 def montar(ambiente, servicos, esperas, fronteiras=Fronteiras()):

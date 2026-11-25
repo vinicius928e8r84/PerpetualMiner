@@ -33,17 +33,20 @@ def lista_nossa():
         return json.load(arquivo)["modelos"]
 
 
+def _dia_da_saida(modelo, logger):
+    try:
+        return date.fromisoformat(modelo["saida"]) if modelo["saida"] else None
+    except ValueError:
+        logger.warning("Modelo dos cartões: a data de saída de %s não é um dia (AAAA-MM-DD)", modelo["modelo"])
+        return None
+
+
 class ListaDosModelos:
     def __init__(self, modelos, hoje, modelo_do_motor, logger):
         self._hoje, self._modelo_do_motor = hoje, modelo_do_motor
         self.com_foto = [m["modelo"] for m in modelos if m["texto"] and m["foto"]]
-        self._saidas = {}
-        for modelo in modelos:
-            try:
-                if modelo["saida"]:
-                    self._saidas[modelo["modelo"]] = date.fromisoformat(modelo["saida"])
-            except ValueError:
-                logger.warning("Modelo dos cartões: a data de saída de %s não é um dia (AAAA-MM-DD)", modelo["modelo"])
+        saidas = ((modelo["modelo"], _dia_da_saida(modelo, logger)) for modelo in modelos)
+        self._saidas = {nome: dia for nome, dia in saidas if dia}
 
     def saiu(self, modelo):
         return modelo in self._saidas and self._hoje() >= self._saidas[modelo]
@@ -166,26 +169,38 @@ def quem_paga(login, motivo, pela_chave, tem_chave):
     return (CHAVE, None) if tem_chave else (PARADO, SEM_CHAVE)
 
 
+def _credencial_do_plano(conta, plano, modelos, so_a_chave):
+    try:
+        token = conta.login.token()
+        if not token:
+            return credencial(conta._replace(login=None), plano, modelos, so_a_chave)
+        return Pagador(PLANO, _do_plano(token, _modelo_do_plano(conta.login, token, plano, modelos)), None)
+    except ErroDoPlano as erro:
+        return Pagador(PARADO, None, erro.codigo)
+
+
+def _modelo_da_chave(chave, modelos):
+    try:
+        oferta = modelos.da_chave(chave)
+    except openai_api.ErroDaChave:
+        oferta = None
+    return modelos.do_envio(oferta, modelos.automatico_da_chave(oferta), CHAVE)
+
+
+def _credencial_da_chave(chave, plano, modelos):
+    if "modelo_da_chave" not in plano:
+        plano["modelo_da_chave"] = _modelo_da_chave(chave, modelos)
+    return Pagador(CHAVE, {"provedor": PROVEDOR, "segredo": chave, "modelo": plano["modelo_da_chave"]}, None)
+
+
 def credencial(conta, plano, modelos, so_a_chave=False):
     chave = conta.chave()
     quem, motivo = quem_paga(*conta.situacao(), so_a_chave, bool(chave))
     if quem == PLANO:
-        try:
-            token = conta.login.token()
-            if not token:
-                return credencial(conta._replace(login=None), plano, modelos, so_a_chave)
-            return Pagador(PLANO, _do_plano(token, _modelo_do_plano(conta.login, token, plano, modelos)), None)
-        except ErroDoPlano as erro:
-            return Pagador(PARADO, None, erro.codigo)
+        return _credencial_do_plano(conta, plano, modelos, so_a_chave)
     if quem == PARADO:
         return Pagador(PARADO, None, motivo)
-    if "modelo_da_chave" not in plano:
-        try:
-            oferta = modelos.da_chave(chave)
-        except openai_api.ErroDaChave:
-            oferta = None
-        plano["modelo_da_chave"] = modelos.do_envio(oferta, modelos.automatico_da_chave(oferta), CHAVE)
-    return Pagador(CHAVE, {"provedor": PROVEDOR, "segredo": chave, "modelo": plano["modelo_da_chave"]}, None)
+    return _credencial_da_chave(chave, plano, modelos)
 
 
 def _do_plano(token, modelo):

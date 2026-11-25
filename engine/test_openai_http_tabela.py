@@ -6,6 +6,7 @@ import urllib.error
 from unittest import mock
 
 import openai_http
+import provedores
 
 CHAVE = "sk-chave-0000"
 BASE = "http://openai.local"
@@ -84,6 +85,8 @@ def chamar(funcao, argumentos, opcoes):
         credencial = {"base": base, "segredo": segredo, "modelo": modelo}
         classe = openai_http.PerguntaDoChat if funcao == "completar" else openai_http.PerguntaDaResponses
         return getattr(openai_http, funcao)(credencial, classe(*pergunta, **opcoes), paciencia)
+    if funcao == "texto":
+        return provedores.texto(*argumentos, **opcoes)
     return getattr(openai_http, funcao)(*argumentos, **opcoes)
 
 

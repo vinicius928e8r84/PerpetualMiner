@@ -14,6 +14,7 @@ from complemento.montagem_do_cartao import motor_do_cartao
 from complemento.servicos_de_fora import ServicosDeFora
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria
 from complemento.test_envio import ID, INGLES, LINHA, PALAVRA, SENTINELAS, EnvioNoTeste, arquivos_sem_o_log, chats, pedido
+from complemento.test_envio_fila import pecas_do_trabalho
 
 
 def Morte():
@@ -30,7 +31,7 @@ def o_envio(cartoes):
 def o_trabalho_de(conexao, fila, colecao):
     servicos = ServicosDeFora(openai=conexao.openai.base, openverse=conexao.openverse.base, voz=conexao.voz.base)
     esperas = Esperas(do_anki=0.01, da_openai=(0, 0))
-    return envio.Trabalho(fila, colecao, conexao.conexao.ia, motor_do_cartao(fila, servicos, esperas), esperas)
+    return envio.Trabalho(pecas_do_trabalho(fila, esperas, colecao, conexao.conexao.ia), motor_do_cartao(fila, servicos, esperas))
 
 
 class Explorador:
