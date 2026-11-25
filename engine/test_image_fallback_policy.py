@@ -13,8 +13,8 @@ import google_images
 import image_guard
 import image_judge
 import image_pipeline
-from image_queries import CardToSearch
-from rodar_imagens import _build_card_google_queries, _run_images
+from image_queries import CardToSearch, _build_card_google_queries
+from rodar_imagens import _run_images
 
 
 CARD_TEXT = """Anki Card
