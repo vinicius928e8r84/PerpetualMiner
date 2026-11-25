@@ -33,7 +33,7 @@ class Cenario:
         logger.handlers = [self.log]
         logger.propagate = False
         logger.setLevel(logging.DEBUG)
-        self.p = pareamento.Pareamento(self.arquivo, logger, relogio=lambda: self.hora[0], na_tela=self.tela, sortear=lambda: CODIGO)
+        self.p = pareamento.Pareamento(self.arquivo, logger, pareamento.Fontes(relogio=lambda: self.hora[0], sortear=lambda: CODIGO), na_tela=self.tela)
 
     def arquivo_lido(self):
         with open(self.arquivo, encoding="utf-8") as arquivo:

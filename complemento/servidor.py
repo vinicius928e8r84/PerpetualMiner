@@ -4,7 +4,7 @@ import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from .pareamento import CABECALHO_DA_PROVA, prova_da_resposta
+from .pareamento import CABECALHO_DA_PROVA, Selo, prova_da_resposta
 from .paginas_do_navegador import PAGINAS, ROTAS_DO_CHATGPT, responder_a_pagina
 from .rotas_da_chave import (
     apagar_chave_da_openai, estado_da_ia, guardar_chave_da_openai, sincronizar_chave_da_openai, vincular_legado_da_openai,
@@ -96,7 +96,7 @@ class _Atendente(BaseHTTPRequestHandler):
             self.send_header("Access-Control-Expose-Headers", CABECALHO_DA_PROVA)
             self.send_header("Vary", "Origin")
         if self._assinado is not None:
-            self.send_header(CABECALHO_DA_PROVA, prova_da_resposta(self._assinado.segredo, self.conexao.pareamento.sessao, self._assinado.nonce, status, corpo))
+            self.send_header(CABECALHO_DA_PROVA, prova_da_resposta(Selo(self._assinado.segredo, self.conexao.pareamento.sessao, self._assinado.nonce), status, corpo))
         for nome, valor in (extras or {}).items():
             self.send_header(nome, valor)
         self.end_headers()
@@ -163,17 +163,23 @@ class _Atendente(BaseHTTPRequestHandler):
             status, erro = recusa
             return self._responder(status, {"error": erro}, origem=origem if status != 403 else None)
         if self.command == "OPTIONS":
-            extras = {
-                "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
-                "Access-Control-Allow-Headers": self.headers.get("Access-Control-Request-Headers") or "Content-Type",
-                "Access-Control-Max-Age": "600",
-            }
-            if self.headers.get("Access-Control-Request-Private-Network") == "true":
-                extras["Access-Control-Allow-Private-Network"] = "true"
-            return self._responder(204, origem=origem, extras=extras)
+            return self._responder_a_verificacao_previa(origem)
         pagina = PAGINAS.get((self.command, caminho))
         if pagina is not None:
             return responder_a_pagina(self, pagina)
+        return self._atender_a_rota(caminho, bruto, origem)
+
+    def _responder_a_verificacao_previa(self, origem):
+        extras = {
+            "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": self.headers.get("Access-Control-Request-Headers") or "Content-Type",
+            "Access-Control-Max-Age": "600",
+        }
+        if self.headers.get("Access-Control-Request-Private-Network") == "true":
+            extras["Access-Control-Allow-Private-Network"] = "true"
+        return self._responder(204, origem=origem, extras=extras)
+
+    def _atender_a_rota(self, caminho, bruto, origem):
         rota = ROTAS.get((self.command, caminho))
         if rota is None:
             return self._responder(404, {"error": "not_found"}, origem=origem)
