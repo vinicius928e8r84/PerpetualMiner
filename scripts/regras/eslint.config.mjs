@@ -18,7 +18,7 @@ const regras = {
   'no-unused-labels': 'error',
   'no-useless-catch': 'error',
   'no-loss-of-precision': 'error',
-  'no-empty-pattern': 'error',
+  'no-empty-pattern': ['error', { allowObjectPatternsAsParameters: true }],
   'no-shadow-restricted-names': 'error',
   'use-isnan': 'error',
   'valid-typeof': 'error',
@@ -41,5 +41,9 @@ export default [
     files: ['**/*.mjs'],
     languageOptions: { ecmaVersion: 2023, sourceType: 'module' },
     rules: regras,
+  },
+  {
+    files: ['complemento/modelo_da_criacao.js'],
+    rules: { 'no-var': 'off' },
   },
 ];
