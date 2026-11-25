@@ -7,7 +7,7 @@ description: "Use when changing or reviewing the Conexão com o Anki area of the
 
 Notes from the old `CLAUDE.md` § Architecture. Decisions: `docs/adr/`; files: `docs/arquivos/`.
 
-### Conexão com o Anki (`painel-anki.js`, `painel-anki-envios.js`, variant C, `docs/adr/0007-as-telas-do-redesign.md`)
+### Conexão com o Anki (`painel-anki.js`, variant C, `docs/adr/0007-as-telas-do-redesign.md`)
 
 The area follows the Conexão state `ConexaoAnki` reports (`acompanhar`):
 
