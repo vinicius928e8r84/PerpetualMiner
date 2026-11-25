@@ -6,7 +6,7 @@ const test = require('node:test');
 const vm = require('vm');
 
 const ESTADO_DA_PAGINA = [
-  'filtroFonte', 'filtroIdioma', 'esconderEnviadasEExportadas', 'buscaAtual', 'ordemAtual',
+  'fonte', 'idioma', 'esconderEnviadasEExportadas', 'busca', 'ordem',
 ];
 
 function aberto() {
@@ -23,8 +23,9 @@ function abrirAPaginaDeFrases() {
   contexto.PerpetualMiner = {};
   for (const arquivo of ['lib/idioma.js', 'lib/contexto.js', 'lib/filtro-das-frases.js']) vm.runInContext(fs.readFileSync(arquivo, 'utf8'), contexto);
   const raiz = contexto.PerpetualMiner;
-  for (const nome of ['Atalhos', 'AjustesDeEnvio', 'Mineracao', 'Veio', 'Shell', 'Conta', 'Perigo', 'Envio', 'Sincronizacao', 'ChaveDaOpenAI', 'Historico']) raiz[nome] = aberto();
+  for (const nome of ['Atalhos', 'AjustesDeEnvio', 'Mineracao', 'Veio', 'Shell', 'Conta', 'Perigo', 'Envio', 'Sincronizacao', 'ChaveDaOpenAI', 'Historico', 'FrasesNuvem', 'FrasesSelecao']) raiz[nome] = aberto();
   raiz.textoDaVoz = aberto();
+  vm.runInContext(fs.readFileSync('painel/painel-frases-filtros.js', 'utf8'), contexto);
   vm.runInContext(fs.readFileSync('painel/painel.js', 'utf8'), contexto);
   return contexto;
 }
@@ -34,11 +35,13 @@ function idsVisiveis({ frases, filtros }) {
   pagina.entrada = { frases, filtros };
   vm.runInContext(`
     todasFrases = entrada.frases;
-    filtroFonte = entrada.filtros.fonte ?? 'all';
-    filtroIdioma = entrada.filtros.idioma ?? 'all';
-    esconderEnviadasEExportadas = entrada.filtros.esconder ?? false;
-    buscaAtual = entrada.filtros.busca ?? '';
-    ordemAtual = entrada.filtros.ordem ?? 'novas';
+    Object.assign(FrasesFiltros.criterio, {
+      fonte: entrada.filtros.fonte ?? 'all',
+      idioma: entrada.filtros.idioma ?? 'all',
+      esconderEnviadasEExportadas: entrada.filtros.esconder ?? false,
+      busca: entrada.filtros.busca ?? '',
+      ordem: entrada.filtros.ordem ?? 'novas',
+    });
     aplicarFiltro();
   `, pagina);
   return JSON.parse(vm.runInContext('JSON.stringify(frasesVisiveis.map(f => f.id))', pagina));
@@ -93,7 +96,7 @@ test('frases com o mesmo id mantêm a ordem em que vieram, nas duas ordens', () 
   const textos = filtros => {
     const pagina = abrirAPaginaDeFrases();
     pagina.entrada = { frases, filtros };
-    vm.runInContext(`todasFrases = entrada.frases; ordemAtual = entrada.filtros.ordem; aplicarFiltro();`, pagina);
+    vm.runInContext(`todasFrases = entrada.frases; FrasesFiltros.criterio.ordem = entrada.filtros.ordem; aplicarFiltro();`, pagina);
     return JSON.parse(vm.runInContext('JSON.stringify(frasesVisiveis.map(f => f.texto))', pagina));
   };
   assert.deepStrictEqual(textos({ ordem: 'novas' }), ['y', 'x1', 'x2']);
@@ -103,14 +106,14 @@ test('frases com o mesmo id mantêm a ordem em que vieram, nas duas ordens', () 
 test('filtrar não muda a lista de todas as frases', () => {
   const pagina = abrirAPaginaDeFrases();
   pagina.entrada = FRASES.map(frase => ({ ...frase }));
-  vm.runInContext(`todasFrases = entrada; ordemAtual = 'antigas'; aplicarFiltro();`, pagina);
+  vm.runInContext(`todasFrases = entrada; FrasesFiltros.criterio.ordem = 'antigas'; aplicarFiltro();`, pagina);
   assert.deepStrictEqual(JSON.parse(vm.runInContext('JSON.stringify(todasFrases.map(f => f.id))', pagina)), [1, 2, 3, 4, 5, 6]);
 });
 
 test('o estado da página que o teste escreve existe com o valor de partida', () => {
   const pagina = abrirAPaginaDeFrases();
   assert.deepStrictEqual(
-    JSON.parse(vm.runInContext(`JSON.stringify([${ESTADO_DA_PAGINA.join(', ')}])`, pagina)),
+    JSON.parse(vm.runInContext(`JSON.stringify([${ESTADO_DA_PAGINA.map(campo => `FrasesFiltros.criterio.${campo}`).join(', ')}])`, pagina)),
     ['all', 'all', false, '', 'novas'],
   );
 });
