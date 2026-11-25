@@ -132,6 +132,11 @@ class No {
     for (const filho of filhos) this.insertBefore(filho, null);
   }
 
+  prepend(...filhos) {
+    const primeiro = this.childNodes[0] ?? null;
+    for (const filho of filhos) this.insertBefore(filho, primeiro);
+  }
+
   insertBefore(filho, referencia) {
     const no = typeof filho === 'object' ? filho : this.ownerDocument.createTextNode(String(filho));
     no.remove();
@@ -139,6 +144,10 @@ class No {
     this.childNodes.splice(posicao < 0 ? this.childNodes.length : posicao, 0, no);
     no.parentNode = this;
     return no;
+  }
+
+  before(...nos) {
+    for (const no of nos) this.parentNode.insertBefore(no, this);
   }
 
   remove() {
