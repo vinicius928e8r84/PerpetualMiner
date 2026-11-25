@@ -4,6 +4,9 @@ const { test, expect } = require('../fixtures');
 const { estadoFinal, estadoFinalEm } = require('../estado-final');
 const { AGORA, INGLESAS, RUSSA, SACK, ARM, abrirPainel, marcar, enviarAoAnki, progresso, resumo, envio, baralho, toasts, marcarEEnviar, enviosCriados } = require('../apoio-do-envio');
 
+const INTERVALO_DO_ENVIO_MS = 2_000;
+const VOLTAS_SEM_LACO = 2;
+
 const ingles = page => envio(page, /^Envio em inglês/);
 
 test.beforeEach(async ({ extensao, fakes }) => {
@@ -131,21 +134,25 @@ test('o login do ChatGPT acabou no meio do Envio: o cartão e o resumo dizem iss
   await estadoFinalEm('o login do ChatGPT na Conexão', () => fakes.anki.chatgpt.situacao(), 'acabou');
 });
 
-test('as Frases do Envio foram apagadas na Conexão por outro navegador: o cartão diz isso e só oferece Esquecer; nenhum Tentar de novo sai, e nada fica em laço', async ({ page, extensao, fakes }) => {
-  await abrirPainel(page, extensao);
+test('as Frases do Envio foram apagadas na Conexão por outro navegador: o cartão diz isso e só oferece Esquecer; nenhum Tentar de novo sai, e nada fica em laço', async ({ page, extensao, fakes, relogioParado }) => {
+  const relogio = await relogioParado({ em: AGORA });
+  await page.goto(extensao.url('painel.html#frases'));
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   await marcar(page, SACK.texto).check();
   await marcar(page, ARM.texto).check();
   await enviarAoAnki(page).click();
   const [job] = await enviosCriados(fakes, 1);
   fakes.anki.moverEnvio(job.jobId, { stage: 'generate_cards', cartoes: { [`${SACK.id}-0`]: 'added', [`${ARM.id}-0`]: 'pending' } });
-  await expect(ingles(page)).toContainText('Criando cartões', { timeout: 10_000 });
+  await relogio.avancar(INTERVALO_DO_ENVIO_MS);
+  await expect(ingles(page)).toContainText('Criando cartões');
 
   fakes.anki.apagarAsFrases();
+  await relogio.avancar(INTERVALO_DO_ENVIO_MS);
 
-  await expect(ingles(page)).toContainText('Não concluído', { timeout: 10_000 });
+  await expect(ingles(page)).toContainText('Não concluído');
   await expect(ingles(page)).toContainText('As frases deste Envio foram apagadas da Conexão com o Anki.');
   await expect(ingles(page).getByRole('button', { name: 'Tentar de novo' })).toHaveCount(0);
-  await page.waitForTimeout(4_500);
+  await relogio.avancar(VOLTAS_SEM_LACO * INTERVALO_DO_ENVIO_MS);
   await expect(resumo(page)).toBeHidden();
   await expect(progresso(page)).toBeVisible();
 
