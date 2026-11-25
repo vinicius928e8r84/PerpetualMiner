@@ -33,6 +33,7 @@
   <script src="/lib/nuvem-do-firestore.js">
   <script src="/lib/sincronizacao.js">
   <script src="esqueleto-modais.js">
+  <script src="esqueleto-anki.js">
   <script src="esqueleto-configuracoes.js">
   <script src="painel-shell.js">
   <script src="painel-conta.js">

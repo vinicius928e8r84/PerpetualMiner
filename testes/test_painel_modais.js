@@ -34,10 +34,11 @@ function osEsqueletosMontados() {
   ponte.id = 'abridor-ponte';
   documento.body.append(ponte);
   require('../painel/esqueleto-modais.js');
+  require('../painel/esqueleto-anki.js');
   require('../painel/esqueleto-configuracoes.js');
   esqueletosMontados = {
     modais: ponte.parentNode.childNodes.filter(no => no.className === 'veio-scrim').map(canonicaDoFalso),
-    area: conteudo.childNodes.map(canonicaDoFalso)[0],
+    areas: conteudo.childNodes.map(canonicaDoFalso),
   };
   return structuredClone(esqueletosMontados);
 }
@@ -46,9 +47,9 @@ function aPaginaMontada() {
   const pagina = lerHtml(fs.readFileSync('painel/painel.html', 'utf8'));
   const corpo = doCorpo(pagina);
   const posicao = corpo.filhos.findIndex(filho => filho.atributos?.id === 'abridor-ponte');
-  const { modais, area } = osEsqueletosMontados();
+  const { modais, areas } = osEsqueletosMontados();
   corpo.filhos.splice(posicao, 0, ...modais);
-  doConteudo(pagina).filhos.push(area);
+  doConteudo(pagina).filhos.push(...areas);
   return pagina;
 }
 
@@ -88,7 +89,8 @@ function oEsqueletoCarregaAntesDoShellENaoDepoisDosModulos() {
   const scripts = acharTodos(lerHtml(fs.readFileSync('painel/painel.html', 'utf8')), no => no.tag === 'script').map(no => no.atributos.src);
   assert.ok(scripts.indexOf('/veio/componentes.js') < scripts.indexOf('esqueleto-modais.js'));
   assert.ok(scripts.indexOf('esqueleto-modais.js') < scripts.indexOf('painel-shell.js'));
-  assert.ok(scripts.indexOf('/veio/componentes.js') < scripts.indexOf('esqueleto-configuracoes.js'));
+  assert.ok(scripts.indexOf('/veio/componentes.js') < scripts.indexOf('esqueleto-anki.js'));
+  assert.ok(scripts.indexOf('esqueleto-anki.js') < scripts.indexOf('esqueleto-configuracoes.js'));
   assert.ok(scripts.indexOf('esqueleto-configuracoes.js') < scripts.indexOf('painel-shell.js'));
 }
 
