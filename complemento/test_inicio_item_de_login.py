@@ -75,7 +75,7 @@ class ASuiteNaoTocaOItemDeLoginDoComputador(unittest.TestCase):
             plist = item_de_login.ItemDeLogin(sistema="mac", pasta=agentes, comando=["x"]).caminho
             with open(plist, "wb") as arquivo:
                 arquivo.write(antigo)
-            with patch.dict(os.environ, {"HOME": casa}), patch.object(inicio.sys, "platform", "darwin"):
+            with patch.dict(os.environ, {"HOME": casa}), patch.object(sys, "platform", "darwin"):
                 conexao = inicio.iniciar(pasta, lambda: None, porta=0, abridor=None)
             try:
                 self.assertIsNotNone(conexao)

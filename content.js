@@ -1,5 +1,5 @@
-const { detectarIdioma, Atalhos, Overlay, textoDaVoz, IDIOMAS, Mineracao, ContextoDoSite, LegendaDaPagina, MineracaoAutomaticaNaPagina } = PerpetualMiner;
-const { legendaDe, lugarDaLegenda, normalizarTexto, obterVideoAtivo, videoVisivel } = LegendaDaPagina;
+const { detectarIdioma, Atalhos, Overlay, textoDaVoz, IDIOMAS, Mineracao, ContextoDoSite, LegendaDaPagina, LegendaDaAmazon, MineracaoAutomaticaNaPagina } = PerpetualMiner;
+const { lugarDaLegenda, normalizarTexto, obterVideoAtivo, videoVisivel } = LegendaDaPagina;
 
 let _atalhos = { ...Atalhos.ATALHOS_PADRAO };
 
@@ -189,7 +189,7 @@ function containerDoPlayer(video) {
 }
 
 function lerLegenda() {
-    return LegendaDaPagina.lerLegenda({ amazon: minerarAmazon });
+    return LegendaDaPagina.lerLegenda({ amazon: LegendaDaAmazon.ler });
 }
 
 function lugarDaSelecao(texto) {
@@ -221,43 +221,6 @@ function minerarLegenda(evento) {
         idioma,
         lugar:    lugarDaLegenda(legenda),
     }, { copia: true });
-}
-
-function minerarAmazon() {
-    const alvosDiretos = ['.atvwebplayersdk-captions-text span', '.atvwebplayersdk-subtitle-text-container'];
-    for (const seletor of alvosDiretos) {
-        const elementos = Array.from(document.querySelectorAll(seletor));
-        if (elementos.length > 0) {
-            const txt = elementos.map(s => s.innerText).join(' ').trim();
-            if (txt && txt.length < 250 && !/^[ \d\s:/]+$/.test(txt)) return legendaDe(txt, elementos);
-        }
-    }
-
-    const video = document.querySelector('video');
-    if (!video) return null;
-    const rectVideo         = video.getBoundingClientRect();
-    const meioDaTela        = rectVideo.top + rectVideo.height * 0.5;
-    const limiteEsquerdoXray = rectVideo.left + rectVideo.width * 0.25;
-    const lixoInterface     = ['temporada','ep.','season','pular','skip','next','próximo',
-        'prime video','termos','política','privacidade','cookies','mais','saiba','info',
-        'detalhes','português','english','idioma','legenda','configurações','audio',
-        'coreano','korean'];
-
-    let melhorCandidato = null;
-    for (const el of document.querySelectorAll('span, div')) {
-        const txt = el.innerText?.trim();
-        if (/[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af]/.test(txt)) continue;
-        if (!txt || txt.length < 4 || txt.length > 200) continue;
-        if (/^[ \d\s:/]+$/.test(txt)) continue;
-        const rectEl = el.getBoundingClientRect();
-        if (rectEl.top < meioDaTela)       continue;
-        if (rectEl.left < limiteEsquerdoXray) continue;
-        const baixo = txt.toLowerCase();
-        if (lixoInterface.some(p => baixo === p || baixo.includes(p))) continue;
-        if (el.closest('.dv-ui-web-player-container')) continue;
-        melhorCandidato = legendaDe(txt, [el]);
-    }
-    return melhorCandidato;
 }
 
 function extrairContexto() {

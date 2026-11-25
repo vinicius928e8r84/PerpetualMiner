@@ -9,6 +9,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento.test_atualizacao import atualizacao_do_exemplo
 from complemento import configuracao, pasta_de_dados, registro, servidor
+from complemento.esperas import Esperas
+from complemento.montagem_da_conexao import Ambiente, Fronteiras, Porta, montar
+from complemento.servicos_de_fora import ServicosDeFora
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria
 from complemento.test_contexto_da_conexao import ChaveGuardadaAntes, item_de_login_do_contexto
 from complemento.test_fila_de_mentira import semear_a_fila
@@ -91,6 +94,21 @@ def deve_repetir(exemplo):
     return exemplo["pedido"]["metodo"] == "POST" and sucesso(exemplo["resposta"]["status"])
 
 
+LOGIN_DO_CHATGPT_CONECTADO = {"client_id": "oaiapp_x", "access_token": "acesso-x", "refresh_token": "renovacao-x", "expira_em": 4e9}
+
+
+def escrever_json_se_houver(caminho, conteudo):
+    if conteudo is None:
+        return
+    with open(caminho, "w", encoding="utf-8") as arquivo:
+        json.dump(conteudo, arquivo)
+
+
+def esperas_do_teste(do_plano, do_teto, do_contato):
+    """As esperas de uma Conexão de teste: curtas, menos as três que o teste escolhe."""
+    return Esperas(do_anki=0.01, da_openai=(0, 0), do_plano=do_plano, do_teto=do_teto, do_contato=do_contato, do_envio=0.01, da_parada=0.005)
+
+
 class ConexaoNoTeste:
     def __init__(
         self,
@@ -136,13 +154,10 @@ class ConexaoNoTeste:
         self.logs, self.chaves = self.dados.logs, self.dados.chaves
         for pasta_ in self.dados[1:]:
             os.makedirs(pasta_, exist_ok=True)
-        antes = ChaveGuardadaAntes(chave_na_conexao, versao_na_conexao, chave_apagada, conta_na_conexao, hora_na_conexao, nao_enviada).no_arquivo()
-        if antes is not None:
-            with open(os.path.join(self.chaves, "openai.json"), "w", encoding="utf-8") as arquivo:
-                json.dump(antes, arquivo)
-        if perfil_marcado is not None:
-            with open(os.path.join(pasta, "perfil.json"), "w", encoding="utf-8") as arquivo:
-                json.dump({"perfil": perfil_marcado}, arquivo)
+        escrever_json_se_houver(
+            os.path.join(self.chaves, "openai.json"),
+            ChaveGuardadaAntes(chave_na_conexao, versao_na_conexao, chave_apagada, conta_na_conexao, hora_na_conexao, nao_enviada).no_arquivo())
+        escrever_json_se_houver(os.path.join(pasta, "perfil.json"), None if perfil_marcado is None else {"perfil": perfil_marcado})
         self.de_mentira = (self.openai, self.openverse, self.voz, self.firestore) = (
             OpenAIDeMentira(openai), OpenverseDeMentira(), VozDeMentira(), FirestoreDeMentira())
         self.firestore.falha = firebase
@@ -151,43 +166,22 @@ class ConexaoNoTeste:
         self.openai.recusa_da_fala = {"chave_recusada": (401, "invalid_api_key"), "sem_credito": (429, "insufficient_quota")}.get(voz_responde)
         self.servidor_de_login = ChatGPTDeMentira()
         self.de_mentira += (self.servidor_de_login,)
-        if chatgpt == "conectada":
-            with open(os.path.join(self.chaves, "chatgpt.json"), "w", encoding="utf-8") as arquivo:
-                json.dump({"client_id": "oaiapp_x", "access_token": "acesso-x", "refresh_token": "renovacao-x", "expira_em": 4e9}, arquivo)
+        escrever_json_se_houver(os.path.join(self.chaves, "chatgpt.json"), LOGIN_DO_CHATGPT_CONECTADO if chatgpt == "conectada" else None)
         self.cofre_sem_escrita = cofre_sem_escrita
         do_modelo = dict(preparar_o_cenario(modelo, pasta, self.openai), **({"hoje": hoje} if hoje else {}))
-        if teto is not None:
-            with open(os.path.join(pasta, "teto-do-mes.json"), "w", encoding="utf-8") as arquivo:
-                json.dump({"limitUsd": teto}, arquivo)
+        escrever_json_se_houver(os.path.join(pasta, "teto-do-mes.json"), None if teto is None else {"limitUsd": teto})
         if pareado:
             semear(os.path.join(pasta, "pareamento.json"))
         self.logger = registro.criar(self.logs)
-        self.conexao = servidor.Conexao(
-            atualizacao=atualizacao_do_exemplo(pasta, atualizacao, ankiweb, self.logger),
-            porta=0,
-            origens_aceitas=origens or configuracao.ORIGENS_ACEITAS,
-            versao=configuracao.VERSAO,
-            perfil_aberto=self._ler_o_perfil,
-            logger=self.logger,
-            dados=self.dados,
-            colecao=colecao,
-            item_de_login=self.item,
-            openai_base=self.openai.base,
-            openverse_base=self.openverse.base,
-            adaptador_de_imagem=adaptador_de_imagem,
-            voz_base=self.voz.base,
-            firestore_base=self.firestore.base,
-            chatgpt_base=self.servidor_de_login.base,
-            intervalo_de_parada=0.005,
-            trabalhando=trabalhando,
-            intervalo_do_envio=0.01,
-            espera_do_anki=0.01,
-            esperas_da_openai=(0, 0),
-            espera_do_plano=espera_do_plano,
-            espera_do_teto=espera_do_teto,
-            espera_do_contato=espera_do_contato,
-            **do_modelo,
-        )
+        ambiente = Ambiente(self.dados, self.logger, configuracao.VERSAO)
+        servicos = ServicosDeFora(
+            openai=self.openai.base, openverse=self.openverse.base, voz=self.voz.base, firestore=self.firestore.base, chatgpt=self.servidor_de_login.base)
+        esperas = esperas_do_teste(espera_do_plano, espera_do_teto, espera_do_contato)
+        fronteiras = Fronteiras(
+            colecao=colecao, item_de_login=self.item, atualizacao=atualizacao_do_exemplo(pasta, atualizacao, ankiweb, self.logger),
+            adaptador_de_imagem=adaptador_de_imagem, **do_modelo)
+        pecas = montar(ambiente, servicos, esperas, fronteiras)
+        self.conexao = servidor.Conexao(Porta(0, origens or configuracao.ORIGENS_ACEITAS), pecas if trabalhando else pecas.sem_trabalhador(), self._ler_o_perfil)
 
     def _ler_o_perfil(self):
         if self.falha_no_perfil:

@@ -3,7 +3,7 @@
 (function (raiz) {
   const INTERVALO = 2000;
 
-  const { textoDaVoz, Veio, Shell, ConexaoAnki, ConversaComOAnki, EnvioApagarFrases, ehRussa, AjustesDeEnvio, PedidoAoAnki, CartaoDoEnvio, EnvioComOAnkiFechado, SituacaoDoEnvio, FaseDaRemessa, EnvioGravado, EnvioAcompanhado } = raiz;
+  const { textoDaVoz, Veio, Shell, ConexaoAnki, ConversaComOAnki, EnvioApagarFrases, ehRussa, AjustesDeEnvio, PedidoAoAnki, CartaoDoEnvio, EnvioComOAnkiFechado, SituacaoDoEnvio, FaseDaRemessa, EnvioGravado, EnvioAcompanhado, ResumoDoEnvio } = raiz;
   const { ETAPAS, nomeDoIdioma } = CartaoDoEnvio;
   const { FASE, EVENTO } = FaseDaRemessa;
   const { AREAS_DO_PAINEL } = Shell;
@@ -39,9 +39,7 @@
   let conexaoDesligada = false;
   let relogio = null;
   let progresso = null;
-  let resumo = null;
   const despachar = (tipo, dados) => { fase = FaseDaRemessa.proxima(fase, { tipo, ...dados }); };
-  let respostaDoResumo = null;
   const assinaturas = new Map();
 
   async function usar(operacoes) {
@@ -49,9 +47,9 @@
     doPainel = operacoes;
     porId('btn-send-anki').addEventListener('click', () => enviar());
     porId('modal-envio-fechar').addEventListener('click', () => progresso?.fechar());
-    porId('modal-resumo-fechar').addEventListener('click', () => resumo?.fechar());
-    porId('btn-resumo-manter').addEventListener('click', () => resumo?.fechar());
-    porId('btn-resumo-apagar').addEventListener('click', () => responderResumo('apagar'));
+    porId('modal-resumo-fechar').addEventListener('click', () => resumoDoEnvio.fechar());
+    porId('btn-resumo-manter').addEventListener('click', () => resumoDoEnvio.fechar());
+    porId('btn-resumo-apagar').addEventListener('click', () => resumoDoEnvio.responder(ResumoDoEnvio.RESPOSTA.APAGAR));
     chrome.storage.onChanged.addListener((mudancas, area) => {
       const nova = mudancas[EnvioGravado.CHAVE]?.newValue;
       if (area === 'local' && nova?.apagarFrases && !nova.envios?.length && remessa) encerrarOAcompanhamento();
@@ -61,7 +59,7 @@
       if (situacao !== CONEXAO.DESLIGADA) EnvioApagarFrases.pedir();
     });
     ankiFechado = EnvioComOAnkiFechado.criar({ aoLigar: aoLigarOAnki });
-    for (const area of AREAS_DO_PAINEL) Shell.aoEntrarNaArea(area, tentarAbrirResumo);
+    for (const area of AREAS_DO_PAINEL) Shell.aoEntrarNaArea(area, resumoDoEnvio.tentarAbrir);
 
     const guardada = await gravado.ler();
     if (!remessa && guardada?.envios?.some(e => e.jobId || e.corpo)) {
@@ -180,7 +178,7 @@
       if (semNoticia || conexaoDesligada) ConexaoAnki.conferir();
     }
     desenharProgresso();
-    tentarAbrirResumo();
+    resumoDoEnvio.tentarAbrir();
   }
 
   async function lerJobs() {
@@ -210,6 +208,17 @@
   }
   const terminou = envio => SituacaoDoEnvio.terminou(situacaoDe(envio));
   const foraDoResumo = envio => SituacaoDoEnvio.foraDoResumo(situacaoDe(envio));
+  const resumoDoEnvio = ResumoDoEnvio.criar({
+    estado: {
+      remessa: () => remessa,
+      fase: () => fase,
+      progresso: () => progresso,
+      desistiuDasPendencias: () => desistiuDasPendencias,
+      doPainel: () => doPainel,
+    },
+    leitura: { situacaoDe, estadoDoJob, terminou, foraDoResumo, pendente },
+    acoes: { abrirProgresso, despachar, esquecer, recomecar, criarEnvio, retomar },
+  });
 
   async function gravar() {
     const aRemessa = remessa;
@@ -228,7 +237,7 @@
     despachar(EVENTO.APAGAR_TUDO);
     largarARemessa();
     progresso?.fechar();
-    if (resumo) responderResumo('descartar');
+    resumoDoEnvio.descartarSeAberto();
   }
 
   function largarARemessa() {
@@ -265,7 +274,7 @@
     }
     if (remessa.envios.every(terminou) && remessa.envios.some(pendente)) {
       desistiuDasPendencias = true;
-      setTimeout(tentarAbrirResumo, 0);
+      setTimeout(resumoDoEnvio.tentarAbrir, 0);
     }
   }
 
@@ -309,7 +318,7 @@
     if (!remessa.envios.length) return progresso ? progresso.fechar() : aoFecharProgresso();
     await gravar();
     desenharProgresso();
-    tentarAbrirResumo();
+    resumoDoEnvio.tentarAbrir();
   }
 
   async function tentarCriarDeNovo(envio) {
@@ -372,103 +381,6 @@
     }
     if (SituacaoDoEnvio.retomavel(situacaoDe(envio))) jobs.set(jobId, { ...job, status: 'queued', state: { ...job?.state, status: 'queued', stage: 'queued', progress: {}, lastError: null, ankiError: null } });
     return true;
-  }
-
-  function prontoParaResumo() {
-    if (!remessa || fase !== FASE.ACOMPANHANDO) return false;
-    return remessa.envios.some(e => e.jobId && !foraDoResumo(e)) && remessa.envios.every(terminou);
-  }
-
-  function outroModalAberto() {
-    const scrims = [...document.querySelectorAll('.veio-scrim:not([hidden])')]
-      .filter(s => s.id !== 'modal-envio' && s.id !== 'modal-resumo');
-    return scrims.length > 0;
-  }
-
-  function tentarAbrirResumo() {
-    if (!AREAS_DO_PAINEL.includes(Shell.areaAtual())) return;
-    if (outroModalAberto()) return;
-    if (!prontoParaResumo()) {
-      if (remessa?.envios.some(foraDoResumo) && remessa.envios.every(terminou) && !progresso && !desistiuDasPendencias) abrirProgresso();
-      return;
-    }
-    if (remessa.envios.some(pendente) && !desistiuDasPendencias) {
-      if (!progresso) abrirProgresso();
-      return;
-    }
-    if (progresso) progresso.fechar();
-
-    const idiomas = SituacaoDoEnvio.contagemPorIdioma(remessa.envios, situacaoDe, estadoDoJob);
-    const enviadas = idiomas.flatMap(i => i.enviadas);
-    const duplicadas = idiomas.flatMap(i => i.duplicadas);
-    const falhas = idiomas.reduce((soma, i) => soma + i.falhas, 0);
-    const total = idiomas.reduce((soma, i) => soma + i.total, 0);
-    porId('modal-resumo-titulo').textContent = textoDaVoz(falhas ? 'ENV-10.tituloEmParte' : 'ENV-10.titulo');
-    porId('modal-resumo-detalhe').textContent = textoDaVoz('ENV-10.detalhe', { n: total, baralhos: idiomas.length });
-    porId('modal-resumo-baralhos').replaceChildren(...idiomas.map(idioma => CartaoDoEnvio.montarBlocoDoResumo(idioma, lang => responderResumo({ tentar: lang }))));
-
-    const aTirar = doPainel.frasesPorId(enviadas).length;
-    const jaApagadas = enviadas.length - aTirar;
-    porId('modal-resumo-pergunta').textContent = aTirar === 0 ? textoDaVoz('ENV-10.nadaParaTirar')
-      : aTirar === 1 ? textoDaVoz('ENV-10.perguntaUma') : textoDaVoz('ENV-10.pergunta', { n: aTirar });
-    const ajuda = [
-      aTirar === 0 ? '' : textoDaVoz(aTirar === 1 ? 'ENV-10.ajudaUma' : 'ENV-10.ajuda'),
-      jaApagadas ? textoDaVoz('ENV-10.jaApagadas', { n: jaApagadas }) : '',
-    ].filter(Boolean).join(' ');
-    porId('modal-resumo-ajuda').textContent = ajuda;
-    porId('modal-resumo-ajuda').hidden = !ajuda;
-
-    const tirar = porId('btn-resumo-apagar');
-    const manter = porId('btn-resumo-manter');
-    tirar.hidden = aTirar === 0;
-    manter.textContent = textoDaVoz(aTirar === 0 ? 'ENV-10.pronto' : 'ENV-10.manter');
-    tirar.toggleAttribute('data-foco-seguro', aTirar > 0);
-    manter.toggleAttribute('data-foco-seguro', aTirar === 0);
-
-    respostaDoResumo = null;
-    const escolhas = { enviadas, duplicadas };
-    despachar(EVENTO.RESUMIR);
-    resumo = Veio.abrirModal(porId('modal-resumo'), { aoFechar: () => aoFecharResumo(escolhas) });
-  }
-
-  function responderResumo(resposta) {
-    respostaDoResumo = resposta;
-    resumo?.fechar();
-  }
-
-  async function aoFecharResumo({ enviadas, duplicadas }) {
-    resumo = null;
-    const resposta = respostaDoResumo;
-    respostaDoResumo = null;
-
-    if (resposta === 'descartar') return;
-    despachar(EVENTO.RESPONDER, { tentar: Boolean(resposta?.tentar) });
-    if (resposta?.tentar) {
-      await tentarDeNovoOIdioma(resposta.tentar);
-      return;
-    }
-    await esquecer();
-    if (resposta === 'apagar') {
-      const aindaAqui = doPainel.frasesPorId(enviadas).map(f => f.id);
-      await doPainel.marcarComoEnviadas(duplicadas);
-      await doPainel.apagar(aindaAqui);
-      if (aindaAqui.length) Veio.mostrarToastDeSucesso(textoDaVoz('ENV-11', { n: aindaAqui.length }));
-    } else {
-      await doPainel.marcarComoEnviadas([...enviadas, ...duplicadas]);
-    }
-  }
-
-  function tentarDeNovoOIdioma(lang) {
-    abrirProgresso();
-    return recomecar(async () => {
-      for (const envio of [...remessa.envios]) {
-        if (envio.lang !== lang || foraDoResumo(envio)) continue;
-        if (!envio.jobId) await criarEnvio(envio);
-        else if (SituacaoDoEnvio.retomavel(situacaoDe(envio))) await retomar(envio);
-        const estado = estadoDoJob(envio);
-        if (estado && terminou(envio) && !SituacaoDoEnvio.retomavel(situacaoDe(envio))) await CartaoDoEnvio.recriar(remessa, envio, estado, criarEnvio);
-      }
-    });
   }
 
   function mostrarConexao(situacao) {
