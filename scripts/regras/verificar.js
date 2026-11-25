@@ -34,6 +34,7 @@ const REGRAS = [
   require('./sem-segredo-novo'),
   require('./sem-binario-novo'),
   require('./sem-depuracao-nova'),
+  require('./sem-codescene-no-repositorio'),
   require('./glossario-so-linguagem'),
 ];
 
