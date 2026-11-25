@@ -197,18 +197,19 @@ const PEDIDOS_ASSINADOS = [
 ];
 
 function resumoDaSaida({ pedido, opcoes }, argumentos) {
-  const [endereco, pedidoQueSai, corpoEmTexto, opcoesQueSaem, cabecalhos] = argumentos;
+  const [endereco, pedidoQueSai, opcoesQueSaem] = argumentos;
+  const { corpoEmTexto, cabecalhos } = pedidoQueSai;
   const corpo = corpoEmTexto ?? '';
   const assinatura = assinaturaDoPedido(SEGREDO, { sessao: SESSAO, nonce: cabecalhos[NONCE], metodo: pedido.metodo, caminho: pedido.caminho, corpo });
   return {
-    argumentos: argumentos.length, endereco, mesmoPedido: pedidoQueSai === pedido, mesmasOpcoes: opcoesQueSaem === opcoes, corpoEmTexto: String(corpoEmTexto),
+    argumentos: argumentos.length, endereco, mesmoPedido: pedidoQueSai.metodo === pedido.metodo && pedidoQueSai.caminho === pedido.caminho && pedidoQueSai.corpo === pedido.corpo, mesmasOpcoes: opcoesQueSaem === opcoes, corpoEmTexto: String(corpoEmTexto),
     nomes: Object.keys(cabecalhos), cliente: cabecalhos['X-PerpetualMiner-Cliente'], sessao: cabecalhos['X-PerpetualMiner-Sessao'],
     assinaturaCerta: cabecalhos['X-PerpetualMiner-Assinatura'] === assinatura, nonce: /^[0-9a-f]{32}$/.test(cabecalhos[NONCE]),
   };
 }
 
 const saidaEsperada = pedido => ({
-  argumentos: 5, endereco: ENDERECO, mesmoPedido: true, mesmasOpcoes: true, corpoEmTexto: String(pedido.corpo && JSON.stringify(pedido.corpo)),
+  argumentos: 3, endereco: ENDERECO, mesmoPedido: true, mesmasOpcoes: true, corpoEmTexto: String(pedido.corpo && JSON.stringify(pedido.corpo)),
   nomes: ['X-PerpetualMiner-Cliente', 'X-PerpetualMiner-Sessao', 'X-PerpetualMiner-Nonce', 'X-PerpetualMiner-Assinatura'],
   cliente: CLIENTE, sessao: SESSAO, assinaturaCerta: true, nonce: true,
 });
@@ -219,7 +220,7 @@ async function pedirAssinadoNo(cenario) {
   const saidas = [];
   const enviar = (...argumentos) => {
     saidas.push(argumentos);
-    return cenario.respostas[saidas.length - 1](argumentos[4]);
+    return cenario.respostas[saidas.length - 1](argumentos[1].cabecalhos);
   };
   const desfecho = await pagina.Pareamento.pedirAssinado(ENDERECO, cenario.pedido, cenario.opcoes, enviar)
     .catch(erro => ({ erro: erro.message, semProva: erro.semProva }));
@@ -248,7 +249,7 @@ async function filaDeDoisPedidos(respostaAoPrimeiro) {
     ordem.push(`${quem} sai`);
     await esperar(20);
     ordem.push(`${quem} volta`);
-    return provada(200, { quem })(argumentos[4]);
+    return provada(200, { quem })(argumentos[1].cabecalhos);
   };
   const pedir = quem => pagina.Pareamento.pedirAssinado(ENDERECO, COM_CORPO, {}, enviarComo(quem)).catch(erro => ({ erro: erro.message }));
   const primeiro = pedir('A');

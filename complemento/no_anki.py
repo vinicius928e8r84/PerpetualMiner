@@ -1,13 +1,13 @@
 import os
 import threading
 import time
+from dataclasses import dataclass, replace
 
 from . import cartoes_do_anki, criacao_na_revisao, inicio, janela, registro
 from .criacao_no_anki import CriacaoNoAnki
 from .baralhos import ColecaoIndisponivel, PerfilIlegivel, TipoDeNotaAusente
 from .atualizacao_do_anki import AnkiWebDoAnki
-from .configuracao import PORTA, VERSAO
-from .servicos_de_fora import ServicosDeFora
+from .configuracao import VERSAO
 
 LIMITE_DA_LEITURA_S = 10
 ESPERA_DA_ENTRADA_S = 15
@@ -18,6 +18,10 @@ def perfil_aberto(mw):
     if getattr(mw, "col", None) is None:
         return None
     return getattr(getattr(mw, "pm", None), "name", None)
+
+
+def _na_tela_de_perfis_sem_colecao(mw):
+    return getattr(mw, "col", None) is None and getattr(mw, "state", None) == "profileManager"
 
 
 class ColecaoDoAnki(CriacaoNoAnki):
@@ -91,7 +95,7 @@ class ColecaoDoAnki(CriacaoNoAnki):
 
     def _entrar_no_marcado(self, mw):
         marcado = self._marcado_que_existe(mw)
-        if marcado is None or getattr(mw, "col", None) is not None or getattr(mw, "state", None) != "profileManager":
+        if marcado is None or not _na_tela_de_perfis_sem_colecao(mw):
             return False
         if not self._janela_de_perfis_livre(mw):
             return False
@@ -188,16 +192,26 @@ class ColecaoDoAnki(CriacaoNoAnki):
         return self._gravando(lambda colecao: _gravar_cartao(colecao, nota, frente))
 
 
-def _adicionar_nota(colecao, nota):
-    if colecao.db.all("select 1 from notes where guid = ?", nota.guid):
-        return
+def _tipo_de_nota_da_nota(colecao, nota):
     modelo = colecao.models.by_name(nota.tipo_de_nota)
     if modelo is None or not set(nota.campos) <= set(cartoes_do_anki.campos_do_tipo(modelo)):
         raise TipoDeNotaAusente(nota.tipo_de_nota)
+    return modelo
+
+
+def _campos_com_a_midia_guardada(colecao, nota):
     campos = nota.campos
     for nome, dados in (nota.midia or {}).items():
         guardado = colecao.media.write_data(nome, dados)
         campos = {campo: valor.replace("[sound:%s]" % nome, "[sound:%s]" % guardado) for campo, valor in campos.items()}
+    return campos
+
+
+def _adicionar_nota(colecao, nota):
+    if colecao.db.all("select 1 from notes where guid = ?", nota.guid):
+        return
+    modelo = _tipo_de_nota_da_nota(colecao, nota)
+    campos = _campos_com_a_midia_guardada(colecao, nota)
     nova = colecao.new_note(modelo)
     for nome, valor in campos.items():
         nova[nome] = valor
@@ -239,12 +253,30 @@ def _gravar_cartao(colecao, nota, frente):
     return "added"
 
 
+def _e_o_baralho_ou_um_subbaralho(baralho, nome):
+    return baralho.name == nome or baralho.name.startswith(nome + "::")
+
+
+def _nomes_dos_campos(colecao, modelo):
+    tipo_de_nota = colecao.models.get(modelo)
+    if not tipo_de_nota:
+        return []
+    return [campo["name"] for campo in sorted(tipo_de_nota["flds"], key=lambda c: c["ord"])]
+
+
+def _cartao_da_linha(linha, nomes):
+    nota, tipo, intervalo, campos = linha
+    valores = str(campos or "").split("\x1f")
+    return {
+        "nota": nota,
+        "campos": [(nomes[posicao] if posicao < len(nomes) else "", valor) for posicao, valor in enumerate(valores)],
+        "tipo": tipo,
+        "intervalo": intervalo,
+    }
+
+
 def _cartoes_do_baralho(colecao, nome):
-    ids = [
-        int(baralho.id)
-        for baralho in colecao.decks.all_names_and_ids()
-        if baralho.name == nome or baralho.name.startswith(nome + "::")
-    ]
+    ids = [int(baralho.id) for baralho in colecao.decks.all_names_and_ids() if _e_o_baralho_ou_um_subbaralho(baralho, nome)]
     if not ids:
         return []
     lista = ",".join(str(id_) for id_ in ids)
@@ -253,20 +285,10 @@ def _cartoes_do_baralho(colecao, nome):
         "where c.did in (%s) or c.odid in (%s)" % (lista, lista)
     )
     nomes_dos_campos = {}
-    cartoes = []
-    for nota, tipo, intervalo, modelo, campos in linhas:
+    for _, _, _, modelo, _ in linhas:
         if modelo not in nomes_dos_campos:
-            tipo_de_nota = colecao.models.get(modelo)
-            nomes_dos_campos[modelo] = [campo["name"] for campo in sorted(tipo_de_nota["flds"], key=lambda c: c["ord"])] if tipo_de_nota else []
-        nomes = nomes_dos_campos[modelo]
-        valores = str(campos or "").split("\x1f")
-        cartoes.append({
-            "nota": nota,
-            "campos": [(nomes[posicao] if posicao < len(nomes) else "", valor) for posicao, valor in enumerate(valores)],
-            "tipo": tipo,
-            "intervalo": intervalo,
-        })
-    return cartoes
+            nomes_dos_campos[modelo] = _nomes_dos_campos(colecao, modelo)
+    return [_cartao_da_linha((nota, tipo, intervalo, campos), nomes_dos_campos[modelo]) for nota, tipo, intervalo, modelo, campos in linhas]
 
 
 def _ao_abrir_o_perfil(funcao):
@@ -288,18 +310,24 @@ def _qt_do_anki(logger):
     return QtDoAnki(logger)
 
 
-def ao_carregar(mw, pasta_do_complemento, *, porta=PORTA, ao_abrir_o_perfil=_ao_abrir_o_perfil,
-                abridor=inicio.ABRIDOR_DESTE_COMPUTADOR, ao_sincronizar=_ao_sincronizar, servicos=ServicosDeFora(),
-                esperas=None, qt=None,
-                ao_receber_mensagem=criacao_na_revisao.ao_receber_mensagem):
+@dataclass(frozen=True)
+class GanchosDoAnki:
+    ao_abrir_o_perfil: object = _ao_abrir_o_perfil
+    ao_sincronizar: object = _ao_sincronizar
+    ao_receber_mensagem: object = criacao_na_revisao.ao_receber_mensagem
+    qt: object = None
+
+
+def ao_carregar(mw, pasta_do_complemento, arredores=inicio.Arredores(), ganchos=GanchosDoAnki()):
     colecao = ColecaoDoAnki(mw)
     try:
-        ao_sincronizar(colecao)
+        ganchos.ao_sincronizar(colecao)
     except Exception:
         pass
-    criacao_na_revisao.ligar(colecao, ao_receber_mensagem)
-    conexao = inicio.iniciar(pasta_do_complemento, lambda: perfil_aberto(mw), inicio.Arredores(porta=porta, colecao=colecao, ao_abrir_o_perfil=ao_abrir_o_perfil, abridor=abridor, servicos=servicos, esperas=esperas, anki_web=AnkiWebDoAnki(mw, pasta_do_complemento)))
-    _por_no_menu(mw, conexao, os.path.basename(os.path.abspath(pasta_do_complemento)), qt)
+    criacao_na_revisao.ligar(colecao, ganchos.ao_receber_mensagem)
+    do_anki = replace(arredores, colecao=colecao, ao_abrir_o_perfil=ganchos.ao_abrir_o_perfil, anki_web=AnkiWebDoAnki(mw, pasta_do_complemento))
+    conexao = inicio.iniciar(pasta_do_complemento, lambda: perfil_aberto(mw), do_anki)
+    _por_no_menu(mw, conexao, os.path.basename(os.path.abspath(pasta_do_complemento)), ganchos.qt)
     return conexao
 
 

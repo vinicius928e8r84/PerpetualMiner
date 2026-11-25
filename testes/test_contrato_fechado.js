@@ -22,7 +22,8 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'e2e', 'variantes-do-
 const { PedidoAoAnki, ConversaComOAnki, VariantesDoPedidoAoAnki } = contexto.PerpetualMiner;
 contexto.PerpetualMiner.PareamentoComOAnki = {
   pedirAssinado: async (endereco, pedido, opcoes, enviar) => {
-    const recebida = await enviar(endereco, pedido, pedido.corpo === undefined ? undefined : JSON.stringify(pedido.corpo), opcoes, { 'X-Assinatura': 'a' });
+    const recebida = await enviar(
+      endereco, { ...pedido, corpoEmTexto: pedido.corpo === undefined ? undefined : JSON.stringify(pedido.corpo), cabecalhos: { 'X-Assinatura': 'a' } }, opcoes);
     return { status: recebida.status, texto: await recebida.text() };
   },
 };
@@ -102,8 +103,9 @@ async function aConversaMandaOPedidoAssinado() {
 async function soOPareamentoVaiSemAssinatura() {
   enviados.length = 0;
   await PedidoAoAnki.enviarSemAssinatura('http://127.0.0.1:8766', PedidoAoAnki.conferirOPareamento('cliente', 'desafio'), { signal: 'sinal' });
-  assert.deepStrictEqual(comoValores(enviados.map(({ url, method, body }) => ({ url, method, body }))),
-    [{ url: 'http://127.0.0.1:8766/pareamento/conferir', method: 'POST', body: '{"cliente":"cliente","desafio":"desafio"}' }], 'o Pareamento manda os pedidos dele, que não levam assinatura');
+  assert.deepStrictEqual(comoValores(enviados.map(({ url, method, headers, body }) => ({ url, method, headers, body }))),
+    [{ url: 'http://127.0.0.1:8766/pareamento/conferir', method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{"cliente":"cliente","desafio":"desafio"}' }],
+    'o Pareamento manda os pedidos dele, que não levam assinatura');
   assert.throws(() => PedidoAoAnki.enviarSemAssinatura('http://127.0.0.1:8766', PedidoAoAnki.baralhos()), /só vai assinado/,
     'um pedido privado não sai sem assinatura, e a Response crua dele não chega a ninguém');
   assert.throws(() => PedidoAoAnki.enviarSemAssinatura('http://127.0.0.1:8766', { metodo: 'GET', caminho: '/health', semAssinatura: true }), /não saiu de PedidoAoAnki/);

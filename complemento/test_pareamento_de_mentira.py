@@ -127,10 +127,12 @@ def iniciar_pareado(pasta, *argumentos, **palavras):
 
 
 def ao_carregar_pareado(anki, pasta, **palavras):
-    from complemento import no_anki
+    from complemento import inicio, no_anki
 
     semear_em(pasta)
-    return no_anki.ao_carregar(anki, pasta, **palavras)
+    nomes_dos_ganchos = [campo.name for campo in dataclasses.fields(no_anki.GanchosDoAnki)]
+    ganchos = {nome: palavras.pop(nome) for nome in nomes_dos_ganchos if nome in palavras}
+    return no_anki.ao_carregar(anki, pasta, inicio.Arredores(**palavras), no_anki.GanchosDoAnki(**ganchos))
 
 
 def pedir_como_a_extensao(porta, metodo, caminho, corpo=None):

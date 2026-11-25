@@ -75,6 +75,16 @@ class OPerfilFixoNoAnki(SemRegistroReal, unittest.TestCase):
         ler_pelo_http(conexao.porta, "/anki/profile/open", {})
         self.assertEqual(anki.passos, [])
 
+    def test_com_o_anki_ainda_fora_da_tela_de_perfis_e_sem_colecao_a_conexao_nao_entra_no_perfil(self):
+        anki = AnkiComColecaoDeMentira(None, perfis=("Ana", "Beto"))
+        anki.state = "deckBrowser"
+        conexao = self.conectar(anki, marcado="Ana")
+        ler_pelo_http(conexao.porta, "/anki/profile/open", {})
+        self.assertEqual((anki.passos, anki.pm.name, anki.col), ([], None, None))
+        anki.state = "profileManager"
+        ler_pelo_http(conexao.porta, "/anki/profile/open", {})
+        self.assertEqual(anki.passos, [("pm.load", "Ana"), ("onOpenProfile", "Ana")])
+
     def test_fechado_o_dialogo_modal_a_conexao_entra_no_perfil_marcado(self):
         anki = AnkiComColecaoDeMentira(None, perfis=("Ana", "Beto"))
         anki.janela_modal = object()

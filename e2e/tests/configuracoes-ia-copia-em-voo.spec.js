@@ -32,7 +32,7 @@ test('S3: com uma chave nova a caminho, o outro lugar do card não diz que a Con
   let liberar;
   fakes.anki.responder('POST', '/ia/openai/chave', req => new Promise(resolver => {
     liberar = () => {
-      fakes.anki.guardarChaveNaConexao('wxyz', req.postDataJSON().versao);
+      fakes.anki.guardarChaveDoPedido('wxyz', req);
       resolver({ status: 200, json: { ok: true, ultimos4: 'wxyz' } });
     };
   }));

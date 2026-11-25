@@ -166,10 +166,13 @@ function criarRotasDaChave(dono) {
 
   const paraAReal = documento => estado.paraAReal.push({ chave: documento });
   const api = {
-    guardarChaveNaConexao(finalDaChave, versao = 0, conta = null, em = 0, naoEnviada = true) {
+    guardarChaveNaConexao(finalDaChave, { versao = 0, conta = null, em = 0, naoEnviada = true } = {}) {
       const chave = `sk-proj-guardada-antes-${finalDaChave}`;
       Object.assign(estado, { chaveDaOpenAI: chave, versaoDaChave: versao, contaDaChave: conta, horaDaChave: em, chaveNaoEnviada: naoEnviada });
       paraAReal(documentoParaAReal({ chave, versao, conta, em, naoEnviada }));
+    },
+    guardarChaveDoPedido(finalDaChave, pedido) {
+      api.guardarChaveNaConexao(finalDaChave, { versao: pedido.postDataJSON().versao });
     },
     esquecerAChave() {
       Object.assign(estado, { chaveDaOpenAI: null, versaoDaChave: 0, contaDaChave: '', horaDaChave: 0 });

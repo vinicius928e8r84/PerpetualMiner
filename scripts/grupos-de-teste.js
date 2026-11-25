@@ -42,16 +42,22 @@ function ondeQuebrou(texto, erro) {
 
 const ehMapa = valor => Object.prototype.toString.call(valor) === '[object Object]';
 
-function lerRegistro(raiz) {
+function textoDoRegistro(raiz) {
   const caminho = path.join(raiz, ARQUIVO_DO_REGISTRO);
   if (!fs.existsSync(caminho)) throw new Error(`falta ${ARQUIVO_DO_REGISTRO}, o cadastro dos grupos de teste; ${RESTAURAR}`);
-  const texto = fs.readFileSync(caminho, 'utf8');
-  let registro;
+  return fs.readFileSync(caminho, 'utf8');
+}
+
+function jsonDoRegistro(texto) {
   try {
-    registro = JSON.parse(texto);
+    return JSON.parse(texto);
   } catch (erro) {
     throw new Error(`${ARQUIVO_DO_REGISTRO} não é um JSON válido (erro${ondeQuebrou(texto, erro)}: vírgula, aspas ou chave fora do lugar); ${RESTAURAR}`);
   }
+}
+
+function lerRegistro(raiz) {
+  const registro = jsonDoRegistro(textoDoRegistro(raiz));
   if (!ehMapa(registro?.grupos)) {
     throw new Error(`${ARQUIVO_DO_REGISTRO} não tem o objeto "grupos" (nome do grupo → { executor, … }); ${RESTAURAR}`);
   }
@@ -70,15 +76,27 @@ function escolherPython(env, raiz) {
   return fs.existsSync(doVenv) ? { comando: doVenv, origem: 'venv' } : { comando: 'python3', origem: 'python3' };
 }
 
-function dicaDeModulo(nome, grupo, saidaDeErro, python) {
-  if (!/ModuleNotFoundError/.test(saidaDeErro)) return '';
+const faltaOModulo = saidaDeErro => /ModuleNotFoundError/.test(saidaDeErro);
+
+function moduloQueFalta(saidaDeErro) {
   const falta = /No module named '([^']+)'/.exec(saidaDeErro);
-  const precisa = python.origem === 'venv' && grupo.precisa ? grupo.precisa.replace(/\bpip install/g, '.venv/bin/python -m pip install') : grupo.precisa;
-  const preparo = python.origem === 'python3'
-    ? '\n  numa worktree nova: scripts/preparar-python.sh cria o .venv e instala tudo; este comando passa a usá-lo sozinho'
-    : '';
-  return `✗ ${nome}: falta o módulo ${falta ? falta[1] : 'do Python'}`
-    + (precisa ? `; o grupo precisa de: ${precisa}` : '') + preparo;
+  return falta ? falta[1] : 'do Python';
+}
+
+function instalacaoDoGrupo(grupo, python) {
+  const noVenv = python.origem === 'venv' && grupo.precisa;
+  return noVenv ? grupo.precisa.replace(/\bpip install/g, '.venv/bin/python -m pip install') : grupo.precisa;
+}
+
+const PREPARO_DA_WORKTREE_NOVA = '\n  numa worktree nova: scripts/preparar-python.sh cria o .venv e instala tudo; este comando passa a usá-lo sozinho';
+
+const preparoDoPython = python => (python.origem === 'python3' ? PREPARO_DA_WORKTREE_NOVA : '');
+
+function dicaDeModulo(nome, grupo, saidaDeErro, python) {
+  if (!faltaOModulo(saidaDeErro)) return '';
+  const precisa = instalacaoDoGrupo(grupo, python);
+  return `✗ ${nome}: falta o módulo ${moduloQueFalta(saidaDeErro)}`
+    + (precisa ? `; o grupo precisa de: ${precisa}` : '') + preparoDoPython(python);
 }
 
 const RAMOS_SEM_BASE = new Set(['main', 'HEAD']);

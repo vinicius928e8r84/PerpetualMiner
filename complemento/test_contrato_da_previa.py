@@ -18,28 +18,45 @@ def texto_de(cartao_html):
     return re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", "", cartao_html))).strip()
 
 
+def em_cada_estilo(teste, conferir):
+    for lang, nivel in ESTILOS:
+        with teste.subTest(lang=lang, nivel=nivel):
+            conferir(lang, nivel)
+
+
+def partes_do_verso_com_texto(lang, nivel):
+    return [parte for parte in estilos.estilo(lang, nivel)["verso"] if parte not in ("imagem", "palavra")]
+
+
+def partes_que_o_estilo_deixa_fora_do_verso(lang, nivel):
+    return [parte for parte in estilos.DADOS["idiomas"][lang]["ordem_do_verso"] if parte not in estilos.estilo(lang, nivel)["verso"]]
+
+
 class ContratoDaPrevia(ContratoDoNavegador):
+    def previa_do_estilo(self, lang, nivel):
+        return previa_do_cartao.previa_do_exemplo(self.adaptador(SO_O_DEFAULT), lang, nivel)
+
+    def conferir_a_frase_e_o_botao_de_audio(self, lang, nivel):
+        previa = self.previa_do_estilo(lang, nivel)
+        frase = texto_de(previa_do_cartao.campos_do_exemplo(lang, nivel)["Frase"])
+        self.assertIn(frase, texto_de(previa["front"]))
+        self.assertIn("pm-tocar", previa["front"])
+        self.assertEqual(frase in texto_de(previa["back"]), estilos.estilo(lang, nivel).get("repete_a_frase", True), "a Frase no verso")
+
+    def conferir_as_partes_do_verso(self, lang, nivel):
+        verso = texto_de(self.previa_do_estilo(lang, nivel)["back"].split("<hr id=answer>")[-1])
+        campos, nomes = previa_do_cartao.campos_do_exemplo(lang, nivel), estilos.idioma(lang)["campos"]
+        for parte in partes_do_verso_com_texto(lang, nivel):
+            self.assertIn(texto_de(campos[nomes[parte]]), verso, parte)
+        campos_com_valor = [chave for chave in nomes if nomes[chave] in campos]
+        for parte in partes_que_o_estilo_deixa_fora_do_verso(lang, nivel):
+            self.assertNotIn(parte, campos_com_valor, parte)
+
     def test_a_previa_de_cada_estilo_mostra_a_frase_com_o_botao_de_audio_na_frente(self):
-        for lang, nivel in ESTILOS:
-            with self.subTest(lang=lang, nivel=nivel):
-                previa = previa_do_cartao.previa_do_exemplo(self.adaptador(SO_O_DEFAULT), lang, nivel)
-                frase = texto_de(previa_do_cartao.campos_do_exemplo(lang, nivel)["Frase"])
-                self.assertIn(frase, texto_de(previa["front"]))
-                self.assertIn("pm-tocar", previa["front"])
-                self.assertEqual(frase in texto_de(previa["back"]), estilos.estilo(lang, nivel).get("repete_a_frase", True), "a Frase no verso")
+        em_cada_estilo(self, self.conferir_a_frase_e_o_botao_de_audio)
 
     def test_a_previa_de_cada_estilo_mostra_no_verso_as_partes_do_nivel_e_so_elas(self):
-        for lang, nivel in ESTILOS:
-            with self.subTest(lang=lang, nivel=nivel):
-                previa = previa_do_cartao.previa_do_exemplo(self.adaptador(SO_O_DEFAULT), lang, nivel)
-                verso = texto_de(previa["back"].split("<hr id=answer>")[-1])
-                campos, nomes = previa_do_cartao.campos_do_exemplo(lang, nivel), estilos.idioma(lang)["campos"]
-                for parte in estilos.estilo(lang, nivel)["verso"]:
-                    if parte not in ("imagem", "palavra"):
-                        self.assertIn(texto_de(campos[nomes[parte]]), verso, parte)
-                for parte in estilos.DADOS["idiomas"][lang]["ordem_do_verso"]:
-                    if parte not in estilos.estilo(lang, nivel)["verso"]:
-                        self.assertNotIn(parte, [chave for chave in nomes if nomes[chave] in campos], parte)
+        em_cada_estilo(self, self.conferir_as_partes_do_verso)
 
     def test_o_iniciante_do_ingles_explica_em_portugues_o_intermediario_define_e_o_avancado_define_em_ingles(self):
         versos = {nivel: texto_de(previa_do_cartao.previa_do_exemplo(self.adaptador(SO_O_DEFAULT), "en", nivel)["back"].split("<hr id=answer>")[1])

@@ -16,8 +16,9 @@ for (const exemplo of daExtensao) {
     if (exemplo.contexto.perfil !== undefined) fakes.anki.abrirPerfil(exemplo.contexto.perfil);
     if (exemplo.contexto.falhaNoPerfil) fakes.anki.falharLeituraDoPerfil();
     if (exemplo.contexto.openai) fakes.anki.responderOpenAI(exemplo.contexto.openai);
-    if (exemplo.contexto.chaveNaConexao) fakes.anki.guardarChaveNaConexao(exemplo.contexto.chaveNaConexao, exemplo.contexto.versaoNaConexao || 0,
-      exemplo.contexto.contaNaConexao ?? null, exemplo.contexto.emNaConexao || 0, exemplo.contexto.naoEnviada ?? true);
+    if (exemplo.contexto.chaveNaConexao) fakes.anki.guardarChaveNaConexao(exemplo.contexto.chaveNaConexao, {
+      versao: exemplo.contexto.versaoNaConexao || 0, conta: exemplo.contexto.contaNaConexao ?? null,
+      em: exemplo.contexto.emNaConexao || 0, naoEnviada: exemplo.contexto.naoEnviada ?? true });
     if (!exemplo.contexto.chaveNaConexao && exemplo.contexto.versaoNaConexao) fakes.anki.guardarRemocaoNaConexao(exemplo.contexto.versaoNaConexao);
     if (exemplo.contexto.firebase) fakes.anki.responderFirebase(exemplo.contexto.firebase);
     if (exemplo.contexto.cofre === 'sem_escrita') fakes.anki.falharGravacaoDaChave();

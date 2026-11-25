@@ -11,7 +11,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import configuracao, janela, no_anki, registro, texto_da_janela
+from complemento import configuracao, inicio, janela, no_anki, registro, texto_da_janela
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria
 from complemento.test_envio import CHAVE, ID, INGLES, EnvioNoTeste, pedido
 from complemento.test_no_anki import AnkiDeMentira
@@ -297,7 +297,8 @@ class OItemNoMenuDoAnki(unittest.TestCase):
         anki.abrir("Usuário 1")
         qt = QtDeMentira()
         with tempfile.TemporaryDirectory() as pasta:
-            conexao = no_anki.ao_carregar(anki, os.path.join(pasta, "perpetualminer"), porta=0, abridor=None, ao_sincronizar=lambda c: None, qt=qt)
+            conexao = no_anki.ao_carregar(
+                anki, os.path.join(pasta, "perpetualminer"), inicio.Arredores(porta=0, abridor=None), no_anki.GanchosDoAnki(ao_sincronizar=lambda c: None, qt=qt))
             try:
                 qt.itens[0].clicar()
             finally:
@@ -314,7 +315,8 @@ class OItemNoMenuDoAnki(unittest.TestCase):
             dono.listen(1)
             try:
                 conexao = no_anki.ao_carregar(
-                    anki, os.path.join(pasta, "perpetualminer"), porta=dono.getsockname()[1], abridor=None, ao_sincronizar=lambda c: None, qt=qt)
+                    anki, os.path.join(pasta, "perpetualminer"), inicio.Arredores(porta=dono.getsockname()[1], abridor=None),
+                    no_anki.GanchosDoAnki(ao_sincronizar=lambda c: None, qt=qt))
             finally:
                 dono.close()
             qt.itens[0].clicar()
@@ -329,7 +331,8 @@ class OItemNoMenuDoAnki(unittest.TestCase):
         anki = AnkiDeMentira()
         with tempfile.TemporaryDirectory() as pasta:
             conexao = no_anki.ao_carregar(
-                anki, os.path.join(pasta, "perpetualminer"), porta=0, abridor=None, ao_sincronizar=lambda c: None, qt=QtQueQuebra())
+                anki, os.path.join(pasta, "perpetualminer"), inicio.Arredores(porta=0, abridor=None),
+                no_anki.GanchosDoAnki(ao_sincronizar=lambda c: None, qt=QtQueQuebra()))
             try:
                 subiu = conexao is not None
             finally:

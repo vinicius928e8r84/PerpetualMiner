@@ -42,8 +42,8 @@ async function pedirAoFake(fakeDaConexao, metodo, caminho, corpo = null) {
 const comO = (chave, preparar) => ({ quando: c => c[chave], preparar: (fake, c, google) => preparar(fake, c[chave], google) });
 const sempre = preparar => ({ quando: () => true, preparar });
 
-const guardarAChaveDoContexto = (fake, c) => fake.guardarChaveNaConexao(c.chaveNaConexao, c.versaoNaConexao || 0,
-  c.contaNaConexao ?? null, c.emNaConexao || 0, c.naoEnviada ?? true);
+const guardarAChaveDoContexto = (fake, c) => fake.guardarChaveNaConexao(c.chaveNaConexao, {
+  versao: c.versaoNaConexao || 0, conta: c.contaNaConexao ?? null, em: c.emNaConexao || 0, naoEnviada: c.naoEnviada ?? true });
 const soARemocaoNaConexao = c => !c.chaveNaConexao && c.versaoNaConexao;
 
 const PREPAROS_DO_CONTEXTO = [
@@ -241,4 +241,29 @@ function conferirOApagarTudoNaFrenteDaReal() {
   assert.strictEqual(naFrente(semResposta, 'POST', '/jobs/apagar-frases').recusar, undefined);
 }
 
-conferirOsExemplos().then(conferirACopiaDaChave).then(conferirAPortaDeTeste).then(conferirOApagarTudoNaFrenteDaReal).then(() => console.log('fake anki key tests passed')).catch(erro => { console.error(erro); process.exit(1); });
+function conferirAChaveGuardadaNaConexao() {
+  const naFrente = anki => anki.naFrente(
+    { method: () => 'POST', postData: () => '{}' }, new URL('http://127.0.0.1:8766/ia/estado')).fila;
+
+  const padrao = criarFakeAnki();
+  padrao.guardarChaveNaConexao('9f3a');
+  assert.strictEqual(padrao.chaveNaConexao(), 'sk-proj-guardada-antes-9f3a');
+  assert.deepStrictEqual(padrao.estadoDaChave(), { versao: 0, conta: null, em: 0, naoEnviada: true });
+  assert.deepStrictEqual(naFrente(padrao), [{ chave: { chave: 'sk-proj-guardada-antes-9f3a' } }]);
+
+  const completa = criarFakeAnki();
+  completa.guardarChaveNaConexao('bbbb', { versao: 42, conta: 'B', em: 101, naoEnviada: false });
+  assert.strictEqual(completa.chaveNaConexao(), 'sk-proj-guardada-antes-bbbb');
+  assert.deepStrictEqual(completa.estadoDaChave(), { versao: 42, conta: 'B', em: 101, naoEnviada: false });
+  assert.deepStrictEqual(naFrente(completa), [{ chave: { chave: 'sk-proj-guardada-antes-bbbb', versao: 42, conta: 'B', em: 101, naoEnviada: false } }]);
+
+  const soComVersao = criarFakeAnki();
+  soComVersao.guardarChaveNaConexao('wxyz', { versao: 7 });
+  assert.deepStrictEqual(soComVersao.estadoDaChave(), { versao: 7, conta: null, em: 0, naoEnviada: true });
+  assert.deepStrictEqual(naFrente(soComVersao), [{ chave: { versao: 7, chave: 'sk-proj-guardada-antes-wxyz' } }]);
+
+  soComVersao.esquecerAChave();
+  assert.deepStrictEqual([soComVersao.chaveNaConexao(), soComVersao.estadoDaChave().versao], [null, 0]);
+}
+
+conferirOsExemplos().then(conferirACopiaDaChave).then(conferirAChaveGuardadaNaConexao).then(conferirAPortaDeTeste).then(conferirOApagarTudoNaFrenteDaReal).then(() => console.log('fake anki key tests passed')).catch(erro => { console.error(erro); process.exit(1); });
