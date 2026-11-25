@@ -175,7 +175,35 @@ function seOChromeDeVerdadeJaTemArmazenamentoNadaMuda() {
   igual(aoCarregar, []);
 }
 
+const diaDe = deslocamento => {
+  const data = new Date();
+  data.setDate(data.getDate() - deslocamento);
+  return data.toLocaleDateString('pt-BR');
+};
+
+async function asSeisFrasesDeExemploSaemComTudoQueOPainelLe() {
+  const { chrome } = carregar();
+  const { frases } = await chrome.storage.local.get('frases');
+  igual(frases, [
+    { id: 1001, texto: "I'm not saying it's your fault, I'm saying it's your responsibility.", contexto: 'The Bear · T2 · E7', streaming: 'netflix', idioma: 'Inglês', data: diaDe(0), keywords: ['responsibility'], autoKeyword: 'responsibility' },
+    { id: 1002, texto: 'Мы с тобой одной крови — ты и я.', contexto: 'Маугли · cap. 3', streaming: 'livro', idioma: 'Russo', data: diaDe(0), keywords: ['крови'], autoKeyword: 'крови' },
+    { id: 1003, texto: 'The devil is in the details.', contexto: 'The Atlantic', streaming: 'web', idioma: 'Inglês', data: diaDe(1), status: 'exported', keywords: ['details'] },
+    { id: 1004, texto: 'Не всё то золото, что блестит.', contexto: 'Редакция · canal', streaming: 'youtube', idioma: 'Russo', data: diaDe(1), status: 'exported', keywords: ['золото'] },
+    { id: 1005, texto: 'All that glitters is not gold.', contexto: 'Shakespeare · O Mercador de Veneza', streaming: 'livro', idioma: 'Inglês', data: diaDe(2), keywords: ['glitters'] },
+    { id: 1006, texto: 'Тихая гавань проснулась раньше чаек.', contexto: 'Página fotografada · p. 42', streaming: 'manual', idioma: 'Russo', data: diaDe(3) },
+  ]);
+  igual(frases.map(frase => Object.keys(frase)), [
+    ['id', 'texto', 'contexto', 'streaming', 'idioma', 'data', 'keywords', 'autoKeyword'],
+    ['id', 'texto', 'contexto', 'streaming', 'idioma', 'data', 'keywords', 'autoKeyword'],
+    ['id', 'texto', 'contexto', 'streaming', 'idioma', 'data', 'status', 'keywords'],
+    ['id', 'texto', 'contexto', 'streaming', 'idioma', 'data', 'status', 'keywords'],
+    ['id', 'texto', 'contexto', 'streaming', 'idioma', 'data', 'keywords'],
+    ['id', 'texto', 'contexto', 'streaming', 'idioma', 'data'],
+  ]);
+}
+
 async function main() {
+  await asSeisFrasesDeExemploSaemComTudoQueOPainelLe();
   await oArmazenamentoLeComCopiasEOsPadroes();
   await aLeituraComCallbackChegaDepoisEDevolveNada();
   await gravarAvisaOsOuvintesComOValorAntigoEONovoESoDepois();
