@@ -26,7 +26,6 @@
 <body>
 <main class="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-10">
 
-<!-- ============ HEADER ============ -->
 <header class="space-y-3">
   <div class="text-xs uppercase tracking-widest opacity-60">Wayfinder · Redesign do front-end do PerpetualMiner · ticket de grilling</div>
   <h1 class="text-3xl font-bold">Auditoria &amp; inventário do front</h1>
@@ -40,7 +39,6 @@
   </div>
 </header>
 
-<!-- ============ IDENTITY STRIP ============ -->
 <section class="space-y-3">
   <h2 class="text-xl font-semibold">A identidade hoje: 5 marcas, 4 paletas</h2>
   <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
@@ -68,7 +66,6 @@
   <p class="text-sm opacity-70">Nada disso é decidido aqui — vira insumo do ticket <b>Identidade visual própria &amp; design system base</b>. Fonte única em todo lugar: Segoe UI/system-ui; zero variáveis CSS; o popup sozinho usa ~20 opacidades de ciano.</p>
 </section>
 
-<!-- ============ ROUND 2 ============ -->
 <section class="space-y-4">
   <div role="alert" class="alert alert-info alert-soft">
     <div>
@@ -83,7 +80,6 @@
   <div class="flex justify-end"><button class="btn btn-primary" id="queue-r2" type="button">Enfileirar rodada 2</button></div>
 </section>
 
-<!-- ============ QUESTIONS ============ -->
 <section class="space-y-4 opacity-80">
   <div>
     <h2 class="text-xl font-semibold">Rodada 1 — resolvida ✓</h2>
@@ -92,7 +88,6 @@
   <div id="questions" class="space-y-4"></div>
 </section>
 
-<!-- ============ INVENTORY ============ -->
 <section class="space-y-4">
   <div>
     <h2 class="text-xl font-semibold">Inventário anotado — veredito por item</h2>
@@ -102,7 +97,6 @@
   <div id="inv-tables"></div>
 </section>
 
-<!-- ============ BUGS ============ -->
 <section class="space-y-3">
   <h2 class="text-xl font-semibold">Bugs encontrados (fora do escopo deste mapa)</h2>
   <p class="text-sm opacity-70">O mapa é “zero mudança de comportamento”. Estes são defeitos reais que a auditoria expôs — não entram no redesign; a Q15 decide o que fazer com eles. Ordenados por gravidade.</p>
@@ -111,14 +105,12 @@
   </div>
 </section>
 
-<!-- ============ MESSAGES HANDOFF ============ -->
 <section class="space-y-3">
   <h2 class="text-xl font-semibold">“Mensagens que não dizem nada” — insumo para o ticket de Voz &amp; tom</h2>
   <p class="text-sm opacity-70">Só apontadas aqui (o ticket pede apontar). A reescrita é do ticket <b>Voz, tom &amp; catálogo de mensagens/estados</b>.</p>
   <div class="grid sm:grid-cols-2 gap-3" id="msgs"></div>
 </section>
 
-<!-- ============ FINAL ============ -->
 <section class="card bg-base-200">
   <div class="card-body gap-3">
     <h2 class="card-title">Algo que eu não vi?</h2>
@@ -135,7 +127,6 @@
 </main>
 
 <script>
-/* ===================== QUESTIONS ===================== */
 const Q = [
  {id:'Q0', t:'Para quem é este front?', b:'Muda o quanto de jargão/controle técnico é aceitável (TLD, Judge/Guard, jobId, debug bundle) e o que fazer com “Olá, Vinicius ;-;” fixo no HTML.',
   o:[['so-eu','Só eu (ferramenta pessoal). Técnico pode ficar, mas organizado.'],['eu-e-outros','Eu + outros aprendizes no futuro (Web Store): tudo precisa ser legível por leigo.'],['eu-agora','Só eu agora, mas o redesign já deve servir a outros depois.']], r:'eu-agora',
@@ -259,8 +250,6 @@ function queueQuestion(q, form) {
   form.querySelector('.q-queued').classList.remove('hidden');
 }
 
-/* ===================== INVENTORY ===================== */
-// [ref, item, o que faz / estado, status, veredito, destino/nota, pergunta]
 const INV = {
  'Popup': [
   ['P1–3','Cabeçalho: logo raio ciano + “PerpetualMiner” + “Minerador de legendas”','estático','working','reagrupa','→ nova identidade','Q0'],

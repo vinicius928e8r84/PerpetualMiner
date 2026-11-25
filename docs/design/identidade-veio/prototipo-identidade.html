@@ -1,20 +1,4 @@
 <!DOCTYPE html>
-<!--
-  PROTÓTIPO DESCARTÁVEL — não é código de produção.
-  Ticket wayfinder #3 "Identidade visual própria & design system base" (mapa #1).
-
-  Pergunta: qual identidade (marca, paleta, tipografia, linguagem de componentes)
-  o PerpetualMiner adota como fundação de todos os protótipos?
-
-  Plano: quatro direções radicalmente diferentes, trocáveis via ?variant=A|B|C|D,
-  mais ?variant=Z (lado a lado + veredito). ?theme=dark|light força o tema.
-  Setas ← → trocam a direção; T alterna o tema.
-
-  Conteúdo das telas segue a auditoria (#2): popup = cockpit de captura,
-  componente único de feedback in-page, estados Enviada ao Anki / Exportada.
-  Os textos são provisórios, porque o ticket "Voz, tom & catálogo" decide a redação final.
-  Todas as fontes têm cirílico (medido na API do Google Fonts em 2026-09-14).
--->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -30,7 +14,6 @@ body{background:#0b0b0c;-webkit-font-smoothing:antialiased}
 button{font:inherit;color:inherit}
 input,textarea,select{font:inherit}
 
-/* ───────── Base (tudo lê tokens; cada direção sobrescreve estrutura abaixo) ───────── */
 .sp{background:var(--bg);color:var(--text);font-family:var(--font-ui);font-size:13.5px;line-height:1.5;min-height:100vh;padding:28px 20px 120px;transition:background .2s,color .2s}
 .wrap{max-width:1180px;margin:0 auto}
 .muted{color:var(--muted)}
@@ -45,7 +28,6 @@ input,textarea,select{font:inherit}
 .lbl{font-size:11.5px;color:var(--muted);margin:0 0 8px;font-weight:600;letter-spacing:.02em}
 .note{font-size:12px;color:var(--muted);margin-top:10px}
 
-/* Hero */
 .hero{display:grid;grid-template-columns:auto 1fr;gap:28px;align-items:center}
 .hero .mark{width:112px;height:112px;flex:none}
 .hero-name{margin:0}
@@ -53,7 +35,6 @@ input,textarea,select{font:inherit}
 .hero-tags{margin-top:12px}
 @media (max-width:560px){.hero{grid-template-columns:1fr}}
 
-/* Marca na barra */
 .sizes{display:flex;align-items:flex-end;gap:22px;flex-wrap:wrap}
 .sizes figure{margin:0;text-align:center;font-size:11px;color:var(--muted)}
 .sizes figure svg,.sizes canvas{display:block;margin:0 auto 6px}
@@ -69,7 +50,6 @@ input,textarea,select{font:inherit}
 .chrome.light{background:#dee1e6;color:#1f1f1f}.chrome.light .tab.on,.chrome.light .bar{background:#fff}.chrome.light .omni{background:#eef1f4;color:#444}
 .chrome.dark{background:#1f2022;color:#e3e3e3}.chrome.dark .tab.on,.chrome.dark .bar{background:#35363a}.chrome.dark .omni{background:#202124;color:#bbb}
 
-/* Paleta */
 .sw{display:grid;grid-template-columns:repeat(auto-fill,minmax(122px,1fr));gap:10px}
 .sw div{border:1px solid var(--border);border-radius:var(--r);overflow:hidden;background:var(--surface);min-width:0}
 .sw i{display:block;height:46px}
@@ -82,14 +62,12 @@ input,textarea,select{font:inherit}
 .pass{background:var(--success-soft);color:var(--success)}
 .fail{background:var(--danger-soft);color:var(--danger)}
 
-/* Tipografia */
 .tscale>div{display:grid;grid-template-columns:120px 1fr;gap:14px;align-items:baseline;padding:9px 0;border-top:1px solid var(--border)}
 .tscale code{font:11px var(--font-mono);color:var(--muted)}
 .fam{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:12px;margin-bottom:14px}
 .fam>div{padding:14px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface)}
 .fam .aa{font-size:34px;line-height:1.1;margin:4px 0}
 
-/* Botões */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:8px 14px;font-weight:600;font-size:13px;border-radius:var(--r);border:1px solid transparent;cursor:pointer;white-space:nowrap;line-height:1.2;font-family:var(--font-ui)}
 .btn svg{width:15px;height:15px;flex:none}
 .btn-primary{background:var(--accent);color:var(--accent-ink)}
@@ -102,7 +80,6 @@ input,textarea,select{font:inherit}
 .btn-icon.danger:hover{color:var(--danger)}
 .btn:focus-visible,.btn-icon:focus-visible,.inp:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
-/* Inputs */
 .inp{background:var(--surface);color:var(--text);border:1px solid var(--border-strong);border-radius:var(--r-sm);padding:8px 11px;min-width:0;width:100%;font-size:13px;font-family:var(--font-ui)}
 .inp::placeholder{color:var(--muted)}
 .inp:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
@@ -112,7 +89,6 @@ input,textarea,select{font:inherit}
 textarea.inp{resize:vertical;min-height:58px}
 .fields{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr))}
 
-/* Toggle */
 .tg{display:inline-flex;align-items:center;gap:9px;cursor:pointer;user-select:none}
 .tg input{position:absolute;opacity:0;pointer-events:none}
 .tg .trk{position:relative;width:34px;height:20px;border-radius:999px;background:var(--surface-2);border:1px solid var(--border-strong);transition:.15s;flex:none}
@@ -122,7 +98,6 @@ textarea.inp{resize:vertical;min-height:58px}
 .tg input:focus-visible+.trk{outline:2px solid var(--accent);outline-offset:2px}
 .cb{accent-color:var(--accent);width:16px;height:16px;margin:0;flex:none}
 
-/* Badges */
 .bdg{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:3px 8px;border-radius:var(--r-badge);background:var(--surface-2);color:var(--muted);white-space:nowrap;line-height:1.3}
 .bdg svg{width:12px;height:12px}
 .bdg.ok{background:var(--success-soft);color:var(--success)}
@@ -131,7 +106,6 @@ textarea.inp{resize:vertical;min-height:58px}
 .bdg .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
 .kbd{font:600 11px var(--font-mono);padding:2px 6px;border:1px solid var(--border-strong);border-bottom-width:2px;border-radius:5px;background:var(--surface);color:var(--text)}
 
-/* Frase */
 .date-h{display:flex;align-items:center;gap:10px;font-size:11.5px;font-weight:700;color:var(--muted);margin:14px 0 8px;letter-spacing:.04em}
 .date-h::after{content:"";flex:1;height:1px;background:var(--border)}
 .ph{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start;padding:13px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:8px;min-width:0}
@@ -146,11 +120,9 @@ textarea.inp{resize:vertical;min-height:58px}
 .ph.done .ph-text{opacity:.62}
 @media (max-width:520px){.ph{grid-template-columns:auto 1fr}.ph-act{grid-column:2}}
 
-/* Barra contextual de seleção */
 .selbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:9px 10px 9px 14px;border-radius:var(--r);background:var(--surface-2);border:1px solid var(--border)}
 .selbar .count{font-weight:700;margin-right:auto}
 
-/* Modal */
 .scrim{background:var(--scrim);border-radius:var(--r-lg);padding:28px 16px;display:grid;place-items:center}
 .modal{width:min(100%,440px);background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow);padding:20px}
 .modal h4{margin:0 0 4px;font-size:17px;font-family:var(--font-display)}
@@ -160,13 +132,11 @@ textarea.inp{resize:vertical;min-height:58px}
 .stats span{font-size:11.5px;color:var(--muted)}
 .modal .actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;margin-top:16px}
 
-/* Estado vazio */
 .empty{text-align:center;padding:26px 16px;border:1px dashed var(--border-strong);border-radius:var(--r-lg)}
 .empty svg{width:40px;height:40px}
 .empty h5{margin:10px 0 4px;font-size:14.5px}
 .empty p{margin:0 auto 12px;color:var(--muted);max-width:36ch;font-size:12.5px}
 
-/* Feedback in-page (componente único, 3 variantes) */
 .fb{display:flex;gap:11px;align-items:flex-start;width:min(100%,320px);padding:11px 13px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);font-family:var(--font-ui)}
 .fb .ic{width:26px;height:26px;border-radius:var(--r-sm);display:grid;place-items:center;flex:none;background:var(--accent-soft);color:var(--accent-text)}
 .fb .ic svg{width:15px;height:15px}
@@ -174,7 +144,6 @@ textarea.inp{resize:vertical;min-height:58px}
 .fb p{margin:2px 0 0;font-size:12px;color:var(--muted);font-family:var(--font-phrase);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .fb .meta{margin-left:auto;font:600 11px var(--font-num);color:var(--muted);white-space:nowrap}
 
-/* Popup (340px real) */
 .pop{width:340px;max-width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:var(--shadow);font-family:var(--font-ui);font-size:13px}
 .pop-h{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border);background:var(--surface)}
 .pop-h svg{width:30px;height:30px}
@@ -193,7 +162,6 @@ textarea.inp{resize:vertical;min-height:58px}
 .last small{color:var(--muted);font-size:11px}
 .pop-f{padding:10px 16px;border-top:1px solid var(--border);font-size:11.5px;color:var(--muted);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 
-/* Overlay sobre vídeo */
 .video{position:relative;aspect-ratio:16/9;max-width:100%;border-radius:10px;overflow:hidden;background:radial-gradient(ellipse at 30% 40%,#3a3f4a 0,#1b1d22 55%,#0c0d10 100%)}
 .video .scene{position:absolute;inset:0;background:linear-gradient(160deg,rgba(255,170,90,.18),transparent 45%),linear-gradient(0deg,rgba(0,0,0,.55),transparent 40%)}
 .video .sub{position:absolute;left:50%;bottom:13%;transform:translateX(-50%);width:84%;text-align:center;color:#fff;font:600 clamp(13px,2.1vw,20px)/1.35 Arial,sans-serif;text-shadow:0 0 4px #000,0 2px 2px #000}
@@ -203,7 +171,6 @@ textarea.inp{resize:vertical;min-height:58px}
 .video .fb{position:absolute;right:3%;top:5%}
 @media (max-width:560px){.video .fb{display:none}}
 
-/* ───────── Direção A · Veio (mineral: grafite + ouro) ───────── */
 .v-A{--font-ui:'Manrope',system-ui,sans-serif;--font-display:'Manrope',system-ui,sans-serif;--font-phrase:'Manrope',system-ui,sans-serif;--font-mono:'JetBrains Mono',ui-monospace,monospace;--font-num:'JetBrains Mono',ui-monospace,monospace;--phrase-size:15px;--r:10px;--r-sm:8px;--r-lg:14px;--r-badge:6px;--fab-r:14px}
 .v-A .sec-h{font-size:11.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
 .v-A .sec-h::before{content:"";width:9px;height:9px;background:var(--accent);transform:rotate(45deg);flex:none}
@@ -218,7 +185,6 @@ textarea.inp{resize:vertical;min-height:58px}
 .v-A .fb{border-left:3px solid var(--accent)}
 .v-A .date-h{text-transform:uppercase;letter-spacing:.12em;font-size:10.5px}
 
-/* ───────── F · Veio travado = A + marca-texto da B + cursor da C + arredondamento da D ───────── */
 .v-F{--font-ui:'Manrope',system-ui,sans-serif;--font-display:'Manrope',system-ui,sans-serif;--font-phrase:'Manrope',system-ui,sans-serif;--font-mono:'JetBrains Mono',ui-monospace,monospace;--font-num:'JetBrains Mono',ui-monospace,monospace;--phrase-size:15px;--r:14px;--r-sm:10px;--r-lg:20px;--r-badge:999px;--fab-r:50%}
 .v-F .sec-h{font-size:11.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
 .v-F .sec-h::before{content:"";width:9px;height:9px;border-radius:2px;background:var(--accent);transform:rotate(45deg);flex:none}
@@ -242,7 +208,6 @@ textarea.inp{resize:vertical;min-height:58px}
 .v-F .date-h{text-transform:uppercase;letter-spacing:.12em;font-size:10.5px}
 @media (prefers-reduced-motion:reduce){.wm .cur{animation:none}}
 
-/* ───────── Direção B · Caderno (papel + tinta + marca-texto) ───────── */
 .v-B{--font-ui:'Inter',system-ui,sans-serif;--font-display:'Literata',Georgia,serif;--font-phrase:'Literata',Georgia,serif;--font-mono:'JetBrains Mono',ui-monospace,monospace;--font-num:'Inter',system-ui,sans-serif;--phrase-size:16.5px;--r:4px;--r-sm:3px;--r-lg:6px;--r-badge:3px;--fab-r:50%}
 .v-B .sec-h{font:italic 600 23px/1.2 var(--font-display);padding-bottom:10px;border-bottom:1px solid var(--border)}
 .v-B .hero-name{font:600 38px/1.05 var(--font-display);letter-spacing:-.015em}
@@ -270,7 +235,6 @@ textarea.inp{resize:vertical;min-height:58px}
 .v-B .fb p{font-style:italic}
 .v-B .modal h4{font-weight:600}
 
-/* ───────── Direção C · Sinal (herdeira do neon: preto + menta, mono) ───────── */
 .v-C{--font-ui:'IBM Plex Sans',system-ui,sans-serif;--font-display:'JetBrains Mono',ui-monospace,monospace;--font-phrase:'IBM Plex Sans',system-ui,sans-serif;--font-mono:'JetBrains Mono',ui-monospace,monospace;--font-num:'JetBrains Mono',ui-monospace,monospace;--phrase-size:15px;--r:3px;--r-sm:2px;--r-lg:4px;--r-badge:2px;--fab-r:6px}
 .v-C .sec-h{font:500 12px var(--font-mono);text-transform:uppercase;letter-spacing:.1em;color:var(--accent-text)}
 .v-C .sec-h::before{content:"//";color:var(--muted)}
@@ -299,7 +263,6 @@ textarea.inp{resize:vertical;min-height:58px}
 .v-C .pop .st{font:500 11px var(--font-mono);text-transform:uppercase;letter-spacing:.08em}
 .v-C .pop .st::before{content:">";color:var(--accent-text)}
 
-/* ───────── Direção D · Aurora (produto: índigo + violeta, pílulas) ───────── */
 .v-D{--font-ui:'Onest',system-ui,sans-serif;--font-display:'Unbounded','Onest',system-ui,sans-serif;--font-phrase:'Onest',system-ui,sans-serif;--font-mono:'JetBrains Mono',ui-monospace,monospace;--font-num:'Onest',system-ui,sans-serif;--phrase-size:15.5px;--r:14px;--r-sm:10px;--r-lg:20px;--r-badge:999px;--fab-r:50%}
 .v-D .sec-h{font:700 20px/1.2 var(--font-ui);letter-spacing:-.01em}
 .v-D .sec-h::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--brand-grad);flex:none}
@@ -328,7 +291,6 @@ textarea.inp{resize:vertical;min-height:58px}
 .v-D .modal{border-color:transparent}
 .v-D .am,.v-D .last{border-color:transparent}
 
-/* ───────── Visão geral (Z) ───────── */
 .z{background:#111214;color:#e8e8ea;font-family:'Inter',system-ui,sans-serif;min-height:100vh;padding:28px 20px 140px}
 .z h1{font-size:22px;margin:0 0 4px}
 .z .zsub{color:#9a9aa2;margin:0 0 22px;max-width:80ch}
@@ -347,7 +309,6 @@ textarea.inp{resize:vertical;min-height:58px}
 .verdict button{background:#e8e8ea;color:#111;border:0;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer}
 .verdict pre{white-space:pre-wrap;background:#0f1012;border:1px solid #2b2c31;border-radius:8px;padding:10px;font-size:12px}
 
-/* ───────── Switcher (não faz parte do design avaliado) ───────── */
 .pm-switcher{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:99;display:flex;align-items:center;gap:4px;background:#fff;color:#111;border:2px solid #111;border-radius:999px;padding:4px;box-shadow:0 10px 30px rgba(0,0,0,.45);font:600 12.5px/1 system-ui,sans-serif;max-width:calc(100vw - 24px)}
 .pm-switcher button{border:0;background:#111;color:#fff;border-radius:999px;height:30px;min-width:30px;padding:0 10px;cursor:pointer;font-weight:700}
 .pm-switcher .lab{padding:0 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -365,7 +326,6 @@ textarea.inp{resize:vertical;min-height:58px}
 </div>
 
 <script>
-/* ───────────────────────── Direções ───────────────────────── */
 const V = {
   A: {
     name: 'Veio', tag: 'Mineral · grafite + ouro',
@@ -431,8 +391,6 @@ const V = {
       <rect x="53" y="39" width="28" height="8" rx="4" fill="#6C4DF5"/><rect x="53" y="53" width="17" height="8" rx="4" fill="#6C4DF5"/></svg>`,
   },
 };
-/* Veredito do dono (2026-09-14): base A, escuro padrão + claro opcional,
-   pegar a marcação da B, a animaçãozinha da C e os arredondamentos da D. */
 V.F = {
   ...V.A,
   name: 'Veio', tag: 'fundação travada · A + marca-texto da B + cursor da C + arredondamento da D',
@@ -445,7 +403,6 @@ V.F = {
 };
 const ORDER = ['F', 'A', 'B', 'C', 'D', 'Z'];
 
-/* ───────────────────────── Dados de exemplo ───────────────────────── */
 const I = {
   netflix: '<path d="M4 4h16v16H4z"/><path d="M9 8l6 4-6 4z" fill="currentColor"/>',
   youtube: '<rect x="2" y="5" width="20" height="14" rx="4"/><path d="M10 9l5 3-5 3z" fill="currentColor"/>',
@@ -481,7 +438,6 @@ const FRASES = [
   {lang:'en', html:'The devil is in the details.', src:'web', title:'The Atlantic', det:'', state:'txt', sel:true},
 ];
 
-/* ───────────────────────── Tokens & contraste ───────────────────────── */
 function applyTokens(el, key, theme) {
   const t = V[key].t[theme];
   for (const [k, v] of Object.entries(t)) el.style.setProperty('--' + k, v);
@@ -503,7 +459,6 @@ const PAIRS = [
   ['Badge da toolbar (contador)', 'badge-fg', 'badge-bg', 4.5],
 ];
 
-/* ───────────────────────── Blocos ───────────────────────── */
 const chromeBar = (key, mode, n = '12') => `
   <div class="chrome ${mode}">
     <div class="tabs"><div class="tab on">${V[key].logo(16)}<span>Painel · PerpetualMiner</span></div><div class="tab">Netflix</div></div>
@@ -697,14 +652,13 @@ function overview() {
 function rasterize(root) {
   root.querySelectorAll('canvas[data-logo]').forEach(cv => {
     const k = cv.dataset.logo, s = +cv.dataset.size;
-    const svg = V[k].logo(s, 'r' + s).replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ');
+    const svg = V[k].logo(s, 'r' + s).replace('<svg ', '<svg xmlns="http:
     const img = new Image();
     img.onload = () => { const c = cv.getContext('2d'); c.clearRect(0, 0, s, s); c.drawImage(img, 0, 0, s, s); };
     img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
   });
 }
 
-/* ───────────────────────── Switcher ───────────────────────── */
 const app = document.getElementById('app');
 function state() {
   const p = new URLSearchParams(location.search);

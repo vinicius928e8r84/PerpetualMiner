@@ -1,19 +1,4 @@
 <!doctype html>
-<!--
-  PROTÓTIPO DESCARTÁVEL: shell do Painel (sidebar + navegação), identidade Veio.
-  Ticket: "Painel — arquitetura de informação & shell" (issue #6 do mapa #1).
-  Pergunta: com a IA já travada, como o shell deve PARECER? Três tratamentos
-  visuais do mesmo shell, trocados por ?variant=A|B|C (barra flutuante, ← →):
-    A · Plana      sidebar colada na borda, superfície sólida, abas em pílula
-    B · Ilhas      sidebar e conteúdo como painéis flutuantes, abas em controle segmentado
-    C · Editorial  sidebar sem fundo, só tipografia, item ativo grifado com marca-texto
-  A IA é a mesma nas três (Rodadas 1–2): Frases + Conexão com o Anki no topo,
-  Configurações no pé, uma página com endereços (#frases, #anki/custos,
-  #configuracoes/atalhos), trilho automático abaixo de 1000 px.
-  As telas profundas são ESBOÇO: cada uma tem o próprio ticket de protótipo.
-  Sem persistência: tudo em memória. Abrir com dois cliques ou `python3 -m http.server`.
-  Teclas: ← → trocam a variante · T alterna o tema.
--->
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
@@ -43,7 +28,6 @@ button,input,select{font:inherit;color:inherit}
 svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
 mark.kw{background:linear-gradient(transparent 50%,var(--kw-bg) 50%,var(--kw-bg) 94%,transparent 94%);color:var(--kw-fg);padding:0 1px}
 
-/* ---------- shell grid ---------- */
 .app{display:grid;grid-template-columns:232px minmax(0,1fr);min-height:100vh}
 .side{display:flex;flex-direction:column;gap:6px;padding:18px 12px;position:sticky;top:0;height:100vh;min-width:0}
 .brand{display:flex;align-items:center;gap:10px;padding:2px 8px 18px}
@@ -77,7 +61,6 @@ mark.kw{background:linear-gradient(transparent 50%,var(--kw-bg) 50%,var(--kw-bg)
 .area-head h1{font-size:22px;font-weight:700;margin:0;letter-spacing:-.01em}
 .sketch{font-size:10.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);border:1px dashed var(--border-strong);border-radius:999px;padding:2px 8px;margin-left:10px;vertical-align:4px}
 
-/* ---------- components ---------- */
 .btn{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:8px 16px;border:1px solid var(--border-strong);background:transparent;font-weight:600;cursor:pointer;white-space:nowrap}
 .btn:hover{border-color:var(--accent)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
@@ -105,7 +88,6 @@ mark.kw{background:linear-gradient(transparent 50%,var(--kw-bg) 50%,var(--kw-bg)
 .menu button{display:flex;gap:10px;align-items:center;width:100%;background:none;border:0;padding:8px 10px;border-radius:10px;cursor:pointer;text-align:left}
 .menu button:hover{background:var(--surface-2)}
 
-/* frases */
 .filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
 .filters .search{flex:1;min-width:180px;display:flex;align-items:center;gap:8px;border:1px solid var(--border-strong);border-radius:999px;padding:6px 12px;background:var(--bg)}
 .filters .search input{border:0;background:none;outline:none;flex:1;min-width:0}
@@ -123,7 +105,6 @@ mark.kw{background:linear-gradient(transparent 50%,var(--kw-bg) 50%,var(--kw-bg)
 .empty{text-align:center;padding:48px 20px;color:var(--muted);border:1px dashed var(--border-strong);border-radius:20px}
 .empty b{display:block;color:var(--text);font-size:16px;margin-bottom:6px}
 
-/* anki */
 .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
 .tabs a{text-decoration:none;color:var(--muted);font-weight:600;padding:6px 14px;border-radius:999px;background:var(--surface-2);font-size:13px;white-space:nowrap}
 .tabs a[aria-current=page]{background:var(--accent);color:var(--accent-ink)}
@@ -143,7 +124,6 @@ table.voc{width:100%;border-collapse:collapse;font-size:13px}
 table.voc td,table.voc th{padding:7px 8px;border-bottom:1px solid var(--border);text-align:left}
 table.voc th{color:var(--muted);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase}
 
-/* config */
 .cfg-card{scroll-margin-top:20px}
 .cfg-card.danger{border-color:color-mix(in srgb,var(--danger) 55%,var(--border))}
 .kbd{font-family:"JetBrains Mono",monospace;font-size:12px;border:1px solid var(--border-strong);border-bottom-width:2px;border-radius:8px;padding:1px 7px}
@@ -151,7 +131,6 @@ table.voc th{color:var(--muted);font-size:11.5px;letter-spacing:.1em;text-transf
 .flash{animation:flash 1.2s ease-out}
 @keyframes flash{0%{box-shadow:0 0 0 3px var(--accent)}100%{box-shadow:0 0 0 0 transparent}}
 
-/* modal */
 .scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);display:grid;place-items:center;z-index:50;padding:16px}
 .modal{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:22px;max-width:460px;width:100%;box-shadow:var(--shadow)}
 .modal h2{margin:0 0 6px;font-size:20px}
@@ -159,7 +138,6 @@ table.voc th{color:var(--muted);font-size:11.5px;letter-spacing:.1em;text-transf
 .modal .acts{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
 .modal .note{color:var(--muted);font-size:12px;margin:10px 0 0;text-align:right}
 
-/* ---------- rail (janela estreita) ---------- */
 .app.rail{grid-template-columns:72px minmax(0,1fr)}
 .app.rail .brand .name,.app.rail .nav .lbl,.app.rail .nav .count,.app.rail .chip .who{display:none}
 .app.rail .brand{justify-content:center;padding:2px 0 18px}
@@ -168,7 +146,6 @@ table.voc th{color:var(--muted);font-size:11.5px;letter-spacing:.1em;text-transf
 .app.rail .chip{justify-content:center;padding:8px 0}
 .app.rail .main{padding:22px 20px 110px}
 
-/* ============ VARIANTE B · Ilhas ============ */
 body.vB .app{grid-template-columns:248px minmax(0,1fr);padding:12px;gap:12px;background:var(--bg)}
 body.vB .app.rail{grid-template-columns:76px minmax(0,1fr)}
 body.vB .side{background:var(--surface);border:1px solid var(--border);border-radius:20px;height:calc(100vh - 24px);top:12px;box-shadow:var(--shadow)}
@@ -182,7 +159,6 @@ body.vB .tabs a{background:none}
 body.vB .tabs a[aria-current=page]{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.25)}
 body.vB .area-head{border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:18px}
 
-/* ============ VARIANTE C · Editorial ============ */
 body.vC .side{background:transparent;padding:26px 14px 18px 22px}
 body.vC .brand{padding:0 0 26px}
 body.vC .nav{gap:2px}
@@ -208,7 +184,6 @@ body.vC .app.rail .nav a svg{display:block}
 body.vC .app.rail .nav a{justify-content:center}
 body.vC .app.rail .main{padding:22px 20px 110px}
 
-/* ---------- ferramentas do protótipo (não fazem parte do design) ---------- */
 .proto{font-family:system-ui,sans-serif}
 .switcher{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);display:flex;align-items:center;gap:6px;background:#fff;color:#111;border-radius:999px;padding:6px;box-shadow:0 6px 24px rgba(0,0,0,.45);z-index:100;font:600 13px system-ui,sans-serif;max-width:calc(100vw - 24px)}
 .switcher button{border:0;background:#111;color:#fff;border-radius:999px;width:32px;height:32px;cursor:pointer;font-size:15px;flex:none}
@@ -257,7 +232,6 @@ body.vC .app.rail .main{padding:22px 20px 110px}
   </aside>
 
   <main class="main" id="main">
-    <!-- ===== FRASES ===== -->
     <section data-view="frases">
       <div class="area-head">
         <h1>Frases mineradas<span class="sketch">esboço</span></h1>
@@ -291,7 +265,6 @@ body.vC .app.rail .main{padding:22px 20px 110px}
       </div>
     </section>
 
-    <!-- ===== CONEXÃO COM O ANKI ===== -->
     <section data-view="anki" class="hidden">
       <div class="area-head">
         <h1>Conexão com o Anki<span class="sketch">esboço</span></h1>
@@ -374,7 +347,6 @@ body.vC .app.rail .main{padding:22px 20px 110px}
       </div>
     </section>
 
-    <!-- ===== CONFIGURAÇÕES ===== -->
     <section data-view="configuracoes" class="hidden">
       <div class="area-head"><h1>Configurações<span class="sketch">esboço</span></h1></div>
       <div class="stack">
@@ -398,7 +370,6 @@ body.vC .app.rail .main{padding:22px 20px 110px}
   </main>
 </div>
 
-<!-- modal de resumo do envio (abre em qualquer área: R2·Q3) -->
 <div class="scrim hidden" id="resumo" role="dialog" aria-modal="true" aria-labelledby="resumo-t">
   <div class="modal">
     <h2 id="resumo-t">Envio concluído em parte</h2>
@@ -408,7 +379,6 @@ body.vC .app.rail .main{padding:22px 20px 110px}
   </div>
 </div>
 
-<!-- ======= ferramentas do protótipo ======= -->
 <details class="lab proto" id="lab" open>
   <summary>⚙ Estados do protótipo</summary>
   <div class="body">
@@ -479,13 +449,11 @@ function applyState(){
   document.body.className='v'+S.variant;
   document.documentElement.dataset.theme=S.theme;
   $('#sw-label').textContent=`${S.variant} · ${VARIANTS[S.variant]}`;
-  // conexão
   const dot=$('#nav-dot');dot.className='dot'+(S.con==='off'?' off':S.con==='wait'?' wait':'');
   const t={on:'ligada',off:'desligada',wait:'conectando…'}[S.con];
   $('#nav-anki').title='Conexão com o Anki: '+t;dot.setAttribute('aria-label',t);
   $('#anki-banner').classList.toggle('hidden',S.con!=='off');
   $('#anki-stale').classList.toggle('hidden',S.con!=='off');
-  // conta
   const none=S.conta==='none';
   $('#chip-av').textContent=none?'?':'V';$('#chip-av').classList.toggle('none',none);
   $('#chip-name').textContent=none?'Sem conta':'Vinicius';
@@ -493,12 +461,10 @@ function applyState(){
   $('#chip-sync').textContent=sync;$('#chip-sync').classList.toggle('err',S.conta==='err');
   $('#cfg-in').classList.toggle('hidden',none);$('#cfg-out').classList.toggle('hidden',!none);
   $('#cfg-sync').textContent='Vinicius · '+(S.conta==='err'?'Sem sincronizar · as frases estão só neste computador':sync);
-  // frases
   $('#nav-count').textContent=S.frases.toLocaleString('pt-BR');
   $('#frases-full').classList.toggle('hidden',!S.frases);$('#frases-empty').classList.toggle('hidden',!!S.frases);
   $('#btn-apagar-tudo').textContent=S.frases?`Apagar todas as ${S.frases.toLocaleString('pt-BR')} frases`:'Nenhuma frase para apagar';
   $('#btn-apagar-tudo').disabled=!S.frases;
-  // janela
   const rail=S.win==='rail'||(S.win==='auto'&&innerWidth<1000);
   $('#app').classList.toggle('rail',rail);
   renderList();readout();
