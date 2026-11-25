@@ -7,6 +7,7 @@ const { lerHtml, acharTodos, canonicaDoFalso, impressaoDigital } = require('./ar
 const { prepararAPagina } = require('./painel_de_mentira.js');
 
 const IMPRESSAO_DA_PAGINA = 'aef21fc0f329462ae27f7caf702faab15db98dd970335f85b1e9aa6e7799150b';
+const IMPRESSAO_DA_AREA_DE_CONFIGURACOES = 'f93fd4b4eb4f91e69366935979e95a97a28cc8ea38a11ce5181aca9610279153';
 const IMPRESSAO_DOS_MODAIS = {
   'modal-contexto': 'bd673d6286754141c3f57dbedc93cf9711a28ec616c92bf613dea0a576201dc0',
   'modal-apagar': '5359af30deb5a2316833c57f5403e90954bda731260b19b5fde6dfe49c0d738f',
@@ -46,6 +47,12 @@ function osModaisDa(pagina) {
   return Object.fromEntries(acharTodos(pagina, ehModal).map(modal => [modal.atributos.id, impressaoDigital(modal)]));
 }
 
+const aAreaDeConfiguracoes = pagina => acharTodos(pagina, no => no.atributos?.['data-area'] === 'configuracoes')[0];
+
+function aAreaDeConfiguracoesTemASuaArvore() {
+  assert.strictEqual(impressaoDigital(aAreaDeConfiguracoes(aPaginaMontada())), IMPRESSAO_DA_AREA_DE_CONFIGURACOES);
+}
+
 function cadaModalTemASuaArvore() {
   assert.deepStrictEqual(osModaisDa(aPaginaMontada()), IMPRESSAO_DOS_MODAIS);
 }
@@ -66,6 +73,7 @@ function oEsqueletoCarregaAntesDoShellENaoDepoisDosModulos() {
   assert.ok(scripts.indexOf('esqueleto-modais.js') < scripts.indexOf('painel-shell.js'));
 }
 
+aAreaDeConfiguracoesTemASuaArvore();
 cadaModalTemASuaArvore();
 aPaginaInteiraTemAMesmaArvore();
 osModaisFicamEntreOCorpoEAPonteDoAbridor();
