@@ -4,6 +4,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 
+TAMANHO_MAXIMO = 65536
 FORMATO_DA_CHAVE = re.compile(r'[A-Za-z0-9._\-]{8,256}')
 
 
@@ -21,21 +22,28 @@ class NuvemIndisponivel(Exception):
         super().__init__('cloud_sync_failed')
 
 
+def _ler_a_resposta(pedido):
+    with urlopen(pedido, timeout=10) as resposta:
+        bruto = resposta.read(TAMANHO_MAXIMO + 1)
+    if len(bruto) > TAMANHO_MAXIMO:
+        raise NuvemIndisponivel(502)
+    return json.loads(bruto)
+
+
 class NuvemDaChave:
     def __init__(self, base, uid, token):
         self._url = '%s/usuarios/%s/segredos/openai' % (base.rstrip('/'), quote(uid, safe=''))
         self._token = token
 
-    def _pedir(self, metodo, dados=None):
+    def _montar_o_pedido(self, metodo, dados):
         corpo = None if dados is None else json.dumps(dados).encode('utf-8')
-        pedido = Request(self._url, data=corpo, method=metodo,
+        return Request(self._url, data=corpo, method=metodo,
             headers={'Authorization': 'Bearer ' + self._token, 'Content-Type': 'application/json'})
+
+    def _pedir(self, metodo, dados=None):
+        pedido = self._montar_o_pedido(metodo, dados)
         try:
-            with urlopen(pedido, timeout=10) as resposta:
-                bruto = resposta.read(65537)
-            if len(bruto) > 65536:
-                raise NuvemIndisponivel(502)
-            return json.loads(bruto)
+            return _ler_a_resposta(pedido)
         except HTTPError as erro:
             if metodo == 'GET' and erro.code == 404:
                 return None
