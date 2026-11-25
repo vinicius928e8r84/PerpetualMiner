@@ -1,6 +1,6 @@
 """O estado gravado de um Envio como máquina de estados (`estado_do_envio.py`): a situação que o arquivo diz, a tabela das
 transições, linha por linha, e o portão único (`Fila.mudar`) por onde todo escritor passa. O formato gravado não muda:
-`esperando` é `running` com `waiting`, e `apagado` é o Envio com `wiped`. O desenho: `docs/design/envio-no-complemento.md` § 3.
+`esperando` é `running` com `waiting`, e `apagado` é o Envio com `wiped`.
 
     python3.9 complemento/test_estado_do_envio.py
 """

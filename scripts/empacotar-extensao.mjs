@@ -15,27 +15,57 @@ const { conferir: conferirCommitVerde, modoDoAmbiente } = require('./ci/commit-v
 require('../lib/arquivos-da-extensao.js');
 const { arquivosDaExtensao } = globalThis.PerpetualMiner;
 
-async function validarManifesto(manifesto, arquivos) {
-  const erros = [];
-  if (manifesto.manifest_version !== 3) erros.push('manifest_version deve ser 3');
-  if (!manifesto.name || manifesto.name.length > 75) erros.push('name é obrigatório e tem no máximo 75 caracteres');
-  if (!manifesto.description || manifesto.description.length > 132) {
-    erros.push('description é obrigatória e tem no máximo 132 caracteres');
-  }
-  if (!/^\d{1,5}(\.\d{1,5}){0,3}$/.test(manifesto.version ?? '')) {
-    erros.push('version deve ter de 1 a 4 números separados por ponto (ex.: 5.0.1)');
-  }
-  if (!manifesto.icons?.['128']) erros.push('falta o ícone de 128 px em icons');
+const VERSAO_VALIDA = /^\d{1,5}(\.\d{1,5}){0,3}$/;
 
+function manifestoNaoEhV3(manifesto) {
+  return manifesto.manifest_version !== 3;
+}
+
+function nomeInvalido(manifesto) {
+  return !manifesto.name || manifesto.name.length > 75;
+}
+
+function descricaoInvalida(manifesto) {
+  return !manifesto.description || manifesto.description.length > 132;
+}
+
+function versaoInvalida(manifesto) {
+  return !VERSAO_VALIDA.test(manifesto.version ?? '');
+}
+
+function semIconeDe128(manifesto) {
+  return !manifesto.icons?.['128'];
+}
+
+const REGRAS_DO_MANIFESTO = [
+  [manifestoNaoEhV3, 'manifest_version deve ser 3'],
+  [nomeInvalido, 'name é obrigatório e tem no máximo 75 caracteres'],
+  [descricaoInvalida, 'description é obrigatória e tem no máximo 132 caracteres'],
+  [versaoInvalida, 'version deve ter de 1 a 4 números separados por ponto (ex.: 5.0.1)'],
+  [semIconeDe128, 'falta o ícone de 128 px em icons'],
+];
+
+function errosDoManifesto(manifesto) {
+  return REGRAS_DO_MANIFESTO.filter(([falha]) => falha(manifesto)).map(([, erro]) => erro);
+}
+
+function errosDeReferencia(referenciados, arquivos) {
   const noPacote = new Set(arquivos);
+  return referenciados
+    .filter(arquivo => !noPacote.has(arquivo))
+    .map(arquivo => `referenciado mas fora do pacote (ou inexistente): ${arquivo}`);
+}
+
+function errosDeRuntime(arquivos) {
+  return arquivos
+    .filter(arquivo => PASTAS_QUE_NAO_SAO_RUNTIME.includes(arquivo.split('/')[0]))
+    .map(arquivo => `não é de runtime: ${arquivo}`);
+}
+
+async function validarManifesto(manifesto, arquivos) {
   const lerTexto = async caminho => fs.readFileSync(path.join(RAIZ, caminho), 'utf8');
-  for (const arquivo of await arquivosDaExtensao(lerTexto)) {
-    if (!noPacote.has(arquivo)) erros.push(`referenciado mas fora do pacote (ou inexistente): ${arquivo}`);
-  }
-  for (const arquivo of arquivos) {
-    if (PASTAS_QUE_NAO_SAO_RUNTIME.includes(arquivo.split('/')[0])) erros.push(`não é de runtime: ${arquivo}`);
-  }
-  return erros;
+  const referenciados = await arquivosDaExtensao(lerTexto);
+  return [...errosDoManifesto(manifesto), ...errosDeReferencia(referenciados, arquivos), ...errosDeRuntime(arquivos)];
 }
 
 const TABELA_CRC = Uint32Array.from({ length: 256 }, (_, n) => {

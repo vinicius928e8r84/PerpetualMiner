@@ -4,7 +4,7 @@ What the reviewer enforces on a change. Each rule points to where it is explaine
 
 ## Open the surface's skill first
 
-The rules that cross surfaces are in `docs/arquitetura.md` and the role of each file in `docs/arquivos/`; the architecture of each surface lives in a project skill (`.claude/skills/<name>/SKILL.md`). When the diff touches a surface, open its skill before you review or change it, even if you are not "changing" the surface itself (a rename in a shared file, a copy edit, a test): the skill says what the surface shows, the IDs it implements, what it stores and which test holds its visual reference.
+The decisions are in `docs/adr/` and the role of each file in `docs/arquivos/`; the architecture of each surface lives in a project skill (`.claude/skills/<name>/SKILL.md`). When the diff touches a surface, open its skill before you review or change it, even if you are not "changing" the surface itself (a rename in a shared file, a copy edit, a test): the skill says what the surface shows, the IDs it implements, what it stores and which test holds its visual reference.
 
 | The diff touches | Open |
 |------|------|
@@ -18,20 +18,20 @@ The rules that cross surfaces are in `docs/arquitetura.md` and the role of each 
 | `overlay/overlay.js`, `overlay/overlay.css`, `content.js` (the caption and selection capture and the answer on screen) | `overlay` |
 | `e2e/fixtures.js`, `e2e/fakes/`, `e2e/pages/`, `e2e/vitrine/`, `e2e/tests/*-visual.spec.js` | `e2e-suite` |
 
-A surface not in this table (the panel shell, sync, storage, the service worker) is still described in `docs/arquitetura.md` itself.
+A surface not in this table (the panel shell, sync, storage, the service worker) is described by its code and by `docs/adr/`.
 
 ## UI copy and look
 
-1. **UI copy comes from the Voice catalog by ID** (`textoDaVoz('MIN-08')`), for new or rewritten copy. The only literals a surface may write are `palavra:`, `auto:` and `Detalhes`, which the base components write themselves. Source: `docs/arquitetura.md` § Shared base and the `veio-componentes` skill ("Copy does not live in the components").
+1. **UI copy comes from the Voice catalog by ID** (`textoDaVoz('MIN-08')`), for new or rewritten copy. The only literals a surface may write are `palavra:`, `auto:` and `Detalhes`, which the base components write themselves. Source: the `veio-componentes` skill ("Copy does not live in the components").
 2. **Colors, font sizes, radii and durations are tokens**, used as `var(--veio-…)` from `veio/tokens.css`; a new value becomes a token there. The exceptions (the icon SVGs, the badge colors in `background.js`, and the size and radius of the toolbar-badge imitation in the showcase) are the ones documented in `veio/README.md` § Como usar; no others.
 3. **Each component exists once** (`veio/componentes.css` + `veio/componentes.js`): the toast is for success only; an error that asks for an action is `montarAviso` with Detalhes; danger has two variants (`--perigo` opens the modal, `--perigo-cheio` confirms inside it); the browser's `confirm()`, `alert()` and `prompt()` fail rule `dialogo-nativo`. Two approved exceptions stay: FOT-18 in Minerar de uma foto (Descartar confirms inside the modal with contour, `confirmarComContorno: true`) and ADD-06 (an aviso with an action and no Detalhes, by the owner's decision; the cause is in the Conta & sync card). Source: the `veio-componentes` skill (danger variants) and the `painel-frases` skill (§ Minerar frases, ADD-06).
 4. **The DOM is built with nodes, and text from the page or the phrase goes in as text, never as HTML** (`escreverFrase`, `textContent`); rule `html-cru` fails `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `createContextualFragment` and `document.write` in the extension's JS. Source: the `veio-componentes` skill ("The highlighted Word").
-5. **Language is compared with `PerpetualMiner.IDIOMAS` and detected with `detectarIdioma`**, never with a loose `'Russo'`/`'Inglês'` string or a new detector. Source: `docs/arquitetura.md` § Shared base.
-6. **Status on screen says the true current state** (rule C8 of the Voice); a doc or a test must not pin a state that contradicts it. Source: `docs/design/voz/README.md` (C8).
+5. **Language is compared with `PerpetualMiner.IDIOMAS` and detected with `detectarIdioma`**, never with a loose `'Russo'`/`'Inglês'` string or a new detector.
+6. **Status on screen says the true current state**; a doc or a test must not pin a state that contradicts it.
 
 ## Storage
 
-7. **Reading and rewriting `frases`:** every write goes through an operation of `PerpetualMiner.Historico` (`lib/historico.js`), in the service worker, on a page and in `lib/`; a missing operation is added there, and it reads `frases` again inside the lock and changes only what was asked (source: `docs/arquitetura.md` § Write Serialization). Never write back a snapshot taken before an upload or a call to the Conexão: a stale snapshot loses phrases.
+7. **Reading and rewriting `frases`:** every write goes through an operation of `PerpetualMiner.Historico` (`lib/historico.js`), in the service worker, on a page and in `lib/`; a missing operation is added there, and it reads `frases` again inside the lock and changes only what was asked (source: `lib/historico.js` and the `verificar-historico` skill). Never write back a snapshot taken before an upload or a call to the Conexão: a stale snapshot loses phrases.
 
 ## Tests
 
@@ -41,7 +41,7 @@ A surface not in this table (the panel shell, sync, storage, the service worker)
 
 ## New files
 
-11. **A new file gets its row in a table of `docs/arquivos/` and is loaded where it is used**: `content_scripts` in `manifest.json`, `importScripts` in `background.js`, and a `<script>` in each page. `scripts/arquivos-do-pacote.js` and `lib/arquivos-da-extensao.js` decide what ships in the Chrome Web Store package. Source: `docs/arquivos/` and `docs/arquitetura.md` § Shared base.
+11. **A new file gets its row in a table of `docs/arquivos/` and is loaded where it is used**: `content_scripts` in `manifest.json`, `importScripts` in `background.js`, and a `<script>` in each page. `scripts/arquivos-do-pacote.js` and `lib/arquivos-da-extensao.js` decide what ships in the Chrome Web Store package. Source: `docs/arquivos/`.
 
 ## The gate
 

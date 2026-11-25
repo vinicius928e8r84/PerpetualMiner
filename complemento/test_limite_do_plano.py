@@ -1,6 +1,6 @@
 """O limite do plano do ChatGPT no Envio (#158), visto de fora: o plano recusa por limite de uso, o Envio espera sem falhar (o estado diz
 `waiting: plan_limit`), volta sozinho quando o plano libera, e a pessoa pode pedir Tentar de novo agora ou Usar a minha chave (o que falta
-vai pela chave). Nada disso refaz um Cartão que já está no Anki. O desenho do login: `docs/design/login-do-chatgpt.md`.
+vai pela chave). Nada disso refaz um Cartão que já está no Anki.
 
     python3.9 complemento/test_limite_do_plano.py
 """

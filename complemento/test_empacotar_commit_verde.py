@@ -1,4 +1,4 @@
-"""A conferência de commit verde do `empacotar.py` (`scripts/ci/commit-verde.js`): ver `docs/commit-verde.md`."""
+"""A conferência de commit verde do `empacotar.py` (`scripts/ci/commit-verde.js`)."""
 
 import io
 import os

@@ -37,15 +37,23 @@ def _instante(valor):
     return quando if quando.tzinfo else quando.astimezone()
 
 
+def _id_do_json(nome):
+    return nome[:-5] if nome.endswith(".json") and id_valido(nome[:-5]) else None
+
+
+def _e_arquivo_de_verdade(caminho):
+    return os.path.isfile(caminho) and not os.path.islink(caminho)
+
+
 def _json_soltos(pasta):
     """Os `<jobId>.json` que são arquivos de verdade em `pasta` (sem seguir link), na ordem."""
     if not os.path.isdir(pasta):
         return []
     soltos = []
     for nome in sorted(os.listdir(pasta)):
-        caminho = os.path.join(pasta, nome)
-        if nome.endswith(".json") and id_valido(nome[:-5]) and os.path.isfile(caminho) and not os.path.islink(caminho):
-            soltos.append(nome[:-5])
+        job_id = _id_do_json(nome)
+        if job_id is not None and _e_arquivo_de_verdade(os.path.join(pasta, nome)):
+            soltos.append(job_id)
     return soltos
 
 
@@ -90,21 +98,41 @@ def _tirar_o_link(caminho):
         os.rmdir(caminho)
 
 
-def _apagar_o_envio(fila, job_id):
+def _guardar_a_ficha(fila, job_id):
     pedido = fila.pedido(job_id)
     if pedido is not None:
         gravar_json(fila.arquivo_da_ficha(job_id), ficha_do_envio(fila.item_da_fila(job_id) or {}, pedido, fila.estado(job_id)))
+
+
+def _e_o_item_do_envio(item, job_id):
+    return isinstance(item, dict) and item.get("jobId") == job_id
+
+
+def _tirar_da_fila(fila, job_id):
     ordem = fila.ordem()
-    if any(item.get("jobId") == job_id for item in ordem if isinstance(item, dict)):
-        gravar_json(fila._arquivo_da_fila(), {"jobs": [item for item in ordem if not (isinstance(item, dict) and item.get("jobId") == job_id)]})
-    apagar(fila._arquivo_do_pedido(job_id))
+    if any(_e_o_item_do_envio(item, job_id) for item in ordem):
+        gravar_json(fila._arquivo_da_fila(), {"jobs": [item for item in ordem if not _e_o_item_do_envio(item, job_id)]})
+
+
+def _esvaziar_e_tirar_a_pasta(pasta):
+    for nome in sorted(os.listdir(pasta)):
+        apagar(os.path.join(pasta, nome))
+    os.rmdir(pasta)
+
+
+def _apagar_a_pasta_dos_textos(fila, job_id):
     pasta = fila.pasta_dos_textos(job_id)
     if _e_link(fila, job_id):
         _tirar_o_link(pasta)
     elif os.path.isdir(pasta):
-        for nome in sorted(os.listdir(pasta)):
-            apagar(os.path.join(pasta, nome))
-        os.rmdir(pasta)
+        _esvaziar_e_tirar_a_pasta(pasta)
+
+
+def _apagar_o_envio(fila, job_id):
+    _guardar_a_ficha(fila, job_id)
+    _tirar_da_fila(fila, job_id)
+    apagar(fila._arquivo_do_pedido(job_id))
+    _apagar_a_pasta_dos_textos(fila, job_id)
     apagar(fila._arquivo_do_estado(job_id))
 
 

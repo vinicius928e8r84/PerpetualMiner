@@ -5,7 +5,7 @@ description: "Use when changing or reviewing the Veio base components (`veio/com
 
 # Veio base components
 
-Notes from the old `CLAUDE.md` § Architecture. Cross-surface rules: `docs/arquitetura.md`; files: `docs/arquivos/`.
+Notes from the old `CLAUDE.md` § Architecture. Decisions: `docs/adr/`; files: `docs/arquivos/`.
 
 ### Base components (`veio/componentes.css` + `veio/componentes.js`)
 
