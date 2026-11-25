@@ -1,7 +1,3 @@
-"""The real Conexão (complemento.servidor.Conexao) outside Anki, on a free port, with the repo's fake OpenAI
-and Firestore and an in-memory collection (Baralhos "Inglês" and "Русский", the note type "Básico" with "Frente" and "Verso"; the Envio adds its own note type per language),
-with the Envio's worker thread on. Logs like the product (`registro.criar`): `<pasta>/logs/complemento.log`. Writes {"porta", "pasta"} to argv[2] when ready; runs until killed.
-Usage: conexao-real.py <repo> <ready.json>"""
 import json, os, sys, tempfile, time
 repo, pronto = sys.argv[1], sys.argv[2]
 sys.path.insert(0, repo)

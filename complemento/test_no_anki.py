@@ -1,8 +1,3 @@
-"""O adaptador que o `__init__.py` usa no Anki, com um `mw` de mentira, pelo HTTP.
-
-    python3.9 complemento/test_no_anki.py
-"""
-
 import http.client
 import json
 import os
@@ -31,8 +26,6 @@ def setUpModule():
 
 
 class AdaptadorDoAnki(ContratoDoAdaptadorDaColecao, ContratoDoPerfilFixo, ContratoDaCriacao, ContratoDaPrevia, unittest.TestCase):
-    """O adaptador do Anki passa pelos mesmos testes que o da memória."""
-
     def setUp(self):
         self.anki = None
         self.addCleanup(lambda: self.anki and self.anki.encerrar())
@@ -48,7 +41,6 @@ class AdaptadorDoAnki(ContratoDoAdaptadorDaColecao, ContratoDoPerfilFixo, Contra
         return no_anki.ColecaoDoAnki(self.anki)
 
     def navegador_aberto(self, colecao):
-        """O `aqt.dialogs` de mentira guarda a busca (`nid:<id>`); o `guid` volta pela coleção."""
         ids = [int(busca[0].split(":")[1]) for janela, _, busca in self.janelas_abertas if janela == "Browser"]
         return [self.anki.col._sqlite.execute("select guid from notes where id = ?", (nid,)).fetchone()[0] for nid in ids]
 
@@ -60,7 +52,6 @@ class AdaptadorDoAnki(ContratoDoAdaptadorDaColecao, ContratoDoPerfilFixo, Contra
         return dict(self.anki.col.arquivos_de_midia)
 
     def na_thread_principal(self, funcao):
-        """O gancho da revisão roda na thread principal do Anki, e a coleção do Anki de mentira anota o que a toca de fora dela."""
         resultado, pronto = {}, threading.Event()
 
         def rodar():

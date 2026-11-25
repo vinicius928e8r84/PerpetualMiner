@@ -185,7 +185,6 @@ function cliente(env) {
   };
 }
 
-/** A execução mais recente do check no head, ou null: sem ela o check obrigatório fica esperando para sempre. */
 async function execucaoDoCheck(pedir, head) {
   const { workflow_runs: execucoes } = await pedir('GET', `actions/workflows/${WORKFLOW}/runs?head_sha=${head}&per_page=20`);
   return execucoes.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))[0] || null;
@@ -195,7 +194,6 @@ const semExecucao = ({ numero, repo }) => '  O check "Registro da PR" não tem e
   + 'um commit ou uma edição, espere um minuto e confira de novo. Senão (a PR é de antes de o check existir na main), feche e reabra a PR: o head não muda, '
   + `e a revisão e a prova continuam valendo: gh pr close ${numero} -R ${repo} && gh pr reopen ${numero} -R ${repo}`;
 
-/** Roda o check de novo no head (um comentário não dispara o workflow) e diz o que fez. */
 async function rodarDeNovo(pedir, pr, qual) {
   const execucao = await execucaoDoCheck(pedir, pr.head);
   if (!execucao) return semExecucao(qual);

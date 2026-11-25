@@ -1,14 +1,7 @@
-const { detectarIdioma, Atalhos, Overlay, textoDaVoz, IDIOMAS, MineracaoDoDia, Mineracao, ContextoDoSite, LegendaDaPagina, LegendaDaAmazon } = PerpetualMiner;
+const { detectarIdioma, Atalhos, Overlay, textoDaVoz, IDIOMAS, Mineracao, ContextoDoSite, LegendaDaPagina, LegendaDaAmazon, MineracaoAutomaticaNaPagina } = PerpetualMiner;
 const { lugarDaLegenda, normalizarTexto, obterVideoAtivo, videoVisivel } = LegendaDaPagina;
 
-const AUTO_MINER_POLL_MS = 700;
-
 let _atalhos = { ...Atalhos.ATALHOS_PADRAO };
-let _autoMinerState = null;
-let _autoMinerLastText = '';
-let _autoMinerLastSentText = '';
-let _autoMinerStableSince = 0;
-let _idiomaDaLegenda = null;
 
 Atalhos.acompanharAtalhos(atalhos => {
   _atalhos = atalhos;
@@ -19,19 +12,11 @@ Atalhos.acompanharAtalhos(atalhos => {
 
 Overlay.aoClicar(evento => minerarLegenda(evento));
 
-chrome.runtime.sendMessage({ type: 'AUTO_MINER_GET_STATE' }, response => {
-  if (!chrome.runtime.lastError && response?.state) {
-    _autoMinerState = response.state;
-    atualizarAutoMinerBadge();
-  }
+const mineracaoAutomatica = MineracaoAutomaticaNaPagina.criar({
+  lerLegenda, lugarDaLegenda, normalizar: normalizarTexto, codigoDoIdioma, siglaDoIdioma,
+  videoAtivo: obterVideoAtivo, contexto: extrairContexto, origem: origemDaPagina, palavraDe,
 });
-
-chrome.runtime.onMessage.addListener((message) => {
-  if (message?.type === MineracaoDoDia.MENSAGEM_ESTADO_MUDOU) {
-    _autoMinerState = message.state;
-    atualizarAutoMinerBadge();
-  }
-});
+mineracaoAutomatica.ligar();
 
 // Mouse — fase de captura, para interceptar antes de o navegador navegar (voltar
 // e avançar). O botão só é tomado quando há o que minerar: numa página sem
@@ -144,10 +129,6 @@ function codigoDoIdioma(idioma) {
   return idioma === IDIOMAS.RUSSO ? 'ru' : 'en';
 }
 
-function idiomaDoCodigo(lang) {
-  return lang === 'ru' ? IDIOMAS.RUSSO : IDIOMAS.INGLES;
-}
-
 /**
  * Copia a frase e diz se deu certo. Num iframe sem permissão de clipboard, pede
  * ao frame de cima (pelo service worker) e espera a resposta dele.
@@ -215,10 +196,8 @@ setInterval(() => {
     const container = containerDoPlayer(video);
     if (!container) return;
     Overlay.mostrarBotao(container);
-    atualizarAutoMinerBadge();
+    mineracaoAutomatica.atualizarSelo();
 }, 1000);
-
-setInterval(processarAutoMinerLegenda, AUTO_MINER_POLL_MS);
 
 // O botão vive no container do player, como antes: em tela cheia, só o que está
 // dentro do elemento em tela cheia aparece.
@@ -227,60 +206,6 @@ function containerDoPlayer(video) {
         return document.querySelector('#movie_player') || document.querySelector('.html5-video-player');
     }
     return video.parentElement;
-}
-
-function processarAutoMinerLegenda() {
-    if (!MineracaoDoDia.idiomasLigados(_autoMinerState).length) return;
-    const legenda = lerLegenda();
-    const texto = legenda?.texto || '';
-    acompanharIdiomaDaLegenda(texto);
-    if (!autoMinerAtivoNaPagina(texto)) return;
-    const normalizado = normalizarTexto(texto);
-    if (!normalizado || normalizado === _autoMinerLastSentText) return;
-
-    const agora = Date.now();
-    if (normalizado !== _autoMinerLastText) {
-        _autoMinerLastText = normalizado;
-        _autoMinerStableSince = agora;
-        return;
-    }
-    if (agora - _autoMinerStableSince < 650) return;
-
-    _autoMinerLastSentText = normalizado;
-    const contexto = extrairContexto();
-    const idioma = detectarIdioma(normalizado);
-    chrome.runtime.sendMessage({
-        type: 'AUTO_MINER_CANDIDATE',
-        texto: normalizado,
-        origem: contexto?.fonte || origemDaPagina() || 'auto',
-        contexto,
-        lang: codigoDoIdioma(idioma),
-    }, response => {
-        if (chrome.runtime.lastError || !response) return;
-        if (response.state) {
-            _autoMinerState = response.state;
-            atualizarAutoMinerBadge();
-        }
-        registrarAutoMinerEvento(response, normalizado);
-        if (response.action === 'saved') mostrarNotificacaoAutoMiner(normalizado, idioma, response, lugarDaLegenda(legenda));
-    });
-}
-
-function acompanharIdiomaDaLegenda(texto) {
-    if (!texto) return;
-    const lang = codigoDoIdioma(detectarIdioma(texto));
-    if (lang === _idiomaDaLegenda) return;
-    _idiomaDaLegenda = lang;
-    atualizarAutoMinerBadge();
-}
-
-function autoMinerAtivoNaPagina(legenda = '') {
-    if (!_autoMinerState?.settings) return false;
-    const video = obterVideoAtivo();
-    if (!video || video.paused || video.ended) return false;
-    if (!legenda) return false;
-    const lang = codigoDoIdioma(detectarIdioma(legenda));
-    return MineracaoDoDia.podeMinerarAgora(_autoMinerState, lang);
 }
 
 function lerLegenda() {
@@ -300,59 +225,6 @@ function lugarDaSelecao(texto) {
     return () => (normalizarTexto(faixa.toString()) === capturado ? faixa : null);
 }
 
-function atualizarAutoMinerBadge() {
-    const lang = idiomaDoContador();
-    const settings = lang && _autoMinerState?.settings?.[lang];
-    if (!settings?.enabled) {
-        Overlay.mostrarContador(null);
-        return;
-    }
-    const n = MineracaoDoDia.contagemDeHoje(_autoMinerState, lang);
-    const limite = settings.dailyLimit || 0;
-    const noLimite = MineracaoDoDia.noLimiteDeHoje(_autoMinerState, lang);
-    const idioma = idiomaDoCodigo(lang);
-    Overlay.mostrarContador({
-        texto: `${n}/${limite}`,
-        noLimite,
-        descricao: noLimite
-            ? textoDaVoz('MIN-11.noLimite', { idioma })
-            : textoDaVoz('MIN-11.contador', { idioma, n, limite }),
-        etiqueta: noLimite
-            ? textoDaVoz('MIN-11.etiquetaNoLimite')
-            : textoDaVoz('MIN-11.etiqueta', { n, limite }),
-    });
-}
-
-function idiomaDoContador() {
-    if (_idiomaDaLegenda) return _idiomaDaLegenda;
-    const ligados = MineracaoDoDia.idiomasLigados(_autoMinerState);
-    return ligados.length === 1 ? ligados[0] : null;
-}
-
-function registrarAutoMinerEvento(response, texto) {
-    if (response?.action !== 'skip') return;
-    atualizarAutoMinerBadge();
-    console.debug('[PerpetualMiner Auto]', response.reason || response.evaluation?.reason || '', texto);
-}
-
-function mostrarNotificacaoAutoMiner(texto, idioma, response, lugar) {
-    if (!Overlay.temBotao() || Overlay.mostrandoFalha()) return;
-    const lang = codigoDoIdioma(idioma);
-    const state = response.state;
-    const n = MineracaoDoDia.contagemDeHoje(state, lang);
-    const limite = state?.settings?.[lang]?.dailyLimit || 0;
-    Overlay.mostrar({
-        tipo: 'sucesso',
-        icone: 'automatica',
-        titulo: textoDaVoz('MIN-06'),
-        meta: `${siglaDoIdioma(idioma)} ${n}/${limite}`,
-        frase: texto,
-        ...palavraDe(response.frase?.keywords?.length ? response.frase : { keywords: response.evaluation?.keywords }),
-        lugar,
-        apagada: true,
-    });
-}
-
 function minerarLegenda(evento) {
     if (!evento?.isTrusted) return;
     if (!obterVideoAtivo()) {
@@ -366,7 +238,7 @@ function minerarLegenda(evento) {
         return;
     }
     const idioma = detectarIdioma(texto);
-    _idiomaDaLegenda = codigoDoIdioma(idioma);
+    mineracaoAutomatica.lembrarIdiomaDaLegenda(codigoDoIdioma(idioma));
     minerarCaptura({
         texto,
         origem:   origemDaPagina(),

@@ -1,14 +1,5 @@
 'use strict';
 
-// A Mineração automática na virada do dia (C2): a aba que bateu o limite ontem
-// volta a minerar quando o dia vira, sem recarregar a página.
-//
-// O Chrome não deixa o teste esperar a meia-noite, então ele faz o que a
-// meia-noite faz: o contador guardado passa a ser de ontem (a data deixa de ser
-// a de hoje) e o alarme da virada do dia dispara, como em badge-da-toolbar.spec.js.
-// O que se confere é o que a pessoa vê (o contador do botão) e o que fica
-// gravado (a Frase), com a aba aberta desde antes.
-
 const { test, expect } = require('../fixtures');
 const DRU = 'PerpetualMiner::Russo';
 const { fotografar, registrarEstado } = require('../evidencias-mineracao');
@@ -27,9 +18,6 @@ function diaDe(momento) {
   ].join('-');
 }
 
-// O relógio do Chrome não é dirigível pelo Playwright. Só durante a leitura inicial,
-// o relógio do worker ainda está em ontem: a aba recebe pelo canal real um estado de
-// ontem no limite, já em hoje, sem alarme ou outra publicação antes de minerar.
 async function congelarRelogioDoServiceWorker(extensao, momento) {
   await extensao.serviceWorker.evaluate(momento => {
     const RelogioReal = Date;

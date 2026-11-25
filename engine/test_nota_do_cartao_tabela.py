@@ -1,9 +1,3 @@
-"""A nota que cada texto de Cartão vira (`nota_do_cartao.py`), gravada com o código de antes da refatoração da Onda 3 do CodeScene.
-
-Cada linha é uma entrada e o que sai dela: a nota inteira, com os campos na ordem em que saem, nos Cartões dos testes da nota; a
-morfologia que se lê do texto, a explicação das cores e a frase pintada pelos pedaços das palavras.
-"""
-
 import unittest
 
 from nota_do_cartao import _explicacao_das_cores, _pintar, morfologia_do_texto

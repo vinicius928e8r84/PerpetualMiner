@@ -1,11 +1,3 @@
-"""O abridor que conserta sozinho (#152), o `meta.json` do Anki: liga o complemento que o Anki desativou.
-
-    python3.9 complemento/test_conserto_meta.py
-
-O mundo de mentira (`Mundo`: programas de mentira no lugar de `ps`, `curl`, `kill`, `sleep`, `date` e `open`, uma pasta temporária
-no lugar da do Anki) é o de `test_conserto.py`. Nenhum processo de verdade é fechado, nenhum Anki é aberto.
-"""
-
 import json
 import os
 import sys

@@ -1,8 +1,3 @@
-"""O complemento ao carregar: a pasta de dados, a Conexão no ar e a porta ocupada.
-
-    python3.9 complemento/test_inicio.py
-"""
-
 import contextlib
 import http.client
 import io

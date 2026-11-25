@@ -8,8 +8,8 @@ const id = 'sem-comentario-novo';
 
 const conserto = 'Apague o comentário. O que ele explicava sobre o código vai para o nome: renomeie a função ou a variável '
   + 'para carregar a ideia. A decisão (o porquê) vai para o corpo da PR, para docs/ ou, se for vocabulário do domínio, '
-  + 'para glossary.md: um comentário envelhece sozinho, e o agente seguinte copia a decisão específica como se fosse regra geral '
-  + '(CODING_STANDARDS.md regra 14). Passam só a linha 1 `#!`, as diretivas de ferramenta (`eslint-disable`/`eslint-enable`/`eslint-env`, '
+  + 'para glossary.md: um comentário envelhece sozinho, e o agente seguinte copia a decisão específica como se fosse regra geral. '
+  + 'Passam só a linha 1 `#!`, as diretivas de ferramenta (`eslint-disable`/`eslint-enable`/`eslint-env`, '
   + '`@ts-*`, `noqa`, `type: ignore`, `istanbul ignore`, `c8 ignore`, `prettier-ignore`, `coding:`), o cabeçalho de licença '
   + '(`SPDX-License-Identifier`, `Copyright`) e as marcas que outra regra lê (`exceção <regra> até …`, `Exceção de teste: …`, '
   + '`@estado-guardado`). Um comentário que já existia numa linha que a mudança tocou, reindentou ou moveu também conta: apague-o. Um caso que precisa ficar leva, na própria linha: '
@@ -31,6 +31,7 @@ const DIRETIVAS = [
   /^istanbul\s+ignore\s+(?:next|if|else|file)$/,
   /^c8\s+ignore\s+(?:next|start|stop|file)(?:\s+\d+)?$/,
   /^prettier-ignore(?:-start|-end)?$/,
+  /^shellcheck\s+(?:source|disable|enable|shell)=[\w,./-]+$/,
 ];
 const DECLARACAO_DE_CODIFICACAO = /^(?:-\*-\s*coding:\s*[\w.-]+\s*-\*-|coding[:=]\s*[\w.-]+)$/;
 const LINHAS_DA_LICENCA = [
@@ -55,12 +56,12 @@ const corpoDe = (texto, primeira, ultima) => {
   return (ultima ? semInicio.replace(FIM_DO_COMENTARIO, '') : semInicio).trim();
 };
 
-const idsDasOutrasRegras = arquivo => require('./verificar').REGRAS
-  .filter(regra => regra.id !== id && regra.seAplica(arquivo))
+const idsDasOutrasRegras = (arquivo, propria) => require('./verificar').REGRAS
+  .filter(regra => regra.id !== propria && regra.seAplica(arquivo))
   .map(regra => regra.id);
 
-function excecaoDeOutraRegra(arquivo) {
-  const ids = idsDasOutrasRegras(arquivo);
+function excecaoDeOutraRegra(arquivo, propria = id) {
+  const ids = idsDasOutrasRegras(arquivo, propria);
   if (ids.length === 0) return /(?!)/;
   return new RegExp(`^exce[çc][ãa]o\\s+(?:${ids.join('|')})\\s+at[ée]\\s+\\d{4}-\\d{2}-\\d{2}\\s*,\\s*aprovad[ao]\\s+por\\s+[^:]+:\\s*\\S`, 'i');
 }
@@ -271,4 +272,4 @@ function verificar(arquivo, fonte, raiz, base) {
     .flatMap(grupo => achadosDoGrupo(grupo, passa(arquivo, grupo, excecaoDeOutra) ? NENHUMA_LINHA : novas));
 }
 
-module.exports = { id, conserto, seAplica, verificar };
+module.exports = { id, conserto, seAplica, verificar, gruposDeComentario, passa, excecaoDeOutraRegra, resumo, ehDiretiva };

@@ -1,5 +1,3 @@
-"""A busca de fotos reais no Openverse, só com a biblioteca padrão: o que atravessa o HTTP e o que volta."""
-
 import unittest
 from urllib.parse import parse_qs, urlsplit
 

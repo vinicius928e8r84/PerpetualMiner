@@ -1,9 +1,3 @@
-"""As consultas de imagem de um Cartão (`image_queries.py`), gravadas com o código de antes da refatoração da Onda 3 do CodeScene.
-
-Cada linha é uma entrada e o que sai dela: as variantes de um texto em inglês, o bloco de consultas que o Cartão escreve, a lista que
-vai ao Openverse, o assunto visual e a Frase com o contexto.
-"""
-
 import unittest
 
 from image_queries import (

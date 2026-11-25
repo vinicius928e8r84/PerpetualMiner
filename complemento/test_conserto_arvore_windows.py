@@ -1,15 +1,3 @@
-"""O `consertar` do Windows acha o Anki pela árvore de processos (#152): o Anki do instalador novo (launcher) roda como
-`anki.exe` → `pythonw.exe` do `.venv` (um redirecionador, o `sys.executable` que o complemento anota) → `pythonw.exe` do
-CPython (o filho, com a mesma linha de comando, que é quem ouve a porta da Conexão).
-
-    python3.9 complemento/test_conserto_arvore_windows.py
-
-Roda o `.ps1` do abridor de verdade, no `pwsh`, num mundo de mentira: `Get-Process`, `Get-CimInstance`, `Get-NetTCPConnection`,
-`Stop-Process`, `Start-Process` e `Invoke-WebRequest` são trocados por uma tabela de processos que o teste escreve; nenhum processo
-real é lido nem sinalizado. Onde não houver `pwsh`, os testes são pulados, menos quando `EXIGIR_PWSH=1` (o CI): aí a falta
-do `pwsh` faz cada teste falhar, e o job não passa sem ter provado o `.ps1`.
-"""
-
 import json
 import os
 import shutil
@@ -90,7 +78,6 @@ function Start-Sleep { param($Seconds) }
 
 
 def _modelo(executavel):
-    """O trecho do `.ps1` com as variáveis e as funções (sem a leitura do Native Messaging), para o `pwsh` rodar."""
     conserto = conserto_do_anki.Conserto(executavel=executavel, complemento="C:\\nada", conexao=conserto_do_anki.ConexaoEsperada(porta=8766, espera_s=0))
     variaveis = conserto_do_anki.variaveis_do_ps1(conserto, "C:\\nada\\abridor", abridor._texto_do_powershell)
     return variaveis, conserto_do_anki.FUNCOES_DO_PS1
@@ -123,7 +110,6 @@ def que_sai_com_o_filho(um_processo):
 
 
 def anki_do_launcher(porta_no_filho=True):
-    """anki.exe (25340) → redirecionador (25384) → CPython (1648), o do PC do dono."""
     return [
         processo(25340, 4000, O_LAUNCHER),
         que_sai_com_o_filho(processo(25384, 25340, o_aqt(REDIRECIONADOR), criado="2026-10-29T10:00:01")),
@@ -164,7 +150,6 @@ class AnkiDoLauncherNoWindows(unittest.TestCase):
         return json.loads(saida.stdout.decode("utf-8").strip().splitlines()[-1])
 
     def reparar(self, mundo, executavel=REDIRECIONADOR):
-        """O `Consertar` de um Anki que não responde (a espera é zero). Devolve a situação, os sinais e as aberturas."""
         with tempfile.TemporaryDirectory() as complemento:
             shutil.copyfile(os.devnull, os.path.join(complemento, "__init__.py"))
             chamadas = "$complemento = '%s'\nConsertar" % complemento
@@ -321,8 +306,6 @@ class AnkiDoLauncherNoWindows(unittest.TestCase):
 
 
 class SemPwshOCiNaoPassaEmSilencio(unittest.TestCase):
-    """O CI exige `pwsh` (`EXIGIR_PWSH=1`): pulado não é prova."""
-
     def rodar_sem_pwsh(self, **ambiente):
         pasta_vazia = tempfile.mkdtemp()
         self.addCleanup(os.rmdir, pasta_vazia)

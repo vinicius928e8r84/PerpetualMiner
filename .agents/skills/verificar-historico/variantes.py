@@ -1,8 +1,3 @@
-"""Quebra o código real de propósito, roda o explorador e devolve o arquivo (git checkout).
-
-Uso: python3 -I .agents/skills/verificar-historico/variantes.py <pasta-de-saida>
-Cada variante deve FALHAR.
-"""
 import pathlib
 import subprocess
 import sys

@@ -1,12 +1,5 @@
 'use strict';
 
-// O card do plano do ChatGPT na aba Custos (#159, BRG-40): os Cartões que o plano fez, o que a chave teria cobrado por eles
-// (“Você economizou”) e Gerenciar uso ↗, porque a OpenAI não manda o % da cota ao app (se mandar, a barra entra aqui). Os números
-// vêm da Conexão com o Anki (`plan` de cada linha de `POST /analytics/jobs`); a linha sem Cartão do plano não tem `plan`.
-// `painel-anki.js` pede o card (`cartao`) com os Envios do idioma escolhido e o seu `dinheiro` (V7, BRG-26).
-// Aqui moram também as contas da aba (`SomaDosCustos`): as partes do custo de um Envio e a soma de vários, o total sempre a soma das partes que a tela
-// mostra (#9), com a correção das frases da Criação (#169, `correctionUsd`, só nas linhas de períodos que a tiveram) à parte da criação de cartões.
-
 (function (raiz) {
   const { elemento } = raiz.Veio;
   const { textoDaVoz } = raiz;

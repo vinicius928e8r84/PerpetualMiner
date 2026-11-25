@@ -9,5 +9,6 @@ Four directions were prototyped: A Veio (graphite and gold), B Caderno (paper an
 - **Motion.** Nothing moves unless it says something. The blinking cursor is the only ambient animation; every other motion signals a state.
 - **Contrast.** Text is at least 4.5:1 and control borders and icons at least 3:1, in both themes.
 - **Danger buttons come in two forms.** The outlined one opens the confirmation modal; the filled one confirms inside it.
+- **Fonts.** Every typeface of the identity has Cyrillic (measured on the Google Fonts API on 2026-09-14).
 
-The other three directions were not used as a base; what the owner liked in each is the loan listed above, and the prototype that compares the four (`docs/design/identidade-veio/prototipo-identidade.html`) remains the record of what they looked like.
+The other three directions were not used as a base; what the owner liked in each is the loan listed above, and the prototype that compares the four (`docs/design/identidade-veio/prototipo-identidade.html`) remains the record of what they looked like. The mix is the "locked" variant (`?variant=F`) of that prototype.

@@ -1,11 +1,3 @@
-"""A Fila do Envio vista pelas funções, sem servidor nem thread: os arquivos de `user_files` escritos à mão antes, a função chamada,
-e os arquivos e a resposta conferidos depois. Cada caso é uma linha de tabela: o que a pasta tinha, o que a função devolveu e o que a pasta
-ficou tendo. Aqui, o fim do Envio por `resolver`, o estado refeito do pedido e o Cartão que chegou ao Anki; o Apagar tudo e o Tentar de
-novo estão em `test_envio_fila_rotas.py`.
-
-    python3.9 complemento/test_envio_fila.py
-"""
-
 import copy
 import json
 import os
@@ -42,9 +34,6 @@ def um_estado(job_id, status, cartoes, **campos):
 
 
 class PastaDoEnvio:
-    """Uma `user_files` de verdade numa pasta temporária, com a Fila por cima, e o retrato de cada arquivo (o conteúdo e o inode:
-    `gravar_json` troca o arquivo inteiro, então um arquivo regravado com o mesmo texto também aparece)."""
-
     def __init__(self, pasta):
         self.dados = pasta_de_dados.preparar(pasta)
         self.fila = envio.Fila(self.dados, MOTOR)

@@ -4,12 +4,9 @@
   const { textoDaVoz } = raiz;
   const { mostrarToastDeSucesso, montarAviso, elemento } = raiz.Veio;
 
-  // Gerenciar uso: a página de uso do ChatGPT, onde a pessoa vê o uso e desconecta o app (doc do Sign in with ChatGPT,
-  // “Accounts and sessions” § Tracking usage; os endereços do login estão em complemento/chatgpt_oficial.py).
   const GERENCIAR_USO = 'https://chatgpt.com/settings/usage';
   const AUTORIZAR = 'https://auth.openai.com/api/accounts/authorize?';
   const RELER_A_CADA_MS = 2000;
-  // O aviso da primeira vez com o plano (as diretrizes da OpenAI o pedem, P2 do #101): dado uma vez neste computador, no storage da extensão.
   const AVISADO = 'pm_plano_do_chatgpt_avisado';
 
   const estado = { login: null, pedindo: false, erro: null, cancelado: false };

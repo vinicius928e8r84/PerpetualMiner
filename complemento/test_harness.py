@@ -1,10 +1,3 @@
-"""O harness da Conexão com o Anki vista de fora: a Conexão real numa porta livre (`ConexaoNoTeste`), o contrato que os exemplos leem e o que
-o servidor respondeu (apoio de `test_servidor.py`, `test_servidor_estados.py`, `test_servidor_repeticao.py` e dos testes que sobem a Conexão).
-
-Não é teste: fica fora do `.ankiaddon` pelo nome. `tearDownModule` fica aqui e cada arquivo de teste de rotas o importa: ao fim do arquivo,
-exige um exemplo do contrato para cada resposta registrada.
-"""
-
 import contextlib
 import http.client
 import json
@@ -66,7 +59,6 @@ def tearDownModule():
 
 
 def ler_o_contrato():
-    """O contrato inteiro: `exemplos.json` e os `exemplos-*.json` ao lado dele, juntos (o mesmo que `contrato/carregar.js` faz)."""
     with open(CONTRATO, encoding="utf-8") as arquivo:
         contrato = json.load(arquivo)
     pasta = os.path.dirname(CONTRATO)
@@ -87,7 +79,6 @@ def exemplos_do_contrato():
 
 
 def colecao_do_exemplo(contexto):
-    """A coleção do contexto do exemplo: a que ele nomeia em `colecoes`, ou o Anki sem coleção aberta."""
     nome = contexto.get("colecao")
     perfis = tuple(contexto.get("perfis", ("Usuário 1",)))
     if not nome:
@@ -96,13 +87,10 @@ def colecao_do_exemplo(contexto):
 
 
 def sucesso(status):
-    """O pedido deu certo: 200, ou 201 do Envio criado."""
     return 200 <= status < 300
 
 
 def deve_repetir(exemplo):
-    """Todo `POST` que dá 2xx é pedido uma segunda vez: igual na resposta e no que fica guardado, ou o exemplo declara
-    `"repetivel": false` e o `porque` (e o teste exige que repetir de fato mude algo)."""
     return exemplo["pedido"]["metodo"] == "POST" and sucesso(exemplo["resposta"]["status"])
 
 
@@ -122,22 +110,6 @@ def esperas_do_teste(do_plano, do_teto, do_contato):
 
 
 class ConexaoNoTeste:
-    """A Conexão real numa porta livre, com o perfil que o teste escolher e uma OpenAI de mentira.
-
-    `chave_na_conexao`: os 4 últimos caracteres de uma chave que a Conexão já guardava antes de o teste começar.
-    `colecao`: o adaptador da coleção do Anki.
-    `item`: o item de login de “Abrir o Anki com o computador” (`item_de_login_do_contexto`).
-    `adaptador_de_imagem`: converte imagem no lugar do Qt do Anki.
-    `trabalhando`: a thread do Envio ligada (`test_envio.py`; `espera_do_contato`: quanto ela espera a extensão, 0 aqui); desligada, os Envios ficam na fila.
-    `chatgpt`: `conectada` (o arquivo do login já existe) ou o que `situar_o_login` arma.
-    `perfil_marcado`: o perfil fixo que a Conexão marcou antes de o teste começar.
-    `voz_responde` (o `voz` dos exemplos): `aceita`, `recusada` (o Google dá 400), `fora_do_ar` (503), `chave_recusada` ou `sem_credito` (a OpenAI).
-    `modelo`: o cenário de `modelos` do contrato (#157); `hoje`: o relógio.
-    `teto`: o teto do mês (#160) que a pessoa já tinha posto.
-    `pareado`: o navegador de teste já se pareou, e `pedir` assina como ele.
-    `cofre_sem_escrita`: gravar a cópia da chave falha, e a Conexão responde o erro interno.
-    """
-
     def __init__(
         self,
         pasta,
@@ -237,8 +209,6 @@ class ConexaoNoTeste:
             handler.close()
 
     def pedir(self, metodo, caminho, origem=ORIGEM, cabecalhos=None, corpo=None, corpo_bruto=None, assinar=True):
-        """`corpo` é um JSON (dict) ou, para o pedido quebrado, os bytes que seguem; `corpo_bruto` é o texto ou os bytes como vierem.
-        Assinado como o navegador de teste pareado (`assinar=False`: como quem não se pareou); `cabecalhos` vêm por cima."""
         pedido = http.client.HTTPConnection("127.0.0.1", self.conexao.porta, timeout=30)
         enviados = {}
         if origem is not None:
@@ -270,7 +240,6 @@ class ConexaoNoTeste:
 
 @contextlib.contextmanager
 def conexao_do_exemplo(pasta, exemplo):
-    """A Conexão no contexto que o exemplo do contrato diz, já no ar; a nuvem de mentira já tem o que ele pede."""
     contexto = exemplo["contexto"]
     if contexto.get("fila"):
         semear_a_fila(pasta, ler_o_contrato()["filas"][contexto["fila"]])

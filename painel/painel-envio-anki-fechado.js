@@ -38,7 +38,6 @@
       document.getElementById('frases-avisos').append(aviso);
     }
 
-    /** O botão da faixa, no clique: pede a permissão ao Chrome (o gesto é daqui) e, dada, abre ou conserta. */
     function pedirAPermissao(botao) {
       if (botao.getAttribute('aria-disabled') === 'true' || !pedido) return;
       const este = pedido;

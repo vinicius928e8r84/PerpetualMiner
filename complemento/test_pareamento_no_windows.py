@@ -1,9 +1,3 @@
-"""O `pareamento.json` no Windows (#192): lá, trocar (`os.replace`) um arquivo que outra thread tem aberto para leitura dá `PermissionError`; no Linux e no Mac
-a troca passa. O teste faz o Linux se comportar como o Windows e põe uma leitura aberta no meio da gravação de um pareamento e de um Desconectar.
-
-    python3.9 complemento/test_pareamento_no_windows.py
-"""
-
 import logging
 import os
 import sys
@@ -32,10 +26,6 @@ class JanelaDeMentira:
 
 
 class OWindowsDeMentira:
-    """Os arquivos abertos para leitura em `pareamento.py`, e um `os.replace` que falha como no Windows quando há algum.
-
-    Na primeira leitura aberta, `gravacao` roda numa thread e o teste espera um pouco por ela: quem grava tem a leitura aberta na frente dele."""
-
     def __init__(self, gravacao):
         self.gravacao = gravacao
         self.abertos = 0

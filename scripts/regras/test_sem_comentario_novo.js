@@ -119,6 +119,7 @@ const com = (arquivo, texto, linhas, porque) => acusa(novo(arquivo, texto), linh
 sem('painel.js', juntar('// eslint-disable-next-line no-console', 'console.log(1);', '/* eslint-disable no-alert */', '/* eslint-env browser */'), 'eslint');
 sem('painel.js', juntar('// @ts-check', '// @ts-ignore', 'x();', '// @ts-expect-error', 'y();'), '@ts-*');
 sem('painel.js', juntar('/* istanbul ignore next */', 'x();', '/* c8 ignore start */', 'y();', '// prettier-ignore', 'const m = [1,2];'), 'istanbul, c8, prettier-ignore');
+sem('scripts/a.sh', juntar('# shellcheck source=lib.sh', '. ./lib.sh', '# shellcheck disable=SC2034,SC2086', 'x=1'), 'shellcheck');
 sem('complemento/a.py', juntar('# -*- coding: utf-8 -*-', 'import x  # noqa: E402', 'y = f()  # type: ignore[attr-defined]', '# coding=utf-8'), 'noqa, type: ignore, coding');
 sem('complemento/a.py', juntar('#!/usr/bin/env python3', '# SPDX-License-Identifier: MIT', 'x = 1'), 'shebang e SPDX');
 sem('painel.js', juntar('/*', ' * Copyright (c) 2026 Alguém', ' * SPDX-License-Identifier: MIT', ' */', 'x();'), 'cabeçalho de licença: o ano e o dono, o identificador SPDX');
@@ -159,6 +160,7 @@ com('painel.js', juntar('// coding: we cache this because the API is slow', 'x()
 com('painel.js', juntar('// coding: utf-8', 'x();'), [1], 'a linha de codificação só passa em Python, mesmo sem prosa');
 com('scripts/a.sh', juntar('#!/usr/bin/env bash', '# -*- coding: utf-8 -*-', 'x=1'), [2], 'a linha de codificação no shell não passa');
 com('complemento/a.py', juntar('# coding: we cache this because the API is slow', 'x = 1'), [1], 'coding: com prosa não é a linha de codificação');
+com('scripts/a.sh', juntar('# shellcheck source=lib.sh porque o caminho muda'), [1], 'a diretiva do shellcheck não leva prosa atrás');
 com('painel.js', juntar('x(); // noqa porque a API é lenta', 'y(); // @ts-ignore porque o tipo é assim'), [1, 2], 'a diretiva não leva prosa atrás');
 com('painel.js', juntar('x(); // retry 3x porque a API falha @estado-guardado'), [1], '@estado-guardado só vale nos fakes de e2e/fakes/');
 com('painel.js', juntar('// Exceção de teste: sem-estado-guardado — fora de e2e/tests/'), [1], 'a marca de teste só vale nos specs de e2e/tests/');

@@ -74,8 +74,6 @@ assert.match(semModulo.stderr, /ModuleNotFoundError: No module named 'httpx'/);
 assert.match(semModulo.stdout, /✗ engine: falta o módulo httpx; o grupo precisa de: pip install -r engine\/requirements\.txt/);
 assert.match(semModulo.stdout, /error: falharam: engine/);
 
-// A saída de erro dos grupos Python aparece enquanto o processo roda (o unittest escreve tudo nela): um teste
-// que trava não deixa o log vazio. O Python falso só termina bem quando o teste, ao ver a linha, cria o arquivo.
 {
   const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-ao-vivo-'));
   const liberar = path.join(pasta, 'liberar');

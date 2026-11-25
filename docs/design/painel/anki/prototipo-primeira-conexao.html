@@ -1,31 +1,4 @@
 <!doctype html>
-<!--
-  PROTÓTIPO DESCARTÁVEL: Painel · Conexão com o Anki · primeira conexão (ONB-16), identidade Veio,
-  shell “Ilhas” (travado).
-  Ticket: #74 "Protótipo: primeira conexão com o Anki (ONB-16)". Parte da revisão do PR #71.
-  Pergunta: como a área recebe quem NUNCA teve a Conexão com o Anki respondendo neste computador,
-  de um jeito que combine com o resto da experiência (Boas-vindas, Ilhas, Veio)? Hoje (PR #71) é
-  um card de texto: título, corpo, “Como ligar” com 3 passos e Detalhes com Copiar.
-  Três formas ESTRUTURALMENTE diferentes do mesmo estado, trocadas por ?variant=A|B|C (barra
-  flutuante, ← →):
-    A · Checklist vivo        uma coluna; 3 conferências que se marcam sozinhas, a pendente aberta
-    B · Igual às Boas-vindas  lista de passos à esquerda + card do passo (sobretítulo, título 24/800,
-                              bloco do controle, Voltar · Continuar), como a página Boas-vindas
-    C · Caminho ilustrado     frase → Conexão com o Anki → Anki, o elo que falta destacado;
-                              texto curto, comandos só no Detalhes
-  Fixo nas três: shell Ilhas, cabeçalho com [↻ Atualizar], faixa F1 (ENV-01 + Tentar de novo) em
-  cima enquanto desligada, faixa neutra BRG-02 enquanto conecta, e as abas voltando quando a
-  conexão responde pela primeira vez.
-  Cópia: catálogo da Voz (ONB-16, ONB-08, ONB-04, ENV-01, BRG-01/02/10/22). Cópia NOVA fica
-  sublinhada em pontilhado com a etiqueta “rascunho” (desliga no painel do protótipo).
-  VEREDITO (2026-09-29): B · Igual às Boas-vindas, travada, com o rodapé de A (confere sozinho +
-  continua funcionando / fica indisponível) e menos texto; sem ler o AnkiConnect antes da Conexão.
-  Abre em ?variant=B. A e C ficam só como registro das alternativas. A cópia nova da B entrou no
-  catálogo como partes do ONB-16 (apoio, passo1Titulo…3, esperando, conferindo, conferindoAgora,
-  continuaTitulo, continua, indisponivelTitulo, indisponivel, pronto, prontoApoio) e não é mais
-  marcada como rascunho.
-  Sem persistência: tudo em memória. Teclas: ← → trocam a variante · T alterna o tema.
--->
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
@@ -61,7 +34,6 @@ svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke
 @keyframes pop{0%{transform:scale(.6)}60%{transform:scale(1.15)}100%{transform:scale(1)}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
-/* ---------- shell Ilhas (travado) ---------- */
 .app{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:100vh;padding:12px;gap:12px}
 .side{display:flex;flex-direction:column;gap:6px;padding:18px 12px;position:sticky;top:12px;height:calc(100vh - 24px);min-width:0;background:var(--surface);border:1px solid var(--border);border-radius:20px;box-shadow:var(--shadow)}
 .brand{display:flex;align-items:center;gap:10px;padding:2px 8px 18px}
@@ -95,7 +67,6 @@ svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke
 .app.rail .chip{justify-content:center;padding:8px 0}
 .app.rail .main{padding:22px 20px 120px}
 
-/* ---------- componentes Veio ---------- */
 .btn{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:8px 16px;border:1px solid var(--border-strong);background:transparent;font-weight:600;cursor:pointer;white-space:nowrap}
 .btn:hover:not(:disabled){border-color:var(--accent)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
@@ -122,16 +93,13 @@ details.det[open] summary::before{transform:rotate(90deg)}
 @keyframes sk{to{background-position:-200% 0}}
 .toast{position:fixed;left:50%;bottom:74px;transform:translateX(-50%);background:var(--text);color:var(--bg);border-radius:999px;padding:9px 18px;font-weight:600;z-index:80;box-shadow:var(--shadow);font-size:13px}
 .spinner{width:16px;height:16px;border-radius:999px;border:2px solid var(--border-strong);border-top-color:var(--accent);animation:spin .8s linear infinite;display:inline-block;flex:none}
-/* cópia nova (rascunho): marcada até entrar no catálogo */
 .drafts .rasc{text-decoration:underline dotted color-mix(in srgb,var(--info) 80%,transparent);text-underline-offset:3px;text-decoration-thickness:1.5px}
 .rasc-tag{display:none}
 .drafts .rasc-tag{display:inline-block;font:700 9.5px/1.4 system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--info);border:1px dashed var(--info);border-radius:6px;padding:0 5px;margin-left:6px;vertical-align:2px}
 
-/* ---------- comum às variantes ---------- */
 .first h2.t{font-size:20px;font-weight:800;letter-spacing:-.01em;margin:0 0 6px}
 .first .lead{color:var(--muted);margin:0 0 16px;max-width:640px}
 
-/* ---------- A · Checklist vivo ---------- */
 .A{max-width:720px}
 .A-list{list-style:none;margin:0;padding:0;border:1px solid var(--border);border-radius:14px;background:var(--bg);overflow:hidden}
 .A-row{border-top:1px solid var(--border)}
@@ -154,7 +122,6 @@ details.det[open] summary::before{transform:rotate(90deg)}
 .A-why div{border:1px dashed var(--border-strong);border-radius:14px;padding:10px 14px;font-size:12.5px;color:var(--muted)}
 .A-why b{display:block;color:var(--text);font-size:13px;margin-bottom:2px}
 
-/* ---------- B · Igual às Boas-vindas ---------- */
 .B-top{text-align:left;margin-bottom:16px;max-width:900px}
 .B-grid{display:grid;grid-template-columns:230px minmax(0,1fr);gap:16px;max-width:900px}
 .B-list{list-style:none;margin:0;padding:12px;display:flex;flex-direction:column;gap:2px;background:var(--bg);border:1px solid var(--border);border-radius:20px;align-self:start}
@@ -180,7 +147,6 @@ details.det[open] summary::before{transform:rotate(90deg)}
 .B-unl li{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--muted);padding:2px 8px}
 @media (max-width:760px){.B-grid{grid-template-columns:minmax(0,1fr)}}
 
-/* ---------- C · Caminho ilustrado ---------- */
 .C{max-width:860px}
 .C-path{display:grid;grid-template-columns:minmax(0,170px) minmax(40px,1fr) minmax(0,170px) minmax(40px,1fr) minmax(0,170px);justify-content:center;align-items:center;padding:28px 22px 22px;border-radius:20px;background:var(--bg);border:1px solid var(--border);margin-bottom:18px}
 .node{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;min-width:0}
@@ -219,7 +185,6 @@ details.det[open] summary::before{transform:rotate(90deg)}
   .main{padding:18px 16px 120px}
 }
 
-/* ---------- ferramentas do protótipo (não fazem parte do design) ---------- */
 .proto{font-family:system-ui,sans-serif}
 .switcher{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);display:flex;align-items:center;gap:6px;background:#fff;color:#111;border-radius:999px;padding:6px;box-shadow:0 6px 24px rgba(0,0,0,.45);z-index:100;font:600 13px system-ui,sans-serif;max-width:calc(100vw - 24px)}
 .switcher button{border:0;background:#111;color:#fff;border-radius:999px;width:32px;height:32px;cursor:pointer;font-size:15px;flex:none}
@@ -282,7 +247,6 @@ details.det[open] summary::before{transform:rotate(90deg)}
 
 <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
 
-<!-- ======= ferramentas do protótipo ======= -->
 <details class="lab proto" id="lab" open>
   <summary>⚙ Estados do protótipo</summary>
   <div class="body">
@@ -306,7 +270,6 @@ details.det[open] summary::before{transform:rotate(90deg)}
 </div>
 
 <script>
-/* ---------------- catálogo da Voz (trechos usados aqui) ---------------- */
 const VOZ={
   'ONB-16.titulo':'Ainda não houve conexão neste computador',
   'ONB-16.corpo':'A Conexão com o Anki é um programa que roda neste computador, ao lado do Anki. É ela que cria os cartões e diz quais palavras você já conhece. Ela liga sozinha com o Windows depois de instalada uma vez. Sem ela, dá para minerar à vontade; o que fica indisponível é Enviar ao Anki e a mineração automática.',
@@ -332,9 +295,7 @@ const VOZ={
   'BRG-02':'Conectando ao Anki…','BRG-10':'Lendo os baralhos do Anki…','BRG-22':'Nenhum envio neste período.',
 };
 const v=(id,val={})=>VOZ[id].replace(/\{(\w+)\}/g,(_,k)=>val[k]);
-// “Sem ela…”: a segunda metade do ONB-16.corpo (o que falta sem ela, da F1)
 const SEM_ELA=v('ONB-16.corpo').slice(v('ONB-08.corpo').length+1);
-// cópia nova: sublinhado pontilhado + etiqueta “rascunho”
 const r=(t,tag=false)=>`<span class="rasc" title="Rascunho: cópia nova, ainda fora do catálogo da Voz">${t}</span>${tag?'<span class="rasc-tag">rascunho</span>':''}`;
 
 const VARIANTS={A:'Checklist vivo',B:'Igual às Boas-vindas · TRAVADA',C:'Caminho ilustrado'};
@@ -344,7 +305,6 @@ let qs=null;try{qs=new URLSearchParams(location.search);}catch(e){}
 const S={variant:VARIANTS[qs?.get('variant')]?qs.get('variant'):'B',theme:qs?.get('theme')==='light'?'light':'dark',
   anki:false,con:'off',phase:'first',retry:'off',win:'auto',drafts:true,bStep:null,poll:4,checking:false,det:{}};
 
-/* ---------------- ícones ---------------- */
 const IC={
   check:'<svg class="i" viewBox="0 0 24 24" style="width:14px;height:14px;stroke-width:3"><path d="M5 12l5 5 9-10"/></svg>',
   frases:'<svg class="i" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>',
@@ -353,7 +313,6 @@ const IC={
   send:'<svg class="i" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M4 12h14M13 6l6 6-6 6"/></svg>',
 };
 
-/* ---------------- pedaços compartilhados ---------------- */
 function comandos(){
   const open=S.det.cmd?' open':'';
   return `<details class="det" data-det="cmd"${open}><summary>Detalhes</summary><div class="cmds"><pre>${v('ONB-16.detalhes')}</pre><button class="btn sm" data-copiar>${v('ONB-16.copiar')}</button></div></details>`;
@@ -361,9 +320,7 @@ function comandos(){
 const conOn=()=>S.con==='on';
 const celebrating=()=>conOn()&&S.phase==='celebrate';
 
-/* ================= A · CHECKLIST VIVO ================= */
 function A(){
-  // 3 conferências, na ordem dos passos da F1; a primeira que falta fica aberta
   const w=S.con==='wait';
   const checks=[
     {id:'anki',name:r('Anki aberto, com o AnkiConnect'),ok:S.anki||conOn(),
@@ -395,9 +352,6 @@ function pollText(){
   return r(`Confere sozinho a cada 15 s · última vez há ${S.poll} s`,true);
 }
 
-/* ================= B · IGUAL ÀS BOAS-VINDAS (TRAVADA) ================= */
-// Toda a cópia da B vem do catálogo (ONB-16, ONB-08, ONB-04, ONB-03, ENV-01, BRG-01/02).
-// O Anki não é lido antes da Conexão: o passo 1 espera por ela e vira ✓ junto.
 const B_STEPS=[
   {t:'ONB-16.passo1Titulo',lead:'ONB-08.passo1',done:()=>conOn()},
   {t:'ONB-16.passo2Titulo',lead:'ONB-08.passo2',done:()=>conOn()},

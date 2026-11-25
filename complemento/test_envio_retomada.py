@@ -1,9 +1,3 @@
-"""O Envio que parou porque a pessoa fechou o Anki, visto de fora (complemento de `test_envio.py`, #151): ao abrir, ele continua
-sozinho; Continuar envio e Tentar de novo fazem só o que falta e nunca pagam a OpenAI por um Cartão que já está pronto.
-
-    python3.9 complemento/test_envio_retomada.py
-"""
-
 import json
 import os
 import sys
@@ -26,8 +20,6 @@ TRES_FRASES = (
 
 
 class AnkiQueFechaDepoisDeNotasGravadas(ColecaoEmMemoria):
-    """O Anki que a pessoa fecha no meio do Envio: depois de `notas` gravadas, a coleção deixa de estar disponível."""
-
     def __init__(self, descricao, notas):
         super().__init__(descricao)
         self.notas_ate_fechar = notas
@@ -49,7 +41,6 @@ def esperar_ate(condicao, limite=15):
 
 
 def palavras_pedidas(openai):
-    """A Palavra de cada pedido de texto feito à OpenAI de mentira, na ordem."""
     return [_palavra_do_pedido(corpo["messages"]) for _, corpo in chats(openai)]
 
 

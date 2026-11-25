@@ -1,8 +1,3 @@
-"""No push da main a versão ainda não foi dada: os 2 testes que a cobram ficam para o commit de versão e para o lançamento.
-
-    python3.9 complemento/test_versao_no_lancamento.py
-"""
-
 import os
 import subprocess
 import sys

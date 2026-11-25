@@ -1,0 +1,3 @@
+# The opener talks through a bridge frame
+
+The extension asks the opener (`lib/abridor.js`) to open the Anki through Chrome's native messaging, and the permission `nativeMessaging` is requested at runtime. The `chrome.runtime` of a page that was already loaded does not get a permission granted afterwards, but the one of a frame loaded afterwards does. So the panel loads `abridor/ponte.html`, an empty page without script, in a hidden frame and reloads it before every conversation with the opener, and talks through that frame's `chrome.runtime` (the page's own only when there is no frame). We accepted a hidden frame and a reload per conversation over asking the person to reload the panel after granting the permission.

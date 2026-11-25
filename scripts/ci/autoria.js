@@ -7,11 +7,9 @@ const EMAIL_DO_GITHUB = 'noreply@github.com';
 const FORMATO_DO_LOG = '%H%x09%ae%x09%ce%x09%s%x1f%B';
 const REFAZER_A_AUTORIA = 'git commit --amend --no-edit --reset-author';
 const REFAZER_SEM_COAUTOR = 'git log -1 --no-show-signature --format=%B | node scripts/ci/sem-coautor.js | git commit --amend --reset-author -F -';
-// O rebase que regrava mensagens: com o commit.cleanup=strip de quem roda, as linhas que começam com # sairiam delas.
 const REBASE_QUE_REGRAVA = 'git -c commit.cleanup=whitespace rebase';
 
 const BRANCOS = ' \t\r';
-/** O texto sem espaço, tabulação e \r nas pontas (num laço: a expressão equivalente retrocede ao quadrado numa linha com muitos espaços). */
 function aparar(texto) {
   let de = 0;
   let ate = texto.length;
@@ -70,7 +68,6 @@ function mensagem(fora, base) {
   ].join('\n');
 }
 
-/** As pontas que o clone não tem: o checkout raso do CI não traz a base. */
 function pontasAusentes(pontas) {
   return pontas.filter(ponta => spawnSync('git', ['rev-parse', '--verify', '--quiet', `${ponta}^{commit}`], { stdio: 'ignore' }).status !== 0);
 }
@@ -85,8 +82,6 @@ function main([base, head]) {
     console.log(`✗ ${ausentes.join(' e ')} não é um commit deste repositório; no CI, confira o fetch-depth do checkout (0 traz o histórico inteiro).`);
     return 2;
   }
-  // Sem teto de saída: as mensagens inteiras de uma branch longa passam do 1 MB que o Node dá por padrão.
-  // --no-show-signature: com log.showSignature ligado, a linha da assinatura viria antes de cada registro.
   const saida = execFileSync('git', ['log', '-z', '--no-show-signature', `--format=${FORMATO_DO_LOG}`, `${base}..${head}`], { encoding: 'utf8', maxBuffer: Infinity });
   const fora = commitsForaDaRegra(saida.split('\0'));
   if (fora.length) {

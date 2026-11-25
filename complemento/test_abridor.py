@@ -1,17 +1,3 @@
-"""O abridor: o script que a Conexão deixa no computador e registra como host de Native Messaging (#147).
-
-    python3.9 complemento/test_abridor.py
-
-Tudo roda numa pasta temporária: o script, o manifesto do host e o registro (a pasta de hosts do
-Chrome no Mac; no Windows, um registro de mentira no lugar do `winreg`). O script do Mac roda de
-verdade (`sh`), com a mensagem que o Chrome manda, pelos exemplos do contrato
-(`contrato/exemplos.json` › `abridor`); o `open` do Mac é trocado por um programa que anota o que
-recebeu. O do Windows (PowerShell) roda de verdade em `test_abridor_ps1.py`, onde houver `pwsh`; aqui se confere o que fica no disco.
-
-O que o Chrome e o Opera fazem com o host registrado (achar, chamar, abrir o Anki sem pergunta) só o
-dono vê, no ensaio dele (`complemento/LEIA-ME.md`, riscos 1 e 2 do #138).
-"""
-
 import json
 import os
 import shutil
@@ -34,16 +20,13 @@ with open(CONTRATO, encoding="utf-8") as _arquivo:
 HOST = DO_ABRIDOR["host"]
 ANKI_NO_LUGAR = ("no_lugar", "nao_abre")
 ORIGEM_DA_EXTENSAO = configuracao.ORIGENS_ACEITAS[0] + "/"
-# Opera GX 136 encontrou/chamou o host só na chave HKCU do Chrome no Windows real (W4, 2026-10-10).
-# A ajuda do Opera cita HKLM, não HKCU; esta constante segue o ensaio, não confirma outros builds.
 ONDE_O_CHROME_PROCURA_NO_WINDOWS = r"Software\Google\Chrome\NativeMessagingHosts"
 ONDE_O_OPERA_PROCURA_NO_WINDOWS = r"Software\Google\Chrome\NativeMessagingHosts"
 ANKI_DO_WINDOWS = r"C:\Users\Maria\AppData\Local\Programs\Anki\anki.exe"
 
 
 def conversar(script, mensagem, ambiente=None):
-    """Fala com o script como o Chrome fala: 4 bytes de tamanho (little-endian), o JSON; lê uma resposta do mesmo jeito."""
-    corpo = json.dumps(mensagem, separators=(",", ":")).encode("utf-8")  # como o Chrome serializa
+    corpo = json.dumps(mensagem, separators=(",", ":")).encode("utf-8")
     saida = subprocess.run(
         ["sh", script, ORIGEM_DA_EXTENSAO],
         input=struct.pack("<I", len(corpo)) + corpo,
@@ -60,15 +43,12 @@ def conversar(script, mensagem, ambiente=None):
 
 
 class OpenDeMentira:
-    """No lugar do `/usr/bin/open` do Mac: um programa que anota os argumentos que recebeu, um por linha."""
-
     def __init__(self, pasta):
         self.caminho = os.path.join(pasta, "open-de-mentira")
         self.anotados = os.path.join(pasta, "open-recebeu.txt")
         self.consegue(True)
 
     def consegue(self, abrir):
-        """Com `abrir` falso, anota os argumentos e sai com erro, como o `open` que não conseguiu abrir o Anki."""
         with open(self.caminho, "w", encoding="utf-8") as arquivo:
             arquivo.write('#!/bin/sh\nfor a in "$@"; do printf "%%s\\n" "$a"; done > "%s"\n%s'
                           % (self.anotados, "" if abrir else "exit 1\n"))
@@ -82,8 +62,6 @@ class OpenDeMentira:
 
 
 class RegistroDeMentira:
-    """O `HKEY_CURRENT_USER` do Windows: cada chave e o valor padrão dela."""
-
     def __init__(self):
         self.valores = {}
 
@@ -92,8 +70,6 @@ class RegistroDeMentira:
 
 
 class Pastas:
-    """Uma raiz temporária com o Anki do Mac (um `.app`), a pasta do abridor e a pasta de hosts do Chrome."""
-
     def __init__(self, raiz):
         self.app = os.path.join(raiz, "Applications", "Anki.app")
         os.makedirs(os.path.join(self.app, "Contents", "MacOS"))
@@ -263,7 +239,6 @@ class NoWindows(unittest.TestCase):
             return arquivo.read()
 
     def valor_do_ps1(self, variavel):
-        """O texto de `$variavel = '...'` no `.ps1`, como o PowerShell o lê (`''` é uma aspa)."""
         for linha in self.ps1().decode("utf-8-sig").splitlines():
             if linha.startswith("$%s = " % variavel):
                 valor = linha[len("$%s = " % variavel):]
@@ -353,8 +328,6 @@ class NoWindows(unittest.TestCase):
 
 
 class DesteComputador(unittest.TestCase):
-    """Onde cada sistema registra o host e como acha o Anki, pelo ambiente em que o complemento roda."""
-
     def test_no_mac_registra_na_pasta_de_hosts_do_chrome_do_usuario(self):
         este = abridor.deste_computador(
             computador=abridor.Computador(

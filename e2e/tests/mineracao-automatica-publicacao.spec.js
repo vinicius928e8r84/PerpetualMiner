@@ -25,7 +25,6 @@ async function prepararRussoNoLimite({ extensao, page, paginas }) {
 
 test('uma legenda avaliada grava o diagnóstico uma vez só, na forma completa do service worker', async ({ page, extensao, paginas }) => {
   await prepararRussoNoLimite({ extensao, page, paginas });
-  // `onChanged` do service worker vê a gravação de qualquer contexto, também a do content script.
   await extensao.serviceWorker.evaluate(() => {
     globalThis.__gravacoesDoDiagnostico = [];
     chrome.storage.onChanged.addListener(mudancas => {
@@ -37,7 +36,6 @@ test('uma legenda avaliada grava o diagnóstico uma vez só, na forma completa d
 
   await expect.poll(async () => (await extensao.frases()).map(frase => frase.texto)).toEqual([FRASE_RUSSA]);
   await expect(page.locator('perpetualminer-overlay .pm-contador')).toHaveText('3/3');
-  // Dá tempo de a resposta chegar ao content script, que antes gravava por cima.
   await page.waitForTimeout(500);
   const gravacoes = await extensao.serviceWorker.evaluate(() => globalThis.__gravacoesDoDiagnostico);
   expect(gravacoes).toHaveLength(1);

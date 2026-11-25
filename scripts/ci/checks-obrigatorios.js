@@ -1,9 +1,5 @@
 'use strict';
 
-// Os nomes dos checks que os workflows de PR produzem, para conferir contra a lista que a proteção da
-// main exige (checks-obrigatorios.json). O nome de um check é o `name` do job com a matriz já expandida;
-// sem `name`, o id do job, e uma matriz que o nome não cita entra entre parênteses, como o GitHub faz.
-
 const fs = require('fs');
 const path = require('path');
 const { lerYaml } = require('../yaml-de-workflow');

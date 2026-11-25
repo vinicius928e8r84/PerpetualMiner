@@ -1,0 +1,3 @@
+# The picture of a card is decided by heuristics, then a cheap classifier, then a real photo before a generated one
+
+The engine decides in order whether a keyword deserves a picture. First heuristics: a known abstract pattern (phrasal verb, idiom marker, abstract noun suffix) skips the image entirely, a concrete one is let through fast, and an uncertain one goes on. Then a classifier, GPT-4o-mini, answers one token (concrete or abstract) for about 0.001 cents, as a safety net for the edge cases the heuristics miss. Then, for a card that deserves a picture, a real photo (Openverse candidates judged by the vision model) comes before a generated image, which is the fallback and the only part that is paid per picture; `free_only` keeps a real photo or nothing.

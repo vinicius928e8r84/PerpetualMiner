@@ -1,12 +1,7 @@
-"""A conferência de uma resposta contra a do exemplo do contrato (a do fake do e2e é `e2e/fakes/diferenca-do-contrato.js`)."""
-
 import re
 
 
 def igual_ao_do_contrato(obtido, esperado):
-    """O JSON obtido é o do contrato; `"<agora>"` é qualquer instante ISO 8601 (Z), `"<url de autorização>"`, a do login do ChatGPT e
-    `"<áudio>"`, um áudio em base64 que não é vazio (o do Ouvir, #174). Do pareamento (#192): `"<segredo>"` e `"<prova>"` são 32 bytes em
-    base64 e `"<sessão>"`, 32 caracteres hexadecimais; o valor muda a cada pareamento e a cada subida da Conexão."""
     if esperado in ("<segredo>", "<prova>"):
         return isinstance(obtido, str) and bool(re.fullmatch(r"[A-Za-z0-9+/]{43}=", obtido))
     if esperado == "<sessão>":

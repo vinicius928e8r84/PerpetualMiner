@@ -1,8 +1,3 @@
-"""O `.ankiaddon` da extensão é o arquivo do AnkiWeb com o `mod` que o AnkiWeb dá à página (#503): `empacotar.py --mod-do-ankiweb`, com um AnkiWeb de mentira.
-
-    python3.9 complemento/test_mod_do_ankiweb.py
-"""
-
 import io
 import json
 import os
@@ -35,9 +30,6 @@ def zip_com(servidor, mod):
 
 
 class AnkiWebDeMentira:
-    """O download do AnkiWeb como ele é (conferido com `curl -sI`): HEAD em `/shared/download/<id>?v=2.1&p=250900` dá 303 com o `t=` (o `mod`
-    da página) na Location, que serve o zip enviado; fora disso, 404. `pedidos` guarda o que chegou."""
-
     def __init__(self, mod=MOD_DO_ANKIWEB, zip_do_ankiweb=b"", baixa=True):
         pedidos = self.pedidos = []
         local = "/svc/shared/download-addon/%s?t=%d&minpt=50&maxpt=260900&bidx=0" % (CODIGO, mod)
@@ -84,9 +76,6 @@ def ler(caminho):
 
 
 class ModDoAnkiWeb(unittest.TestCase):
-    """O `mod` do arquivo é o que o AnkiWeb dá à página depois do upload, não a hora em que o arquivo foi feito (#503): com outro número,
-    o Anki que instala pelo arquivo vê uma atualização para a mesma versão."""
-
     def test_o_mod_e_o_t_do_redirect_do_download_do_ankiweb(self):
         with AnkiWebDeMentira() as ankiweb:
             self.assertEqual(empacotar.mod_do_ankiweb(CODIGO, ankiweb.base), MOD_DO_ANKIWEB)

@@ -1,16 +1,9 @@
-"""
-image_real_first.py - The "real photo first" choice of a card's picture (Openverse candidates, GPT-vision judge,
-generated image as the fallback), cut out of `image_pipeline.py` to keep each file small. Nothing here is called
-directly: `ImagePipeline.real_first` hands `RealFirst` the run's pipeline, the card and its generation policy, and
-`choose` walks the steps (search, download, judge, compare with a generated image), writing one `image_pipeline` record.
-"""
-
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
-if __package__:  # inside the Anki add-on the engine is the package `complemento.motor`
+if __package__:
     from . import generate_images, google_images, image_judge
     from .image_queries import _card_phrase_and_context_from_text
 else:
@@ -22,8 +15,6 @@ else:
 
 @dataclass(frozen=True)
 class Card:
-    """The card whose picture is chosen: its stem (the file name and the cost record's keyword), the prompt of its
-    generated image ("" when the card has none) and where the picture is written."""
     stem: str
     prompt: str
     dest: Path
@@ -31,7 +22,6 @@ class Card:
 
 @dataclass(frozen=True)
 class GenerationPolicy:
-    """Whether the card may pay for a generated image: "normal" may, "free_only" keeps a real photo or nothing."""
     name: str = "normal"
     paid_generation_blocked_by_guard: bool = False
 
@@ -45,8 +35,6 @@ class GenerationPolicy:
 
 @dataclass(frozen=True)
 class Outcome:
-    """How the choice ended, as the record names it: where the picture came from ("real", "gerada", "skipped" or
-    "none"), why, and whether a generated image was asked for."""
     final_source: str
     result: str
     generated_attempted: bool
@@ -56,8 +44,6 @@ class Outcome:
 
 @dataclass
 class RealFirst:
-    """One card's "real photo first" choice. The steps fill the state the record reports: the queries searched, the
-    candidates collected and downloaded, the judge's best photo and the errors the judge returned."""
     pipeline: object
     card: Card
     policy: GenerationPolicy
@@ -82,7 +68,6 @@ class RealFirst:
         self.queries = self.pipeline.search_queries(self.card)
 
     def choose(self) -> bool:
-        """True when the card got a picture (a real photo or a generated image) at `card.dest`."""
         if self.policy.free_only and not self.queries:
             return self._leave_without_image(Outcome("skipped", "skipped_no_real_queries", False), {"best_real_score": 0})
         self._search()
@@ -190,7 +175,6 @@ class RealFirst:
         return self._keep_generated(gen_path, Outcome("gerada", "generated_defaulted", True), compared)
 
     def _without_real(self, reason: str) -> bool:
-        """No real photo to judge (none found, or none downloaded): free_only skips, otherwise the generated image."""
         if self.policy.free_only:
             outcome = Outcome("skipped", "skipped_real_not_found", False, skip_reason=reason)
             return self._leave_without_image(outcome, {"best_real_query": "", "best_real_score": 0})
@@ -203,7 +187,6 @@ class RealFirst:
         return True
 
     def _photo_to_keep(self) -> str:
-        """The judge's best photo, or the first one downloaded when the judge is off."""
         return (self.best_real or self.real_candidates[0])["path"]
 
     def _keep_real(self, outcome: Outcome, scores: Optional[dict] = None) -> bool:
@@ -221,7 +204,6 @@ class RealFirst:
         return False
 
     def _costs(self, final_source: str) -> dict:
-        """What the choice paid and what it saved against paying for a generated image."""
         cost = self.pipeline.generated_image_cost
         paid = cost if final_source == "gerada" else 0.0
         saved = {"real": cost, "skipped": cost if self.card.prompt else 0.0}.get(final_source, 0.0)

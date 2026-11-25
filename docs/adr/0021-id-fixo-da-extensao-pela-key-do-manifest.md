@@ -4,4 +4,6 @@
 
 The store zip leaves the `key` out (`scripts/empacotar-extensao.mjs`). A folder copy has to be a copy of the repository with the `key`, never an older one: loading it before the pull that brings the `key` keeps the old ID, and the storage of an extension is separate per ID.
 
+The store assigns its own key and may refuse the field, so `scripts/empacotar-extensao.mjs` takes out only that line and the rest of the file comes out identical. `testes/test_empacotar.js` checks both zips, and `e2e/tests/id-fixo.spec.js` checks the id.
+
 The accepted trade: any computer that loaded the extension before the `key` existed has the old ID and its own storage, and the Frases saved only in that browser do not appear under the new ID (the ones synced to a Conta come back on sign-in). The owner confirmed no installation with the old ID remains, so no migration is kept.

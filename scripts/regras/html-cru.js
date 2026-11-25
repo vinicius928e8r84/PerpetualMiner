@@ -5,7 +5,7 @@ const { ehJsDaExtensao, linhaDe, semComentariosJs } = require('./comum');
 const id = 'html-cru';
 
 const conserto = 'Monte o DOM com nós (`Veio.criar`, `Veio.elemento` e os componentes de veio/componentes.js) e ponha o texto com '
-  + '`textContent` ou `Veio.escreverFrase`: o texto da página ou da Frase nunca entra como HTML (CODING_STANDARDS.md regra 4).';
+  + '`textContent` ou `Veio.escreverFrase`: o texto da página ou da Frase nunca entra como HTML.';
 
 const seAplica = ehJsDaExtensao;
 

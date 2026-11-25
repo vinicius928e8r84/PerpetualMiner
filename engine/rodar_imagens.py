@@ -1,7 +1,5 @@
-"""Os testes de imagem do motor rodam isto: o que o Envio faz com cada linha `stem:prompt`, visto de fora."""
-
 import image_pipeline
-from image_queries import _build_card_google_queries  # noqa: F401 - os testes de imagem a pedem daqui
+from image_queries import _build_card_google_queries  # noqa: F401
 
 
 MADE, SKIPPED, NONE = "made", "skipped", "none"
@@ -28,8 +26,6 @@ def _picture_for(pipeline, stem: str, prompt: str, dest) -> str:
 
 
 def _run_images(pipeline, prompt_lines):
-    """What the Envio does with each `stem:prompt` line, seen from outside: the files made, the lines skipped and where each
-    picture came from. "1" is the real photo first; any other value generates the picture."""
     img_files: list[str] = []
     n_skipped = 0
     for line in prompt_lines:

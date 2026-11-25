@@ -1,10 +1,3 @@
-"""Um servidor HTTP local para os testes de imagem do motor: é a fronteira onde o teste decide o que a OpenAI e o Openverse respondem.
-
-Não é um teste: `ServidorDeMentira({caminho: resposta})`, em que `resposta` é `(status, corpo)` ou uma função de `(pedido)` que a devolve;
-`corpo` é `bytes` (como está), `str` (texto) ou um objeto JSON. `pedidos` guarda o que chegou: método, caminho com a busca,
-cabeçalhos e o corpo (JSON já lido, se for).
-"""
-
 import json
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer

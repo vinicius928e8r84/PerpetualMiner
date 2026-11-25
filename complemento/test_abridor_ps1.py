@@ -1,13 +1,3 @@
-"""O `.ps1` do abridor do Windows, rodado de verdade no PowerShell (`pwsh`) pelos exemplos do contrato (#235).
-
-    python3.9 complemento/test_abridor_ps1.py
-
-Mesma conferência que o `NoMac` de `test_abridor.py` faz com o `.sh`: cada exemplo de
-`contrato/exemplos.json` › `abridor`, `abrir` incluído. O Anki é um programa de mentira na pasta temporária, que
-anota os argumentos que recebeu; nada fora da pasta temporária roda. Sem `pwsh` (ou fora de um sistema POSIX,
-onde o Anki de mentira é um script `sh`) o teste é pulado.
-"""
-
 import json
 import os
 import shutil
@@ -26,13 +16,6 @@ from complemento.test_abridor import ANKI_NO_LUGAR, DO_ABRIDOR, RegistroDeMentir
 
 @unittest.skipUnless(shutil.which("pwsh") and os.name == "posix", "o .ps1 só roda aqui onde houver PowerShell (pwsh) num sistema POSIX")
 class OPs1NoPowerShell(unittest.TestCase):
-    """Onde há `pwsh`, o `.ps1` responde os exemplos do contrato (o Windows roda o PowerShell 5.1).
-
-    O Anki do `.ps1` é um programa de mentira na pasta temporária, que anota os argumentos que recebeu: o `abrir` do
-    `.ps1` o inicia como inicia o Anki (`Start-Process`). Sem permissão de execução ele não inicia: é o sistema sem
-    conseguir abrir o Anki.
-    """
-
     def setUp(self):
         self._raiz = tempfile.TemporaryDirectory()
         self.addCleanup(self._raiz.cleanup)
@@ -47,7 +30,6 @@ class OPs1NoPowerShell(unittest.TestCase):
         ).escrever(perfil)
 
     def anki_no_lugar(self, abre):
-        """Põe o Anki de mentira no lugar; com `abre` falso o sistema não consegue executá-lo."""
         with open(self.anki, "w", encoding="utf-8") as arquivo:
             arquivo.write('#!/bin/sh\nfor a in "$@"; do printf "%%s\\n" "$a"; done > "%s"\npwd -P > "%s"\n' % (self.anotados, self.diretorio))
         os.chmod(self.anki, 0o755 if abre else 0o644)
@@ -69,13 +51,12 @@ class OPs1NoPowerShell(unittest.TestCase):
         return json.loads(saida[4:].decode("utf-8"))
 
     def recebeu(self):
-        """Os argumentos que o Anki de mentira anotou (ele roda depois da resposta: espera um pouco); None se não rodou."""
         fim = time.monotonic() + 10
         while not os.path.exists(self.anotados) and time.monotonic() < fim:
             time.sleep(0.05)
         if not os.path.exists(self.anotados):
             return None
-        time.sleep(0.2)  # o Anki de mentira anota de uma vez; dá tempo de ele terminar a escrita
+        time.sleep(0.2)
         with open(self.anotados, encoding="utf-8") as arquivo:
             return arquivo.read().splitlines()
 

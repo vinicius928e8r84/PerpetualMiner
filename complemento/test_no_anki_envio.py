@@ -1,9 +1,3 @@
-"""O Envio pelo adaptador do Anki, do `POST /jobs` à nota e à mídia no sqlite da coleção de mentira, com a OpenAI, a voz do Google e o Openverse
-de mentira na fronteira HTTP.
-
-    python3.9 complemento/test_no_anki_envio.py
-"""
-
 import os
 import re
 import sys
@@ -26,8 +20,6 @@ def setUpModule():
 
 
 class EnvioGravadoNoAnki(SemRegistroReal, unittest.TestCase):
-    """O Envio pelo adaptador do Anki, do `POST /jobs` à nota no sqlite da coleção, com a OpenAI de mentira."""
-
     def test_uma_frase_vira_nota_com_o_audio_e_a_foto_na_colecao_gravada_pela_thread_principal(self):
         from complemento.test_openai_de_mentira import OpenAIDeMentira
         from complemento.test_voz_de_mentira import VozDeMentira

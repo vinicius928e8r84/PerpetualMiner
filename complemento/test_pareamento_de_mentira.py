@@ -1,9 +1,3 @@
-"""O navegador pareado dos testes: o segredo, a assinatura de cada pedido e a janela do Anki de mentira (apoio do harness `test_harness.py` e de `test_pareamento.py`).
-
-Os testes pedem à Conexão como a extensão pede: com a assinatura de um navegador que já se pareou (`CLIENTE`, `SEGREDO` em
-`user_files/pareamento.json`). O pedido de quem não se pareou, ou que assina errado, é o que `test_pareamento.py` confere.
-"""
-
 import base64
 import dataclasses
 import json
@@ -27,7 +21,6 @@ def segredo_em_base64(segredo=SEGREDO):
 
 
 def semear(arquivo, clientes=((CLIENTE, SEGREDO),)):
-    """Escreve o `pareamento.json` de uma Conexão que já tem estes navegadores pareados."""
     with open(arquivo, "w", encoding="utf-8") as saida:
         json.dump({"versao": 1, "clientes": [
             {"cliente": c, "segredo": segredo_em_base64(s), "nome": "Teste", "criadoEm": "2026-11-09T00:00:00Z"} for c, s in clientes]}, saida)
@@ -55,8 +48,6 @@ _NONCES = Contador()
 
 @dataclasses.dataclass(frozen=True)
 class Navegador:
-    """Um navegador pareado: quem ele diz ser, o segredo que assina por ele e de onde vem o nonce de cada pedido."""
-
     cliente: str
     segredo: bytes
     nonces: object = _NONCES
@@ -65,7 +56,6 @@ class Navegador:
         return dataclasses.replace(self, nonces=NonceFixo(nonce))
 
     def assinar(self, sessao, metodo, caminho, corpo=b""):
-        """Os cabeçalhos que a extensão põe num pedido: o navegador, a sessão provada, um nonce novo e a assinatura."""
         nonce = self.nonces.proximo()
         return {
             pareamento.CABECALHO_DO_CLIENTE: self.cliente,
@@ -84,8 +74,6 @@ def cabecalhos_assinados(sessao, metodo, caminho, corpo=b""):
 
 
 class TelaDeMentira:
-    """A janela do Anki (`pareamento.Pareamento.na_tela`): guarda o que a pessoa veria, e o teste lê o código que "apareceu"."""
-
     def __init__(self):
         self.codigos = []
         self.fechou = 0
@@ -106,7 +94,6 @@ class TelaDeMentira:
         self.aberta = False
 
     def apertar_cancelar(self):
-        """A pessoa apertou Cancelar no diálogo: ele fecha e o pareamento é avisado."""
         self.aberta = False
         self.cancelar()
 
@@ -119,18 +106,12 @@ class TelaDeMentira:
 
 
 def semear_em(pasta, clientes=((CLIENTE, SEGREDO),)):
-    """Semeia o `pareamento.json` da pasta do complemento (`<pasta>/user_files`) antes de a Conexão subir por `inicio.iniciar` ou `no_anki.ao_carregar`."""
     pasta = getattr(pasta, "name", pasta)
     os.makedirs(os.path.join(pasta, "user_files"), exist_ok=True)
     semear(os.path.join(pasta, "user_files", "pareamento.json"), clientes)
 
 
 def travar_o_item_de_login_do_computador():
-    """Para o `setUpModule` de todo teste que sobe a Conexão por `inicio.iniciar` ou `no_anki.ao_carregar` sem um `item_de_login` seu.
-
-    Sem item injetado o início monta o deste computador e o confere (#401): na máquina de quem roda a suíte (Mac ou Windows) isso
-    reescreveria o LaunchAgent ou o atalho de verdade. Com a trava, o computador não tem item (como o Linux do CI). Quem prova o
-    item injeta o seu. Assim como o abridor (`abridor=None`), nada aqui toca o registro real da máquina."""
     from unittest.mock import patch
 
     remendo = patch("complemento.item_de_login.deste_computador", return_value=None)
@@ -139,7 +120,6 @@ def travar_o_item_de_login_do_computador():
 
 
 def iniciar_pareado(pasta, *argumentos, **palavras):
-    """`inicio.iniciar` numa pasta onde o navegador de teste já se pareou."""
     from complemento import inicio
 
     semear_em(pasta)
@@ -147,7 +127,6 @@ def iniciar_pareado(pasta, *argumentos, **palavras):
 
 
 def ao_carregar_pareado(anki, pasta, **palavras):
-    """`no_anki.ao_carregar` numa pasta onde o navegador de teste já se pareou."""
     from complemento import no_anki
 
     semear_em(pasta)
@@ -155,10 +134,6 @@ def ao_carregar_pareado(anki, pasta, **palavras):
 
 
 def pedir_como_a_extensao(porta, metodo, caminho, corpo=None):
-    """Um pedido assinado a uma Conexão na `porta`, como a extensão o faz: primeiro o `conferir` (que dá a sessão), depois o pedido.
-
-    Devolve (status, cabeçalhos, bytes). Serve às provas que sobem a Conexão por `inicio.iniciar` ou `no_anki.ao_carregar`, que
-    não têm um `ConexaoNoTeste` para assinar por elas."""
     import http.client
     import secrets
 
@@ -184,8 +159,6 @@ def pedir_como_a_extensao(porta, metodo, caminho, corpo=None):
 
 
 def pedir_como_o_exemplo(conexao, pedido, corpo=None):
-    """O pedido do exemplo, assinado como a extensão assina; `assinatura` no pedido diz o que a extensão não faria: `ausente`, `errada` ou
-    `sessaoVelha` (assinado numa subida anterior da Conexão)."""
     modo = pedido.get("assinatura")
     cabecalhos = {"errada": {pareamento.CABECALHO_DA_ASSINATURA: "AAAA"}, "sessaoVelha": {pareamento.CABECALHO_DA_SESSAO: "sessao-de-outra-subida"}}.get(modo)
     return conexao.pedir(
@@ -223,9 +196,6 @@ def mostrar_o_codigo_pendente(p, contexto):
 
 
 def preparar_o_pareamento(p, com_tela, contexto=None):
-    """A janela do Anki de mentira no pareamento `p` (`com_tela=False`: o Anki não tem onde mostrar o código) e o que o `contexto` de um exemplo do contrato
-    diz dele: `codigoPendente` (o código que a janela mostra agora), `codigoUsadoPor` (o navegador que já o usou), `desconectado` (o Desconectar navegadores já foi apertado) e `bloqueado` (três códigos gastaram as
-    tentativas seguidos). Devolve a janela."""
     contexto = contexto or {}
     tela = TelaDeMentira()
     p.na_tela = tela if com_tela else None

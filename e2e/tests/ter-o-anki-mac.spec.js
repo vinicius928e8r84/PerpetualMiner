@@ -60,7 +60,6 @@ test('“Não tenho” no Mac, com menos movimento: os dois quadros do desenho f
   await expect(quadros).toHaveCount(2);
   await expect(quadros.first()).toHaveCSS('animation-name', 'none');
   await expect(quadros.nth(1)).toHaveCSS('animation-name', 'none');
-  // Visíveis de verdade: o toBeVisible do Playwright conta um quadro com opacidade 0 como visível.
   await expect(quadros.first()).toHaveCSS('opacity', '1');
   await expect(quadros.nth(1)).toHaveCSS('opacity', '1');
   const caixas = await quadros.evaluateAll(els => els.map(el => {
@@ -79,7 +78,6 @@ test('“Não tenho” no Mac, com menos movimento numa janela estreita: os quad
   await expect(card(page)).toBeVisible();
   await naoTenho(page).click();
 
-  // Larguras de uma janela de Chrome de verdade (ela não fica mais estreita que ~500 px) em que dois quadros não cabem.
   for (const largura of [540, 500]) {
     await page.setViewportSize({ width: largura, height: 1000 });
     const caixas = await card(page).locator('.pc-controle').evaluate(controle => {
@@ -109,7 +107,6 @@ test('“Não tenho” no Windows: o passo não tem o desenho de arrastar', asyn
 });
 
 test('“Não tenho” fora do Mac e do Windows: o passo não tem o desenho de arrastar', async ({ page, extensao }) => {
-  // O Chromium do teste é o do Linux: nem Mac nem Windows (num Mac ou Windows de quem roda, o `comOSistema` o devolve a Linux).
   await comOSistema(page, SISTEMAS.LINUX);
   await page.goto(extensao.url('painel.html#anki/custos'));
   await expect(card(page)).toBeVisible();

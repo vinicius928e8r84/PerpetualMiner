@@ -1,10 +1,3 @@
-"""A voz de reserva do Cartão (#174), vista de fora: o servidor real com a thread de trabalho ligada, a coleção em memória, a voz do
-Google de mentira e a OpenAI de mentira, as duas na fronteira HTTP. O que o teste confere é o que atravessa o HTTP, o que fica
-guardado na coleção (a nota e a mídia) e o que a aba Custos lê.
-
-    python3.9 complemento/test_voz_de_reserva.py
-"""
-
 import json
 import os
 import sys
@@ -29,7 +22,6 @@ def com_reserva(reserva):
 
 
 def audios_da_nota(conexao):
-    """Os dois áudios da nota gravada: (o da Frase, o da Palavra)."""
     nota = conexao.conexao.colecao.gravadas[0]
     da_frase, da_palavra = sons(nota["campos"])
     audios = so_o_audio(nota["midia"])
@@ -165,7 +157,7 @@ class OCustoDaVozDeReserva(unittest.TestCase):
             conexao.esperar(ID)
             linhas = json.loads(conexao.pedir("POST", "/analytics/jobs", corpo={"lang": "all"})[2])["jobs"]
         custos = linhas[0]["costs"]
-        self.assertEqual(custos["otherUsd"], round(len("gave up") * 0.015 / 1000, 6))  # tts-1: US$ 0,015 por mil letras
+        self.assertEqual(custos["otherUsd"], round(len("gave up") * 0.015 / 1000, 6))
         self.assertEqual(custos["totalUsd"], round(sum(valor for chave, valor in custos.items() if chave != "totalUsd"), 6))
 
     def test_o_envio_cujo_google_falou_tudo_nao_tem_custo_de_voz(self):

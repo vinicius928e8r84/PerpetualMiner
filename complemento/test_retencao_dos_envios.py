@@ -1,9 +1,3 @@
-"""A retenção dos Envios terminados (#243), com pastas reais de Envios feitos pela Conexão: passado o prazo somem a fila e o estado do Envio,
-os custos ficam (e a aba Custos e o teto do mês somam igual), e nada em andamento, pausado ou duvidoso é tocado.
-
-    python3.9 complemento/test_retencao_dos_envios.py
-"""
-
 import json
 import os
 import sys
@@ -43,7 +37,6 @@ def terminado(conexao, job_id, linha=LINHA):
 
 
 def envelhecer(conexao, job_id, dias):
-    """Recua a última atividade do Envio; devolve o instante dela."""
     quando = (datetime.now().astimezone() - timedelta(days=dias)).isoformat(timespec="seconds")
     mudar_estado(conexao, job_id, updatedAt=quando)
     return datetime.fromisoformat(quando)
@@ -249,7 +242,7 @@ class UmErroDeDisco(unittest.TestCase):
             registro = " ".join(str(chamada) for chamada in fila.logger.method_calls)
             estado_ficou = os.path.exists(arquivo_do_estado(conexao, ID))
         self.assertEqual(primeira, [OUTRO_ID])
-        self.assertIn(ID, registro)  # o tipo do erro muda de sistema para sistema (IsADirectoryError no Linux, PermissionError no Mac e no Windows)
+        self.assertIn(ID, registro)
         self.assertIn("warning", registro)
         self.assertTrue(estado_ficou)
 
@@ -301,7 +294,7 @@ class UmLinkNoLugarDaPasta(unittest.TestCase):
                 os.symlink(fora, fila.pasta_dos_textos(ID), target_is_directory=True)
             except (OSError, NotImplementedError, AttributeError):
                 self.skipTest("este sistema não cria link simbólico")
-            with mock.patch("os.path.islink", return_value=False):  # como no Windows com uma junção, no Python 3.9 e 3.13
+            with mock.patch("os.path.islink", return_value=False):
                 apagados = retencao_dos_envios.reter(fila)
             sobrou = sorted(os.listdir(fora))
         self.assertEqual(apagados, [ID])

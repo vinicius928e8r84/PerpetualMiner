@@ -1,10 +1,3 @@
-"""O estado gravado de um Envio como máquina de estados (`estado_do_envio.py`): a situação que o arquivo diz, a tabela das
-transições, linha por linha, e o portão único (`Fila.mudar`) por onde todo escritor passa. O formato gravado não muda:
-`esperando` é `running` com `waiting`, e `apagado` é o Envio com `wiped`.
-
-    python3.9 complemento/test_estado_do_envio.py
-"""
-
 import json
 import os
 import sys
@@ -165,8 +158,6 @@ class CadaEventoLevaAUmEstadoCoerente(unittest.TestCase):
 
 
 class Espia:
-    """Anota cada estado que a fila grava e se a gravação veio de dentro do portão (`mudar`)."""
-
     def __init__(self, fila):
         self.gravados, self.fora_do_portao, self.dentro = [], [], 0
         gravar, mudar = fila._gravar_estado, fila.mudar

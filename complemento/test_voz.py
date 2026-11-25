@@ -1,9 +1,3 @@
-"""A voz do Google (`voz.py`), sem o Envio: os pedaços em que o texto é quebrado, como o gTTS 2.5, e o que cada resposta da voz
-de mentira (`test_voz_de_mentira.py`) dá a quem pede o áudio.
-
-    python3.9 complemento/test_voz.py
-"""
-
 import base64
 import json
 import os
@@ -35,7 +29,6 @@ PEDACOS_COMO_O_GTTS = [
 
 
 def linha_com_o_audio(audio):
-    """A linha da resposta do `batchexecute` que traz o áudio (em base64) do RPC da voz."""
     return json.dumps([["wrb.fr", voz.RPC, json.dumps([audio]), None, None, None, "generic"]], separators=(",", ":"))
 
 

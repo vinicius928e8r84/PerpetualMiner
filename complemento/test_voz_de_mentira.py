@@ -1,10 +1,3 @@
-"""A voz do Google de mentira dos testes do complemento: um servidor HTTP local que responde como o `translate.google.<sotaque>`.
-
-Não é um teste: é o que os testes põem no lugar de `https://translate.google.com`. A Conexão só fala com a voz por HTTP,
-então é aqui, na fronteira, que o teste decide como o Google responde. `base` é o modelo de endereço que a Conexão usa
-(`{tld}` é o sotaque); o sotaque pedido chega ao servidor como o primeiro pedaço do caminho.
-"""
-
 import base64
 import json
 import threading
@@ -15,7 +8,6 @@ CAMINHO_DO_GTTS = "/_/TranslateWebserverUi/data/batchexecute"
 
 
 def audio_de_mentira(sotaque, lang, texto):
-    """Os bytes que a voz de mentira devolve para um pedaço de texto: dizem com que sotaque e língua ele foi pedido."""
     return ("mp3-de-mentira|%s|%s|%s" % (sotaque, lang, texto)).encode("utf-8")
 
 
@@ -26,13 +18,6 @@ def o_f_req_do_gtts(caminho, consulta, corpo):
 
 
 class VozDeMentira:
-    """`VozDeMentira()` escuta numa porta livre. `pedidos` guarda (sotaque, língua, texto) de cada pedido de áudio, na ordem.
-
-    `recusar(sotaque, status)` faz os pedidos daquele sotaque (`"*"`: todos) voltarem `status` (None volta a aceitar);
-    `recusar(..., vezes=n)` só nos n primeiros. `sem_audio()` faz a resposta chegar boa, mas sem áudio dentro;
-    `responder_com(corpo)`, chegar boa com este corpo.
-    """
-
     def __init__(self):
         self.pedidos = []
         self.cabecalhos = []
@@ -117,5 +102,4 @@ class VozDeMentira:
 
 
 def dito(audio):
-    """(sotaque, língua, texto) de um áudio da voz de mentira (ou de vários, colados)."""
     return [tuple(parte.split("|", 3)[1:]) for parte in audio.decode("utf-8").split("mp3-de-mentira") if parte]

@@ -12,12 +12,6 @@
   const CHIP_LONGE_DO_TEXTO = 8;
   const MARGEM_DA_JANELA = 8;
   const LETRA = /[\p{L}\p{M}\p{N}]/u;
-  /**
-   * As fontes empacotadas, registradas no documento do site. O Chrome ignora o
-   * `@font-face` de veio/tokens.css dentro de uma sombra, então elas entram pela
-   * API `FontFace`, com nomes só do overlay: o site nunca os pede, e a Manrope
-   * que um site tiver não troca de desenho. O overlay.css aponta os tokens para eles.
-   */
   const LATIM = 'U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, '
     + 'U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD';
   const CIRILICO = 'U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116';
@@ -37,10 +31,6 @@
   let etiquetaDoContador = '';
   let marca = null;
 
-  /**
-   * Põe as fontes do overlay no documento. Os arquivos vêm como bytes, lidos
-   * pelo content script: uma `url()` passaria pela CSP do site (`font-src`).
-   */
   function registrarFontes() {
     for (const { familia, arquivo, pesos, unicodeRange } of FONTES) {
       fetch(chrome.runtime.getURL(`veio/fontes/${arquivo}.woff2`))
@@ -99,7 +89,6 @@
     pm.append(camada, pilula, descricaoDoContador);
     sombra.append(pm);
 
-    // Clicar no overlay não é clicar no site (um player pausaria o vídeo).
     for (const tipo of ['click', 'mousedown', 'mouseup', 'pointerdown', 'pointerup', 'dblclick']) {
       pm.addEventListener(tipo, evento => evento.stopPropagation());
     }
@@ -115,7 +104,6 @@
     const pai = container || document.documentElement;
     if (host.parentNode !== pai) pai.append(host);
 
-    // As regras do host vão inline e com !important: uma folha da página não o esconde nem o move.
     const estilo = {
       all: 'initial',
       position: livre ? 'fixed' : 'absolute',

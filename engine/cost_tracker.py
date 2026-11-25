@@ -1,10 +1,3 @@
-"""
-cost_tracker.py — Log API costs per session and expose daily/weekly/monthly summaries.
-
-Costs are appended to log/costs.jsonl (one JSON object per line).
-Pricing constants reflect OpenAI list prices as of 2025-05 — update as needed.
-"""
-
 from __future__ import annotations
 
 import json
@@ -14,7 +7,6 @@ from typing import NamedTuple, Optional
 
 
 PRICES = {
-    # Assistant API uses gpt-4o under the hood by default
     "gpt-4o": {"input": 0.0025, "output": 0.01},
     "gpt-4o-mini": {"input": 0.00015, "output": 0.0006},
     "gpt-4.1": {"input": 0.002, "output": 0.008},
@@ -51,23 +43,18 @@ def _token_record(kind: str, usage: TokenUsage, cost: float) -> dict:
 
 
 def record_tokens(log_dir: str | Path, usage: TokenUsage, keyword: str = "") -> float:
-    """Append a token-usage record. Returns USD cost."""
     cost = usage.priced_as(usage.model)
     _append(log_dir, dict(_token_record("tokens", usage, cost), keyword=keyword))
     return cost
 
 
 def record_plan_tokens(log_dir: str | Path, usage: TokenUsage, key_model: str, keyword: str = "") -> float:
-    """Append the usage of a card made through the ChatGPT plan (`usage.model` is the plan's). Returns what the key would have charged (USD):
-    the plan costs nothing per card, so `cost_usd` stays 0 and `would_cost_usd` is priced as `key_model`."""
     would = usage.priced_as(key_model)
     _append(log_dir, dict(_token_record("plan_tokens", usage, 0.0), would_cost_usd=round(would, 6), keyword=keyword))
     return would
 
 
 def record_correction(log_dir: str | Path, usage: TokenUsage, paid: bool = True) -> float:
-    """Append the usage of the correction of a sentence the person wrote (#169), apart from the cards' own `tokens` records.
-    Returns USD cost; through the ChatGPT plan (`paid=False`) `cost_usd` is 0."""
     cost = usage.priced_as(usage.model) if paid else 0.0
     _append(log_dir, _token_record("correction_tokens", usage, cost))
     return cost
@@ -79,7 +66,6 @@ def record_image(
     keyword: str = "",
     source: str = "dalle",
 ) -> float:
-    """Append an image-generation record. Returns USD cost (0 for Google)."""
     cost = PRICES.get(model, 0.040) if source == "dalle" else 0.0
     _append(log_dir, {
         "date": date.today().isoformat(),
@@ -97,7 +83,6 @@ def record_image_pipeline(
     keyword: str,
     **fields,
 ) -> None:
-    """Append image-pipeline metrics for later analysis."""
     record = {
         "date": date.today().isoformat(),
         "type": "image_pipeline",
@@ -160,7 +145,6 @@ def _sum_period(records: list[dict], since: date) -> dict:
 
 
 def summary(log_dir: str | Path) -> dict:
-    """Return cost summaries for today, this week, and this month."""
     records = _load(log_dir)
     today = date.today()
     return {

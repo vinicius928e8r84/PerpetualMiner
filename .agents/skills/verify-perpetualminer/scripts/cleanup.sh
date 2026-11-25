@@ -9,7 +9,6 @@ RUN="$(pm_pasta_da_execucao "$ID")" || exit 2
 [ -d "$RUN" ] || { echo "no such run: $RUN" >&2; exit 2; }
 SCRIPT="$AQUI/drive.sh"
 
-# pm_alvos prints one "pid|start time" per line; start times contain spaces, so split on newlines only.
 coletar() { local IFS=$'\n'; set -f; alvos=($(pm_alvos "$RUN" "$ID" "$SCRIPT")); set +f; }
 
 if pm_de_outro_checkout "$RUN" "$SCRIPT"; then

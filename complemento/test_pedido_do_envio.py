@@ -1,8 +1,3 @@
-"""O pedido de um Envio (`POST /jobs`) visto pela função que o valida: cada recusa com o seu status, a ordem em que elas valem e o pedido que a Conexão guarda.
-
-    python3.9 complemento/test_pedido_do_envio.py
-"""
-
 import json
 import os
 import sys

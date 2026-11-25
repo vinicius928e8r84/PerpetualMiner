@@ -59,7 +59,6 @@
     pm_boas_vindas: { agoraNao: [], concluida: false },
   };
 
-  /** Copia o valor, como o storage do Chrome faz ao devolver o que guardou. */
   const copiar = valor => (valor === undefined ? undefined : JSON.parse(JSON.stringify(valor)));
 
   function chavesEPadroes(pedido) {
@@ -82,7 +81,6 @@
 
   const ouvintesDeMudanca = [];
 
-  /** Uma API que aceita callback ou devolve Promise, como o Chrome faz. */
   const talvezPromessa = (valor, callback) => {
     if (typeof callback === 'function') {
       setTimeout(() => callback(valor), 0);

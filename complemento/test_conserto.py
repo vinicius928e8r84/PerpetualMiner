@@ -1,16 +1,3 @@
-"""O abridor que conserta sozinho (#152): fecha à força o Anki que não responde, liga o complemento desativado e reinicia.
-
-    python3.9 complemento/test_conserto.py
-
-O script do Mac roda de verdade (`sh`), numa pasta temporária, com os programas de mentira no lugar de `ps`, `curl`, `kill`,
-`sleep`, `date` e `open`: todos anotam o que receberam num registro só, na ordem em que o script os chamou, e o relógio de
-mentira só anda quando o script manda dormir. Assim os testes conferem a **ordem** (esperar 30 s, fechar, abrir) sem esperar,
-e a edição do `meta.json` do Anki acontece numa pasta temporária. Nenhum processo de verdade é fechado, nenhum Anki é aberto.
-
-O que o Mac e o Windows de verdade fazem com isto (fechar à força, ligar pelo `meta.json`) só o ensaio do dono vê
-(`complemento/LEIA-ME.md`, riscos 3 e 12 do #138). O `.ps1` do Windows só roda onde houver `pwsh`.
-"""
-
 import json
 import os
 import shutil
@@ -43,8 +30,6 @@ def programa(caminho, corpo):
 
 
 class Mundo:
-    """O computador de mentira: o Anki (um pid), a Conexão, o relógio e a pasta do complemento com o `meta.json`."""
-
     def __init__(self, raiz):
         self.pastas = Pastas(raiz)
         self.estado = os.path.join(raiz, "mundo")
@@ -105,7 +90,6 @@ class Mundo:
         self.escrever_estado("some_na_chamada", str(n))
 
     def outro_processo_do_anki(self, pid):
-        """Mais um processo que roda o mesmo programa do Anki (o `ps` o lista) e que não ouve a porta."""
         with open(os.path.join(self.estado, "outros"), "a", encoding="utf-8") as arquivo:
             arquivo.write("%d\n" % pid)
 
@@ -139,7 +123,6 @@ class Mundo:
             return arquivo.read().splitlines()
 
     def passos(self):
-        """O que o script fez, na ordem: as esperas juntas (`esperou N s`), cada `kill` e cada `open` (o `ps` e o `curl` ficam de fora)."""
         passos = []
         for linha in self.eventos():
             if linha.startswith("sleep "):
@@ -236,7 +219,6 @@ class NoMac(unittest.TestCase):
         self.assertEqual(self.mundo.passos(), ["esperou 8 s"])
 
     def test_anki_que_sai_durante_o_ultimo_curl_antes_do_kill_nao_e_reaberto_nem_dado_como_reiniciado(self):
-        # O curl de verdade com -m 3 gasta 3 s quando o Anki não responde: o relógio anda 3 s dentro dele.
         e = self.mundo.estado
         programa(self.mundo.programas["curl"], 'echo "curl $*" >> "%s"\nprintf %%s $(( $(cat "%s/relogio") + 3 )) > "%s/relogio"\nexit 28\n'
                  % (self.mundo.registro, e, e))

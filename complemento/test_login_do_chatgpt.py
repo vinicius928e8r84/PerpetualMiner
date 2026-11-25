@@ -1,10 +1,3 @@
-"""Entrar com o ChatGPT (#155), visto de fora: o servidor real da Conexão, o servidor de login de mentira
-(`test_chatgpt_de_mentira.py`) e a OpenAI de mentira na fronteira HTTP. O teste faz o papel do navegador da pessoa: abre a URL
-de autorização que a Conexão deu e volta pelo `GET /auth/callback`.
-
-    python3.9 complemento/test_login_do_chatgpt.py
-"""
-
 import base64
 import hashlib
 import json
@@ -29,7 +22,6 @@ def json_de(resposta):
 
 
 def entrar(conexao):
-    """`POST /ia/chatgpt/entrar`: a URL de autorização e os parâmetros dela."""
     status, _, corpo = conexao.pedir("POST", "/ia/chatgpt/entrar", corpo={})
     assert status == 200, corpo
     url = json.loads(corpo)["url"]
@@ -37,7 +29,6 @@ def entrar(conexao):
 
 
 def voltar(conexao, consulta, host=None):
-    """O navegador volta ao retorno da Conexão: uma navegação, sem `Origin`."""
     return conexao.pedir("GET", "/auth/callback?" + urlencode(consulta), origem=None, cabecalhos={"Host": host} if host else None)
 
 
@@ -60,7 +51,6 @@ def arquivo_do_login(conexao):
 
 
 def tudo_o_que_ficou(conexao):
-    """Cada arquivo da pasta de dados da Conexão, menos o do login, como texto."""
     lidos = {}
     for raiz, _, nomes in os.walk(conexao.pasta):
         for nome in nomes:
@@ -221,7 +211,6 @@ class OQueNaoViraLogin(unittest.TestCase):
                 self.assertNotIn(pedido_da_troca["code_verifier"], log)
 
     def test_o_invalid_grant_da_troca_deixa_tentar_de_novo_e_so_o_segundo_seguido_diz_que_o_plano_nao_serve_para_a_conta(self):
-        # Risco 9: a conta grátis ou Go deu `400 invalid_grant` sem segunda tentativa. Uma recusa só pode ser um código gasto.
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
             conexao.servidor_de_login.troca = "invalid_grant"
             entrar_e_voltar(conexao)
@@ -277,7 +266,6 @@ class Sair(unittest.TestCase):
 
 
 def codigo_do_token(conexao):
-    """O que `token()` dá ao próximo pedido: o token, None ou o código do `ErroDoPlano` que ele levanta."""
     try:
         return conexao.conexao.chatgpt.token()
     except ErroDoPlano as erro:

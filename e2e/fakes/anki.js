@@ -22,16 +22,6 @@ const { criarRotasDaLeitura } = require('./rotas-da-leitura');
 const { colecaoDoMundo } = require('./baralhos');
 const { criarRotasDoEnvio } = require('./rotas-do-envio');
 
-// Fake da Conexão com o Anki: responde na porta dela (127.0.0.1:8766), ligada e com vocabulário vazio. Um teste a desliga ou responde uma rota com `responder`.
-//
-// O que o complemento responde vem de `complemento/contrato/exemplos.json` (e dos `exemplos-*.json`), o mesmo que os testes do complemento leem: o
-// fake responde o exemplo do pedido no contexto em que a Conexão está (`abrirPerfil`, `abrirColecao`, `responderOpenAI`…). Os testes de tela montam os
-// Baralhos em termos de gente. Rota nova: `contrato/LEIA-ME.md`. À parte: o
-// perfil fixo (`perfis.js`), o login do ChatGPT (`chatgpt.js`), o limite do plano (`limite-do-plano.js`), o modelo (`modelo-dos-cartoes.js`), o teto
-// (`teto.js`) e a prévia do Cartão e o Abrir no Anki (`previa.js`).
-//
-// Os Baralhos pedidos voltam na ordem pedida; o que o Anki não tem, `missing`. A chave da OpenAI aceita fica em `chaveNaConexao()`.
-
 function dadosDoCorpo(corpo) {
   try {
     return corpo ? JSON.parse(corpo) : null;

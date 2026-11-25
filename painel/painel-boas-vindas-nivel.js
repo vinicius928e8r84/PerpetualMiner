@@ -110,7 +110,6 @@
       const ligados = IDIOMAS_DO_PASSO.filter(({ chave }) => estado?.automatica[chave]);
       semIdioma.hidden = !estado || ligados.length > 0;
       const grupos = ligados.map(({ chave, idioma }) => grupoDoIdioma(chave, idioma));
-      // Refazer a lista com os mesmos nós os tira da página e o foco cai no body: só troca quando a lista mudou.
       if (listaMudou(grupos, campos)) campos.replaceChildren(...grupos);
     }
 

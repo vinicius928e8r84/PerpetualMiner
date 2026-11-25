@@ -1,6 +1,6 @@
 'use strict';
 
-const { ehRussa, detectarIdioma, IDIOMAS, textoDaVoz, Atalhos, AjustesDeEnvio, Mineracao } = PerpetualMiner;
+const { ehRussa, detectarIdioma, IDIOMAS, textoDaVoz, Atalhos, AjustesDeEnvio, Mineracao, TxtDeFrases } = PerpetualMiner;
 const { fonteDaFrase, nomeDaFonte, rotuloDoDia } = PerpetualMiner.Contexto;
 const {
   iconeVeio, montarChipDaPalavra, escreverFraseClicavel, andarEntrePalavras, focarPalavra, refletirSelecao, montarTecla,
@@ -26,14 +26,11 @@ const ICONES_DE_FONTE = {
   web: 'web', selecao: 'web', pdf: 'pdf', livro: 'livro', manual: 'manual', importado: 'manual',
 };
 
-// O login com o Google. A nuvem (Firestore REST, sem nenhum SDK: evita violações de CSP
-// em extensões MV3) é de lib/sincronizacao.js.
 const GOOGLE_USERINFO   = 'https://www.googleapis.com/oauth2/v1/userinfo?alt=json';
 const FIREBASE_API_KEY  = Sincronizacao.CHAVE_DA_API;
 const FB_SIGNIN_URL     = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=${FIREBASE_API_KEY}`;
 
 const FONTE_MANUAL    = 'manual';
-const FONTE_IMPORTADO = 'importado';
 
 let todasFrases        = [];
 let frasesVisiveis     = [];
@@ -93,7 +90,6 @@ async function loginGoogle() {
   try {
     const redirectUri = chrome.identity.getRedirectURL();
 
-    // Nonce: enviamos o hash SHA-256 para o Google; guardamos o valor bruto para o Firebase
     const rawNonce    = Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join('');
     const hashBuf     = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(rawNonce));
     const hashedNonce = Array.from(new Uint8Array(hashBuf), b => b.toString(16).padStart(2, '0')).join('');
@@ -103,7 +99,7 @@ async function loginGoogle() {
     authUrl.searchParams.set('response_type', 'token id_token');
     authUrl.searchParams.set('redirect_uri', redirectUri);
     authUrl.searchParams.set('scope', 'openid email profile');
-    authUrl.searchParams.set('nonce', hashedNonce);              // obrigatório para id_token
+    authUrl.searchParams.set('nonce', hashedNonce);
     authUrl.searchParams.set('prompt', 'select_account');
 
     const responseUrl = await new Promise((resolve, reject) => {
@@ -176,7 +172,6 @@ async function loginGoogle() {
   }
 }
 
-// O Chrome responde assim quando a pessoa fecha a janela de login sem escolher conta.
 function loginFoiCancelado(err) {
   return /did not approve|cancel/i.test(err?.message || '');
 }
@@ -1449,7 +1444,7 @@ async function importarArquivoTxtAgora(arquivo) {
   let duplicadas = 0;
   let invalidas  = 0;
   for (const linha of linhas) {
-    const lida = lerLinhaDoTxt(linha);
+    const lida = TxtDeFrases.ler(linha);
     if (!lida) { invalidas++; continue; }
     const chave = chaveDeRepetida(lida.texto);
     if (jaExistem.has(chave)) { duplicadas++; continue; }
@@ -1530,82 +1525,10 @@ async function tentarSubirDeNovo() {
   mostrarSincronizado();
 }
 
-function palavrasDoTxt(frase) {
-  const kws = keywords[frase.id] || [];
-  if (kws.length === 0) return '';
-  return kws.map(w => w === '|' ? '|' : w.replace(/@\d+$/, '')).join(' ')
-    .replace(/\s+\|\s+/g, ' | ').replace(/\s*\|\s*$/, '').trim();
-}
-
-function linhaDoTxt(frase) {
-  const texto = frase.texto.replace(/\s+/g, ' ').trim();
-  const palavra = palavrasDoTxt(frase).split(' | ')
-    .filter(grupo => Mineracao.palavrasNoTexto(grupo, texto))
-    .join(' | ');
-  const precisaDoPrefixoVazio = `${texto} `.includes(' : ') || texto.startsWith(':');
-  const prefixo = palavra ? `${palavra} : ` : (precisaDoPrefixoVazio ? ': ' : '');
-  return `${prefixo}${texto} ${contextoDaLinha(frase)}`;
-}
+const linhaDoTxt = frase => TxtDeFrases.escrever(frase, keywords[frase.id]);
 
 function linhaParaOAnki(frase) {
-  const texto = frase.texto.replace(/\s+/g, ' ').trim();
-  const palavra = palavrasDoTxt(frase);
-  return `${palavra ? `${palavra} : ` : ''}${texto} ${contextoDaLinha(frase)}`;
-}
-
-function contextoDaLinha(frase) {
-  const fonte   = sanitizarCampo(frase.contexto?.fonte || frase.streaming);
-  const titulo  = sanitizarCampo(frase.contexto?.titulo);
-  const detalhe = sanitizarCampo(frase.contexto?.detalhe);
-  return `[Contexto: ${fonte} - ${titulo} - ${detalhe}]`;
-}
-
-function lerLinhaDoTxt(linha) {
-  let resto = linha.trim();
-  let contexto = null;
-  const ctx = resto.match(/\s*\[Contexto:\s*(.*)\]\s*$/);
-  if (ctx) {
-    resto = resto.slice(0, ctx.index).trim();
-    contexto = lerContextoDoTxt(ctx[1]);
-  }
-
-  let texto = resto;
-  let palavras = null;
-  if (resto === ':' || resto.startsWith(': ')) {
-    texto = resto.slice(1).trim();
-    palavras = [];
-  } else {
-    const separador = `${resto} `.indexOf(' : ');
-    if (separador >= 0) {
-      const prefixo = resto.slice(0, separador).trim();
-      const depois  = resto.slice(separador + 3).trim();
-      if (ctx && !depois) return null;
-      const achadas = Mineracao.palavrasNoTexto(prefixo, depois);
-      if (achadas) { texto = depois; palavras = achadas; }
-    }
-  }
-
-  if (!texto) return null;
-  const fonte = contexto?.fonte || FONTE_IMPORTADO;
-  return {
-    texto,
-    contexto: { fonte, titulo: contexto?.titulo || '', detalhe: contexto?.detalhe || '' },
-    ...(ctx || palavras ? { palavras: palavras || [] } : {}),
-  };
-}
-
-function lerContextoDoTxt(texto) {
-  const partes = texto.split(' - ').map(p => p.trim());
-  const limpo = p => (p && !/^Desconhecido$/i.test(p) ? p : '');
-  if (partes.length <= 3) {
-    return { fonte: limpo(partes[0]), titulo: limpo(partes[1]), detalhe: limpo(partes[2]) };
-  }
-  return { fonte: limpo(partes[0]), titulo: limpo(partes.slice(1, -1).join(' - ')), detalhe: limpo(partes.at(-1)) };
-}
-
-function sanitizarCampo(val) {
-  const s = String(val ?? '').trim();
-  return s && s !== 'undefined' && s !== 'null' ? s : 'Desconhecido';
+  return TxtDeFrases.escreverParaOAnki(frase, keywords[frase.id]);
 }
 
 function chromeGet(defaults) {

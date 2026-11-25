@@ -1,11 +1,3 @@
-"""O adaptador de imagem do Qt (`imagem_qt.py`), com o Qt de verdade: no Anki o `aqt.qt` é o Qt do próprio Anki, aqui é o PyQt6, posto no
-lugar de `aqt.qt`, rodando sem tela (`QT_QPA_PLATFORM=offscreen`). Onde o PyQt6 não está instalado (o CI do complemento não o instala,
-o Python 3.9 do Anki do Mac não o traria), estes testes são pulados: quem os roda confere o Qt; o que o motor faz com qualquer adaptador
-é conferido por `engine/test_image_normalization.py`.
-
-    QT_QPA_PLATFORM=offscreen python3 complemento/test_imagem_qt.py
-"""
-
 import os
 import struct
 import sys
@@ -27,7 +19,6 @@ from complemento.motor.image_utils import UnsupportedImageFormatError
 
 
 def aqt_do_pyqt6():
-    """O que o Anki dá em `aqt.qt`, feito do PyQt6."""
     qt = types.ModuleType("aqt.qt")
     for modulo in (QtCore, QtGui):
         for nome in dir(modulo):
@@ -53,7 +44,6 @@ def decodificar(dados):
 
 
 def jpeg_com_orientacao(largura, altura, cor, orientacao):
-    """Um JPEG que o Qt faz, com um EXIF que diz `orientacao` (6: a foto foi tirada de lado e deve girar 90°)."""
     imagem = QtGui.QImage(largura, altura, QtGui.QImage.Format.Format_RGB32)
     imagem.fill(QtGui.QColor(*cor))
     jpeg = codificar(imagem, "JPEG")

@@ -1,9 +1,3 @@
-"""O item de login de “Abrir o Anki com o computador” ao abrir a Conexão (#401): o que difere do que ela escreveria agora é reescrito.
-Visto de fora: o `inicio.iniciar` real com o atalho do Windows já na pasta Inicializar.
-
-    python3.9 complemento/test_inicio_item_de_login.py
-"""
-
 import os
 import plistlib
 import sys
@@ -26,7 +20,6 @@ def setUpModule():
 
 class AoAbrirAConexao(unittest.TestCase):
     def iniciar_com_o_atalho(self, pasta, conteudo, comando=ANKI_DO_WINDOWS):
-        """Inicia a Conexão com o atalho de login `conteudo` já na pasta Inicializar (`None`: sem atalho); devolve o que ficou e o log."""
         inicializar = os.path.join(pasta, "Startup")
         item = item_de_login.ItemDeLogin(sistema="windows", pasta=inicializar, comando=comando)
         if conteudo is not None:
@@ -74,9 +67,6 @@ class AoAbrirAConexao(unittest.TestCase):
 
 
 class ASuiteNaoTocaOItemDeLoginDoComputador(unittest.TestCase):
-    """O `inicio.iniciar` que não recebe item de login monta o deste computador, e o início o confere (#401): sem a trava, a suíte
-    reescreveria o LaunchAgent ou o atalho de verdade de quem a roda com o interruptor ligado."""
-
     def test_o_inicio_sem_item_injetado_nao_reescreve_o_item_do_home_de_quem_roda_a_suite(self):
         antigo = plistlib.dumps({"Label": item_de_login.ROTULO_DO_MAC, "ProgramArguments": ["/usr/bin/open", "/Applications/Anki.app"], "RunAtLoad": True})
         with tempfile.TemporaryDirectory() as casa, tempfile.TemporaryDirectory() as pasta:

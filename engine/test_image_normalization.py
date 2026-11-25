@@ -1,7 +1,3 @@
-"""O tratamento de imagem do motor passa por um adaptador (`image_utils.usar_adaptador`): o Qt do Anki no complemento, o Pillow
-por padrão. Aqui o adaptador é de mentira, então nada disto precisa do Pillow instalado; a Pillow tem o teste dela, no fim,
-que só roda onde ela está."""
-
 import base64
 import tempfile
 import unittest
@@ -21,8 +17,6 @@ JPEG_BYTES = b"\xff\xd8\xff\xe0\x00\x10JFIF" + b"\x00" * 64
 
 
 class AdaptadorDeMentira:
-    """Converte qualquer coisa no PNG de um pixel, e guarda o que lhe pediram."""
-
     def __init__(self, resultado=PNG_BYTES):
         self.resultado = resultado
         self.pedidos = []
@@ -88,7 +82,6 @@ class ImageNormalizationTests(ComAdaptador):
 
 class DownloadDeCandidatas(ComAdaptador):
     def baixar(self, tipo, conteudo, adaptador=None):
-        """Baixa uma candidata que o servidor serve como `tipo`/`conteudo`; devolve (deu certo, o que ficou no destino ou None)."""
         self.usar(adaptador or AdaptadorDeMentira())
         with tempfile.TemporaryDirectory() as td, ServidorDeMentira({"/foto": (200, (tipo, conteudo))}) as servidor:
             dest = Path(td) / "real.png"

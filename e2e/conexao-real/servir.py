@@ -1,36 +1,3 @@
-"""A Conexão real (o complemento do Anki) para o modo `PM_CONEXAO=real` do e2e.
-
-Sobe `complemento/servidor.Conexao` numa porta livre, com a coleção em memória e, no lugar de tudo o que ela pediria à internet, os
-de mentira que os testes do complemento já usam (a OpenAI, o Firestore, a voz do Google, o Openverse e o servidor de login do ChatGPT),
-e fala com o fixture por linhas de JSON: ao ficar pronta escreve `{"porta": N}`; cada linha lida de stdin é um comando e leva uma linha de resposta:
-
-    {"openai": "recusa"}      muda o comportamento da OpenAI de mentira (as chaves de `COMPORTAMENTOS`)
-    {"colecao": {...}}        abre uma coleção descrita como nos exemplos do contrato (`ColecaoEmMemoria`)
-    {"mundo": {"colecao": {...}, "perfil": "...", "perfis": {"lista", "marcado"}}}  o mundo que o fake montou (`fakes.anki.naFrente`):
-                              a coleção aberta no perfil, ou, com `perfil` null, o Anki na tela de perfis (a coleção fechada); com
-                              `perfis`, os perfis do Anki e o marcado (`definirPerfis`; null: a primeira conexão)
-    {"perfis": true}          os perfis como a Conexão os tem agora: `{lista, marcado, aberto}`
-    {"mudar": {"jobId", "state"}}  o estado que o fake deu ao Envio (`moverEnvio`, `concluirEnvio`), gravado pelo portão `Fila.mudar`:
-                              uma transição que a máquina não aceita volta `{"erro": ...}`
-    {"criar": {...}}          um Envio que chega sem a extensão (`receberEnvio`), pelo `Fila.criar`
-    {"chave": {...} | null}   o `chaves/openai.json` que o teste deu à Conexão (`guardarChaveNaConexao`, `guardarRemocaoNaConexao`; null:
-                              `esquecerAChave`), escrito como nos testes do complemento
-    {"login": "situacao"}     o login do ChatGPT na situação que o teste deu (`chatgpt.definir`): `conectada` (o arquivo dos tokens),
-                              `desconectada` (sem arquivo) ou uma das de `situar_o_login`, contra o servidor de login de mentira daqui
-    {"login": true}           a situação do login agora, nos nomes do fake (`conectada`, `entrando`, `recusou`, `nao_serve`, `acabou`, `desconectada`)
-    {"fila": "nome"}          a fila de um exemplo do contrato (`filas`; `definirFila`), semeada como nos testes do complemento
-    {"apagarFrases": true}    o Apagar tudo feito por fora do pedido (`apagarAsFrases`), pelo `Fila.apagar_as_frases`
-    {"envios": true}          os Envios que a fila guardou, na ordem: `{jobId, lang, corpo (o pedido como as rotas o mostram), createdAt, state}`
-    {"estado": true}          responde o que a Conexão guardou: a cópia da chave, os documentos da nuvem, os pedidos à OpenAI,
-                              as falas que a voz de mentira ouviu e a pasta de dados (apagada ao fechar)
-    {"pareamento": "codigo"}  o código que a janela do Anki de mentira mostra agora (ou null); "navegadores": quantos navegadores estão pareados;
-                              "desconectar": o botão Desconectar navegadores da janela do Anki; "cancelar": o Cancelar do diálogo do código
-
-A Conexão sobe com os dois navegadores de teste já pareados (complemento/contrato/exemplos-do-pareamento.json), como o fake.
-
-Fecha ao fim de stdin, e a pasta de dados vai junto. Nada aqui é produto: é o que o teste põe no lugar do Anki e da internet.
-"""
-
 import json
 import os
 import shutil
@@ -56,8 +23,6 @@ from complemento.test_voz_de_mentira import VozDeMentira
 
 
 class ColecaoQueTroca:
-    """O adaptador da coleção que a Conexão lê, apontando para a `ColecaoEmMemoria` que o teste escolheu."""
-
     def __init__(self):
         self.atual = ColecaoEmMemoria({"baralhos": []})
 

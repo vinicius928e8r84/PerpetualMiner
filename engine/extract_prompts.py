@@ -1,22 +1,9 @@
-"""
-extract_prompts.py - Extract image-generation prompts from card .txt files.
-
-Reads Output/{stem}.txt for every expected CardJob and writes keyword:prompt
-lines to prompts.txt. Skips files from previous runs (stem not in current jobs).
-
-Real-image search queries are read directly from the card file later in the
-pipeline because each card can now contain multiple search queries. This module
-keeps prompts.txt focused on the fallback generated-image prompt, but still
-emits a line for cards that only expose search queries so they stay in the
-image pipeline.
-"""
-
 import re
 from itertools import takewhile
 from pathlib import Path
 from typing import List, Optional
 
-if __package__:  # inside the Anki add-on the engine is the package `complemento.motor`
+if __package__:
     from .config_loader import load_config
     from .parser import get_card_jobs, parse_mining_file
 else:
@@ -82,7 +69,6 @@ def _extract_first_search_query(content: str) -> Optional[str]:
 
 
 def card_prompt(content: str) -> str:
-    """The image prompt of one card's text: its `Image:` line, else its first search query, else ''."""
     return _extract_image_prompt(content) or _extract_first_search_query(content) or ""
 
 
@@ -99,7 +85,6 @@ def _prompt_lines(output_dir: Path, expected_stems_lower: set) -> List[str]:
 
 
 def run(entries, config: dict) -> int:
-    """Return the number of prompts written to prompts.txt."""
     entries_out = _prompt_lines(Path(config["paths"]["output_dir"]), _expected_stems(entries))
     Path(config["paths"]["prompts_file"]).write_text("\n".join(entries_out), encoding="utf-8")
     return len(entries_out)

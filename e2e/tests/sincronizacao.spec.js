@@ -53,8 +53,6 @@ test('sair durante uma renovação não restaura a conta; a próxima mineração
     const respostaDaRenovacao = page.waitForResponse(resposta => resposta.url().includes('securetoken.googleapis.com'));
     liberar();
     await (await respostaDaRenovacao).finished();
-    // A resposta já chegou: dá tempo para sua continuação e a escrita assíncrona
-    // no chrome.storage. A ausência é conferida outra vez após minerar no popup.
     await page.waitForTimeout(300);
     expect(await extensao.lerStorage(['pm_firebase_auth', 'pm_user_info'])).toEqual({});
     expect(await extensao.lerSessao()).toBeNull();

@@ -14,6 +14,7 @@ A regra `indice-de-arquivos` exige uma linha, aqui ou em [testes-e-ferramentas.m
 | `popup/popup.html/js/css` | The popup (skill `popup`). |
 | `lib/ranking.js` | The group ranking of the level quiz. |
 | `lib/atalhos.js` | The recorded shortcuts: storage, defaults and event matching. |
+| `lib/chave-legada.js` | The old `pm-segredos` store of the OpenAI key (open, read, clear) and the old `pm_chave_openai` marks. Temporary: delete it, its `<script>` in `painel/painel.html` and the migration in `limparLegado` after 2027-03-01. |
 | `lib/chave-da-openai.js` | The extension's side of the OpenAI key: requests to the Conexão and the cached summary (skill `configuracoes`). |
 | `conexao/perpetualminer.ankiaddon` | The Conexão com o Anki as the file the person downloads, built at the merge by `complemento/versao_no_merge.py`. |
 | `bookreader/bookreader.html/js/css` | Minerar de uma foto (skill `minerar-foto`). |
@@ -28,10 +29,12 @@ A regra `indice-de-arquivos` exige uma linha, aqui ou em [testes-e-ferramentas.m
 | `lib/contexto-do-site.js` | The Contexto of a mined caption, one rule per player; any other site is `web`. |
 | `lib/legenda-da-pagina.js` | The caption on screen of the active video: a table from site to reader, the selector reader and the visual reader. |
 | `lib/legenda-da-amazon.js` | The Prime Video caption reader: the direct selectors, then the position on screen. |
+| `lib/legenda-da-pagina.js` | The caption on screen of the active video: a site-to-reader table, the selector reader and the visual reader. |
 | `lib/conexao-anki.js` | The shared owner of `/health` and the connection state across Painel and popup. |
 | `lib/conexao-na-tela.js` | The shared presentation of the Conexão in the first-connection strip, card and step. |
 | `lib/configuracao.js` | The first-run setup: the steps of Boas-vindas and the "Configuração pela metade" reminder. |
 | `lib/ajustes-de-envio.js` | The Ajustes de envio of each Idioma: defaults, stored shape and the save that refuses a stale version. |
+| `lib/txt-de-frases.js` | The format of the Frases `.txt` (`[Contexto: …]`, the Palavras before ` : `): read a line, write a line. Pure, no screen. |
 | `lib/mineracao.js` | Shared mining requests and selection context. |
 | `lib/mineracao-do-dia.js` | The day rules and channel names of the Mineração automática. |
 | `lib/historico.js` | The one owner of the writes of `frases`, under the `pm-historico` Web Lock. |
@@ -45,6 +48,7 @@ A regra `indice-de-arquivos` exige uma linha, aqui ou em [testes-e-ferramentas.m
 | `lib/palavra-automatica.js` | The choice of the Termo for the Mineração automática and for saving a Frase, as a pure function. |
 | `lib/mineracao-automatica-decisao.js` | The Mineração automática's decision, through ports. |
 | `lib/mineracao-automatica.js` | The Mineração automática seen from a page: state, save and the daily-limit field. |
+| `lib/mineracao-automatica-na-pagina.js` | The Mineração automática seen from the page, loaded before `content.js`: waits for the caption to stop, sends the candidate, draws the badge and the notice. |
 | `lib/arquivos-da-extensao.js` | The files the extension uses at run time, found from `manifest.json`. |
 | `lib/ankiweb.js` | The code of the Conexão's AnkiWeb page and its download link. |
 | `lib/quiz-de-nivel.js`, `lib/festa-do-quiz.js`, `lib/som-do-quiz.js` | The level quiz of Boas-vindas, its celebration and its sound. |

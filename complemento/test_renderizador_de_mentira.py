@@ -1,14 +1,9 @@
-"""O renderizador de modelos de Cartão que os adaptadores de coleção de mentira usam no lugar do Anki: o que os modelos da Conexão pedem
-(`{{Campo}}`, `{{text:Campo}}`, `{{#Campo}}…{{/Campo}}`, `{{^Campo}}…{{/Campo}}` e `{{FrontSide}}`), com o áudio como o Anki o escreve (`[sound:x]` vira
-`[anki:play:q:0]`). Não é teste: fica fora do `.ankiaddon` pelo nome. A prova do Anki de verdade é `test_previa_com_o_anki_real.py`.
-"""
-
 import html
 import re
 
 _SECAO = re.compile(r"\{\{([#^])([^{}]+)\}\}(.*?)\{\{/\2\}\}", re.DOTALL)
 _CAMPO = re.compile(r"\{\{([^{}#^/]+)\}\}")
-_VAZIO = re.compile(r"^(?:\s|\u200b|&nbsp;|<br\s*/?>|</?div>)*$", re.IGNORECASE)  # o que o Anki chama de campo vazio: uma imagem não é
+_VAZIO = re.compile(r"^(?:\s|\u200b|&nbsp;|<br\s*/?>|</?div>)*$", re.IGNORECASE)
 
 
 def _lado(modelo, campos, lado, frente=None):
@@ -28,7 +23,7 @@ def _lado(modelo, campos, lado, frente=None):
         return texto
 
     def campo(achou):
-        filtro, _, nome = achou.group(1).rpartition(":")  # `text:Palavra`: o filtro `text` tira o HTML e deixa o texto
+        filtro, _, nome = achou.group(1).rpartition(":")
         if nome == "FrontSide":
             return frente
         valor = som(campos.get(nome, ""))
@@ -38,17 +33,12 @@ def _lado(modelo, campos, lado, frente=None):
 
 
 def renderizar(frente, verso, campos):
-    """`(a frente, o verso)` do Cartão, como o Anki os escreve; o verso leva a frente onde o modelo diz `{{FrontSide}}`."""
     pergunta = _lado(frente, campos, "q")
     return pergunta, _lado(verso, campos, "a", pergunta)
 
 
 class PreviaEmMemoria:
-    """A parte da coleção em memória (`test_colecao_em_memoria.ColecaoEmMemoria`) que a prévia usa: o Cartão desenhado, a nota pelo `guid` e a mídia.
-    Lê o que a coleção guarda (`_tipos`, `_cartoes_dos_tipos`: o modelo de Cartão dos tipos que a Conexão criou, `_notas`, `midia`)."""
-
     def cartao_renderizado(self, tipo_de_nota, campos):
-        """O Cartão do primeiro modelo do tipo, com os `campos`; None se o tipo não existe. Um tipo que a Conexão não criou tem o modelo do Anki."""
         self._exigir_aberta()
         nomes = self._tipos.get(tipo_de_nota)
         if nomes is None:
@@ -59,7 +49,6 @@ class PreviaEmMemoria:
         return {"frente": frente, "verso": verso, "css": modelo["css"]}
 
     def tipos_de_nota(self):
-        """Todos os tipos de nota da coleção, `{ nome: [campos] }` (#165)."""
         self._exigir_gravavel()
         return {nome: list(campos) for nome, campos in self._tipos.items()}
 
@@ -77,7 +66,6 @@ class PreviaEmMemoria:
 
     @property
     def navegador_aberto(self):
-        """Os `guid` em que o “Abrir no Anki” abriu o navegador (#173)."""
         return self.__dict__.setdefault("_navegador_aberto", [])
 
     def arquivo_de_midia(self, nome, limite_de_bytes):

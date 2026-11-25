@@ -1,8 +1,3 @@
-"""A repetição de cada rota que muda o que a Conexão guarda, e a base velha (parte de `test_servidor.py`).
-
-    python3.9 complemento/test_servidor_repeticao.py
-"""
-
 import contextlib
 import json
 import os
@@ -22,12 +17,6 @@ from test_harness import tearDownModule
 
 
 class RepeticaoDeCadaRotaQueMuda(unittest.TestCase):
-    """Cada rota que muda o que a Conexão guarda é pedida de novo, e com a base velha, e o dono não se mexe à toa.
-
-    `MATRIZ` diz quais rotas mudam (`muda`) e quais trazem a base (`versao`). O pedido é o de cada exemplo de sucesso (`200`)
-    da rota no contrato, no contexto dele. Uma rota que muda o que fica guardado e não diz `muda: True` quebra.
-    Os métodos `conferir_*` recebem as rotas, a matriz e os exemplos, para o teste da própria conferência usar uma rota inventada."""
-
     CHAVES_NOVAS = ("sk-proj-mudanca-nova-0001", "sk-proj-mudanca-nova-0002")
 
     def exemplos_de_sucesso(self, rota, exemplos):
@@ -59,9 +48,6 @@ class RepeticaoDeCadaRotaQueMuda(unittest.TestCase):
                     )
 
     def conferir_o_pedido_repetido(self, rotas, matriz, exemplos):
-        """O `repetivel: false` do exemplo é a exceção já declarada, com o `porque`, e conferida por `confere_a_repeticao`.
-        A resposta combinada vale salvo o que o contrato marca como variável (`<agora>`, `<url de autorização>`).
-        O cliente que já leu a revisão nova a manda de volta ao reconfirmar: é a mesma chave, o mesmo arquivo."""
         for regra, exemplo in self.exemplos_repetiveis(rotas, matriz, exemplos):
             with tempfile.TemporaryDirectory() as pasta, conexao_do_exemplo(pasta, exemplo) as conexao:
                 primeiro = self.pedir_o_exemplo(conexao, exemplo)
@@ -105,7 +91,6 @@ class RepeticaoDeCadaRotaQueMuda(unittest.TestCase):
             )
 
     def conferir_a_base_velha(self, rotas, matriz, exemplos):
-        """Duas mudanças mais novas (`CHAVES_NOVAS`): a base do exemplo deixa de ser nem a atual nem a anterior."""
         for rota in sorted(rotas):
             if not matriz[rota].get("versao"):
                 continue
@@ -133,7 +118,6 @@ class RepeticaoDeCadaRotaQueMuda(unittest.TestCase):
 
     @contextlib.contextmanager
     def rota_inventada(self, tratador, **regra):
-        """Uma rota que só existe aqui, com o exemplo de sucesso dela e a entrada em uma matriz; desfaz o que registrou."""
         rota = ("POST", "/rota/inventada")
         original, respondidos = dict(servidor.ROTAS), set(RESPONDIDOS)
         servidor.ROTAS[rota] = tratador
@@ -152,20 +136,17 @@ class RepeticaoDeCadaRotaQueMuda(unittest.TestCase):
 
     @staticmethod
     def gravar_o_dono(conexao, chave, versao):
-        """Escreve o arquivo do dono por conta própria, para a conferência não depender da `Cofre` que ela confere."""
         with open(os.path.join(conexao.cofre._pasta, "openai.json"), "w", encoding="utf-8") as arquivo:
             json.dump({"chave": chave, "conta": "", "versao": versao, "em": 1, "naoEnviada": True}, arquivo)
 
     @classmethod
     def grava_sempre(cls, conexao, corpo):
-        """Muda o que fica guardado a cada pedido, sem olhar a base."""
         versao = conexao.cofre.documento("openai").get("versao", 0)
         cls.gravar_o_dono(conexao, "sk-proj-inventada-%d" % (versao + 1), versao + 1)
         return 200, {"ok": True}
 
     @classmethod
     def grava_uma_vez_e_cobra_a_base(cls, conexao, corpo):
-        """Como a chave da IA: grava uma vez; o mesmo pedido de novo, ou a base atual, repete a resposta; a base velha dá 409."""
         atual = conexao.cofre.documento("openai")
         revisao = atual.get("versao", 0)
         if atual.get("chave") == "sk-proj-inventada-0001" and corpo["versao"] in (revisao - 1, revisao):

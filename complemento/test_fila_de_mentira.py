@@ -1,8 +1,3 @@
-"""A pasta de dados que a Conexão deixa com Envios já feitos, para os testes semearem antes de ela subir.
-
-Não é um teste: é o que os testes do Envio e dos exemplos do contrato põem na pasta (`test_harness.semear_a_fila` o reexporta).
-"""
-
 import json
 import os
 import sys
@@ -42,8 +37,5 @@ def _semear_o_envio(pasta, envio_):
 
 
 def semear_a_fila(pasta, fila):
-    """Os Envios que a Conexão já tinha (`filas` do contrato): os arquivos de `fila_do_envio.py`, como a Conexão os deixa.
-
-    Cada Envio é `{ job, state, custos, textos? }` (`textos`: `{ stem: texto }` já pagos)."""
     ordem = [_semear_o_envio(pasta, envio_) for envio_ in fila]
     _gravar_json(os.path.join(pasta, "fila", "fila.json"), {"jobs": ordem})

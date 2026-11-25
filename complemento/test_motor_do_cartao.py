@@ -1,9 +1,3 @@
-"""O Motor do Cartão (C4) sem o Envio: `escrever` e `montar` com o motor do complemento, a voz do Google de mentira e a porta da IA dos cartões
-de um roteiro.
-
-    python3.9 complemento/test_motor_do_cartao.py
-"""
-
 import logging
 import os
 import sys
@@ -44,9 +38,6 @@ LOGGER.propagate = False
 
 
 class IaDeRoteiro:
-    """A porta da IA dos cartões de um Envio num teste: sem chave nem plano para a voz e a imagem; o texto responde `respostas` em ordem (uma
-    `Exception` é levantada), ou ninguém paga (`parado`). Guarda o que o Motor pediu a ela."""
-
     def __init__(self, *respostas, parado=None):
         self.pedidos, self.respostas, self.parado = [], list(respostas), parado
 
@@ -77,8 +68,6 @@ class IaDeRoteiro:
 
 
 class ParadaDeRoteiro:
-    """O evento que para a Conexão num teste: nunca para, e guarda quanto cada espera ia dormir."""
-
     def __init__(self):
         self.esperas = []
 
@@ -110,7 +99,6 @@ def arquivos_da(pasta):
 
 
 def montar(pasta, voz_base, ia, reserva=None):
-    """`(o que montar devolveu ou a ErroDaVoz, as Etapas avisadas, os arquivos da pasta)`."""
     cartao, motor_do_cartao = cartao_e_motor(pasta, voz_base, reserva)
     avisos = []
     try:

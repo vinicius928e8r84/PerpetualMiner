@@ -150,8 +150,6 @@ def _prompt_do_nivel(lang, nivel=None):
 
 
 class PromptsPorNivelTests(unittest.TestCase):
-    """O contrato dos prompts cobre a saída de cada idioma × nível: a língua da explicação, as partes do verso e as cores."""
-
     def test_cada_nivel_de_cada_idioma_tem_o_seu_prompt_com_o_texto_do_cartao_que_o_nivel_pede(self):
         for lang, nivel in _cada_nivel():
             with self.subTest(lang=lang, nivel=nivel):

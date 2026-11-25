@@ -1,44 +1,23 @@
 'use strict';
 
-const { test, expect, comOSistema, SISTEMAS } = require('../fixtures');
+const { test, expect, SISTEMAS } = require('../fixtures');
 const { SEM_ABRIDOR_IMPOSSIVEL } = require('../fakes/abridor');
 const { estadoFinal, estadoFinalEm } = require('../estado-final');
 const { fotografar } = require('../evidencias-mineracao');
-const contrato = require('../../complemento/contrato/exemplos.json');
-
-const ORIGEM = `${contrato.origemDaExtensao}/`;
-const ABRIR = { mensagem: { acao: 'abrir' }, origem: ORIGEM };
-// A página de download do Anki: ela existe sempre e escolhe o arquivo do processador sozinha.
-const PAGINA_DO_ANKI = 'https://apps.ankiweb.net/';
-const CONFERIR = { mensagem: { acao: 'conferir' }, origem: ORIGEM };
-
-const card = page => page.getByRole('region', { name: 'Ainda não houve conexão neste computador' });
-const lista = page => page.getByRole('navigation', { name: 'Como ligar' });
-const itemDaLista = (page, nome) => lista(page).getByRole('button', { name: nome });
-const tituloDoPasso = page => page.locator('#apv-passo-titulo');
-const pergunta = page => card(page).getByText('Você já tem o Anki?');
-const jaTenho = page => card(page).getByRole('button', { name: 'Já tenho' });
-const naoTenho = page => card(page).getByRole('button', { name: 'Não tenho' });
-const baixarOAnki = page => card(page).getByRole('link', { name: 'Baixar o Anki' });
-const resultadoDoAnki = page => page.locator('#apv-anki-resultado');
-const statusDaConexao = page => page.locator('#apv-status');
-
-async function abrirComo(page, extensao, sistema) {
-  await comOSistema(page, sistema);
-  await page.goto(extensao.url('painel.html#anki/custos'));
-}
+const {
+  ABRIR, CONFERIR, PASSOS,
+  card, lista, itemDaLista, tituloDoPasso, pergunta, jaTenho, naoTenho, baixarOAnki, resultadoDoAnki, statusDaConexao,
+  abrirOCard, abrirComo, esperarOLinkDaPagina,
+} = require('../apoio-do-ter-o-anki');
 
 test.beforeEach(({ fakes }) => {
   fakes.anki.desligar();
 });
 
 test('o primeiro passo é Ter o Anki: a pergunta e as duas respostas, e nada do Anki antes da Conexão', async ({ page, extensao }) => {
-  await page.goto(extensao.url('painel.html#anki/custos'));
-  await expect(card(page)).toBeVisible();
+  await abrirOCard(page, extensao);
 
-  await expect(lista(page).getByRole('button')).toHaveText([
-    /^Ter o Anki/, /^Pôr a Conexão no Anki/, /^Reiniciar o Anki/, /^Abrir o Anki sozinho/,
-  ]);
+  await expect(lista(page).getByRole('button')).toHaveText(PASSOS);
   await expect(itemDaLista(page, /^Ter o Anki/)).toHaveAttribute('aria-current', 'step');
   await expect(card(page)).toContainText('Como ligar · Passo 1 de 4');
   await expect(tituloDoPasso(page)).toHaveText('Ter o Anki');
@@ -56,43 +35,40 @@ test('o primeiro passo é Ter o Anki: a pergunta e as duas respostas, e nada do 
   await estadoFinal(extensao, { pm_abridor: null });
 });
 
-async function esperarOLinkDaPagina(page) {
-  await expect(baixarOAnki(page)).toBeVisible();
-  await expect(baixarOAnki(page)).toHaveAttribute('href', PAGINA_DO_ANKI);
-  await expect(baixarOAnki(page)).toHaveAttribute('target', '_blank');
-  await expect(baixarOAnki(page)).toHaveAttribute('rel', 'noopener');
+const NAO_TENHO_NO_SISTEMA = [
+  {
+    nome: '“Não tenho” no Mac: o link leva à página de download do Anki, e o passo mostra a arrastada para Aplicativos',
+    sistema: SISTEMAS.MAC,
+    instrucao: 'Arraste o Anki para a pasta Aplicativos e abra-o de lá.',
+    deOutroSistema: 'Abra o instalador que você baixou',
+    imagem: 'ter-o-anki-mac.png',
+  },
+  {
+    nome: '“Não tenho” no Windows: o link leva à página de download do Anki, e o passo manda abrir o instalador',
+    sistema: SISTEMAS.WINDOWS,
+    instrucao: 'Abra o instalador que você baixou e siga o que ele pedir.',
+    deOutroSistema: 'Arraste o Anki para a pasta Aplicativos',
+    imagem: 'ter-o-anki-windows.png',
+  },
+];
+
+for (const { nome, sistema, instrucao, deOutroSistema, imagem } of NAO_TENHO_NO_SISTEMA) {
+  test(nome, async ({ page, extensao }) => {
+    await abrirComo(page, extensao, sistema);
+
+    await naoTenho(page).click();
+
+    await esperarOLinkDaPagina(page);
+    await expect(card(page)).toContainText(instrucao);
+    await expect(card(page)).not.toContainText(deOutroSistema);
+    await expect(resultadoDoAnki(page)).toBeEmpty();
+    await fotografar(page, imagem);
+    await estadoFinal(extensao, { pm_abridor: null });
+  });
 }
 
-test('“Não tenho” no Mac: o link leva à página de download do Anki, e o passo mostra a arrastada para Aplicativos', async ({ page, extensao }) => {
-  await abrirComo(page, extensao, SISTEMAS.MAC);
-  await expect(card(page)).toBeVisible();
-
-  await naoTenho(page).click();
-
-  await esperarOLinkDaPagina(page);
-  await expect(card(page)).toContainText('Arraste o Anki para a pasta Aplicativos e abra-o de lá.');
-  await expect(resultadoDoAnki(page)).toBeEmpty();
-  await fotografar(page, 'ter-o-anki-mac.png');
-  await estadoFinal(extensao, { pm_abridor: null });
-});
-
-test('“Não tenho” no Windows: o link leva à página de download do Anki, e o passo manda abrir o instalador', async ({ page, extensao }) => {
-  await abrirComo(page, extensao, SISTEMAS.WINDOWS);
-  await expect(card(page)).toBeVisible();
-
-  await naoTenho(page).click();
-
-  await esperarOLinkDaPagina(page);
-  await expect(card(page)).toContainText('Abra o instalador que você baixou e siga o que ele pedir.');
-  await expect(card(page)).not.toContainText('Arraste o Anki para a pasta Aplicativos');
-  await fotografar(page, 'ter-o-anki-windows.png');
-  await estadoFinal(extensao, { pm_abridor: null });
-});
-
 test('“Não tenho” fora do Mac e do Windows: Baixar o Anki abre a página numa aba nova, e o painel fica no passo', async ({ page, context, extensao }) => {
-  await comOSistema(page, SISTEMAS.LINUX);
-  await page.goto(extensao.url('painel.html#anki/custos'));
-  await expect(card(page)).toBeVisible();
+  await abrirComo(page, extensao, SISTEMAS.LINUX);
   await naoTenho(page).click();
   await esperarOLinkDaPagina(page);
   await expect(card(page)).toContainText('Depois de instalar, abra o Anki.');
@@ -113,8 +89,7 @@ test.describe('com a permissão do abridor já dada', () => {
     const telas = [];
     for (const situacao of ['nao_achei', 'achei', 'achei_sem_abrir']) {
       fakes.abridor.definir(situacao);
-      await page.goto(extensao.url('painel.html#anki/custos'));
-      await expect(card(page)).toBeVisible();
+      await abrirOCard(page, extensao);
       await expect(pergunta(page)).toBeVisible();
       telas.push(await card(page).innerText());
       await page.goto('about:blank');
@@ -130,8 +105,7 @@ test.describe('com a permissão do abridor já dada', () => {
 
 test('“Já tenho” sem a permissão do abridor: o caminho manual de sempre, sem pergunta ao abridor', async ({ page, extensao, fakes }) => {
   expect(await extensao.permissaoDoAbridor()).toBe(false);
-  await page.goto(extensao.url('painel.html#anki/custos'));
-  await expect(card(page)).toBeVisible();
+  await abrirOCard(page, extensao);
 
   await expect(resultadoDoAnki(page)).toHaveAttribute('aria-live', 'polite');
   await expect(resultadoDoAnki(page)).toBeEmpty();
@@ -152,8 +126,7 @@ test.describe('com a permissão que o Chrome guardou depois de Permitir', () => 
 
   test('“Já tenho” com o Anki instalado e fechado: o abridor abre o Anki, e a Conexão liga sozinha', async ({ page, extensao, fakes, relogioParado }) => {
     const relogio = await relogioParado({ em: new Date('2026-09-18T12:00:00') });
-    await page.goto(extensao.url('painel.html#anki/custos'));
-    await expect(card(page)).toBeVisible();
+    await abrirOCard(page, extensao);
 
     await jaTenho(page).click();
 
@@ -163,7 +136,7 @@ test.describe('com a permissão que o Chrome guardou depois de Permitir', () => 
     fakes.anki.ligar();
     await relogio.avancar(15_000);
     await expect.poll(() => fakes.abridor.pedidos()).toEqual([ABRIR, CONFERIR]);
-    for (const passo of [/^Ter o Anki/, /^Pôr a Conexão no Anki/, /^Reiniciar o Anki/, /^Abrir o Anki sozinho/]) {
+    for (const passo of PASSOS) {
       await expect(itemDaLista(page, passo)).toHaveAccessibleName(/feito$/);
     }
     await expect(tituloDoPasso(page)).toHaveText('Conexão com o Anki: ligada');
@@ -173,8 +146,7 @@ test.describe('com a permissão que o Chrome guardou depois de Permitir', () => 
   });
 
   test('“Já tenho” clicado duas vezes seguidas pede ao abridor uma vez só', async ({ page, extensao, fakes }) => {
-    await page.goto(extensao.url('painel.html#anki/custos'));
-    await expect(card(page)).toBeVisible();
+    await abrirOCard(page, extensao);
 
     await jaTenho(page).dblclick();
 
@@ -187,11 +159,9 @@ test.describe('com a permissão que o Chrome guardou depois de Permitir', () => 
   });
 
   test('sem o abridor no computador: “Já tenho” cai no caminho manual de sempre', async ({ page, extensao, fakes }) => {
-    // Sem o abridor (Conexão antiga): o Chrome não acha o host e o passo não trava.
     test.skip(SEM_ABRIDOR_IMPOSSIVEL, 'no Windows o Chromium usa o abridor real');
     fakes.abridor.desregistrar();
-    await page.goto(extensao.url('painel.html#anki/custos'));
-    await expect(card(page)).toBeVisible();
+    await abrirOCard(page, extensao);
 
     await jaTenho(page).click();
 
@@ -200,44 +170,40 @@ test.describe('com a permissão que o Chrome guardou depois de Permitir', () => 
     await estadoFinalEm('a permissão nativeMessaging no Chrome', () => extensao.permissaoDoAbridor(), true);
   });
 
-  test('o Anki no lugar e o sistema sem conseguir abri-lo: “Já tenho” cai no caminho manual de sempre', async ({ page, extensao, fakes }) => {
-    fakes.abridor.definir('achei_sem_abrir');
-    await page.goto(extensao.url('painel.html#anki/custos'));
-    await expect(card(page)).toBeVisible();
+  const ABRIDOR_SEM_ABRIR_O_ANKI = [
+    {
+      nome: 'o Anki no lugar e o sistema sem conseguir abri-lo: “Já tenho” cai no caminho manual de sempre',
+      situacao: 'achei_sem_abrir',
+    },
+    {
+      nome: 'o abridor não acha o Anki: “Já tenho” cai no caminho manual de sempre',
+      situacao: 'nao_achei',
+    },
+  ];
 
-    await jaTenho(page).click();
+  for (const { nome, situacao } of ABRIDOR_SEM_ABRIR_O_ANKI) {
+    test(nome, async ({ page, extensao, fakes }) => {
+      fakes.abridor.definir(situacao);
+      await abrirOCard(page, extensao);
 
-    await expect(resultadoDoAnki(page)).toHaveText('Abra o Anki para continuar.');
-    await expect(card(page)).not.toContainText('O Anki está abrindo…');
-    expect(fakes.abridor.pedidos()).toEqual([ABRIR]);
-    await expect(itemDaLista(page, /^Ter o Anki/)).not.toHaveAccessibleName(/feito$|agora não$/);
-    await estadoFinalEm('a permissão nativeMessaging no Chrome', () => extensao.permissaoDoAbridor(), true);
-  });
+      await jaTenho(page).click();
 
-  test('o abridor não acha o Anki: “Já tenho” cai no caminho manual de sempre', async ({ page, extensao, fakes }) => {
-    fakes.abridor.definir('nao_achei');
-    await page.goto(extensao.url('painel.html#anki/custos'));
-    await expect(card(page)).toBeVisible();
-
-    await jaTenho(page).click();
-
-    await expect(resultadoDoAnki(page)).toHaveText('Abra o Anki para continuar.');
-    expect(fakes.abridor.pedidos()).toEqual([ABRIR]);
-    await expect(itemDaLista(page, /^Ter o Anki/)).not.toHaveAccessibleName(/feito$|agora não$/);
-    await estadoFinalEm('a permissão nativeMessaging no Chrome', () => extensao.permissaoDoAbridor(), true);
-  });
+      await expect(resultadoDoAnki(page)).toHaveText('Abra o Anki para continuar.');
+      await expect(card(page)).not.toContainText('O Anki está abrindo…');
+      expect(fakes.abridor.pedidos()).toEqual([ABRIR]);
+      await expect(itemDaLista(page, /^Ter o Anki/)).not.toHaveAccessibleName(/feito$|agora não$/);
+      await estadoFinalEm('a permissão nativeMessaging no Chrome', () => extensao.permissaoDoAbridor(), true);
+    });
+  }
 });
 
 test('no passo de baixar o arquivo, a animação mostra o aviso do Anki e de onde clicar', async ({ page, extensao }) => {
-  await page.goto(extensao.url('painel.html#anki/custos'));
-  await expect(card(page)).toBeVisible();
+  await abrirOCard(page, extensao);
 
   await lista(page).getByRole('button', { name: 'Pôr a Conexão no Anki' }).click();
 
   const aviso = card(page).locator('.pc-animacao');
   await expect(aviso).toBeVisible();
-  // As palavras da janela do próprio Anki em pt-BR (addons-install-anki-addon e o começo de
-  // addons-important-as-addons-are-programs-downloaded, Anki 25.9): o Anki diz “extensões”.
   await expect(aviso).toContainText('Instalar extensão do Anki');
   await expect(aviso).toContainText('Importante: Como as extensões são programas baixados da internet, elas são potencialmente maliciosas.');
   await expect(aviso.locator('.pc-animacao__quadro')).toHaveCount(2);
@@ -255,8 +221,7 @@ test('no passo de baixar o arquivo, a animação mostra o aviso do Anki e de ond
 
 test('com menos movimento, a animação vira quadros parados, lado a lado', async ({ page, extensao }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto(extensao.url('painel.html#anki/custos'));
-  await expect(card(page)).toBeVisible();
+  await abrirOCard(page, extensao);
 
   await lista(page).getByRole('button', { name: 'Pôr a Conexão no Anki' }).click();
 
@@ -264,7 +229,6 @@ test('com menos movimento, a animação vira quadros parados, lado a lado', asyn
   await expect(quadros).toHaveCount(2);
   await expect(quadros.first()).toHaveCSS('animation-name', 'none');
   await expect(quadros.nth(1)).toHaveCSS('animation-name', 'none');
-  // Visíveis de verdade: o toBeVisible do Playwright conta um quadro com opacidade 0 como visível.
   await expect(quadros.first()).toHaveCSS('opacity', '1');
   await expect(quadros.nth(1)).toHaveCSS('opacity', '1');
   const caixas = await quadros.evaluateAll(els => els.map(el => {
@@ -279,11 +243,9 @@ test('com menos movimento, a animação vira quadros parados, lado a lado', asyn
 test('com menos movimento numa janela estreita, os quadros parados empilham e cabem no card', async ({ page, extensao }) => {
   // Exceção de teste: sem-estado-guardado
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto(extensao.url('painel.html#anki/custos'));
-  await expect(card(page)).toBeVisible();
+  await abrirOCard(page, extensao);
   await lista(page).getByRole('button', { name: 'Pôr a Conexão no Anki' }).click();
 
-  // Larguras de uma janela de Chrome de verdade (ela não fica mais estreita que ~500 px) em que dois quadros não cabem.
   for (const largura of [540, 500]) {
     await page.setViewportSize({ width: largura, height: 1000 });
     const caixas = await card(page).locator('.pc-controle').evaluate(controle => {

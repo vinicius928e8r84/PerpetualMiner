@@ -1,11 +1,3 @@
-"""O adaptador da coleção em memória que os testes da Conexão usam no lugar do Anki, e o contrato que ele
-tem em comum com o adaptador do Anki (`no_anki.py`): os dois passam pelos mesmos testes.
-
-    python3.9 complemento/test_colecao_em_memoria.py
-
-O que este arquivo tem de fora de `test_*` é só o adaptador; ele fica fora do `.ankiaddon` pelo nome.
-"""
-
 import hashlib
 import os
 import sys
@@ -23,8 +15,6 @@ from complemento.nota_a_gravar import FrenteDoCartao, NotaAGravar
 
 
 def guardar_na_midia(arquivos, nome, dados):
-    """`col.media.write_data` do Anki: guarda `dados` em `arquivos` com o nome pedido e devolve o nome que ficou. Um arquivo de
-    mesmo nome e conteúdo diferente já na coleção faz o Anki trocar o nome (`<nome>-<sha1 do conteúdo>.<extensão>`)."""
     if arquivos.get(nome, dados) != dados:
         base, ponto, extensao = nome.rpartition(".")
         nome = "%s-%s%s%s" % (base or extensao, hashlib.sha1(dados).hexdigest(), ponto if base else "", extensao if base else "")
@@ -33,23 +23,6 @@ def guardar_na_midia(arquivos, nome, dados):
 
 
 class ColecaoEmMemoria(PreviaEmMemoria, ModelosEmMemoria):
-    """A coleção de um perfil aberto, descrita como nos exemplos do contrato:
-
-        { "baralhos": [ { "nome": "Inglês", "notas": [
-            { "frente": "...", "verso": "...", "cartoes": [ { "tipo": 2, "intervalo": 30 } ] } ] } ] }
-
-    Uma nota pode trazer `campos` ({ "Front": ..., "Back": ... }) no lugar de `frente` e `verso`, e um `guid` (a prévia a acha por ele).
-    `ColecaoEmMemoria.fechada()` é o Anki na tela de perfis: só os perfis se leem.
-    `perfil_aberto` é o perfil que a coleção aberta é (o primeiro de `perfis` se não for dito). A Conexão entra no perfil fixo
-    sozinha com o Anki na tela de perfis (`entradas`) e o troca a pedido (`trocas`), como `no_anki.ColecaoDoAnki`.
-    `"quebra": true` na descrição é uma coleção que levanta um erro inesperado ao ler (o `500` do contrato).
-    `"tiposDeNota"` diz os tipos de nota e os campos de cada um (sem ele, o “Básico” com “Frente” e “Verso”); `"baralhoPadrao"`, o nome do Baralho
-    que todo Anki tem (“Default”; “Padrão” num Anki em português).
-
-    O lado de gravação guarda cada nota nova em `gravadas` (`{ baralho, tipo, campos, etiquetas, guid }`), para o teste
-    conferir; `fechar()`/`abrir()` e `sincronizando` fazem a gravação levantar `ColecaoIndisponivel`, como no Anki.
-    """
-
     def __init__(self, descricao=None, perfis=("Usuário 1",), aberta=True, perfil_aberto=None):
         self._perfis = list(perfis)
         self._aberta = aberta
@@ -59,7 +32,7 @@ class ColecaoEmMemoria(PreviaEmMemoria, ModelosEmMemoria):
         self.entradas = []
         self.trocas = []
         self._quebra = bool((descricao or {}).get("quebra"))
-        self._padrao = (descricao or {}).get("baralhoPadrao", "Default")  # o nome do Baralho padrão segue o idioma do Anki (“Padrão” em português)
+        self._padrao = (descricao or {}).get("baralhoPadrao", "Default")
         self._tipos = {nome: list(campos) for nome, campos in ((descricao or {}).get("tiposDeNota") or {"Básico": ["Frente", "Verso"]}).items()}
         self._guids = set()
         self._cartoes_dos_tipos = {}
@@ -86,8 +59,6 @@ class ColecaoEmMemoria(PreviaEmMemoria, ModelosEmMemoria):
         return cls(perfis=perfis, aberta=False)
 
     def fechar(self):
-        """O perfil fechado com o Anki sem ninguém para abri-lo: a Conexão não entra em perfil nenhum (o abridor, que abre o Anki, é do
-        #150). A tela de perfis, onde ela pode entrar no perfil fixo, é `fechada()` (ou `aberta=False`); só `abrir()` traz o perfil de volta."""
         self._aberta = False
         self._anki_inteiro = True
 
@@ -181,7 +152,6 @@ class ColecaoEmMemoria(PreviaEmMemoria, ModelosEmMemoria):
         return list(nomes)
 
     def gravar_cartao(self, nota, frente):
-        """O passo inteiro de gravar um Cartão (ver `no_anki.ColecaoDoAnki.gravar_cartao`): `"added"` ou `"duplicate"`."""
         self._exigir_gravavel()
         if nota.guid in self._guids:
             return "added"
@@ -223,23 +193,18 @@ DESCRICAO = {
 
 
 class ContratoDoAdaptadorDaColecao:
-    """O que qualquer adaptador de coleção tem de fazer; as subclasses dizem como montá-lo."""
-
     DESCRICAO = DESCRICAO
 
     def adaptador(self, descricao, perfis=("Usuário 1",), aberto=None):
-        """O adaptador com a coleção do perfil `aberto` (o primeiro de `perfis` se não for dito)."""
         raise NotImplementedError
 
     def adaptador_fechado(self, perfis=("Usuário 1",)):
         raise NotImplementedError
 
     def sincronizar(self, colecao, sincronizando):
-        """O Anki começa (True) ou termina (False) uma sincronização."""
         raise NotImplementedError
 
     def midia_guardada(self, colecao):
-        """A mídia que a coleção guarda: `{ nome do arquivo: bytes }`."""
         raise NotImplementedError
 
     def test_lista_todos_os_baralhos_com_dois_pontos_entre_os_niveis(self):
