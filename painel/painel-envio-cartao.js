@@ -262,7 +262,7 @@
       return falhou ? { motivo: textoDaVoz('ENV-14.falha'), ...continuar } : null;
     }
 
-    return { montarCartao };
+    return { montarCartao, pedidoDoCartao };
   }
 
   function nomeDoBaralho({ lang, baralho }) {
