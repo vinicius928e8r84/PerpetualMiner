@@ -203,7 +203,7 @@ test('a resposta anterior mantém o card visível ao terminar a leitura do fato 
     const ler = chrome.storage.local.get.bind(chrome.storage.local);
     const segurada = new Promise(resolve => { globalThis.liberarLeituraDaConexao = resolve; });
     chrome.storage.local.get = async (...args) => {
-      if (args[0] && typeof args[0] === 'object' && 'pm_anki_ja_conectou' in args[0]) await segurada;
+      if ('pm_anki_ja_conectou' in Object(args[0])) await segurada;
       return ler(...args);
     };
   });
