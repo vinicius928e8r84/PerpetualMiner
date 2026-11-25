@@ -162,7 +162,7 @@ def pedir_como_o_exemplo(conexao, pedido, corpo=None):
     modo = pedido.get("assinatura")
     cabecalhos = {"errada": {pareamento.CABECALHO_DA_ASSINATURA: "AAAA"}, "sessaoVelha": {pareamento.CABECALHO_DA_SESSAO: "sessao-de-outra-subida"}}.get(modo)
     return conexao.pedir(
-        pedido["metodo"], pedido["caminho"], pedido["origem"], cabecalhos=cabecalhos, assinar=modo != "ausente",
+        pedido["metodo"], pedido["caminho"], origem=pedido["origem"], cabecalhos=cabecalhos, assinar=modo != "ausente",
         corpo=corpo if corpo is not None else pedido.get("corpo"), corpo_bruto=pedido.get("corpoBruto"),
     )
 
