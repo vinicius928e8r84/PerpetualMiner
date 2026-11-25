@@ -22,7 +22,8 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'e2e', 'variantes-do-
 const { PedidoAoAnki, ConversaComOAnki, VariantesDoPedidoAoAnki } = contexto.PerpetualMiner;
 contexto.PerpetualMiner.PareamentoComOAnki = {
   pedirAssinado: async (endereco, pedido, opcoes, enviar) => {
-    const recebida = await enviar(endereco, pedido, pedido.corpo === undefined ? undefined : JSON.stringify(pedido.corpo), opcoes, { 'X-Assinatura': 'a' });
+    const recebida = await enviar(
+      endereco, { ...pedido, corpoEmTexto: pedido.corpo === undefined ? undefined : JSON.stringify(pedido.corpo), cabecalhos: { 'X-Assinatura': 'a' } }, opcoes);
     return { status: recebida.status, texto: await recebida.text() };
   },
 };
