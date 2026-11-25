@@ -85,7 +85,7 @@ const leAPR = passo => Boolean(passo.env) && ('PR_BODY' in passo.env || 'PR_NUME
 const conferenciasDoCI = passosDoCI.filter(passo => passo.run && !leAPR(passo))
   .map(passo => /^node (scripts\/\S+)/.exec(passo.run)).filter(Boolean).map(achado => achado[1]).filter(script => script !== 'scripts/testar.mjs');
 const gancho = fs.readFileSync(path.join(__dirname, 'pre-push'), 'utf8');
-assert.deepStrictEqual(conferenciasDoCI, ['scripts/regras/verificar.js', 'scripts/ganchos/limite-de-tokens.js', 'scripts/ci/autoria.js']);
+assert.deepStrictEqual(conferenciasDoCI, ['scripts/regras/verificar.js', 'scripts/ganchos/limite-de-tokens.js', 'scripts/ci/lint-do-que-mudou.js', 'scripts/ci/auditoria-de-dependencias.js', 'scripts/ci/autoria.js']);
 assert.deepStrictEqual(conferenciasDoCI.filter(script => !gancho.includes(`node ${script} `)), [],
   'o pre-push roda cada conferência do job Regras que não lê o corpo da PR');
 for (const script of ['scripts/regras/verificar.js', 'scripts/ganchos/limite-de-tokens.js']) {

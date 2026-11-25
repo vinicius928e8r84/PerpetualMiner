@@ -112,6 +112,7 @@ function rotasDoGithub(github) {
     'GET /repos/dono/repo/pulls/7': () => ({ body: github.corpo, labels: [], head: { sha: HEAD } }),
     'GET /repos/dono/repo/issues/7/comments': () => github.comentarios.map((body, i) => ({ body, created_at: `2026-11-14T0${i}:00:00Z`, author_association: 'OWNER' })),
     'GET /repos/dono/repo/pulls/7/reviews': () => [],
+    'GET /repos/dono/repo/pulls/7/files': () => [],
     'POST /repos/dono/repo/issues/7/comments': () => ({ id: 1 }),
     'PATCH /repos/dono/repo/pulls/7': () => ({ number: 7 }),
     'GET /repos/dono/repo/actions/workflows/registro-da-pr.yml/runs': () => ({ workflow_runs: github.execucoes }),

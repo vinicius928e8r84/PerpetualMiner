@@ -30,6 +30,11 @@ jobs:
         with:
           python-version: '3.12'
       - run: npm ci --prefix scripts/regras/analisador
+      - name: Instalar o ESLint, o ruff e o pip-audit
+        run: |
+          npm install --no-save --no-audit --no-fund --ignore-scripts --prefix "$RUNNER_TEMP/eslint" eslint@9.39.4
+          echo "ESLINT_BIN=$RUNNER_TEMP/eslint/node_modules/eslint/bin/eslint.js" >> "$GITHUB_ENV"
+          python -m pip install --disable-pip-version-check ruff==0.17.6 pip-audit==2.10.1
       - run: node scripts/testar.mjs regras
       - run: node scripts/regras/verificar.js
         env:
@@ -37,6 +42,17 @@ jobs:
       - name: Limite de tamanho dos arquivos
         if: ${{ !cancelled() }}
         run: node scripts/ganchos/limite-de-tokens.js --base "$REGRAS_BASE"
+        env:
+          REGRAS_BASE: ${{ github.event_name == 'push' && github.event.before || 'HEAD^1' }}
+      - name: Lint do que a mudança acrescentou
+        if: ${{ !cancelled() }}
+        run: node scripts/ci/lint-do-que-mudou.js --base "$REGRAS_BASE"
+        env:
+          REGRAS_BASE: ${{ github.event_name == 'push' && github.event.before || 'HEAD^1' }}
+          REGRAS_EXIGE_FERRAMENTAS: '1'
+      - name: Auditoria das dependências que a mudança introduz
+        if: ${{ !cancelled() }}
+        run: node scripts/ci/auditoria-de-dependencias.js --base "$REGRAS_BASE"
         env:
           REGRAS_BASE: ${{ github.event_name == 'push' && github.event.before || 'HEAD^1' }}
       - name: Mapa de features

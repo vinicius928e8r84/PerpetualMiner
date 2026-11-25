@@ -10,7 +10,7 @@ function arquivosDoRepositorio(raiz) {
     cwd: raiz, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024,
   });
   return [...new Set(saida.split('\0').filter(Boolean))]
-    .filter(arquivo => fs.existsSync(path.join(raiz, arquivo)))
+    .filter(arquivo => fs.existsSync(path.join(raiz, arquivo)) && !fs.statSync(path.join(raiz, arquivo)).isDirectory())
     .sort();
 }
 

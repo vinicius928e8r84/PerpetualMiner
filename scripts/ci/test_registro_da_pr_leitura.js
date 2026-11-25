@@ -54,6 +54,7 @@ function servidorDoGitHub() {
       '/repos/dono/repo/pulls/7': { head: { sha: HEAD }, body: corpoCom('Sem issue'), labels: [] },
       '/repos/dono/repo/issues/7/comments': [{ body: REVISAO, created_at: '2026-01-02T00:00:00Z', author_association: 'OWNER' }],
       '/repos/dono/repo/pulls/7/reviews': [],
+      '/repos/dono/repo/pulls/7/files': [],
     };
     resposta.writeHead(rotas[pathname] ? 200 : 404, { 'content-type': 'application/json' });
     resposta.end(JSON.stringify(rotas[pathname] || { message: 'erro' }));

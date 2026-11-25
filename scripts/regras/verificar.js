@@ -31,6 +31,9 @@ const REGRAS = [
   require('./html-cru'),
   require('./dialogo-nativo'),
   require('./saude-do-codigo'),
+  require('./sem-segredo-novo'),
+  require('./sem-binario-novo'),
+  require('./sem-depuracao-nova'),
   require('./glossario-so-linguagem'),
 ];
 
