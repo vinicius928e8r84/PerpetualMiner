@@ -20,6 +20,14 @@ class QuebradaAoLer(ColecaoEmMemoria):
         super().__init__({"quebra": True, "baralhos": []})
 
 
+@contextlib.contextmanager
+def o_anki_no_estado(calar_o_erro=False, **estado):
+    """A Conexão de teste numa pasta nova, com o Anki no `estado` pedido (coleção, perfil que falha). `calar_o_erro` esconde o erro que o servidor registra de propósito."""
+    calada = contextlib.redirect_stderr(io.StringIO()) if calar_o_erro else contextlib.nullcontext()
+    with tempfile.TemporaryDirectory() as pasta, calada, ConexaoNoTeste(pasta, **estado) as conexao:
+        yield conexao
+
+
 class EstadosDeCadaRota(unittest.TestCase):
     def conferir_que_toda_rota_esta_na_matriz(self, rotas, matriz):
         sem_entrada = sorted(rota for rota in rotas if rota not in matriz)
@@ -28,45 +36,52 @@ class EstadosDeCadaRota(unittest.TestCase):
     def pedir_cada_rota(self, conexao, rotas, matriz):
         return {rota: conexao.pedir(rota[0], rota[1], corpo=matriz[rota]["corpo"]) for rota in sorted(rotas, key=lambda r: (matriz[r].get("abre_perfil", False), r))}
 
+    def pedir_cada_rota_no_estado(self, rotas, matriz, **estado):
+        with o_anki_no_estado(**estado) as conexao:
+            return self.pedir_cada_rota(conexao, rotas, matriz)
+
+    def conferir_o_erro_interno(self, rota, status, corpo):
+        self.assertEqual((status, json.loads(corpo)), (500, {"error": "internal_error"}), rota)
+
+    def conferir_a_rota_que_o_estado_nao_afeta(self, rota, status, matriz):
+        self.assertEqual(status, matriz[rota].get("status", 200), rota)
+
     def conferir_a_colecao_que_quebra(self, rotas, matriz):
-        with tempfile.TemporaryDirectory() as pasta, contextlib.redirect_stderr(io.StringIO()), ConexaoNoTeste(pasta, colecao=QuebradaAoLer()) as conexao:
-            respostas = self.pedir_cada_rota(conexao, rotas, matriz)
+        respostas = self.pedir_cada_rota_no_estado(rotas, matriz, colecao=QuebradaAoLer(), calar_o_erro=True)
         for rota, (status, _, corpo) in respostas.items():
             if matriz[rota]["le_a_colecao"]:
-                self.assertEqual((status, json.loads(corpo)), (500, {"error": "internal_error"}), rota)
+                self.conferir_o_erro_interno(rota, status, corpo)
             else:
-                self.assertEqual(status, matriz[rota].get("status", 200), rota)
+                self.conferir_a_rota_que_o_estado_nao_afeta(rota, status, matriz)
 
     def conferir_sem_a_colecao_aberta(self, rotas, matriz):
-        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta, colecao=ColecaoEmMemoria.fechada()) as conexao:
-            respostas = self.pedir_cada_rota(conexao, rotas, matriz)
+        respostas = self.pedir_cada_rota_no_estado(rotas, matriz, colecao=ColecaoEmMemoria.fechada())
         for rota, (status, _, corpo) in respostas.items():
             if matriz[rota]["le_a_colecao"]:
                 self.assertEqual(status, 503, rota)
                 self.assertTrue(json.loads(corpo)["error"].endswith("_unavailable"), rota)
             else:
-                self.assertEqual(status, matriz[rota].get("status", 200), rota)
+                self.conferir_a_rota_que_o_estado_nao_afeta(rota, status, matriz)
 
     def conferir_o_perfil_que_nao_se_le(self, rotas, matriz):
-        with tempfile.TemporaryDirectory() as pasta, contextlib.redirect_stderr(io.StringIO()), ConexaoNoTeste(pasta, falha_no_perfil=True, colecao=ColecaoEmMemoria.fechada()) as conexao:
-            respostas = self.pedir_cada_rota(conexao, rotas, matriz)
+        respostas = self.pedir_cada_rota_no_estado(rotas, matriz, colecao=ColecaoEmMemoria.fechada(), falha_no_perfil=True, calar_o_erro=True)
         for rota, (status, _, corpo) in respostas.items():
             if matriz[rota]["le_o_perfil"]:
-                self.assertEqual((status, json.loads(corpo)), (500, {"error": "internal_error"}), rota)
+                self.conferir_o_erro_interno(rota, status, corpo)
             elif matriz[rota]["le_a_colecao"]:
                 self.assertEqual(status, 503, rota)
             else:
-                self.assertEqual(status, matriz[rota].get("status", 200), rota)
+                self.conferir_a_rota_que_o_estado_nao_afeta(rota, status, matriz)
 
     def conferir_as_recusas_de_cada_rota(self, rotas, matriz):
-        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta, colecao=ColecaoEmMemoria(ler_o_contrato()["colecoes"]["inglês com subbaralho"])) as conexao:
+        with o_anki_no_estado(colecao=ColecaoEmMemoria(ler_o_contrato()["colecoes"]["inglês com subbaralho"])) as conexao:
             for rota in sorted(rotas):
                 for corpo, status_esperado, erro_esperado in matriz[rota]["recusas"]:
                     status, _, resposta = conexao.pedir(rota[0], rota[1], corpo=corpo)
                     self.assertEqual((status, json.loads(resposta)), (status_esperado, {"error": erro_esperado}), (rota, corpo))
 
     def conferir_o_corpo_que_nao_e_um_objeto_json(self, rotas, matriz):
-        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+        with o_anki_no_estado() as conexao:
             for metodo, caminho in sorted(rotas):
                 status, _, corpo = conexao.pedir(metodo, caminho, corpo=b"{isto nao e json")
                 self.assertEqual((status, json.loads(corpo)), (400, {"error": "invalid_json"}), (metodo, caminho))
