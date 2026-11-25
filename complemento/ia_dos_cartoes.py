@@ -44,6 +44,45 @@ class JuizDaImagem:
         return texto, uso, True
 
 
+class PedidosDoTexto:
+    def __init__(self, motor, cred, pasta, modelo_da_chave):
+        self._provedores, self._custos = motor.provedores, motor.cost_tracker
+        self._cred, self._pasta, self._modelo_da_chave = cred, pasta, modelo_da_chave
+
+    def do_caso(self, etapa, pelo_plano):
+        return {
+            (CORRECAO, True): self._correcao_pelo_plano,
+            (CORRECAO, False): self._correcao_pela_chave,
+            (TEXTO, True): self._texto_pelo_plano,
+            (TEXTO, False): self._texto_pela_chave,
+        }[(etapa, pelo_plano)]
+
+    def _gasto(self, uso):
+        return self._custos.TokenUsage(self._cred["modelo"], uso.get("entrada", 0), uso.get("saida", 0))
+
+    def _correcao_pelo_plano(self, sistema, mensagem, rotulo):
+        texto, uso = self._provedores.texto(self._cred, sistema, mensagem)
+        self._custos.record_correction(self._pasta, self._gasto(uso), paid=False)
+        return texto
+
+    def _correcao_pela_chave(self, sistema, mensagem, rotulo):
+        texto, uso = self._provedores.texto(self._cred, sistema, mensagem, temperatura=0.2)
+        self._custos.record_correction(self._pasta, self._gasto(uso), paid=True)
+        return texto
+
+    def _texto_pelo_plano(self, sistema, mensagem, rotulo):
+        texto, uso = self._provedores.texto(self._cred, sistema, mensagem)
+        gasto = self._custos.TokenUsage(self._cred["modelo"], uso["entrada"], uso["saida"])
+        self._custos.record_plan_tokens(self._pasta, gasto, self._modelo_da_chave, rotulo)
+        return texto
+
+    def _texto_pela_chave(self, sistema, mensagem, rotulo):
+        texto, uso = self._provedores.texto(self._cred, sistema, mensagem, temperatura=0.2)
+        if uso:
+            self._custos.record_tokens(self._pasta, self._gasto(uso), keyword=rotulo)
+        return texto
+
+
 class IaDosCartoes:
     def __init__(self, conta, modelos, motor=SEM_MOTOR, logger=None):
         self._conta, self._modelos = conta, modelos
@@ -63,27 +102,13 @@ class IaDosCartoes:
     def pedido_do_texto(self, pagador, config, etapa=TEXTO):
         if etapa not in (TEXTO, CORRECAO):
             raise ValueError(etapa)
-        provedores, custos = self._motor.provedores, self._motor.cost_tracker
         modelo_do_motor = config["openai"].get("chat_model", "gpt-4o")
         cred = self._com_o_endereco(pagador.credencial)
         cred["modelo"] = cred["modelo"] or modelo_do_motor
-        modelo_da_chave, pasta = modelo_do_motor if pagador.quem == PLANO else cred["modelo"], config["paths"]["log_dir"]
-
-        def pedir(sistema, mensagem, rotulo):
-            if etapa == CORRECAO:
-                pelo_plano = pagador.quem == PLANO
-                texto, uso = provedores.texto(cred, sistema, mensagem) if pelo_plano else provedores.texto(cred, sistema, mensagem, temperatura=0.2)
-                custos.record_correction(pasta, custos.TokenUsage(cred["modelo"], uso.get("entrada", 0), uso.get("saida", 0)), paid=not pelo_plano)
-            elif pagador.quem == PLANO:
-                texto, uso = provedores.texto(cred, sistema, mensagem)
-                custos.record_plan_tokens(pasta, custos.TokenUsage(cred["modelo"], uso["entrada"], uso["saida"]), modelo_da_chave, rotulo)
-            else:
-                texto, uso = provedores.texto(cred, sistema, mensagem, temperatura=0.2)
-                if uso:
-                    custos.record_tokens(pasta, custos.TokenUsage(cred["modelo"], uso.get("entrada", 0), uso.get("saida", 0)), keyword=rotulo)
-            return texto
-
-        return pedir
+        pelo_plano = pagador.quem == PLANO
+        modelo_da_chave = modelo_do_motor if pelo_plano else cred["modelo"]
+        pedidos = PedidosDoTexto(self._motor, cred, config["paths"]["log_dir"], modelo_da_chave)
+        return pedidos.do_caso(etapa, pelo_plano)
 
     def para_a_imagem(self, pela_chave=False):
         plano, chave = credencial_da_imagem(self._conta, self._do_envio, self._modelos, pela_chave)
