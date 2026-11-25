@@ -11,8 +11,7 @@ const EXCECOES = ['chrome-nativo', 'catálogo', 'componente-base'];
 
 const conserto = 'Confira pela tela (locators) e pelo que ficou gravado (`extensao.lerStorage`, `extensao.frases()`), '
   + 'não chamando o código da extensão num `evaluate`. Se for uma das três exceções de docs/testes.md, '
-  + 'diga qual no comentário logo acima, seguido do porquê: `// Exceção de teste: chrome-nativo|catálogo|componente-base (docs/testes.md).` '
-  + '(CODING_STANDARDS.md regra 8).';
+  + 'diga qual no comentário logo acima, seguido do porquê: `// Exceção de teste: chrome-nativo|catálogo|componente-base (docs/testes.md).`';
 
 const seAplica = arquivo => /^e2e\/tests\/.+\.spec\.js$/.test(arquivo);
 

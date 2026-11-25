@@ -3,7 +3,7 @@
 const { test, expect } = require('../fixtures');
 const { semearComoNoPrototipo, abrirConfiguracoes } = require('../apoio-das-configuracoes');
 
-const AGUARDA_O_DONO = 'a referência visual do modelo dos cartões espera a aprovação do dono (regra 10)';
+const AGUARDA_O_DONO = 'a referência visual do modelo dos cartões espera a aprovação do dono';
 
 async function abrirComAChave(page, extensao, fakes, cenario) {
   await semearComoNoPrototipo(extensao, fakes);

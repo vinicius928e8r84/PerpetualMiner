@@ -9,4 +9,4 @@ Part of [`SKILL.md`](./SKILL.md). Read it before writing what a proof does not c
 - The Anki add-on (`complemento/`) is mapped in `features/ia.md` (the key), `features/anki-no-login.md` (the login item) and `features/anki.md` › `anki-open-alone` (the opener); its own tests run with `PYTHON=python3.9|python3.13 node scripts/testar.mjs complemento`. Baralhos e termos and Vocabulário: `features/anki-baralhos.md`.
 - The add-on's read side (the Anki adapter) is proven only against a fake `mw`; a real Anki is the owner's rehearsal.
 - The OpenAI key was never checked against the real OpenAI: its provider and Firestore are the repo's fakes, even in the real Conexão drive.
-- The `--update-snapshots` rule is stated in SKILL.md § Drive and in `features/README.md`; `CODING_STANDARDS.md` rule 10 owns it.
+- The `--update-snapshots` rule is stated in SKILL.md § Drive and in `features/README.md`; the `aprovacao-visual` check owns it.

@@ -131,7 +131,7 @@ test('Chave do Gemini aberta, vazia, depois de salvar vazio', async ({ page, ext
   await expect(page).toHaveScreenshot('chave-vazia-recusada.png', { animations: 'disabled' });
 });
 
-const AGUARDA_O_DONO = 'a referência visual do card IA dos cartões espera a aprovação do dono (regra 10)';
+const AGUARDA_O_DONO = 'a referência visual do card IA dos cartões espera a aprovação do dono';
 const campoDaChave = page => page.locator('#cfg-ia .cfg-chave-campo');
 test('IA dos cartões aberta, sem chave: as duas entradas lado a lado', async ({ page, extensao, fakes }) => {
   test.fixme(true, AGUARDA_O_DONO);

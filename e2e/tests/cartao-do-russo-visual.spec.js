@@ -4,7 +4,7 @@ const path = require('path');
 const { pathToFileURL } = require('url');
 const { test, expect } = require('../fixtures');
 
-const AGUARDA_O_DONO = 'a referência visual espera a aprovação do dono (regra 10)';
+const AGUARDA_O_DONO = 'a referência visual espera a aprovação do dono';
 const PAGINA = pathToFileURL(path.join(__dirname, '..', '..', 'docs', 'design', 'cartao-do-russo.html')).href;
 
 async function abrirOCartao(page, nivel) {
