@@ -61,7 +61,7 @@ class Navegador:
             pareamento.CABECALHO_DO_CLIENTE: self.cliente,
             pareamento.CABECALHO_DA_SESSAO: sessao,
             pareamento.CABECALHO_DO_NONCE: nonce,
-            pareamento.CABECALHO_DA_ASSINATURA: pareamento.assinatura_do_pedido(self.segredo, sessao, nonce, metodo, caminho, corpo),
+            pareamento.CABECALHO_DA_ASSINATURA: pareamento.assinatura_do_pedido(pareamento.Selo(self.segredo, sessao, nonce), metodo, caminho, corpo),
         }
 
 

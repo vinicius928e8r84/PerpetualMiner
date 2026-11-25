@@ -20,14 +20,14 @@ from complemento.test_harness import ConexaoNoTeste
 class OVetorDeAssinatura(unittest.TestCase):
     def test_o_vetor_do_contrato_da_a_mesma_assinatura_que_o_webcrypto_deu(self):
         assinatura = pareamento.assinatura_do_pedido(
-            base64.b64decode(VETOR["segredo"]), VETOR["sessao"], VETOR["nonce"], VETOR["metodo"], VETOR["caminho"], VETOR["corpo"].encode("utf-8"))
+            pareamento.Selo(base64.b64decode(VETOR["segredo"]), VETOR["sessao"], VETOR["nonce"]), VETOR["metodo"], VETOR["caminho"], VETOR["corpo"].encode("utf-8"))
         self.assertEqual(assinatura, VETOR["assinatura"])
 
     def test_os_tres_usos_do_segredo_nunca_dao_a_mesma_prova(self):
         segredo = b"s" * 32
         provas = {
-            pareamento.assinatura_do_pedido(segredo, "sessao", "nonce-00", "POST", "/x", b"{}"),
-            pareamento.prova_da_resposta(segredo, "sessao", "nonce-00", 200, b"{}"),
+            pareamento.assinatura_do_pedido(pareamento.Selo(segredo, "sessao", "nonce-00"), "POST", "/x", b"{}"),
+            pareamento.prova_da_resposta(pareamento.Selo(segredo, "sessao", "nonce-00"), 200, b"{}"),
             pareamento.prova_do_servidor(segredo, "nonce-00", "sessao"),
         }
         self.assertEqual(len(provas), 3)
@@ -177,8 +177,8 @@ class ConcluirOPareamento(unittest.TestCase):
         relogio = [1000.0]
         with tempfile.TemporaryDirectory() as pasta:
             tela = TelaDeMentira()
-            p = pareamento.Pareamento(os.path.join(pasta, "pareamento.json"), registro.silencioso(), relogio=lambda: relogio[0], na_tela=tela,
-                                      sortear=lambda: CODIGO)
+            p = pareamento.Pareamento(os.path.join(pasta, "pareamento.json"), registro.silencioso(),
+                                      pareamento.Fontes(relogio=lambda: relogio[0], sortear=lambda: CODIGO), na_tela=tela)
             try:
                 p.comecar()
                 relogio[0] += pareamento.VALIDADE_DO_CODIGO_S - 1
@@ -263,8 +263,8 @@ class OTetoDosCodigosNovos(unittest.TestCase):
         relogio = [1000.0]
         with tempfile.TemporaryDirectory() as pasta:
             tela = TelaDeMentira()
-            p = pareamento.Pareamento(os.path.join(pasta, "pareamento.json"), registro.silencioso(), relogio=lambda: relogio[0], na_tela=tela,
-                                      sortear=lambda: CODIGO)
+            p = pareamento.Pareamento(os.path.join(pasta, "pareamento.json"), registro.silencioso(),
+                                      pareamento.Fontes(relogio=lambda: relogio[0], sortear=lambda: CODIGO), na_tela=tela)
             try:
                 for _ in range(pareamento.CODIGOS_ESGOTADOS_PARA_BLOQUEAR):
                     p.comecar()

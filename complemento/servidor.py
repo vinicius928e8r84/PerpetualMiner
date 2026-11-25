@@ -4,7 +4,7 @@ import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from .pareamento import CABECALHO_DA_PROVA, prova_da_resposta
+from .pareamento import CABECALHO_DA_PROVA, Selo, prova_da_resposta
 from .paginas_do_navegador import PAGINAS, ROTAS_DO_CHATGPT, responder_a_pagina
 from .rotas_da_chave import (
     apagar_chave_da_openai, estado_da_ia, guardar_chave_da_openai, sincronizar_chave_da_openai, vincular_legado_da_openai,
@@ -96,7 +96,7 @@ class _Atendente(BaseHTTPRequestHandler):
             self.send_header("Access-Control-Expose-Headers", CABECALHO_DA_PROVA)
             self.send_header("Vary", "Origin")
         if self._assinado is not None:
-            self.send_header(CABECALHO_DA_PROVA, prova_da_resposta(self._assinado.segredo, self.conexao.pareamento.sessao, self._assinado.nonce, status, corpo))
+            self.send_header(CABECALHO_DA_PROVA, prova_da_resposta(Selo(self._assinado.segredo, self.conexao.pareamento.sessao, self._assinado.nonce), status, corpo))
         for nome, valor in (extras or {}).items():
             self.send_header(nome, valor)
         self.end_headers()
