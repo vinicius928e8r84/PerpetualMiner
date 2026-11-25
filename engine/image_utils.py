@@ -14,6 +14,11 @@ COMECO_DE_CADA_FORMATO = (
     (b"\xff\xd8\xff", "jpeg"),
     ((b"GIF87a", b"GIF89a"), "gif"),
 )
+MIME_DO_FORMATO_PEDIDO = {
+    "JPEG": "image/jpeg",
+    "PNG": "image/png",
+    "WEBP": "image/webp",
+}
 COMECO_DE_MARCACAO = (b"<!doctype html", b"<html", b"<?xml", b"<svg")
 
 
@@ -39,27 +44,55 @@ def _looks_like_markup(data: bytes) -> bool:
     return data[:512].lstrip().lower().startswith(COMECO_DE_MARCACAO)
 
 
+def _mime_do_formato_pedido(target_format: str) -> str:
+    mime = MIME_DO_FORMATO_PEDIDO.get(target_format)
+    if not mime:
+        raise ValueError(f"unsupported target image format: {target_format}")
+    return mime
+
+
+def _ja_esta_no_formato(data: bytes, target_mime: str) -> bool:
+    existing_format = detect_supported_image_format(data)
+    return bool(existing_format) and SUPPORTED_IMAGE_MIMES[existing_format] == target_mime
+
+
 def normalize_image_bytes(data: bytes, *, target_format: str = "PNG") -> tuple[bytes, str]:
     if not data or _looks_like_markup(data):
         raise UnsupportedImageFormatError("not a raster image")
 
     target_format = target_format.upper()
-    target_mime = {
-        "JPEG": "image/jpeg",
-        "PNG": "image/png",
-        "WEBP": "image/webp",
-    }.get(target_format)
-    if not target_mime:
-        raise ValueError(f"unsupported target image format: {target_format}")
-
-    existing_format = detect_supported_image_format(data)
-    if existing_format and SUPPORTED_IMAGE_MIMES[existing_format] == target_mime:
+    target_mime = _mime_do_formato_pedido(target_format)
+    if _ja_esta_no_formato(data, target_mime):
         return data, target_mime
 
     normalized = _adaptador_em_uso().converter(data, target_format)
     if not detect_supported_image_format(normalized):
         raise UnsupportedImageFormatError("converted image is not supported")
     return normalized, target_mime
+
+
+def _sobre_fundo_branco(img):
+    from PIL import Image
+
+    fundo = Image.new("RGB", img.size, (255, 255, 255))
+    fundo.paste(img, mask=img.getchannel("A"))
+    return fundo
+
+
+def _no_modo_do_jpeg(img):
+    return _sobre_fundo_branco(img) if img.mode in {"RGBA", "LA"} else img.convert("RGB")
+
+
+def _no_modo_do_png(img):
+    return img if img.mode in {"RGB", "RGBA", "L", "LA", "P"} else img.convert("RGBA")
+
+
+def _no_modo_do_formato(img, formato: str):
+    if formato == "JPEG":
+        return _no_modo_do_jpeg(img)
+    if formato == "PNG":
+        return _no_modo_do_png(img)
+    return img
 
 
 class AdaptadorDoPillow:
@@ -71,18 +104,9 @@ class AdaptadorDoPillow:
 
         try:
             with Image.open(BytesIO(dados)) as img:
-                img = ImageOps.exif_transpose(img)
+                pronta = _no_modo_do_formato(ImageOps.exif_transpose(img), formato)
                 out = BytesIO()
-                if formato == "JPEG":
-                    if img.mode in {"RGBA", "LA"}:
-                        background = Image.new("RGB", img.size, (255, 255, 255))
-                        background.paste(img, mask=img.getchannel("A"))
-                        img = background
-                    else:
-                        img = img.convert("RGB")
-                elif formato == "PNG" and img.mode not in {"RGB", "RGBA", "L", "LA", "P"}:
-                    img = img.convert("RGBA")
-                img.save(out, format=formato)
+                pronta.save(out, format=formato)
         except (UnidentifiedImageError, OSError, ValueError) as exc:
             raise UnsupportedImageFormatError("not a supported raster image") from exc
         return out.getvalue()
