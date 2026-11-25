@@ -256,8 +256,9 @@ const FOTO = 'The ferry left the harbour.';
 const LEGENDA = 'I never saw it coming.';
 const ajustes = { pm_auto_miner_settings: { en: { enabled: true, dailyLimit: 20 }, ru: { enabled: false, dailyLimit: 20 } } };
 
-const foto = { nome: 'SW foto', rodar: ({ sw }) => sw.salvarFrase(FOTO, 'livro', null, 'Inglês',
-  { keywords: ['harbour@3'], autoKeyword: false }, { comPalavraAutomatica: false, comNuvem: false }),
+const foto = { nome: 'SW foto', rodar: ({ sw }) => sw.salvarFrase({
+  texto: FOTO, origem: 'livro', contexto: null, idioma: 'Inglês', extras: { keywords: ['harbour@3'], autoKeyword: false },
+}, { comNuvem: false }),
 ops: [{ tipo: 'acrescentar', frase: { texto: FOTO, keywords: ['harbour@3'] } }] };
 const legenda = nome => ({ nome, rodar: ({ sw }) => sw.handleAutoMinerCandidate({ texto: LEGENDA, lang: 'en', origem: 'netflix' }),
   ops: [{ tipo: 'acrescentarSeNova', frase: { texto: LEGENDA, keywords: ['coming@8', '|', 'never@2'] } }] });
