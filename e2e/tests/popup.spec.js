@@ -25,6 +25,11 @@ const SETE_FRASES = [
   frase(1, 'That ship has sailed.'),
 ];
 
+const EN_EM_DOZE_RU_DESLIGADO = {
+  en: { ligado: true, limite: 20, hoje: 12 },
+  ru: { ligado: false, limite: 15, hoje: 0 },
+};
+
 const ALT_S = { type: 'keyboard', code: 'KeyS', altKey: true, ctrlKey: false, shiftKey: false, label: 'Alt+S' };
 const CTRL_SHIFT_L = { type: 'keyboard', code: 'KeyL', altKey: false, ctrlKey: true, shiftKey: true, label: 'Ctrl+Shift+L' };
 
@@ -276,10 +281,7 @@ test('sem atalho gravado, o rodapé diz “Sem atalho” e Definir atalho abre C
 });
 
 test('os azulejos Inglês | Russo mostram o dia, e o toggle e o limite gravam', async ({ page, extensao }) => {
-  await abrirOPopupComAutomatica(page, extensao, {
-    en: { ligado: true, limite: 20, hoje: 12 },
-    ru: { ligado: false, limite: 15, hoje: 0 },
-  });
+  await abrirOPopupComAutomatica(page, extensao, EN_EM_DOZE_RU_DESLIGADO);
 
   await expect(page.getByRole('heading', { name: 'Mineração automática por dia' })).toBeVisible();
   const en = page.locator('.popup-azulejo[data-idioma="en"]');
@@ -368,7 +370,7 @@ test('mineração automática carregando: esqueleto nos azulejos, sem texto', as
 });
 
 test('mineração automática sem o estado do service worker: POP-16 diz o que fazer, sem botão nem Detalhes', async ({ page, extensao }) => {
-  await abrirOPopupComAutomatica(page, extensao, {
+  await semearMineracaoAutomatica(extensao, {
     en: { ligado: true, limite: 20, hoje: 3 },
     ru: { ligado: false, limite: 20, hoje: 0 },
   });
@@ -387,7 +389,7 @@ test('mineração automática sem o estado do service worker: POP-16 diz o que f
 });
 
 test('gravar a mineração automática falhando: o toggle volta ao gravado e POP-16 pede para tentar de novo', async ({ page, extensao }) => {
-  await semearMineracaoAutomatica(extensao, {
+  await abrirOPopupComAutomatica(page, extensao, {
     en: { ligado: true, limite: 20, hoje: 3 },
     ru: { ligado: false, limite: 15, hoje: 0 },
   });
@@ -429,10 +431,7 @@ test('limite de hoje atingido: “Limite de hoje atingido” no lugar do campo, 
 });
 
 test('o contador mostra “12/20” como no protótipo, e o leitor de tela ouve “12 de 20 hoje”', async ({ page, extensao }) => {
-  await abrirOPopupComAutomatica(page, extensao, {
-    en: { ligado: true, limite: 20, hoje: 12 },
-    ru: { ligado: false, limite: 15, hoje: 0 },
-  });
+  await abrirOPopupComAutomatica(page, extensao, EN_EM_DOZE_RU_DESLIGADO);
 
   const contador = page.locator('.popup-azulejo[data-idioma="en"] .popup-azulejo__contador');
   await expect(contador.locator('[aria-hidden="true"]')).toHaveText('12/20');
@@ -467,10 +466,7 @@ const esperando = (page, chave) => page.locator(`.popup-azulejo[data-idioma="${c
 
 test('com a Conexão desligada e uma leitura de ontem, o azulejo segue contando e o selo diz “Vocabulário de ontem, 14:02”', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
-  await abrirOPopupComAutomatica(page, extensao, {
-    en: { ligado: true, limite: 20, hoje: 12 },
-    ru: { ligado: false, limite: 15, hoje: 0 },
-  });
+  await semearMineracaoAutomatica(extensao, EN_EM_DOZE_RU_DESLIGADO);
   await extensao.gravarStorage({ pm_auto_keyword_vocab_en: leitura(DEN, ontemAs1402()) });
   await page.goto(extensao.url(POPUP));
 
@@ -490,6 +486,7 @@ test('o selo do popup diz o dia e a hora da leitura mais antiga entre os idiomas
     pm_auto_keyword_vocab_en: leitura(DEN, Date.now() - 60_000),
     pm_auto_keyword_vocab_ru: leitura(DRU, ontemAs1402()),
   });
+  await page.goto(extensao.url(POPUP));
   await expect(selo(page)).toHaveText('Vocabulário de ontem, 14:02');
 
   await extensao.gravarStorage({ pm_auto_miner_settings: {
@@ -500,7 +497,7 @@ test('o selo do popup diz o dia e a hora da leitura mais antiga entre os idiomas
 });
 
 test('com a Conexão respondendo e o Anki aberto, nem o selo nem o esperando aparecem', async ({ page, extensao, fakes }) => {
-  await abrirOPopupComAutomatica(page, extensao, {
+  await semearMineracaoAutomatica(extensao, {
     en: { ligado: true, limite: 20, hoje: 2 },
     ru: { ligado: true, limite: 15, hoje: 0 },
   });
@@ -515,7 +512,7 @@ test('com a Conexão respondendo e o Anki aberto, nem o selo nem o esperando apa
 
 test('com a Conexão desligada e nenhuma leitura, o azulejo ligado diz “— esperando o Anki” e quando começa; o desligado, nada', async ({ page, extensao, fakes }) => {
   fakes.anki.desligar();
-  await semearMineracaoAutomatica(extensao, {
+  await abrirOPopupComAutomatica(page, extensao, {
     en: { ligado: true, limite: 20, hoje: 0 },
     ru: { ligado: false, limite: 15, hoje: 0 },
   });
@@ -574,10 +571,7 @@ test('todo controle do popup tem nome para o leitor de tela', async ({ page, ext
 
 test('o Tab passa por todos os controles do popup, em ordem, e cada um mostra o foco', async ({ page, extensao }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await semearMineracaoAutomatica(extensao, {
-    en: { ligado: true, limite: 20, hoje: 12 },
-    ru: { ligado: false, limite: 15, hoje: 0 },
-  });
+  await semearMineracaoAutomatica(extensao, EN_EM_DOZE_RU_DESLIGADO);
   await extensao.gravarStorage({ frases: SETE_FRASES, pm_atalho_legenda: ALT_S });
   await page.goto(extensao.url(POPUP));
   await expect(ultimas(page)).toHaveCount(5);
