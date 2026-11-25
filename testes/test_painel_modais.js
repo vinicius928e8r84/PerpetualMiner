@@ -35,9 +35,12 @@ function osEsqueletosMontados() {
   documento.body.append(ponte);
   require('../painel/esqueleto-modais.js');
   require('../painel/esqueleto-configuracoes.js');
+  require('../painel/esqueleto-frases.js');
+  const areas = conteudo.childNodes.map(canonicaDoFalso);
   esqueletosMontados = {
     modais: ponte.parentNode.childNodes.filter(no => no.className === 'veio-scrim').map(canonicaDoFalso),
-    area: conteudo.childNodes.map(canonicaDoFalso)[0],
+    area: areas.find(area => area.atributos['data-area'] === 'configuracoes'),
+    areaDeFrases: areas.find(area => area.atributos['data-area'] === 'frases'),
   };
   return structuredClone(esqueletosMontados);
 }
@@ -64,6 +67,10 @@ const aAreaDeConfiguracoes = pagina => acharTodos(pagina, no => no.atributos?.['
 
 function aAreaDeFrasesTemASuaArvore() {
   assert.strictEqual(impressaoDigital(aAreaDeFrases(aPaginaMontada())), IMPRESSAO_DA_AREA_DE_FRASES);
+}
+
+function oEsqueletoDeFrasesMontaAMesmaArvore() {
+  assert.strictEqual(impressaoDigital(osEsqueletosMontados().areaDeFrases), IMPRESSAO_DA_AREA_DE_FRASES);
 }
 
 function aAreaDeConfiguracoesTemASuaArvore() {
@@ -93,6 +100,7 @@ function oEsqueletoCarregaAntesDoShellENaoDepoisDosModulos() {
 }
 
 aAreaDeFrasesTemASuaArvore();
+oEsqueletoDeFrasesMontaAMesmaArvore();
 aAreaDeConfiguracoesTemASuaArvore();
 cadaModalTemASuaArvore();
 aPaginaInteiraTemAMesmaArvore();
