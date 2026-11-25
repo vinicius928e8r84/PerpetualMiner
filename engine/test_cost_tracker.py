@@ -120,47 +120,43 @@ def vazio():
     return {"total_usd": 0.0, "by_model": {}, "n_cards": 0, "n_images_dalle": 0, "n_images_google": 0}
 
 
+def somado(total, por_modelo=None, **contagens):
+    return dict(vazio(), total_usd=total, by_model=por_modelo or {}, **contagens)
+
+
+HOJE = "2026-11-25"
+PERIODOS = ("today", "week", "month", "alltime")
+DOS_PERIODOS = [
+    ("today", somado(0.955, {"gpt-4o": 0.5, "gpt-4o-mini": 0.25, "dall-e-3-1024": 0.04, "gpt-image-1": 0.04}, n_cards=3, n_images_dalle=2, n_images_google=1)),
+    ("week", somado(1.955, {"gpt-4o": 1.5, "gpt-4o-mini": 0.25, "dall-e-3-1024": 0.04, "gpt-image-1": 0.04}, n_cards=5, n_images_dalle=2, n_images_google=1)),
+    ("month", somado(7.995, {"gpt-4o": 3.5, "gpt-4o-mini": 4.25, "dall-e-3-1024": 0.08, "gpt-image-1": 0.04}, n_cards=5, n_images_dalle=3, n_images_google=1)),
+    ("alltime", somado(16.015, {"gpt-4o": 11.5, "gpt-4o-mini": 4.25, "dall-e-3-1024": 0.08, "gpt-image-1": 0.04}, n_cards=15, n_images_dalle=3, n_images_google=2)),
+]
+CASOS = [(f"o periodo {periodo}", REGISTROS, "", periodo, esperado) for periodo, esperado in DOS_PERIODOS] + [
+    ("a imagem do google conta so a imagem e nao entra por modelo",
+     [registro(HOJE, "image", 0.0, model="dall-e-3-1024", source="google")], "", "today", dict(vazio(), n_images_google=1)),
+    ("a imagem sem fonte e a do dalle e entra por modelo",
+     [registro(HOJE, "image", 0.04, model="gpt-image-1")], "", "today", somado(0.04, {"gpt-image-1": 0.04}, n_images_dalle=1)),
+    ("a sessao soma os cartoes e a sem cartoes soma zero",
+     [registro(HOJE, "session", n_cards=4), registro(HOJE, "session")], "", "today", dict(vazio(), n_cards=4)),
+    ("o registro sem custo vale zero e o total e arredondado em quatro casas",
+     [registro(HOJE, "image_pipeline"), registro(HOJE, "tokens", 0.123456, model="gpt-4o")], "", "today", somado(0.1235, {"gpt-4o": 0.1235})),
+    ("a linha que nao e json e ignorada e o resto e somado",
+     [registro(HOJE, "tokens", 0.5, model="gpt-4o")], "isto nao e json\n\n", "today", somado(0.5, {"gpt-4o": 0.5})),
+] + [(f"sem registro, o periodo {periodo}", [], "", periodo, vazio()) for periodo in PERIODOS]
+
+
 class OResumoPorPeriodo(unittest.TestCase):
-    def resumo(self, registros, texto_solto=""):
+    def resumo(self, registros, texto_solto):
         with tempfile.TemporaryDirectory() as pasta:
             (Path(pasta) / "costs.jsonl").write_text("\n".join(json.dumps(r) for r in registros) + "\n" + texto_solto, encoding="utf-8")
             with mock.patch.object(cost_tracker, "date", UmDiaFixo):
                 return cost_tracker.summary(pasta)
 
-    def test_cada_periodo_soma_so_os_registros_do_dia_dele_em_diante(self):
-        resumo = self.resumo(REGISTROS)
-        esperados = {
-            "today": (0.955, {"gpt-4o": 0.5, "gpt-4o-mini": 0.25, "dall-e-3-1024": 0.04, "gpt-image-1": 0.04}, 3, 2, 1),
-            "week": (1.955, {"gpt-4o": 1.5, "gpt-4o-mini": 0.25, "dall-e-3-1024": 0.04, "gpt-image-1": 0.04}, 5, 2, 1),
-            "month": (7.995, {"gpt-4o": 3.5, "gpt-4o-mini": 4.25, "dall-e-3-1024": 0.08, "gpt-image-1": 0.04}, 5, 3, 1),
-            "alltime": (16.015, {"gpt-4o": 11.5, "gpt-4o-mini": 4.25, "dall-e-3-1024": 0.08, "gpt-image-1": 0.04}, 15, 3, 2),
-        }
-        for periodo, (total, por_modelo, cartoes, dalle, google) in esperados.items():
-            with self.subTest(periodo):
-                self.assertEqual(resumo[periodo], dict(vazio(), total_usd=total, by_model=por_modelo, n_cards=cartoes, n_images_dalle=dalle, n_images_google=google))
-
-    def test_cada_tipo_de_registro_soma_so_o_que_e_dele(self):
-        casos = [
-            ("a imagem do google conta so a imagem e nao entra por modelo",
-             [registro("2026-11-25", "image", 0.0, model="dall-e-3-1024", source="google")], dict(vazio(), n_images_google=1)),
-            ("a imagem sem fonte e a do dalle e entra por modelo",
-             [registro("2026-11-25", "image", 0.04, model="gpt-image-1")], dict(vazio(), total_usd=0.04, by_model={"gpt-image-1": 0.04}, n_images_dalle=1)),
-            ("a sessao soma os cartoes e a sem cartoes soma zero",
-             [registro("2026-11-25", "session", n_cards=4), registro("2026-11-25", "session")], dict(vazio(), n_cards=4)),
-            ("o registro sem custo vale zero e o total e arredondado em quatro casas",
-             [registro("2026-11-25", "image_pipeline"), registro("2026-11-25", "tokens", 0.123456, model="gpt-4o")],
-             dict(vazio(), total_usd=0.1235, by_model={"gpt-4o": 0.1235})),
-        ]
-        for nome, registros, esperado in casos:
+    def test_cada_registro_soma_so_no_periodo_e_no_tipo_dele(self):
+        for nome, registros, texto_solto, periodo, esperado in CASOS:
             with self.subTest(nome):
-                self.assertEqual(self.resumo(registros)["today"], esperado)
-
-    def test_sem_registro_o_resumo_e_de_zeros_em_cada_periodo(self):
-        self.assertEqual(self.resumo([]), {periodo: vazio() for periodo in ("today", "week", "month", "alltime")})
-
-    def test_a_linha_que_nao_e_json_e_ignorada_e_o_resto_e_somado(self):
-        resumo = self.resumo([registro("2026-11-25", "tokens", 0.5, model="gpt-4o")], "isto nao e json\n\n")
-        self.assertEqual(resumo["today"], dict(vazio(), total_usd=0.5, by_model={"gpt-4o": 0.5}))
+                self.assertEqual(self.resumo(registros, texto_solto)[periodo], esperado)
 
 
 if __name__ == "__main__":

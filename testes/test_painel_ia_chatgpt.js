@@ -89,55 +89,49 @@ const SAIDAS = [
   ['Conexão antiga', { status: 404, dados: null }],
   ['sem resposta', { status: null, dados: null }],
 ];
+const ENTRADAS = [['sem conexão', { status: null, dados: null }], ['sem endereço', { status: 200, dados: { url: 'https://evil.exemplo/' } }]];
+const USAR_A_CHAVE = 'CFG-35.erroChatgptUsarChave';
+
+const CENARIOS = {
+  cadaDesfechoDoSair: SAIDAS.map(([nome, resposta, depois]) => ({ nome, login: 'conectada', rotulo: 'CFG-35.chatgptSair', resposta, depois })),
+  cadaEstadoDaColuna: [
+    { nome: 'plano com chave', login: 'conectada' },
+    { nome: 'plano sem chave', login: 'conectada', temChave: false },
+    { nome: 'sem login', login: 'nenhum' },
+    { nome: 'esperando', login: 'entrando' },
+    { nome: 'cancelado', login: 'entrando', rotulo: 'CFG-35.chaveCancelar', soAColuna: true },
+    { nome: 'acabou', login: 'acabou' },
+    { nome: 'semPlano', login: 'semPlano' },
+  ],
+  cadaEntradaQueNaoAbre: ENTRADAS.map(([nome, entrar]) => ({ nome, login: 'nenhum', rotulo: 'CFG-35.chatgptBotao', entrar })),
+  usarAChave: [
+    { nome: 'com o login acabado', login: 'acabou', rotulo: USAR_A_CHAVE, resposta: OK(true), depois: 'nenhum', comOFoco: true },
+    { nome: 'sem login acabado', login: 'semPlano', rotulo: USAR_A_CHAVE, depois: 'nenhum', comOFoco: true },
+  ],
+};
+
+async function rodar({ login, temChave = true, rotulo, resposta, depois, entrar, soAColuna, comOFoco }) {
+  mundo.temChave = temChave;
+  campos.length = 0;
+  await lerComoLogin(login);
+  if (entrar) fila.entrar.push(entrar);
+  if (!rotulo) return tela();
+  const visto = await clicar(textoDaVoz(rotulo), resposta, depois);
+  if (soAColuna) return visto.coluna;
+  return comOFoco ? { ...visto, campos: campos.slice() } : visto;
+}
 
 async function recomecar() {
   await lerComoLogin('conectada');
   await clicar(sair(), OK(true), 'nenhum');
 }
 
-async function percorrer(casos, passo) {
+async function percorrer(cenarios) {
   const vistos = {};
   await recomecar();
-  for (const [nome, ...parametros] of casos) vistos[nome] = await passo(...parametros);
+  for (const cenario of cenarios) vistos[cenario.nome] = await rodar(cenario);
   return vistos;
 }
-
-const cadaDesfechoDoSair = () => percorrer(SAIDAS, async (resposta, depois) => {
-  await lerComoLogin('conectada');
-  return clicar(sair(), resposta, depois);
-});
-
-const ESTADOS = [
-  ['plano com chave', 'conectada', true],
-  ['plano sem chave', 'conectada', false],
-  ['sem login', 'nenhum', true],
-  ['esperando', 'entrando', true],
-  ['cancelado', 'entrando', true, 'CFG-35.chaveCancelar'],
-  ['acabou', 'acabou', true],
-  ['semPlano', 'semPlano', true],
-];
-
-const cadaEstadoDaColuna = () => percorrer(ESTADOS, async (login, temChave, cancelar) => {
-  mundo.temChave = temChave;
-  await lerComoLogin(login);
-  return cancelar ? (await clicar(textoDaVoz(cancelar))).coluna : tela();
-});
-
-const ENTRADAS = [['sem conexão', { status: null, dados: null }], ['sem endereço', { status: 200, dados: { url: 'https://evil.exemplo/' } }]];
-
-const cadaEntradaQueNaoAbre = () => percorrer(ENTRADAS, async resposta => {
-  await lerComoLogin('nenhum');
-  fila.entrar.push(resposta);
-  return clicar(textoDaVoz('CFG-35.chatgptBotao'));
-});
-
-const CHAVES = [['com o login acabado', 'acabou', OK(true)], ['sem login acabado', 'semPlano']];
-
-const usarAChave = () => percorrer(CHAVES, async (login, resposta) => {
-  campos.length = 0;
-  await lerComoLogin(login);
-  return { ...(await clicar(textoDaVoz('CFG-35.erroChatgptUsarChave'), resposta, 'nenhum')), campos: campos.slice() };
-});
 
 async function doisCliquesSeguidosPedemUmaSaidaSo() {
   await recomecar();
@@ -152,11 +146,10 @@ async function doisCliquesSeguidosPedemUmaSaidaSo() {
   return feitos();
 }
 
-const CASOS = { cadaDesfechoDoSair, cadaEstadoDaColuna, cadaEntradaQueNaoAbre, usarAChave, doisCliquesSeguidosPedemUmaSaidaSo };
-
 async function main() {
   const vistos = {};
-  for (const [nome, caso] of Object.entries(CASOS)) vistos[nome] = await caso();
+  for (const [nome, cenarios] of Object.entries(CENARIOS)) vistos[nome] = await percorrer(cenarios);
+  vistos.doisCliquesSeguidosPedemUmaSaidaSo = await doisCliquesSeguidosPedemUmaSaidaSo();
   if (process.env.GRAVAR_O_ESPERADO === '1') {
     console.log(`'use strict';\n\nmodule.exports = {\n${Object.entries(vistos).map(([nome, valor]) => `  ${nome}: ${JSON.stringify(valor)},`).join('\n')}\n};`);
     return;
