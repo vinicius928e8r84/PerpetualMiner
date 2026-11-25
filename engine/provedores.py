@@ -22,7 +22,9 @@ def _adaptador(cred):
 
 
 def texto(cred, sistema, mensagem, **opcoes):
-    return _adaptador(cred).texto(cred, sistema, mensagem, **opcoes)
+    adaptador = _adaptador(cred)
+    pergunta, paciencia = adaptador.perguntar(sistema, mensagem, **opcoes)
+    return adaptador.texto(cred, pergunta, paciencia)
 
 
 def imagem(cred, prompt, tamanho):
