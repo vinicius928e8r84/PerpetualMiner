@@ -19,6 +19,8 @@
   const { iconeVeio, montarAviso, montarDetalhes } = raiz.Veio;
   const porId = id => document.getElementById(id);
 
+  const chipSemSincronizar = () => textoDaVoz('SHL-05.semSincronizar');
+
   const COMO_APARECE = {
     [SITUACOES.SINCRONIZANDO]: {
       ponto: 'sincronizando',
@@ -32,7 +34,7 @@
     },
     [SITUACOES.PRIMEIRA_SUBIDA_FALHOU]: {
       erro: true,
-      chip: () => textoDaVoz('SHL-05.semSincronizar'),
+      chip: chipSemSincronizar,
       aviso: { texto: 'CFG-09.falha', acao: 'CFG-03.tentarDeNovo' },
       sair: 'fantasma',
     },
@@ -43,14 +45,14 @@
     },
     [SITUACOES.SEM_SINCRONIZAR]: {
       erro: true,
-      chip: () => textoDaVoz('SHL-05.semSincronizar'),
+      chip: chipSemSincronizar,
       status: () => textoDaVoz('CFG-03.aviso'),
       aviso: { texto: 'CFG-03.pendente', acao: 'CFG-03.tentarDeNovo' },
       sair: 'fantasma',
     },
     [SITUACOES.CHAVE_PENDENTE]: {
       erro: true,
-      chip: () => textoDaVoz('SHL-05.semSincronizar'),
+      chip: chipSemSincronizar,
       status: () => textoDaVoz('CFG-41.status'),
       aviso: { texto: 'CFG-41.aviso', acao: 'CFG-03.tentarDeNovo' },
       sair: 'fantasma',
@@ -64,7 +66,7 @@
     },
     [SITUACOES.RECUSADO]: {
       erro: true,
-      chip: () => textoDaVoz('SHL-05.semSincronizar'),
+      chip: chipSemSincronizar,
       status: () => textoDaVoz('CFG-04'),
       sair: 'secundario',
     },
@@ -124,23 +126,26 @@
     return conta.displayName || textoDaVoz('CFG-10');
   }
 
+  const AVISO_DA_CHAVE_PENDENTE = {
+    outdated_connection: () => ({
+      aviso: { texto: 'CFG-35.erroConexaoAntiga', acao: 'CFG-35.erroAtualizar', aoUsar: () => raiz.CartaoDaIA.baixarConexao() },
+    }),
+    other_account_unsent: () => ({
+      status: () => textoDaVoz('CFG-42.status'),
+      aviso: { texto: 'CFG-42.aviso', acao: 'CFG-03.tentarDeNovo' },
+    }),
+    legacy_key_unbound: () => ({
+      aviso: { texto: 'CFG-42.legado', acao: 'CFG-35.erroTrocar', aoUsar: () => raiz.CartaoDaIA.trocarChave() },
+    }),
+  };
+
   function situacaoAtual() {
     const sincronizacao = estado.sincronizacao;
     if (!sincronizacao) return null;
     const vista = { ...COMO_APARECE[sincronizacao.situacao], dados: sincronizacao };
-    if (sincronizacao.situacao === SITUACOES.CHAVE_PENDENTE) {
-      if (sincronizacao.codigo === 'outdated_connection') {
-        vista.aviso = { texto: 'CFG-35.erroConexaoAntiga', acao: 'CFG-35.erroAtualizar',
-          aoUsar: () => raiz.CartaoDaIA.baixarConexao() };
-      } else if (sincronizacao.codigo === 'other_account_unsent') {
-        vista.status = () => textoDaVoz('CFG-42.status');
-        vista.aviso = { texto: 'CFG-42.aviso', acao: 'CFG-03.tentarDeNovo' };
-      } else if (sincronizacao.codigo === 'legacy_key_unbound') {
-        vista.aviso = { texto: 'CFG-42.legado', acao: 'CFG-35.erroTrocar',
-          aoUsar: () => raiz.CartaoDaIA.trocarChave() };
-      }
-    }
-    return vista;
+    if (sincronizacao.situacao !== SITUACOES.CHAVE_PENDENTE) return vista;
+    const doCodigo = Object.hasOwn(AVISO_DA_CHAVE_PENDENTE, sincronizacao.codigo) ? AVISO_DA_CHAVE_PENDENTE[sincronizacao.codigo] : null;
+    return { ...vista, ...doCodigo?.() };
   }
 
   function textoDoChip() {
@@ -191,16 +196,22 @@
     if (tinhaOFoco) corpo.querySelector('button')?.focus();
   }
 
-  function cardSemConta() {
+  function avatarDoCard() {
     const avatar = elemento('span', 'shell-avatar cfg-avatar');
     desenharAvatar(avatar);
+    return avatar;
+  }
+
+  function blocoDaConta(...quem) {
+    return elemento('div', 'cfg-conta', avatarDoCard(), elemento('div', 'cfg-quem', ...quem));
+  }
+
+  function cardSemConta() {
     const entrar = botao('primario', textoDaVoz('CFG-06.botao'), () => pedidos.entrar());
     entrar.prepend(iconeVeio('entrar'));
 
     const partes = [linha(
-      elemento('div', 'cfg-conta', avatar, elemento('div', 'cfg-quem',
-        elemento('b', 'cfg-convite', textoDaVoz('CFG-06.ajuda')),
-        elemento('span', 'cfg-nota', textoDaVoz('CFG-06.semConta')))),
+      blocoDaConta(elemento('b', 'cfg-convite', textoDaVoz('CFG-06.ajuda')), elemento('span', 'cfg-nota', textoDaVoz('CFG-06.semConta'))),
       elemento('div', 'cfg-acoes', entrar),
     )];
 
@@ -210,15 +221,8 @@
 
   function cardComConta() {
     const situacao = situacaoAtual();
-    const avatar = elemento('span', 'shell-avatar cfg-avatar');
-    desenharAvatar(avatar);
-
     const status = situacao ? linhaDeStatus((situacao.status || situacao.chip)(situacao.dados)) : null;
-    const principal = linha(
-      elemento('div', 'cfg-conta', avatar, elemento('div', 'cfg-quem',
-        elemento('b', 'cfg-nome', nomeVisivel()), status)),
-      acoesDaConta(situacao),
-    );
+    const principal = linha(blocoDaConta(elemento('b', 'cfg-nome', nomeVisivel()), status), acoesDaConta(situacao));
     if (!situacao?.erro) principal.append(elemento('p', 'cfg-nota cfg-nota--linha', textoDaVoz('CFG-26')));
 
     const aviso = avisoDaSituacao(situacao);
