@@ -25,14 +25,18 @@ _AUDIO_RE = re.compile(r"\[anki:play:[qa]:\d+\]")
 _IMAGEM_RE = re.compile(r"""(<img\b[^>]*?\bsrc\s*=\s*)(["'])(.*?)\2""", re.IGNORECASE | re.DOTALL)
 
 
+def _cabe_na_previa(dados):
+    return dados is not None and len(dados) <= TETO_DA_IMAGEM
+
+
 def _imagem_de_dentro(colecao, nome):
     if re.match(r"(?i)(data|https?):", nome):
         return nome
     dados = colecao.arquivo_de_midia(nome, TETO_DA_IMAGEM)
     tipo = mimetypes.guess_type(nome)[0] or ""
-    if dados is None or len(dados) > TETO_DA_IMAGEM or not tipo.startswith("image/"):
-        return ESPACO_DA_IMAGEM
-    return "data:%s;base64,%s" % (tipo, base64.b64encode(dados).decode("ascii"))
+    if _cabe_na_previa(dados) and tipo.startswith("image/"):
+        return "data:%s;base64,%s" % (tipo, base64.b64encode(dados).decode("ascii"))
+    return ESPACO_DA_IMAGEM
 
 
 def _para_a_pagina(colecao, html):
@@ -79,36 +83,66 @@ def previa_da_nota(colecao, guid):
     return saida and dict(saida, source="note", deck=nota["baralho"], noteType=nota["tipo_de_nota"])
 
 
-def pedir(conexao, corpo):
-    guid, lang = corpo.get("guid"), corpo.get("lang")
-    if isinstance(guid, str) and guid and "lang" not in corpo:
-        leitura = lambda: previa_da_nota(conexao.colecao, guid)
-    elif isinstance(lang, str) and "guid" not in corpo:
-        if lang not in estilos.idiomas():
-            return 400, {"error": "invalid_lang"}
-        nivel = corpo.get("nivel", estilos.NIVEL_PADRAO)
-        if nivel not in estilos.niveis(lang):
-            return 400, {"error": "invalid_level"}
-        if "tipoProprio" in corpo:
-            proprio = tipo_proprio.forma(corpo["tipoProprio"])
-            if proprio is None or tipo_proprio.recusa(proprio, set(proprio["mapa"].values())):
-                return 400, {"error": "invalid_mapping"}
-            leitura = lambda: previa_no_tipo_da_pessoa(conexao.colecao, lang, nivel, proprio)
-        else:
-            leitura = lambda: previa_do_exemplo(conexao.colecao, lang, nivel)
-    else:
-        return 400, {"error": "invalid_request"}
-    try:
-        previa = leitura()
-    except ColecaoIndisponivel as motivo:
-        return 503, {"error": "anki_card_preview_unavailable", "detail": str(motivo)}
-    if isinstance(previa, tuple):
-        previa, motivo = previa
-        if previa is None:
-            return (409, {"error": motivo}) if motivo == "invalid_mapping" else (404, {"error": motivo})
+def _recusa(motivo):
+    return None, (400, {"error": motivo})
+
+
+def _achou(previa, motivo_se_nao):
+    return (previa, None) if previa is not None else (None, motivo_se_nao)
+
+
+def _pede_a_nota(corpo):
+    if "lang" in corpo:
+        return False
+    guid = corpo.get("guid")
+    return isinstance(guid, str) and guid != ""
+
+
+def _pede_o_exemplo(corpo):
+    return isinstance(corpo.get("lang"), str) and "guid" not in corpo
+
+
+def _leitura_do_exemplo(conexao, corpo):
+    lang = corpo["lang"]
+    if lang not in estilos.idiomas():
+        return _recusa("invalid_lang")
+    nivel = corpo.get("nivel", estilos.NIVEL_PADRAO)
+    if nivel not in estilos.niveis(lang):
+        return _recusa("invalid_level")
+    if "tipoProprio" not in corpo:
+        return (lambda: _achou(previa_do_exemplo(conexao.colecao, lang, nivel), "note_type_missing")), None
+    proprio = tipo_proprio.forma(corpo["tipoProprio"])
+    if proprio is None or tipo_proprio.recusa(proprio, set(proprio["mapa"].values())):
+        return _recusa("invalid_mapping")
+    return (lambda: previa_no_tipo_da_pessoa(conexao.colecao, lang, nivel, proprio)), None
+
+
+def _leitura_do_pedido(conexao, corpo):
+    if _pede_a_nota(corpo):
+        return (lambda: _achou(previa_da_nota(conexao.colecao, corpo["guid"]), "note_not_found")), None
+    if _pede_o_exemplo(corpo):
+        return _leitura_do_exemplo(conexao, corpo)
+    return _recusa("invalid_request")
+
+
+STATUS_DA_PREVIA_QUE_FALTA = {"invalid_mapping": 409}
+
+
+def _resposta_da_previa(previa, motivo):
     if previa is None:
-        return 404, {"error": "note_not_found" if guid else "note_type_missing"}
+        return STATUS_DA_PREVIA_QUE_FALTA.get(motivo, 404), {"error": motivo}
     return 200, previa
+
+
+def pedir(conexao, corpo):
+    leitura, recusa = _leitura_do_pedido(conexao, corpo)
+    if recusa:
+        return recusa
+    try:
+        previa, motivo = leitura()
+    except ColecaoIndisponivel as indisponivel:
+        return 503, {"error": "anki_card_preview_unavailable", "detail": str(indisponivel)}
+    return _resposta_da_previa(previa, motivo)
 
 
 def abrir_no_anki(conexao, corpo):
