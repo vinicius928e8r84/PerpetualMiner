@@ -22,7 +22,6 @@ class QuebradaAoLer(ColecaoEmMemoria):
 
 @contextlib.contextmanager
 def o_anki_no_estado(calar_o_erro=False, **estado):
-    """A Conexão de teste numa pasta nova, com o Anki no `estado` pedido (coleção, perfil que falha). `calar_o_erro` esconde o erro que o servidor registra de propósito."""
     calada = contextlib.redirect_stderr(io.StringIO()) if calar_o_erro else contextlib.nullcontext()
     with tempfile.TemporaryDirectory() as pasta, calada, ConexaoNoTeste(pasta, **estado) as conexao:
         yield conexao

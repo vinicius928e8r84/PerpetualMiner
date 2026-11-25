@@ -33,7 +33,6 @@ def chamadas_de_fora(conexao):
 
 
 def o_que_a_troca_nao_pode_tocar(conexao):
-    """As notas, os Cartões e os campos do tipo de nota do inglês, e o que saiu para a IA, a voz e as fotos: tudo, menos o modelo."""
     colecao = conexao.conexao.colecao
     return (list(colecao.gravadas), colecao.cartoes_do_baralho("PerpetualMiner::Inglês"), colecao.tipo_de_nota(INGLES), chamadas_de_fora(conexao))
 
