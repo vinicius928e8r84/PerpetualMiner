@@ -17,7 +17,7 @@ const MARCACAO = /<!--[\s\S]*?-->|<!doctype[^>]*>|<\/([a-z][\w-]*)\s*>|<([a-z][\
 const ATRIBUTO = /([^\s"'<>/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g;
 
 const valorDoAtributo = (nome, valor) => {
-  if (valor === undefined) return nome;
+  if (valor === undefined || valor === '') return nome;
   return nome === 'class' ? `class="${valor.split(/\s+/).filter(Boolean).sort().join(' ')}"` : `${nome}="${valor}"`;
 };
 
@@ -98,6 +98,7 @@ function asAreasDosEsqueletos() {
   const { conteudo } = prepararAPagina();
   require('../painel/esqueleto-anki.js');
   require('../painel/esqueleto-configuracoes.js');
+  require('../painel/esqueleto-frases.js');
   return conteudo.childNodes.map(area => marcacaoDe(canonicaDoFalso(area))).join('');
 }
 
