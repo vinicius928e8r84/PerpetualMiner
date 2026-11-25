@@ -91,16 +91,19 @@ async function recomecar() {
   await clicar(sair(), SAIU, 'nenhum');
 }
 
-async function percorrer(cenarios) {
+async function coletar(entradas, passo) {
   const vistos = {};
-  await recomecar();
-  for (const cenario of cenarios) vistos[cenario.nome] = await rodar(cenario);
+  for (const [nome, entrada] of entradas) vistos[nome] = await passo(entrada);
   return vistos;
 }
 
+async function percorrer(cenarios) {
+  await recomecar();
+  return coletar(cenarios.map(cenario => [cenario.nome, cenario]), rodar);
+}
+
 async function main() {
-  const vistos = {};
-  for (const [nome, cenarios] of Object.entries(CENARIOS)) vistos[nome] = await percorrer(cenarios);
+  const vistos = await coletar(Object.entries(CENARIOS), percorrer);
   if (process.env.GRAVAR_O_ESPERADO === '1') {
     console.log(`'use strict';\n\nmodule.exports = {\n${Object.entries(vistos).map(([nome, valor]) => `  ${nome}: ${JSON.stringify(valor)},`).join('\n')}\n};`);
     return;
