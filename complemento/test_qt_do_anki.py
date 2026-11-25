@@ -31,103 +31,126 @@ class _Barra(_Visivel):
         self.valor = valor
 
 
+class SinalDeMentira:
+    def __init__(self):
+        self.ligados = []
+
+
+class DialogoDeMentira(_Qualquer):
+    aqt = None
+
+    def __init__(self, *_):
+        self.finished = SinalDeMentira()
+        self.visivel, self.mostradas, self.trazidas, self.ativadas = False, 0, 0, 0
+        self.largura, self.redimensionamentos = 420, []
+        self.ajustes = []
+        self.aqt.dialogos.append(self)
+
+    def show(self):
+        self.visivel, self.mostradas = True, self.mostradas + 1
+
+    def close(self):
+        self.visivel = False
+        for ligado in self.finished.ligados:
+            ligado()
+
+    def isVisible(self):
+        return self.visivel
+
+    def adjustSize(self):
+        self.aqt.eventos.append("adjustSize")
+        self.ajustes.append([rotulo.texto for rotulo in self.aqt.rotulos])
+        self.largura = 420
+
+    def width(self):
+        return self.largura
+
+    def resize(self, largura, altura):
+        self.largura = largura
+        self.redimensionamentos.append((largura, altura))
+
+    def minimumSizeHint(self):
+        return types.SimpleNamespace(height=lambda: 100)
+
+    def raise_(self):
+        self.trazidas += 1
+
+    def activateWindow(self):
+        self.ativadas += 1
+
+
+class FormularioDeMentira(_Qualquer):
+    FieldGrowthPolicy = _Qualquer()
+    aqt = None
+
+    def __init__(self, *_):
+        self.politica, self.linhas = None, []
+        self.aqt.formularios.append(self)
+
+    def setFieldGrowthPolicy(self, politica):
+        self.politica = politica
+
+    def addRow(self, *campos):
+        self.linhas.append(campos)
+
+
+class RotuloDeMentira(_Visivel):
+    aqt = None
+
+    def __init__(self, *_):
+        self.texto = ""
+        self.aqt.rotulos.append(self)
+
+    def setText(self, texto):
+        self.texto = texto
+
+    def text(self):
+        return self.texto
+
+
+class LayoutDeMentira(_Qualquer):
+    aqt = None
+
+    def __init__(self, *_):
+        pass
+
+    def totalHeightForWidth(self, largura):
+        return 150
+
+    def activate(self):
+        self.aqt.eventos.append("activate")
+
+
+class RelogioDeMentira(_Qualquer):
+    aqt = None
+
+    def __init__(self, *_):
+        self.rodando, self.timeout = False, SinalDeMentira()
+        self.aqt.relogios.append(self)
+
+    def start(self):
+        self.rodando = True
+
+    def stop(self):
+        self.rodando = False
+
+
+def _do_aqt(classe, aqt):
+    return type(classe.__name__, (classe,), {"aqt": aqt})
+
+
+def _ligar_ao_sinal(sinal, funcao):
+    if isinstance(sinal, SinalDeMentira):
+        sinal.ligados.append(funcao)
+
+
 class AqtDeMentira:
     def __init__(self):
         self.tooltips, self.dialogos, self.relogios, self.formularios, self.rotulos, self.eventos = [], [], [], [], [], []
-        aqui = self
-
-        class Sinal:
-            def __init__(self):
-                self.ligados = []
-
-        class Dialogo(_Qualquer):
-            def __init__(self, *_):
-                self.finished = Sinal()
-                self.visivel, self.mostradas, self.trazidas, self.ativadas = False, 0, 0, 0
-                self.largura, self.redimensionamentos = 420, []
-                self.ajustes = []
-                aqui.dialogos.append(self)
-
-            def show(self):
-                self.visivel, self.mostradas = True, self.mostradas + 1
-
-            def close(self):
-                self.visivel = False
-                for ligado in self.finished.ligados:
-                    ligado()
-
-            def isVisible(self):
-                return self.visivel
-
-            def adjustSize(self):
-                aqui.eventos.append("adjustSize")
-                self.ajustes.append([rotulo.texto for rotulo in aqui.rotulos])
-                self.largura = 420
-
-            def width(self):
-                return self.largura
-
-            def resize(self, largura, altura):
-                self.largura = largura
-                self.redimensionamentos.append((largura, altura))
-
-            def minimumSizeHint(self):
-                return types.SimpleNamespace(height=lambda: 100)
-
-            def raise_(self):
-                self.trazidas += 1
-
-            def activateWindow(self):
-                self.ativadas += 1
-
-        class Formulario(_Qualquer):
-            FieldGrowthPolicy = _Qualquer()
-
-            def __init__(self, *_):
-                self.politica, self.linhas = None, []
-                aqui.formularios.append(self)
-
-            def setFieldGrowthPolicy(self, politica):
-                self.politica = politica
-
-            def addRow(self, *campos):
-                self.linhas.append(campos)
-
-        class Rotulo(_Visivel):
-            def __init__(self, *_):
-                self.texto = ""
-                aqui.rotulos.append(self)
-
-            def setText(self, texto):
-                self.texto = texto
-
-            def text(self):
-                return self.texto
-
-        class Layout(_Qualquer):
-            def __init__(self, *_):
-                pass
-
-            def totalHeightForWidth(self, largura):
-                return 150
-
-            def activate(self):
-                aqui.eventos.append("activate")
-
-        class Relogio(_Qualquer):
-            def __init__(self, *_):
-                self.rodando, self.timeout = False, Sinal()
-                aqui.relogios.append(self)
-
-            def start(self):
-                self.rodando = True
-
-            def stop(self):
-                self.rodando = False
-
         qt = types.SimpleNamespace(
-            QDialog=Dialogo, QTimer=Relogio, Qt=_Qualquer(), qconnect=lambda sinal, funcao: sinal.ligados.append(funcao) if isinstance(sinal, Sinal) else None,
-            QFormLayout=Formulario, QLabel=Rotulo, QVBoxLayout=Layout, QProgressBar=_Barra, QPushButton=lambda *_: _Qualquer())
+            QDialog=_do_aqt(DialogoDeMentira, self), QTimer=_do_aqt(RelogioDeMentira, self), Qt=_Qualquer(), qconnect=_ligar_ao_sinal,
+            QFormLayout=_do_aqt(FormularioDeMentira, self), QLabel=_do_aqt(RotuloDeMentira, self), QVBoxLayout=_do_aqt(LayoutDeMentira, self),
+            QProgressBar=_Barra, QPushButton=lambda *_: _Qualquer())
         utils = types.SimpleNamespace(tooltip=lambda texto, period=None: self.tooltips.append((texto, period)))
         self.modulos = {"aqt": types.SimpleNamespace(qt=qt, utils=utils), "aqt.qt": qt, "aqt.utils": utils}
 
