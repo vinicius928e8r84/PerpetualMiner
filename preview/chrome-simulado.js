@@ -72,25 +72,25 @@
 
   const metodoDoChrome = resposta => (entrada, callback) => talvezPromessa(resposta(entrada), callback);
 
-  const apagarChaves = (chaves, callback) => {
+  const apagarDosDados = chaves => {
     for (const chave of chaves) delete dados[chave];
-    return talvezPromessa(undefined, callback);
   };
+
+  function gravarNosDados(valores) {
+    const mudancas = {};
+    for (const [chave, valor] of Object.entries(valores)) {
+      mudancas[chave] = { oldValue: copiar(dados[chave]), newValue: copiar(valor) };
+      dados[chave] = copiar(valor);
+    }
+    ouvintesDeMudanca.forEach(ouvinte => setTimeout(() => ouvinte(mudancas, 'local'), 0));
+  }
 
   function criarArea() {
     return {
       get: metodoDoChrome(resolver),
-      set: (valores, callback) => {
-        const mudancas = {};
-        for (const [chave, valor] of Object.entries(valores)) {
-          mudancas[chave] = { oldValue: copiar(dados[chave]), newValue: copiar(valor) };
-          dados[chave] = copiar(valor);
-        }
-        ouvintesDeMudanca.forEach(ouvinte => setTimeout(() => ouvinte(mudancas, 'local'), 0));
-        return talvezPromessa(undefined, callback);
-      },
-      remove: (chaves, callback) => apagarChaves([].concat(chaves), callback),
-      clear: callback => apagarChaves(Object.keys(dados), callback),
+      set: metodoDoChrome(gravarNosDados),
+      remove: metodoDoChrome(chaves => apagarDosDados([].concat(chaves))),
+      clear: callback => talvezPromessa(apagarDosDados(Object.keys(dados)), callback),
     };
   }
 
@@ -112,10 +112,10 @@
   const semPermissao = metodoDoChrome(() => false);
   const semResposta = metodoDoChrome(() => undefined);
 
-  const abrirAba = (id, ir) => ({ url } = {}, callback) => {
+  const abrirAba = (id, ir) => metodoDoChrome(({ url } = {}) => {
     if (url) ir(url);
-    return talvezPromessa({ id }, callback);
-  };
+    return { id };
+  });
   const abrirEmOutraAba = abrirAba(2, url => window.open(url, '_blank', 'noopener'));
   const irNaAbaAtual = abrirAba(1, url => { window.location.href = url; });
 
