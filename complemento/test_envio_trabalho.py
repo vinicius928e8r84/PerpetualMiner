@@ -1,10 +1,3 @@
-"""O `Trabalho` visto pelas funções, sem servidor nem thread: o fim de um Envio como ele o grava (`_terminar`, que a thread de trabalho
-também chama depois de um erro interno) e o caminho de cada Cartão (`fazer`) com a Fila numa pasta temporária, a coleção em memória e um
-Motor do Cartão de roteiro, que grava o texto e monta a nota sem rede e deixa o teste mexer no mundo entre os passos.
-
-    python3.9 complemento/test_envio_trabalho.py
-"""
-
 import logging
 import os
 import sys
@@ -23,7 +16,6 @@ PEDIDO = um_pedido(ID, {"phraseId": FRASE}, {"phraseId": SEGUNDA})
 
 
 def terminar(teste, pedido, estado, erro):
-    """Grava o pedido e o estado, pede o fim ao `Trabalho` e devolve o estado gravado e o que o log disse."""
     pasta = na_pasta(teste, lambda p: p.com(pedido, estado).na_fila(ID))
     trabalho = envio.Trabalho(pasta.fila, None, None, logging.getLogger("test_envio_trabalho"), "http://127.0.0.1:9", threading.Event())
     with teste.assertLogs("test_envio_trabalho", "INFO") as registro:
@@ -32,7 +24,6 @@ def terminar(teste, pedido, estado, erro):
 
 
 def o_fim(teste, cartoes, erro, pedido=PEDIDO):
-    """O fim de um Envio que andava (na etapa do Anki, com o progresso e esperando o teto do mês)."""
     estado = um_estado(ID, "running", cartoes, stage="send_to_anki", progress={"done": 1, "total": 2}, waiting={"reason": "monthly_cap"})
     return terminar(teste, pedido, estado, erro)
 
@@ -81,9 +72,6 @@ class OFimGravadoPeloTrabalho(unittest.TestCase):
 
 
 class MotorDoCartaoDeRoteiro:
-    """`escrever` grava o texto pago (o `TEXTO` de `test_motor_do_cartao.py`) e `montar` monta a nota com o motor de verdade, sem voz nem
-    imagem; antes de cada um, `ao_escrever(cartao)` e `ao_montar(cartao)` são do teste."""
-
     def __init__(self, fila):
         self.fila = fila
         self.ao_escrever = self.ao_montar = lambda cartao: None
@@ -106,9 +94,6 @@ class IaQueNaoPede:
 
 
 class UmEnvioDeDoisCartoes:
-    """A Frase `FRASE` com duas Palavras num Envio criado pela Fila, a coleção em memória com o Baralho e o `Trabalho` pronto para `fazer`.
-    Um Envio que espera o Anki para sempre é parado em 10 s (`Interrompido`): o teste falha em vez de travar."""
-
     def __init__(self, teste, colecao=None):
         self.pasta = na_pasta(teste, lambda p: p)
         self.fila, self.colecao = self.pasta.fila, colecao or ColecaoEmMemoria({"baralhos": [{"nome": "Inglês"}]})
@@ -125,7 +110,6 @@ class UmEnvioDeDoisCartoes:
         self.visto = []
 
     def ver(self, *campos):
-        """Um passo do roteiro que guarda o que o estado diz agora (`waiting` se ausente vira None)."""
         return lambda cartao: self.visto.append((cartao.id,) + tuple(self.fila.estado(ID).get(campo) for campo in campos))
 
     def fazer(self):

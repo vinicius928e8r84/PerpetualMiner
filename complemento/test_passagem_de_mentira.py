@@ -1,8 +1,3 @@
-"""O apoio dos testes da passagem (#178): o Windows de mentira, a Conexão nova com a passagem por cima e a Conexão de hoje com os Envios do dono.
-
-Não é um teste: `test_passagem.py` e `test_passagem_cartoes.py` o importam.
-"""
-
 import os
 import time
 
@@ -18,8 +13,6 @@ LINHA = "gave up : She gave up smoking [Context: Série - The Office - S01E01]"
 
 
 class SistemaDeMentira:
-    """O Windows de mentira: guarda o que a passagem pediu, na ordem, e ao parar o processo fecha a Conexão de hoje de mentira."""
-
     def __init__(self, antiga, eventos, ao_parar=lambda: None, falha_em=None):
         self.antiga, self.eventos, self.ao_parar, self.falha_em = antiga, eventos, ao_parar, falha_em
         self.inicio_apagado = False
@@ -41,8 +34,6 @@ class SistemaDeMentira:
 
 
 class NaPassagem:
-    """A Conexão nova (porta da Conexão de hoje de mentira, uma coleção e a thread de trabalho ligada) e a passagem por cima dela."""
-
     def __init__(self, pasta, antiga, falha_em=None, **envio_no_teste):
         self.antiga, self.eventos, self.fotografias, self.dormiu = antiga, [], [], []
         envio_no_teste.setdefault("trabalhando", True)
@@ -63,7 +54,6 @@ class NaPassagem:
         return sorted(n for n in self.novo.arquivos() if not n.startswith("logs") and n != "pareamento.json")
 
     def fotografar(self):
-        """O que já está guardado aqui no instante em que a Conexão de hoje é encerrada."""
         cofre = self.conexao.cofre
         return {
             "chave": cofre.ler("openai"), "custos": sorted(n for n in self.novo.arquivos() if n.startswith("custos")),
@@ -78,7 +68,6 @@ class NaPassagem:
         return self
 
     def passar(self):
-        """Sobe a Conexão nova atrás da passagem, como o `inicio` faz, e espera o fim dela (a Conexão ouvindo, ou a passagem desistindo)."""
         assert self.passagem.pendente(self.conexao), "devia haver uma Conexão de hoje na porta"
         self.conexao.iniciar_depois(lambda cancelado: self.passagem.fazer(self.conexao, cancelado))
         self.conexao._thread_da_passagem.join(timeout=30)
@@ -100,7 +89,6 @@ class NaPassagem:
 
 
 def uma_conexao_de_hoje(pasta, **argumentos):
-    """A Conexão de hoje do dono: um Envio andando, um que nem começou, um que já terminou (com custos) e um prompt editado."""
     antiga = ConexaoAntigaDeMentira(pasta, prompts={"en_card.txt": PROMPT_EDITADO}, **argumentos)
     antiga.envio("20260101-100000-en-aaaaaa", "completed", [(1, "give up : She gave up"), (2, "run : They run")], prontas=[1, 2], custos=[
         {"date": "2026-01-01", "type": "tokens", "model": "gpt-4o", "input_tokens": 1000, "output_tokens": 200, "cost_usd": 0.0045, "keyword": "give up"},

@@ -1,8 +1,3 @@
-"""`--versao` do `versao_no_merge.py` respeita o teto de `--acima-de` e a lista que só cresce.
-
-    python3.9 complemento/test_versao_no_merge_limites.py
-"""
-
 import json
 import os
 import sys

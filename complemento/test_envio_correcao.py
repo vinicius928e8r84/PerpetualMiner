@@ -1,10 +1,3 @@
-"""A correção da Criação (#169) vista de fora: o Envio real com a thread de trabalho ligada, a coleção em memória com uma nota da frente Criação
-(a frase que a pessoa escreveu já está no campo, como o gancho da revisão a deixa) e a OpenAI de mentira na fronteira HTTP. Confere o pedido de
-correção que atravessa o HTTP, o que fica na nota e o custo, que a aba Custos lê à parte do custo dos Cartões.
-
-    python3.9 complemento/test_envio_correcao.py
-"""
-
 import json
 import os
 import sys
@@ -27,7 +20,6 @@ TERCEIRO_ID = "99999999-aaaa-4bbb-8ccc-dddddddddddd"
 
 
 def colecao_com_a_criacao(escrita=ESCRITA):
-    """Um Anki com o Cartão `gave up` já feito pelo Envio de antes e a frase que a pessoa escreveu na revisão da Criação."""
     colecao = ColecaoEmMemoria({"baralhos": [{"nome": "Default"}]})
     tipo_de_nota.preparar(colecao)
     colecao.adicionar_nota(INGLES, "PerpetualMiner Inglês", {"Frase": "She <b>gave up</b> smoking", "Palavra": "gave up - /ɡɪv ʌp/"}, [], "g-criacao")
@@ -147,7 +139,6 @@ class OCustoDaCorrecaoFicaAParte(unittest.TestCase):
             enviar(conexao)
             custos = custos_do_envio(conexao)
             registros = conexao.arquivos()[os.path.join("custos", ID, "costs.jsonl")].decode("utf-8")
-        # 300 tokens de entrada e 40 de saída, ao preço do gpt-4o da chave; o Cartão, 1000 e 200 (US$ 0,0045).
         self.assertEqual((custos["cardUsd"], custos["correctionUsd"]), (0.0045, 0.00115))
         self.assertEqual(custos["totalUsd"], round(sum(valor for chave, valor in custos.items() if chave != "totalUsd"), 6))
         self.assertNotIn("gave up", registros)

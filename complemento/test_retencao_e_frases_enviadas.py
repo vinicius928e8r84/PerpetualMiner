@@ -1,8 +1,3 @@
-"""#372: depois que a retenção apaga o Envio, a lista da Conexão ainda diz quais Frases foram enviadas (só ids).
-
-    python3.9 complemento/test_retencao_e_frases_enviadas.py
-"""
-
 import json
 import os
 import sys

@@ -1,10 +1,3 @@
-"""O modelo dos cartões nos testes da Conexão (#157). Não é um teste: monta o cenário que um exemplo do contrato diz.
-
-Um cenário (`modelos` de `contrato/exemplos-do-modelo.json`) diz o dia de hoje (`hoje`), o que a pessoa tinha escolhido
-(`escolha`, `trocou`), o que a OpenAI lista para a chave (`conta`) e para o plano (`plano`) e as datas de saída (`saidas`) que valem
-sobre a lista nossa, a que viaja com a extensão (`complemento/modelos_da_ia.json`).
-"""
-
 import json
 import os
 from datetime import date
@@ -18,7 +11,6 @@ def _modelos_so_do_plano(cenario, lista):
 
 
 def lista_do_cenario(cenario):
-    """A lista nossa, com as datas de saída que o cenário põe por cima (também a de um modelo só do plano, que a lista de fábrica não conhece)."""
     with open(LISTA_NOSSA, encoding="utf-8") as arquivo:
         lista = json.load(arquivo)["modelos"]
     lista += _modelos_so_do_plano(cenario, lista)
@@ -30,8 +22,6 @@ def _a_pessoa_ja_tinha_escolhido(cenario):
 
 
 def preparar_o_cenario(cenario, pasta, openai):
-    """O que o cenário muda na Conexão: a OpenAI de mentira lista o que a conta tem e a escolha anterior já está guardada.
-    Devolve o que a Conexão recebe no lugar da lista de fábrica e do relógio (o `hoje` do cenário, que o teste pode mudar)."""
     if cenario is None:
         return {}
     openai.modelos_da_conta, openai.modelos_do_plano = cenario["conta"], cenario["plano"]

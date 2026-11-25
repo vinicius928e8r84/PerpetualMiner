@@ -1,10 +1,3 @@
-"""O áudio do Cartão (#143), visto de fora: o servidor real com a thread de trabalho ligada, a coleção em memória, a OpenAI de
-mentira e a voz do Google de mentira, as duas na fronteira HTTP. O que o teste confere é o que atravessa o HTTP e o que
-fica guardado na coleção (a nota e a mídia que ela cita).
-
-    python3.9 complemento/test_envio_audio.py
-"""
-
 import json
 import os
 import re
@@ -24,19 +17,16 @@ RUSSO = ColecaoEmMemoria({"baralhos": [{"nome": "Русский"}]})
 
 
 def sem_reserva():
-    """O pedido sem voz de reserva (#174): o que o Google disser é o que vale."""
     corpo = pedido(ID, FRASE)
     corpo["tts"]["reserva"] = []
     return corpo
 
 
 def sons(campos):
-    """Os nomes dos arquivos que os campos da nota tocam (`[sound:...]`): o da frase e o da palavra."""
     return re.findall(r"\[sound:([^\]]+)\]", campos.get("Áudio da frase", "")), re.findall(r"\[sound:([^\]]+)\]", campos.get("Áudio da palavra", ""))
 
 
 def so_o_audio(midia):
-    """A mídia da nota que é voz: a imagem (#144) vai na mesma nota e tem os seus testes."""
     return {nome: dados for nome, dados in midia.items() if nome.endswith(".mp3")}
 
 
@@ -108,7 +98,7 @@ class OCartaoGanhaAudio(unittest.TestCase):
         self.assertTrue(all(len(texto) <= 100 for _, _, texto in da_frase))
         self.assertEqual([texto for _, _, texto in da_frase], [
             "She gave up smoking after twenty years", "and everyone at the office was surprised", "Nobody thought she could do it", "but she did",
-            "and now she runs every single morning before work."])  # os pedaços que o gTTS de hoje pede
+            "and now she runs every single morning before work."])
         tocado = notas[0]["midia"][sons(notas[0]["campos"])[0][0]]
         self.assertEqual([texto for _, _, texto in dito(tocado)], [texto for _, _, texto in da_frase])
 

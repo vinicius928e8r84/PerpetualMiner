@@ -1,10 +1,3 @@
-"""O teto do mês (#160), visto de fora: vem ligado com US$ 10, conta o gasto da chave no mês (inclusive a imagem gerada quando o texto
-foi pelo plano), pausa o Envio antes do próximo Cartão quando chega, e o Envio continua sozinho quando a pessoa sobe o teto ou o mês
-vira. O teto é deste computador: fica na pasta de dados da Conexão.
-
-    python3.9 complemento/test_teto_do_mes.py
-"""
-
 import copy
 import json
 import os
@@ -31,7 +24,6 @@ def registro(dia, tipo, custo, **campos):
 
 
 def fila_com_gasto(*registros):
-    """Um Envio de outro dia, já terminado, com os registros de custo dados (a base é a fila do contrato)."""
     fila = copy.deepcopy(ler_o_contrato()["filas"][FILA_DO_PLANO])
     fila[0]["custos"] = list(registros)
     return fila
@@ -52,8 +44,6 @@ def esperando_o_teto(estado):
 
 
 class Relogio:
-    """O dia de hoje da Conexão, que o teste vira."""
-
     def __init__(self, dia):
         self.dia = dia
 
@@ -62,8 +52,6 @@ class Relogio:
 
 
 class EnvioNoTetoDoMes(EnvioNoTeste):
-    """Uma Conexão com a thread de trabalho ligada, a espera do teto curta e `teto` dólares já postos (sem ele, vale o padrão)."""
-
     def __init__(self, pasta, **argumentos):
         argumentos.setdefault("espera_do_teto", 0.02)
         super().__init__(pasta, **argumentos)

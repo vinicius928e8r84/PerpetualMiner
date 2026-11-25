@@ -1,9 +1,3 @@
-"""O Apagar tudo no Envio dentro da Conexão, visto de fora (complemento de `test_envio.py`): o que a thread de trabalho faz quando o
-Apagar tudo chega com o Anki fechado ou no meio do Envio.
-
-    python3.9 complemento/test_envio_apagar.py
-"""
-
 import os
 import sys
 import json
@@ -20,10 +14,6 @@ from complemento.test_envio import (
 
 
 class AConexaoQueSobeEsperaAExtensao(unittest.TestCase):
-    """O Apagar tudo que não chegou à Conexão (o Anki estava fechado) chega antes de ela retomar o Envio: depois de subir,
-    a thread espera um pedido de Envio da extensão (ou a espera acabar). `/health` não conta: o painel o pergunta antes de
-    mandar o `apagar-frases` marcado."""
-
     def com_o_envio_parado_porque_o_anki_fechou(self, pasta, colecao):
         colecao.fechar()
         with EnvioNoTeste(pasta, colecao=colecao) as conexao:
@@ -44,7 +34,7 @@ class AConexaoQueSobeEsperaAExtensao(unittest.TestCase):
                 time.sleep(0.4)
                 esperando = (self.estado_no_disco(pasta)["status"], len(chats(conexao.openai)), len(colecao.gravadas))
                 apagar_as_frases(conexao)
-                time.sleep(0.6)  # a thread, solta pelo apagar-frases, já podia ter retomado
+                time.sleep(0.6)
                 estado = self.estado_no_disco(pasta)
                 gastos, notas = len(chats(conexao.openai)), len(colecao.gravadas)
         self.assertEqual(esperando, ("queued", 0, 0))

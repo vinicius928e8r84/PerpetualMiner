@@ -1,10 +1,3 @@
-"""A troca da frente do Cartão (#166), vista de fora: o servidor real com a thread de trabalho ligada, a coleção em memória e a OpenAI, a voz e o
-Openverse de mentira. A troca só reescreve o modelo de Cartão do tipo de nota do idioma: o teste confere o que fica na coleção (as notas, os campos, o
-modelo) e que nada atravessa para a IA, a voz nem a busca de fotos.
-
-    python3.9 complemento/test_frente_do_cartao.py
-"""
-
 import contextlib
 import json
 import os
@@ -36,13 +29,11 @@ def modelo_do(conexao, tipo=INGLES):
 
 
 def chamadas_de_fora(conexao):
-    """O que a Conexão pediu à IA, à voz e à busca de fotos."""
     return (len(conexao.openai.pedidos), conexao.voz.pedidos[:], conexao.openverse.buscas[:])
 
 
 @contextlib.contextmanager
 def com_um_cartao_enviado():
-    """A Conexão com a coleção nova e um Cartão do inglês já enviado (o que a troca de frente não pode tocar)."""
     with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta, colecao=ColecaoEmMemoria(SO_O_DEFAULT)) as conexao:
         conexao.criar(pedido(ID, FRASE, baralho="PerpetualMiner::Inglês"))
         conexao.esperar(ID)

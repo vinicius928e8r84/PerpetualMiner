@@ -1,12 +1,3 @@
-"""Quem paga o Envio: o plano do ChatGPT, a chave da OpenAI, ou ninguém (o Envio para), transição por transição.
-
-O login é uma de três coisas guardadas (sem login, conectada, acabou) e o pagador de cada Cartão sai dele e da escolha da pessoa
-(`quem_paga`): do `parado` só se sai por escolha, entrando de novo ou saindo do login para usar a chave. Visto de fora, com o
-servidor real da Conexão, o servidor de login de mentira e a OpenAI de mentira, como em `test_plano_do_chatgpt.py`.
-
-    python3.9 complemento/test_quem_paga.py
-"""
-
 import json
 import os
 import sys
@@ -26,7 +17,6 @@ FRASE = "gave up : She gave up smoking"
 
 class OPagadorDeCadaCartao(unittest.TestCase):
     def test_cada_login_com_cada_escolha_da_um_pagador_so(self):
-        # (o login, o motivo dele, a pessoa escolheu a chave neste Envio, há chave guardada) → (quem paga, por que parou)
         linhas = [
             ((SEM_LOGIN, None, False, True), (CHAVE, None)),
             ((SEM_LOGIN, None, False, False), (PARADO, "openai_key_missing")),
@@ -47,7 +37,6 @@ class OPagadorDeCadaCartao(unittest.TestCase):
 
 
 def acabar_o_login(conexao, frase=FRASE):
-    """A pessoa entrou, e a renovação do token passa a ser recusada: o primeiro Envio acha o login acabado. Devolve o fim dele."""
     conexao.servidor_de_login.validade = 60
     entrar_e_voltar(conexao)
     conexao.servidor_de_login.renovacao = "invalid_grant"
@@ -62,7 +51,6 @@ def tentar_de_novo(conexao):
 
 
 def pedidos(conexao):
-    """(os pedidos de texto pela chave, os pedidos de texto pelo plano)."""
     return len(conexao.openai.chats), len(conexao.openai.respostas)
 
 

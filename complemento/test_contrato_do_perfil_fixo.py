@@ -1,8 +1,3 @@
-"""O perfil fixo (#149) como qualquer adaptador de coleção o cumpre: os Cartões só entram no perfil marcado, e a Conexão entra nele
-ou o abre a pedido. Uma parte do contrato do adaptador (`test_colecao_em_memoria.ContratoDoAdaptadorDaColecao`, de onde vêm
-`DESCRICAO`, `adaptador` e `adaptador_fechado`): o adaptador em memória e o do Anki herdam as duas e passam pelos mesmos testes.
-"""
-
 import os
 import sys
 import tempfile
@@ -14,7 +9,6 @@ from complemento import baralhos, perfil
 
 class ContratoDoPerfilFixo:
     def perfil_fixo(self, marcado=None):
-        """O perfil fixo numa pasta temporária, com `marcado` já marcado (ou nada marcado)."""
         pasta = tempfile.TemporaryDirectory()
         self.addCleanup(pasta.cleanup)
         fixo = perfil.PerfilFixo(os.path.join(pasta.name, "perfil.json"))

@@ -1,9 +1,3 @@
-"""A resposta HTTP perdida do `POST /ia/openai/chave` (R1): a Conexão aceita tarde, o replay depois do reinício e a leitura só lê (apoio de `test_chave_da_openai.py`).
-
-Roda no Python 3.9 (o do Anki do Mac) e no 3.13:
-    python3.9 complemento/test_chave_da_openai_perdida.py
-"""
-
 import http.client
 import json
 import os

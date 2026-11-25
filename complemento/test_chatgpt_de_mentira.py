@@ -1,10 +1,3 @@
-"""O servidor de login do ChatGPT de mentira dos testes do complemento (o `auth.openai.com` do Sign in with ChatGPT).
-
-Não é um teste: é o que os testes põem no lugar do servidor de login. A Conexão só fala com ele por HTTP (a troca do
-código, a renovação e a revogação); o navegador da pessoa é o teste, que lê a URL de autorização e devolve o retorno
-(`autorizar`). Os tokens que ele emite têm marcas únicas (`MARCA`), para os testes procurarem um vazamento em tudo.
-"""
-
 import base64
 import hashlib
 import json
@@ -24,7 +17,6 @@ def _base64url(dados):
 
 
 def id_token(nonce):
-    """Um `id_token` com a forma de um JWT (a assinatura é de mentira: a Conexão não a confere, limite 5.c)."""
     corpo = {"iss": "https://auth.openai.com", "sub": "sub-%s" % MARCA, "nonce": nonce, "email": "pessoa@exemplo.com"}
     return ".".join([_base64url(b'{"alg":"RS256"}'), _base64url(json.dumps(corpo).encode("utf-8")), _base64url(MARCA.encode("utf-8"))])
 
@@ -44,13 +36,6 @@ def _renovacao_confere(client_id, formulario):
 
 
 class ChatGPTDeMentira:
-    """`ChatGPTDeMentira()` escuta numa porta livre; `base` é o endereço que a Conexão usa no lugar do servidor de login.
-
-    `troca` diz como a troca do código responde (`aceita`, `sem_plano`, `invalid_grant`, `fora_do_ar`) e `renovacao` como a
-    renovação responde (`aceita`, `sem_plano`, `invalid_grant`, `invalid_grant_com_500`, `fora_do_ar`). `pedidos` guarda (método, caminho, formulário) de cada pedido;
-    `revogados`, os `refresh_token` revogados; `emitidos`, cada token emitido.
-    """
-
     def __init__(self):
         self.troca = "aceita"
         self.renovacao = "aceita"
@@ -89,7 +74,6 @@ class ChatGPTDeMentira:
         self._thread = threading.Thread(target=lambda: self._servidor.serve_forever(poll_interval=0.005), daemon=True)
 
     def autorizar(self, url, client_id=None, erro=None):
-        """O navegador da pessoa: lê a URL de autorização, “entra” e devolve a consulta do retorno (`code`, `state`, `client_id`)."""
         parametros = {chave: valor[0] for chave, valor in parse_qs(urlsplit(url).query).items()}
         if erro:
             return {"error": erro, "state": parametros["state"]}
@@ -163,9 +147,6 @@ class ChatGPTDeMentira:
 
 
 def situar_o_login(conexao, servidor, situacao):
-    """O login da Conexão no estado de um exemplo do contrato: `entrando` (a tentativa aberta), `recusou` (a pessoa recusou no ChatGPT),
-    `nao_serve` (a conta grátis ou Go: duas trocas seguidas recusadas com `invalid_grant`) ou `acabou` (o arquivo diz que a renovação
-    foi recusada, e não guarda token nenhum)."""
     porta, login = conexao.porta, conexao.chatgpt
     if situacao == "acabou":
         with open(os.path.join(login.pasta, "chatgpt.json"), "w", encoding="utf-8") as arquivo:

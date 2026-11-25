@@ -1,8 +1,3 @@
-"""“Abrir o Anki com o computador” pelo HTTP: o que o pedido deixa no disco (o item de login escrito ou apagado), e só a extensão o pede.
-
-    python3.9 complemento/test_servidor_item_de_login.py
-"""
-
 import json
 import os
 import sys

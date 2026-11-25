@@ -1,8 +1,3 @@
-"""A prévia do Cartão (#164) como qualquer adaptador de coleção a cumpre: o Cartão como o Anki o desenha, de um exemplo do estilo ou de
-uma nota gravada. Uma parte do contrato do adaptador (`test_colecao_em_memoria.ContratoDoAdaptadorDaColecao`, de onde vêm `adaptador` e
-`adaptador_fechado`): o adaptador em memória e o do Anki herdam esta parte e passam pelos mesmos testes.
-"""
-
 import html
 import os
 import re
@@ -19,7 +14,6 @@ ESTILOS = [(lang, nivel) for lang in ("en", "ru") for nivel in estilos.niveis(la
 
 
 def texto_de(cartao_html):
-    """O que a pessoa lê num HTML do Cartão: sem tags e com as entidades desfeitas."""
     return re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", "", cartao_html))).strip()
 
 

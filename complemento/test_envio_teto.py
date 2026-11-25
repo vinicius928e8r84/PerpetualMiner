@@ -1,8 +1,3 @@
-"""O teto de Frases de um Envio (#243): o criar recusa o que passa dele e não grava nada.
-
-    python3.9 complemento/test_envio_teto.py
-"""
-
 import json
 import os
 import sys
