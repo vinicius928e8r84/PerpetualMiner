@@ -500,8 +500,7 @@ test('toda a cópia da vitrine vem do catálogo da Voz', async ({ page, paginas 
 
   const soltos = await textosEscritos(page);
 
-  expect(soltos.filter(texto => !aprovados.has(texto) && !doGlossario.has(texto)
-    && !teclasGravadas.has(texto) && !doPadrao.has(texto))).toEqual([]);
+  expect(soltos.filter(texto => ![aprovados, doGlossario, teclasGravadas, doPadrao].some(lista => lista.has(texto)))).toEqual([]);
 });
 
 // Exceção de teste: sem-estado-guardado — a vitrine não tem chrome.storage.

@@ -19,4 +19,14 @@ const segurarALeituraDoServiceWorker = (extensao, chave) => extensao.serviceWork
 
 const quebrarALeituraDoServiceWorker = (extensao, chave, mensagemDoErro) => extensao.serviceWorker.evaluate(interceptarALeituraDe, { chave, mensagemDoErro });
 
-module.exports = { segurarALeituraDaPagina, segurarALeituraDoServiceWorker, quebrarALeituraDoServiceWorker };
+function controlesSemNomeNaPagina() {
+  const nomeProprio = no => no.getAttribute('aria-label') || no.textContent.trim();
+  const nomeDosRotulos = no => [...(no.labels || [])].map(l => l.textContent.trim()).join('');
+  return [...document.querySelectorAll('button, input, textarea, a[href]')]
+    .filter(no => !(nomeProprio(no) || nomeDosRotulos(no)))
+    .map(no => no.outerHTML);
+}
+
+const controlesSemNome = page => page.evaluate(controlesSemNomeNaPagina);
+
+module.exports = { segurarALeituraDaPagina, segurarALeituraDoServiceWorker, quebrarALeituraDoServiceWorker, controlesSemNome };

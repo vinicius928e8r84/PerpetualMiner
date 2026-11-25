@@ -4,7 +4,7 @@ const { test, expect } = require('../fixtures');
 const DEN = 'PerpetualMiner::Inglês', DRU = 'PerpetualMiner::Russo';
 const { fotografar, registrarEstado } = require('../evidencias-mineracao');
 const { leituraDoVocabulario: leitura } = require('../leitura-do-vocabulario');
-const { segurarALeituraDaPagina, segurarALeituraDoServiceWorker, quebrarALeituraDoServiceWorker } = require('../apoio-da-leitura-do-popup');
+const { segurarALeituraDaPagina, segurarALeituraDoServiceWorker, quebrarALeituraDoServiceWorker, controlesSemNome } = require('../apoio-da-leitura-do-popup');
 const POPUP = 'popup/popup.html';
 
 const HOJE = new Date().toLocaleDateString('pt-BR');
@@ -577,13 +577,7 @@ test('todo controle do popup tem nome para o leitor de tela', async ({ page, ext
   await page.goto(extensao.url(POPUP));
   await expect(ultimas(page)).toHaveCount(5);
 
-  const semNome = await page.evaluate(() => [...document.querySelectorAll('button, input, textarea, a[href]')]
-    .filter(no => {
-      const nome = no.getAttribute('aria-label') || no.textContent.trim()
-        || [...(no.labels || [])].map(l => l.textContent.trim()).join('');
-      return !nome;
-    })
-    .map(no => no.outerHTML));
+  const semNome = await controlesSemNome(page);
   expect(semNome).toEqual([]);
 });
 
