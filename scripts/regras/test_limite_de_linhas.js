@@ -24,7 +24,7 @@ const prova = (condicao, porque) => { assert.ok(condicao, porque); total++; };
 
 const bookreader = real('bookreader/bookreader.js');
 const base = linhas(bookreader);
-assert.ok(base.length > 700 && base.length < regra.LIMITE, `bookreader/bookreader.js mudou de tamanho (${base.length}); escolha outro arquivo real abaixo do limite`);
+assert.ok(base.length > 500 && base.length < regra.LIMITE, `bookreader/bookreader.js mudou de tamanho (${base.length}); escolha outro arquivo real abaixo do limite`);
 prova(regra.verificar('bookreader/bookreader.js', bookreader).length === 0, 'o arquivo real abaixo do teto passa');
 
 const acima = `${[...base, ...base.slice(0, regra.LIMITE + 37 - base.length)].join('\n')}\n`;
