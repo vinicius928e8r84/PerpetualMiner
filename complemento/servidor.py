@@ -163,17 +163,23 @@ class _Atendente(BaseHTTPRequestHandler):
             status, erro = recusa
             return self._responder(status, {"error": erro}, origem=origem if status != 403 else None)
         if self.command == "OPTIONS":
-            extras = {
-                "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
-                "Access-Control-Allow-Headers": self.headers.get("Access-Control-Request-Headers") or "Content-Type",
-                "Access-Control-Max-Age": "600",
-            }
-            if self.headers.get("Access-Control-Request-Private-Network") == "true":
-                extras["Access-Control-Allow-Private-Network"] = "true"
-            return self._responder(204, origem=origem, extras=extras)
+            return self._responder_a_verificacao_previa(origem)
         pagina = PAGINAS.get((self.command, caminho))
         if pagina is not None:
             return responder_a_pagina(self, pagina)
+        return self._atender_a_rota(caminho, bruto, origem)
+
+    def _responder_a_verificacao_previa(self, origem):
+        extras = {
+            "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": self.headers.get("Access-Control-Request-Headers") or "Content-Type",
+            "Access-Control-Max-Age": "600",
+        }
+        if self.headers.get("Access-Control-Request-Private-Network") == "true":
+            extras["Access-Control-Allow-Private-Network"] = "true"
+        return self._responder(204, origem=origem, extras=extras)
+
+    def _atender_a_rota(self, caminho, bruto, origem):
         rota = ROTAS.get((self.command, caminho))
         if rota is None:
             return self._responder(404, {"error": "not_found"}, origem=origem)
