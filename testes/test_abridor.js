@@ -35,7 +35,7 @@ function carregarOAbridor({ responder, permissao = true }) {
 
 const RECADO_SEM_HOST = 'Specified native messaging host not found.';
 
-async function conferirEAbriAnkiNoLugar() {
+async function conferirEAbrirOAnkiNoLugar() {
   const { Abridor, enviadas } = carregarOAbridor({ responder: m => exemploDoAbridor(m.acao, 'no_lugar') });
   assert.deepStrictEqual(await comoValores(Abridor.conferirOAnki()), { resultado: Abridor.RESULTADO.ACHOU, detalhe: '' },
     'o conferir com o Anki no lugar achou');
@@ -137,7 +137,7 @@ async function consertarComRespostasEsquisitas() {
 }
 
 const CENARIOS = [
-  conferirEAbriAnkiNoLugar, ankiQueSumiu, ankiQueONaoAbre, semAPermissaoNadaChegaAoAbridor, semOHostDoAbridor,
+  conferirEAbrirOAnkiNoLugar, ankiQueSumiu, ankiQueONaoAbre, semAPermissaoNadaChegaAoAbridor, semOHostDoAbridor,
   respostasEsquisitasDoAbridor, meiasVerdadesDoAbridorNaoAbrem,
   consertarDizOQueAConexaoDisse, consertarSemAPermissaoNaoFechaNada, consertarSemOHostDoAbridor, consertarComRespostasEsquisitas,
 ];
