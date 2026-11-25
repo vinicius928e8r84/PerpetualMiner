@@ -59,6 +59,51 @@ async function esperarAbaDaInstalacao(context, id) {
   throw new Error('A instalação não abriu a aba da Boas-vindas');
 }
 
+const SO_O_SERVIDOR_DO_LOGIN_USA_HTTPS = '--ignore-certificate-errors';
+const SEM_O_PROXY_DO_AMBIENTE = '--no-proxy-server';
+
+function escreverAPermissaoDoAbridorNasPreferencias(perfil) {
+  const dada = { api: ['nativeMessaging'], explicit_host: [], manifest_permissions: [], scriptable_host: [] };
+  fs.mkdirSync(path.join(perfil, 'Default'));
+  fs.writeFileSync(path.join(perfil, 'Default', 'Preferences'), JSON.stringify({
+    extensions: { settings: { [ID_DA_EXTENSAO]: { granted_permissions: dada, active_permissions: dada } } },
+  }));
+}
+
+function darAPermissaoDoAbridor(perfil, pastaDaExtensao) {
+  if (process.platform === 'linux') {
+    escreverAPermissaoDoAbridorNasPreferencias(perfil);
+    return { pastaDaExtensao, copiaComAPermissao: null };
+  }
+  const copia = copiarComAPermissaoDoAbridor(pastaDaExtensao);
+  return { pastaDaExtensao: copia, copiaComAPermissao: copia };
+}
+
+const lancarOChromium = (perfil, pastaDaExtensao, portaDoLogin, regrasDaPorta8766) => chromium.launchPersistentContext(perfil, {
+  channel: 'chromium',
+  headless: !process.env.HEADED,
+  env: { ...process.env, FONTCONFIG_FILE: path.join(__dirname, 'fontconfig', 'fonts.conf') },
+  args: [
+    `--disable-extensions-except=${pastaDaExtensao}`,
+    `--load-extension=${pastaDaExtensao}`,
+    `--host-resolver-rules=MAP accounts.google.com 127.0.0.1:${portaDoLogin}, MAP auth.openai.com 127.0.0.1:${portaDoLogin}, ${regrasDaPorta8766}`,
+    SO_O_SERVIDOR_DO_LOGIN_USA_HTTPS,
+    SEM_O_PROXY_DO_AMBIENTE,
+  ],
+});
+
+async function rotearARedeFalsificada(context, { paginas, fakes, conexaoDoTeste }) {
+  const origensLocais = [paginas.origem, paginas.origemCruzada];
+  await context.route(url => /^https?:$/.test(url.protocol) && !origensLocais.includes(url.origin), route => route.abort('blockedbyclient'));
+  for (const fake of Object.values(fakes)) if (fake.padrao) await context.route(fake.padrao, fake.tratar);
+  if (conexaoDoTeste) await context.route(fakes.anki.padrao, conexaoReal.rotaComFalhasNaFrente(conexaoDoTeste, fakes.anki));
+}
+
+const apagarOPerfil = (perfil, copiaComAPermissao) => {
+  fs.rmSync(perfil, { recursive: true, force: true });
+  if (copiaComAPermissao) fs.rmSync(copiaComAPermissao, { recursive: true, force: true });
+};
+
 async function abrirPerfil({ fakes, paginas, servidorDoLogin, portaDaConexaoDeTeste, pastaDaExtensao, permissaoDoAbridor, conexaoDoTeste }) {
   servidorDoLogin.atender(fakes.google.responderLogin);
   servidorDoLogin.atenderChatGPT(fakes.chatgpt.responderAutorizacao);
@@ -66,49 +111,22 @@ async function abrirPerfil({ fakes, paginas, servidorDoLogin, portaDaConexaoDeTe
   const regrasDaPorta8766 = regrasQueTiramAPortaDoComputador(conexaoDoTeste ? conexaoDoTeste.porta : portaDaConexaoDeTeste.porta);
   const perfil = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-e2e-'));
   let context = null;
-  let copiaComAPermissao = null;
+  let extensao = { pastaDaExtensao, copiaComAPermissao: null };
   try {
     fakes.abridor.registrarNoPerfil(perfil);
-    if (permissaoDoAbridor && process.platform !== 'linux') {
-      copiaComAPermissao = copiarComAPermissaoDoAbridor(pastaDaExtensao);
-      pastaDaExtensao = copiaComAPermissao;
-    } else if (permissaoDoAbridor) {
-      const dada = { api: ['nativeMessaging'], explicit_host: [], manifest_permissions: [], scriptable_host: [] };
-      fs.mkdirSync(path.join(perfil, 'Default'));
-      fs.writeFileSync(path.join(perfil, 'Default', 'Preferences'), JSON.stringify({
-        extensions: { settings: { [ID_DA_EXTENSAO]: { granted_permissions: dada, active_permissions: dada } } },
-      }));
-    }
-    context = await chromium.launchPersistentContext(perfil, {
-      channel: 'chromium',
-      headless: !process.env.HEADED,
-      env: { ...process.env, FONTCONFIG_FILE: path.join(__dirname, 'fontconfig', 'fonts.conf') },
-      args: [
-        `--disable-extensions-except=${pastaDaExtensao}`,
-        `--load-extension=${pastaDaExtensao}`,
-        `--host-resolver-rules=MAP accounts.google.com 127.0.0.1:${servidorDoLogin.porta}, MAP auth.openai.com 127.0.0.1:${servidorDoLogin.porta}, ${regrasDaPorta8766}`,
-        '--ignore-certificate-errors',
-        '--no-proxy-server',
-      ],
-    });
-
-    const origensLocais = [paginas.origem, paginas.origemCruzada];
-    await context.route(url => /^https?:$/.test(url.protocol) && !origensLocais.includes(url.origin),
-      route => route.abort('blockedbyclient'));
-    for (const fake of Object.values(fakes)) if (fake.padrao) await context.route(fake.padrao, fake.tratar);
-    if (conexaoDoTeste) await context.route(fakes.anki.padrao, conexaoReal.rotaComFalhasNaFrente(conexaoDoTeste, fakes.anki));
+    if (permissaoDoAbridor) extensao = darAPermissaoDoAbridor(perfil, pastaDaExtensao);
+    context = await lancarOChromium(perfil, extensao.pastaDaExtensao, servidorDoLogin.porta, regrasDaPorta8766);
+    await rotearARedeFalsificada(context, { paginas, fakes, conexaoDoTeste });
   } catch (erro) {
     await context?.close().catch(() => {});
-    fs.rmSync(perfil, { recursive: true, force: true });
-    if (copiaComAPermissao) fs.rmSync(copiaComAPermissao, { recursive: true, force: true });
+    apagarOPerfil(perfil, extensao.copiaComAPermissao);
     throw erro;
   }
   return {
     context,
     fechar: async () => {
       await context.close();
-      fs.rmSync(perfil, { recursive: true, force: true });
-      if (copiaComAPermissao) fs.rmSync(copiaComAPermissao, { recursive: true, force: true });
+      apagarOPerfil(perfil, extensao.copiaComAPermissao);
     },
   };
 }
