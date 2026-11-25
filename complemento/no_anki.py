@@ -192,16 +192,26 @@ class ColecaoDoAnki(CriacaoNoAnki):
         return self._gravando(lambda colecao: _gravar_cartao(colecao, nota, frente))
 
 
-def _adicionar_nota(colecao, nota):
-    if colecao.db.all("select 1 from notes where guid = ?", nota.guid):
-        return
+def _tipo_de_nota_da_nota(colecao, nota):
     modelo = colecao.models.by_name(nota.tipo_de_nota)
     if modelo is None or not set(nota.campos) <= set(cartoes_do_anki.campos_do_tipo(modelo)):
         raise TipoDeNotaAusente(nota.tipo_de_nota)
+    return modelo
+
+
+def _campos_com_a_midia_guardada(colecao, nota):
     campos = nota.campos
     for nome, dados in (nota.midia or {}).items():
         guardado = colecao.media.write_data(nome, dados)
         campos = {campo: valor.replace("[sound:%s]" % nome, "[sound:%s]" % guardado) for campo, valor in campos.items()}
+    return campos
+
+
+def _adicionar_nota(colecao, nota):
+    if colecao.db.all("select 1 from notes where guid = ?", nota.guid):
+        return
+    modelo = _tipo_de_nota_da_nota(colecao, nota)
+    campos = _campos_com_a_midia_guardada(colecao, nota)
     nova = colecao.new_note(modelo)
     for nome, valor in campos.items():
         nova[nome] = valor
