@@ -78,16 +78,14 @@ function haVideoEmOutroFrame(request, remetente, responder) {
   return true;
 }
 
+const palavrasEscolhidas = request => (Array.isArray(request.palavras) ? request.palavras.map(String) : null);
+
+const extrasDasPalavras = palavras => (palavras?.length ? { keywords: palavras, autoKeyword: false } : {});
+
 function salvarNoHistorico(request, remetente, responder) {
-  const palavras = Array.isArray(request.palavras) ? request.palavras.map(String) : null;
-  salvarFrase(
-    request.texto,
-    request.origem,
-    request.contexto  || null,
-    request.idioma    || IDIOMAS.INGLES,
-    palavras?.length ? { keywords: palavras, autoKeyword: false } : {},
-    { comPalavraAutomatica: !palavras, comNuvem: !request.semNuvem },
-  )
+  const palavras = palavrasEscolhidas(request);
+  const opcoes = { comPalavraAutomatica: !palavras, comNuvem: !request.semNuvem };
+  salvarFrase(request.texto, request.origem, request.contexto || null, request.idioma || IDIOMAS.INGLES, extrasDasPalavras(palavras), opcoes)
     .then(frase => responder({ ok: true, frase }))
     .catch(err => responder({ ok: false, error: err?.message || 'save_failed' }));
   return true;
