@@ -7,6 +7,7 @@ const { lerHtml, acharTodos, canonicaDoFalso, impressaoDigital } = require('./ar
 const { prepararAPagina } = require('./painel_de_mentira.js');
 
 const IMPRESSAO_DA_PAGINA = 'aef21fc0f329462ae27f7caf702faab15db98dd970335f85b1e9aa6e7799150b';
+const IMPRESSAO_DA_AREA_DE_CONFIGURACOES = 'f93fd4b4eb4f91e69366935979e95a97a28cc8ea38a11ce5181aca9610279153';
 const IMPRESSAO_DOS_MODAIS = {
   'modal-contexto': 'bd673d6286754141c3f57dbedc93cf9711a28ec616c92bf613dea0a576201dc0',
   'modal-apagar': '5359af30deb5a2316833c57f5403e90954bda731260b19b5fde6dfe49c0d738f',
@@ -15,35 +16,51 @@ const IMPRESSAO_DOS_MODAIS = {
   'modal-resumo': 'de478897349513ca827ff238cb83b6caaeb56619e3a074bb0a2e679e0fd2d7b0',
 };
 
-const semScripts = no => (typeof no === 'string' ? no : { ...no, filhos: no.filhos.filter(filho => filho.tag !== 'script').map(semScripts) });
+const CSS_CORTADOS = /(?:painel-anki|painel-primeira-conexao|componentes-formulario)\.css$/;
+const ehRecursoDeScriptOuCssCortado = no => no.tag === 'script' || (no.tag === 'link' && CSS_CORTADOS.test(no.atributos.href));
+const semScripts = no => (typeof no === 'string' ? no : { ...no, filhos: no.filhos.filter(filho => !ehRecursoDeScriptOuCssCortado(filho)).map(semScripts) });
 const ehModal = no => no.atributos?.class === 'veio-scrim' && /^modal-/.test(no.atributos.id);
 
 const doCorpo = pagina => acharTodos(pagina, no => no.tag === 'body')[0];
 
-let modaisMontados = null;
+let esqueletosMontados = null;
 
-function osModaisMontadosPeloEsqueleto() {
-  if (modaisMontados) return structuredClone(modaisMontados);
-  const { documento } = prepararAPagina();
+function osEsqueletosMontados() {
+  if (esqueletosMontados) return structuredClone(esqueletosMontados);
+  const { documento, conteudo } = prepararAPagina();
   const ponte = documento.createElement('iframe');
   ponte.setAttribute('id', 'abridor-ponte');
   ponte.id = 'abridor-ponte';
   documento.body.append(ponte);
   require('../painel/esqueleto-modais.js');
-  modaisMontados = ponte.parentNode.childNodes.filter(no => no.className === 'veio-scrim').map(canonicaDoFalso);
-  return structuredClone(modaisMontados);
+  require('../painel/esqueleto-configuracoes.js');
+  esqueletosMontados = {
+    modais: ponte.parentNode.childNodes.filter(no => no.className === 'veio-scrim').map(canonicaDoFalso),
+    area: conteudo.childNodes.map(canonicaDoFalso)[0],
+  };
+  return structuredClone(esqueletosMontados);
 }
 
 function aPaginaMontada() {
   const pagina = lerHtml(fs.readFileSync('painel/painel.html', 'utf8'));
   const corpo = doCorpo(pagina);
   const posicao = corpo.filhos.findIndex(filho => filho.atributos?.id === 'abridor-ponte');
-  corpo.filhos.splice(posicao, 0, ...osModaisMontadosPeloEsqueleto());
+  const { modais, area } = osEsqueletosMontados();
+  corpo.filhos.splice(posicao, 0, ...modais);
+  doConteudo(pagina).filhos.push(area);
   return pagina;
 }
 
 function osModaisDa(pagina) {
   return Object.fromEntries(acharTodos(pagina, ehModal).map(modal => [modal.atributos.id, impressaoDigital(modal)]));
+}
+
+const doConteudo = pagina => acharTodos(pagina, no => no.tag === 'main' && no.atributos.class === 'shell-conteudo')[0];
+
+const aAreaDeConfiguracoes = pagina => acharTodos(pagina, no => no.atributos?.['data-area'] === 'configuracoes')[0];
+
+function aAreaDeConfiguracoesTemASuaArvore() {
+  assert.strictEqual(impressaoDigital(aAreaDeConfiguracoes(aPaginaMontada())), IMPRESSAO_DA_AREA_DE_CONFIGURACOES);
 }
 
 function cadaModalTemASuaArvore() {
@@ -64,8 +81,11 @@ function oEsqueletoCarregaAntesDoShellENaoDepoisDosModulos() {
   const scripts = acharTodos(lerHtml(fs.readFileSync('painel/painel.html', 'utf8')), no => no.tag === 'script').map(no => no.atributos.src);
   assert.ok(scripts.indexOf('/veio/componentes.js') < scripts.indexOf('esqueleto-modais.js'));
   assert.ok(scripts.indexOf('esqueleto-modais.js') < scripts.indexOf('painel-shell.js'));
+  assert.ok(scripts.indexOf('/veio/componentes.js') < scripts.indexOf('esqueleto-configuracoes.js'));
+  assert.ok(scripts.indexOf('esqueleto-configuracoes.js') < scripts.indexOf('painel-shell.js'));
 }
 
+aAreaDeConfiguracoesTemASuaArvore();
 cadaModalTemASuaArvore();
 aPaginaInteiraTemAMesmaArvore();
 osModaisFicamEntreOCorpoEAPonteDoAbridor();

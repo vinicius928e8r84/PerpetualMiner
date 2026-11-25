@@ -9,7 +9,7 @@ const RAIZ = path.resolve(__dirname, '..');
 const contexto = { console };
 contexto.globalThis = contexto;
 vm.createContext(contexto);
-for (const arquivo of ['lib/voz/catalogo.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/mineracao.js', 'lib/mineracao-do-dia.js',
+for (const arquivo of ['lib/voz/catalogo.js', 'lib/voz/catalogo-configuracoes.js', 'lib/voz/catalogo-anki.js', 'lib/voz/catalogo-boas-vindas.js', 'lib/voz/catalogo-envio.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/mineracao.js', 'lib/mineracao-do-dia.js',
   'lib/palavra-automatica.js', 'lib/mineracao-automatica-decisao.js']) {
   vm.runInContext(fs.readFileSync(path.join(RAIZ, arquivo), 'utf8'), contexto, { filename: arquivo });
 }
