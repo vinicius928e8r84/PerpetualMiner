@@ -121,7 +121,9 @@
 
   const atualizarPeloId = metodo => (_id, info, callback) => metodo(info, callback);
 
-  const ouvintesQueNaoFazemNada = () => ({ addListener: () => {}, removeListener: () => {} });
+  const semEfeito = () => {};
+
+  const ouvintesQueNaoFazemNada = () => ({ addListener: semEfeito, removeListener: semEfeito });
 
   window.chrome = {
     storage: {
@@ -148,7 +150,7 @@
       getRedirectURL: () => document.baseURI,
       launchWebAuthFlow: (opcoes, callback) => { semResposta(opcoes, callback); },
     },
-    action: { setBadgeText: () => {}, setBadgeBackgroundColor: () => {}, setIcon: () => {} },
+    action: { setBadgeText: semEfeito, setBadgeBackgroundColor: semEfeito, setIcon: semEfeito },
   };
 
   document.addEventListener('DOMContentLoaded', () => {
