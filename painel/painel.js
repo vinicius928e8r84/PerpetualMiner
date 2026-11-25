@@ -9,6 +9,7 @@ const Perigo = PerpetualMiner.Perigo;
 const Envio = PerpetualMiner.Envio;
 const MinerarFrases = PerpetualMiner.MinerarFrases;
 const FrasesCartao = PerpetualMiner.FrasesCartao;
+const FrasesAcoes = PerpetualMiner.FrasesAcoes;
 const { SITUACOES } = Conta;
 const { Sincronizacao, ChaveDaOpenAI, Historico } = PerpetualMiner;
 const { mostrarToastDeSucesso, abrirModal, montarAviso, criar } = PerpetualMiner.Veio;
@@ -40,10 +41,7 @@ let sincronizacao  = novaSincronizacao();
 const keywords    = {};
 const selecionadas = new Set();
 
-const idsAindaNaNuvem  = new Set();
 let modalAberto        = null;
-let pedidoDeApagar     = null;
-let edicaoDeContexto   = null;
 
 document.addEventListener('DOMContentLoaded', () => {
   setupListeners();
@@ -410,34 +408,18 @@ function idsSelecionados() {
 }
 
 function setupListeners() {
-  Perigo.aoApagarTudo(apagarTudo);
+  Perigo.aoApagarTudo(FrasesAcoes.apagarTudo);
   ChaveDaOpenAI.aoMudar(() => { if (nuvem) carregarFrasesFirestore(); });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') sincronizarAChave();
   });
-  document.getElementById('btn-export').addEventListener('click', exportarTxt);
-  document.getElementById('btn-bulk-edit').addEventListener('click', () => abrirEditarContexto(idsSelecionados()));
-  document.getElementById('btn-delete-selected').addEventListener('click', () => pedirParaApagar(idsSelecionados()));
+  document.getElementById('btn-export').addEventListener('click', FrasesAcoes.exportarTxt);
+  document.getElementById('btn-bulk-edit').addEventListener('click', () => FrasesAcoes.abrirEditarContexto(idsSelecionados()));
+  document.getElementById('btn-delete-selected').addEventListener('click', () => FrasesAcoes.pedirParaApagar(idsSelecionados()));
   document.getElementById('sel-pagina').addEventListener('change', selecionarPagina);
   document.getElementById('btn-sel-todas').addEventListener('click', selecionarTodasVisiveis);
   document.getElementById('btn-desmarcar-todas').addEventListener('click', desmarcarTodas);
-  FrasesCartao.iniciar({
-    frases: () => todasFrases,
-    keywords,
-    selecionadas,
-    editarFrase,
-    salvarNaNuvem: salvarFraseFirestore,
-    aplicarFiltro,
-  });
-  MinerarFrases.iniciar({
-    frases: () => todasFrases,
-    sincronizacao: () => sincronizacao,
-    abrirModal: abrirModalDeFrases,
-    avisar: mostrarAvisoNaArea,
-    tirarAviso: tirarAvisoDaArea,
-    falhaNaNuvem: mostrarFalhaNaNuvem,
-    sincronizado: mostrarSincronizado,
-  });
+  ligarOsModulosDeFrases();
 
   configurarModaisDeFrases();
 
@@ -459,8 +441,8 @@ function setupListeners() {
     const btnAddSep   = e.target.closest('[data-action="add-sep"]');
     const palavraEl   = e.target.closest('.veio-palavra-clicavel');
     if (btnCopy)     { copiarFrase(btnCopy.dataset.id);                         return; }
-    if (btnDel)      { pedirParaApagar([Number(btnDel.dataset.id)]);            return; }
-    if (btnEdit)     { abrirEditarContexto([Number(btnEdit.dataset.id)]);       return; }
+    if (btnDel)      { FrasesAcoes.pedirParaApagar([Number(btnDel.dataset.id)]); return; }
+    if (btnEdit)     { FrasesAcoes.abrirEditarContexto([Number(btnEdit.dataset.id)]); return; }
     if (btnTexto)    { FrasesCartao.terminarEdicaoDeTexto(btnTexto.dataset.action === 'salvar-texto'); return; }
     if (btnEditText) { FrasesCartao.editarTextoFrase(Number(btnEditText.dataset.id));        return; }
     if (btnClear)    { FrasesCartao.clearKeywords(Number(btnClear.dataset.id));              return; }
@@ -481,6 +463,50 @@ function setupListeners() {
     atualizarContadorSelecao();
   });
 
+}
+
+function ligarOsModulosDeFrases() {
+  FrasesCartao.iniciar({
+    frases: () => todasFrases,
+    keywords,
+    selecionadas,
+    editarFrase,
+    salvarNaNuvem: salvarFraseFirestore,
+    aplicarFiltro,
+  });
+  FrasesAcoes.iniciar({
+    frases: () => todasFrases,
+    trocarFrases: novas => { todasFrases = novas; },
+    keywords,
+    selecionadas,
+    usuarioLogado: () => usuarioLogado,
+    nuvem: () => nuvem,
+    sincronizacao: () => sincronizacao,
+    erroDaChave: () => erroDaChave,
+    abrirModal: abrirModalDeFrases,
+    fecharModal: () => modalAberto.fechar(),
+    avisar: mostrarAvisoNaArea,
+    tirarAviso: tirarAvisoDaArea,
+    falhaNaNuvem: mostrarFalhaNaNuvem,
+    sincronizado: mostrarSincronizado,
+    sincronizarAChave,
+    atualizarTotal,
+    aplicarFiltro,
+    atualizarContadorSelecao,
+    construirFiltroDeFonte,
+    voltarAPrimeiraPagina,
+    editarFrase,
+    salvarNaNuvem: salvarFraseFirestore,
+  });
+  MinerarFrases.iniciar({
+    frases: () => todasFrases,
+    sincronizacao: () => sincronizacao,
+    abrirModal: abrirModalDeFrases,
+    avisar: mostrarAvisoNaArea,
+    tirarAviso: tirarAvisoDaArea,
+    falhaNaNuvem: mostrarFalhaNaNuvem,
+    sincronizado: mostrarSincronizado,
+  });
 }
 
 function fontesDoHistorico() {
@@ -690,152 +716,6 @@ function tirarAvisoDaArea(chave) {
   document.querySelector(`#frases-avisos [data-aviso="${chave}"]`)?.remove();
 }
 
-function pedirParaApagar(ids) {
-  if (ids.length === 0) return;
-  const umaFrase = ids.length === 1;
-  const estado = umaFrase ? 'PAI-12' : 'PAI-13';
-  const valores = { n: ids.length };
-  document.getElementById('modal-apagar-titulo').textContent = textoDaVoz(`${estado}.titulo`, valores);
-  document.getElementById('modal-apagar-corpo').textContent =
-    textoDaVoz(`${estado}.${usuarioLogado ? 'corpo' : 'corpoSemConta'}`);
-  document.getElementById('btn-apagar-cancelar').textContent = textoDaVoz(`${estado}.cancelar`);
-  document.getElementById('btn-apagar-confirmar').textContent = textoDaVoz(`${estado}.confirmar`, valores);
-  abrirModalDeFrases('modal-apagar', () => { pedidoDeApagar = null; });
-  pedidoDeApagar = { ids };
-}
-
-function confirmarApagar() {
-  if (!pedidoDeApagar) return;
-  const { ids } = pedidoDeApagar;
-  modalAberto.fechar();
-  apagarFrases(ids);
-}
-
-async function apagarFrases(ids, { toast = ids.length > 1 } = {}) {
-  const apagadas = new Set(ids);
-  todasFrases = todasFrases.filter(f => !apagadas.has(f.id));
-  ids.forEach(id => { delete keywords[id]; selecionadas.delete(id); });
-  FrasesCartao.esquecerEdicaoDe(apagadas);
-  await Historico.apagar(ids);
-  atualizarTotal();
-  aplicarFiltro();
-  if (toast) mostrarToastDeSucesso(textoDaVoz('PAI-14', { n: ids.length }));
-  await apagarDaNuvem(ids);
-}
-
-async function apagarDaNuvem(ids) {
-  const erro = await sincronizacao.apagar(ids);
-  if (!erro) return;
-  ids.forEach(id => idsAindaNaNuvem.add(id));
-  mostrarAvisoAindaNaNuvem(erro);
-  mostrarFalhaNaNuvem(erro);
-}
-
-function mostrarAvisoAindaNaNuvem(erro) {
-  mostrarAvisoNaArea('ainda-na-nuvem', {
-    texto: textoDaVoz('PAI-15.aviso'),
-    acao: { rotulo: textoDaVoz('PAI-15.tentarDeNovo'), aoUsar: tentarApagarDaNuvemDeNovo },
-    erro,
-    aoFechar: () => idsAindaNaNuvem.clear(),
-  });
-}
-
-async function tentarApagarDaNuvemDeNovo() {
-  const ids = [...idsAindaNaNuvem];
-  const erro = await sincronizacao.apagar(ids);
-  if (erro) {
-    mostrarAvisoAindaNaNuvem(erro);
-    mostrarFalhaNaNuvem(erro);
-    return;
-  }
-  idsAindaNaNuvem.clear();
-  tirarAvisoDaArea('ainda-na-nuvem');
-  mostrarSincronizado();
-}
-
-let avisoDaChaveNoApagarTudo = null;
-async function apagarChaveNoApagarTudo() {
-  try {
-    await ChaveDaOpenAI.apagar();
-    await sincronizarAChave();
-    avisoDaChaveNoApagarTudo?.remove();
-    avisoDaChaveNoApagarTudo = null;
-    return !erroDaChave;
-  } catch (erro) {
-    avisoDaChaveNoApagarTudo?.remove();
-    const antiga = erro?.codigo === 'outdated_connection';
-    const outraConta = erro?.codigo === 'other_account_owner';
-    avisoDaChaveNoApagarTudo = montarAviso({
-      texto: textoDaVoz(antiga ? 'CFG-35.erroConexaoAntiga' : outraConta ? 'CFG-35.erroOutraConta' : 'CFG-17.chaveNaoApagada'),
-      acao: antiga ? { rotulo: textoDaVoz('CFG-35.erroAtualizar'), aoUsar: () => PerpetualMiner.CartaoDaIA.baixarConexao() }
-        : outraConta ? { rotulo: textoDaVoz('CFG-35.erroTrocar'), aoUsar: () => PerpetualMiner.CartaoDaIA.trocarChave() }
-          : { rotulo: textoDaVoz('CFG-35.erroTentarDeNovo'), aoUsar: apagarChaveNoApagarTudo },
-      detalhes: erro?.codigo || erro?.name || 'storage_error', fechavel: false,
-    });
-    document.getElementById('cfg-perigo-corpo').append(avisoDaChaveNoApagarTudo);
-    return false;
-  }
-}
-
-function apagarTudo({ ids, em }) {
-  todasFrases = todasFrases.filter(f => !ids.includes(f.id));
-  ids.forEach(id => delete keywords[id]);
-  selecionadas.clear();
-  atualizarContadorSelecao();
-  const chaveApagada = apagarChaveNoApagarTudo();
-  Envio.apagarTudo();
-  const naNuvem = sincronizacao.apagarTudo(ids, em).then(({ ok, erro }) => {
-    if (!ok) {
-      console.error('[Firestore] apagar tudo falhou:', erro);
-      mostrarFalhaNaNuvem(erro);
-    }
-    return ok;
-  });
-  Historico.apagar(ids).then(async () => {
-    atualizarTotal();
-    paginaAtual = 1;
-    aplicarFiltro();
-    const [frasesApagadas, apagouChave] = await Promise.all([naNuvem, chaveApagada]);
-    if (frasesApagadas && apagouChave) mostrarToastDeSucesso(textoDaVoz('CFG-18'));
-  });
-}
-
-function exportarTxt() {
-  if (selecionadas.size === 0) return;
-  const linhas = todasFrases
-    .filter(f => selecionadas.has(f.id))
-    .map(linhaDoTxt)
-    .filter(l => l.trim());
-
-  const blob = new Blob([linhas.join('\n')], { type: 'text/plain;charset=utf-8' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url; a.download = 'perpetualminer-export.txt';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-
-  const exportadas = [];
-  todasFrases = todasFrases.map(f => {
-    if (!selecionadas.has(f.id)) return f;
-    const u = { ...f, exportadaTxt: true };
-    exportadas.push(u);
-    return u;
-  });
-  selecionadas.clear();
-  atualizarContadorSelecao();
-  Historico.marcarExportadas(exportadas.map(f => f.id)).then(() => {
-    atualizarTotal();
-    aplicarFiltro();
-  });
-  if (nuvem && exportadas.length > 0) {
-    Promise.allSettled(exportadas.map(f => nuvem.gravarFrase(f, ['exportadaTxt']))).then(resultados => {
-      const falha = resultados.find(r => r.status === 'rejected');
-      if (falha) mostrarFalhaNaNuvem(falha.reason);
-    });
-  }
-  mostrarToastDeSucesso(textoDaVoz('PAI-19', { n: linhas.length }));
-}
-
 function comecarEnvio() {
   Envio.usar({
     selecionadas: () => todasFrases.filter(f => selecionadas.has(f.id)),
@@ -844,7 +724,7 @@ function comecarEnvio() {
       return todasFrases.filter(f => pedidas.has(Number(f.id)));
     },
     linha: linhaParaOAnki,
-    apagar: ids => apagarFrases(ids, { toast: false }),
+    apagar: ids => FrasesAcoes.apagarFrases(ids, { toast: false }),
     marcarComoEnviadas,
   });
 }
@@ -868,29 +748,6 @@ function configurarModaisDeFrases() {
   for (const botao of document.querySelectorAll('[data-fechar-modal]')) {
     botao.addEventListener('click', () => modalAberto?.fechar());
   }
-  document.getElementById('btn-apagar-confirmar').addEventListener('click', confirmarApagar);
-  document.getElementById('form-contexto').addEventListener('submit', (e) => {
-    e.preventDefault();
-    salvarContexto();
-  });
-}
-
-function abrirEditarContexto(ids) {
-  if (ids.length === 0) return;
-  const umaFrase = ids.length === 1 ? todasFrases.find(f => f.id === ids[0]) : null;
-  document.getElementById('modal-contexto-titulo').textContent = umaFrase
-    ? textoDaVoz('PAI-20.umaFrase')
-    : textoDaVoz('PAI-20.variasFrases', { n: ids.length });
-  document.getElementById('modal-contexto-subtitulo').textContent = umaFrase
-    ? umaFrase.texto
-    : textoDaVoz('PAI-20.ajuda');
-  document.getElementById('modal-fonte').value   = umaFrase ? (umaFrase.contexto?.fonte || umaFrase.streaming || '') : '';
-  document.getElementById('modal-titulo').value  = umaFrase?.contexto?.titulo  || '';
-  document.getElementById('modal-detalhe').value = umaFrase?.contexto?.detalhe || '';
-
-  abrirModalDeFrases('modal-contexto', () => { edicaoDeContexto = null; });
-  edicaoDeContexto = { ids };
-  document.getElementById('modal-fonte').focus();
 }
 
 function abrirModalDeFrases(id, aoFechar) {
@@ -899,57 +756,6 @@ function abrirModalDeFrases(id, aoFechar) {
   });
   return modalAberto;
 }
-
-function salvarContexto() {
-  if (!edicaoDeContexto) return;
-  const { ids } = edicaoDeContexto;
-  const contexto = {
-    fonte:   document.getElementById('modal-fonte').value.trim(),
-    titulo:  document.getElementById('modal-titulo').value.trim(),
-    detalhe: document.getElementById('modal-detalhe').value.trim(),
-  };
-  modalAberto.fechar();
-  if (ids.length === 1) salvarContextoDeUmaFrase(ids[0], contexto);
-  else                  salvarContextoDeVarias(ids, contexto);
-}
-
-function salvarContextoDeVarias(ids, { fonte, titulo, detalhe }) {
-  const alvo = new Set(ids);
-  const preenchidos = Object.fromEntries(Object.entries({ fonte, titulo, detalhe }).filter(([, v]) => v));
-  const edicoes = new Map();
-  todasFrases = todasFrases.map(f => {
-    if (!alvo.has(f.id)) return f;
-    const contexto = { ...(f.contexto || { fonte: f.streaming || '', titulo: '', detalhe: '' }), ...preenchidos };
-    edicoes.set(f.id, { ...(fonte ? { streaming: fonte } : {}), contexto });
-    return { ...f, ...edicoes.get(f.id) };
-  });
-  const editadas = todasFrases.filter(f => edicoes.has(f.id));
-  Historico.editarVarias(edicoes).then(() => {
-    construirFiltroDeFonte();
-    aplicarFiltro();
-    mostrarToastDeSucesso(textoDaVoz('PAI-22', { n: editadas.length }));
-  });
-  if (nuvem && editadas.length > 0) {
-    Promise.allSettled(editadas.map(f => nuvem.gravarFrase(f))).then(resultados => {
-      const falhas = resultados.filter(r => r.status === 'rejected');
-      if (falhas.length > 0) mostrarFalhaNaNuvem(falhas[0].reason);
-    });
-  }
-}
-
-function salvarContextoDeUmaFrase(id, { fonte, titulo, detalhe }) {
-  const idx = todasFrases.findIndex(f => f.id === id);
-  if (idx < 0) return;
-  const f = todasFrases[idx];
-  const novaFonte = fonte || f.contexto?.fonte || f.streaming || '';
-  editarFrase(idx, { streaming: novaFonte, contexto: { fonte: novaFonte, titulo, detalhe } }).then(() => {
-    construirFiltroDeFonte();
-    aplicarFiltro();
-  });
-  salvarFraseFirestore(todasFrases[idx]);
-}
-
-const linhaDoTxt = frase => TxtDeFrases.escrever(frase, keywords[frase.id]);
 
 function linhaParaOAnki(frase) {
   return TxtDeFrases.escreverParaOAnki(frase, keywords[frase.id]);

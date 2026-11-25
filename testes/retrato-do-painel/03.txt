@@ -79,4 +79,5 @@
   <script src="painel-ajustes.js">
   <script src="painel-minerar-frases.js">
   <script src="painel-frases-cartao.js">
+  <script src="painel-frases-acoes.js">
   <script src="painel.js">
