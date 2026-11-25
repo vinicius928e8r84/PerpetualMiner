@@ -1,8 +1,8 @@
 'use strict';
 
-const { IDIOMAS, textoDaVoz, Atalhos, AjustesDeEnvio, TxtDeFrases } = PerpetualMiner;
-const { fonteDaFrase, nomeDaFonte, rotuloDoDia } = PerpetualMiner.Contexto;
-const { refletirSelecao, montarTecla } = PerpetualMiner.Veio;
+const { textoDaVoz, Atalhos, AjustesDeEnvio, TxtDeFrases } = PerpetualMiner;
+const { rotuloDoDia } = PerpetualMiner.Contexto;
+const { montarTecla } = PerpetualMiner.Veio;
 const Shell = PerpetualMiner.Shell;
 const Conta = PerpetualMiner.Conta;
 const Perigo = PerpetualMiner.Perigo;
@@ -10,8 +10,10 @@ const Envio = PerpetualMiner.Envio;
 const MinerarFrases = PerpetualMiner.MinerarFrases;
 const FrasesCartao = PerpetualMiner.FrasesCartao;
 const FrasesAcoes = PerpetualMiner.FrasesAcoes;
-const { SITUACOES } = Conta;
-const { Sincronizacao, ChaveDaOpenAI, Historico } = PerpetualMiner;
+const FrasesNuvem = PerpetualMiner.FrasesNuvem;
+const FrasesSelecao = PerpetualMiner.FrasesSelecao;
+const FrasesFiltros = PerpetualMiner.FrasesFiltros;
+const { Sincronizacao, Historico } = PerpetualMiner;
 const { mostrarToastDeSucesso, abrirModal, montarAviso, criar } = PerpetualMiner.Veio;
 const { filtrarFrases, foiEnviadaAoAnki, STATUS_ENVIADA_AO_ANKI } = PerpetualMiner.FiltroDasFrases;
 
@@ -26,29 +28,32 @@ const FB_SIGNIN_URL     = `https://identitytoolkit.googleapis.com/v1/accounts:si
 let todasFrases        = [];
 let frasesVisiveis     = [];
 let paginaAtual        = 1;
-let filtroFonte         = 'all';
-let filtroIdioma       = 'all';
-let esconderEnviadasEExportadas = false;
-let ordemAtual         = 'novas';
-let buscaAtual         = '';
 let listaCarregada     = false;
 
 let usuarioLogado = null;
-let sessao         = null;
-let nuvem          = null;
-let sincronizacao  = novaSincronizacao();
 
 const keywords    = {};
 const selecionadas = new Set();
 
 let modalAberto        = null;
 
+const ACOES_DA_LISTA = [
+  { seletor: '[data-action="copy"]', fazer: alvo => copiarFrase(alvo.dataset.id) },
+  { seletor: '[data-action="delete"]', fazer: alvo => FrasesAcoes.pedirParaApagar([Number(alvo.dataset.id)]) },
+  { seletor: '[data-action="edit"]', fazer: alvo => FrasesAcoes.abrirEditarContexto([Number(alvo.dataset.id)]) },
+  { seletor: '[data-action="salvar-texto"], [data-action="cancelar-texto"]', fazer: alvo => FrasesCartao.terminarEdicaoDeTexto(alvo.dataset.action === 'salvar-texto') },
+  { seletor: '[data-action="edit-text"]', fazer: alvo => FrasesCartao.editarTextoFrase(Number(alvo.dataset.id)) },
+  { seletor: '[data-action="clear-kw"]', fazer: alvo => FrasesCartao.clearKeywords(Number(alvo.dataset.id)) },
+  { seletor: '[data-action="add-sep"]', fazer: alvo => FrasesCartao.addSeparator(Number(alvo.dataset.id)) },
+  { seletor: '.veio-palavra-clicavel', fazer: alvo => FrasesCartao.escolherPalavra(alvo) },
+];
+
 document.addEventListener('DOMContentLoaded', () => {
   setupListeners();
   AjustesDeEnvio.acompanhar(ajustes => {
     PerpetualMiner.Baralhos.usarBaralhos({ en: ajustes.en.deckName, ru: ajustes.ru.deckName });
   });
-  Conta.aoPedir({ entrar: loginGoogle, sair: logout, tentarDeNovo: carregarFrasesFirestore });
+  Conta.aoPedir({ entrar: loginGoogle, sair: logout, tentarDeNovo: FrasesNuvem.carregarDaNuvem });
   setupStorageSyncListener();
   Atalhos.acompanharAtalhos(({ legenda }) => {
     atalhoDeLegenda = legenda;
@@ -62,13 +67,13 @@ async function inicializarAuth() {
   const credenciais = await Sincronizacao.lerCredenciais();
   if (data.pm_user_info && credenciais?.uid === data.pm_user_info.uid) {
     usuarioLogado = { ...data.pm_user_info };
-    conectarNuvem(credenciais);
+    FrasesNuvem.conectar(credenciais);
     atualizarUIAuth(usuarioLogado);
-    sincronizarAChave();
-    await carregarFrasesFirestore();
+    FrasesNuvem.sincronizarAChave();
+    await FrasesNuvem.carregarDaNuvem();
   } else {
     if (data.pm_user_info) await chrome.storage.local.remove('pm_user_info');
-    carregarFrasesLocal();
+    FrasesNuvem.carregarLocal();
   }
 }
 
@@ -137,20 +142,20 @@ async function loginGoogle() {
       expiresAt:    Date.now() + 55 * 60 * 1000,
     };
     await Sincronizacao.guardarCredenciais(credenciais);
-    conectarNuvem(credenciais);
+    FrasesNuvem.conectar(credenciais);
     await chrome.storage.local.set({
       pm_user_info: { uid: usuarioLogado.uid, email: usuarioLogado.email, displayName: usuarioLogado.displayName, photoURL: usuarioLogado.photoURL },
     });
 
     atualizarUIAuth(usuarioLogado);
-    sincronizarAChave();
+    FrasesNuvem.sincronizarAChave();
 
     const { pm_migrated = '' } = await chromeGet({ pm_migrated: '' });
     if (pm_migrated !== usuarioLogado.uid) {
-      await migrarParaFirestore();
+      await FrasesNuvem.migrar();
       chrome.storage.local.set({ pm_migrated: usuarioLogado.uid });
     } else {
-      await carregarFrasesFirestore();
+      await FrasesNuvem.carregarDaNuvem();
     }
   } catch (err) {
     if (loginFoiCancelado(err)) return;
@@ -166,11 +171,11 @@ function loginFoiCancelado(err) {
 async function logout() {
   if (!usuarioLogado) return;
   usuarioLogado = null;
-  desconectarNuvem();
+  FrasesNuvem.desconectar();
   await Sincronizacao.apagarCredenciais();
   await chrome.storage.local.remove(['pm_firebase_auth', 'pm_user_info']);
   atualizarUIAuth(null);
-  carregarFrasesLocal();
+  FrasesNuvem.carregarLocal();
 }
 
 function atualizarUIAuth(user) {
@@ -178,147 +183,11 @@ function atualizarUIAuth(user) {
   Perigo.mostrarConta(Boolean(user));
 }
 
-function novaSincronizacao() {
-  return Sincronizacao.criarSincronizacao({
-    nuvem,
-    armazenamento: Sincronizacao.armazenamentoDoChrome(chrome.storage),
-    aviso: (mensagem, erro) => console.warn('[Firestore]', mensagem + ':', erro?.message),
-  });
-}
-
-function conectarNuvem(credenciais) {
-  sessao = Sincronizacao.criarSessao({
-    credenciais,
-    aoRenovar: Sincronizacao.guardarCredenciais,
-  });
-  nuvem = Sincronizacao.nuvemHttp({ sessao });
-  sincronizacao = novaSincronizacao();
-}
-
-let sincronizandoAChave = Promise.resolve();
-let erroDaChave = null;
-let estadoDasFrases = { situacao: SITUACOES.SINCRONIZADO, dados: {} };
-
-function mostrarEstadoDoSync() {
-  const { situacao, dados } = estadoDasFrases;
-  const situacaoDaChave = erroDaChave ? situacaoDoErro(erroDaChave, SITUACOES.CHAVE_PENDENTE) : null;
-  const exigeConta = s => s === SITUACOES.RECUSADO || s === SITUACOES.EXPIROU;
-  if (exigeConta(situacaoDaChave) && !exigeConta(situacao)) {
-    Conta.mostrarSincronizacao(situacaoDaChave, { detalhes: erroDaChave.message });
-  } else if (situacao !== SITUACOES.SINCRONIZADO) {
-    Conta.mostrarSincronizacao(situacao, { ...dados,
-      detalhes: [dados.detalhes, erroDaChave?.message].filter(Boolean).join('\n'),
-    });
-  } else if (erroDaChave) {
-    Conta.mostrarSincronizacao(situacaoDaChave, { detalhes: erroDaChave.message, codigo: erroDaChave.codigo });
-  } else Conta.mostrarSincronizacao(SITUACOES.SINCRONIZADO);
-}
-
-function mostrarEstadoDasFrases(situacao, dados = {}) {
-  estadoDasFrases = { situacao, dados };
-  mostrarEstadoDoSync();
-}
-
-function mostrarSincronizado() {
-  mostrarEstadoDasFrases(SITUACOES.SINCRONIZADO);
-}
-
-function sincronizarAChave() {
-  sincronizandoAChave = sincronizandoAChave.then(async () => {
-    const estaNuvem = nuvem;
-    const estaSessao = sessao;
-    if (!estaNuvem || !estaSessao) return;
-    try {
-      await ChaveDaOpenAI.sincronizar(estaSessao, estaNuvem.uid);
-      if (nuvem === estaNuvem) { erroDaChave = null; mostrarEstadoDoSync(); }
-    } catch (err) {
-      if (nuvem !== estaNuvem) return;
-      erroDaChave = Object.assign(new Error(`OpenAI sync · ${err?.status || err?.motivo || 'sem resposta'}`), { motivo: err?.motivo, codigo: err?.codigo });
-      mostrarEstadoDoSync();
-    }
-  });
-  return sincronizandoAChave;
-}
-
-function desconectarNuvem() {
-  erroDaChave = null;
-  estadoDasFrases = { situacao: SITUACOES.SINCRONIZADO, dados: {} };
-  sessao?.revogar();
-  sessao = null;
-  nuvem = null;
-  sincronizacao = novaSincronizacao();
-}
-
-function situacaoDoErro(err, semSincronizar = SITUACOES.SEM_SINCRONIZAR) {
-  if (err?.motivo === Sincronizacao.MOTIVO.EXPIROU) return SITUACOES.EXPIROU;
-  if (err?.motivo === Sincronizacao.MOTIVO.RECUSADO) return SITUACOES.RECUSADO;
-  return semSincronizar;
-}
-
-function mostrarFalhaNaNuvem(err, semSincronizar) {
-  mostrarEstadoDasFrases(situacaoDoErro(err, semSincronizar), { detalhes: err?.message || String(err) });
-}
-
-async function migrarParaFirestore() {
-  const { frases = [] } = await chromeGet({ frases: [] });
-  if (frases.length > 0) {
-    mostrarEstadoDasFrases(SITUACOES.PRIMEIRA_SUBIDA, { n: frases.length });
-    try {
-      await nuvem.gravarFrases(frases);
-      mostrarToastDeSucesso(textoDaVoz('CFG-09.sucesso', { n: frases.length }));
-    } catch (err) {
-      console.error('[Firestore] migração falhou:', err);
-      await carregarFrasesFirestore({ primeiraSubidaFalhou: true });
-      return;
-    }
-  }
-  await carregarFrasesFirestore();
-}
-
-function carregarFrasesLocal() {
-  chrome.storage.local.get({ frases: [] }, (data) => {
-    todasFrases = data.frases || [];
-    finalizarCarregamento();
-  });
-}
-
-async function carregarFrasesFirestore({ primeiraSubidaFalhou = false } = {}) {
-  const semSincronizar = primeiraSubidaFalhou ? SITUACOES.PRIMEIRA_SUBIDA_FALHOU : SITUACOES.SEM_SINCRONIZAR;
-  mostrarEstadoDasFrases(SITUACOES.SINCRONIZANDO);
-  await sincronizarAChave();
-  try {
-    const { frases, desteComputador, falhaNasOrfas } = await sincronizacao.carregar({ atuais: () => todasFrases });
-    todasFrases = frases;
-    if (falhaNasOrfas) {
-      console.error('[Firestore] orphans com falha:', falhaNasOrfas.quantas, falhaNasOrfas.causas[0]?.message);
-      mostrarSyncIncompleto(falhaNasOrfas, desteComputador, semSincronizar);
-    } else {
-      mostrarSincronizado();
-    }
-    finalizarCarregamento();
-  } catch (err) {
-    console.error('[Firestore] carregar:', err);
-    mostrarFalhaNaNuvem(err, semSincronizar);
-    carregarFrasesLocal();
-  }
-}
-
-function mostrarSyncIncompleto({ quantas, causas }, desteComputador, semSincronizar) {
-  const detalhes = [...new Set(causas.map(c => c?.message || String(c)))].join('\n');
-  const situacao = situacaoDoErro(causas[0], semSincronizar);
-  const naNuvem = desteComputador - quantas;
-  if (situacao !== semSincronizar || naNuvem === 0) {
-    mostrarEstadoDasFrases(situacao, { detalhes });
-    return;
-  }
-  mostrarEstadoDasFrases(SITUACOES.PARCIAL, { n: naNuvem, total: desteComputador, detalhes });
-}
-
 function finalizarCarregamento() {
   Object.keys(keywords).forEach(k => delete keywords[k]);
   todasFrases.forEach(f => { if (f.keywords?.length) keywords[f.id] = f.keywords; });
   atualizarTotal();
-  construirFiltroDeFonte();
+  FrasesFiltros.construirFiltroDeFonte();
   listaCarregada = true;
   aplicarFiltro();
   comecarEnvio();
@@ -347,131 +216,50 @@ function setupStorageSyncListener() {
   });
 }
 
-function salvarFraseFirestore(frase, campos = null) {
-  if (!nuvem) return;
-  nuvem.gravarFrase(frase, campos).catch(err => {
-    console.error('[Firestore] patch:', frase.id, err.message);
-    mostrarFalhaNaNuvem(err);
-  });
-}
-
-function atualizarContadorSelecao() {
-  const linha = document.getElementById('frases-selecao');
-  const idsPag = idsPaginaAtual();
-  const n = selecionadas.size;
-  const naPagina = idsPag.filter(id => selecionadas.has(id)).length;
-
-  linha.hidden = !listaCarregada || (idsPag.length === 0 && n === 0);
-  refletirSelecao(document.getElementById('sel-pagina'), naPagina, idsPag.length);
-  linha.classList.toggle('frases-selecao--barra', n > 0);
-  document.getElementById('sel-pagina-rotulo').classList.toggle('veio-so-leitor', n > 0);
-  document.getElementById('frases-barra').hidden = n === 0;
-  if (n === 0) return;
-
-  document.getElementById('selection-count').textContent = textoDaVoz('PAI-06', { n });
-  const todas = document.getElementById('btn-sel-todas');
-  const paginaInteira = idsPag.length > 0 && naPagina === idsPag.length;
-  todas.hidden = !paginaInteira || frasesVisiveis.every(f => selecionadas.has(f.id));
-  if (!todas.hidden) todas.textContent = textoDaVoz('PAI-32.selecionarTodas', { n: frasesVisiveis.length });
-}
-
 function idsPaginaAtual() {
   const inicio = (paginaAtual - 1) * POR_PAGINA;
   return frasesVisiveis.slice(inicio, inicio + POR_PAGINA).map(f => f.id);
 }
 
-function selecionarPagina() {
-  const ids = idsPaginaAtual();
-  const todasMarcadas = ids.every(id => selecionadas.has(id));
-  if (todasMarcadas) ids.forEach(id => selecionadas.delete(id));
-  else               ids.forEach(id => selecionadas.add(id));
-  ids.forEach(FrasesCartao.refletirSelecao);
-  atualizarContadorSelecao();
-}
-
-function selecionarTodasVisiveis() {
-  frasesVisiveis.forEach(f => selecionadas.add(f.id));
-  idsPaginaAtual().forEach(FrasesCartao.refletirSelecao);
-  atualizarContadorSelecao();
-}
-
-function desmarcarTodas() {
-  const ids = [...selecionadas];
-  selecionadas.clear();
-  ids.forEach(FrasesCartao.refletirSelecao);
-  atualizarContadorSelecao();
-  document.getElementById('sel-pagina').focus();
-}
-
-function idsSelecionados() {
-  return todasFrases.filter(f => selecionadas.has(f.id)).map(f => f.id);
-}
-
 function setupListeners() {
   Perigo.aoApagarTudo(FrasesAcoes.apagarTudo);
-  ChaveDaOpenAI.aoMudar(() => { if (nuvem) carregarFrasesFirestore(); });
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') sincronizarAChave();
-  });
   document.getElementById('btn-export').addEventListener('click', FrasesAcoes.exportarTxt);
-  document.getElementById('btn-bulk-edit').addEventListener('click', () => FrasesAcoes.abrirEditarContexto(idsSelecionados()));
-  document.getElementById('btn-delete-selected').addEventListener('click', () => FrasesAcoes.pedirParaApagar(idsSelecionados()));
-  document.getElementById('sel-pagina').addEventListener('change', selecionarPagina);
-  document.getElementById('btn-sel-todas').addEventListener('click', selecionarTodasVisiveis);
-  document.getElementById('btn-desmarcar-todas').addEventListener('click', desmarcarTodas);
   ligarOsModulosDeFrases();
-
   configurarModaisDeFrases();
-
-  configurarFiltros();
-
   document.getElementById('btn-first').addEventListener('click', () => irPagina(1));
   document.getElementById('btn-prev').addEventListener('click',  () => irPagina(paginaAtual - 1));
   document.getElementById('btn-next').addEventListener('click',  () => irPagina(paginaAtual + 1));
   document.getElementById('btn-last').addEventListener('click',  () => irPagina(totalPaginas()));
 
   const lista = document.getElementById('frases-lista');
-  lista.addEventListener('click', (e) => {
-    const btnCopy     = e.target.closest('[data-action="copy"]');
-    const btnDel      = e.target.closest('[data-action="delete"]');
-    const btnEdit     = e.target.closest('[data-action="edit"]');
-    const btnEditText = e.target.closest('[data-action="edit-text"]');
-    const btnTexto    = e.target.closest('[data-action="salvar-texto"], [data-action="cancelar-texto"]');
-    const btnClear    = e.target.closest('[data-action="clear-kw"]');
-    const btnAddSep   = e.target.closest('[data-action="add-sep"]');
-    const palavraEl   = e.target.closest('.veio-palavra-clicavel');
-    if (btnCopy)     { copiarFrase(btnCopy.dataset.id);                         return; }
-    if (btnDel)      { FrasesAcoes.pedirParaApagar([Number(btnDel.dataset.id)]); return; }
-    if (btnEdit)     { FrasesAcoes.abrirEditarContexto([Number(btnEdit.dataset.id)]); return; }
-    if (btnTexto)    { FrasesCartao.terminarEdicaoDeTexto(btnTexto.dataset.action === 'salvar-texto'); return; }
-    if (btnEditText) { FrasesCartao.editarTextoFrase(Number(btnEditText.dataset.id));        return; }
-    if (btnClear)    { FrasesCartao.clearKeywords(Number(btnClear.dataset.id));              return; }
-    if (btnAddSep)   { FrasesCartao.addSeparator(Number(btnAddSep.dataset.id));             return; }
-    if (palavraEl)   { FrasesCartao.escolherPalavra(palavraEl);                              return; }
-  });
+  lista.addEventListener('click', aoClicarNaLista);
   lista.addEventListener('keydown', FrasesCartao.aoTeclarNaFrase);
   lista.addEventListener('keydown', FrasesCartao.aoTeclarNaEdicaoDeTexto);
   lista.addEventListener('input', FrasesCartao.aoDigitarNaEdicao);
+}
 
-  lista.addEventListener('change', (e) => {
-    const chk = e.target.closest('.frase-check');
-    if (!chk) return;
-    const id = Number(chk.dataset.id);
-    if (chk.checked) selecionadas.add(id);
-    else             selecionadas.delete(id);
-    FrasesCartao.refletirSelecao(id);
-    atualizarContadorSelecao();
-  });
-
+function aoClicarNaLista(e) {
+  for (const { seletor, fazer } of ACOES_DA_LISTA) {
+    const alvo = e.target.closest(seletor);
+    if (alvo) {
+      fazer(alvo);
+      return;
+    }
+  }
 }
 
 function ligarOsModulosDeFrases() {
+  FrasesNuvem.iniciar({
+    frases: () => todasFrases,
+    trocarFrases: novas => { todasFrases = novas; },
+    carregou: finalizarCarregamento,
+  });
   FrasesCartao.iniciar({
     frases: () => todasFrases,
     keywords,
     selecionadas,
     editarFrase,
-    salvarNaNuvem: salvarFraseFirestore,
+    salvarNaNuvem: FrasesNuvem.salvarFrase,
     aplicarFiltro,
   });
   FrasesAcoes.iniciar({
@@ -480,102 +268,45 @@ function ligarOsModulosDeFrases() {
     keywords,
     selecionadas,
     usuarioLogado: () => usuarioLogado,
-    nuvem: () => nuvem,
-    sincronizacao: () => sincronizacao,
-    erroDaChave: () => erroDaChave,
+    nuvem: FrasesNuvem.nuvem,
+    sincronizacao: FrasesNuvem.sincronizacao,
+    erroDaChave: FrasesNuvem.erroDaChave,
     abrirModal: abrirModalDeFrases,
     fecharModal: () => modalAberto.fechar(),
     avisar: mostrarAvisoNaArea,
     tirarAviso: tirarAvisoDaArea,
-    falhaNaNuvem: mostrarFalhaNaNuvem,
-    sincronizado: mostrarSincronizado,
-    sincronizarAChave,
+    falhaNaNuvem: FrasesNuvem.mostrarFalha,
+    sincronizado: FrasesNuvem.mostrarSincronizado,
+    sincronizarAChave: FrasesNuvem.sincronizarAChave,
     atualizarTotal,
     aplicarFiltro,
-    atualizarContadorSelecao,
-    construirFiltroDeFonte,
+    atualizarContadorSelecao: FrasesSelecao.atualizarContador,
+    construirFiltroDeFonte: FrasesFiltros.construirFiltroDeFonte,
     voltarAPrimeiraPagina,
     editarFrase,
-    salvarNaNuvem: salvarFraseFirestore,
+    salvarNaNuvem: FrasesNuvem.salvarFrase,
   });
   MinerarFrases.iniciar({
     frases: () => todasFrases,
-    sincronizacao: () => sincronizacao,
+    sincronizacao: FrasesNuvem.sincronizacao,
     abrirModal: abrirModalDeFrases,
     avisar: mostrarAvisoNaArea,
     tirarAviso: tirarAvisoDaArea,
-    falhaNaNuvem: mostrarFalhaNaNuvem,
-    sincronizado: mostrarSincronizado,
+    falhaNaNuvem: FrasesNuvem.mostrarFalha,
+    sincronizado: FrasesNuvem.mostrarSincronizado,
   });
-}
-
-function fontesDoHistorico() {
-  return [...new Set(todasFrases.map(fonteDaFrase).filter(Boolean))];
-}
-
-function construirFiltroDeFonte() {
-  const select = document.getElementById('filtro-fonte');
-  const fontes = fontesDoHistorico();
-  if (filtroFonte !== 'all' && !fontes.includes(filtroFonte)) filtroFonte = 'all';
-  select.replaceChildren(
-    new Option(textoDaVoz('PAI-10.todasAsFontes'), 'all'),
-    ...fontes.map(fonte => new Option(nomeDaFonte(fonte), fonte)));
-  select.value = filtroFonte;
-}
-
-function configurarFiltros() {
-  const fonte   = document.getElementById('filtro-fonte');
-  const idioma  = document.getElementById('filtro-idioma');
-  const ordem   = document.getElementById('filtro-ordem');
-  const busca   = document.getElementById('busca-frases');
-  const ocultar = document.getElementById('filtro-ocultar');
-
-  idioma.replaceChildren(
-    new Option(textoDaVoz('PAI-10.todosOsIdiomas'), 'all'),
-    ...Object.values(IDIOMAS).map(i => new Option(textoDaVoz('PAI-10.idioma', { idioma: i }), i)));
-  construirFiltroDeFonte();
-  busca.placeholder = textoDaVoz('PAI-23');
-
-  const aoMudar = (aplicar, { limpaSelecao = true } = {}) => () => {
-    aplicar();
-    if (limpaSelecao) selecionadas.clear();
-    voltarAPrimeiraPagina();
-  };
-  fonte.addEventListener('change',   aoMudar(() => { filtroFonte = fonte.value; }));
-  idioma.addEventListener('change',  aoMudar(() => { filtroIdioma = idioma.value; }));
-  ordem.addEventListener('change',   aoMudar(() => { ordemAtual = ordem.value; }, { limpaSelecao: false }));
-  ocultar.addEventListener('change', aoMudar(() => { esconderEnviadasEExportadas = ocultar.checked; }));
-  busca.addEventListener('input',    aoMudar(() => { buscaAtual = busca.value; mostrarLimparBusca(); }));
-  document.getElementById('btn-limpar-busca').addEventListener('click', limparBusca);
-}
-
-function mostrarLimparBusca() {
-  document.getElementById('btn-limpar-busca').hidden = !buscaAtual;
-}
-
-function filtrosLigados() {
-  return filtroFonte !== 'all' || filtroIdioma !== 'all' || esconderEnviadasEExportadas;
-}
-
-function limparFiltros() {
-  filtroFonte = 'all';
-  filtroIdioma = 'all';
-  esconderEnviadasEExportadas = false;
-  document.getElementById('filtro-fonte').value = 'all';
-  document.getElementById('filtro-idioma').value = 'all';
-  document.getElementById('filtro-ocultar').checked = false;
-  selecionadas.clear();
-  voltarAPrimeiraPagina();
-}
-
-function limparBusca() {
-  buscaAtual = '';
-  const busca = document.getElementById('busca-frases');
-  busca.value = '';
-  mostrarLimparBusca();
-  selecionadas.clear();
-  voltarAPrimeiraPagina();
-  busca.focus();
+  FrasesSelecao.iniciar({
+    frases: () => todasFrases,
+    frasesVisiveis: () => frasesVisiveis,
+    idsDaPagina: idsPaginaAtual,
+    listaCarregada: () => listaCarregada,
+    selecionadas,
+  });
+  FrasesFiltros.iniciar({
+    frases: () => todasFrases,
+    selecionadas,
+    voltarAPrimeiraPagina,
+  });
 }
 
 function voltarAPrimeiraPagina() {
@@ -584,9 +315,7 @@ function voltarAPrimeiraPagina() {
 }
 
 function aplicarFiltro() {
-  frasesVisiveis = filtrarFrases(todasFrases, {
-    fonte: filtroFonte, idioma: filtroIdioma, esconderEnviadasEExportadas, busca: buscaAtual, ordem: ordemAtual,
-  });
+  frasesVisiveis = filtrarFrases(todasFrases, FrasesFiltros.criterio);
   renderizar();
 }
 
@@ -615,7 +344,7 @@ function renderizar() {
 
   if (total === 0) {
     lista.replaceChildren(montarVazio());
-    atualizarContadorSelecao();
+    FrasesSelecao.atualizarContador();
     return;
   }
 
@@ -630,7 +359,7 @@ function renderizar() {
   }
   lista.replaceChildren(...nos);
   FrasesCartao.restaurarFoco(foco);
-  atualizarContadorSelecao();
+  FrasesSelecao.atualizarContador();
 }
 
 function renderizarPaginacao(inicio, fim, total, totPag) {
@@ -657,13 +386,13 @@ function montarVazio() {
     texto.append(antes, ...atalhoDoVazio(), depois);
     acoes.append(botaoDoVazio(textoDaVoz('PAI-02.acao'), () => MinerarFrases.abrir('colar'), 'veio-botao--primario'));
     vazio.append(criar('p', 'veio-vazio__titulo', textoDaVoz('PAI-02.titulo')), texto);
-  } else if (buscaAtual.trim()) {
-    vazio.append(criar('p', 'veio-vazio__titulo', textoDaVoz('PAI-04.texto', { termo: buscaAtual.trim() })));
-    acoes.append(botaoDoVazio(textoDaVoz('PAI-04.acao'), limparBusca));
-    if (filtrosLigados()) acoes.append(botaoDoVazio(textoDaVoz('PAI-03.acao'), limparFiltros));
+  } else if (FrasesFiltros.criterio.busca.trim()) {
+    vazio.append(criar('p', 'veio-vazio__titulo', textoDaVoz('PAI-04.texto', { termo: FrasesFiltros.criterio.busca.trim() })));
+    acoes.append(botaoDoVazio(textoDaVoz('PAI-04.acao'), FrasesFiltros.limparBusca));
+    if (FrasesFiltros.ligados()) acoes.append(botaoDoVazio(textoDaVoz('PAI-03.acao'), FrasesFiltros.limpar));
   } else {
     vazio.append(criar('p', 'veio-vazio__titulo', textoDaVoz('PAI-03.texto')));
-    acoes.append(botaoDoVazio(textoDaVoz('PAI-03.acao'), limparFiltros));
+    acoes.append(botaoDoVazio(textoDaVoz('PAI-03.acao'), FrasesFiltros.limpar));
   }
 
   vazio.append(acoes);
@@ -740,7 +469,7 @@ async function marcarComoEnviadas(ids) {
   });
   if (marcadas.length === 0) return;
   await Historico.marcarEnviadas(marcadas.map(f => f.id));
-  if (nuvem) nuvem.gravarFrases(marcadas).catch(err => mostrarFalhaNaNuvem(err));
+  FrasesNuvem.nuvem()?.gravarFrases(marcadas).catch(err => FrasesNuvem.mostrarFalha(err));
   aplicarFiltro();
 }
 

@@ -94,16 +94,17 @@ function marcacaoDe(no) {
   return `<${no.tag}${atributos}>${SEM_FILHOS.has(no.tag) ? '' : `${no.filhos.map(marcacaoDe).join('')}</${no.tag}>`}`;
 }
 
-function aAreaDeConfiguracoesDoEsqueleto() {
+function asAreasDosEsqueletos() {
   const { conteudo } = prepararAPagina();
+  require('../painel/esqueleto-anki.js');
   require('../painel/esqueleto-configuracoes.js');
-  return marcacaoDe(canonicaDoFalso(conteudo.childNodes[0]));
+  return conteudo.childNodes.map(area => marcacaoDe(canonicaDoFalso(area))).join('');
 }
 
 function aPaginaComOEsqueleto() {
   const html = fs.readFileSync(PAGINA, 'utf8');
   const fimDoConteudo = html.indexOf('</main>', html.indexOf('class="shell-conteudo"'));
-  return `${html.slice(0, fimDoConteudo)}${aAreaDeConfiguracoesDoEsqueleto()}${html.slice(fimDoConteudo)}`;
+  return `${html.slice(0, fimDoConteudo)}${asAreasDosEsqueletos()}${html.slice(fimDoConteudo)}`;
 }
 
 function retratoDaPagina() {
