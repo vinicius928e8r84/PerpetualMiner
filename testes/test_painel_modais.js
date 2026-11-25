@@ -16,7 +16,7 @@ const IMPRESSAO_DOS_MODAIS = {
   'modal-resumo': 'de478897349513ca827ff238cb83b6caaeb56619e3a074bb0a2e679e0fd2d7b0',
 };
 
-const CSS_CORTADOS = /(?:painel-anki|painel-primeira-conexao)\.css$/;
+const CSS_CORTADOS = /(?:painel-anki|painel-primeira-conexao|componentes-formulario)\.css$/;
 const ehRecursoDeScriptOuCssCortado = no => no.tag === 'script' || (no.tag === 'link' && CSS_CORTADOS.test(no.atributos.href));
 const semScripts = no => (typeof no === 'string' ? no : { ...no, filhos: no.filhos.filter(filho => !ehRecursoDeScriptOuCssCortado(filho)).map(semScripts) });
 const ehModal = no => no.atributos?.class === 'veio-scrim' && /^modal-/.test(no.atributos.id);

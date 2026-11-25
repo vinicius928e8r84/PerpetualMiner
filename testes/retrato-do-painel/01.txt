@@ -6,6 +6,7 @@
   <link href="/veio/tokens.css" rel="stylesheet">
   <script src="/veio/tema.js">
   <link href="/veio/componentes.css" rel="stylesheet">
+  <link href="/veio/componentes-formulario.css" rel="stylesheet">
   <link href="painel.css" rel="stylesheet">
   <link href="painel-anki.css" rel="stylesheet">
   <link href="painel-primeira-conexao.css" rel="stylesheet">
