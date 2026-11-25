@@ -76,7 +76,7 @@ class ASuiteNaoTocaOItemDeLoginDoComputador(unittest.TestCase):
             with open(plist, "wb") as arquivo:
                 arquivo.write(antigo)
             with patch.dict(os.environ, {"HOME": casa}), patch.object(sys, "platform", "darwin"):
-                conexao = inicio.iniciar(pasta, lambda: None, porta=0, abridor=None)
+                conexao = inicio.iniciar(pasta, lambda: None, inicio.Arredores(porta=0, abridor=None))
             try:
                 self.assertIsNotNone(conexao)
             finally:

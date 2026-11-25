@@ -70,6 +70,19 @@ class OPorteiro(unittest.TestCase):
             status, _, corpo = conexao.pedir("POST", "/ia/estado", corpo={}, assinar=False, cabecalhos=cabecalhos)
         self.assertEqual((status, json_de(corpo)), (401, {"error": "pairing_required"}))
 
+    def test_o_cliente_que_vem_sem_assinatura_e_tratado_como_quem_nao_se_pareou(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            cabecalhos = PRIMEIRO.com_nonce("nonce-sem-assinatura").assinar(conexao.conexao.pareamento.sessao, "POST", "/ia/estado", b"{}")
+            del cabecalhos[pareamento.CABECALHO_DA_ASSINATURA]
+            status, _, corpo = conexao.pedir("POST", "/ia/estado", corpo={}, assinar=False, cabecalhos=cabecalhos)
+        self.assertEqual((status, json_de(corpo)), (401, {"error": "pairing_required"}))
+
+    def test_a_sessao_velha_e_dita_antes_do_nonce_fora_do_formato(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            cabecalhos = PRIMEIRO.com_nonce("curto").assinar("sessao-velha", "POST", "/ia/estado", b"{}")
+            status, _, corpo = conexao.pedir("POST", "/ia/estado", corpo={}, assinar=False, cabecalhos=cabecalhos)
+        self.assertEqual((status, json_de(corpo)), (401, {"error": "session_expired"}))
+
     def test_um_cliente_que_so_forja_a_origem_da_extensao_nao_le_mais_nada(self):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta, colecao=ColecaoEmMemoria({"baralhos": [{"nome": "Inglês", "notas": []}]})) as conexao:
             lidos = [conexao.pedir("POST", caminho, origem=ORIGEM, corpo=corpo, assinar=False) for caminho, corpo in (
@@ -133,17 +146,17 @@ class AProvaDaResposta(unittest.TestCase):
             status, recebidos, corpo = conexao.pedir("POST", "/ia/estado", corpo={}, assinar=False, cabecalhos=cabecalhos)
             nao_encontrada = conexao.pedir("POST", "/nao/existe", corpo={}, assinar=False,
                                            cabecalhos=PRIMEIRO.com_nonce("nonce-da-prova-2").assinar(sessao, "POST", "/nao/existe", b"{}"))
-        esperada = pareamento.prova_da_resposta(SEGREDO, sessao, "nonce-da-prova-1", status, corpo)
+        esperada = pareamento.prova_da_resposta(pareamento.Selo(SEGREDO, sessao, "nonce-da-prova-1"), status, corpo)
         self.assertEqual(recebidos[pareamento.CABECALHO_DA_PROVA], esperada)
         self.assertIn(pareamento.CABECALHO_DA_PROVA, nao_encontrada[1])
         self.assertIn(pareamento.CABECALHO_DA_PROVA, recebidos["Access-Control-Expose-Headers"])
 
     def test_a_prova_nao_serve_a_outro_pedido_a_outro_corpo_nem_a_outro_status(self):
         base = ("sessao", "nonce-0001", 200, b'{"ok": true}')
-        prova = pareamento.prova_da_resposta(SEGREDO, *base)
+        prova = pareamento.prova_da_resposta(pareamento.Selo(SEGREDO, *base[:2]), *base[2:])
         for mudada in (("outra", "nonce-0001", 200, base[3]), ("sessao", "nonce-0002", 200, base[3]), ("sessao", "nonce-0001", 500, base[3]),
                        ("sessao", "nonce-0001", 200, b'{"ok": false}')):
-            self.assertNotEqual(pareamento.prova_da_resposta(SEGREDO, *mudada), prova)
+            self.assertNotEqual(pareamento.prova_da_resposta(pareamento.Selo(SEGREDO, *mudada[:2]), *mudada[2:]), prova)
 
     def test_a_recusa_do_porteiro_nao_leva_prova_porque_ninguem_provou_nada(self):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:

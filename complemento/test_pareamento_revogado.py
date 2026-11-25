@@ -44,7 +44,7 @@ class OConferirDeQuemFoiDesconectado(unittest.TestCase):
             pareamento.prova_da_revogacao(segredo, "nonce-00"),
             pareamento.prova_do_servidor(segredo, "nonce-00", ""),
             pareamento.prova_do_servidor(segredo, "nonce-00", "sessao"),
-            pareamento.prova_da_resposta(segredo, "sessao", "nonce-00", 401, b""),
+            pareamento.prova_da_resposta(pareamento.Selo(segredo, "sessao", "nonce-00"), 401, b""),
         }
         self.assertEqual(len(provas), 4)
 
