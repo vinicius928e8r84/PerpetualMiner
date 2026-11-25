@@ -8,7 +8,7 @@ const vm = require('vm');
 const { DocumentoFalso } = require('./dom-falso');
 
 const RAIZ = path.join(__dirname, '..');
-const ARQUIVOS_DE_VERDADE = ['lib/voz/catalogo.js', 'lib/voz/texto.js', 'veio/componentes.js', 'lib/idioma.js', 'lib/contexto.js'];
+const ARQUIVOS_DE_VERDADE = ['lib/voz/catalogo.js', 'lib/voz/catalogo-configuracoes.js', 'lib/voz/catalogo-anki.js', 'lib/voz/catalogo-boas-vindas.js', 'lib/voz/catalogo-envio.js', 'lib/voz/texto.js', 'veio/componentes.js', 'lib/idioma.js', 'lib/contexto.js'];
 const ESTADO_PUBLICADO = 'pm_auto_miner_state_view';
 const CHAVES_DO_VOCABULARIO = { en: 'pm_vocab_en', ru: 'pm_vocab_ru' };
 

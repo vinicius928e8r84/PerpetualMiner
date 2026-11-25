@@ -4,7 +4,7 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 
-const CATALOGOS = ['lib/voz/catalogo.js', 'lib/voz/catalogo-nivel.js'];
+const CATALOGOS = ['lib/voz/catalogo.js', 'lib/voz/catalogo-configuracoes.js', 'lib/voz/catalogo-anki.js', 'lib/voz/catalogo-boas-vindas.js', 'lib/voz/catalogo-envio.js', 'lib/voz/catalogo-nivel.js'];
 const ESTENDE = /^\s*Object\.assign\(\s*raiz\.CATALOGO_DA_VOZ\[/;
 const CHAVE_DE_ID = /'([A-Z]{3}-\d+)'\s*:/g;
 
