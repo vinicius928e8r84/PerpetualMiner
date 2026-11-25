@@ -1,5 +1,5 @@
 """O motor de texto de `engine/` visto como o pacote `complemento.motor`: o mesmo código que o Anki roda (Python 3.9, sem PyYAML,
-dotenv nem o SDK da OpenAI), conferido nos grupos 3.9 e 3.13 do complemento (C10 de `docs/design/envio-no-complemento.md`).
+dotenv nem o SDK da OpenAI), conferido nos grupos 3.9 e 3.13 do complemento.
 
     python3.9 complemento/test_motor.py
 """

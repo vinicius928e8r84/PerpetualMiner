@@ -1,6 +1,6 @@
 # Conectar este navegador ao Anki (the pairing)
 
-The Conexão com o Anki answers only a browser it has paired with (#192, owner's option A, 09/11): the secret is born in the Conexão, reaches the extension **once**, after the person types in the Painel a code only their Anki showed, and never travels again; every request is HMAC-signed and every answer comes back signed. `GET /health` and the pairing routes are the only open ones. Design page: `docs/design/pareamento-da-conexao.md`; routes, headers and examples: `complemento/contrato/o-pareamento.md`.
+The Conexão com o Anki answers only a browser it has paired with (#192, owner's option A, 09/11): the secret is born in the Conexão, reaches the extension **once**, after the person types in the Painel a code only their Anki showed, and never travels again; every request is HMAC-signed and every answer comes back signed. `GET /health` and the pairing routes are the only open ones. Decision: `docs/adr/0011-pareamento-com-codigo-no-anki-e-hmac.md`; routes, headers and examples: `complemento/contrato/o-pareamento.md`.
 
 ## Sub-features
 
@@ -29,5 +29,5 @@ Preconditions: `doctor.sh` green. The fixture `extensao` pairs the test browser 
 ## Gotchas
 
 - Visual references are `test.fixme` (`pareamento-visual.spec.js`, no PNG) until the owner compares them.
-- The real proof (a real Anki dialog on Mac and Windows, the forged client, the impostor, two profiles, a tester coming from `main`) is outside CI: `docs/design/pareamento-da-conexao.md` § 6.
+- The real proof (a real Anki dialog on Mac and Windows, the forged client, the impostor, two profiles, a tester coming from `main`) is outside CI (issue #806).
 - A test that reads "the last request the fake saw" right after a click must wait for it (`expect.poll`): a signed request leaves a few milliseconds later than an unsigned one did.

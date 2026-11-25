@@ -10,4 +10,3 @@ scripts/ganchos/pre-commit text eol=lf
 # As tabelas de docs/arquivos/: duas inserções no mesmo ponto não conflitam (a regra indice-de-arquivos acusa a duplicata que isso permite).
 docs/arquivos/extensao.md merge=union
 docs/arquivos/testes-e-ferramentas.md merge=union
-docs/arquivos/conteudo.md merge=union

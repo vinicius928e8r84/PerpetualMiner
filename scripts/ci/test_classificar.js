@@ -91,7 +91,6 @@ dar(['painel.js', 'complemento/envio.py'], true, true, 'extensão e complemento 
 dar(['docs/leia.md', 'painel.js'], true, false, 'documentação junto de extensão');
 dar(['docs/leia.md', 'engine/gerar.py'], false, true, 'documentação junto do complemento');
 dar(['lib/ankiweb.js'], true, true, 'o complemento confere o código do AnkiWeb em lib/ankiweb.js');
-dar(['docs/design/dentro-do-anki.md'], false, true, 'o complemento lê este texto, mesmo sendo documentação');
 dar(['pasta-nova/arquivo.js'], true, true, 'um lugar que o classificador não conhece roda tudo');
 dar(['painel.js', 'pasta-nova/arquivo.js'], true, true, 'um desconhecido entre outros roda tudo');
 

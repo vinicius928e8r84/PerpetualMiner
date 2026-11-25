@@ -1,7 +1,7 @@
 """A imagem do Cartão com o plano do ChatGPT (#156), vista de fora: o servidor real com a thread de trabalho ligada, o login feito (o teste
 faz o papel do navegador), a coleção em memória, a OpenAI e o Openverse de mentira na fronteira HTTP. Com o login, o juiz de imagem vai
 pela Responses API (o JSON por `text.format`) e a imagem gerada sai sempre pela chave; sem chave, o Cartão leva a foto real ou nenhuma
-imagem gerada; o primeiro limite de uso do plano para o Envio sem estragar o Cartão. O desenho: `docs/design/imagem-pelo-plano.md`.
+imagem gerada; o primeiro limite de uso do plano para o Envio sem estragar o Cartão.
 
     python3.9 complemento/test_imagem_pelo_plano.py
 """

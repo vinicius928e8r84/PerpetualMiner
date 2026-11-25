@@ -1,7 +1,7 @@
 # O contrato do login do ChatGPT (#155)
 
 POST com a origem da extensão; contexto `chatgpt`: `desconectada`, `entrando`, `conectada`, `recusou`, `nao_serve` ou `acabou`. Nenhuma resposta leva
-um token (`docs/design/login-do-chatgpt.md`).
+um token.
 
 | Rota | Corpo | Resposta |
 |---|---|---|

@@ -1,0 +1,17 @@
+# The OpenAI key has one owner, the Conexão com o Anki; the Nuvem replicates it and the extension sees only a summary
+
+The key is a credential that spends money, so this is the highest-risk class of change in the product. The Conexão com o Anki is the only owner of the value on the computer (`user_files/chaves/openai.json`). The Nuvem (Firestore `usuarios/{uid}/segredos/openai`) replicates it between computers. The extension keeps only a public summary in `pm_chave_openai` (the last four characters, the account, the revision and a flag), never the whole key, another confirmed key, or a hash, and it cannot hand an old key back to the Conexão.
+
+**Rules.**
+
+- Only the vault advances the revision, after accepting a change. A request carries the revision the client observed, and a concurrent change on an old base gets `409` and the Painel rereads the owner.
+- A key with no account (legacy, or `conta: ''`) is never bound to or uploaded by the first account that asks for sync: it answers `409 legacy_key_unbound` before touching the Nuvem and asks the person to paste it again under the chosen account.
+- One unsent change made under account A must finish under A before the automatic switch to B. This is deliberate: it does not discard the only copy and it does not create a secret queue per account.
+- The Conexão is also the only one that talks to OpenAI to check a typed key, and the Firestore address comes from the code, not from the client. The body of an OpenAI error is never read, because it can echo the key. Errors reach the screen as sanitized codes.
+- The Windows passage copies the key from the old Conexão into the vault without an account and never uploads it, since the Conexão holds no Google token.
+
+**Who can reach each place.** The vault file is 0600 on POSIX. On Windows the product defines no ACL, so the file inherits the folder's: under `Anki/addons21` it allowed the user, SYSTEM and Administrators, and in an arbitrary folder it may allow the Users group to read. The Nuvem copy is readable by the account's owner under the rules and by Firebase administrators. The extension's Firebase session is in IndexedDB `pm-sessao`, which the content script cannot see (its IndexedDB is the site's). There is no end-to-end encryption. `Origin` does not authenticate; the Pareamento does (ADR 0011).
+
+**Risks accepted.** Revoking the key at OpenAI is the real off switch, deleting copies does not revoke or prove physical erasure; the person should use an OpenAI project with a spend limit. Two Chrome profiles on one computer share one Conexão and one key, the last profile that opened. The legacy key may be resent to loopback at each health check (about 15 s) while the Conexão is diverging or empty, which widens the window for an impostor listener. The revision clock is each computer's own, so skewed clocks and ties have ordering limits. Propagation happens when the Painel opens or returns, on sign-in and when the key changes, not continuously. Without a Conta, Apagar chave and Apagar tudo remove only the local value. The text of the confirmation is built when the modal opens, so an account change during the modal can make its promise stale.
+
+**Pending, owner-only.** The Firestore rules are in the console and not in the repository. They must allow `usuarios/{uid}/segredos/openai` only when `request.auth.uid == uid`, be published and be proven with the real UID (own read and write pass; another UID and no auth are refused). Until then a fake Firebase proves nothing about the deployed rules.
