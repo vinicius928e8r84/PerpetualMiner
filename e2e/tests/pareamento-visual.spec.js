@@ -2,11 +2,10 @@
 
 const { test, expect } = require('../fixtures');
 const { AGORA, abrirPainel } = require('../apoio-do-envio');
+const { faixa, campo, confirmar } = require('../apoio-do-pareamento');
+const { ilha, esperarAsFontes, abrirOCampoDoCodigo } = require('../apoio-visual-do-pareamento');
 
 test.use({ pareada: false });
-
-const faixa = page => page.locator('#painel-pareamento');
-const ilha = page => page.locator('.shell-conteudo');
 
 test.beforeEach(async ({ page, extensao, fakes }) => {
   fakes.anki.usarRelogio(() => AGORA);
@@ -18,42 +17,48 @@ test.beforeEach(async ({ page, extensao, fakes }) => {
 test.fixme('a parear: o aviso Conecte este navegador ao Anki, com Conectar', async ({ page, extensao }) => {
   await abrirPainel(page, extensao, '#anki');
   await expect(faixa(page)).toContainText('Conecte este navegador ao Anki');
-  await page.evaluate(() => document.fonts.ready);
+  await esperarAsFontes(page);
 
   await expect(ilha(page)).toHaveScreenshot('pareamento-conectar.png');
 });
 
 test.fixme('o código: o campo e Confirmar', async ({ page, extensao }) => {
-  await abrirPainel(page, extensao, '#anki');
-  await faixa(page).getByRole('button', { name: 'Conectar' }).click();
-  await expect(page.getByRole('textbox', { name: 'Digite o código que apareceu no Anki' })).toBeFocused();
-  await page.evaluate(() => document.fonts.ready);
+  await abrirOCampoDoCodigo(page, extensao);
+  await expect(campo(page)).toBeFocused();
+  await esperarAsFontes(page);
 
   await expect(ilha(page)).toHaveScreenshot('pareamento-codigo.png');
 });
 
-test.fixme('o código errado: quantas tentativas restam', async ({ page, extensao }) => {
-  await abrirPainel(page, extensao, '#anki');
-  await faixa(page).getByRole('button', { name: 'Conectar' }).click();
-  await page.getByRole('textbox', { name: 'Digite o código que apareceu no Anki' }).fill('AAA-AAA');
-  await faixa(page).getByRole('button', { name: 'Confirmar' }).click();
-  await expect(faixa(page)).toContainText('Código errado. Restam 4 tentativas');
-  await page.evaluate(() => document.fonts.ready);
+const CODIGO_RECUSADO = [
+  {
+    nome: 'o código errado: quantas tentativas restam',
+    antesDeDigitar: () => {},
+    codigo: 'AAA-AAA',
+    aviso: 'Código errado. Restam 4 tentativas',
+    imagem: 'pareamento-errado.png',
+  },
+  {
+    nome: 'o código venceu: Peça outro, com Conectar',
+    antesDeDigitar: fakes => fakes.anki.pareamento.vencerOCodigo(),
+    codigo: 'K7M-4PX',
+    aviso: 'O código venceu. Peça outro',
+    imagem: 'pareamento-venceu.png',
+  },
+];
 
-  await expect(ilha(page)).toHaveScreenshot('pareamento-errado.png');
-});
+for (const { nome, antesDeDigitar, codigo, aviso, imagem } of CODIGO_RECUSADO) {
+  test.fixme(nome, async ({ page, extensao, fakes }) => {
+    await abrirOCampoDoCodigo(page, extensao);
+    antesDeDigitar(fakes);
+    await campo(page).fill(codigo);
+    await confirmar(page).click();
+    await expect(faixa(page)).toContainText(aviso);
+    await esperarAsFontes(page);
 
-test.fixme('o código venceu: Peça outro, com Conectar', async ({ page, extensao, fakes }) => {
-  await abrirPainel(page, extensao, '#anki');
-  await faixa(page).getByRole('button', { name: 'Conectar' }).click();
-  fakes.anki.pareamento.vencerOCodigo();
-  await page.getByRole('textbox', { name: 'Digite o código que apareceu no Anki' }).fill('K7M-4PX');
-  await faixa(page).getByRole('button', { name: 'Confirmar' }).click();
-  await expect(faixa(page)).toContainText('O código venceu. Peça outro');
-  await page.evaluate(() => document.fonts.ready);
-
-  await expect(ilha(page)).toHaveScreenshot('pareamento-venceu.png');
-});
+    await expect(ilha(page)).toHaveScreenshot(imagem);
+  });
+}
 
 test.describe('a porta que não se confirmou', () => {
   test.use({ pareada: true });
@@ -62,7 +67,7 @@ test.describe('a porta que não se confirmou', () => {
     await context.route(fakes.anki.padrao, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(new URL(route.request().url()).pathname === '/health' ? { ok: true, versao: '9.9.9', perfil: 'X' } : {}) }));
     await abrirPainel(page, extensao, '#anki');
     await expect(faixa(page)).toContainText('Algo na porta do Anki não se confirmou');
-    await page.evaluate(() => document.fonts.ready);
+    await esperarAsFontes(page);
 
     await expect(ilha(page)).toHaveScreenshot('pareamento-nao-confirmada.png');
   });
