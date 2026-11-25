@@ -165,6 +165,21 @@ class TestNormalizacao(unittest.TestCase):
     def assertMesmoJson(self, obtido, esperado):
         self.assertEqual(json.dumps(obtido, ensure_ascii=False), json.dumps(esperado, ensure_ascii=False))
 
+    def test_sem_normalizador_do_russo_o_termo_vai_ao_fallback_sem_levantar_excecao(self):
+        levantadas = []
+
+        def vigia(frame, evento, argumento):
+            if evento == "exception" and frame.f_code.co_filename == normalizacao.__file__:
+                levantadas.append(argumento[0].__name__)
+            return vigia
+
+        sys.settrace(vigia)
+        try:
+            termo = normalizacao.normalize_term_identity("Ёлка  зелёная", "ru", None)
+        finally:
+            sys.settrace(None)
+        self.assertEqual((termo, levantadas), ("елка зеленая", []))
+
     def test_a_palavra_inglesa_perde_a_posse_o_plural_e_o_tempo_verbal(self):
         for palavra, esperada in PALAVRAS_INGLESAS:
             with self.subTest(palavra=palavra):
