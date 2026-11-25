@@ -63,25 +63,26 @@ async function lerComoLogin(login) {
   assert.deepStrictEqual(feitos(), ['estado']);
 }
 
-async function clicar(rotulo, resposta, depois) {
+async function clicar(rotulo, resposta, depois, cliques = 1) {
   const avisosAntes = avisos.length;
   if (resposta) fila.sair.push(resposta);
   if (resposta && depois) fila.estado.push(LOGIN[depois]);
-  botao(rotulo).disparar('click');
+  for (let vez = 0; vez < cliques; vez++) botao(rotulo).disparar('click');
   await esperar();
   await esperar();
   return { pedidos: feitos(), avisos: avisos.slice(avisosAntes), ...tela() };
 }
 
 const SAIU = { status: 200, dados: { ok: true, revogada: true } };
-async function rodar({ login, temChave = true, rotulo, resposta, depois, entrar, soAColuna, comOFoco }) {
+async function rodar({ login, temChave = true, rotulo, resposta, depois, entrar, cliques, soAColuna, soOsPedidos, comOFoco }) {
   mundo.temChave = temChave;
   campos.length = 0;
   await lerComoLogin(login);
   if (entrar) fila.entrar.push(entrar);
   if (!rotulo) return tela();
-  const visto = await clicar(textoDaVoz(rotulo), resposta, depois);
+  const visto = await clicar(textoDaVoz(rotulo), resposta, depois, cliques);
   if (soAColuna) return visto.coluna;
+  if (soOsPedidos) return visto.pedidos;
   return comOFoco ? { ...visto, campos: campos.slice() } : visto;
 }
 
@@ -97,23 +98,9 @@ async function percorrer(cenarios) {
   return vistos;
 }
 
-async function doisCliquesSeguidosPedemUmaSaidaSo() {
-  await recomecar();
-  await lerComoLogin('conectada');
-  fila.sair.push(SAIU);
-  fila.estado.push(LOGIN.nenhum);
-  const botaoDeSair = botao(sair());
-  botaoDeSair.disparar('click');
-  botaoDeSair.disparar('click');
-  await esperar();
-  await esperar();
-  return feitos();
-}
-
 async function main() {
   const vistos = {};
   for (const [nome, cenarios] of Object.entries(CENARIOS)) vistos[nome] = await percorrer(cenarios);
-  vistos.doisCliquesSeguidosPedemUmaSaidaSo = await doisCliquesSeguidosPedemUmaSaidaSo();
   if (process.env.GRAVAR_O_ESPERADO === '1') {
     console.log(`'use strict';\n\nmodule.exports = {\n${Object.entries(vistos).map(([nome, valor]) => `  ${nome}: ${JSON.stringify(valor)},`).join('\n')}\n};`);
     return;

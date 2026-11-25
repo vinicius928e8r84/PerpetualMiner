@@ -189,6 +189,23 @@
     "depois": "nenhum",
     "comOFoco": true
    }
+  ],
+  "doisCliquesSeguidos": [
+   {
+    "nome": "dois cliques em Sair",
+    "login": "conectada",
+    "rotulo": "CFG-35.chatgptSair",
+    "resposta": {
+     "status": 200,
+     "dados": {
+      "ok": true,
+      "revogada": true
+     }
+    },
+    "depois": "nenhum",
+    "cliques": 2,
+    "soOsPedidos": true
+   }
   ]
  }
 }
