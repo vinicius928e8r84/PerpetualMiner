@@ -21,7 +21,7 @@ def setUpModule():
 
 def iniciar(raiz, colecao, perfil="Usuário 1"):
     ganchos = []
-    conexao = inicio.iniciar(os.path.join(raiz, "complemento"), lambda: perfil, porta=0, colecao=colecao, abridor=None, ao_abrir_o_perfil=ganchos.append)
+    conexao = inicio.iniciar(os.path.join(raiz, "complemento"), lambda: perfil, inicio.Arredores(porta=0, colecao=colecao, abridor=None, ao_abrir_o_perfil=ganchos.append))
     return conexao, ganchos
 
 

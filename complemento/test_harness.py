@@ -3,6 +3,7 @@ import http.client
 import json
 import os
 import sys
+from dataclasses import dataclass
 from datetime import date
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -109,79 +110,122 @@ def esperas_do_teste(do_plano, do_teto, do_contato):
     return Esperas(do_anki=0.01, da_openai=(0, 0), do_plano=do_plano, do_teto=do_teto, do_contato=do_contato, do_envio=0.01, da_parada=0.005)
 
 
+@dataclass(frozen=True)
+class Cenario:
+    perfil: str = "Usuário 1"
+    origens: object = None
+    falha_no_perfil: bool = False
+    colecao: object = None
+    item: object = "desligado"
+    openai: str = "aceita"
+    chave_na_conexao: object = None
+    cofre_sem_escrita: bool = False
+    versao_na_conexao: int = 0
+    chave_apagada: bool = False
+    conta_na_conexao: object = None
+    nao_enviada: bool = True
+    hora_na_conexao: int = 0
+    firebase: int = 0
+    trabalhando: bool = False
+    espera_do_contato: float = 0.0
+    chatgpt: object = None
+    perfil_marcado: object = None
+    adaptador_de_imagem: object = None
+    espera_do_plano: int = 300
+    modelo: object = None
+    voz_responde: str = "aceita"
+    hoje: object = None
+    teto: object = None
+    atualizacao: object = None
+    ankiweb: object = None
+    espera_do_teto: int = 60
+    pareado: bool = True
+    tela: bool = True
+    estado_do_pareamento: object = None
+
+    def chave_guardada(self):
+        return ChaveGuardadaAntes(
+            self.chave_na_conexao, self.versao_na_conexao, self.chave_apagada, self.conta_na_conexao, self.hora_na_conexao, self.nao_enviada).no_arquivo()
+
+    def esperas(self):
+        return esperas_do_teste(self.espera_do_plano, self.espera_do_teto, self.espera_do_contato)
+
+
+@dataclass(frozen=True)
+class Pedido:
+    origem: object = ORIGEM
+    cabecalhos: object = None
+    corpo: object = None
+    corpo_bruto: object = None
+    assinar: bool = True
+
+
+def corpo_em_bytes(pedido):
+    corpo = pedido.corpo_bruto
+    if pedido.corpo is not None:
+        corpo = pedido.corpo if isinstance(pedido.corpo, bytes) else json.dumps(pedido.corpo)
+    return corpo.encode("utf-8") if isinstance(corpo, str) else corpo
+
+
+def cabecalhos_do_pedido(pedido, corpo, sessao, alvo):
+    metodo, caminho = alvo
+    enviados = {}
+    if pedido.origem is not None:
+        enviados["Origin"] = pedido.origem
+    if corpo is not None:
+        enviados["Content-Type"] = "application/json"
+    if pedido.assinar:
+        enviados.update(cabecalhos_assinados(sessao, metodo, caminho.split("?", 1)[0], corpo or b""))
+    enviados.update(pedido.cabecalhos or {})
+    return enviados
+
+
 class ConexaoNoTeste:
-    def __init__(
-        self,
-        pasta,
-        perfil="Usuário 1",
-        origens=None,
-        falha_no_perfil=False,
-        colecao=None,
-        item="desligado",
-        openai="aceita",
-        chave_na_conexao=None,
-        cofre_sem_escrita=False,
-        versao_na_conexao=0,
-        chave_apagada=False,
-        conta_na_conexao=None,
-        nao_enviada=True,
-        hora_na_conexao=0,
-        firebase=0,
-        trabalhando=False,
-        espera_do_contato=0.0,
-        chatgpt=None,
-        perfil_marcado=None,
-        adaptador_de_imagem=None,
-        espera_do_plano=300,
-        modelo=None,
-        voz_responde="aceita",
-        hoje=None,
-        teto=None,
-        atualizacao=None,
-        ankiweb=None,
-        espera_do_teto=60,
-        pareado=True,
-        tela=True,
-        estado_do_pareamento=None,
-    ):
-        self.perfil = perfil
-        self._com_tela, self._estado_do_pareamento = tela, estado_do_pareamento or {}
-        self.situacao_do_chatgpt = chatgpt
-        self.falha_no_perfil = falha_no_perfil
+    def __init__(self, pasta, **cenario):
+        como = Cenario(**cenario)
+        self.perfil = como.perfil
+        self._com_tela, self._estado_do_pareamento = como.tela, como.estado_do_pareamento or {}
+        self.situacao_do_chatgpt = como.chatgpt
+        self.falha_no_perfil = como.falha_no_perfil
         self.pasta = pasta
-        self.item = item_de_login_do_contexto(pasta, item)
+        self.item = item_de_login_do_contexto(pasta, como.item)
         self.dados = pasta_de_dados.PastaDeDados(raiz=pasta, **{nome: os.path.join(pasta, nome) for nome in ("fila", "estado", "custos", "logs", "chaves")})
         self.logs, self.chaves = self.dados.logs, self.dados.chaves
         for pasta_ in self.dados[1:]:
             os.makedirs(pasta_, exist_ok=True)
-        escrever_json_se_houver(
-            os.path.join(self.chaves, "openai.json"),
-            ChaveGuardadaAntes(chave_na_conexao, versao_na_conexao, chave_apagada, conta_na_conexao, hora_na_conexao, nao_enviada).no_arquivo())
-        escrever_json_se_houver(os.path.join(pasta, "perfil.json"), None if perfil_marcado is None else {"perfil": perfil_marcado})
+        self.cofre_sem_escrita = como.cofre_sem_escrita
+        self._semear(como)
+        self._criar_os_servicos_de_mentira(como)
+        self.logger = registro.criar(self.logs)
+        pecas = self._montar(como)
+        self.conexao = servidor.Conexao(Porta(0, como.origens or configuracao.ORIGENS_ACEITAS), pecas if como.trabalhando else pecas.sem_trabalhador(), self._ler_o_perfil)
+
+    def _semear(self, como):
+        escrever_json_se_houver(os.path.join(self.chaves, "openai.json"), como.chave_guardada())
+        escrever_json_se_houver(os.path.join(self.pasta, "perfil.json"), None if como.perfil_marcado is None else {"perfil": como.perfil_marcado})
+        escrever_json_se_houver(os.path.join(self.chaves, "chatgpt.json"), LOGIN_DO_CHATGPT_CONECTADO if como.chatgpt == "conectada" else None)
+        escrever_json_se_houver(os.path.join(self.pasta, "teto-do-mes.json"), None if como.teto is None else {"limitUsd": como.teto})
+        if como.pareado:
+            semear(os.path.join(self.pasta, "pareamento.json"))
+
+    def _criar_os_servicos_de_mentira(self, como):
         self.de_mentira = (self.openai, self.openverse, self.voz, self.firestore) = (
-            OpenAIDeMentira(openai), OpenverseDeMentira(), VozDeMentira(), FirestoreDeMentira())
-        self.firestore.falha = firebase
-        if voz_responde in ("recusada", "fora_do_ar"):
-            self.voz.recusar("*", 400 if voz_responde == "recusada" else 503)
-        self.openai.recusa_da_fala = {"chave_recusada": (401, "invalid_api_key"), "sem_credito": (429, "insufficient_quota")}.get(voz_responde)
+            OpenAIDeMentira(como.openai), OpenverseDeMentira(), VozDeMentira(), FirestoreDeMentira())
+        self.firestore.falha = como.firebase
+        if como.voz_responde in ("recusada", "fora_do_ar"):
+            self.voz.recusar("*", 400 if como.voz_responde == "recusada" else 503)
+        self.openai.recusa_da_fala = {"chave_recusada": (401, "invalid_api_key"), "sem_credito": (429, "insufficient_quota")}.get(como.voz_responde)
         self.servidor_de_login = ChatGPTDeMentira()
         self.de_mentira += (self.servidor_de_login,)
-        escrever_json_se_houver(os.path.join(self.chaves, "chatgpt.json"), LOGIN_DO_CHATGPT_CONECTADO if chatgpt == "conectada" else None)
-        self.cofre_sem_escrita = cofre_sem_escrita
-        do_modelo = dict(preparar_o_cenario(modelo, pasta, self.openai), **({"hoje": hoje} if hoje else {}))
-        escrever_json_se_houver(os.path.join(pasta, "teto-do-mes.json"), None if teto is None else {"limitUsd": teto})
-        if pareado:
-            semear(os.path.join(pasta, "pareamento.json"))
-        self.logger = registro.criar(self.logs)
-        ambiente = Ambiente(self.dados, self.logger, configuracao.VERSAO)
+
+    def _montar(self, como):
+        do_modelo = dict(preparar_o_cenario(como.modelo, self.pasta, self.openai), **({"hoje": como.hoje} if como.hoje else {}))
         servicos = ServicosDeFora(
             openai=self.openai.base, openverse=self.openverse.base, voz=self.voz.base, firestore=self.firestore.base, chatgpt=self.servidor_de_login.base)
-        esperas = esperas_do_teste(espera_do_plano, espera_do_teto, espera_do_contato)
         fronteiras = Fronteiras(
-            colecao=colecao, item_de_login=self.item, atualizacao=atualizacao_do_exemplo(pasta, atualizacao, ankiweb, self.logger),
-            adaptador_de_imagem=adaptador_de_imagem, **do_modelo)
-        pecas = montar(ambiente, servicos, esperas, fronteiras)
-        self.conexao = servidor.Conexao(Porta(0, origens or configuracao.ORIGENS_ACEITAS), pecas if trabalhando else pecas.sem_trabalhador(), self._ler_o_perfil)
+            colecao=como.colecao, item_de_login=self.item, atualizacao=atualizacao_do_exemplo(self.pasta, como.atualizacao, como.ankiweb, self.logger),
+            adaptador_de_imagem=como.adaptador_de_imagem, **do_modelo)
+        return montar(Ambiente(self.dados, self.logger, configuracao.VERSAO), servicos, como.esperas(), fronteiras)
 
     def _ler_o_perfil(self):
         if self.falha_no_perfil:
@@ -208,30 +252,19 @@ class ConexaoNoTeste:
         for handler in list(self.logger.handlers):
             handler.close()
 
-    def pedir(self, metodo, caminho, origem=ORIGEM, cabecalhos=None, corpo=None, corpo_bruto=None, assinar=True):
-        pedido = http.client.HTTPConnection("127.0.0.1", self.conexao.porta, timeout=30)
-        enviados = {}
-        if origem is not None:
-            enviados["Origin"] = origem
-        if corpo is not None:
-            if isinstance(corpo, bytes):
-                corpo_bruto = corpo
-            else:
-                corpo_bruto = json.dumps(corpo)
-        if corpo_bruto is not None:
-            enviados["Content-Type"] = "application/json"
-            corpo_bruto = corpo_bruto.encode("utf-8") if isinstance(corpo_bruto, str) else corpo_bruto
-        if assinar:
-            enviados.update(cabecalhos_assinados(self.conexao.pareamento.sessao, metodo, caminho.split("?", 1)[0], corpo_bruto or b""))
-        enviados.update(cabecalhos or {})
+    def pedir(self, metodo, caminho, **como):
+        pedido = Pedido(**como)
+        corpo_bruto = corpo_em_bytes(pedido)
+        enviados = cabecalhos_do_pedido(pedido, corpo_bruto, self.conexao.pareamento.sessao, (metodo, caminho))
+        conexao = http.client.HTTPConnection("127.0.0.1", self.conexao.porta, timeout=30)
         try:
-            pedido.request(metodo, caminho, body=corpo_bruto, headers=enviados)
-            resposta = pedido.getresponse()
+            conexao.request(metodo, caminho, body=corpo_bruto, headers=enviados)
+            resposta = conexao.getresponse()
             lido = resposta.read()
             registrar_a_resposta(metodo, caminho, resposta.status, lido)
             return resposta.status, dict(resposta.getheaders()), lido
         finally:
-            pedido.close()
+            conexao.close()
 
     def log(self):
         with open(os.path.join(self.logs, "complemento.log"), encoding="utf-8") as arquivo:

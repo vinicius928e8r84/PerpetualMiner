@@ -156,7 +156,7 @@ class ASaidaDaPassagem(unittest.TestCase):
     def test_sem_a_passagem_o_complemento_sobe_como_antes_e_a_conexao_de_hoje_fica_intacta(self):
         with tempfile.TemporaryDirectory() as pasta, uma_conexao_de_hoje(pasta) as antiga:
             antes = antiga.fotografia()
-            conexao = inicio.iniciar(os.path.join(pasta, "anki"), lambda: None, porta=antiga.porta, abridor=None, passagem=None)
+            conexao = inicio.iniciar(os.path.join(pasta, "anki"), lambda: None, inicio.Arredores(porta=antiga.porta, abridor=None, passagem=None))
             self.assertIsNone(conexao, "a porta é da Conexão de hoje e a de agora só se cala")
             self.assertEqual((antiga.no_ar, antiga.fotografia()), (True, antes))
 
@@ -166,9 +166,7 @@ class ASaidaDaPassagem(unittest.TestCase):
             antiga.estado(OUTRO_ID, "completed", [20, 21])
             eventos = []
             sistema = SistemaDeMentira(antiga, eventos)
-            conexao = inicio.iniciar(
-                os.path.join(pasta, "anki"), lambda: "Usuário 1", porta=antiga.porta, abridor=None,
-                passagem=passagem.Passagem(sistema=sistema, porta=antiga.porta, esperas=passagem.EsperasDaPassagem(intervalo=0, da_porta=5)), colecao=ColecaoEmMemoria({"baralhos": []}))
+            conexao = inicio.iniciar(os.path.join(pasta, "anki"), lambda: "Usuário 1", inicio.Arredores(porta=antiga.porta, abridor=None, passagem=passagem.Passagem(sistema=sistema, porta=antiga.porta, esperas=passagem.EsperasDaPassagem(intervalo=0, da_porta=5)), colecao=ColecaoEmMemoria({"baralhos": []})))
             try:
                 conexao._thread_da_passagem.join(timeout=30)
                 ligacao = http.client.HTTPConnection("127.0.0.1", antiga.porta, timeout=5)

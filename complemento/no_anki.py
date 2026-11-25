@@ -298,17 +298,7 @@ def ao_carregar(mw, pasta_do_complemento, *, porta=PORTA, ao_abrir_o_perfil=_ao_
     except Exception:
         pass
     criacao_na_revisao.ligar(colecao, ao_receber_mensagem)
-    conexao = inicio.iniciar(
-        pasta_do_complemento,
-        lambda: perfil_aberto(mw),
-        porta=porta,
-        colecao=colecao,
-        ao_abrir_o_perfil=ao_abrir_o_perfil,
-        abridor=abridor,
-        servicos=servicos,
-        esperas=esperas,
-        anki_web=AnkiWebDoAnki(mw, pasta_do_complemento),
-    )
+    conexao = inicio.iniciar(pasta_do_complemento, lambda: perfil_aberto(mw), inicio.Arredores(porta=porta, colecao=colecao, ao_abrir_o_perfil=ao_abrir_o_perfil, abridor=abridor, servicos=servicos, esperas=esperas, anki_web=AnkiWebDoAnki(mw, pasta_do_complemento)))
     _por_no_menu(mw, conexao, os.path.basename(os.path.abspath(pasta_do_complemento)), qt)
     return conexao
 
