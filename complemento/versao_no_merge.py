@@ -100,14 +100,59 @@ def comando_dos_testes():
     return [sys.executable, "-m", "unittest", "discover", "-s", "complemento", "-p", "test_*.py"]
 
 
-def main(argv):
+def leitor_dos_argumentos():
     leitor = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     leitor.add_argument("--acima-de", metavar="VERSAO", help="o número não pode ser menor ou igual a este (PRs abertas que já o levam)")
     leitor.add_argument("--versao", metavar="VERSAO", help="dá exatamente este número, que tem de estar em versoes-reservadas.json e fora do versoes.json (a PR que o prometeu)")
     testes = leitor.add_mutually_exclusive_group()
     testes.add_argument("--sem-testes", action="store_true", help="não roda os testes do complemento (só os testes deste script usam)")
     testes.add_argument("--testes", metavar="COMANDO", help="outro comando de testes, no lugar de todos os do complemento")
-    opcoes = leitor.parse_args(argv)
+    return leitor
+
+
+def recusa_da_versao_pedida(pedida, registradas, acima_de):
+    if pedida not in reservadas() or pedida in registradas:
+        return "--versao %s: o número tem de estar em versoes-reservadas.json e ainda não estar no versoes.json" % pedida
+    maior = max(registradas, key=como_tupla)
+    if como_tupla(pedida) <= como_tupla(maior):
+        return "--versao %s: o versoes.json já vai até %s e a lista só cresce; o número tem de ser maior" % (pedida, maior)
+    if acima_de and como_tupla(pedida) <= como_tupla(acima_de):
+        return "--versao %s: não pode ser menor ou igual ao teto de --acima-de %s" % (pedida, acima_de)
+    return None
+
+
+def registrar_a_versao(nova, atual, registradas):
+    escrever(CONFIGURACAO, LINHA_DA_VERSAO.sub('VERSAO = "%s"' % nova, ler(CONFIGURACAO), count=1))
+    for exemplo in EXEMPLOS:
+        escrever(exemplo, ler(exemplo).replace('"%s"' % atual, '"%s"' % nova))
+    hash_novo = empacotar.hash_das_fontes()
+    registradas[nova] = hash_novo
+    escrever(VERSOES, json.dumps(registradas, indent=2, ensure_ascii=False) + "\n")
+    empacotar.empacotar(PACOTE)
+    return hash_novo
+
+
+def testes_passam(opcoes):
+    if opcoes.sem_testes:
+        return True
+    comando = shlex.split(opcoes.testes) if opcoes.testes else comando_dos_testes()
+    ambiente = {nome: valor for nome, valor in os.environ.items() if nome != "PM_VERSAO_NO_LANCAMENTO"}
+    return subprocess.run(comando, cwd=RAIZ, env=ambiente).returncode == 0
+
+
+def commitar_a_versao(dono, nova, atual, hash_novo):
+    arquivos = relativos(ARQUIVOS_DA_VERSAO)
+    git("add", "--", *arquivos)
+    git(
+        *dono, "commit", "-q", "-m", ASSUNTO % nova,
+        "-m", "Versão dada pelo complemento/versao_no_merge.py depois do merge (era %s).\nHash das fontes: %s" % (atual, hash_novo),
+        "--", *arquivos,
+    )
+    print("%s: %s\nempurre-o para a main." % (git("log", "-1", "--format=%h %s"), hash_novo))
+
+
+def main(argv):
+    opcoes = leitor_dos_argumentos().parse_args(argv)
 
     sujo = git("status", "--porcelain", "--", *relativos(PASTAS_DO_PACOTE))
     if sujo:
@@ -117,49 +162,23 @@ def main(argv):
     dono = autoria_do_dono()
     registradas = json.loads(ler(VERSOES))
     atual = LINHA_DA_VERSAO.search(ler(CONFIGURACAO)).group(1)
-    hash_de_hoje = empacotar.hash_das_fontes()
-    if registradas.get(atual) == hash_de_hoje:
+    if registradas.get(atual) == empacotar.hash_das_fontes():
         print("nada a fazer: a VERSAO %s já registra as fontes de hoje" % atual)
         return 0
 
-    if opcoes.versao:
-        if opcoes.versao not in reservadas() or opcoes.versao in registradas:
-            print("--versao %s: o número tem de estar em versoes-reservadas.json e ainda não estar no versoes.json" % opcoes.versao, file=sys.stderr)
-            return 2
-        maior = max(registradas, key=como_tupla)
-        if como_tupla(opcoes.versao) <= como_tupla(maior):
-            print("--versao %s: o versoes.json já vai até %s e a lista só cresce; o número tem de ser maior" % (opcoes.versao, maior), file=sys.stderr)
-            return 2
-        if opcoes.acima_de and como_tupla(opcoes.versao) <= como_tupla(opcoes.acima_de):
-            print("--versao %s: não pode ser menor ou igual ao teto de --acima-de %s" % (opcoes.versao, opcoes.acima_de), file=sys.stderr)
-            return 2
-        nova = opcoes.versao
-    else:
-        nova = proxima(list(registradas) + [atual] + reservadas(), opcoes.acima_de)
-    escrever(CONFIGURACAO, LINHA_DA_VERSAO.sub('VERSAO = "%s"' % nova, ler(CONFIGURACAO), count=1))
-    for exemplo in EXEMPLOS:
-        escrever(exemplo, ler(exemplo).replace('"%s"' % atual, '"%s"' % nova))
-    hash_novo = empacotar.hash_das_fontes()
-    registradas[nova] = hash_novo
-    escrever(VERSOES, json.dumps(registradas, indent=2, ensure_ascii=False) + "\n")
-    empacotar.empacotar(PACOTE)
+    recusa = opcoes.versao and recusa_da_versao_pedida(opcoes.versao, registradas, opcoes.acima_de)
+    if recusa:
+        print(recusa, file=sys.stderr)
+        return 2
+    nova = opcoes.versao or proxima(list(registradas) + [atual] + reservadas(), opcoes.acima_de)
+    hash_novo = registrar_a_versao(nova, atual, registradas)
 
-    if not opcoes.sem_testes:
-        comando = shlex.split(opcoes.testes) if opcoes.testes else comando_dos_testes()
-        ambiente = {nome: valor for nome, valor in os.environ.items() if nome != "PM_VERSAO_NO_LANCAMENTO"}
-        if subprocess.run(comando, cwd=RAIZ, env=ambiente).returncode != 0:
-            desfazer()
-            print("os testes do complemento falharam com a versão %s: nada foi commitado e a árvore voltou ao que era" % nova, file=sys.stderr)
-            return 1
+    if not testes_passam(opcoes):
+        desfazer()
+        print("os testes do complemento falharam com a versão %s: nada foi commitado e a árvore voltou ao que era" % nova, file=sys.stderr)
+        return 1
 
-    arquivos = relativos(ARQUIVOS_DA_VERSAO)
-    git("add", "--", *arquivos)
-    git(
-        *dono, "commit", "-q", "-m", ASSUNTO % nova,
-        "-m", "Versão dada pelo complemento/versao_no_merge.py depois do merge (era %s).\nHash das fontes: %s" % (atual, hash_novo),
-        "--", *arquivos,
-    )
-    print("%s: %s\nempurre-o para a main." % (git("log", "-1", "--format=%h %s"), hash_novo))
+    commitar_a_versao(dono, nova, atual, hash_novo)
     return 0
 
 
