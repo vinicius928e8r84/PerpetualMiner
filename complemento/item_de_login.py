@@ -132,24 +132,39 @@ _MEU_COMPUTADOR = bytes.fromhex("e04fd020ea3a6910a2d808002b30309d")
 _NOME_EM_UNICODE = 0x04
 
 
+def _tem_letra_de_unidade(unidade):
+    return len(unidade) == 2 and unidade[1] == ":"
+
+
+def _item_do_meu_computador():
+    return struct.pack("<HBB", 20, 0x1F, 0x50) + _MEU_COMPUTADOR
+
+
+def _item_da_unidade(unidade):
+    return struct.pack("<HB", 25, 0x2F) + (unidade + "\\").encode("cp1252", "replace").ljust(22, b"\x00")
+
+
+def _nome_do_item(parte):
+    if not parte.isascii():
+        return _NOME_EM_UNICODE, (parte + "\x00").encode("utf-16-le")
+    nome = parte.encode("ascii") + b"\x00"
+    return 0, nome + b"\x00" if len(nome) % 2 else nome
+
+
+def _item_do_caminho(parte, eh_arquivo):
+    marca_de_unicode, nome = _nome_do_item(parte)
+    tipo = (0x32 if eh_arquivo else 0x31) | marca_de_unicode
+    atributos = 0x20 if eh_arquivo else 0x10
+    return struct.pack("<HBBIHHH", 14 + len(nome), tipo, 0, 0, 0x21, 0, atributos) + nome
+
+
 def _lista_do_alvo(alvo):
     unidade, resto = ntpath.splitdrive(alvo)
-    if len(unidade) != 2 or unidade[1] != ":":
+    if not _tem_letra_de_unidade(unidade):
         return b""
     partes = [parte for parte in resto.split("\\") if parte]
-    itens = [struct.pack("<HBB", 20, 0x1F, 0x50) + _MEU_COMPUTADOR]
-    itens.append(struct.pack("<HB", 25, 0x2F) + (unidade + "\\").encode("cp1252", "replace").ljust(22, b"\x00"))
-    for posicao, parte in enumerate(partes):
-        eh_arquivo = posicao == len(partes) - 1
-        tipo = 0x32 if eh_arquivo else 0x31
-        if parte.isascii():
-            nome = parte.encode("ascii") + b"\x00"
-            if len(nome) % 2:
-                nome += b"\x00"
-        else:
-            tipo |= _NOME_EM_UNICODE
-            nome = (parte + "\x00").encode("utf-16-le")
-        itens.append(struct.pack("<HBBIHHH", 14 + len(nome), tipo, 0, 0, 0x21, 0, 0x20 if eh_arquivo else 0x10) + nome)
+    itens = [_item_do_meu_computador(), _item_da_unidade(unidade)]
+    itens += [_item_do_caminho(parte, posicao == len(partes) - 1) for posicao, parte in enumerate(partes)]
     lista = b"".join(itens) + b"\x00\x00"
     return struct.pack("<H", len(lista)) + lista
 
