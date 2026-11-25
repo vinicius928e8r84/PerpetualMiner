@@ -146,21 +146,21 @@ class OResumoPorPeriodo(unittest.TestCase):
             "n_cards": 15, "n_images_dalle": 3, "n_images_google": 2,
         })
 
-    def test_a_imagem_do_google_conta_so_a_imagem_e_nao_entra_por_modelo(self):
-        resumo = self.resumo([registro("2026-11-25", "image", 0.0, model="dall-e-3-1024", source="google")])
-        self.assertEqual(resumo["today"], dict(vazio(), n_images_google=1))
-
-    def test_a_imagem_sem_fonte_e_a_do_dalle_e_entra_por_modelo(self):
-        resumo = self.resumo([registro("2026-11-25", "image", 0.04, model="gpt-image-1")])
-        self.assertEqual(resumo["today"], dict(vazio(), total_usd=0.04, by_model={"gpt-image-1": 0.04}, n_images_dalle=1))
-
-    def test_a_sessao_soma_os_cartoes_e_a_sem_cartoes_soma_zero(self):
-        resumo = self.resumo([registro("2026-11-25", "session", n_cards=4), registro("2026-11-25", "session")])
-        self.assertEqual(resumo["today"], dict(vazio(), n_cards=4))
-
-    def test_o_registro_sem_custo_vale_zero_e_o_total_e_arredondado_em_quatro_casas(self):
-        resumo = self.resumo([registro("2026-11-25", "image_pipeline"), registro("2026-11-25", "tokens", 0.123456, model="gpt-4o")])
-        self.assertEqual(resumo["today"], dict(vazio(), total_usd=0.1235, by_model={"gpt-4o": 0.1235}))
+    def test_cada_tipo_de_registro_soma_so_o_que_e_dele(self):
+        casos = [
+            ("a imagem do google conta so a imagem e nao entra por modelo",
+             [registro("2026-11-25", "image", 0.0, model="dall-e-3-1024", source="google")], dict(vazio(), n_images_google=1)),
+            ("a imagem sem fonte e a do dalle e entra por modelo",
+             [registro("2026-11-25", "image", 0.04, model="gpt-image-1")], dict(vazio(), total_usd=0.04, by_model={"gpt-image-1": 0.04}, n_images_dalle=1)),
+            ("a sessao soma os cartoes e a sem cartoes soma zero",
+             [registro("2026-11-25", "session", n_cards=4), registro("2026-11-25", "session")], dict(vazio(), n_cards=4)),
+            ("o registro sem custo vale zero e o total e arredondado em quatro casas",
+             [registro("2026-11-25", "image_pipeline"), registro("2026-11-25", "tokens", 0.123456, model="gpt-4o")],
+             dict(vazio(), total_usd=0.1235, by_model={"gpt-4o": 0.1235})),
+        ]
+        for nome, registros, esperado in casos:
+            with self.subTest(nome):
+                self.assertEqual(self.resumo(registros)["today"], esperado)
 
     def test_sem_registro_o_resumo_e_de_zeros_em_cada_periodo(self):
         self.assertEqual(self.resumo([]), {periodo: vazio() for periodo in ("today", "week", "month", "alltime")})
