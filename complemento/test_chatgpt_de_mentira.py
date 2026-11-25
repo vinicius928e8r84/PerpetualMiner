@@ -29,6 +29,20 @@ def id_token(nonce):
     return ".".join([_base64url(b'{"alg":"RS256"}'), _base64url(json.dumps(corpo).encode("utf-8")), _base64url(MARCA.encode("utf-8"))])
 
 
+CAMPOS_DA_TROCA = (("client_id", "emitido"), ("redirect_uri", "redirect_uri"), ("resource", "resource"))
+
+
+def _troca_confere(pedido, formulario):
+    if pedido is None:
+        return False
+    desafio = _base64url(hashlib.sha256(formulario.get("code_verifier", "").encode("ascii")).digest())
+    return desafio == pedido["code_challenge"] and all(formulario.get(campo) == pedido[guardado] for campo, guardado in CAMPOS_DA_TROCA)
+
+
+def _renovacao_confere(client_id, formulario):
+    return client_id is not None and client_id == formulario.get("client_id")
+
+
 class ChatGPTDeMentira:
     """`ChatGPTDeMentira()` escuta numa porta livre; `base` é o endereço que a Conexão usa no lugar do servidor de login.
 
@@ -96,29 +110,34 @@ class ChatGPTDeMentira:
 
     def _responder(self, metodo, caminho, formulario):
         with self._tranca:
-            if metodo == "GET" and caminho == "/.well-known/openid-configuration":
-                return 200, {"issuer": "https://auth.openai.com", "revocation_endpoint": self.base + "/oauth/revoke"}
-            if metodo == "POST" and caminho == "/oauth/revoke":
-                if self.revogacao == 200:
-                    self.revogados.append(formulario.get("token"))
-                    return 200, None
-                return self.revogacao, {"error": "server_error"}
-            if metodo != "POST" or caminho != "/api/accounts/oauth/token":
-                return 404, {"error": "not_found"}
-            if formulario.get("grant_type") == "authorization_code":
-                return self._trocar(formulario)
-            if formulario.get("grant_type") == "refresh_token":
-                return self._renovar(formulario)
-            return 400, {"error": "unsupported_grant_type"}
+            rota = self._rotas().get((metodo, caminho))
+            return rota(formulario) if rota else (404, {"error": "not_found"})
+
+    def _rotas(self):
+        return {
+            ("GET", "/.well-known/openid-configuration"): self._descobrir,
+            ("POST", "/oauth/revoke"): self._revogar,
+            ("POST", "/api/accounts/oauth/token"): self._emitir,
+        }
+
+    def _descobrir(self, formulario):
+        return 200, {"issuer": "https://auth.openai.com", "revocation_endpoint": self.base + "/oauth/revoke"}
+
+    def _revogar(self, formulario):
+        if self.revogacao != 200:
+            return self.revogacao, {"error": "server_error"}
+        self.revogados.append(formulario.get("token"))
+        return 200, None
+
+    def _emitir(self, formulario):
+        troca = {"authorization_code": self._trocar, "refresh_token": self._renovar}.get(formulario.get("grant_type"))
+        return troca(formulario) if troca else (400, {"error": "unsupported_grant_type"})
 
     def _trocar(self, formulario):
         if self.troca == "fora_do_ar":
             return 503, {"error": "temporarily_unavailable", "error_description": "o código %s" % formulario.get("code")}
         pedido = self._codigos.pop(formulario.get("code"), None)
-        desafio = _base64url(hashlib.sha256(formulario.get("code_verifier", "").encode("ascii")).digest())
-        if (self.troca == "invalid_grant" or pedido is None or desafio != pedido["code_challenge"]
-                or formulario.get("client_id") != pedido["emitido"] or formulario.get("redirect_uri") != pedido["redirect_uri"]
-                or formulario.get("resource") != pedido["resource"]):
+        if self.troca == "invalid_grant" or not _troca_confere(pedido, formulario):
             return 400, {"error": "invalid_grant", "error_description": "o verificador %s" % formulario.get("code_verifier")}
         escopos = "openid profile email offline_access" if self.troca == "sem_plano" else ESCOPOS
         return 200, self._tokens(pedido["emitido"], pedido["nonce"], escopos)
@@ -129,7 +148,7 @@ class ChatGPTDeMentira:
         if self.renovacao == "invalid_grant_com_500":
             return 500, {"error": "invalid_grant"}
         client_id = self._renovaveis.pop(formulario.get("refresh_token"), None)
-        if self.renovacao not in ("aceita", "sem_plano") or client_id is None or client_id != formulario.get("client_id"):
+        if self.renovacao not in ("aceita", "sem_plano") or not _renovacao_confere(client_id, formulario):
             return 400, {"error": "invalid_grant", "error_description": "o token %s" % formulario.get("refresh_token")}
         return 200, self._tokens(client_id, escopos="openid profile email offline_access" if self.renovacao == "sem_plano" else ESCOPOS)
 

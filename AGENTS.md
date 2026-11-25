@@ -5,9 +5,8 @@
 A Chrome extension (Manifest V3, plain JavaScript, no build) plus the Conexão com o Anki, an Anki add-on (`complemento/`) that runs the card pipeline of `engine/` inside the Anki.
 
 - **Files:** the role of every root file and every `lib/` module is in the tables of `docs/arquivos/` (read on demand); a new file gets its row there, not here.
-- **Architecture:** data flow, panel shell, sync and permissions: `docs/arquitetura.md`; the storage keys: `docs/armazenamento.md`; testing the extension: `docs/testes.md`.
-- **Design specs and prototypes:** `docs/design/README.md` (index); domain glossary: `glossary.md`.
-- **Veio identity:** `veio/README.md`. **Envio state machine:** `complemento/envio.py`'s docstring. **Engine:** `engine/CLAUDE.md`. **Device and store tooling:** `scripts/`, `docs/instalar-extensao.md`, `docs/publicar-chrome-web-store.md`.
+- **Decisions:** why a choice was made, with the options dropped and the risks accepted: `docs/adr/`; domain glossary: `glossary.md`; testing the extension: `docs/testes.md`. Design prototypes (`.html`) and the Voice notes (`.json`) are in `docs/design/`.
+- **Veio identity:** `veio/README.md`. **Envio state machine:** `complemento/envio.py`'s docstring. **Engine:** `engine/CLAUDE.md`. **Device and store tooling:** `scripts/`; the store texts and images: `docs/loja/`.
 - **Tests:** `e2e/` (see `docs/testes.md`), `testes/test_*.js`, `complemento/test_*.py`, `engine/test_*.py`.
 - `preview/` only copies files into `preview/dist`; never edit an extension file to make the preview work.
 - **Conexão com o Anki as an Anki add-on:** `complemento/` (standard library only, Python 3.9 and 3.13); its HTTP contract with the extension is `complemento/contrato/exemplos.json`, and `complemento/contrato/LEIA-ME.md` says how a new route enters.

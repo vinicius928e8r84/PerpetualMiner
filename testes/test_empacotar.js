@@ -9,6 +9,38 @@ const path = require('path');
 
 const { PASTAS_QUE_NAO_SAO_RUNTIME } = require('../scripts/arquivos-do-pacote.js');
 
+const PASTAS_DA_RAIZ_DE_TESTE = ['lib', 'veio', 'popup', 'bookreader', 'overlay', 'abridor', 'painel', 'conexao'];
+const ERROS_DO_MANIFEST_RUIM = [
+  'Manifest inválido para a loja:',
+  '  - manifest_version deve ser 3',
+  '  - name é obrigatório e tem no máximo 75 caracteres',
+  '  - description é obrigatória e tem no máximo 132 caracteres',
+  '  - version deve ter de 1 a 4 números separados por ponto (ex.: 5.0.1)',
+  '  - falta o ícone de 128 px em icons',
+  '',
+];
+
+function copiarParaRaizDeTeste(entrada, raiz) {
+  if (entrada.isFile() && /\.(js|html|css)$/.test(entrada.name)) fs.copyFileSync(entrada.name, path.join(raiz, entrada.name));
+  if (entrada.isDirectory() && PASTAS_DA_RAIZ_DE_TESTE.includes(entrada.name)) fs.symlinkSync(path.resolve(entrada.name), path.join(raiz, entrada.name));
+}
+
+function montarRaizComManifestRuim(raiz) {
+  fs.mkdirSync(path.join(raiz, 'scripts', 'ci'), { recursive: true });
+  for (const arquivo of ['scripts/empacotar-extensao.mjs', 'scripts/arquivos-do-pacote.js', 'scripts/ci/commit-verde.js']) fs.copyFileSync(arquivo, path.join(raiz, arquivo));
+  for (const entrada of fs.readdirSync('.', { withFileTypes: true })) copiarParaRaizDeTeste(entrada, raiz);
+  const ruim = { ...JSON.parse(fs.readFileSync('manifest.json', 'utf8')), manifest_version: 2, name: '', description: 'x'.repeat(133), version: 'x', icons: {} };
+  fs.writeFileSync(path.join(raiz, 'manifest.json'), JSON.stringify(ruim));
+}
+
+function conferirRecusaDeManifestRuim(raiz) {
+  montarRaizComManifestRuim(raiz);
+  const recusado = spawnSync('node', [path.join(raiz, 'scripts', 'empacotar-extensao.mjs'), '--saida', path.join(raiz, 'dist')], { encoding: 'utf8', env: { ...process.env, PM_COMMIT_VERDE: 'ignorar' } });
+  assert.strictEqual(recusado.status, 1, 'um manifest que a loja recusa não vira pacote');
+  assert.strictEqual(recusado.stderr, ERROS_DO_MANIFEST_RUIM.join('\n'));
+  assert(!fs.existsSync(path.join(raiz, 'dist')), 'a recusa vem antes de escrever o pacote');
+}
+
 const saida = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-pacote-'));
 const versao = JSON.parse(fs.readFileSync('manifest.json', 'utf8')).version;
 const texto = execFileSync('node', ['scripts/empacotar-extensao.mjs', '--saida', saida], { encoding: 'utf8', env: { ...process.env, PM_COMMIT_VERDE: 'ignorar' } });
@@ -43,6 +75,8 @@ for (const arquivo of arquivos) {
   assert(/sem registro de verde/.test(avisado.stderr), 'o aviso aparece');
   assert(fs.existsSync(path.join(saida, 'avisar', `perpetualminer-${versao}.zip`)), 'o pacote sai com o aviso');
 }
+
+conferirRecusaDeManifestRuim(path.join(saida, 'raiz-com-manifest-ruim'));
 
 const zip = fs.readFileSync(path.join(saida, `perpetualminer-${versao}.zip`));
 assert.strictEqual(zip.readUInt32LE(0), 0x04034b50, 'o arquivo não começa como um zip');
@@ -87,9 +121,9 @@ assert.strictEqual(manifestoDoComplemento.name, 'PerpetualMiner');
 assert(manifestoDoComplemento.package, 'o manifesto do .ankiaddon precisa do `package`');
 assert(lerBytesDoZip(arquivoDaConexao, '__init__.py').length > 0, 'o .ankiaddon não leva o código do complemento');
 
-const guiaDaLoja = fs.readFileSync('docs/publicar-chrome-web-store.md', 'utf8');
+const guiaDaLoja = fs.readFileSync('docs/loja/permissoes.md', 'utf8');
 const bloco = guiaDaLoja.match(/\*\*Campo "Host permission use"\*\*[^\n]*\n\n(> [^\n]*)/);
-assert(bloco, 'falta o bloco "Host permission use" em docs/publicar-chrome-web-store.md');
+assert(bloco, 'falta o bloco "Host permission use" em docs/loja/permissoes.md');
 const hostsDoBloco = [...bloco[1].matchAll(/`(https?:\/\/[^`]+)`/g)].map(m => m[1]);
 assert.deepStrictEqual(
   [...hostsDoBloco].sort(),
@@ -107,7 +141,7 @@ for (const [onde, manifesto] of [['do repositório', manifestoDoRepo], ['do zip'
     `o manifest ${onde} tem de pedir nativeMessaging como permissão opcional, e só ela`);
 }
 assert(/\| `nativeMessaging` \(opcional\) \|/.test(guiaDaLoja),
-  'falta a justificativa de `nativeMessaging` (opcional) na tabela de permissões de docs/publicar-chrome-web-store.md');
+  'falta a justificativa de `nativeMessaging` (opcional) na tabela de permissões de docs/loja/permissoes.md');
 
 fs.rmSync(saida, { recursive: true, force: true });
 console.log('empacotar tests passed');

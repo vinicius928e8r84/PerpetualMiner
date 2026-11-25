@@ -5,9 +5,9 @@ description: "Use when changing or reviewing the Conexão com o Anki area of the
 
 # Conexão com o Anki area
 
-Cross-surface rules: `docs/arquitetura.md`; files: `docs/arquivos/`.
+Notes from the old `CLAUDE.md` § Architecture. Decisions: `docs/adr/`; files: `docs/arquivos/`.
 
-### Conexão com o Anki (`painel-anki.js`, `painel-anki-envios.js`, docs/design/painel/anki/, variant C)
+### Conexão com o Anki (`painel-anki.js`, `painel-anki-envios.js`, variant C, `docs/adr/0007-as-telas-do-redesign.md`)
 
 The area follows the Conexão state `ConexaoAnki` reports (`acompanhar`):
 
@@ -56,8 +56,7 @@ The area follows the Conexão state `ConexaoAnki` reports (`acompanhar`):
   inside the Boas-vindas the card has only outlines and the host's Continuar is the primary. The status is a `role="status"` region that
   stays in the DOM (the 1 s clock only redraws the checklist).
   The Conferência line (“Confere sozinho a cada 15 s · última vez há N s”, “Conferindo agora…” while a check is out) follows the
-  shared checks. The card's phase and step 4 are the machines of `painel-anki-primeira-conexao-estado.js` (`testes/test_primeira_conexao.js`). See the
-  [Anki area states](../../../docs/design/painel/anki/README.md#estados) for the **Pronto** moment and the Conexão dropping in step 4.
+  shared checks. The card's phase and step 4 are the machines of `painel-anki-primeira-conexao-estado.js` (`testes/test_primeira_conexao.js`). The **Pronto** moment and the Conexão dropping in step 4 are states of the same machines.
   Tests: `painel-anki-primeira-conexao.spec.js` (behaviour, download, checklist), `ter-o-anki.spec.js` (first step), `abrir-o-anki-sozinho.spec.js` (the opener step), `boas-vindas.spec.js` (step 4),
   `complemento/test_pacote.py` and `testes/test_empacotar.js`.
 - **Desligada** after it answered once: the F1, and Custos shows the last reading (`pm_anki_custos`) with the BRG-12
@@ -111,8 +110,7 @@ fail never hold the vocabulary (#9).
   (an SVG `role="img"` named “66% de maturidade”: mature over all cards, recentes = `young + learning`), the big
   number, “palavras diferentes nos cartões” and Cartões · Termos-alvo · Palavra nova por cartão (1 decimal) · Maduros ·
   Recentes · Novos. Ring, bars and legend use the maturity series (ouro · info · muted). An older reading kept by
-  the Conexão: the BRG-12 selo “Mostrando dados de … Não deu para atualizar agora.” (`BRG-12.atualizacao`; with the Conexão off it is `BRG-12.anki`, “Anki fechado. Mostrando dados de {quando}.”, `{quando}` being the stored `quando` (never another Baralho's), and the Abrir o Anki button; off with nothing stored the two tabs say BRG-37, with the same button) (see the
-  [design states](../../../docs/design/painel/anki/README.md#estados) for presentation by tab). Loading BRG-10 + skeleton;
+  the Conexão: the BRG-12 selo “Mostrando dados de … Não deu para atualizar agora.” (`BRG-12.atualizacao`; with the Conexão off it is `BRG-12.anki`, “Anki fechado. Mostrando dados de {quando}.”, `{quando}` being the stored `quando` (never another Baralho's), and the Abrir o Anki button; off with nothing stored the two tabs say BRG-37, with the same button). Loading BRG-10 + skeleton;
   failure is the persistent BRG-11 aviso with Tentar de novo and the cause in Detalhes.
 - **Vocabulário** (`painel-anki-vocabulario.js`) reads `POST /anki/vocabulary` (`{ deck, lang, limit: 10000 }`) of each language whole and filters in the panel, so
   each tile has the language's total and the search never waits for the network. Tipo (Palavras e termos · Só
@@ -181,7 +179,7 @@ with the ENV-03 reason (`motivoSemResposta` when the request never got an answer
 **Tentar de novo →** (re-creates only that language). While such an error is on a card (or a Continuar envio that failed, ENV-14), the summary waits: the progress modal comes back and the summary opens once it is closed, counting those phrases as failed. Every request goes through `PedidoAoAnki` (POST). The Envio's request body is built once, with
 `jobId` = the Envio's `id` (`crypto.randomUUID()`), and saved in `pm_envio` (`corpo`) **before** the first `POST /jobs`; the ENV-03
 Tentar de novo and a panel reopened with an unanswered request send those same bytes, and the Conexão answers with the
-Envio it already has (`docs/design/envio-no-complemento.md`).
+Envio it already has (`docs/adr/0009-o-envio-roda-na-conexao-com-um-dono-por-dado.md`).
 **Apagar tudo (CFG-17)** reaches the Envio's copy of the Frases (#248): `Envio.apagarTudo()` (called by `painel.js`) ends the panel's tracking and asks the Conexão (`POST /jobs/apagar-frases`); the Zona de perigo refuses it while the Conexão does not answer. Rest: `apagar-tudo.md`.
 The footer is ENV-15. `POST /jobs/list` runs every 2 s while something is running; when it fails the modal says
 ENV-09 and keeps trying. Phrases already in a running Envio are not sent twice (a second click only reopens the modal),

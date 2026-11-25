@@ -12,7 +12,7 @@ O que a pessoa vê é só o fim: a Conexão de hoje sai e esta ocupa a porta. An
 de hoje no ar (a porta só é liberada depois de tudo copiado) e a passagem tenta de novo na próxima vez que o Anki abrir.
 
 Este código só serve ao PC do dono e sai numa versão seguinte: `inicio.py` o chama por um gancho só (`passagem=None` o desliga).
-O sistema (Windows) entra por `sistema` (`passagem_do_windows.py`); os testes põem um de mentira. Desenho: `docs/design/passagem-do-windows.md`.
+O sistema (Windows) entra por `sistema` (`passagem_do_windows.py`); os testes põem um de mentira.
 """
 
 import http.client

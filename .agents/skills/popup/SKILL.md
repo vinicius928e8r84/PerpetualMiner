@@ -5,11 +5,11 @@ description: "Use when changing or reviewing the toolbar popup (`popup/popup.htm
 
 # Popup (Cockpit)
 
-Notes from the old `CLAUDE.md` § Architecture. Cross-surface rules: `docs/arquitetura.md`; files: `docs/arquivos/`.
+Notes from the old `CLAUDE.md` § Architecture. Decisions: `docs/adr/`; files: `docs/arquivos/`.
 
 ### Popup (Cockpit) (`popup/popup.html/js/css`)
 
-The popup is the “Cockpit” variant A (`docs/design/popup/`), 340 px wide with a 600 px ceiling, built on the Veio
+The popup is the “Cockpit” variant A (`docs/adr/0007-as-telas-do-redesign.md`), 340 px wide with a 600 px ceiling, built on the Veio
 components and following the chosen theme. Top to bottom: the mark with no subtitle (POP-12); the ONB-14 card while the setup is half done (see “Configuração pela metade” in the `boas-vindas` skill); **Abrir painel** (POP-09),
 which focuses the panel tab that is already open (`chrome.tabs.query` ignores the `#address`, so the tab keeps the area
 the person left it on) or opens one; the **Mineração automática** tiles, Inglês | Russo (POP-10, POP-14, POP-15): a switch,
