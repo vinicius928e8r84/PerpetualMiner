@@ -1,6 +1,7 @@
 'use strict';
 
 const { criarSincronizacao } = require('../lib/sincronizacao');
+const { areaEmMemoria: area } = require('./area_em_memoria_do_sync');
 
 const clone = v => JSON.parse(JSON.stringify(v));
 const AGORA = 1_000_000;
@@ -13,32 +14,6 @@ const PASSOS_SIMPLES = [['carregar', 'A'], ['carregar', 'B'], ['carregar', 'C']]
 const PASSOS_COM_SYNC_ATRASADO = [...PASSOS_SIMPLES, ['entregar sync', '']];
 const PASSOS_POR_SYNC = { separado: PASSOS_SIMPLES, junto: PASSOS_SIMPLES, atrasado: PASSOS_COM_SYNC_ATRASADO };
 const PASSOS_COM_CONTA = [['carregar', 'A'], ['carregar', 'B'], ['entra em u1', 'A'], ['entra em u2', 'A']];
-
-function pedidasDe(chaves) {
-  if (typeof chaves === 'string') return { [chaves]: undefined };
-  if (Array.isArray(chaves)) return Object.fromEntries(chaves.map(k => [k, undefined]));
-  return chaves;
-}
-
-function lerPedidas(dados, pedidas) {
-  const r = {};
-  for (const [k, padrao] of Object.entries(pedidas)) {
-    if (k in dados) r[k] = clone(dados[k]);
-    else if (padrao !== undefined) r[k] = padrao;
-  }
-  return r;
-}
-
-function area(dados) {
-  return {
-    async get(chaves) {
-      if (chaves === null) return clone(dados);
-      return lerPedidas(dados, pedidasDe(chaves));
-    },
-    async set(itens) { for (const [k, v] of Object.entries(itens)) dados[k] = clone(v); },
-    async remove(chaves) { for (const k of [].concat(chaves)) delete dados[k]; },
-  };
-}
 
 function mundo({ chromeSync, mascara, engoleTombstone }) {
   const firestore = { 1: { id: 1, texto: 'um' }, 2: { id: 2, texto: 'dois' } };
