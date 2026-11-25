@@ -1,5 +1,3 @@
-"""As bordas da linha de mineração `kw | kw : frase [Context: ...]`: o que vira entrada e o que é descartado."""
-
 import unittest
 
 from parser import MiningEntry, get_card_jobs, parse_mining_line
