@@ -26,6 +26,7 @@ A regra `indice-de-arquivos` exige uma linha, aqui ou em [testes-e-ferramentas.m
 | `lib/contexto.js` | The Contexto as the screen says it: the Fonte's name, the day and how long ago. |
 | `lib/filtro-das-frases.js` | What the Frases list shows: the Frases that pass every active filter, newest or oldest first. Pure, no screen. |
 | `lib/contexto-do-site.js` | The Contexto of a mined caption, one rule per player; any other site is `web`. |
+| `lib/legenda-da-pagina.js` | The caption on screen of the active video: a table from site to reader, the selector reader and the visual reader. |
 | `lib/legenda-da-amazon.js` | The Prime Video caption reader: the direct selectors, then the position on screen. |
 | `lib/conexao-anki.js` | The shared owner of `/health` and the connection state across Painel and popup. |
 | `lib/conexao-na-tela.js` | The shared presentation of the Conexão in the first-connection strip, card and step. |
