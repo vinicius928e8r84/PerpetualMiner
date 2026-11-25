@@ -1,15 +1,14 @@
 'use strict';
 
-const { ehRussa, detectarIdioma, IDIOMAS, textoDaVoz, Atalhos, AjustesDeEnvio, Mineracao, TxtDeFrases } = PerpetualMiner;
+const { IDIOMAS, textoDaVoz, Atalhos, AjustesDeEnvio, TxtDeFrases } = PerpetualMiner;
 const { fonteDaFrase, nomeDaFonte, rotuloDoDia } = PerpetualMiner.Contexto;
-const {
-  iconeVeio, montarChipDaPalavra, escreverFraseClicavel, andarEntrePalavras, focarPalavra, refletirSelecao, montarTecla,
-} = PerpetualMiner.Veio;
+const { refletirSelecao, montarTecla } = PerpetualMiner.Veio;
 const Shell = PerpetualMiner.Shell;
 const Conta = PerpetualMiner.Conta;
 const Perigo = PerpetualMiner.Perigo;
 const Envio = PerpetualMiner.Envio;
 const MinerarFrases = PerpetualMiner.MinerarFrases;
+const FrasesCartao = PerpetualMiner.FrasesCartao;
 const { SITUACOES } = Conta;
 const { Sincronizacao, ChaveDaOpenAI, Historico } = PerpetualMiner;
 const { mostrarToastDeSucesso, abrirModal, montarAviso, criar } = PerpetualMiner.Veio;
@@ -18,14 +17,6 @@ const { filtrarFrases, foiEnviadaAoAnki, STATUS_ENVIADA_AO_ANKI } = PerpetualMin
 const POR_PAGINA = 10;
 
 let atalhoDeLegenda = Atalhos.ATALHOS_PADRAO.legenda;
-
-const ICONE_DE_VIDEO = 'netflix';
-
-const ICONES_DE_FONTE = {
-  netflix: ICONE_DE_VIDEO, primevideo: ICONE_DE_VIDEO, max: ICONE_DE_VIDEO, disneyplus: ICONE_DE_VIDEO,
-  starplus: ICONE_DE_VIDEO, kinopoisk: ICONE_DE_VIDEO, youtube: 'youtube',
-  web: 'web', selecao: 'web', pdf: 'pdf', livro: 'livro', manual: 'manual', importado: 'manual',
-};
 
 const GOOGLE_USERINFO   = 'https://www.googleapis.com/oauth2/v1/userinfo?alt=json';
 const FIREBASE_API_KEY  = Sincronizacao.CHAVE_DA_API;
@@ -49,7 +40,6 @@ let sincronizacao  = novaSincronizacao();
 const keywords    = {};
 const selecionadas = new Set();
 
-let edicaoDeTexto      = null;
 const idsAindaNaNuvem  = new Set();
 let modalAberto        = null;
 let pedidoDeApagar     = null;
@@ -397,20 +387,20 @@ function selecionarPagina() {
   const todasMarcadas = ids.every(id => selecionadas.has(id));
   if (todasMarcadas) ids.forEach(id => selecionadas.delete(id));
   else               ids.forEach(id => selecionadas.add(id));
-  ids.forEach(refletirSelecaoNoCartao);
+  ids.forEach(FrasesCartao.refletirSelecao);
   atualizarContadorSelecao();
 }
 
 function selecionarTodasVisiveis() {
   frasesVisiveis.forEach(f => selecionadas.add(f.id));
-  idsPaginaAtual().forEach(refletirSelecaoNoCartao);
+  idsPaginaAtual().forEach(FrasesCartao.refletirSelecao);
   atualizarContadorSelecao();
 }
 
 function desmarcarTodas() {
   const ids = [...selecionadas];
   selecionadas.clear();
-  ids.forEach(refletirSelecaoNoCartao);
+  ids.forEach(FrasesCartao.refletirSelecao);
   atualizarContadorSelecao();
   document.getElementById('sel-pagina').focus();
 }
@@ -431,6 +421,14 @@ function setupListeners() {
   document.getElementById('sel-pagina').addEventListener('change', selecionarPagina);
   document.getElementById('btn-sel-todas').addEventListener('click', selecionarTodasVisiveis);
   document.getElementById('btn-desmarcar-todas').addEventListener('click', desmarcarTodas);
+  FrasesCartao.iniciar({
+    frases: () => todasFrases,
+    keywords,
+    selecionadas,
+    editarFrase,
+    salvarNaNuvem: salvarFraseFirestore,
+    aplicarFiltro,
+  });
   MinerarFrases.iniciar({
     frases: () => todasFrases,
     sincronizacao: () => sincronizacao,
@@ -463,17 +461,15 @@ function setupListeners() {
     if (btnCopy)     { copiarFrase(btnCopy.dataset.id);                         return; }
     if (btnDel)      { pedirParaApagar([Number(btnDel.dataset.id)]);            return; }
     if (btnEdit)     { abrirEditarContexto([Number(btnEdit.dataset.id)]);       return; }
-    if (btnTexto)    { terminarEdicaoDeTexto(btnTexto.dataset.action === 'salvar-texto'); return; }
-    if (btnEditText) { editarTextoFrase(Number(btnEditText.dataset.id));        return; }
-    if (btnClear)    { clearKeywords(Number(btnClear.dataset.id));              return; }
-    if (btnAddSep)   { addSeparator(Number(btnAddSep.dataset.id));             return; }
-    if (palavraEl)   { escolherPalavra(palavraEl);                              return; }
+    if (btnTexto)    { FrasesCartao.terminarEdicaoDeTexto(btnTexto.dataset.action === 'salvar-texto'); return; }
+    if (btnEditText) { FrasesCartao.editarTextoFrase(Number(btnEditText.dataset.id));        return; }
+    if (btnClear)    { FrasesCartao.clearKeywords(Number(btnClear.dataset.id));              return; }
+    if (btnAddSep)   { FrasesCartao.addSeparator(Number(btnAddSep.dataset.id));             return; }
+    if (palavraEl)   { FrasesCartao.escolherPalavra(palavraEl);                              return; }
   });
-  lista.addEventListener('keydown', aoTeclarNaFrase);
-  lista.addEventListener('keydown', aoTeclarNaEdicaoDeTexto);
-  lista.addEventListener('input', (e) => {
-    if (edicaoDeTexto && e.target.matches('textarea[data-edicao]')) edicaoDeTexto.rascunho = e.target.value;
-  });
+  lista.addEventListener('keydown', FrasesCartao.aoTeclarNaFrase);
+  lista.addEventListener('keydown', FrasesCartao.aoTeclarNaEdicaoDeTexto);
+  lista.addEventListener('input', FrasesCartao.aoDigitarNaEdicao);
 
   lista.addEventListener('change', (e) => {
     const chk = e.target.closest('.frase-check');
@@ -481,7 +477,7 @@ function setupListeners() {
     const id = Number(chk.dataset.id);
     if (chk.checked) selecionadas.add(id);
     else             selecionadas.delete(id);
-    refletirSelecaoNoCartao(id);
+    FrasesCartao.refletirSelecao(id);
     atualizarContadorSelecao();
   });
 
@@ -597,17 +593,17 @@ function renderizar() {
     return;
   }
 
-  const foco = chaveDoFoco(document.activeElement);
+  const foco = FrasesCartao.chaveDoFoco(document.activeElement);
   const nos = [];
   let diaAnterior = null;
   for (const f of pagina) {
     const dia = rotuloDoDia(f.data);
     if (dia && dia !== diaAnterior) nos.push(criar('div', 'veio-cabecalho-de-data', dia));
     diaAnterior = dia;
-    nos.push(montarCartao(f));
+    nos.push(FrasesCartao.montarCartao(f));
   }
   lista.replaceChildren(...nos);
-  restaurarFoco(foco);
+  FrasesCartao.restaurarFoco(foco);
   atualizarContadorSelecao();
 }
 
@@ -663,274 +659,9 @@ function botaoDoVazio(rotulo, aoClicar, variante = 'veio-botao--contorno') {
   return botao;
 }
 
-function montarCartao(f) {
-  const cartao = criar('article', 'veio-frase veio-frase--na-ilha');
-  cartao.dataset.id = f.id;
-  cartao.classList.toggle('veio-frase--selecionada', selecionadas.has(f.id));
-
-  const marcar = criar('input', 'veio-checkbox frase-check');
-  marcar.type = 'checkbox';
-  marcar.dataset.id = f.id;
-  marcar.checked = selecionadas.has(f.id);
-  marcar.setAttribute('aria-label', textoDaVoz('PAI-28'));
-
-  const texto = criar('div', 'veio-frase__texto');
-  texto.lang = ehRussa(f) ? 'ru' : 'en';
-  const editando = edicaoDeTexto?.id === f.id;
-  if (editando) texto.append(montarEdicaoDeTexto(f));
-  else          escreverPalavras(texto, f);
-
-  const corpo = criar('div', 'frase-corpo');
-  corpo.append(texto);
-  const chip = editando ? null : montarLinhaDoChip(f);
-  if (chip) corpo.append(chip);
-  corpo.append(montarContexto(f));
-
-  cartao.append(marcar, corpo, montarAcoesDoCartao(f));
-  return cartao;
-}
-
-function escreverPalavras(no, f) {
-  const ativas = new Set((keywords[f.id] || []).filter(w => w !== '|'));
-  escreverFraseClicavel(no, Mineracao.tokenizar(f.texto || '').map((tok, idx) => tok.isWord
-    ? {
-      texto: tok.text,
-      palavra: true,
-      grifada: ativas.has(`${tok.clean}@${idx}`) || ativas.has(tok.clean),
-      dados: { id: f.id, idx, word: tok.clean },
-    }
-    : { texto: tok.text }));
-}
-
-function montarLinhaDoChip(f) {
-  const kws = keywords[f.id] || [];
-  if (!kws.length) return null;
-
-  const texto = kws.map(w => w === '|' ? '|' : w.replace(/@\d+$/, '')).join(' ');
-  const chip = montarChipDaPalavra(texto, { detectada: Boolean(f.autoKeyword) });
-  chip.append(botaoIcone('fechar', textoDaVoz('PAI-27.remover'), 'clear-kw', f.id));
-
-  const outroGrupo = criar('button', 'veio-chip-palavra__outro', '+');
-  outroGrupo.type = 'button';
-  outroGrupo.dataset.action = 'add-sep';
-  outroGrupo.dataset.id = f.id;
-  outroGrupo.setAttribute('aria-label', textoDaVoz('PAI-27.outroGrupo'));
-  outroGrupo.title = textoDaVoz('PAI-27.outroGrupo');
-
-  const linha = criar('div', 'frase-chip');
-  linha.append(chip, outroGrupo);
-  return linha;
-}
-
-function montarContexto(f) {
-  const linha = criar('div', 'veio-frase__contexto');
-  const fonte = fonteDaFrase(f);
-  if (fonte) {
-    const selo = criar('span', 'veio-selo');
-    selo.append(iconeVeio(ICONES_DE_FONTE[fonte] || 'web'), nomeDaFonte(fonte));
-    linha.append(selo);
-  }
-  const origem = [f.contexto?.titulo, f.contexto?.detalhe].filter(Boolean).join(' · ');
-  if (origem) linha.append(criar('span', 'frase-origem', origem));
-  if (foiEnviadaAoAnki(f))  linha.append(criar('span', 'veio-selo veio-selo--ok', textoDaVoz('PAI-08.enviada')));
-  else if (f.exportadaTxt)  linha.append(criar('span', 'veio-selo veio-selo--info', textoDaVoz('PAI-08.exportada')));
-  return linha;
-}
-
-function montarAcoesDoCartao(f) {
-  const acoes = criar('div', 'veio-frase__acoes');
-  acoes.append(
-    botaoIcone('texto', textoDaVoz('PAI-30.editarTexto'), 'edit-text', f.id),
-    botaoIcone('contexto', textoDaVoz('PAI-30.editarContexto'), 'edit', f.id),
-    botaoIcone('copiar', textoDaVoz('PAI-30.copiar'), 'copy', f.id),
-    botaoIcone('apagar', textoDaVoz('PAI-30.apagar'), 'delete', f.id, 'veio-botao-icone--perigo'));
-  return acoes;
-}
-
-function botaoIcone(icone, rotulo, acao, id, variante = '') {
-  const botao = criar('button', `veio-botao-icone ${variante}`.trim());
-  botao.type = 'button';
-  botao.dataset.action = acao;
-  botao.dataset.id = id;
-  botao.setAttribute('aria-label', rotulo);
-  botao.title = rotulo;
-  botao.append(iconeVeio(icone));
-  return botao;
-}
-
-function cartaoNaLista(id) {
-  return document.querySelector(`#frases-lista .veio-frase[data-id="${id}"]`);
-}
-
-function refletirSelecaoNoCartao(id) {
-  const cartao = cartaoNaLista(id);
-  if (!cartao) return;
-  cartao.classList.toggle('veio-frase--selecionada', selecionadas.has(id));
-  cartao.querySelector('.frase-check').checked = selecionadas.has(id);
-}
-
-function atualizarCartao(id) {
-  const antigo = cartaoNaLista(id);
-  const frase = todasFrases.find(f => f.id === id);
-  if (!antigo || !frase) return;
-  const foco = chaveDoFoco(document.activeElement);
-  antigo.replaceWith(montarCartao(frase));
-  restaurarFoco(foco);
-}
-
-function chaveDoFoco(no) {
-  if (!no?.closest?.('#frases-lista')) return null;
-  if (no.classList.contains('veio-palavra-clicavel')) return `.veio-palavra-clicavel[data-id="${no.dataset.id}"][data-idx="${no.dataset.idx}"]`;
-  if (no.dataset.action) return `[data-action="${no.dataset.action}"][data-id="${no.dataset.id}"]`;
-  if (no.classList.contains('frase-check')) return `.frase-check[data-id="${no.dataset.id}"]`;
-  if (no.dataset.edicao) return `textarea[data-edicao="${no.dataset.edicao}"]`;
-  return null;
-}
-
-function restaurarFoco(seletor) {
-  if (!seletor) return;
-  const no = document.querySelector(`#frases-lista ${seletor}`);
-  if (!no) return;
-  if (no.classList.contains('veio-palavra-clicavel')) focarPalavra(no);
-  else no.focus();
-}
-
-function escolherPalavra(palavra) {
-  toggleWord(Number(palavra.dataset.id), Number(palavra.dataset.idx), palavra.dataset.word);
-}
-
-function aoTeclarNaFrase(e) {
-  const palavra = e.target.closest('.veio-palavra-clicavel');
-  if (!palavra || andarEntrePalavras(e)) return;
-  if (e.key === 'Enter' || e.key === ' ') {
-    e.preventDefault();
-    escolherPalavra(palavra);
-  }
-}
-
-function gravarPalavras(id) {
-  const idxFrase = todasFrases.findIndex(f => f.id === id);
-  if (idxFrase < 0) return;
-  editarFrase(idxFrase, { keywords: keywords[id] || [], autoKeyword: false });
-  salvarFraseFirestore(todasFrases[idxFrase], ['keywords', 'autoKeyword']);
-  atualizarCartao(id);
-}
-
 function editarFrase(idx, campos) {
   todasFrases[idx] = { ...todasFrases[idx], ...campos };
   return Historico.editar(todasFrases[idx].id, campos);
-}
-
-function toggleWord(id, wordIdx, wordClean) {
-  if (wordClean == null) return;
-  const key   = `${wordClean}@${wordIdx}`;
-  const frase = todasFrases.find(f => f.id === id);
-  if (!frase) return;
-  const all        = keywords[id] || [];
-  const lastSepIdx = all.lastIndexOf('|');
-  const prefix     = lastSepIdx >= 0 ? all.slice(0, lastSepIdx + 1) : [];
-  const lastSeg    = lastSepIdx >= 0 ? all.slice(lastSepIdx + 1)    : [...all];
-  const selected   = new Set(lastSeg);
-  if (selected.has(key)) selected.delete(key);
-  else                   selected.add(key);
-  let newLastSeg;
-  if (selected.size === 0) {
-    newLastSeg = [];
-  } else {
-    const tokens = Mineracao.tokenizar(frase.texto);
-    newLastSeg = tokens
-      .map((t, i) => (t.isWord && selected.has(`${t.clean}@${i}`)) ? `${t.clean}@${i}` : null)
-      .filter(Boolean);
-  }
-  const combined = newLastSeg.length > 0
-    ? [...prefix, ...newLastSeg]
-    : (prefix.length > 0 ? prefix.slice(0, -1) : []);
-  if (combined.length === 0) delete keywords[id];
-  else                       keywords[id] = combined;
-  gravarPalavras(id);
-}
-
-function clearKeywords(id) {
-  delete keywords[id];
-  gravarPalavras(id);
-}
-
-function addSeparator(id) {
-  const all = keywords[id];
-  if (!all || all.length === 0 || all[all.length - 1] === '|') return;
-  keywords[id] = [...all, '|'];
-  gravarPalavras(id);
-}
-
-function editarTextoFrase(id) {
-  const frase = todasFrases.find(f => f.id === id);
-  if (!frase) return;
-  edicaoDeTexto = { id, rascunho: frase.texto };
-  atualizarCartao(id);
-  const campo = cartaoNaLista(id)?.querySelector('textarea[data-edicao]');
-  if (!campo) return;
-  campo.focus();
-  campo.setSelectionRange(campo.value.length, campo.value.length);
-}
-
-function montarEdicaoDeTexto(f) {
-  const edicao = criar('div', 'frase-edicao');
-  const campo = criar('textarea', 'veio-campo frase-edicao__campo');
-  campo.dataset.edicao = f.id;
-  campo.value = edicaoDeTexto.rascunho;
-  campo.rows = Math.max(2, Math.ceil(campo.value.length / 55));
-  campo.setAttribute('aria-label', textoDaVoz('PAI-33.campo'));
-
-  const dica = criar('span', 'frase-edicao__dica', textoDaVoz('PAI-33.dica'));
-  dica.id = `dica-edicao-${f.id}`;
-  campo.setAttribute('aria-describedby', dica.id);
-
-  const cancelar = criar('button', 'veio-botao veio-botao--fantasma', textoDaVoz('PAI-33.cancelar'));
-  cancelar.type = 'button';
-  cancelar.dataset.action = 'cancelar-texto';
-  cancelar.dataset.id = f.id;
-  const salvar = criar('button', 'veio-botao veio-botao--primario', textoDaVoz('PAI-33.salvar'));
-  salvar.type = 'button';
-  salvar.dataset.action = 'salvar-texto';
-  salvar.dataset.id = f.id;
-
-  const acoes = criar('div', 'frase-edicao__acoes');
-  acoes.append(dica, cancelar, salvar);
-  edicao.append(campo, acoes);
-  return edicao;
-}
-
-function aoTeclarNaEdicaoDeTexto(e) {
-  if (!edicaoDeTexto || !e.target.matches('textarea[data-edicao]')) return;
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    terminarEdicaoDeTexto(true);
-  } else if (e.key === 'Escape') {
-    e.preventDefault();
-    terminarEdicaoDeTexto(false);
-  }
-}
-
-function terminarEdicaoDeTexto(salvar) {
-  if (!edicaoDeTexto) return;
-  const { id, rascunho } = edicaoDeTexto;
-  edicaoDeTexto = null;
-  const frase = todasFrases.find(f => f.id === id);
-  const novoTexto = rascunho.trim();
-  if (salvar && frase && novoTexto && novoTexto !== frase.texto) salvarTextoFrase(id, novoTexto);
-  else atualizarCartao(id);
-  cartaoNaLista(id)?.querySelector('[data-action="edit-text"]')?.focus();
-}
-
-function salvarTextoFrase(id, novoTexto) {
-  const idx = todasFrases.findIndex(f => f.id === id);
-  if (idx < 0) return;
-  const palavras = Mineracao.palavrasQueFicam(keywords[id], novoTexto);
-  if (palavras.length) keywords[id] = palavras;
-  else delete keywords[id];
-  editarFrase(idx, { texto: novoTexto, idioma: detectarIdioma(novoTexto), keywords: palavras });
-  salvarFraseFirestore(todasFrases[idx]);
-  aplicarFiltro();
 }
 
 async function copiarFrase(id) {
@@ -984,7 +715,7 @@ async function apagarFrases(ids, { toast = ids.length > 1 } = {}) {
   const apagadas = new Set(ids);
   todasFrases = todasFrases.filter(f => !apagadas.has(f.id));
   ids.forEach(id => { delete keywords[id]; selecionadas.delete(id); });
-  if (edicaoDeTexto && apagadas.has(edicaoDeTexto.id)) edicaoDeTexto = null;
+  FrasesCartao.esquecerEdicaoDe(apagadas);
   await Historico.apagar(ids);
   atualizarTotal();
   aplicarFiltro();

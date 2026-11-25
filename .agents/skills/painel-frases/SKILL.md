@@ -7,7 +7,7 @@ description: "Use when changing or reviewing the Frases list of the panel or the
 
 Notes from the old `CLAUDE.md` § Architecture. Decisions: `docs/adr/`; files: `docs/arquivos/`.
 
-### Frases list (`painel.js`, variant A, `docs/adr/0007-as-telas-do-redesign.md`)
+### Frases list (`painel.js`, the card in `painel-frases-cartao.js`, variant A, `docs/adr/0007-as-telas-do-redesign.md`)
 
 Each phrase is a `.veio-frase` card under a date header (PAI-11: hoje · ontem · há N dias), 10 per page. The card
 writes the text word by word with `escreverFraseClicavel` (a `.veio-frase--na-ilha` card: `bg` inside the `surface`

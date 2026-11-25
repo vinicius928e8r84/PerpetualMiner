@@ -78,4 +78,5 @@
   <script src="painel-anki-estilo.js">
   <script src="painel-ajustes.js">
   <script src="painel-minerar-frases.js">
+  <script src="painel-frases-cartao.js">
   <script src="painel.js">

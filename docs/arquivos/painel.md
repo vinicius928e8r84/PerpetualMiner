@@ -17,6 +17,7 @@ A regra `indice-de-arquivos` exige uma linha, aqui ou nas outras tabelas de `doc
 | `painel/painel-chave.js` | The Chave do Gemini card (skill `configuracoes`). |
 | `painel/painel-ia.js`, `painel/painel-ia-chatgpt.js`, `painel/painel-ia-modelo.js/css`, `painel/painel-ia-estado.js` | The IA dos cartões card: the OpenAI key column, the ChatGPT sign-in column and the model choice (skill `configuracoes`). |
 | `painel/painel-minerar-frases.js` | The Minerar frases menu and modal of the Frases area (skill `painel-frases`). |
+| `painel/painel-frases-cartao.js` | The card of one Frase in the list: the drawing, the Palavra (word click, chip, new group) and the in-place text edit. `painel/painel.js` hands it the Frases, the `keywords` map and the selection with `FrasesCartao.iniciar`. The count of the last Palavra group is `Mineracao.palavrasAposMarcar` (`testes/test_marcar_palavra.js`). |
 | `painel/painel-perigo.js` | The Zona de perigo card and the Apagar tudo confirmation (skill `configuracoes`). |
 | `painel/painel-abrir-anki.js` | The Conexão com o Anki card of Configurações: open the Anki with the computer, and the Perfil do Anki (skill `configuracoes`). |
 | `painel/painel-anki.js` | The Custos tab and the area's first-connection strip (skill `painel-anki`). |

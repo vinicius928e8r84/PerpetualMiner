@@ -21,32 +21,38 @@ const CASOS = [
   { nome: 'sem a palavra limpa, nada muda', antes: ['barely@2'], clica: [null, 2], depois: ['barely@2'] },
 ];
 
-function mudo() {
-  return new Proxy(function () {}, {
-    get: (_, chave) => (chave === Symbol.toPrimitive ? () => '' : mudo()),
-    apply: () => mudo(),
-    construct: () => mudo(),
-  });
-}
-
-function oPainelDeMentira() {
+function oCartaoDeMentira(frases) {
   const contexto = vm.createContext({
-    console, chrome: mudo(),
-    document: { addEventListener() {}, querySelector: () => null, getElementById: () => null, activeElement: null },
-    PerpetualMiner: new Proxy({}, { get: (alvo, chave) => (chave in alvo ? alvo[chave] : mudo()) }),
+    console,
+    document: { querySelector: () => null },
+    PerpetualMiner: {
+      textoDaVoz: id => id,
+      ehRussa: () => false,
+      detectarIdioma: () => 'Inglês',
+      Contexto: {},
+      Veio: {},
+      FiltroDasFrases: {},
+    },
   });
   vm.runInContext(fs.readFileSync('lib/mineracao.js', 'utf8'), contexto);
-  vm.runInContext(`${fs.readFileSync('painel/painel.js', 'utf8')}
-this.sonda = { toggleWord, frases(lista) { todasFrases = lista; }, keywords };`, contexto);
-  return contexto.sonda;
+  vm.runInContext(fs.readFileSync('painel/painel-frases-cartao.js', 'utf8'), contexto);
+  const keywords = {};
+  contexto.PerpetualMiner.FrasesCartao.iniciar({
+    frases: () => frases,
+    keywords,
+    selecionadas: new Set(),
+    editarFrase: () => Promise.resolve(),
+    salvarNaNuvem() {},
+    aplicarFiltro() {},
+  });
+  return { cartao: contexto.PerpetualMiner.FrasesCartao, keywords };
 }
 
 function aPalavraMarcada({ antes, clica: [palavra, posicao] }) {
-  const painel = oPainelDeMentira();
-  painel.frases([{ id: 1, texto: TEXTO }]);
-  if (antes) painel.keywords[1] = [...antes];
-  painel.toggleWord(1, posicao, palavra);
-  const marcadas = painel.keywords[1];
+  const { cartao, keywords } = oCartaoDeMentira([{ id: 1, texto: TEXTO }]);
+  if (antes) keywords[1] = [...antes];
+  cartao.escolherPalavra({ dataset: { id: '1', idx: String(posicao), word: palavra ?? undefined } });
+  const marcadas = keywords[1];
   return marcadas && [...marcadas];
 }
 
