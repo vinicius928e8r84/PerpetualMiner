@@ -53,10 +53,14 @@ def _status_por_frase(estado):
     return por_frase
 
 
+def _status_da_parada(no_anki):
+    return PARTIAL if no_anki else FAILED
+
+
 def _status_do_fim(no_anki, falharam):
     if no_anki and not falharam:
         return COMPLETED
-    return PARTIAL if no_anki else FAILED
+    return _status_da_parada(no_anki)
 
 
 @dataclass(frozen=True)
@@ -66,10 +70,6 @@ class Desfecho:
     falharam: list
     duplicadas: list
     erro_que_conta: object
-
-
-def _status_da_parada(no_anki):
-    return PARTIAL if no_anki else FAILED
 
 
 def _primeiro_erro_de_cartao(estado):
