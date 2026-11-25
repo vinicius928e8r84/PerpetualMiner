@@ -89,6 +89,8 @@
     return Promise.resolve(valor);
   };
 
+  const metodoDoChrome = resposta => (entrada, callback) => talvezPromessa(resposta(entrada), callback);
+
   const apagarChaves = (chaves, callback) => {
     for (const chave of chaves) delete dados[chave];
     return talvezPromessa(undefined, callback);
@@ -96,7 +98,7 @@
 
   function criarArea() {
     return {
-      get: (pedido, callback) => talvezPromessa(resolver(pedido), callback),
+      get: metodoDoChrome(resolver),
       set: (valores, callback) => {
         const mudancas = {};
         for (const [chave, valor] of Object.entries(valores)) {
@@ -126,7 +128,8 @@
     }
   }
 
-  const semPermissao = (_permissoes, callback) => talvezPromessa(false, callback);
+  const semPermissao = metodoDoChrome(() => false);
+  const semResposta = metodoDoChrome(() => undefined);
 
   const abrirAba = (id, ir) => ({ url } = {}, callback) => {
     if (url) ir(url);
@@ -148,20 +151,19 @@
       lastError: undefined,
       getManifest: () => ({ version: 'preview', manifest_version: 3 }),
       getURL: caminho => new URL(String(caminho).replace(/^\//, ''), document.baseURI).href,
-      sendMessage: (mensagem, callback) => talvezPromessa(responderMensagem(mensagem), callback),
+      sendMessage: metodoDoChrome(responderMensagem),
       onMessage: ouvintesQueNaoFazemNada(),
     },
     tabs: {
-      query: (_consulta, callback) => talvezPromessa([{ id: 1, url: 'https://exemplo.dev', active: true }], callback),
+      query: metodoDoChrome(() => [{ id: 1, url: 'https://exemplo.dev', active: true }]),
       create: abrirEmOutraAba,
       update: (_id, info, callback) => irNaAbaAtual(info, callback),
     },
-    windows: { update: (_id, _info, callback) => talvezPromessa(undefined, callback) },
+    windows: { update: (_id, info, callback) => semResposta(info, callback) },
     permissions: { contains: semPermissao, request: semPermissao },
     identity: {
       getRedirectURL: () => document.baseURI,
-      launchWebAuthFlow: (_opcoes, callback) =>
-        talvezPromessa(undefined, callback) && undefined,
+      launchWebAuthFlow: (opcoes, callback) => { semResposta(opcoes, callback); },
     },
     action: { setBadgeText: () => {}, setBadgeBackgroundColor: () => {}, setIcon: () => {} },
   };
