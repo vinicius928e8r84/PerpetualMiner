@@ -135,6 +135,7 @@ function montar(mundo) {
   sw.getAutoKeywordVocabulary = async () => ({ available: true, words: new Set(['barely']), terms: new Set(), wordInfo: new Map([['barely', { status: 'new' }]]), termInfo: new Map() });
   const pagina = contexto(mundo, locks);
   fonte('lib/historico.js').script.runInContext(pagina);
+  fonte('lib/nuvem-do-firestore.js').script.runInContext(pagina);
   fonte('lib/sincronizacao.js').script.runInContext(pagina);
   return { sw, pagina, painel: pagina.PerpetualMiner };
 }
