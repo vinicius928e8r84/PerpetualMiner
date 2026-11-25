@@ -27,12 +27,13 @@ globalThis.Audio = class {
   pause() { chamadas.push(['pause']); }
 };
 raiz.AjustesDeEnvio = { ...raiz.AjustesDeEnvio, atual: () => ({ en: { ttsPhraseTld: mundo.sotaque }, ru: { ttsPhraseTld: 'ru' } }) };
+const naoTemOFormato = (desfecho, formato) => desfecho.ok && formato && !formato(desfecho.dados);
 raiz.ConversaComOAnki = {
   MOTIVO,
   pedir: async (pedido, { formato }) => {
     pedidos.push(pedido.corpo);
     const { desfecho } = mundo;
-    return desfecho.ok && formato && !formato(desfecho.dados) ? { ok: false, motivo: MOTIVO.INVALIDA } : desfecho;
+    return naoTemOFormato(desfecho, formato) ? { ok: false, motivo: MOTIVO.INVALIDA } : desfecho;
   },
 };
 raiz.SomDoQuiz = { criar: () => ({ alternar: () => false, acerto: nota => chamadas.push(['som.acerto', nota]), naoSei: () => chamadas.push(['som.naoSei']) }) };

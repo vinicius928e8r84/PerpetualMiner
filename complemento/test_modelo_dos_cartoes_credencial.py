@@ -4,6 +4,7 @@ import os
 import sys
 import tempfile
 import unittest
+from collections import namedtuple
 from datetime import date
 from unittest import mock
 
@@ -29,6 +30,7 @@ LOGGER = logging.getLogger("teste_modelo_credencial")
 LOGGER.addHandler(logging.NullHandler())
 LOGGER.propagate = False
 DA_CONTA = ("gpt-4o", "gpt-4.1", "gpt-4.1-mini", "gpt-3.5")
+OpenAIDaConta = namedtuple("OpenAIDaConta", "modelos modelo_do_motor", defaults=(DA_CONTA, MODELO_DO_MOTOR))
 
 
 class LoginDeMentira:
@@ -60,15 +62,15 @@ class CofreDeMentira:
 
 
 class UmaConta:
-    def __init__(self, teste, chave=CHAVE_GUARDADA, login=None, da_conta=DA_CONTA, modelo_do_motor=MODELO_DO_MOTOR):
+    def __init__(self, teste, chave=CHAVE_GUARDADA, login=None, openai=OpenAIDaConta()):
         pasta = tempfile.TemporaryDirectory()
         teste.addCleanup(pasta.cleanup)
         self.arquivo = os.path.join(pasta.name, "modelo-dos-cartoes.json")
         self.conta = Conta(login, CofreDeMentira(chave), "http://127.0.0.1:9")
-        lista = ListaDosModelos(LISTA, lambda: HOJE, lambda: modelo_do_motor, LOGGER)
+        lista = ListaDosModelos(LISTA, lambda: HOJE, lambda: openai.modelo_do_motor, LOGGER)
         self.modelos = ModeloDosCartoes(self.arquivo, lista, self.conta, LOGGER)
         self.listagens_da_chave = []
-        self.da_conta = da_conta
+        self.da_conta = openai.modelos
 
     def credencial(self, plano=None, so_a_chave=False):
         plano = {} if plano is None else plano
@@ -134,7 +136,7 @@ class ACredencialDaChave(unittest.TestCase):
         self.assertEqual(UmaConta(self).credencial(), da_chave(None))
 
     def test_o_automatico_da_chave_vira_o_primeiro_da_oferta_so_quando_o_do_motor_saiu(self):
-        conta = UmaConta(self, modelo_do_motor="gpt-velho", da_conta=("gpt-4.1", "gpt-4o", "gpt-velho"))
+        conta = UmaConta(self, openai=OpenAIDaConta(("gpt-4.1", "gpt-4o", "gpt-velho"), "gpt-velho"))
         self.assertEqual(conta.credencial(), da_chave("gpt-4o"))
 
     def test_o_modelo_que_a_pessoa_escolheu_vale_se_a_conta_o_oferece(self):
@@ -143,13 +145,13 @@ class ACredencialDaChave(unittest.TestCase):
         self.assertEqual(conta.credencial(), da_chave("gpt-4.1"))
 
     def test_o_modelo_escolhido_que_a_conta_nao_oferece_volta_ao_automatico_e_fica_anotado(self):
-        conta = UmaConta(self, da_conta=("gpt-4o",))
+        conta = UmaConta(self, openai=OpenAIDaConta(("gpt-4o",)))
         conta.escolher("gpt-4.1", CHAVE)
         self.assertEqual(conta.credencial(), da_chave(None))
         self.assertEqual(conta.guardado(), {"escolha": "automatico", "trocou": {"de": "gpt-4.1"}, "paga": CHAVE})
 
     def test_a_chave_que_a_openai_recusa_na_lista_segue_sem_oferta_e_com_a_escolha_da_pessoa(self):
-        conta = UmaConta(self, da_conta=openai_api.ErroDaChave(openai_api.RECUSADA))
+        conta = UmaConta(self, openai=OpenAIDaConta(openai_api.ErroDaChave(openai_api.RECUSADA)))
         conta.escolher("gpt-4.1", CHAVE)
         self.assertEqual(conta.credencial(), da_chave("gpt-4.1"))
 
