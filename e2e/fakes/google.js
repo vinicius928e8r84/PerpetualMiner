@@ -1,6 +1,7 @@
 'use strict';
 
 const { responderJson } = require('./http');
+const { respostaDoLogin } = require('./respostas-do-login');
 
 const RAIZ_DOS_DOCUMENTOS = 'projects/perpetualminer-4c219/databases/(default)/documents';
 const URL_DOS_DOCUMENTOS = `https://firestore.googleapis.com/v1/${RAIZ_DOS_DOCUMENTOS}`;
@@ -26,6 +27,11 @@ function estadoInicial() {
     sessaoExpirada: false,
     quemEstaLogado: 'uid-teste',
     modoDoLogin: 'entrar',
+    pedidosDeLogin: [],
+    pedidosDoPerfil: [],
+    entradasNoFirebase: [],
+    entradaNoFirebaseRecusada: false,
+    perfilIndisponivel: false,
     perfil: { email: 'pessoa@teste.dev', name: 'Pessoa de Teste', picture: '' },
   };
 }
@@ -36,7 +42,10 @@ function criarFakeGoogle() {
   const marcar = campo => (valor = true) => { estado[campo] = valor; };
   const ligar = (campo, valor) => () => { estado[campo] = valor; };
 
-  const responderLogin = (url, req, res) => respostaDoLogin(estado.modoDoLogin)(url, req, res);
+  const responderLogin = (url, req, res) => {
+    estado.pedidosDeLogin.push(Object.fromEntries(url.searchParams));
+    return respostaDoLogin(estado.modoDoLogin)(url, req, res);
+  };
 
   return {
     padrao: /^https:\/\/(firestore|securetoken|identitytoolkit|www)\.googleapis\.com\//,
@@ -62,6 +71,11 @@ function criarFakeGoogle() {
     gravarNoRanking: registros => gravarObjetos(estado.documentos, registros, registro => `ranking/${registro.idioma}_${registro.uid}`),
     autenticarComo: uid => { estado.quemEstaLogado = uid; },
     proximoLogin: modo => { estado.modoDoLogin = modo; },
+    pedidosDeLogin: estado.pedidosDeLogin,
+    pedidosDoPerfil: estado.pedidosDoPerfil,
+    entradasNoFirebase: estado.entradasNoFirebase,
+    recusarEntradaNoFirebase: marcar('entradaNoFirebaseRecusada'),
+    deixarOPerfilIndisponivel: marcar('perfilIndisponivel'),
     usarPerfil: novo => { estado.perfil = { ...estado.perfil, ...novo }; },
     responderLogin,
   };
@@ -79,8 +93,17 @@ function renovarSessao(estado, { route }) {
   return responderJson(route, 200, { id_token: 'token-renovado', refresh_token: 'refresh-renovado', expires_in: '3600' });
 }
 
-const entrarNoFirebase = (estado, { route }) => responderJson(route, 200, { localId: 'uid-teste', idToken: 'token-teste', refreshToken: 'refresh-teste' });
-const responderPerfil = (estado, { route }) => responderJson(route, 200, estado.perfil);
+function entrarNoFirebase(estado, { route, req, url }) {
+  estado.entradasNoFirebase.push({ chave: url.searchParams.get('key'), tipo: req.headers()['content-type'], corpo: req.postDataJSON() });
+  if (estado.entradaNoFirebaseRecusada) return responderJson(route, 400, { error: { message: 'INVALID_IDP_RESPONSE' } });
+  return responderJson(route, 200, { localId: 'uid-teste', idToken: 'token-teste', refreshToken: 'refresh-teste' });
+}
+
+function responderPerfil(estado, { route, req }) {
+  estado.pedidosDoPerfil.push({ autorizacao: req.headers().authorization });
+  if (estado.perfilIndisponivel) return responderJson(route, 401, { error: { message: 'invalid_token' } });
+  return responderJson(route, 200, estado.perfil);
+}
 const servicoDesconhecido = (estado, { route }) => responderJson(route, 404, { error: { message: 'not_found' } });
 
 const SERVICOS_DO_GOOGLE = new Map([
@@ -297,26 +320,6 @@ function tratarRanking(estado, pedido) {
   const operacao = OPERACOES_NO_RANKING.get(pedido.metodo);
   return operacao ? operacao(estado, pedido) : recusar(pedido.route);
 }
-
-function derrubarAPaginaDeLogin(url, req) {
-  req.socket.destroy();
-}
-
-function deixarAJanelaDeLoginEsperando(url, req, res) {
-  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }).end('<h1>Escolha uma conta</h1>');
-}
-
-function voltarParaAExtensaoComOsTokens(url, req, res) {
-  const volta = `${url.searchParams.get('redirect_uri')}#id_token=id-token-teste&access_token=access-token-teste`;
-  res.writeHead(302, { Location: volta }).end();
-}
-
-const RESPOSTAS_DO_LOGIN = new Map([
-  ['falhar', derrubarAPaginaDeLogin],
-  ['janela', deixarAJanelaDeLoginEsperando],
-]);
-
-const respostaDoLogin = modo => RESPOSTAS_DO_LOGIN.get(modo) || voltarParaAExtensaoComOsTokens;
 
 function rotaDoPedidoDaConexao({ metodo, uid, token, fields }, aoResponder) {
   const url = `${URL_DOS_DOCUMENTOS}/usuarios/${encodeURIComponent(uid)}/segredos/openai`;
