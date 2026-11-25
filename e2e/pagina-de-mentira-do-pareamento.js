@@ -49,30 +49,43 @@ function criarIndexedDB() {
   };
 }
 
+const doPedido = (url, opcoes) => ({
+  metodo: opcoes.method || 'GET',
+  caminho: new URL(url).pathname,
+  cabecalhos: Object.fromEntries(Object.entries(opcoes.headers || {}).map(([nome, valor]) => [nome.toLowerCase(), valor])),
+  corpo: opcoes.body,
+});
+
+const daConexaoAntiga = ({ caminho }) => (caminho.startsWith('/pareamento/') ? resposta(404, { error: 'not_found' }) : resposta(200, { estado: 'instalada' }));
+
+async function privadaAssinada(conexao, req, caminho, assinou) {
+  conexao.privadas += 1;
+  let entregue = null;
+  const route = conexao.pareamento.comProva({ request: () => req, fulfill: r => { entregue = r; } }, assinou);
+  await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, caminho }) });
+  return new Response(entregue.body, { status: entregue.status, headers: entregue.headers });
+}
+
+async function daConexaoNova(conexao, { metodo, caminho, cabecalhos, corpo }) {
+  const req = { method: () => metodo, postData: () => corpo ?? null, headers: () => cabecalhos };
+  const doPareamento = conexao.pareamento.responder(metodo, caminho, corpo ? JSON.parse(corpo) : null);
+  if (doPareamento) return resposta(doPareamento.status, doPareamento.json);
+  if (metodo === 'GET' && caminho === '/health') return resposta(200, { ok: true, versao: '0.4.25', perfil: 'Usuário 1' });
+  const assinou = conexao.pareamento.verificar(req, caminho);
+  if (assinou.erro) return resposta(401, { error: assinou.erro });
+  return privadaAssinada(conexao, req, caminho, assinou);
+}
+
 function criarConexao({ navegadores = ['primeiro'], impostor = null, antiga = false } = {}) {
-  const agora = () => new Date();
-  const pareamento = criarPareamento({ agora });
+  const pareamento = criarPareamento({ agora: () => new Date() });
   pareamento.desconectar();
   navegadores.forEach(n => pareamento.parear(n));
   const conexao = { pareamento, vistos: [], privadas: 0, sessao: pareamento.sessao(), reiniciar: null };
   conexao.fetch = async (url, opcoes = {}) => {
-    const caminho = new URL(url).pathname;
-    const metodo = opcoes.method || 'GET';
-    const cabecalhos = Object.fromEntries(Object.entries(opcoes.headers || {}).map(([nome, valor]) => [nome.toLowerCase(), valor]));
-    conexao.vistos.push({ metodo, caminho, cabecalhos, corpo: opcoes.body });
-    if (impostor) return impostor({ metodo, caminho, cabecalhos, corpo: opcoes.body });
-    if (antiga) return caminho.startsWith('/pareamento/') ? resposta(404, { error: 'not_found' }) : resposta(200, { estado: 'instalada' });
-    const req = { method: () => metodo, postData: () => opcoes.body ?? null, headers: () => cabecalhos };
-    const doPareamento = pareamento.responder(metodo, caminho, opcoes.body ? JSON.parse(opcoes.body) : null);
-    if (doPareamento) return resposta(doPareamento.status, doPareamento.json);
-    if (metodo === 'GET' && caminho === '/health') return resposta(200, { ok: true, versao: '0.4.25', perfil: 'Usuário 1' });
-    const assinou = pareamento.verificar(req, caminho);
-    if (assinou.erro) return resposta(401, { error: assinou.erro });
-    conexao.privadas += 1;
-    let entregue = null;
-    const route = pareamento.comProva({ request: () => req, fulfill: r => { entregue = r; } }, assinou);
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, caminho }) });
-    return new Response(entregue.body, { status: entregue.status, headers: entregue.headers });
+    const pedido = doPedido(url, opcoes);
+    conexao.vistos.push(pedido);
+    if (impostor) return impostor({ ...pedido });
+    return antiga ? daConexaoAntiga(pedido) : daConexaoNova(conexao, pedido);
   };
   return conexao;
 }

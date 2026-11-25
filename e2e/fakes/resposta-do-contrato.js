@@ -74,27 +74,35 @@ function chaveDaOpenAIGuardada(estado) {
   };
 }
 
-function criarRespostaDoContrato({ estado, chatgpt, voz, grupos }) {
-  function comOAgora(valor) {
-    if (valor === '<agora>') return estado.agora().toISOString();
-    if (Array.isArray(valor)) return valor.map(comOAgora);
-    if (valor && typeof valor === 'object') return Object.fromEntries(Object.entries(valor).map(([chave, item]) => [chave, comOAgora(item)]));
-    return valor;
-  }
+const ehObjeto = valor => Boolean(valor) && typeof valor === 'object';
 
-  function contextoDeAgora() {
-    return { ...estado.contexto, chaveNaConexao: ultimos4(estado.chaveDaOpenAI), chatgpt: chatgpt.situacao(), voz: voz.situacao() };
-  }
+function comOAgora(valor, agora) {
+  if (valor === '<agora>') return agora().toISOString();
+  if (Array.isArray(valor)) return valor.map(item => comOAgora(item, agora));
+  if (ehObjeto(valor)) return Object.fromEntries(Object.entries(valor).map(([chave, item]) => [chave, comOAgora(item, agora)]));
+  return valor;
+}
+
+const chaveEnviada = corpo => (typeof corpo?.chave === 'string' ? corpo.chave.trim() : null);
+
+function comOEstadoDaChave(json, corpo, estado) {
+  const enviada = chaveEnviada(corpo);
+  if (json.ultimos4 && enviada !== null) json.ultimos4 = ultimos4(enviada);
+  if (json.openai) json.openai = chaveDaOpenAIGuardada(estado);
+  return json;
+}
+
+function criarRespostaDoContrato({ estado, chatgpt, voz, grupos }) {
+  const contextoDeAgora = () => ({ ...estado.contexto, chaveNaConexao: ultimos4(estado.chaveDaOpenAI), chatgpt: chatgpt.situacao(), voz: voz.situacao() });
 
   function respostaDoContrato(metodo, caminho, corpo) {
-    const doPerfil = respostaDosGrupos(grupos(), { metodo, caminho, corpo });
+    const pedido = { metodo, caminho, corpo };
+    const doPerfil = respostaDosGrupos(grupos(), pedido);
     if (doPerfil) return doPerfil;
     const contexto = contextoDeAgora();
-    const exemplo = exemploDoPedido({ metodo, caminho, corpo }, contexto);
-    if (!exemplo) throw new Error(semExemplo({ metodo, caminho, corpo }, contexto));
-    const json = comOAgora(exemplo.resposta.json);
-    if (json.ultimos4 && typeof corpo?.chave === 'string') json.ultimos4 = ultimos4(corpo.chave.trim());
-    if (json.openai) json.openai = chaveDaOpenAIGuardada(estado);
+    const exemplo = exemploDoPedido(pedido, contexto);
+    if (!exemplo) throw new Error(semExemplo(pedido, contexto));
+    const json = comOEstadoDaChave(comOAgora(exemplo.resposta.json, () => estado.agora()), corpo, estado);
     return { status: exemplo.resposta.status, json };
   }
 
