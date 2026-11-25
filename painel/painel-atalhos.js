@@ -46,9 +46,6 @@
       botao.setAttribute('aria-describedby', idDoNome);
       botao.addEventListener('click', () => (estado.gravando === acao ? pararDeGravar() : comecarAGravar(acao)));
 
-      // O leitor de tela só anuncia o que muda numa região que já existe: esta
-      // fica na linha desde o começo, vazia, e ganha o CFG-13 quando a gravação
-      // começa. A pílula na tela é só o desenho do mesmo texto.
       const anuncio = elemento('span', 'cfg-atalho__anuncio');
       anuncio.setAttribute('role', 'status');
 

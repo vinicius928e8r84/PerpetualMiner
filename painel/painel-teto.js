@@ -56,7 +56,6 @@
   function montarOCard() {
     const uso = elemento('small');
     const campo = elemento('input', 'veio-campo');
-    // Texto, não `type=number`: o número do navegador lê “12,50” conforme o idioma do Chrome (em inglês vira 1250).
     Object.assign(campo, { id: 'anki-teto-campo', type: 'text', inputMode: 'decimal', autocomplete: 'off' });
     campo.setAttribute('aria-label', textoDaVoz('BRG-41.campo'));
     const moeda = elemento('span', 'anki-teto-moeda', textoDaVoz('BRG-41.moeda'));

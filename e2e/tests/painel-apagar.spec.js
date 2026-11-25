@@ -2,31 +2,16 @@
 
 const { test, expect } = require('../fixtures');
 const { estadoFinalEm } = require('../estado-final');
+const {
+  PRIMEIRA, SEGUNDA, MUITAS, muitasFrases, idsDas,
+  minerarNaPopup, semearContaComFrases, abrirPainelSincronizado, selecionarTodasAsFrases,
+} = require('../apoio-de-apagar-frases');
 
-const PRIMEIRA = 'The ferry left before the fog had lifted.';
-const SEGUNDA = 'Her notebook was full of borrowed recipes.';
-
-async function minerar(page, textos) {
-  return page.evaluate(lista => Promise.all(lista.map(texto =>
-    chrome.runtime.sendMessage({
-      type: 'SALVAR_HISTORICO',
-      texto,
-      origem: 'manual',
-      idioma: 'Inglês',
-      contexto: { fonte: 'manual', titulo: 'Manual Input', detalhe: '' },
-    }),
-  )), textos);
-}
-
-async function abrirPainelSincronizado(page, extensao, endereco = '') {
-  await page.goto(extensao.url(`painel.html${endereco}`));
-  await expect(page.locator('#shell-chip')).toContainText('Sincronizado');
-}
+const ATE_A_NUVEM_ESVAZIAR = { timeout: 20_000 };
 
 test('com a conta conectada, a frase apagada no painel sai da nuvem e fica no tombstone', async ({ page, extensao, fakes }) => {
   await extensao.semearSessao({ uid: 'uid-painel' });
-  await page.goto(extensao.url('popup/popup.html'));
-  const [apagada] = await minerar(page, [PRIMEIRA, SEGUNDA]);
+  const [apagada] = await minerarNaPopup(page, extensao, [PRIMEIRA, SEGUNDA]);
   await expect.poll(() => fakes.google.frasesDe('uid-painel').length).toBe(2);
 
   await abrirPainelSincronizado(page, extensao);
@@ -40,8 +25,7 @@ test('com a conta conectada, a frase apagada no painel sai da nuvem e fica no to
 
 test('com a conta conectada, "Apagar tudo" no painel apaga todas as frases da nuvem', async ({ page, extensao, fakes }) => {
   await extensao.semearSessao({ uid: 'uid-tudo' });
-  await page.goto(extensao.url('popup/popup.html'));
-  const mineradas = await minerar(page, [PRIMEIRA, SEGUNDA]);
+  const mineradas = await minerarNaPopup(page, extensao, [PRIMEIRA, SEGUNDA]);
   await expect.poll(() => fakes.google.frasesDe('uid-tudo').length).toBe(2);
 
   await abrirPainelSincronizado(page, extensao, '#configuracoes/perigo');
@@ -53,21 +37,9 @@ test('com a conta conectada, "Apagar tudo" no painel apaga todas as frases da nu
   expect(fakes.google.apagadasDe('uid-tudo').sort()).toEqual(mineradas.map(m => String(m.frase.id)).sort());
 });
 
-// A máscara do tombstone vai na URL (`updateMask.fieldPaths`, 46 bytes por frase) e o Firestore recusa a URL acima de
-// 16 KB: com mais de ~350 frases o tombstone não era gravado, e o "Apagar tudo" parava nele sem apagar nada da nuvem.
-const MUITAS = 400;
-const muitasFrases = () => Array.from({ length: MUITAS }, (_, i) => ({
-  id: 1_700_000_000_000 + i, texto: `The lighthouse keeper counted wave number ${i + 1}.`,
-  data: new Date().toLocaleDateString('pt-BR'), streaming: 'manual', idioma: 'Inglês',
-}));
-const idsDas = frases => frases.map(f => String(f.id)).sort();
-const ATE_A_NUVEM_ESVAZIAR = { timeout: 20_000 };
-
 test('com a conta conectada, "Apagar tudo" com 400 frases apaga todas da nuvem e deixa o tombstone de cada uma', async ({ page, extensao, fakes }) => {
   const frases = muitasFrases();
-  await extensao.semearSessao({ uid: 'uid-muitas' });
-  await extensao.gravarStorage({ frases });
-  fakes.google.gravarFrases('uid-muitas', frases);
+  await semearContaComFrases(extensao, fakes, 'uid-muitas', frases);
 
   await abrirPainelSincronizado(page, extensao, '#configuracoes/perigo');
   await page.getByRole('button', { name: `Apagar todas as ${MUITAS} frases` }).click();
@@ -82,13 +54,10 @@ test('com a conta conectada, "Apagar tudo" com 400 frases apaga todas da nuvem e
 
 test('com a conta conectada, apagar 400 frases selecionadas deixa o tombstone de todas na nuvem', async ({ page, extensao, fakes }) => {
   const frases = muitasFrases();
-  await extensao.semearSessao({ uid: 'uid-selecao' });
-  await extensao.gravarStorage({ frases });
-  fakes.google.gravarFrases('uid-selecao', frases);
+  await semearContaComFrases(extensao, fakes, 'uid-selecao', frases);
 
   await abrirPainelSincronizado(page, extensao);
-  await page.getByRole('checkbox', { name: 'Selecionar página' }).check();
-  await page.getByRole('button', { name: `Selecionar todas as ${MUITAS} frases` }).click();
+  await selecionarTodasAsFrases(page, MUITAS);
   await page.locator('#btn-delete-selected').click();
   await page.getByRole('dialog').getByRole('button', { name: `Apagar ${MUITAS} frases` }).click();
   await expect(page.locator('#shell-total')).toHaveText('0');
@@ -98,15 +67,12 @@ test('com a conta conectada, apagar 400 frases selecionadas deixa o tombstone de
 });
 
 test('com a conta conectada e a Conexão sem responder, apagar a seleção inteira tira todas as frases do navegador e da nuvem', async ({ page, extensao, fakes }) => {
-  const frases = muitasFrases().slice(0, 12);
-  await extensao.semearSessao({ uid: 'uid-sem-conexao' });
-  await extensao.gravarStorage({ frases });
-  fakes.google.gravarFrases('uid-sem-conexao', frases);
+  const frases = muitasFrases(12);
+  await semearContaComFrases(extensao, fakes, 'uid-sem-conexao', frases);
   fakes.anki.desligar();
 
   await abrirPainelSincronizado(page, extensao);
-  await page.getByRole('checkbox', { name: 'Selecionar página' }).check();
-  await page.getByRole('button', { name: 'Selecionar todas as 12 frases' }).click();
+  await selecionarTodasAsFrases(page, 12);
   await page.locator('#btn-delete-selected').click();
   await page.getByRole('dialog').getByRole('button', { name: 'Apagar 12 frases' }).click();
   await expect(page.locator('#shell-total')).toHaveText('0');
@@ -116,17 +82,11 @@ test('com a conta conectada e a Conexão sem responder, apagar a seleção intei
   expect(await extensao.frases()).toEqual([]);
 });
 
-// O `chrome.storage.sync` aceita 512 itens, e cada frase apagada é um (`pm_del_{id}`): uma gravação que passava disso
-// era recusada inteira, em silêncio, e nenhum tombstone ficava. Agora ficam os das frases mais novas que cabem.
 test('apagar 520 frases de uma vez deixa no sync do Chrome o tombstone das 500 mais novas', async ({ page, extensao }) => {
-  const frases = Array.from({ length: 520 }, (_, i) => ({
-    id: 1_700_000_000_000 + i, texto: `The lighthouse keeper counted wave number ${i + 1}.`,
-    data: new Date().toLocaleDateString('pt-BR'), streaming: 'manual', idioma: 'Inglês',
-  }));
+  const frases = muitasFrases(520);
   await extensao.gravarStorage({ frases });
   await page.goto(extensao.url('painel.html'));
-  await page.getByRole('checkbox', { name: 'Selecionar página' }).check();
-  await page.getByRole('button', { name: 'Selecionar todas as 520 frases' }).click();
+  await selecionarTodasAsFrases(page, 520);
   await page.locator('#btn-delete-selected').click();
   await page.getByRole('dialog').getByRole('button', { name: 'Apagar 520 frases' }).click();
   await expect(page.locator('#shell-total')).toHaveText('0');

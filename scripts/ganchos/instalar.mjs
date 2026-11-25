@@ -7,8 +7,6 @@ const CAMINHO = 'scripts/ganchos';
 const aqui = path.dirname(fileURLToPath(import.meta.url));
 const git = (...args) => execFileSync('git', args, { cwd: aqui, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
 
-// Só os escopos que ficam gravados (local, global, system): o `-c core.hooksPath=` de quem chamou o git,
-// ou do ambiente (GIT_CONFIG_*), vale para aquele comando e não diz o que o clone escolheu.
 function hooksPathEscolhido() {
   for (const escopo of ['--local', '--global', '--system']) {
     try {
@@ -20,7 +18,6 @@ function hooksPathEscolhido() {
 }
 
 function ganchosQueDeixamDeRodar() {
-  // A pasta padrão, não a que o core.hooksPath aponta (o `--git-path hooks` já obedece a ele).
   const pasta = path.join(path.resolve(aqui, git('rev-parse', '--git-common-dir')), 'hooks');
   if (!fs.existsSync(pasta)) return [];
   return fs.readdirSync(pasta).filter(nome => !nome.endsWith('.sample'));

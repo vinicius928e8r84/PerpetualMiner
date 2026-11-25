@@ -34,7 +34,6 @@ const recusa = (pr, padrao, caso) => {
   return mensagem;
 };
 
-// 1. O corpo segue o modelo do /pr e tem a atenção preenchida.
 function testarCorpoDoModelo() {
   assert.match(passa({}, 'atenção BAIXA com a revisão'), /atenção BAIXA, \/code-review CLEAN$/);
   assert.match(passa({ corpo: corpoCom('Atencao: media') }, 'sem negrito, sem acento, em minúsculas'), /atenção MÉDIA/);
@@ -62,7 +61,6 @@ function testarCorpoDoModelo() {
 recusa({ corpo: corpoCom('Atenção: BAIXA', 'Atenção: ALTA') }, /mais de uma atenção \(BAIXA e ALTA\)/, 'duas atenções');
 recusa({ corpo: corpoCom('Atenção: BAIXA', 'Atenção: talvez ALTA') }, /mais de uma atenção \(BAIXA e talvez ALTA\)/, 'uma atenção certa e outra fora do formato');
 
-// 2. O registro do /code-review do head exato: CLEAN, e o revisor não é o autor. Vale o mais recente com o "Head:" deste head.
 function testarRegistroDaRevisao() {
   const citado = registro => `Discordo, a primeira revisão já tinha dito:\n\n${registro.split('\n').map(linha => `> ${linha}`).join('\n')}`;
   recusa({ registros: [] }, /nenhum comentário ou revisão da PR é o registro do \/code-review/, 'sem registro');
@@ -84,7 +82,6 @@ function testarRegistroDaRevisao() {
   recusa({ registros: [revisao({ autor: 'Sessão A', revisor: '`sessao a`' })] }, /o revisor do registro do \/code-review é o próprio autor/, 'o autor revisando a si mesmo');
 }
 
-// 3. Atenção ALTA (ou o rótulo de risco alto): a seção "Prova real" com a frase e o SHA inteiro do head.
 function testarProvaReal() {
   assert.match(passa({ corpo: ALTA }, 'a prova do head exato'), /atenção ALTA, \/code-review CLEAN, PROVADO 100% REAL$/);
   passa({ corpo: altaCom(`**${FRASE}**`, '', `- Head: \`${HEAD}\``) }, 'a marcação do Markdown em volta não atrapalha');
@@ -123,8 +120,6 @@ function testarModeloDaPR() {
   assert(modelo.includes(ROTULO_DE_RISCO_ALTO), 'o modelo cita o rótulo');
   const comProvaPendente = /^ *(\S+) <URL[^>]*>\n *Prova que falta:/m.exec(modelo);
   assert.strictEqual(comProvaPendente && comProvaPendente[1], 'Closes', 'com a prova real pendente o modelo mostra Closes e a linha Prova que falta: a issue fecha no merge');
-  const regra15 = fs.readFileSync(path.join(RAIZ, 'CODING_STANDARDS.md'), 'utf8').split('\n').find(linha => linha.startsWith('15. '));
-  assert(/pending[^.]*`Closes`/.test(regra15) && !/pending[^.]*`Refs/.test(regra15), 'a regra 15 manda Closes, e não Refs, quando a prova real está pendente');
   assert(modelo.includes('perpetualminer-site') && modelo.includes('sem mudança: <motivo>'), 'o modelo explica a linha Política: o link da PR do site ou sem mudança com o motivo');
 }
 

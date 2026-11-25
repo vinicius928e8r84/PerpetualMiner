@@ -266,7 +266,6 @@
     return numero(deck.vocabulary?.phraseVocabulary ?? deck.uniqueTermTokens ?? deck.uniqueTerms);
   }
 
-  /** Os cartões por maturidade; recentes junta os que estão aprendendo e os jovens do Anki. */
   function maturidadeDoBaralho(deck) {
     return {
       maduros: numero(deck.mature),

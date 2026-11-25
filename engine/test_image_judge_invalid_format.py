@@ -1,5 +1,3 @@
-"""O juiz de imagem fala com a OpenAI por HTTP direto (sem o SDK): o que atravessa a fronteira e o que o juiz devolve."""
-
 import base64
 import json
 import tempfile
@@ -22,7 +20,6 @@ CHAVE = "sk-proj-chave-do-juiz-0000"
 
 
 def juiz_pela_chave(base):
-    """The judge the add-on's IA dos cartões gives the engine without the plan: the request through the bound key, which pays it."""
     presa = provedores.PelaChave(CHAVE, base)
     return SimpleNamespace(julgar=lambda modelo, sistema, conteudo, rotulo: (
         *presa.texto(modelo, sistema, conteudo, temperatura=0, json=True, repeticoes=provedores.REPETICOES_DA_IMAGEM), True))

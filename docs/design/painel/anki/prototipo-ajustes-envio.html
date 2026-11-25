@@ -1,26 +1,4 @@
 <!doctype html>
-<!--
-  PROTÓTIPO DESCARTÁVEL: Painel · Conexão com o Anki · só a aba “Ajustes de envio” (redesenho).
-  Contexto: o PR #78 seguiu o protótipo travado (prototipo-anki.html?variant=C), mas a aba destoa
-  do resto do app. Aqui a mesma aba, três arrumações que falam a língua das outras telas:
-  os mesmos componentes da Base Veio (campo, select, segmentado, botão, aviso, toast, detalhes),
-  o mesmo padrão de card de Configurações e o mesmo controle segmentado de Custos.
-    ?variant=A  Cartões         dois cards recolhíveis, como Configurações (um por idioma)
-    ?variant=B  Um idioma       idioma em controle segmentado, como o período de Custos; imagens
-                                em duas opções com a nota de cada uma; a ideia “baralhos do Anki”
-    ?variant=C  Lado a lado     os dois idiomas de uma vez, sem trocar de azulejo
-  VEREDITO (2026-09-30): A · Cartões, com o Baralho escolhido entre os baralhos do Anki (a ideia da B) e
-  com o nome legível (Inglês › Mineradas). B e C ficam como registro das alternativas.
-  Fixo nas três: a faixa F1 e a nota BRG-33 com a Conexão desligada, o sotaque por nome de lugar
-  no Avançado, o aviso curto de aba desatualizada, só grava em Salvar ajustes.
-  Estados (painel “Estados do protótipo”): Conexão, dados (nada gravado · gravado), baralho
-  inválido, aba desatualizada, salvo (o toast).
-  Cópia: catálogo da Voz (BRG-07, ENV-01, BRG-33). Textos NOVOS (entram no catálogo se uma
-  variante for escolhida): “Alterações não salvas”, “Salvo”, “Tem um nível vazio…”, e na B a
-  ideia “Baralhos no Anki”.
-  Este arquivo é gerado: CSS e JS da Base vêm inline do repositório, para abrir direto no navegador.
-  Teclas: ← → trocam a variante · T alterna o tema.
--->
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
@@ -29,23 +7,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
-/* ── veio/tokens.css ── */
-/* ─────────────────────────────────────────────────────────────────────────
-   Base Veio · tokens de cor, tipo, raio e movimento.
-
-   Este é o único lugar onde a identidade mora. Toda página da extensão
-   (painel, popup, Minerar de uma foto) inclui este arquivo, e nenhuma cor
-   nova é escrita fora dele. A fundação travada é a variante F do protótipo
-   em docs/design/identidade-veio/.
-
-   O tema escuro é o padrão. O claro entra com data-tema="claro" no <html>, que
-   é o que veio/tema.js grava a partir da escolha em Configurações › Aparência.
-   ───────────────────────────────────────────────────────────────────────── */
-
-/* ── Fontes empacotadas (latin + cyrillic) ────────────────────────────────
-   Nada vem do Google Fonts em runtime: os .woff2 estão em veio/fontes/.
-   São arquivos variáveis, então um arquivo por subset cobre toda a escala
-   de pesos. */
 
 
 
@@ -54,11 +15,6 @@
 
 
 
-
-/* ── Tema escuro (padrão) ─────────────────────────────────────────────────
-   O tema vale para a página inteira pelo <html>, e também para um trecho
-   marcado com data-tema (é assim que a vitrine mostra os dois lado a lado e
-   que o overlay fica escuro dentro do Shadow DOM). */
 
 :root,
 [data-tema="escuro"] {
@@ -80,30 +36,21 @@
   --veio-danger: #FF7A66;
   --veio-info: #86BDF2;
 
-  /* Fundos suaves de estado: o próprio token entre 8% e 18% de opacidade. */
   --veio-accent-soft: rgba(245, 184, 61, .14);
   --veio-success-soft: rgba(111, 207, 142, .14);
   --veio-danger-soft: rgba(255, 122, 102, .14);
   --veio-info-soft: rgba(134, 189, 242, .14);
 
-  /* Fundo do modal e sombra das camadas que flutuam (modal, toast, aviso). */
   --veio-scrim: rgba(0, 0, 0, .55);
   --veio-sombra: 0 18px 40px -12px rgba(0, 0, 0, .6);
-  /* A sombra suave das ilhas do Painel (sidebar e conteúdo), que não flutuam. */
   --veio-sombra-ilha: 0 10px 30px rgba(0, 0, 0, .35);
-  /* O brilho ouro da linha que o overlay desenha sob o texto capturado (sempre no tema escuro). */
   --veio-brilho-da-linha: 0 0 12px rgba(245, 184, 61, .55);
 
-  /* O fio de luz no topo do botão primário, que dá o relevo do protótipo. */
   --veio-brilho: rgba(255, 255, 255, .35);
 
-  /* O avatar com a inicial do nome (chip de conta e card Conta & sync): o
-     degradê bronze e a letra clara do shell travado. São os mesmos nos dois
-     temas, então o claro não os redefine. */
   --veio-avatar-fundo: linear-gradient(135deg, #8A6A2A, #3A2F1C);
   --veio-avatar-tinta: #F2EEE6;
 
-  /* ── Tipografia ── */
   --veio-fonte-ui: 'Manrope', system-ui, sans-serif;
   --veio-fonte-display: 'Manrope', system-ui, sans-serif;
   --veio-fonte-frase: 'Manrope', system-ui, sans-serif;
@@ -118,13 +65,9 @@
   --veio-tam-frase: 15px;
   --veio-tam-destaque: 16px;
   --veio-tam-corpo: 13.5px;
-  /* Resumo e textos de apoio dos cards de Configurações, os botões pequenos
-     dentro deles e os controles da linha de filtros de Frases (o 12,5 das
-     specs de Configurações e de Frases). */
   --veio-tam-apoio: 12.5px;
   --veio-tam-legenda: 11.5px;
   --veio-tam-tecla: 11px;
-  /* A tecla no resumo fechado de Atalhos (Configurações), maior que a do popup. */
   --veio-tam-tecla-resumo: 12px;
   --veio-tam-micro: 10.5px;
 
@@ -138,14 +81,10 @@
   --veio-tracking-legenda: 0.14em;
   --veio-altura-frase: 1.5;
 
-  /* ── Forma ── */
-  /* O losango que abre o título de seção do popup. */
   --veio-raio-losango: 2px;
-  /* A ponta arredondada da linha ouro que o overlay desenha sob o texto capturado. */
   --veio-raio-linha: 2px;
   --veio-raio-checkbox: 6px;
   --veio-raio-tecla: 5px;
-  /* A tecla (kbd) como a desenham os protótipos de Frases e de Configurações. */
   --veio-raio-tecla-resumo: 8px;
   --veio-raio-icone: 10px;
   --veio-raio-input: 12px;
@@ -154,15 +93,11 @@
   --veio-raio-selecao: 22px;
   --veio-raio-pilula: 999px;
 
-  /* ── Movimento ── */
   --veio-piscar: 1.1s;
   --veio-esqueleto: 1.2s;
   --veio-transicao: 150ms;
-  /* A borda ouro que pisca no card aberto por endereço (#configuracoes/<seção>). */
   --veio-destaque: 1.4s;
 }
-
-/* ── Tema claro (escolhido em Configurações › Aparência) ──────────────── */
 
 :root[data-tema="claro"],
 [data-tema="claro"] {
@@ -196,16 +131,9 @@
   --veio-brilho: rgba(255, 255, 255, .55);
 }
 
-/* ── A marca ──────────────────────────────────────────────────────────────
-   O cristal e o nome com o cursor ouro. O cursor é a única animação
-   ambiente da identidade: pisca a cada 1,1 s e fica parado com movimento
-   reduzido. */
-
 .veio-marca {
   flex: none;
   border-radius: var(--veio-raio-icone);
-  /* No claro, o cristal vai para o azulejo claro (icones/icone-claro.svg); o
-     src do <img> continua o escuro, que é o que vale sem este CSS. */
   content: var(--veio-marca);
 }
 
@@ -241,18 +169,10 @@
   }
 }
 
-/* ── Foco visível ─────────────────────────────────────────────────────────
-   Todo controle mostra onde o teclado está. Vale como base: uma superfície
-   pode desenhar o próprio foco, nunca apagá-lo. */
-
 :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
   outline: 2px solid var(--veio-accent);
   outline-offset: 2px;
 }
-
-/* ── Movimento reduzido ───────────────────────────────────────────────────
-   Pulsar, piscar e flash ficam estáticos em qualquer página da extensão,
-   inclusive nas telas que ainda não foram reconstruídas. */
 
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -264,40 +184,12 @@
   }
 }
 
-/* ── Troca de tema ────────────────────────────────────────────────────────
-   A troca de tema não anima (spec de Configurações › Aparência). Os
-   componentes transicionam fundo, cor e borda, e sem esta regra a tela
-   inteira faria um cross-fade ao trocar. veio/tema.js marca o <html> só
-   enquanto as cores novas pintam, e as transições voltam logo depois, para
-   o que a pessoa fizer na tela. */
-
 [data-trocando-tema],
 [data-trocando-tema] *,
 [data-trocando-tema] *::before,
 [data-trocando-tema] *::after {
   transition: none !important;
 }
-
-/* ── veio/componentes.css ── */
-/* ─────────────────────────────────────────────────────────────────────────
-   Base Veio · componentes.
-
-   Os componentes existem uma vez só, aqui. Toda página da extensão inclui
-   este arquivo depois de tokens.css, e cada tela monta a sua interface com
-   estas classes em vez de redesenhar botão, campo e selo.
-
-   Nenhuma cor é escrita aqui: tudo vem dos tokens. A fundação travada é a
-   variante F do protótipo em docs/design/identidade-veio/.
-
-   O comportamento que precisa de JavaScript (modal, toast, grifo da Palavra)
-   mora em componentes.js.
-   ───────────────────────────────────────────────────────────────────────── */
-
-/* ── Botões ───────────────────────────────────────────────────────────────
-   Pílula em todas as variantes; só-ícone é circular. O ouro é da ação
-   primária: cada tela tem uma só. O perigo tem duas variantes — contorno
-   para a entrada que abre o modal destrutivo, preenchido só para o botão
-   que confirma dentro dele. */
 
 .veio-botao {
   display: inline-flex;
@@ -339,7 +231,6 @@
   color: var(--veio-text);
 }
 
-/* O botão comum do Painel: contorno, sem fundo; o acento aparece no hover. */
 .veio-botao--contorno {
   background: transparent;
   border-color: var(--veio-border-strong);
@@ -365,21 +256,16 @@
   width: 100%;
 }
 
-/* Compacto: o botão dentro de uma barra ou pílula, onde a altura é apertada. */
 .veio-botao--compacto {
   padding: 6px 12px;
   font-size: var(--veio-tam-apoio);
 }
 
-/* Perigo sem contorno: a entrada destrutiva onde uma borda vermelha pesaria
-   demais (a barra contextual da seleção, cheia de ações lado a lado). */
 .veio-botao--perigo-fantasma {
   background: transparent;
   color: var(--veio-danger);
 }
 
-/* Link: a ação secundária que se oferece no meio de um texto, como o
-   “Selecionar todas as N frases” da barra contextual. */
 .veio-botao--link {
   padding: 0;
   border: 0;
@@ -400,7 +286,6 @@
   background: var(--veio-danger-soft);
 }
 
-/* Só-ícone: círculo, sempre com aria-label, porque não tem texto. */
 .veio-botao-icone {
   display: inline-grid;
   place-items: center;
@@ -429,7 +314,6 @@
   color: var(--veio-danger);
 }
 
-/* aria-disabled: indisponível, mas ainda focável, para a dica dizer por quê. */
 .veio-botao:disabled,
 .veio-botao-icone:disabled,
 .veio-botao[aria-disabled="true"] {
@@ -437,12 +321,6 @@
   cursor: not-allowed;
   box-shadow: none;
 }
-
-/* ── Dica ─────────────────────────────────────────────────────────────────
-   O porquê de um controle indisponível: um `role="tooltip"` irmão do botão,
-   dentro de `.veio-com-dica`, ligado a ele por aria-describedby. Aparece no
-   hover e no foco pelo teclado (:focus-visible, para um clique não deixar a
-   dica presa), só enquanto o botão está aria-disabled. */
 
 .veio-com-dica {
   position: relative;
@@ -471,11 +349,6 @@
 .veio-com-dica:has([aria-disabled="true"]:focus-visible) > .veio-dica {
   display: block;
 }
-
-/* ── Campos ───────────────────────────────────────────────────────────────
-   A borda border-strong é o que garante os 3:1 do contorno de controle:
-   nenhum campo fica sem borda. O erro é dito pelo aria-invalid, então a
-   cor segue o atributo e não uma classe solta. */
 
 .veio-campo {
   width: 100%;
@@ -519,7 +392,6 @@ textarea.veio-campo {
   line-height: 1.45;
 }
 
-/* Número: o limite diário. Mono, porque é número. */
 input[type="number"].veio-campo {
   font-family: var(--veio-fonte-mono);
   font-weight: var(--veio-peso-num);
@@ -531,9 +403,6 @@ select.veio-campo {
   padding-right: 30px;
 }
 
-/* O select mora num `.veio-select`, que desenha a seta: o chevron fino do
-   protótipo (12 px, traço 2,5 no desenho de 24), recortado por máscara e
-   pintado com `muted`, para nenhuma cor sair dos tokens. */
 .veio-select {
   position: relative;
   display: flex;
@@ -558,7 +427,6 @@ select.veio-campo {
   opacity: .5;
 }
 
-/* A mensagem de erro do campo, logo abaixo dele. */
 .veio-campo-erro {
   margin: 6px 0 0;
   color: var(--veio-danger);
@@ -566,7 +434,6 @@ select.veio-campo {
   font-weight: 600;
 }
 
-/* Busca: ícone à esquerda e × à direita, que só aparece com texto. */
 .veio-busca {
   position: relative;
   display: block;
@@ -589,7 +456,6 @@ select.veio-campo {
   padding-right: 34px;
 }
 
-/* O ícone da lupa pode vir dentro de um lugar (um <span> que o recebe). */
 .veio-busca__lupa svg {
   display: block;
   width: 100%;
@@ -608,10 +474,6 @@ select.veio-campo {
 .veio-busca__limpar[hidden] {
   display: none;
 }
-
-/* ── Toggle ───────────────────────────────────────────────────────────────
-   Trilho de 40×24 com botão redondo. Ligado = trilho accent e botão
-   accent-ink. O <input> continua existindo para o leitor de tela. */
 
 .veio-toggle {
   display: inline-flex;
@@ -658,8 +520,6 @@ select.veio-campo {
   border-color: var(--veio-accent);
 }
 
-/* O trilho de 40 é border-box em qualquer página, então tem 38 por dentro: o
-   botão de 18 em 18px deixa 2px de cada lado, igual ao desligado. */
 .veio-toggle input:checked + .veio-toggle__trilho::after {
   left: 18px;
   background: var(--veio-accent-ink);
@@ -674,11 +534,6 @@ select.veio-campo {
   opacity: .5;
   cursor: not-allowed;
 }
-
-/* ── Checkbox ─────────────────────────────────────────────────────────────
-   Desenhado, não o nativo: quadrado de raio 6 com borda forte; marcado, ele
-   se enche de acento com o visto. O estado misto (parte da lista
-   selecionada) é o indeterminate, com um traço no lugar do visto. */
 
 .veio-checkbox {
   appearance: none;
@@ -700,7 +555,6 @@ select.veio-campo {
   background: var(--veio-accent);
 }
 
-/* O visto: um L girado, na cor de tinta do acento. */
 .veio-checkbox:checked::after {
   content: "";
   width: 8px;
@@ -711,7 +565,6 @@ select.veio-campo {
   transform: rotate(-45deg) translate(1px, -1px);
 }
 
-/* Parte da lista marcada: um traço. */
 .veio-checkbox:indeterminate::after {
   content: "";
   width: 8px;
@@ -723,10 +576,6 @@ select.veio-campo {
   opacity: .5;
   cursor: not-allowed;
 }
-
-/* ── Selos ────────────────────────────────────────────────────────────────
-   Fonte (de onde a frase veio) é neutro e nunca usa a cor da marca de
-   terceiro. Estado usa a cor semântica. */
 
 .veio-selo {
   display: inline-flex;
@@ -772,7 +621,6 @@ select.veio-campo {
   color: var(--veio-danger);
 }
 
-/* Concluído em parte: o acento suave (um Envio que ainda pode continuar). */
 .veio-selo--parte {
   background: var(--veio-accent-soft);
   color: var(--veio-accent-text);
@@ -785,7 +633,6 @@ select.veio-campo {
   color: var(--veio-accent-text);
 }
 
-/* Em andamento: o ponto pisca (parado com movimento reduzido, lá embaixo). */
 .veio-selo--lendo .veio-selo__ponto {
   animation: veio-piscar var(--veio-piscar) steps(1) infinite;
 }
@@ -797,10 +644,6 @@ select.veio-campo {
   border-radius: 50%;
   background: currentColor;
 }
-
-/* ── kbd ──────────────────────────────────────────────────────────────────
-   O atalho gravado. Sem atalho gravado (GLB-02), a tecla dá lugar ao kbd
-   tracejado "Sem atalho", que diz que o lugar existe e está vazio. */
 
 .veio-kbd {
   display: inline-block;
@@ -816,7 +659,6 @@ select.veio-campo {
   line-height: 1.5;
 }
 
-/* Uma tecla por kbd, com o + entre elas (montarTeclas). */
 .veio-teclas {
   display: inline-flex;
   align-items: baseline;
@@ -834,11 +676,6 @@ select.veio-campo {
   background: transparent;
   color: var(--veio-muted);
 }
-
-/* ── Controle segmentado ──────────────────────────────────────────────────
-   Um grupo de rádios que parece um só controle (Hoje · Este mês · Tudo). A
-   opção escolhida usa a regra de seleção: acento suave e borda de acento,
-   nunca uma barra lateral. */
 
 .veio-segmentado {
   display: inline-flex;
@@ -886,10 +723,6 @@ select.veio-campo {
   cursor: not-allowed;
 }
 
-/* ── Azulejo ──────────────────────────────────────────────────────────────
-   O cartão de número: idioma, contador, medidor. Escolhido = borda de
-   acento a 45% e fundo com 5% de acento. */
-
 .veio-azulejo {
   display: grid;
   gap: 8px;
@@ -935,11 +768,6 @@ select.veio-campo {
   background: var(--veio-accent);
 }
 
-/* ── Modal ────────────────────────────────────────────────────────────────
-   Confirmação destrutiva e fim de envio; nunca o confirm() do navegador. O
-   comportamento (foco inicial, foco preso, Esc, clique fora) está em
-   componentes.js. */
-
 .veio-scrim {
   position: fixed;
   inset: 0;
@@ -966,8 +794,6 @@ select.veio-campo {
   box-shadow: var(--veio-sombra);
 }
 
-/* O × no canto: o modal é `position: relative` para ele. O rótulo vem do
-   catálogo (PAI-34), como o resto da cópia. */
 .veio-modal {
   position: relative;
 }
@@ -1007,10 +833,6 @@ select.veio-campo {
   font-size: var(--veio-tam-legenda);
   text-align: right;
 }
-
-/* ── Toast ────────────────────────────────────────────────────────────────
-   Só sucesso curto, sem ação: some sozinho. Erro que pede ação é o aviso
-   persistente abaixo. */
 
 .veio-toasts {
   position: fixed;
@@ -1052,10 +874,6 @@ select.veio-campo {
   from { opacity: 0; transform: translateY(6px); }
 }
 
-/* ── Aviso persistente ────────────────────────────────────────────────────
-   Todo erro que pede ação: fica no lugar do problema até ser resolvido ou
-   fechado, com a ação ao lado e a causa técnica num Detalhes recolhido. */
-
 .veio-aviso {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -1073,7 +891,6 @@ select.veio-campo {
   line-height: 1.45;
 }
 
-/* O ícone do começo do texto, na linha: o do erro em perigo. */
 .veio-aviso__texto > svg {
   width: 16px;
   height: 16px;
@@ -1082,7 +899,6 @@ select.veio-campo {
   vertical-align: -3px;
 }
 
-/* O tom que só informa: neutro, e o ícone em ouro. */
 .veio-aviso--info {
   border-color: var(--veio-border);
   background: var(--veio-surface-2);
@@ -1124,8 +940,6 @@ select.veio-campo {
   user-select: text;
 }
 
-/* Só para o leitor de tela: o texto continua sendo o nome do controle, mas sai
-   da tela (a sidebar do Painel ainda tem a cópia dela desta regra). */
 .veio-so-leitor {
   position: absolute;
   width: 1px;
@@ -1134,10 +948,6 @@ select.veio-campo {
   clip-path: inset(50%);
   white-space: nowrap;
 }
-
-/* ── Esqueleto ────────────────────────────────────────────────────────────
-   O lugar do conteúdo enquanto ele não chega, em espera curta e sem texto.
-   O brilho é sinal de estado: para com movimento reduzido. */
 
 .veio-esqueleto {
   height: 12px;
@@ -1153,10 +963,6 @@ select.veio-campo {
   from { background-position: -180px 0; }
   to { background-position: calc(100% + 180px) 0; }
 }
-
-/* ── Estado vazio ─────────────────────────────────────────────────────────
-   No lugar do conteúdo, quando não há nada a mostrar (C1). Ele ensina o que
-   fazer, e leva a ação junto quando existe uma: "Limpar busca" em PAI-04. */
 
 .veio-vazio {
   display: grid;
@@ -1189,13 +995,7 @@ select.veio-campo {
   line-height: 1.5;
 }
 
-/* ── Linha de frase ───────────────────────────────────────────────────────
-   Checkbox, texto com a Palavra grifada, Contexto (Fonte · Título ·
-   Detalhe), chip da Palavra, estado e as ações só-ícone. */
-
 .veio-frase {
-  /* O fundo do cartão, uma variável só dele (não é token: guarda um token); o
-     selecionado mistura o acento sobre ela. */
   --_fundo: var(--veio-surface);
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -1211,8 +1011,6 @@ select.veio-campo {
   margin-top: 3px;
 }
 
-/* O cartão dentro de uma ilha `surface` (a lista de Frases): fundo `bg`, e a
-   borda firma ao passar o mouse. */
 .veio-frase--na-ilha {
   --_fundo: var(--veio-bg);
 }
@@ -1249,8 +1047,6 @@ select.veio-campo {
   gap: 2px;
 }
 
-/* A Palavra que o cartão ensina: uma faixa de marca-texto que cobre de 50% a
-   94% da altura da linha, atrás do texto, sem raio. */
 .veio-palavra {
   padding: 0 1px;
   border-radius: 0;
@@ -1263,7 +1059,6 @@ select.veio-campo {
   color: var(--veio-kw-fg);
 }
 
-/* A frase em que cada palavra é clicável: clicar grifa ou desgrifa a Palavra. */
 .veio-palavra-clicavel {
   cursor: pointer;
 }
@@ -1272,7 +1067,6 @@ select.veio-campo {
   background: var(--veio-accent-soft);
 }
 
-/* O chip diz de onde a Palavra veio: "palavra:" escolhida, "auto:" detectada. */
 .veio-chip-palavra {
   display: inline-flex;
   align-items: center;
@@ -1309,8 +1103,6 @@ select.veio-campo {
   background: var(--veio-border);
 }
 
-/* As ações do chip da Palavra: × dentro dele remove, + ao lado começa outro
-   grupo. */
 .veio-chip-palavra .veio-botao-icone {
   width: 20px;
   height: 20px;
@@ -1340,18 +1132,12 @@ select.veio-campo {
   color: var(--veio-text);
 }
 
-/* O cartão enquanto a lista carrega: um bloco de esqueleto do tamanho de um
-   cartão, sem texto e sem borda (o `.veio-esqueleto` traz o brilho). */
 .veio-frase-esqueleto {
   height: 74px;
   margin-bottom: 8px;
   border-radius: var(--veio-raio-card);
   opacity: .7;
 }
-
-/* ── Anel de progresso ─────────────────────────────────────────────────────
-   O “N de 6” do lembrete da configuração (ONB-14, ONB-15), em ouro sobre o
-   trilho. Só desenho: o número está no texto ao lado. */
 
 .veio-anel {
   flex: none;
@@ -1373,12 +1159,6 @@ select.veio-campo {
   stroke-linecap: round;
 }
 
-/* ── Movimento reduzido ───────────────────────────────────────────────────
-   O brilho do esqueleto, a entrada do toast e o ponto do selo “Lendo…” são
-   sinais de estado: com movimento reduzido eles aparecem parados, e o
-   conteúdo continua legível. (tokens.css já encurta toda animação; aqui elas
-   somem de vez.) */
-
 @media (prefers-reduced-motion: reduce) {
   .veio-esqueleto {
     animation: none;
@@ -1391,7 +1171,6 @@ select.veio-campo {
   }
 }
 
-/* ── painel.css (só as regras que esta aba usa) ── */
 *,
 *::before,
 *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1938,7 +1717,6 @@ body {
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0);    }
 }
-/* ── só do protótipo ── */
 body{min-height:100vh;margin:0}
 .pm-ilha{max-width:1000px;margin:24px auto;padding:24px 28px 40px;border:1px solid var(--veio-border);border-radius:var(--veio-raio-painel);background:var(--veio-surface);box-shadow:var(--veio-sombra-ilha)}
 .pm-ilha .shell-cabecalho{margin-bottom:14px}
@@ -1970,7 +1748,6 @@ body{min-height:100vh;margin:0}
 .cfg-corpo .pm-acoes .veio-botao{padding:5px 12px}
 .cfg-card .cfg-corpo{padding-left:62px}
 .ajustes-aviso:empty{display:none}
-/* painel de estados (só do protótipo) */
 .proto{font-family:system-ui,sans-serif}
 .pm-painel{position:fixed;right:14px;bottom:14px;z-index:50;width:260px;padding:12px;border-radius:12px;background:#fff;color:#111;font:12px/1.4 system-ui,sans-serif;box-shadow:0 8px 30px rgba(0,0,0,.4)}
 .pm-painel summary{cursor:pointer;font-weight:700}
@@ -2015,24 +1792,12 @@ body{min-height:100vh;margin:0}
 <script>
 'use strict';
 
-// O catálogo da Voz como dado.
 //
-// Cada entrada é o texto aprovado, ou um objeto com as partes daquele estado
-// (título, corpo, botões, rótulos). A busca por ID e a interpolação ficam em
-// `lib/voz/texto.js`; aqui só mora a cópia.
 //
-// Modelos:
-//   {nome}                  troca pelo valor. Número vira PT-BR ("1.284").
-//   {n|singular|plural}     escolhe pelo valor de `n` (|n| === 1 → singular).
 //
-// Onde a cópia mostra um atalho ("Alt+S"), o valor entra por `{atalho}`: a tela
-// mostra o atalho que estiver gravado, e sem nenhum usa GLB-02.
-// Onde ela mostra um idioma, o valor entra por `{idioma}` — maiúscula nos selos
-// ("Inglês") e minúscula no meio da frase ("em inglês"), como a cópia pede.
 
 (function (raiz) {
   const CATALOGO_DA_VOZ = {
-    // ─── Popup ───────────────────────────────────────────────────────────────
     'POP-01': '',
     'POP-02': {
       titulo: 'Nenhuma frase ainda',
@@ -2075,7 +1840,6 @@ body{min-height:100vh;margin:0}
       gravacao: 'Não deu para salvar a mudança. Tente de novo.',
     },
 
-    // ─── Minerar na página (componente de feedback) ───────────────────────────
     'MIN-01': 'Frase minerada e copiada',
     'MIN-02': 'Frase minerada',
     'MIN-03': {
@@ -2108,7 +1872,6 @@ body{min-height:100vh;margin:0}
       etiquetaNoLimite: 'Mineração automática: limite de hoje atingido',
     },
 
-    // ─── Minerar de uma foto ─────────────────────────────────────────────────
     'FOT-01': {
       titulo: 'Minerar de uma foto',
       subtitulo: 'Tire uma foto da página com os trechos marcados e escolha quais frases minerar.',
@@ -2207,7 +1970,6 @@ body{min-height:100vh;margin:0}
       comoAparecem: 'As frases aparecem aqui, agrupadas por foto.',
     },
 
-    // ─── Painel · Shell ──────────────────────────────────────────────────────
     'SHL-01': {
       rotulo: 'Navegação do painel',
       frases: 'Frases',
@@ -2242,7 +2004,6 @@ body{min-height:100vh;margin:0}
     },
     'SHL-06': 'Atualizar',
 
-    // ─── Painel · Frases ─────────────────────────────────────────────────────
     'PAI-01': '',
     'PAI-02': {
       titulo: 'Nenhuma frase ainda.',
@@ -2378,7 +2139,6 @@ body{min-height:100vh;margin:0}
     },
     'PAI-34': 'Fechar',
 
-    // ─── Painel · Minerar frases (Colar · Arquivo .txt · Foto) ───────────────
     'ADD-01': {
       botao: 'Minerar frases',
       colar: 'Colar',
@@ -2423,7 +2183,6 @@ body{min-height:100vh;margin:0}
       fechar: 'Fechar',
     },
 
-    // ─── Envio ao Anki ───────────────────────────────────────────────────────
     'ENV-01': {
       aviso: 'A conexão com o Anki está desligada. Ligue-a neste computador e tente de novo.',
       tentarDeNovo: 'Tentar de novo',
@@ -2492,7 +2251,6 @@ body{min-height:100vh;margin:0}
     },
     'ENV-15': 'Pode fechar: o resumo abre quando o envio terminar.',
 
-    // ─── Painel · Conexão com o Anki ─────────────────────────────────────────
     'BRG-01': {
       ligada: 'Conexão com o Anki: ligada',
       desligada: 'Conexão com o Anki: desligada',
@@ -2703,7 +2461,6 @@ body{min-height:100vh;margin:0}
       texto: 'Fecha o Anki travado neste computador e abre de novo no perfil configurado. Use quando os baralhos não carregam.',
     },
 
-    // ─── Configurações · Conta & sync · Atalhos · Chave · Zona de perigo ─────
     'CFG-01': 'Sincronizando…',
     'CFG-02': 'Sincronizado {quando}',
     'CFG-03': {
@@ -2821,7 +2578,6 @@ body{min-height:100vh;margin:0}
       minerarSelecao: 'Minera o texto que você selecionou na página.',
     },
 
-    // ─── Boas-vindas (primeira execução) ─────────────────────────────────────
     'ONB-01': {
       titulo: 'Boas-vindas ao PerpetualMiner',
       corpo: 'Minere frases de vídeos, páginas e fotos de livros, e envie ao Anki como cartões. Seis passos rápidos deixam tudo pronto; os opcionais dá para pular.',
@@ -2834,8 +2590,6 @@ body{min-height:100vh;margin:0}
       passo: 'Passo {n} de {total}',
       passoOpcional: 'Passo {n} de {total} · opcional',
       opcional: 'opcional',
-      // A lista ao lado do card: o nome dela para o leitor de tela, a abertura
-      // e o título de cada passo (Tudo pronto é o ONB-12.titulo).
       lista: 'Passos da configuração',
       abertura: 'Boas-vindas',
       minerar: 'Minerar a primeira frase',
@@ -2854,7 +2608,6 @@ body{min-height:100vh;margin:0}
       video: 'Num vídeo com legenda, aperte {atalho}. A frase vai para o histórico e já fica copiada.',
       selecao: 'Numa página ou PDF, selecione o texto e use o botão direito › Minerar com PerpetualMiner.',
       colar: 'Ou cole uma frase aqui, como no popup:',
-      // A ilustração estática da legenda marcada (só desenho, escondida do leitor de tela).
       exemplo: 'I never take it for granted.',
       exemploPalavra: 'take it for granted',
     },
@@ -2886,7 +2639,6 @@ body{min-height:100vh;margin:0}
       feito: 'feito',
       agoraNao: 'agora não',
       falta: 'falta',
-      // O valor de um passo feito, no resumo (o 1 é PAI-05, o 2 o atalho, o 3 o nome da conta).
       ligada: 'ligada',
       salva: 'salva',
     },
@@ -2908,9 +2660,6 @@ body{min-height:100vh;margin:0}
       copiar: 'Copiar',
       copiado: 'Comandos copiados',
       naoCopiou: 'Não deu para copiar. Selecione o texto e copie.',
-      // O desenho B (docs/design/painel/anki/prototipo-primeira-conexao.html, #74):
-      // uma linha de apoio sob o título, o nome de cada passo na lista, o passo 1
-      // esperando a Conexão, a conferência sozinha e os dois quadros do rodapé.
       apoio: 'A Conexão com o Anki roda neste computador, ao lado do Anki, e é ela que cria os cartões.',
       passo1Titulo: 'Abrir o Anki',
       passo2Titulo: 'Instalar a Conexão com o Anki',
@@ -2926,7 +2675,6 @@ body{min-height:100vh;margin:0}
       prontoApoio: 'As abas voltam em seguida.',
     },
 
-    // ─── Global ──────────────────────────────────────────────────────────────
     'GLB-01': 'Algo deu errado. Tente de novo.',
     'GLB-02': {
       semAtalho: 'Sem atalho',
@@ -2939,31 +2687,14 @@ body{min-height:100vh;margin:0}
 
 'use strict';
 
-// A busca no catálogo da Voz: `textoDaVoz('FOT-07', { n: 2, total: 5 })`.
 //
-// Carregado pelas páginas, pelo service worker e pelo content script, sempre
-// depois de `lib/voz/catalogo.js`.
 //
-// O nome é `textoDaVoz`, e não `texto`, porque `texto` já é o texto da Frase em
-// todo o código: um global com esse nome ficaria escondido dentro de quase toda
-// função, e a chamada quebraria calada.
 //
-// Um ID que não está no catálogo, uma parte que não existe e um valor que falta
-// param na hora com erro. A tela nunca fica com um texto vazio sem querer: só as
-// entradas que são silêncio deliberado no catálogo devolvem "".
 
 (function (raiz) {
   const NUMERO_PT_BR = new Intl.NumberFormat('pt-BR');
   const MODELO = /\{([^{}]+)\}/g;
 
-  /**
-   * O texto do catálogo, com os valores no lugar.
-   *
-   * @param {string} id     'MIN-08', ou 'PAI-12.titulo' para uma parte do estado.
-   * @param {object} valores Os valores dos modelos. Número vira PT-BR ("1.284");
-   *                         string entra como está.
-   * @returns {string}
-   */
   function textoDaVoz(id, valores = {}) {
     return preencher(modeloDe(id), valores, id);
   }
@@ -3012,41 +2743,19 @@ body{min-height:100vh;margin:0}
 
 'use strict';
 
-// Base Veio · o comportamento dos componentes que não cabe no CSS.
 //
-// Carregado por toda página da extensão depois de veio/componentes.css, e
-// pendurado em `PerpetualMiner.Veio`, como o resto da base compartilhada:
 //
-//   const { abrirModal, mostrarToastDeSucesso } = PerpetualMiner.Veio;
 //
-// A cópia não mora aqui: quem chama passa o texto já buscado no catálogo da
-// Voz (`textoDaVoz('PAI-13.titulo', { n })`).
 
 (function (raiz) {
-  /**
-   * As três palavras que a base escreve por conta própria.
-   *
-   * Elas não têm ID no catálogo porque não são estado de tela nenhuma: são
-   * nomes de padrão, fixados fora dele.
-   *
-   * - `palavra:` e `auto:` são o chip da Palavra, e o vocabulário está travado
-   *   no glossário (CONTEXT.md): "o chip diz `palavra: …` quando foi escolhida
-   *   e `auto: …` quando foi detectada". "keyword" nunca aparece na tela.
-   * - `Detalhes` é o nome do recolhido onde a causa técnica vai morar, dado
-   *   pela regra V3 da Voz.
-   *
-   * Qualquer outro texto vem de quem chama, já buscado no catálogo.
-   */
   const ROTULOS_DO_PADRAO = {
     palavraEscolhida: 'palavra:',
     palavraDetectada: 'auto:',
     detalhes: 'Detalhes',
   };
 
-  /** Toast curto: nunca menos que isso, mesmo numa palavra só. */
   const DURACAO_MINIMA_DO_TOAST = 2600;
 
-  /** Tempo de leitura por caractere, somado ao mínimo. */
   const MS_POR_CARACTERE = 55;
 
   const SELETOR_FOCAVEL = [
@@ -3054,10 +2763,6 @@ body{min-height:100vh;margin:0}
     'select:not([disabled])', 'textarea:not([disabled])', 'summary',
     '[tabindex]:not([tabindex="-1"])',
   ].join(',');
-
-  /* ── Ícones ───────────────────────────────────────────────────────────────
-     Traço de 2 px num grid de 24, cantos redondos. São desenhos fixos, então
-     ficam aqui e não num arquivo por ícone. */
 
   const DESENHOS = {
     busca: ['<circle cx="11" cy="11" r="7"/>', '<path d="M20 20l-4-4"/>'],
@@ -3069,63 +2774,42 @@ body{min-height:100vh;margin:0}
     contexto: ['<path d="M4 20h4L19 9l-4-4L4 16z"/>'],
     apagar: ['<path d="M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15"/>'],
     enviar: ['<path d="M4 12l16-8-6 16-3-6z"/>'],
-    // As Fontes, no desenho do protótipo de Frases: vídeo é uma tela.
     netflix: ['<rect x="2" y="5" width="20" height="13" rx="2"/>', '<path d="M8 21h8"/>'],
     youtube: ['<rect x="2" y="5" width="20" height="14" rx="4"/>', '<path d="M10 9l5 3-5 3z"/>'],
     web: ['<circle cx="12" cy="12" r="9"/>', '<path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/>'],
     pdf: ['<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>', '<path d="M14 3v6h6"/>'],
     livro: ['<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5v14z"/>'],
     manual: ['<path d="M12 5v14M5 12h14"/>'],
-    // Minerar de uma foto: a foto na fila e o ler das marcações.
     foto: ['<rect x="3" y="3" width="18" height="18" rx="3"/>', '<circle cx="8.5" cy="8.5" r="1.5"/>', '<path d="m21 15-5-5L5 21"/>'],
     ler: ['<path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/>', '<path d="M7 12h10"/>'],
-    // As áreas do Painel, na sidebar e no trilho.
     frases: ['<path d="M4 6h16M4 12h16M4 18h10"/>'],
     anki: ['<path d="M9 7V3M15 7V3M7 7h10v4a5 5 0 0 1-10 0V7zM12 16v5"/>'],
     configuracoes: ['<circle cx="12" cy="12" r="3"/>', '<path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'],
     conta: ['<circle cx="12" cy="8" r="4"/>', '<path d="M4 21a8 8 0 0 1 16 0"/>'],
-    // O chevron de um botão que abre um menu.
     abaixo: ['<path d="M6 9l6 6 6-6"/>'],
-    // A paginação: primeira, anterior, próxima e última página.
     primeira: ['<path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>'],
     anterior: ['<path d="M15 18l-6-6 6-6"/>'],
     proxima: ['<path d="M9 18l6-6-6-6"/>'],
     ultima: ['<path d="M13 17l5-5-5-5M6 17l5-5-5-5"/>'],
-    // A porta com a seta para dentro do Entrar com Google.
     entrar: ['<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>', '<path d="M10 17l5-5-5-5M15 12H3"/>'],
     atualizar: ['<path d="M20 11a8 8 0 0 0-14.7-4.4L4 8"/>', '<path d="M4 3v5h5M4 13a8 8 0 0 0 14.7 4.4L20 16"/>', '<path d="M20 21v-5h-5"/>'],
-    // Os azulejos dos cards de Configurações e o chevron que os abre.
     teclado: ['<rect x="2" y="6" width="20" height="12" rx="2"/>', '<path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/>'],
     chave: ['<circle cx="8" cy="15" r="4"/>', '<path d="m10.8 12.2 9.2-9.2M17 6l3 3M15 8l2 2"/>'],
-    // O azulejo da Aparência: o círculo de contraste, metade cheia, que diz
-    // escuro e claro sem depender de sol e lua.
     tema: ['<circle cx="12" cy="12" r="9"/>', '<path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor" stroke="none"/>'],
     perigo: ['<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/>', '<path d="M12 9v4M12 17h.01"/>'],
     abrir: ['<path d="m6 9 6 6 6-6"/>'],
-    // O que o overlay minerou: legenda, seleção e mineração automática; e a falha.
     legenda: ['<rect x="3" y="5" width="18" height="14" rx="2"/>', '<path d="M7 14h4M13 14h4M7 10h10"/>'],
     selecao: ['<path d="M4 6h16M4 12h10M4 18h7"/>'],
     automatica: ['<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>'],
     alerta: ['<circle cx="12" cy="12" r="9"/>', '<path d="M12 7.5v5.5M12 16.5v.01"/>'],
-    // O aviso que só informa (tom `info`): o “i”, sem alarme.
     info: ['<circle cx="12" cy="12" r="9"/>', '<path d="M12 16.5V11M12 7.5v.01"/>'],
-    // O menu Minerar frases: Colar (a prancheta), Foto (a câmera) e o ↗ de
-    // “abre numa aba nova”.
     colar: ['<rect x="8" y="2" width="8" height="4" rx="1"/>', '<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>'],
     foto: ['<path d="M3 8a2 2 0 0 1 2-2h2l2-2h6l2 2h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/>', '<circle cx="12" cy="13" r="3.5"/>'],
     externo: ['<path d="M7 17 17 7M9 7h8v8"/>'],
-    // A picareta do vazio do popup e o alerta de uma falha em linha, no desenho
-    // do protótipo do popup.
     picareta: ['<path d="M14 10L4 20"/>', '<path d="M5 7c4-4 10-4 14 0-2-1-5-1-8 1"/>', '<path d="M17 5c4 4 4 10 0 14 1-2 1-5-1-8"/>'],
     alerta: ['<circle cx="12" cy="12" r="9"/>', '<path d="M12 7v6M12 16.5v.5"/>'],
   };
 
-  /**
-   * O ícone `nome` como elemento SVG, pronto para entrar num botão ou selo.
-   *
-   * Ele herda a cor de quem o contém (`currentColor`) e fica escondido do
-   * leitor de tela: quem diz o que o controle faz é o rótulo.
-   */
   function iconeVeio(nome, documento = document) {
     const desenho = DESENHOS[nome];
     if (!desenho) throw new Error(`Ícone fora da Base Veio: ${nome}`);
@@ -3138,25 +2822,10 @@ body{min-height:100vh;margin:0}
     svg.setAttribute('stroke-linecap', 'round');
     svg.setAttribute('stroke-linejoin', 'round');
     svg.setAttribute('aria-hidden', 'true');
-    // Os desenhos são constantes deste arquivo, nunca texto de fora.
     svg.innerHTML = desenho.join('');
     return svg;
   }
 
-  /* ── Modal ────────────────────────────────────────────────────────────────
-     Confirmação destrutiva e fim de envio. Nunca o confirm() do navegador. */
-
-  /**
-   * Abre o modal que está dentro de `scrim` e devolve como fechá-lo.
-   *
-   * O foco entra no botão seguro (o `[data-foco-seguro]`, ou o primeiro que
-   * não seja de perigo), fica preso enquanto o modal está aberto, e volta
-   * para quem abriu quando ele fecha. Esc e o clique fora fecham.
-   *
-   * @param {HTMLElement} scrim   O `.veio-scrim` com o `[role="dialog"]` dentro.
-   * @param {object}      opcoes  `aoFechar` roda depois que o foco já voltou.
-   * @returns {{ fechar: () => void }}
-   */
   function abrirModal(scrim, { aoFechar } = {}) {
     const dialogo = scrim.querySelector('[role="dialog"]');
     if (!dialogo) throw new Error('Um modal da Veio precisa de um [role="dialog"] dentro do scrim');
@@ -3179,14 +2848,8 @@ body{min-height:100vh;margin:0}
     }
 
     function aoApontar(evento) {
-      // Só o clique no próprio scrim é "fora": um arrasto que começa dentro
-      // do modal e termina nele não fecha nada.
       if (evento.target !== scrim) return;
-      // O segundo toque de um duplo clique não é “clicar fora”: é o fim do
-      // clique que abriu o modal, que ainda cai onde o botão estava.
       if (evento.detail > 1) return;
-      // Sem isto, o navegador move o foco para o scrim depois do handler e
-      // desfaz a devolução do foco a quem abriu.
       evento.preventDefault();
       fechar();
     }
@@ -3211,19 +2874,6 @@ body{min-height:100vh;margin:0}
     return { fechar };
   }
 
-  /**
-   * A confirmação destrutiva inteira: monta o modal (título, corpo, o
-   * Cancelar seguro e o perigo preenchido), abre com `abrirModal` e o tira da
-   * página quando fecha. Só o botão de perigo chama `aoConfirmar`, depois de
-   * o modal fechar e o foco voltar a quem abriu.
-   *
-   * @param {object} conteudo
-   *   `titulo`, `corpo`, `cancelar`, `confirmar`  os textos, do catálogo;
-   *   `aoConfirmar`  o que o perigo faz;
-   *   `id`           prefixo dos ids do título e do corpo (aria);
-   *   `confirmarComContorno`  o perigo em contorno em vez de preenchido.
-   * @returns {{ fechar: () => void }}
-   */
   function abrirConfirmacao({ titulo, corpo, cancelar, confirmar, aoConfirmar, id, confirmarComContorno = false, documento = document }) {
     const no = (tag, classe, texto) => {
       const elemento = documento.createElement(tag);
@@ -3238,8 +2888,6 @@ body{min-height:100vh;margin:0}
     const seguro = no('button', 'veio-botao veio-botao--fantasma', cancelar);
     seguro.type = 'button';
     seguro.dataset.focoSeguro = '';
-    // `confirmarComContorno` é a exceção que o dono aprovou para o Recomeçar
-    // da foto (FOT-18, como no protótipo): o confirmar fica em `--perigo`.
     const perigo = no('button', `veio-botao ${confirmarComContorno ? 'veio-botao--perigo' : 'veio-botao--perigo-cheio'}`, confirmar);
     perigo.type = 'button';
     const acoes = no('div', 'veio-modal__acoes');
@@ -3264,13 +2912,6 @@ body{min-height:100vh;margin:0}
     return modal;
   }
 
-  /**
-   * O botão em que o foco entra: o seguro, nunca o que destrói.
-   *
-   * A tela pode dizer qual é com `data-foco-seguro`. Sem isso, é o primeiro
-   * controle que não está pintado de perigo — em "Apagar 12 frases?", o
-   * "Cancelar".
-   */
   function botaoSeguro(dialogo) {
     const marcado = dialogo.querySelector('[data-foco-seguro]');
     if (marcado) return marcado;
@@ -3303,12 +2944,6 @@ body{min-height:100vh;margin:0}
     }
   }
 
-  /**
-   * O resto da página fica inerte: o leitor de tela também não sai do modal.
-   *
-   * O scrim pode estar em qualquer profundidade, então a inércia sobe por
-   * toda a linhagem dele: em cada nível, os irmãos que não o contêm saem.
-   */
   function tornarORestoInerte(scrim) {
     const inertes = [];
     for (let no = scrim; no.parentElement; no = no.parentElement) {
@@ -3326,26 +2961,10 @@ body{min-height:100vh;margin:0}
     no.focus();
   }
 
-  /* ── Toast ────────────────────────────────────────────────────────────────
-     Só sucesso curto, sem ação obrigatória. Erro que pede ação é o aviso
-     persistente. */
-
-  /**
-   * Quanto tempo o toast fica na tela: nunca menos que o mínimo, e mais
-   * quanto maior o texto, porque a pessoa precisa terminar de ler.
-   */
   function duracaoDoToast(texto) {
     return DURACAO_MINIMA_DO_TOAST + texto.length * MS_POR_CARACTERE;
   }
 
-  /**
-   * Mostra um toast de sucesso, que some sozinho.
-   *
-   * @param {string} texto   Já vindo do catálogo da Voz.
-   * @param {object} opcoes  `dentroDe`, o elemento cujo tema o toast usa (o
-   *                         `body` da página, se nada for dito), e `aoSumir`.
-   * @returns {HTMLElement}  O toast, já na tela.
-   */
   function mostrarToastDeSucesso(texto, { dentroDe = document.body, aoSumir } = {}) {
     const documento = dentroDe.ownerDocument;
     const toast = documento.createElement('div');
@@ -3365,11 +2984,6 @@ body{min-height:100vh;margin:0}
     return toast;
   }
 
-  /**
-   * A região onde os toasts entram; o leitor de tela lê o que chega nela.
-   *
-   * Ela mora dentro de `dentroDe`, para herdar os tokens do tema dali.
-   */
   function regiaoDeToasts(dentroDe) {
     let regiao = dentroDe.querySelector(':scope > .veio-toasts');
     if (regiao) return regiao;
@@ -3382,31 +2996,6 @@ body{min-height:100vh;margin:0}
     return regiao;
   }
 
-  /* ── Aviso persistente ────────────────────────────────────────────────────
-     Todo erro que pede ação. Fica até ser resolvido ou fechado, e a causa
-     técnica vai para um Detalhes recolhido e copiável. O tom `info` é o aviso
-     que só informa (uma leitura cancelada): neutro, sem alarme. */
-
-  /**
-   * Monta o aviso e devolve o elemento, para a tela pô-lo no lugar do problema.
-   *
-   * @param {object} conteudo
-   *   `texto`          o que aconteceu, nos termos da pessoa (catálogo da Voz);
-   *   `abertura`       a 1ª frase, em negrito antes do `texto`, quando o
-   *                    estado a tem (“Leitura cancelada.”);
-   *   `icone`          o nome de um ícone da Base no começo do texto;
-   *   `tom`            `'perigo'` (o padrão: um erro, `role="alert"`) ou
-   *                    `'info'` (só informa: neutro, `role="status"`);
-   *   `acao`           `{ rotulo, aoUsar }` quando existe o que fazer;
-   *   `detalhes`       a causa técnica, recolhida;
-   *   `rotuloDeFechar` o nome do × para o leitor de tela, do catálogo;
-   *   `aoFechar`       roda quando a pessoa fecha o aviso;
-   *   `fechavel`       `false` para o aviso de um estado, que só sai quando o
-   *                    problema se resolve (um sync que falhou): sem ×, e então
-   *                    sem `rotuloDeFechar`.
-   *
-   * O nome do recolhido é "Detalhes", dado pela regra V3 da Voz.
-   */
   function montarAviso({
     texto,
     abertura,
@@ -3471,12 +3060,6 @@ body{min-height:100vh;margin:0}
 
   const TONS_DO_AVISO = ['perigo', 'info'];
 
-  /**
-   * O “Detalhes” recolhido e copiável com a causa técnica (regra V3 da Voz).
-   *
-   * O aviso já traz o seu; este é para quando o próprio estado da tela é a
-   * mensagem e só a causa fica guardada (a nuvem recusou, a sessão expirou).
-   */
   function montarDetalhes(causa, documento = document) {
     const recolhido = documento.createElement('details');
     recolhido.className = 'veio-aviso__detalhes';
@@ -3488,19 +3071,6 @@ body{min-height:100vh;margin:0}
     return recolhido;
   }
 
-  /* ── Frase ────────────────────────────────────────────────────────────────
-     A Palavra que o cartão ensina aparece grifada dentro da frase. */
-
-  /**
-   * Escreve a frase em `no`, com a Palavra grifada.
-   *
-   * O texto entra sempre como texto: marcação vinda de uma legenda ou de uma
-   * seleção é mostrada literalmente, nunca vira elemento.
-   *
-   * @param {HTMLElement} no      Onde a frase é escrita (é esvaziado antes).
-   * @param {string}      texto   A frase.
-   * @param {string}      palavra A Palavra a grifar; vazia deixa a frase limpa.
-   */
   function escreverFrase(no, texto, palavra) {
     no.textContent = '';
     const documento = no.ownerDocument;
@@ -3520,10 +3090,6 @@ body{min-height:100vh;margin:0}
       documento.createTextNode(texto.slice(fim)));
   }
 
-  /**
-   * Onde a Palavra começa na frase, ou -1. Vale a palavra inteira (“it” não é o
-   * pedaço de “with”); só sem ela, o primeiro trecho igual.
-   */
   function posicaoDaPalavra(texto, palavra) {
     if (!palavra) return -1;
     const escapada = palavra.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -3531,19 +3097,6 @@ body{min-height:100vh;margin:0}
     return inteira ? inteira.index : texto.toLowerCase().indexOf(palavra.toLowerCase());
   }
 
-  /**
-   * Escreve a frase em `no` com cada palavra clicável: a pessoa escolhe a
-   * Palavra na própria frase. A grifada usa a mesma faixa de `escreverFrase`.
-   *
-   * Cada palavra é um `role="button"` com `aria-pressed`. A frase é uma parada
-   * só do Tab (a primeira palavra); dentro dela, `andarEntrePalavras` leva o
-   * foco pelas setas. O texto entra sempre como texto.
-   *
-   * @param {HTMLElement} no      Onde a frase é escrita (é esvaziado antes).
-   * @param {Array<{texto: string, palavra?: boolean, grifada?: boolean, dados?: object}>} trechos
-   *   A frase em ordem. `palavra` marca o trecho clicável, `grifada` o que é a
-   *   Palavra, e `dados` vai para o `dataset` da palavra.
-   */
   function escreverFraseClicavel(no, trechos) {
     no.textContent = '';
     const documento = no.ownerDocument;
@@ -3565,12 +3118,6 @@ body{min-height:100vh;margin:0}
     }
   }
 
-  /**
-   * As setas levam o foco à palavra vizinha da mesma frase.
-   *
-   * @param {KeyboardEvent} evento Um keydown numa palavra de `escreverFraseClicavel`.
-   * @returns {boolean} Se a tecla era uma seta (e o evento foi consumido).
-   */
   function andarEntrePalavras(evento) {
     const passo = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[evento.key];
     const palavra = evento.target.closest?.('.veio-palavra-clicavel');
@@ -3582,19 +3129,12 @@ body{min-height:100vh;margin:0}
     return true;
   }
 
-  /** Faz de `palavra` a parada do Tab da sua frase e dá o foco a ela. */
   function focarPalavra(palavra) {
     palavra.parentElement.querySelectorAll('.veio-palavra-clicavel').forEach(outra => { outra.tabIndex = -1; });
     palavra.tabIndex = 0;
     palavra.focus();
   }
 
-  /**
-   * O chip que diz de onde a Palavra veio.
-   *
-   * O rótulo é `palavra:` quando a pessoa a escolheu e `auto:` quando foi
-   * detectada — "keyword" é nome técnico do código, nunca da tela.
-   */
   function montarChipDaPalavra(palavra, { detectada = false, documento = document } = {}) {
     const chip = documento.createElement('span');
     chip.className = 'veio-chip-palavra';
@@ -3609,25 +3149,11 @@ body{min-height:100vh;margin:0}
     return chip;
   }
 
-  /* ── Checkbox ─────────────────────────────────────────────────────────────
-     O cabeçalho de uma lista com parte dela marcada. */
-
-  /**
-   * Põe o checkbox no estado que a seleção pede: marcado, vazio ou misto.
-   *
-   * @param {HTMLInputElement} checkbox
-   * @param {number} selecionados
-   * @param {number} total
-   */
   function refletirSelecao(checkbox, selecionados, total) {
     checkbox.checked = total > 0 && selecionados === total;
     checkbox.indeterminate = selecionados > 0 && selecionados < total;
   }
 
-  /**
-   * Uma tecla em `kbd` (“Ctrl+Shift+K”). Sem `rotulo`, o `kbd` tracejado com
-   * `seVazia` (“Sem atalho”), que diz que o lugar existe e está vazio.
-   */
   function montarTecla(rotulo, { seVazia, documento = document } = {}) {
     const kbd = documento.createElement('kbd');
     kbd.className = rotulo ? 'veio-kbd' : 'veio-kbd veio-kbd--sem-atalho';
@@ -3635,15 +3161,10 @@ body{min-height:100vh;margin:0}
     return kbd;
   }
 
-  /**
-   * O atalho com uma tecla por `kbd` (Alt + S), como o protótipo do popup o
-   * desenha. Sem `rotulo`, o mesmo `kbd` tracejado de `montarTecla`.
-   */
   function montarTeclas(rotulo, { seVazia, documento = document } = {}) {
     if (!rotulo) return montarTecla(null, { seVazia, documento });
     const teclas = documento.createElement('span');
     teclas.className = 'veio-teclas';
-    // “Ctrl++” é a tecla + com Ctrl: o último + nunca separa.
     rotulo.split(/\+(?!$)/).forEach((tecla, i) => {
       if (i > 0) teclas.append('+');
       teclas.append(montarTecla(tecla, { documento }));
@@ -3651,11 +3172,6 @@ body{min-height:100vh;margin:0}
     return teclas;
   }
 
-  /**
-   * O anel de progresso do lembrete “Configuração pela metade” (ONB-14 no
-   * popup, ONB-15 em Frases): `n` de `total` em ouro sobre o trilho. É só
-   * desenho (`aria-hidden`): quem o usa diz o número em texto ao lado.
-   */
   function montarAnelDeProgresso(n, total, { documento = document } = {}) {
     const svg = documento.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('class', 'veio-anel');
@@ -3675,7 +3191,6 @@ body{min-height:100vh;margin:0}
     progresso.setAttribute('stroke-dasharray', `${volta * parte} ${volta}`);
     progresso.setAttribute('transform', 'rotate(-90 12 12)');
     svg.append(circulo('veio-anel__trilho'));
-    // Sem nenhum passo, o anel é só o trilho (a ponta redonda seria um ponto).
     if (parte > 0) svg.append(progresso);
     return svg;
   }
@@ -3708,7 +3223,6 @@ const { textoDaVoz, Veio } = globalThis.PerpetualMiner;
 const $ = (s, r = document) => r.querySelector(s);
 const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-// ── Dados de exemplo (o real vive em lib/ajustes-de-envio.js) ───────────────
 const PADRAO = { en: { deck: 'CIMV', img: '1', w: 'com', p: 'co.uk' }, ru: { deck: 'RUSSIAN', img: '1', w: 'ru', p: 'ru' } };
 const GRAVADO = { en: { deck: 'Inglês::Mineradas', img: '1', w: 'com', p: 'co.uk' }, ru: { deck: 'RUSSIAN', img: '2', w: 'ru', p: 'ru' } };
 const NOME = { en: 'Inglês', ru: 'Russo' };
@@ -3716,8 +3230,7 @@ const SOTAQUES = {
   en: [['com', 'Estados Unidos'], ['co.uk', 'Reino Unido'], ['com.au', 'Austrália'], ['co.in', 'Índia'], ['ca', 'Canadá'], ['ie', 'Irlanda'], ['co.za', 'África do Sul']],
   ru: [['ru', 'Rússia']],
 };
-const BARALHOS_DO_ANKI = ['CIMV', 'English Mining', 'Inglês::Mineradas', 'RUSSIAN'];   // ideia (variante B)
-// Textos novos (fora do catálogo por enquanto)
+const BARALHOS_DO_ANKI = ['CIMV', 'English Mining', 'Inglês::Mineradas', 'RUSSIAN'];
 const NOVO = { naoSalvas: 'Alterações não salvas', salvo: 'Salvo', nivelVazio: 'Tem um nível vazio. Exemplo: Inglês::Mineradas', ideia: 'ideia', baralhosDoAnki: 'Baralhos no Anki' };
 const VARIANTES = { A: 'Cartões', B: 'Um idioma', C: 'Lado a lado' };
 const CHAVES = Object.keys(VARIANTES);
@@ -3732,14 +3245,12 @@ const S = {
 const copia = o => JSON.parse(JSON.stringify(o));
 function carregarDados() {
   S.salvo = copia(S.dados === 'gravado' ? GRAVADO : PADRAO);
-  // “nada gravado”: o baralho fica em branco (vale o padrão) até a pessoa salvar
   if (S.dados === 'padrao') { S.salvo.en.deck = ''; S.salvo.ru.deck = ''; }
   S.rascunho = copia(S.salvo);
   S.erro = { en: false, ru: false };
   S.stale = false;
 }
 
-// ── Peças que as três arrumações repartem ───────────────────────────────────
 const baralhoEfetivo = l => S.salvo[l].deck.trim() || PADRAO[l].deck;
 const nomeDoBaralho = d => d.split('::').map(s => s.trim()).filter(Boolean).join(' › ');
 const resumoDoIdioma = l => `${nomeDoBaralho(baralhoEfetivo(l))} · ${S.salvo[l].img === '2' ? 'gerada por IA' : 'foto real'}`;
@@ -3858,7 +3369,6 @@ function varianteC() {
   return `<div class="pm-lado">${col('en')}${col('ru')}</div>`;
 }
 
-// ── Desenho ─────────────────────────────────────────────────────────────────
 function montarIcones(raiz) {
   raiz.querySelectorAll('[data-icone]').forEach(no => { no.replaceWith(Veio.iconeVeio(no.dataset.icone)); });
 }
@@ -3892,7 +3402,6 @@ function render() {
   if (foco) document.getElementById(foco)?.focus();
 }
 
-// ── Eventos ─────────────────────────────────────────────────────────────────
 function salvar(l) {
   if (nivelVazio(S.rascunho[l].deck)) { S.erro[l] = true; render(); document.getElementById(`deck-${l}`)?.focus(); return; }
   S.erro[l] = false;
@@ -3906,7 +3415,6 @@ document.addEventListener('input', e => {
   const t = e.target; if (!t.dataset.campo) return;
   const l = t.dataset.l; S.rascunho[l][t.dataset.campo] = t.value;
   if (t.dataset.campo === 'deck' && S.erro[l]) { S.erro[l] = false; render(); return; }
-  // só o indicador e a nota mudam; o campo em uso não é redesenhado
   const s = sujo(l);
   const ind = document.querySelector(`[data-ind="${l}"]`);
   if (ind) ind.innerHTML = s ? `<span class="cfg-ponto"></span>${NOVO.naoSalvas}` : `<span class="cfg-ponto" data-estado="ok"></span>${NOVO.salvo}`;

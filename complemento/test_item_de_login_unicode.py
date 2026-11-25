@@ -1,10 +1,3 @@
-"""O atalho de login do Windows com nome fora do ASCII no caminho do Anki: a lista do alvo leva o nome em Unicode.
-
-    python3.9 complemento/test_item_de_login_unicode.py
-
-Dividido de test_item_de_login.py (que chegou ao limite de tamanho); usa o leitor da lista do alvo de lá.
-"""
-
 import os
 import sys
 import tempfile
@@ -21,7 +14,6 @@ class NoWindowsComNomeForaDoAscii(unittest.TestCase):
         return item_de_login.ItemDeLogin(sistema="windows", pasta=pasta, comando=comando)
 
     def test_o_nome_fora_do_ascii_vai_em_unicode_na_lista_do_alvo_e_os_outros_ficam_como_eram(self):
-        # No Windows de verdade (cp1252), com o nome em bytes da página ANSI, o atalho para uma pasta “Ωμέγα” ou “日本語” não abria.
         alvo = "C:\\Users\\João\\Ωμέγα\\日本語\\Ana\U0001F600\\Anki\\anki.exe"
         with tempfile.TemporaryDirectory() as pasta:
             self.item(pasta, alvo).ligar()

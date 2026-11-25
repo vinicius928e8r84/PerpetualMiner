@@ -109,7 +109,6 @@ test('sem a permissão do abridor o Anki não é fechado: ninguém o abriria de 
   fakes.anki.atualizacao.definir({ versao: '0.3.9', versaoNova: '0.4.5' });
   fakes.anki.definirAtualizacao({ atualizacao: 'instalada' });
   await abrirPainel(page, extensao);
-  // O Chrome pergunta pela permissão no clique e o Playwright não alcança o aviso dele: o clique sem a permissão dada é a recusa.
   await page.evaluate(() => { chrome.permissions.request = async () => false; });
 
   await aviso(page).getByRole('button', { name: 'Reiniciar o Anki' }).click();

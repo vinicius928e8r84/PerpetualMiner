@@ -1,7 +1,3 @@
-"""O adaptador da OpenAI pelo plano do ChatGPT (`openai_http.py`: `responder` e o `texto` do plano), gravado com o código de antes da
-refatoração da Onda 3 do CodeScene, do mesmo jeito que `test_openai_http_tabela.py` grava o da chave.
-"""
-
 import unittest
 
 import openai_http

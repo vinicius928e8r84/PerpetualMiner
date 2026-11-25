@@ -1,10 +1,3 @@
-"""As rotas da chave da OpenAI (`rotas_da_chave.py`) chamadas direto, com o cofre e a OpenAI de mentira nas bordas.
-
-Cada corpo tem a resposta `(status, json)` de hoje e os pedidos que chegam ao cofre e à OpenAI, na ordem:
-
-    python3.9 complemento/test_rotas_da_chave.py
-"""
-
 import os
 import sys
 import types
@@ -50,7 +43,6 @@ def cofre_de_mentira(respostas):
 
 
 def pedir(rota, corpo, cofre=None, openai=None):
-    """(resposta, pedidos ao cofre, chaves conferidas na OpenAI) de `rota(conexao, corpo)`."""
     cofre = cofre_de_mentira(cofre or {})
     conexao = types.SimpleNamespace(cofre=cofre, openai_base=OPENAI_BASE, firestore_base=FIRESTORE_BASE, logger=LOGGER)
     conferidas = []

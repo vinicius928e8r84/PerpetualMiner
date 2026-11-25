@@ -3,7 +3,6 @@
 const { test, expect } = require('../fixtures');
 const { quiz, responderAParte1, responder, percorrer, abrirOQuiz, fraseDaPergunta, CERTA } = require('../apoio-do-quiz');
 
-// A prévia do Cartão é o HTML do Anki com a fonte do sistema, que muda de máquina para máquina: fica coberta, e o que a referência prova é a festa e a Revelação.
 const tela = (page, nome, { mascarar = [] } = {}) => expect(page).toHaveScreenshot(nome, { fullPage: true, animations: 'disabled', mask: mascarar });
 
 test('o acerto: a certa marcada, a sequência e o placar', async ({ page, extensao, fakes, relogioParado }) => {

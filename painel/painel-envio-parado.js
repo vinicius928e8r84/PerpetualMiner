@@ -60,7 +60,7 @@
     if (abrindo.has(envio.jobId)) return;
     abrindo.add(envio.jobId);
     naoAbriu.delete(envio.jobId);
-    const aberto = AbrirOAnki.abrirEEsperar(); // no clique, antes de qualquer `await`: pede a permissão do Chrome se faltar
+    const aberto = AbrirOAnki.abrirEEsperar();
     const cartao = link.closest('.envio-cartao');
     const mostrar = () => {
       escrever(cartao.querySelector('.envio-cartao__motivo'), motivo(envio, estado));

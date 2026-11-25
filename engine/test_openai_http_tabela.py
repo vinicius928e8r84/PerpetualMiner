@@ -1,10 +1,3 @@
-"""O adaptador da OpenAI pela chave (`openai_http.py`), gravado com o código de antes da refatoração da Onda 3 do CodeScene.
-
-Cada cenário é uma chamada do adaptador e o que a rede responde a cada pedido; o que se grava é o que a chamada devolve (ou o código
-da recusa), cada pedido que saiu (endereço, cabeçalhos, corpo, tempo, quantas vezes) e as esperas entre as tentativas. As recusas da
-chave e as passageiras têm a sua tabela; o plano do ChatGPT está em `test_openai_http_plano_tabela.py`.
-"""
-
 import io
 import json
 import ssl
@@ -83,11 +76,22 @@ def chamada_ou_recusa(chamada):
         return ["erro", type(erro).__name__]
 
 
+def chamar(funcao, argumentos, opcoes):
+    if funcao in ("completar", "responder"):
+        opcoes = dict(opcoes)
+        paciencia = openai_http.Paciencia(opcoes.pop("tempo", openai_http.TEMPO_PADRAO), opcoes.pop("repeticoes", 0))
+        base, segredo, modelo, *pergunta = argumentos
+        credencial = {"base": base, "segredo": segredo, "modelo": modelo}
+        classe = openai_http.PerguntaDoChat if funcao == "completar" else openai_http.PerguntaDaResponses
+        return getattr(openai_http, funcao)(credencial, classe(*pergunta, **opcoes), paciencia)
+    return getattr(openai_http, funcao)(*argumentos, **opcoes)
+
+
 def rodar(cenario):
     funcao, argumentos, opcoes, respostas = cenario
     rede = RedeDeMentira(respostas)
     with mock.patch.object(openai_http.urllib.request, "urlopen", rede.urlopen), mock.patch.object(openai_http.time, "sleep", rede.esperas.append):
-        devolvido = chamada_ou_recusa(lambda: getattr(openai_http, funcao)(*argumentos, **opcoes))
+        devolvido = chamada_ou_recusa(lambda: chamar(funcao, argumentos, opcoes))
     return json.loads(json.dumps({"devolvido": devolvido, "pedidos": repetidos_juntos(rede.pedidos), "esperas": rede.esperas, "tls": all(rede.tls)}))
 
 

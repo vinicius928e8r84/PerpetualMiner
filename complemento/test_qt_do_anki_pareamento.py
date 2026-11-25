@@ -1,9 +1,3 @@
-"""O diálogo do código do pareamento e o botão Desconectar navegadores (#192) pedidos ao Qt do Anki (`qt_do_anki.py`), com um `aqt` de mentira que guarda
-o texto de cada peça e liga o clique de cada botão. A janela de verdade num Anki de verdade é o ensaio do dono.
-
-    python3.9 complemento/test_qt_do_anki_pareamento.py
-"""
-
 import io
 import logging
 import os
@@ -32,8 +26,6 @@ class _Enum:
 
 
 class AqtComPecas:
-    """O `aqt` que `QtDoAnki` usa para o código e para a janela: cada peça sabe o texto que recebeu e quem a clicou."""
-
     def __init__(self, quebra_ao_abrir=False):
         self.dialogos, self.botoes, self.rotulos, self.tooltips, self.relogios = [], [], [], [], []
         aqui = self
@@ -103,7 +95,7 @@ class AqtComPecas:
                 return lambda *_, **__: None
 
         class Layout:
-            FieldGrowthPolicy = _Enum()  # o `QFormLayout` real tem; a janela pede a política de crescimento do campo
+            FieldGrowthPolicy = _Enum()
 
             def __init__(self, *_):
                 pass
@@ -127,7 +119,6 @@ class AqtComPecas:
 
 
 def anki_de_mentira():
-    """O `mw` do Anki: `taskman.run_on_main` roda na hora, que é o que acontece na thread principal."""
     return types.SimpleNamespace(taskman=types.SimpleNamespace(run_on_main=lambda funcao: funcao()))
 
 

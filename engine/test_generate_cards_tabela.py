@@ -1,9 +1,3 @@
-"""A tabela de entradas e saídas de `generate_cards.py`, gravada com o código de antes da refatoração do CodeScene (Onda 4): as
-formas de cada lema, o veredito da palavra-chave e, para cada caminho de `escrever`, a falha, os pedidos, o arquivo e o log.
-
-Um caso que muda de saída é mudança de comportamento: entra na tabela com o motivo na PR, nunca regravado às cegas. As formas
-guardam o que a regra do inglês dá hoje, mesmo quando não é inglês (`carryed`, `stoped`, `visitted`, `tiing`)."""
-
 import logging
 import tempfile
 import unittest

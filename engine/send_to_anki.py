@@ -1,14 +1,8 @@
-"""
-send_to_anki.py - The note a card text becomes: the Front and Back HTML, the tags and the Front the duplicate search compares.
-
-The Anki add-on writes the notes through the collection (`complemento/no_anki.py`); this module only formats them.
-"""
-
 import logging
 import re
 from typing import Dict, List, NamedTuple, Optional
 
-if __package__:  # inside the Anki add-on the engine is the package `complemento.motor`
+if __package__:
     from .parser import normalize_ru_phrase
 else:
     from parser import normalize_ru_phrase
@@ -32,7 +26,6 @@ def _normalize_front_text(text: str, lang: str) -> str:
 
 
 def _extract_tags_from_card(content: str) -> List[str]:
-    """Extract Anki tags from the 'Source Context:' line in a card .txt file."""
     tags: List[str] = ["perpetual_miner"]
 
     match = re.search(r"Source\s+Context:\s*(.+)", content, re.IGNORECASE)
@@ -52,17 +45,11 @@ def _extract_tags_from_card(content: str) -> List[str]:
 
 
 def _md_to_html(text: str) -> str:
-    """Convert Markdown bold markers to <b> tags."""
     text = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", text, flags=re.DOTALL)
     text = re.sub(r"\*(.+?)\*", r"<b>\1</b>", text, flags=re.DOTALL)
     return text
 
 
-# Field labels are anchored to the start of a line (re.MULTILINE). Without the
-# ^ anchor, the word "Back" inside a phrase (e.g. "But *back* of that ad...")
-# matches as the structural Front/Back delimiter and the sentence gets split on
-# it. \b guards against "Background:" etc. The colon stays optional because the
-# RU prompt puts "Front"/"Back" on their own lines with no colon.
 _FRONT_RE = re.compile(
     r"^[^\S\n]*\*{0,2}Front\b\s*[:\-]?\*{0,2}[^\S\n]*(.*?)\s*(?=^[^\S\n]*\*{0,2}Back\b\s*[:\-]?|\Z)",
     re.DOTALL | re.IGNORECASE | re.MULTILINE,
@@ -101,13 +88,10 @@ _COLOR_PALETTE = [
 
 
 def _log_raw(label: str, content: str) -> None:
-    """Log that a card text is unusable; its content is the person's mined phrase, so only the size goes to the log."""
     LOGGER.warning("%s - the card text has no usable content (%d characters)", label, len(content))
 
 
 def _alignment_block(content: str) -> List[str]:
-    """The stripped lines under the first `Alignment:` header, up to the next blank line; a repeated header is not one of
-    them."""
     lines = [raw_line.strip() for raw_line in content.splitlines()]
     start = next((index + 1 for index, line in enumerate(lines) if _ALIGNMENT_HEADER_RE.match(line)), len(lines))
     block: List[str] = []
@@ -120,8 +104,6 @@ def _alignment_block(content: str) -> List[str]:
 
 
 def _extract_alignments(content: str) -> List[tuple[str, str]]:
-    """The Alignment pairs of a generated card: the `n | target | English` lines of its block, from the first pair up to
-    the first line that is not one (the lines before the first pair are skipped)."""
     alignments: List[tuple[str, str]] = []
     for line in _alignment_block(content):
         match = _ALIGNMENT_LINE_RE.match(line)
@@ -136,7 +118,6 @@ def _extract_alignments(content: str) -> List[tuple[str, str]]:
 
 
 def _apply_chunk_colors(text: str, chunks: List[str], ignore_case: bool = False) -> str:
-    """Wrap the first occurrence of each chunk in a colored span."""
     if not text or not chunks:
         return text
 
@@ -153,10 +134,6 @@ def _apply_chunk_colors(text: str, chunks: List[str], ignore_case: bool = False)
         pattern = re.escape(clean_chunk)
 
         def _repl(match):
-            # Sentinel uses Private Use Area chars (/) so it cannot
-            # contain any letter/digit a later chunk might match under
-            # ignore_case (a plain "@@ALIGN_..@@" token leaks because chunk "I"
-            # matches the I inside ALIGN and corrupts the token).
             token = f"{len(placeholders)}"
             placeholders[token] = f'<span style="color: {color};">{match.group(0)}</span>'
             return token
@@ -169,7 +146,6 @@ def _apply_chunk_colors(text: str, chunks: List[str], ignore_case: bool = False)
 
 
 def _english_back_parts(lines: List[str], first_line: str) -> Dict[str, str]:
-    """The English Back's learning fields by name (the last one of a name wins) and its first `->` example line."""
     parts: Dict[str, str] = {}
     for line in lines:
         stripped = line.strip()
@@ -184,8 +160,6 @@ def _english_back_parts(lines: List[str], first_line: str) -> Dict[str, str]:
 
 
 def _reorder_english_back_lines(lines: List[str]) -> List[str]:
-    """The English Back as the card shows it: the headword line, then each part in `_ENGLISH_BACK_ORDER`, a blank line before
-    each; any other line is dropped."""
     first_line = next((line.strip() for line in lines if line.strip()), "")
     if not first_line:
         return []
@@ -198,7 +172,6 @@ def _reorder_english_back_lines(lines: List[str]) -> List[str]:
 
 
 def _build_front(content: str, phrase_audio_name: Optional[str], lang: str = "en", cores: Optional[bool] = None) -> str:
-    """The Front field's HTML; `phrase_audio_name` None makes a card without audio. `cores`: the style colours the Alignment pairs (None: Russian does)."""
     match = _FRONT_RE.search(content)
     phrase = match.group(1).strip() if match else ""
 
@@ -218,16 +191,12 @@ def _build_front(content: str, phrase_audio_name: Optional[str], lang: str = "en
 
 
 class _HiddenBlock:
-    """A block of the Back the card does not show: its header line and the items right under it."""
-
     def __init__(self, header: re.Pattern[str], item: re.Pattern[str]) -> None:
         self.header = header
         self.item = item
         self.inside = False
 
     def hides(self, line: str) -> bool:
-        """Whether the card hides `line`: the header or an item right under it; a blank line or any other line ends the
-        block."""
         if self.header.match(line):
             self.inside = True
         else:
@@ -241,7 +210,6 @@ def _is_image_prompt_or_media(line: str) -> bool:
 
 
 def _colored_literal(line: str, alignments: List[tuple[str, str]]) -> str:
-    """A Russian card's `Literal:` line with each English chunk of the Alignment in the colour of its pair."""
     match = _LITERAL_RE.match(line) if alignments else None
     if not match:
         return line
@@ -249,7 +217,6 @@ def _colored_literal(line: str, alignments: List[tuple[str, str]]) -> str:
 
 
 def _back_text(content: str) -> str:
-    """The text under the `Back` label, or every line after the first one when the card has no such label."""
     match = _BACK_RE.search(content)
     text = match.group(1).strip() if match else ""
     if not text:
@@ -263,8 +230,6 @@ def _back_text(content: str) -> str:
 
 
 def _shown_back_lines(text: str, alignments: List[tuple[str, str]]) -> List[str]:
-    """The stripped lines of the Back the card shows: without the Alignment, the image search queries, the image prompt and
-    the media file names. The hidden parts are asked in this order, and the first that hides a line ends the asking."""
     hidden_parts = (
         _HiddenBlock(_ALIGNMENT_HEADER_RE, _ALIGNMENT_LINE_RE).hides,
         _HiddenBlock(_IMAGE_QUERIES_HEADER_RE, _LIST_ITEM_RE).hides,
@@ -280,7 +245,6 @@ def _shown_back_lines(text: str, alignments: List[tuple[str, str]]) -> List[str]
 
 
 def _back_block_html(block: str) -> str:
-    """A paragraph of the Back: a bold `label:` line keeps its lines apart, any other paragraph becomes one line."""
     block_lines = block.strip().split("\n")
     if len(block_lines) > 1 and _BOLD_LABEL_RE.match(block_lines[0]):
         return block_lines[0] + "<br>" + "<br>".join(block_lines[1:])
@@ -288,7 +252,6 @@ def _back_block_html(block: str) -> str:
 
 
 def _back_html(lines: List[str], word_audio_name: Optional[str], image_name: Optional[str]) -> str:
-    """The Back field's HTML from its shown lines: the first line with the word audio, the paragraphs, the image last."""
     html_lines = _md_to_html("\n".join(lines)).splitlines()
     first_line = html_lines[0] if html_lines else ""
     rest_html = "<br><br>".join(_back_block_html(block) for block in "\n".join(html_lines[1:]).split("\n\n"))
@@ -305,8 +268,6 @@ def _build_back(
     image_name: Optional[str] = None,
     lang: str = "en",
 ) -> str:
-    """The Back field's HTML; without `word_audio_name` or `image_name` the audio or the image is left out. Russian colours
-    the Literal line with the Alignment pairs, English puts its parts in the card's order."""
     alignments = _extract_alignments(content) if lang == "ru" else []
     lines = _shown_back_lines(_back_text(content), alignments)
     if lang == "en":
@@ -315,16 +276,12 @@ def _build_back(
 
 
 class CardMedia(NamedTuple):
-    """The media file names a note cites; one without a name is left out (the Anki add-on's first card is text only, #142)."""
-
     phrase_audio: Optional[str] = None
     word_audio: Optional[str] = None
     image: Optional[str] = None
 
 
 def card_fields(content: str, lang: str, media: CardMedia = CardMedia()) -> Dict[str, object]:
-    """The note a card .txt becomes: `front` and `back` HTML, the `normalized_front` the duplicate search compares and
-    the `tags`."""
     content = content.replace("## Anki Card", "").strip()
     front = _build_front(content, media.phrase_audio, lang=lang)
     return {
@@ -336,5 +293,4 @@ def card_fields(content: str, lang: str, media: CardMedia = CardMedia()) -> Dict
 
 
 def normalize_front(text: str, lang: str) -> str:
-    """A Front field as the duplicate search compares it (HTML, sound tags and case gone; Russian ё → е)."""
     return _normalize_front_text(text, lang)

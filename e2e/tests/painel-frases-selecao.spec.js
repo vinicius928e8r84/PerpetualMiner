@@ -46,7 +46,6 @@ test('sem seleção, só “Selecionar página”; ao marcar, a barra mostra a c
 
   await expect(selecionarPagina(page)).toBeVisible();
   const rotulo = page.locator('#frases-selecao').getByText('Selecionar página', { exact: true });
-  // (O “só para o leitor de tela” conta como visível para o Playwright: 1×1 px.)
   expect((await rotulo.boundingBox()).width).toBeGreaterThan(40);
   await expect(barra(page)).toBeHidden();
 
@@ -434,8 +433,6 @@ test('Copiar frase põe o texto no clipboard e diz “Frase copiada”', async (
 
   await acao(page, 'Sentence number 2 ', 'Copiar frase').click();
   await expect(toasts(page)).toHaveText('Frase copiada');
-  // O Chromium não dá permissão de ler o clipboard a uma página de extensão:
-  // a pessoa cola a frase na busca, e é isso que o teste confere.
   await busca(page).focus();
   await page.keyboard.press('Control+V');
   await expect(busca(page)).toHaveValue('Sentence number 2 about the harbour.');

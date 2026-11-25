@@ -66,16 +66,13 @@ acusa('docs/x.md', [
   '[ref]: ../popup.js',
 ].join('\n'), 0, 'código não é link');
 
-// Um clone do Windows (core.autocrlf=true) entrega o Markdown com CRLF: o título com `\r` no fim ainda é o título.
 acusa('docs/x.md', '[a](design/identidade-veio/README.md#movimento-da-c) [b](#aqui)\r\n\r\n## Aqui\r\n', 0, 'CRLF');
 acusa('docs/x.md', '[a](nao-existe.md)\r\n[b](#aqui)\r\n## Aqui\r\n', 1, 'CRLF com um erro na linha certa');
 assert.strictEqual(achados('docs/x.md', '[a](nao-existe.md)\r\n[b](#aqui)\r\n## Aqui\r\n')[0].linha, 1);
-// O alvo também chega com CRLF.
 fs.writeFileSync(path.join(raiz, 'docs/crlf.md'), '# Topo\r\n\r\n## Título com CRLF\r\n');
 acusa('docs/x.md', '[a](crlf.md#título-com-crlf) [b](crlf.md#nao-tem)\n', 1, 'destino com CRLF');
 total++;
 
-// Um título com código em linha: o GitHub tira só as crases e mantém o texto (achado M1 da revisão do #451).
 acusa('docs/x.md', [
   '[IA](com-codigo.md#ia-dos-cartões-painel-iajs-libchave-da-openaijs) [fila](com-codigo.md#pm_envio-e-a-fila)',
   '[mudar](com-codigo.md#o-filamudar-portão) [no mesmo arquivo](#o-x-aqui)',

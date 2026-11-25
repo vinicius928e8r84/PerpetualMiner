@@ -29,8 +29,6 @@
     try {
       localStorage.setItem(CHAVE, escolhido);
     } catch {
-      // Sem localStorage (modo restrito), a página abre no padrão e corrige
-      // quando o chrome.storage responder. Não é motivo para parar.
     }
     return escolhido;
   }
@@ -70,11 +68,6 @@
     aoMudarTema(aplicarTema);
   }
 
-  // A página não chama nada: carregar o arquivo no <head> já a abre no tema
-  // gravado. A política de segurança da extensão (MV3) não deixa um <script>
-  // inline fazer essa chamada, e o tema precisa valer antes da primeira
-  // pintura. Fora da extensão (a vitrine, servida por HTTP) não há
-  // `chrome.storage`, e aí a página fica no padrão do CSS.
   if (globalThis.chrome?.storage?.local) aplicarTemaGravado();
 
   raiz.Tema = {

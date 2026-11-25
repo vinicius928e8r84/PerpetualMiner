@@ -1,20 +1,4 @@
 <!doctype html>
-<!--
-  PROTÓTIPO DESCARTÁVEL: onboarding & primeira execução, identidade Veio.
-  Ticket: "Protótipo: onboarding & primeira execução" (issue #10 do mapa #1).
-  Pergunta: como é a primeira execução para quem acabou de instalar, usando só
-  as funções que já existem? O que se vê no popup e no Painel, e em que ordem a
-  pessoa é guiada por atalhos, conta, Conexão com o Anki, mineração automática
-  e chave do Gemini.
-  Três estruturas, trocadas por ?variant=A|B|C (barra flutuante, ← →):
-    A · Vazios que ensinam   nenhum guia: cada vazio e cada card ensina no lugar
-    B · Primeiros passos     checklist no topo de Frases que se marca sozinho
-                             pelo estado real + faixa no popup
-    C · Boas-vindas          página aberta na instalação, um passo por vez  ← TRAVADA (rodada 1)
-  Cenário: uma janela do Chrome falsa com o ícone da extensão (popup Cockpit) e
-  o Painel no shell Ilhas. Tudo em memória, nada persiste. Abrir com dois cliques.
-  Teclas: ← → trocam a variante · T alterna o tema.
--->
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
@@ -52,7 +36,6 @@ mark.kw{background:linear-gradient(transparent 50%,var(--kw-bg) 50%,var(--kw-bg)
 .tile-logo{border-radius:8px;background:#1B1A17;display:grid;place-items:center;flex:none;border:1px solid #302D27}
 .wm{font-size:16px;letter-spacing:-.01em;white-space:nowrap}.wm b{font-weight:800}
 
-/* ---------- componentes ---------- */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:999px;padding:8px 16px;border:1px solid var(--border-strong);background:transparent;font-weight:600;cursor:pointer;white-space:nowrap}
 .btn:hover{border-color:var(--accent)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
@@ -82,7 +65,6 @@ details.det p{margin:8px 0 0;font-size:12.5px;color:var(--muted)}
 .flash{animation:flash 1.2s ease-out}
 @keyframes flash{0%{box-shadow:0 0 0 3px var(--accent)}100%{box-shadow:0 0 0 0 transparent}}
 
-/* ---------- janela do Chrome (moldura do protótipo) ---------- */
 .stage{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:14px;align-items:start;max-width:1560px;margin:0 auto}
 @media (max-width:1100px){.stage{grid-template-columns:minmax(0,1fr)}}
 .browser{border-radius:12px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.5);background:#202124;min-width:0}
@@ -103,12 +85,10 @@ html[data-theme=light] .b-ext:hover,html[data-theme=light] .b-ext[aria-expanded=
 .viewport{height:max(560px,calc(100vh - 150px));overflow:auto;position:relative;background:var(--bg)}
 .popwrap{position:absolute;top:44px;right:8px;z-index:30;max-width:calc(100% - 16px)}
 
-/* ---------- página em branco (antes de abrir algo) ---------- */
 .blank{height:100%;display:grid;place-items:center;text-align:center;color:#9aa0a6;background:#202124;font:14px system-ui,sans-serif;padding:24px}
 html[data-theme=light] .blank{background:#fff;color:#5f6368}
 .blank .hint{margin-top:10px;font-size:12.5px;border:1px dashed #5f6368;border-radius:999px;padding:4px 12px;display:inline-block}
 
-/* ---------- popup (Cockpit, A travado no #5) ---------- */
 .pop{width:340px;max-width:100%;max-height:600px;overflow:auto;background:var(--bg);color:var(--text);border-radius:8px;box-shadow:0 18px 44px -10px rgba(0,0,0,.7),0 0 0 1px rgba(0,0,0,.35);display:flex;flex-direction:column}
 .pop .hdr{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--surface);border-bottom:1px solid var(--border)}
 .pop .hdr .sub{font-size:11.5px;color:var(--muted)}
@@ -144,7 +124,6 @@ html[data-theme=light] .blank{background:#fff;color:#5f6368}
 .pstrip .go{margin-left:auto;color:var(--accent-text);font-weight:700;font-size:12px;white-space:nowrap}
 .hl{outline:2px solid var(--accent);outline-offset:3px;border-radius:14px}
 
-/* ---------- Painel · shell Ilhas (travado no #6) ---------- */
 .app{display:grid;grid-template-columns:248px minmax(0,1fr);padding:12px;gap:12px;min-height:100%}
 .app.rail{grid-template-columns:76px minmax(0,1fr)}
 .side{display:flex;flex-direction:column;gap:6px;padding:18px 12px;position:sticky;top:12px;height:calc(max(560px,calc(100vh - 150px)) - 24px);min-width:0;background:var(--surface);border:1px solid var(--border);border-radius:20px;box-shadow:var(--shadow)}
@@ -205,7 +184,6 @@ html[data-theme=light] .blank{background:#fff;color:#5f6368}
 .steps-ol li{margin:3px 0}
 .recording{color:var(--accent-text);font-weight:700}
 
-/* ---------- B · Primeiros passos ---------- */
 .guide{border:1px solid color-mix(in srgb,var(--accent) 45%,var(--border));border-radius:20px;padding:16px 18px;margin-bottom:18px;background:color-mix(in srgb,var(--accent) 4%,var(--bg))}
 .guide .gh{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .guide .gh h2{margin:0;font-size:16px}
@@ -229,7 +207,6 @@ html[data-theme=light] .blank{background:#fff;color:#5f6368}
 .gdone{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .gdone p{margin:0;flex:1;min-width:200px;color:var(--muted)}
 
-/* ---------- C · Boas-vindas ---------- */
 .welcome{min-height:100%;padding:28px 24px 48px;display:flex;flex-direction:column;align-items:center}
 .welcome .wbrand{display:flex;align-items:center;gap:12px;margin-bottom:26px}
 .welcome .wbrand .wm{font-size:22px}
@@ -255,7 +232,6 @@ html[data-theme=light] .blank{background:#fff;color:#5f6368}
 .summary li{display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:12px;padding:8px 12px;background:var(--bg)}
 .summary li span.r{margin-left:auto;font-size:12px;color:var(--muted)}
 
-/* ---------- ferramentas do protótipo (não fazem parte do design) ---------- */
 .proto{font-family:system-ui,sans-serif}
 .lab{background:#fff;color:#111;border-radius:14px;box-shadow:0 6px 24px rgba(0,0,0,.45);font:12.5px/1.4 system-ui,sans-serif;position:sticky;top:16px}
 .lab h2{margin:0;padding:12px 14px 4px;font-size:13px}
@@ -275,7 +251,6 @@ html[data-theme=light] .blank{background:#fff;color:#5f6368}
 html[data-theme=light] .intro{color:#222}
 .intro b{font-size:15px}
 
-/* rodada de decisões (Lavish) */
 .round{max-width:1560px;margin:22px auto 0;background:#fff;color:#111;border-radius:16px;padding:20px;font:13.5px/1.5 system-ui,sans-serif}
 .round h2{margin:0 0 4px;font-size:18px}
 .round>p{margin:0 0 14px;color:#444}
@@ -385,7 +360,6 @@ const POOL=[
   ['Он <mark class="kw">спасибо</mark> не сказал.','YouTube · Редакция','Russo'],
 ];
 
-/* ---------- estado ---------- */
 function fresh(){
   return {frases:[],atalho:'',conta:'none',bridge:'none',con:'off',gemini:false,
     am:{en:{on:false,n:0,lim:20},ru:{on:false,n:0,lim:20}},
@@ -396,7 +370,6 @@ function fresh(){
 const S=Object.assign(fresh(),{variant:new URLSearchParams(location.search).get('variant')||'C',theme:'dark'});
 if(!VARIANTS[S.variant]) S.variant='C';
 
-/* ordem recomendada: valor primeiro; Anki antes da mineração automática (dependência real); chave por último */
 const STEPS=[
   {id:'minerar',t:'Minerar a primeira frase',opt:false,done:()=>S.frases.length>0,res:()=>`${S.frases.length} ${S.frases.length>1?'frases':'frase'}`},
   {id:'atalho',t:'Escolher o atalho de Minerar seleção',opt:false,done:()=>!!S.atalho,res:()=>S.atalho},
@@ -409,7 +382,6 @@ const stepState=s=>s.done()?'ok':S.skipped.has(s.id)?'skip':'todo';
 const resolved=()=>STEPS.filter(s=>stepState(s)!=='todo').length;
 const nextStep=()=>STEPS.find(s=>stepState(s)==='todo');
 
-/* ---------- ações ---------- */
 function mine(src){
   const p=POOL[S.frases.length%POOL.length];
   S.frases.unshift({html:p[0],ctx:src==='manual'?'Manual':p[1],lang:p[2]});
@@ -427,7 +399,6 @@ function checkBridge(){
 function signIn(){S.conta='sync';render();setTimeout(()=>{S.conta='in';render();},900);}
 function startRec(){S.recording=true;render();}
 
-/* ---------- popup ---------- */
 function Popup(){
   const last=S.frases.slice(0,5);
   const conOff=S.con!=='on';
@@ -445,7 +416,6 @@ function Popup(){
       <div class="top"><b>${l.toUpperCase()}</b><label class="tg"><input type="checkbox" data-act="am" data-lang="${l}" ${a.on?'checked':''} aria-label="Mineração automática ${l==='en'?'Inglês':'Russo'}"><span class="trk"></span></label></div>
       <div class="big"><strong>${a.n}</strong> de ${a.lim} hoje</div>
       <div class="meter"><i style="width:${Math.round(a.n/a.lim*100)}%"></i></div></div>`;};
-  // A e B ensinam a dependência no próprio azulejo; C já ensinou no passo, mas o status é o mesmo (C8)
   const amNote=anyOn&&conOff?`<div class="note warn" style="margin-top:8px"><span class="dot off"></span>Nada é minerado com a Conexão com o Anki desligada: é ela que diz quais palavras você já conhece.</div>`
     :(!anyOn&&S.variant==='A'?`<div class="note" style="margin-top:8px">Ligue um idioma e as legendas com uma palavra nova são mineradas sozinhas${conOff?'. Precisa da Conexão com o Anki ligada.':'.'}</div>`:'');
   const flash=S.popFlash?`<div class="note" style="margin-top:5px;color:var(--success)">${ic('check',14)}${esc(S.popFlash)}</div>`:'';
@@ -472,7 +442,6 @@ function ring(r){
   return `<svg class="ring" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" style="stroke:var(--surface-2)" stroke-width="3"/><circle cx="12" cy="12" r="9" fill="none" style="stroke:var(--accent)" stroke-width="3" stroke-dasharray="${C*p} ${C}" stroke-linecap="round" transform="rotate(-90 12 12)"/></svg>`;
 }
 
-/* ---------- Painel ---------- */
 function Sidebar(){
   const dot=S.con==='on'?'':S.con==='wait'?' wait':' off';
   const conT={on:'ligada',off:'desligada',wait:'conectando…'}[S.con];
@@ -597,9 +566,8 @@ function Config(){
   </div>`;
 }
 
-/* ---------- C · Boas-vindas ---------- */
 function Welcome(){
-  const k=S.wStep; // 0 = abertura, 1..6 = passos, 7 = fim
+  const k=S.wStep;
   let card;
   if(k===0){
     card=`<div class="kicker">Boas-vindas</div><h2>Boas-vindas ao PerpetualMiner</h2>
@@ -624,22 +592,18 @@ function Welcome(){
   return `<div class="welcome"><div class="wbrand">${LOGO(40)}${WM}</div><div class="wgrid"><ol class="wlist">${list}</ol><div class="wcard">${card}</div></div></div>`;
 }
 
-/* ---------- render ---------- */
 function render(){
   document.documentElement.dataset.theme=S.theme;
   $('#sw-label').textContent=`${S.variant} · ${VARIANTS[S.variant]}`;
   $('#bet').innerHTML=BETS[S.variant];
   const vp=$('#viewport');const keep=vp.scrollTop;
-  // aba + url
   const url={blank:'Pesquisar no Google ou digitar URL',painel:`chrome-extension://…/painel.html#${S.route==='anki'?'anki/custos':S.route}`,welcome:'chrome-extension://…/painel.html#boas-vindas'}[S.page];
   $('#b-url').textContent=url;
   $('#b-tab-t').textContent={blank:'Nova guia',painel:'Painel · PerpetualMiner',welcome:'Boas-vindas · PerpetualMiner'}[S.page];
-  // badge: soma só dos idiomas ligados
   const on=['en','ru'].filter(l=>S.am[l].on);
   $('#b-badge').classList.toggle('hidden',!on.length);
   $('#b-badge').textContent=on.reduce((a,l)=>a+S.am[l].n,0);
   $('#b-ext').title=on.length?`Mineração automática: ${on.reduce((a,l)=>a+S.am[l].n,0)} hoje`:'PerpetualMiner';
-  // conteúdo
   if(S.page==='blank'){
     vp.innerHTML=`<div class="blank"><div>A extensão acabou de ser instalada.<br><span class="hint">protótipo: nada abriu sozinho · clique no ícone da extensão, no canto da barra</span></div></div>`;
   } else if(S.page==='welcome'){
@@ -650,7 +614,6 @@ function render(){
     vp.innerHTML=`<div class="app${rail?' rail':''}">${Sidebar()}<main class="main">${view}</main></div>`;
   }
   vp.scrollTop=keep;
-  // popup
   $('#popwrap').classList.toggle('hidden',!S.popup);
   $('#b-ext').setAttribute('aria-expanded',S.popup);
   if(S.popup) $('#popwrap').innerHTML=Popup();
@@ -675,21 +638,19 @@ passos    ${resolved()} de ${STEPS.length}
   $('#s-bridge').value=S.bridge;
 }
 
-/* ---------- instalação ---------- */
 function install(){
   const keep={variant:S.variant,theme:S.theme};
   Object.assign(S,fresh(),keep);
-  if(S.variant==='C'){S.page='welcome';S.wStep=0;} // C abre a aba sozinha (onInstalled)
+  if(S.variant==='C'){S.page='welcome';S.wStep=0;}
   render();
 }
 
-/* ---------- eventos ---------- */
 document.addEventListener('click',e=>{
   const t=e.target.closest('[data-act],[data-go]');
   if(!t){ if(S.menu&&!e.target.closest('.menu')){S.menu=false;render();} return; }
   if(t.dataset.go){ openPainel(t.dataset.go,t.dataset.sec); return; }
   const a=t.dataset.act, id=t.dataset.id;
-  if(a==='am'){ return; } // tratado no change
+  if(a==='am'){ return; }
   switch(a){
     case 'painel': openPainel('frases'); break;
     case 'atalhos': case 'go-cfg': openPainel('configuracoes',t.dataset.sec||'atalhos'); break;
@@ -766,7 +727,6 @@ function setVariant(k){S.variant=k;const u=new URL(location);u.searchParams.set(
 function cycle(d){const i=KEYS.indexOf(S.variant);setVariant(KEYS[(i+d+KEYS.length)%KEYS.length]);}
 $('#sw-prev').onclick=()=>cycle(-1);$('#sw-next').onclick=()=>cycle(1);
 
-/* ---------- rodada de decisões (Lavish) ---------- */
 const QS=[
   {id:'estrutura',t:'Q1 · Estrutura do onboarding',why:'Onde o guia mora. Nenhuma das três cria função de motor; muda quanto de superfície nova entra.',rec:'B',opts:[
     ['A','A · Vazios que ensinam','Sem guia. Cada vazio e card ensina no lugar. Zero superfície nova, mas não há ordem nem sensação de “pronto”.'],

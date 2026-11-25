@@ -1,8 +1,3 @@
-"""O provisório `.novo` que a morte da Conexão deixa (`gravacao_de_json.apagar_os_provisorios`): sai na subida seguinte.
-
-    python3.9 complemento/test_envio_provisorios.py
-"""
-
 import os
 import sys
 import tempfile
@@ -44,8 +39,6 @@ class OProvisorioDaMorteSaiNaSubida(unittest.TestCase):
         self.assertEqual(com_a_palavra, [], "a Palavra não sobra em nenhum arquivo da Conexão depois do Envio concluído")
 
     def test_um_provisorio_que_nao_da_para_apagar_nao_impede_a_thread_de_trabalho_nem_os_outros_de_sair(self):
-        # Um arquivo aberto por outro programa (o Windows recusa apagar) levanta `PermissionError`: o provisório que ninguém lê não
-        # pode custar o Envio da sessão inteira, e os outros provisórios saem mesmo assim.
         with tempfile.TemporaryDirectory() as pasta:
             with EnvioNoTeste(pasta, trabalhando=False) as conexao:
                 conexao.criar(pedido(ID, LINHA))

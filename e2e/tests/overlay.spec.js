@@ -35,7 +35,6 @@ async function permitirClipboard(context, paginas) {
   await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: paginas.origem });
 }
 
-/** Serve `pagina` com uma Permissions-Policy que recusa o clipboard ao documento (o caso real de um site que o bloqueia). */
 async function recusarClipboardEm(page, url) {
   await page.route(url, async route => {
     const resposta = await route.fetch();
@@ -43,10 +42,6 @@ async function recusarClipboardEm(page, url) {
   });
 }
 
-// Falhas do armazenamento do service worker. Não há rede entre o service worker e o
-// `chrome.storage`, então a falha é injetada na própria fronteira: o `set`
-// passa a recusar (ou a segurar) a gravação, e o teste afirma o que a pessoa vê
-// e o que fica gravado depois que a fronteira volta ao normal.
 const recusarGravacoes = extensao => extensao.serviceWorker.evaluate(() => {
   globalThis.__setOriginal ??= chrome.storage.local.set;
   chrome.storage.local.set = () => { throw new Error('QUOTA_BYTES quota exceeded'); };

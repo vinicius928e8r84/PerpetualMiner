@@ -1,9 +1,3 @@
-"""“Usar um tipo que já tenho” (#165), visto de fora: o servidor real com a thread de trabalho ligada, a coleção em memória (um tipo de nota da pessoa) e a
-OpenAI, a voz e o Openverse de mentira. O teste confere o que fica na coleção (a nota, os campos que ela tem, o tipo de nota intocado) e o que a rota responde.
-
-    python3.9 complemento/test_tipo_proprio.py
-"""
-
 import json
 import os
 import re

@@ -1,10 +1,3 @@
-"""O tipo de nota próprio por idioma e o Cartão Iniciante (#161), visto de fora: o servidor real com a thread de trabalho ligada, a
-coleção em memória (um Anki em português, um em inglês, um com Cartões antigos) e a OpenAI, a voz e o Openverse de mentira. O teste
-confere o que fica guardado na coleção: o tipo de nota, os Baralhos, os campos da nota e a mídia que ela cita.
-
-    python3.9 complemento/test_envio_tipo_de_nota.py
-"""
-
 import copy
 import json
 import os
@@ -31,7 +24,6 @@ def cores_de(html):
 
 
 def enviar(colecao, corpo, id_=ID):
-    """Faz o Envio inteiro e devolve o estado e as notas gravadas."""
     with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta, colecao=colecao) as conexao:
         conexao.criar(dict(corpo, jobId=id_))
         estado = conexao.esperar(id_)
@@ -99,7 +91,6 @@ class OCartaoNovoSaiNoIniciante(unittest.TestCase):
 
 
 def enviar_no_nivel(nivel, frase=FRASE, id_=ID, **argumentos):
-    """O Envio inteiro no `nivel` (None: o pedido sem nível) numa coleção nova: o estado, a nota gravada e o prompt de sistema que a OpenAI recebeu."""
     colecao = ColecaoEmMemoria(SO_O_DEFAULT)
     corpo = dict(pedido(id_, frase, **argumentos), **({"nivel": nivel} if nivel else {}))
     with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta, colecao=colecao) as conexao:

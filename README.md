@@ -184,7 +184,7 @@ node scripts/testar.mjs e2e -- popup --workers=2
 ### Contribuir
 
 - Problemas e ideias vão nas [issues](https://github.com/vinicius928e8r84/PerpetualMiner/issues).
-- [`CODING_STANDARDS.md`](CODING_STANDARDS.md) lista o que a revisão cobra. `node scripts/regras/verificar.js` confere a parte que um script enxerga.
+- [`CODING_STANDARDS.md`](CODING_STANDARDS.md) lista os erros que só a revisão pega. `node scripts/regras/verificar.js` confere o que um script enxerga.
 - Comportamento novo da extensão ganha teste em `e2e/`.
 - O corpo da PR segue [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md). Confira com `node scripts/ci/corpo-da-pr.js <arquivo.md>` antes de abrir.
 

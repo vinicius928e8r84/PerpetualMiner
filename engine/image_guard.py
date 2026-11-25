@@ -1,20 +1,7 @@
-"""
-image_guard.py — Decide whether a keyword/prompt deserves an image.
-
-Rules (in order):
-  1. If the keyword is a known abstract pattern (phrasal verb, idiom marker,
-     abstract noun suffix, etc.) → skip image entirely.
-  2. Ask GPT-4o-mini to classify: concrete-visual (C) or abstract (A).
-     One token answer, very cheap (~0.001 cents per call).
-  3. Return True (generate image) only for C.
-
-The GPT call is the safety net for edge cases the heuristics miss.
-"""
-
 import re
 from typing import Optional
 
-if __package__:  # inside the Anki add-on the engine is the package `complemento.motor`
+if __package__:
     from . import cost_tracker, provedores
 else:
     import cost_tracker
@@ -40,11 +27,6 @@ _ABSTRACT_EXACT = {
 
 
 def _heuristic(keyword: str) -> Optional[bool]:
-    """
-    Returns True  → definitely concrete (fast-allow)
-    Returns False → definitely abstract (fast-reject)
-    Returns None  → uncertain, needs GPT
-    """
     kw = keyword.lower().strip()
 
     if kw in _ABSTRACT_EXACT:
@@ -79,8 +61,6 @@ def should_generate_image(
     log_dir: str = "log",
     label: Optional[str] = None,
 ) -> bool:
-    """`pela_chave` is the key bound to its provider (`provedores.PelaChave`). `label` is what the cost record says the call was for
-    (the word by default; the add-on passes the card's id)."""
     fast = _heuristic(keyword)
     if fast is not None:
         return fast

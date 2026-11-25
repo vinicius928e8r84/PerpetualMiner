@@ -2,25 +2,14 @@
 
 const { test, expect } = require('../fixtures');
 const { emRepouso, assentar } = require('../repouso');
-
-const CHAVE_A = 'sk-fake-repouso-primeira-aaaa';
-const CHAVE_B = 'sk-fake-repouso-segunda-bbbb';
-const CICLOS = 4;
+const {
+  CHAVE_A, CHAVE_B, CICLOS, cardDaIA, cardDaConta, abrirComRelogio, semearDonoA, abrirOSegundoPerfil,
+} = require('../apoio-do-repouso');
 
 test.beforeEach(() => { test.slow(); });
 
-async function abrirComRelogio(relogioParado, page, extensao, secao) {
-  await relogioParado({ page });
-  await page.goto(extensao.url(`painel.html#configuracoes/${secao}`));
-  await expect(page.locator('#shell-chip')).toContainText('Sincronizado agora', { timeout: 15_000 });
-}
-
-const cardDaIA = page => page.locator('#cfg-ia');
-const cardDaConta = page => page.locator('#cfg-conta');
-
 test('card da IA com um perfil: parado, não escreve na Conexão nem no Firestore', async ({ page, extensao, fakes, relogioParado }) => {
-  await extensao.semearSessao({ uid: 'A' });
-  fakes.google.gravarChaveDaOpenAI('A', { chave: CHAVE_A, em: 100 });
+  await semearDonoA(extensao, fakes);
   await abrirComRelogio(relogioParado, page, extensao, 'ia');
   await expect(cardDaIA(page).locator('.cfg-resumo')).toHaveText('••••••••aaaa');
 
@@ -46,18 +35,15 @@ test('card da IA com o ChatGPT conectado: parado, só relê o login e não escre
 
 for (const bComChave of [false, true]) {
   test(`card da IA com dois perfis${bComChave ? ' (B tem chave)' : ''}: parados, A e B só leem o dono`, async ({ page, extensao, fakes, segundoPerfil, relogioParado }) => {
-    await extensao.semearSessao({ uid: 'A' });
-    fakes.google.gravarChaveDaOpenAI('A', { chave: CHAVE_A, em: 100 });
+    await semearDonoA(extensao, fakes);
     if (bComChave) fakes.google.gravarChaveDaOpenAI('B', { chave: CHAVE_B, em: 101 });
     await abrirComRelogio(relogioParado, page, extensao, 'ia');
-    await segundoPerfil.extensao.semearSessao({ uid: 'B', displayName: 'Pessoa B' });
-    const b = await segundoPerfil.context.newPage();
-    await abrirComRelogio(relogioParado, b, segundoPerfil.extensao, 'ia');
+    const telaB = await abrirOSegundoPerfil(relogioParado, segundoPerfil, 'ia');
     const resumoFinal = bComChave ? '••••••••bbbb' : 'Sem chave';
-    await assentar([{ page, extensao }, { page: b, extensao: segundoPerfil.extensao }], { esperar: '/ia/estado' });
-    await expect(cardDaIA(b).locator('.cfg-resumo')).toHaveText(resumoFinal);
+    await assentar([{ page, extensao }, telaB], { esperar: '/ia/estado' });
+    await expect(cardDaIA(telaB.page).locator('.cfg-resumo')).toHaveText(resumoFinal);
 
-    await emRepouso(page, { ciclos: CICLOS, fakes, extensao, esperar: '/ia/estado', tambem: [{ page: b, extensao: segundoPerfil.extensao }] });
+    await emRepouso(page, { ciclos: CICLOS, fakes, extensao, esperar: '/ia/estado', tambem: [telaB] });
 
     await expect(cardDaIA(page).locator('.cfg-resumo')).toHaveText(resumoFinal);
     expect((await segundoPerfil.extensao.lerStorage('pm_chave_openai')).pm_chave_openai.conta).toBe('B');
@@ -68,8 +54,7 @@ for (const bComChave of [false, true]) {
 }
 
 test('Conta & sync com um perfil: parado, não escreve na Conexão nem no Firestore', async ({ page, extensao, fakes, relogioParado }) => {
-  await extensao.semearSessao({ uid: 'A' });
-  fakes.google.gravarChaveDaOpenAI('A', { chave: CHAVE_A, em: 100 });
+  await semearDonoA(extensao, fakes);
   await abrirComRelogio(relogioParado, page, extensao, 'conta');
   await expect(cardDaConta(page)).toContainText('Sincronizado');
 
@@ -81,17 +66,14 @@ test('Conta & sync com um perfil: parado, não escreve na Conexão nem no Firest
 });
 
 test('Conta & sync com dois perfis: parados, A e B não escrevem um no outro', async ({ page, extensao, fakes, segundoPerfil, relogioParado }) => {
-  await extensao.semearSessao({ uid: 'A' });
-  fakes.google.gravarChaveDaOpenAI('A', { chave: CHAVE_A, em: 100 });
+  await semearDonoA(extensao, fakes);
   fakes.google.gravarChaveDaOpenAI('B', { chave: CHAVE_B, em: 101 });
   await abrirComRelogio(relogioParado, page, extensao, 'conta');
-  await segundoPerfil.extensao.semearSessao({ uid: 'B', displayName: 'Pessoa B' });
-  const b = await segundoPerfil.context.newPage();
-  await abrirComRelogio(relogioParado, b, segundoPerfil.extensao, 'conta');
-  await expect(cardDaConta(b)).toContainText('Sincronizado');
-  await assentar([{ page, extensao }, { page: b, extensao: segundoPerfil.extensao }]);
+  const telaB = await abrirOSegundoPerfil(relogioParado, segundoPerfil, 'conta');
+  await expect(cardDaConta(telaB.page)).toContainText('Sincronizado');
+  await assentar([{ page, extensao }, telaB]);
 
-  await emRepouso(page, { ciclos: CICLOS, fakes, extensao, tambem: [{ page: b, extensao: segundoPerfil.extensao }] });
+  await emRepouso(page, { ciclos: CICLOS, fakes, extensao, tambem: [telaB] });
 
   await expect(cardDaConta(page)).toContainText('Sincronizado');
   expect((await extensao.lerStorage('pm_user_info')).pm_user_info.uid).toBe('A');

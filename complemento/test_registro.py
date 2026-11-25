@@ -1,11 +1,3 @@
-"""O log da Conexão (`registro.py`) não segura o arquivo aberto entre um registro e outro (#502).
-
-No Windows, um arquivo aberto não se apaga nem se renomeia: o “Remover” do Anki falhava em `complemento.log`
-(`send2trash` com OLE 0x80270028, `rmtree` com WinError 32) e deixava a Conexão pela metade.
-
-    python3.9 complemento/test_registro.py
-"""
-
 import os
 import shutil
 import sys

@@ -60,7 +60,6 @@
     desenhar();
   }
 
-  /** Nome com nível vazio (`Inglês::`, `::Minerar`): o Anki não cria o baralho. */
   function comNivelVazio(nome) {
     const texto = String(nome || '').trim();
     return texto !== '' && texto.split('::').some(parte => !parte.trim());

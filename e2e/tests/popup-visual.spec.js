@@ -15,8 +15,6 @@ const FRASES = [
   { id: 2, texto: 'Let’s call it a day.', data: '17/09/2026', streaming: 'youtube', idioma: 'Inglês', contexto: { fonte: 'youtube', titulo: 'Veritasium', detalhe: '' } },
 ];
 
-// A contagem do dia é do service worker, que não tem o relógio parado: ela é
-// gravada no dia de verdade.
 const hoje = new Date();
 const DIA = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
 const mineracao = ({ en, ru }) => ({

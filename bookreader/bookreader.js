@@ -125,7 +125,6 @@
     return lista;
   }
 
-  /** Solto em qualquer lugar da página, a foto entra na fila; o Chrome nunca a abre. */
   function ouvirArrastar() {
     const envio = porId('foto-envio');
     const sobre = ativo => envio.classList.toggle('foto-envio--sobre', ativo && !!estado.chaveGemini);

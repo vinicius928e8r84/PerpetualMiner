@@ -1,19 +1,3 @@
-"""Cada gravação do Envio é uma fronteira onde a Conexão pode morrer (#248): o criar, o trabalho e o Apagar tudo.
-
-Para cada gravação que o criar, o trabalho e o Apagar tudo fazem (os arquivos do Envio, o texto gerado, a nota no Anki, o que se
-apaga) o teste mata a Conexão **ali** (a gravação não acontece e nenhuma outra acontece depois), sobe outra na mesma pasta de
-dados e confere o que o Envio promete:
-
-- o mesmo corpo de novo é `201` (nunca `409`), e o Envio termina;
-- nenhum id fica encalhado: todo id da fila tem pedido e estado, e todo pedido gravado entra na fila quando o painel pede de novo;
-- tentar de novo não gasta nada que já está feito;
-- um Cartão que já está no Anki não chama a OpenAI de novo (o `guid` é procurado antes de gerar o texto), e a coleção
-  fica com uma nota por Cartão;
-- depois do Apagar tudo, em qualquer fronteira (e pedindo de novo), nem a Palavra nem a Frase estão em `user_files`.
-
-    python3.9 complemento/test_envio_fronteiras.py
-"""
-
 import json
 import os
 import sys
@@ -32,14 +16,10 @@ from complemento.test_envio import (
 
 
 def Morte():
-    """A Conexão morreu: o que estava para ser gravado não foi. (Um `SystemExit` termina a thread sem passar pelo `except Exception`
-    e a biblioteca não o escreve no erro do processo.)"""
     return SystemExit("a Conexão morreu aqui")
 
 
 class Fronteiras:
-    """Conta cada gravação do Envio e mata na de número `morrer_em` (`None`: só conta). Depois de morta, nada mais grava."""
-
     def __init__(self, morrer_em=None):
         self.morrer_em = morrer_em
         self.contadas = 0
@@ -56,7 +36,6 @@ class Fronteiras:
             self.contadas += 1
 
     def ligadas(self):
-        """Os pontos de gravação do Envio: os arquivos (`_gravar_json`, `_apagar`, da Fila e do trabalho), o texto do motor e a nota na coleção."""
         gravar_json, apagar = envio._gravar_json, envio._apagar
         motor = envio.motor_do_complemento().generate_cards
         gravar_texto = motor._write_card
@@ -102,10 +81,9 @@ def dois_cartoes():
 
 
 def tentar(funcao, *argumentos):
-    """Um pedido cuja resposta pode se perder porque a Conexão morreu no meio dele."""
     try:
         return funcao(*argumentos)
-    except (OSError, ValueError, Exception) as erro:  # noqa: BLE001 - RemoteDisconnected, ConnectionReset, JSON vazio…
+    except (OSError, ValueError, Exception) as erro:  # noqa: BLE001
         return ("sem resposta", type(erro).__name__)
 
 
@@ -136,7 +114,6 @@ def ler_a_fila(pasta):
 
 
 def sobras_da_frase(pasta):
-    """O que o desenho promete que some quando a Frase chega ao Anki: a linha no pedido, o texto pago (`.txt`) e todo `.novo`."""
     sobras = []
     for raiz, _, nomes in os.walk(pasta):
         for nome in nomes:
@@ -189,7 +166,6 @@ class MorteAoRenomear:
 
 class AMorteEmCadaGravacaoDoCriarEDoTrabalho(unittest.TestCase):
     def rodar(self, morrer_em):
-        """Mata na gravação `morrer_em`; devolve (quantas gravações houve, o que o teste conferiu no fim)."""
         colecao = ColecaoEmMemoria(INGLES)
         with tempfile.TemporaryDirectory() as pasta:
             fronteiras = Fronteiras(morrer_em)
@@ -233,7 +209,6 @@ class AMorteEmCadaGravacaoDoCriarEDoTrabalho(unittest.TestCase):
 
 class AMorteEmCadaGravacaoDoApagarTudo(unittest.TestCase):
     def preparar_o_envio_com_a_frase_na_conexao(self, pasta, colecao):
-        """Um Envio com o texto pago e a linha no pedido, parado porque o Anki fechou: a Frase está em três arquivos."""
         with EnvioNoTeste(pasta, colecao=colecao) as conexao:
             conexao.openai.antes_de_responder = lambda metodo, autorizacao: colecao.fechar()
             conexao.criar(pedido(ID, LINHA))
@@ -281,9 +256,6 @@ class AMorteEmCadaGravacaoDoApagarTudo(unittest.TestCase):
 
 
 class AMorteDepoisDoArquivoProvisorioEAntesDoRenomear(unittest.TestCase):
-    """Cada gravação escreve `<nome>.novo` e o renomeia. Morrer entre as duas deixa o provisório com a Palavra e a Frase em
-    `user_files`: o Apagar tudo tem de levá-lo também (a fronteira acima morre antes de o provisório existir)."""
-
     def rodar(self, morrer_em):
         replace = MorteAoRenomear(morrer_em)
         colecao = ColecaoEmMemoria(INGLES)

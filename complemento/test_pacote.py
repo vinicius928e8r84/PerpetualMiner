@@ -1,8 +1,3 @@
-"""O `.ankiaddon`: o que o Anki encontra ao instalar o arquivo.
-
-    python3.9 complemento/test_pacote.py
-"""
-
 import importlib
 import io
 import json
@@ -175,12 +170,10 @@ CONFERE_A_VERSAO = "test_as_fontes_de_hoje_sao_as_que_a_versao_do_complemento_re
 
 
 def ambiente_sem_o_do_ci(**extra):
-    """O ambiente do CI leva `PM_VERSAO_BASE` (PR) ou `PM_VERSAO_NO_LANCAMENTO` (push); os testes que rodam outro processo escolhem o seu."""
     return dict({k: v for k, v in os.environ.items() if k not in ("PM_VERSAO_BASE", "PM_VERSAO_NO_LANCAMENTO", "SOURCE_DATE_EPOCH")}, PM_COMMIT_VERDE="ignorar", **extra)
 
 
 def copiar_o_complemento(pasta):
-    """Uma cópia limpa do complemento em `pasta`, com o `engine/` ao lado (de onde vem o motor do pacote); devolve a do complemento."""
     copia = os.path.join(pasta, "complemento")
     shutil.copytree(AQUI, copia, ignore=shutil.ignore_patterns("__pycache__", "user_files"))
     shutil.copytree(os.path.join(AQUI, "..", "engine"), os.path.join(pasta, "engine"), ignore=shutil.ignore_patterns("__pycache__"))
@@ -188,9 +181,6 @@ def copiar_o_complemento(pasta):
 
 
 class VersaoDoComplemento(unittest.TestCase):
-    """`versoes.json` guarda o hash das fontes do pacote (comentários inclusos: são bytes que o Anki instala) por `VERSAO`.
-    Mudou o código sem subir a versão, o teste falha; subiu a versão, ela entra no arquivo com o hash novo."""
-
     @PULA_NA_PR
     @PULA_NO_PUSH
     def test_as_fontes_de_hoje_sao_as_que_a_versao_do_complemento_registrou(self):
@@ -262,7 +252,6 @@ class VersaoDoComplemento(unittest.TestCase):
                 self.assertNotIn("versoes.json", pacote.namelist())
 
     def test_arquivo_oculto_solto_na_pasta_nao_entra_no_pacote_nem_muda_o_hash(self):
-        # O `.DS_Store` do Finder aparece na pasta do dono sem estar no git: mudaria o pacote e o hash e a falha pediria para subir a VERSAO.
         with tempfile.TemporaryDirectory() as pasta:
             copia = copiar_o_complemento(pasta)
             script = "from complemento import empacotar; print(empacotar.hash_das_fontes()); print(empacotar.arquivos_do_pacote())"
@@ -286,8 +275,6 @@ class VersaoDoComplemento(unittest.TestCase):
 
 
 class HoraDoEmpacotamento(unittest.TestCase):
-    """Rodado duas vezes sem `mod=` nem variável, o script dá os mesmos bytes: o `mod` só sobe quando o código muda."""
-
     def setUp(self):
         self.pasta = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, self.pasta)
@@ -344,9 +331,6 @@ class HoraDoEmpacotamento(unittest.TestCase):
 
 
 class ArquivoQueVaiNoPacoteDaExtensao(unittest.TestCase):
-    """A extensão entrega o `.ankiaddon` num link de download (`conexao/perpetualminer.ankiaddon`, sem
-    permissão nova). Ele não pode ficar para trás do código do complemento na main: `versao_no_merge.py` o refaz."""
-
     @PULA_NA_PR
     @PULA_NO_PUSH
     def test_o_arquivo_da_extensao_instala_o_complemento_de_hoje(self):

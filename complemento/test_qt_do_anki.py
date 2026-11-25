@@ -1,8 +1,3 @@
-"""O que o complemento pede ao Qt do Anki (`qt_do_anki.py`): a janela é uma só e os avisos nunca viram marcação, com um `aqt` de mentira.
-
-    python3.9 complemento/test_qt_do_anki.py
-"""
-
 import os
 import sys
 import types
@@ -15,8 +10,6 @@ from complemento import configuracao, janela, qt_do_anki, registro, texto_da_jan
 
 
 class _Qualquer:
-    """Qualquer nome do Qt (um enum, um sinal, um método) que a fronteira use: aceita tudo e anota o que o complemento pediu."""
-
     def __getattr__(self, nome):
         return self if nome[:1].isupper() else lambda *argumentos, **nomeados: None
 
@@ -29,8 +22,6 @@ class _Visivel(_Qualquer):
 
 
 class _Barra(_Visivel):
-    """A barra do Envio: a faixa e o valor que a janela deu a ela."""
-
     faixa = valor = None
 
     def setRange(self, minimo, maximo):
@@ -41,8 +32,6 @@ class _Barra(_Visivel):
 
 
 class AqtDeMentira:
-    """O `aqt` do Anki, só o que `qt_do_anki.py` importa, anotando o que o complemento pede a ele."""
-
     def __init__(self):
         self.tooltips, self.dialogos, self.relogios, self.formularios, self.rotulos, self.eventos = [], [], [], [], [], []
         aqui = self
@@ -151,11 +140,9 @@ class AqtDeMentira:
         return self._troca.__exit__(*erro)
 
     def campo(self, chave):
-        """O valor da linha do formulário da janela com o rótulo `chave` do catálogo."""
         return next(linha[1] for linha in self.formularios[0].linhas if linha[0] == texto_da_janela.texto(chave))
 
     def sem_rotulo(self):
-        """A barra do Envio e a linha do Baralho, as duas linhas do formulário que não têm rótulo."""
         return [linha[0] for linha in self.formularios[0].linhas if len(linha) == 1]
 
 

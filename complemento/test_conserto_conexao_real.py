@@ -1,13 +1,3 @@
-"""O abridor que conserta sozinho (#152) falando com a Conexão **de verdade**: o `curl` do Mac é o de verdade e a Conexão é o servidor real.
-
-    python3.9 complemento/test_conserto_conexao_real.py
-
-Os outros testes do consertar usam um `curl` de mentira que responde o que o teste mandar, e por isso nunca viram que a pergunta "a Conexão
-responde?" voltava 401 do porteiro (o pedido não é assinado: o script não é um navegador pareado). Aqui o script do Mac (`sh`) pergunta
-a um `servidor.Conexao` real, numa porta livre; só o `ps`, o `lsof`, o `kill`, o `sleep`, o `date` e o `open` seguem de mentira (nenhum processo
-de verdade é fechado, nenhum Anki é aberto).
-"""
-
 import os
 import sys
 import tempfile
@@ -24,8 +14,6 @@ CURL_DE_VERDADE = "/usr/bin/curl"
 
 
 class AnkiSemResposta(ColecaoEmMemoria):
-    """O Anki com a thread principal travada: a leitura de perfis estoura o tempo, como o `no_anki.py` faz."""
-
     def perfis(self):
         raise baralhos.ColecaoIndisponivel("anki_busy")
 

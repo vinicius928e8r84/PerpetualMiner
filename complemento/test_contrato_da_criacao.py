@@ -1,9 +1,3 @@
-"""A criação dos tipos de nota e dos Baralhos (#161) como qualquer adaptador de coleção a cumpre: o tipo de nota próprio de cada idioma,
-com todos os campos desde o nascimento, os Baralhos só de quem não tem nenhum, e nunca um repetido nem um Cartão antigo mexido.
-Uma parte do contrato do adaptador (`test_colecao_em_memoria.ContratoDoAdaptadorDaColecao`, de onde vêm `adaptador` e `sincronizar`):
-o adaptador em memória e o do Anki herdam esta parte e passam pelos mesmos testes.
-"""
-
 import os
 import re
 import sys
@@ -15,8 +9,6 @@ from complemento.test_contrato_da_correcao import ContratoDaCorrecao
 from complemento.test_contrato_do_gancho_da_criacao import ContratoDoGanchoDaCriacao
 from complemento.nota_a_gravar import FrenteDoCartao, NotaAGravar
 
-# O que os níveis, a morfologia do russo, as frentes e a Criação vão usar (#138, “o nome exato dos campos é da construção”):
-# mudar os campos depois força uma sincronização completa no Anki, então todos nascem juntos.
 CAMPOS_DOS_DOIS = [
     "Frase", "Áudio da frase", "Palavra", "Áudio da palavra", "Pronúncia", "Tradução literal", "Tradução natural", "Contexto da cena",
     "Fonte", "Imagem",
@@ -89,7 +81,6 @@ class ContratoDaCriacao(ContratoDaCorrecao, ContratoDoGanchoDaCriacao):
         self.assertEqual(resultado["tipos"], {"en": False, "ru": True})
 
     def com_a_criacao_de_antes(self):
-        """Um tipo Criação instalado por uma Conexão anterior: a frente escolhida e depois um verso que o modelo de hoje já não tem."""
         colecao = self.adaptador(SO_O_DEFAULT)
         self.preparar(colecao)
         tipo_de_nota.trocar_a_frente(colecao, "en", "criacao")
@@ -155,7 +146,6 @@ class ContratoDaCriacao(ContratoDaCorrecao, ContratoDoGanchoDaCriacao):
         self.assertEqual([palavra["word"] for palavra in resposta["words"] if palavra["type"] == "term"], ["gave up"])
 
     def com_notas_gravadas(self):
-        """Uma coleção preparada, com um Cartão do inglês já gravado (o que a troca de frente não pode tocar)."""
         colecao = self.adaptador(SO_O_DEFAULT)
         self.preparar(colecao)
         colecao.adicionar_nota(NotaAGravar("PerpetualMiner::Inglês", "PerpetualMiner Inglês", {"Frase": "She <b>gave up</b> smoking", "Áudio da frase": "[sound:a.mp3]", "Palavra": "gave up"}, [], "g1"))

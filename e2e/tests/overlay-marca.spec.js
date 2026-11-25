@@ -343,7 +343,6 @@ test('com prefers-reduced-motion, a linha, o grifo e o chip aparecem sem animaç
   }
 });
 
-/** O botão “voltar” do mouse, pelo protocolo do Chromium: o Playwright só tem esquerdo, direito e do meio. */
 async function apertarVoltar(page) {
   const cdp = await page.context().newCDPSession(page);
   const base = { x: 5, y: 5, button: 'back', clickCount: 1 };

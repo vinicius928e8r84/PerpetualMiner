@@ -1,8 +1,6 @@
 'use strict';
 
-// Exceção de teste (o aviso nativo do Chrome): o aviso da permissão é do Chrome, e o Playwright não alcança
-// os botões dele. Por isso a permissão dada vem do fixture (`permissaoDoAbridor`, gravada no perfil como o
-// Chrome a guarda depois de Permitir), e o teste do pedido confere o que a tela mostra enquanto o aviso espera.
+// Exceção de teste: chrome-nativo (docs/testes.md).
 
 const { test, expect } = require('../fixtures');
 const { SEM_ABRIDOR_IMPOSSIVEL } = require('../fakes/abridor');

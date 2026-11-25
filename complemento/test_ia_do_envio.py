@@ -1,10 +1,3 @@
-"""A porta da IA dos cartões presa a um Envio (C4), sem o Envio: quem paga com o Usar a minha chave lido a cada pedido, e o teto do mês e o
-limite do plano vistos pela porta. O lado do Envio de cada espera é um roteiro; o caminho inteiro está em `test_limite_do_plano.py` e
-`test_teto_do_mes.py`.
-
-    python3.9 complemento/test_ia_do_envio.py
-"""
-
 import logging
 import os
 import sys
@@ -21,8 +14,6 @@ LOGGER.propagate = False
 
 
 class EsperaDeRoteiro:
-    """O lado do Envio das esperas: guarda o que a porta disse e esperou; `pela_chave` é o Usar a minha chave de cada leitura."""
-
     job_id = "j1"
 
     def __init__(self, *pela_chave):
@@ -42,8 +33,6 @@ class EsperaDeRoteiro:
 
 
 class IaDeRoteiro:
-    """A `IaDosCartoes` de um teste: o pagador do texto é o de `pagadores` por ordem; guarda o Usar a minha chave de cada pedido."""
-
     def __init__(self, *pagadores):
         self.pagadores, self.pedidos = list(pagadores), []
 

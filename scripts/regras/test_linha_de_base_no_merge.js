@@ -4,14 +4,14 @@ const assert = require('assert');
 
 const regra = require('./linha-de-base-no-merge');
 const { REGRAS } = require('./verificar');
-const { repositorioDeMentira, linhasDe, bytesDe, ARQUIVO_DAS_REGRAS, ARQUIVO_DE_TAMANHO } = require('./apoio-de-linha-de-base');
+const { repositorioDeMentira, linhasDe, bytesDe, ARQUIVO_DAS_REGRAS, ARQUIVO_DE_TAMANHO, ARQUIVO_DO_SEM_COMENTARIO } = require('./apoio-de-linha-de-base');
 
 let total = 0;
 const prova = (achado, esperado, porque) => { assert.deepStrictEqual(achado, esperado, porque); total++; };
 const barrada = saida => saida.includes('✗ linha-de-base-no-merge');
 
-prova([REGRAS.includes(regra), regra.seAplica(ARQUIVO_DAS_REGRAS), regra.seAplica(ARQUIVO_DE_TAMANHO), regra.seAplica('scripts/regras/verificar.js')],
-  [true, true, true, false], 'a regra está em verificar.js e cobra os dois arquivos de linha de base');
+prova([REGRAS.includes(regra), regra.seAplica(ARQUIVO_DAS_REGRAS), regra.seAplica(ARQUIVO_DE_TAMANHO), regra.seAplica(ARQUIVO_DO_SEM_COMENTARIO), regra.seAplica('scripts/regras/verificar.js')],
+  [true, true, true, true, false], 'a regra está em verificar.js e cobra os três arquivos de linha de base');
 
 function emUmaPr(caso) {
   const repo = repositorioDeMentira();
@@ -123,6 +123,29 @@ emUmaPr(repo => {
   repo.commit('renomeia o arquivo da lista de tamanho');
   const r = repo.conferirComoPr();
   prova([r.status, barrada(r.saida)], [0, false], `o mesmo vale para a lista de tamanho:\n${r.saida}`);
+});
+
+emUmaPr(repo => {
+  repo.gravar({ 'comentado.js': 'const a = 1;\n' });
+  repo.editarJson(ARQUIVO_DO_SEM_COMENTARIO, dados => { dados['sem-comentario'] = {}; });
+  repo.commit('conserta e baixa a linha de base dos comentários à mão');
+  const r = repo.conferirComoPr();
+  prova([r.status, barrada(r.saida)], [1, true], `um valor da linha de base dos comentários editado à mão é barrado:\n${r.saida}`);
+  assert.match(r.saida, /sem-comentario comentado\.js saiu da linha de base, onde a base tem 2/);
+  total++;
+});
+
+const CRIADO = '{\n  "@generated": "gerado, DO NOT EDIT",\n  "sem-comentario": { "comentado.js": 2 }\n}\n';
+
+emUmaPr(repo => {
+  repo.git('checkout', '-q', 'main');
+  repo.git('rm', '-q', ARQUIVO_DO_SEM_COMENTARIO);
+  repo.commit('antes da regra sem-comentario');
+  repo.git('checkout', '-q', '-b', 'cria');
+  repo.gravar({ [ARQUIVO_DO_SEM_COMENTARIO]: CRIADO });
+  repo.commit('a PR que cria a regra escreve o arquivo');
+  const r = repo.conferirComoPr();
+  prova(barrada(r.saida), false, `a PR que cria o arquivo da linha de base dos comentários passa:\n${r.saida}`);
 });
 
 console.log(`linha-de-base-no-merge: ${total} provas ok`);

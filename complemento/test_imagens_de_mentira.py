@@ -1,9 +1,3 @@
-"""O Openverse de mentira dos testes do complemento, e as imagens que ele e a OpenAI de mentira servem.
-
-Não é um teste: é o que os testes põem no lugar de `https://api.openverse.org` (a busca de fotos e os arquivos delas, na fronteira
-HTTP). `png_de(rotulo)` é uma imagem de verdade, diferente para cada rótulo: o teste reconhece qual delas foi guardada pelos bytes.
-"""
-
 import json
 import struct
 import threading
@@ -12,11 +6,10 @@ from hashlib import sha1
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlsplit
 
-JPEG_DE_MENTIRA = b"\xff\xd8\xff\xe0\x00\x10JFIF\x00" + b"\x00" * 40  # o que o Openverse serve quando o rótulo termina em `.jpg`; só o adaptador de imagem lê
+JPEG_DE_MENTIRA = b"\xff\xd8\xff\xe0\x00\x10JFIF\x00" + b"\x00" * 40
 
 
 def png_de(rotulo):
-    """Um PNG 4x4 de uma cor só que vem do rótulo: dois rótulos, dois arquivos."""
     cor = sha1(rotulo.encode("utf-8")).digest()[:3]
     linhas = b"".join(b"\x00" + cor * 4 for _ in range(4))
 
@@ -27,12 +20,6 @@ def png_de(rotulo):
 
 
 class OpenverseDeMentira:
-    """`OpenverseDeMentira({"eye": ["olho-1", "olho-2"]})`: a busca por "eye" acha essas duas fotos, e cada uma é servida em `/foto/<rótulo>`.
-
-    Uma busca que não está em `fotos` não acha nada; `fora_do_ar` (um status) faz toda busca e todo arquivo responderem esse status.
-    `buscas` guarda as consultas; `baixados`, os rótulos pedidos; `cabecalhos`, os cabeçalhos de cada pedido que chegou (busca ou arquivo).
-    """
-
     def __init__(self, fotos=None):
         self.fotos = dict(fotos or {})
         self.fora_do_ar = None

@@ -1,17 +1,5 @@
 'use strict';
 
-// O servidor que responde por accounts.google.com, a página de login do Google, e por auth.openai.com, a autorização do
-// ChatGPT (#155): a aba que a extensão abre com `chrome.tabs.create` também escapa do `context.route` na primeira navegação, e
-// o nome apontado para cá garante que nada sai para a internet.
-//
-// A janela de login do `chrome.identity.launchWebAuthFlow` carrega fora do
-// roteamento do Playwright: o `context.route` não a alcança. O Chromium do teste
-// aponta o nome accounts.google.com para este servidor HTTPS local
-// (`--host-resolver-rules`), com um certificado autoassinado gerado na hora e
-// aceito por `--ignore-certificate-errors`. Assim o login de verdade roda sem
-// sair para a internet, e o teste escolhe o que a janela faz (fake do Google,
-// `proximoLogin`).
-
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const https = require('https');
@@ -31,10 +19,6 @@ function gerarCertificado() {
   return resultado;
 }
 
-/**
- * Sobe o servidor e devolve a porta e onde pendurar quem responde ao login.
- * Qualquer outro caminho (o Chromium consulta /ListAccounts sozinho) é 404.
- */
 async function subirServidorDoLogin() {
   let responder = null;
   let responderChatGPT = null;

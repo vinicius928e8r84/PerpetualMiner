@@ -1,9 +1,3 @@
-"""
-image_queries.py - What to search for a card's picture: the queries, the visual subject and the card's phrase and context.
-
-Pure text functions (standard library only), used by the image pipeline (`image_pipeline.py`) in the Anki add-on.
-"""
-
 import re
 from dataclasses import dataclass
 
@@ -166,7 +160,6 @@ def _image_field_value(content: str, pattern: str) -> str:
 
 @dataclass(frozen=True)
 class CardToSearch:
-    """What a card gives its photo searches: its text, its stem and the prompt of its generated image."""
     text: str
     stem: str = ""
     prompt: str = ""

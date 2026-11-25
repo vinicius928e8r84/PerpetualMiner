@@ -1,11 +1,3 @@
-"""Image bytes: what format they are and, when needed, conversion to the target format.
-
-The conversion is the one thing that needs an imaging library, so it goes through an adapter (`usar_adaptador`):
-an object with `converter(dados, formato) -> bytes` that raises `UnsupportedImageFormatError` for anything it cannot
-read. The Anki add-on installs the one made with Anki's Qt (`complemento/imagem_qt.py`); everywhere else it is Pillow's,
-imported only when a conversion is asked for. The rest of this module is the standard library.
-"""
-
 from __future__ import annotations
 
 from io import BytesIO
@@ -71,8 +63,6 @@ def normalize_image_bytes(data: bytes, *, target_format: str = "PNG") -> tuple[b
 
 
 class AdaptadorDoPillow:
-    """The default adapter: Pillow, imported when the first conversion is asked for."""
-
     def converter(self, dados: bytes, formato: str) -> bytes:
         try:
             from PIL import Image, ImageOps, UnidentifiedImageError
@@ -102,7 +92,6 @@ _adaptador = None
 
 
 def usar_adaptador(adaptador) -> None:
-    """Install the adapter that converts images (`None`: back to Pillow's)."""
     global _adaptador
     _adaptador = adaptador
 
@@ -112,7 +101,6 @@ def _adaptador_em_uso():
 
 
 def pillow_disponivel() -> bool:
-    """Whether the default adapter has Pillow to work with (tests of that adapter only run where it does)."""
     try:
         import PIL  # noqa: F401
     except ImportError:

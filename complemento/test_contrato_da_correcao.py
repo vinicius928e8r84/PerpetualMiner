@@ -1,7 +1,3 @@
-"""A correção da Criação (#169) como qualquer adaptador de coleção a cumpre: as notas com uma “Frase escrita” que a IA ainda não leu, e o lugar onde a
-correção fica (“Escrito antes” e “Correção”). Uma parte de `test_contrato_da_criacao.ContratoDaCriacao` (de onde vêm `adaptador`, `preparar`, `sincronizar`,
-`com_notas_gravadas` e `escrita_da_nota`): o adaptador em memória e o do Anki passam pelos mesmos testes."""
-
 import os
 import sys
 

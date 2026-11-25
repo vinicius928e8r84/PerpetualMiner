@@ -29,8 +29,6 @@ const chaveNoBancoDaExtensao = page => page.evaluate(() => new Promise((resolver
   };
 }));
 
-// O goto seguinte muda só o hash, não o documento. Sem esta barreira de conclusão, a
-// falha do banco atinge a continuação do salvamento ANTERIOR, não o Apagar tudo.
 async function prepararConferenciaDaChave(context) {
   let liberar;
   const conferencia = new Promise(resolve => { liberar = resolve; });
@@ -452,9 +450,6 @@ test('o content script e o overlay não alcançam a chave: ela não está no sto
   expect(await extensao.lerStorage('pm_firebase_auth')).toEqual({});
   expect(fakes.google.chaveDaOpenAIDe('uid-isolamento').chave === CHAVE).toBe(true);
 
-  // O content script também não pode usar o exportador do dono com um token
-  // próprio: Chromium manda a origem do site, que o servidor real recusa
-  // (matriz HTTP de complemento/test_servidor.py), não a origem da extensão.
   const origemDoSite = new URL(pagina.url()).origin;
   const origens = [];
   await context.route('**/ia/openai/sincronizar', async route => {

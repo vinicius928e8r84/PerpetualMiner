@@ -1,10 +1,3 @@
-"""As duas rotas da Fila que mudam um Envio já criado, vistas pelas funções (as tabelas de `test_envio_fila.py`): o Apagar tudo
-(`POST /jobs/apagar-frases`, `Fila.apagar_as_frases`) em cada tipo de pedido da pasta e o Tentar de novo (`POST /jobs/retry`,
-`Fila.tentar_de_novo`) em cada situação do Envio.
-
-    python3.9 complemento/test_envio_fila_rotas.py
-"""
-
 import os
 import sys
 import unittest

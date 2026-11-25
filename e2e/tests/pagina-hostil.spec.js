@@ -5,7 +5,6 @@ const { test, expect } = require('../fixtures');
 const CLIPBOARD_ORIGINAL = 'O que a pessoa tinha copiado antes.';
 const LEGENDA = 'The quiet harbor woke before the gulls did.';
 
-// O clipboard é lido e escrito pelo frame de cima, então a permissão é da origem dele.
 async function prepararClipboard(context, page, origem) {
   await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: origem });
   await page.evaluate(texto => navigator.clipboard.writeText(texto), CLIPBOARD_ORIGINAL);
@@ -20,7 +19,6 @@ async function esperarQuePaginaHostilNaoMudeNada({ context, page, paginas, exten
 
   await page.evaluate(agir);
 
-  // Dá tempo às mensagens de chegarem ao service worker antes de afirmar a ausência.
   await page.waitForTimeout(1500);
   expect(await extensao.frases()).toEqual([]);
   expect(await lerClipboard(page)).toBe(CLIPBOARD_ORIGINAL);

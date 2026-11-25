@@ -1,21 +1,4 @@
 <!doctype html>
-<!--
-  PROTÓTIPO DESCARTÁVEL: Painel · Configurações, dentro do shell "Ilhas" (identidade Veio).
-  Ticket: "Protótipo: Painel · Configurações" (issue #14 do mapa #1).
-  Pergunta: como a área Configurações deve PARECER e se comportar? A IA já está travada:
-  uma rolagem com 4 cards (Conta & sync · Atalhos · Chave do Gemini · Zona de perigo),
-  endereços #configuracoes/conta|atalhos|chave|perigo, Zona de perigo por último com borda danger.
-  Três tratamentos dos cards, trocados por ?variant=A|B|C (barra flutuante, ← →):
-    A · Pilha            cards de largura cheia, título em cima, controles embaixo
-    B · Rótulo à esquerda  cada card em duas colunas: título e consequências à esquerda, controles à direita
-    C · Resumo primeiro  cada card fechado numa linha com o estado atual; abre no lugar
-  O shell (sidebar, cabeçalho) é o travado em docs/wayfinder/painel-shell (variante B · Ilhas).
-  As outras áreas são só esboço. Sem persistência: tudo em memória.
-  O gravador de atalhos é de verdade: grava teclado e botões extras do mouse (meio, voltar, avançar).
-  Teclas: ← → trocam a variante · T alterna o tema (fora de campos e fora da gravação).
-  VEREDITO (2026-09-15): C · Resumo primeiro; gravador na linha com repetido recusado + "Restaurar atalhos padrão";
-  chave em resumo mascarado + Trocar chave; erro de sync no card e no chip. Decisão: ADR 0007.
--->
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
@@ -46,7 +29,6 @@ button,input,select{font:inherit;color:inherit}
 svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
 svg.i.s{width:16px;height:16px}
 
-/* ---------- shell Ilhas (travado) ---------- */
 .app{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:100vh;padding:12px;gap:12px}
 .app.rail{grid-template-columns:76px minmax(0,1fr)}
 .side{display:flex;flex-direction:column;gap:6px;padding:18px 12px;position:sticky;top:12px;height:calc(100vh - 24px);min-width:0;background:var(--surface);border:1px solid var(--border);border-radius:20px;box-shadow:var(--shadow)}
@@ -89,7 +71,6 @@ svg.i.s{width:16px;height:16px}
 .sketch{font-size:10.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);border:1px dashed var(--border-strong);border-radius:999px;padding:2px 8px;margin-left:10px;vertical-align:4px}
 .stub{border:1px dashed var(--border-strong);border-radius:20px;padding:48px 20px;text-align:center;color:var(--muted)}
 
-/* ---------- componentes Veio ---------- */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:999px;padding:8px 16px;border:1px solid var(--border-strong);background:transparent;font-weight:600;cursor:pointer;white-space:nowrap}
 .btn:hover{border-color:var(--accent)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
@@ -125,14 +106,12 @@ details.det pre{margin:6px 0 0;background:var(--surface-2);border-radius:10px;pa
 .toast{position:fixed;left:50%;bottom:72px;transform:translateX(-50%);background:var(--surface-2);color:var(--text);border:1px solid var(--border-strong);border-radius:999px;padding:9px 18px;font-weight:600;box-shadow:var(--shadow);z-index:60;display:flex;align-items:center;gap:8px;max-width:calc(100vw - 32px)}
 .toast .dot{background:var(--success)}
 
-/* modal */
 .scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);display:grid;place-items:center;z-index:70;padding:16px}
 .modal{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:22px;max-width:460px;width:100%;box-shadow:var(--shadow)}
 .modal h2{margin:0 0 8px;font-size:20px;letter-spacing:-.01em}
 .modal p{margin:0 0 18px;color:var(--muted)}
 .modal .acts{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
 
-/* ---------- Configurações: peças comuns ---------- */
 .cfg{display:flex;flex-direction:column;gap:12px;max-width:880px}
 .cfg-card{background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:18px;min-width:0;scroll-margin-top:16px}
 .cfg-card.danger{border-color:color-mix(in srgb,var(--danger) 60%,var(--border))}
@@ -161,11 +140,9 @@ details.det pre{margin:6px 0 0;background:var(--surface-2);border-radius:10px;pa
 .keybox .input{flex:1 1 220px}
 .masked{font-family:"JetBrains Mono",monospace;font-weight:600;font-size:13px;letter-spacing:.02em;background:var(--surface-2);border-radius:10px;padding:6px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 
-/* ============ A · Pilha ============ */
 body.vA .cfg{max-width:760px}
 body.vA .cfg-h{margin-bottom:14px}
 
-/* ============ B · Rótulo à esquerda ============ */
 body.vB .cfg{max-width:920px;gap:0;border:1px solid var(--border);border-radius:14px;background:var(--bg);overflow:hidden}
 body.vB .cfg-card{display:grid;grid-template-columns:250px minmax(0,1fr);gap:28px;border:0;border-radius:0;border-top:1px solid var(--border);background:transparent;padding:22px}
 body.vB .cfg-card:first-child{border-top:0}
@@ -178,7 +155,6 @@ body.vB .cfg-tt .desc{margin-top:4px;line-height:1.55}
   body.vB .cfg-h{flex-direction:row}
 }
 
-/* ============ C · Resumo primeiro ============ */
 body.vC .cfg{max-width:820px;gap:8px}
 body.vC .cfg-card{padding:0;overflow:hidden}
 body.vC .cfg-h{align-items:center;padding:14px 16px;cursor:pointer}
@@ -197,7 +173,6 @@ body.vC .cfg-card.open .cfg-b{display:block}
   body.vC .cfg-sum{display:none}
 }
 
-/* ---------- ferramentas do protótipo (não fazem parte do design) ---------- */
 .proto{font-family:system-ui,sans-serif}
 .switcher{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);display:flex;align-items:center;gap:6px;background:#fff;color:#111;border-radius:999px;padding:6px;box-shadow:0 6px 24px rgba(0,0,0,.45);z-index:100;font:600 13px system-ui,sans-serif;max-width:calc(100vw - 24px)}
 .switcher button{border:0;background:#111;color:#fff;border-radius:999px;width:32px;height:32px;cursor:pointer;font-size:15px;flex:none}
@@ -289,12 +264,10 @@ body.vC .cfg-card.open .cfg-b{display:block}
       <div class="stub">Esta área tem o próprio ticket (Protótipo: Painel · Conexão com o Anki). Volte para <a href="#configuracoes">Configurações</a>.</div>
     </section>
 
-    <!-- ===== CONFIGURAÇÕES ===== -->
     <section data-view="configuracoes">
       <div class="area-head"><h1>Configurações</h1></div>
       <div class="cfg" id="cfg">
 
-        <!-- Conta & sync -->
         <section class="cfg-card" id="cfg-conta" data-sec="conta" aria-labelledby="h-conta">
           <header class="cfg-h">
             <span class="ico"><svg class="i s" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span>
@@ -305,7 +278,6 @@ body.vC .cfg-card.open .cfg-b{display:block}
           <div class="cfg-b" id="body-conta"></div>
         </section>
 
-        <!-- Atalhos -->
         <section class="cfg-card" id="cfg-atalhos" data-sec="atalhos" aria-labelledby="h-atalhos">
           <header class="cfg-h">
             <span class="ico"><svg class="i s" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg></span>
@@ -331,7 +303,6 @@ body.vC .cfg-card.open .cfg-b{display:block}
           </div>
         </section>
 
-        <!-- Chave do Gemini -->
         <section class="cfg-card" id="cfg-chave" data-sec="chave" aria-labelledby="h-chave">
           <header class="cfg-h">
             <span class="ico"><svg class="i s" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="m10.8 12.2 9.2-9.2M17 6l3 3M15 8l2 2"/></svg></span>
@@ -342,7 +313,6 @@ body.vC .cfg-card.open .cfg-b{display:block}
           <div class="cfg-b" id="body-chave"></div>
         </section>
 
-        <!-- Zona de perigo -->
         <section class="cfg-card danger" id="cfg-perigo" data-sec="perigo" aria-labelledby="h-perigo">
           <header class="cfg-h">
             <span class="ico"><svg class="i s" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0ZM12 9v4M12 17h.01"/></svg></span>
@@ -363,7 +333,6 @@ body.vC .cfg-card.open .cfg-b{display:block}
   </main>
 </div>
 
-<!-- CFG-17 -->
 <div class="scrim hidden" id="m-apagar" role="dialog" aria-modal="true" aria-labelledby="m-apagar-t">
   <div class="modal">
     <h2 id="m-apagar-t"></h2>
@@ -373,7 +342,6 @@ body.vC .cfg-card.open .cfg-b{display:block}
 </div>
 <div class="toast hidden" id="toast" role="status"><span class="dot"></span><span id="toast-t"></span></div>
 
-<!-- ======= ferramentas do protótipo ======= -->
 <details class="lab proto" id="lab">
   <summary>⚙ Estados do protótipo</summary>
   <div class="body">
@@ -408,7 +376,6 @@ body.vC .cfg-card.open .cfg-b{display:block}
 </div>
 <button class="dec-btn proto" id="dec-open">Decidir <b id="dec-count">0/4</b></button>
 
-<!-- ======= rodada de decisões (Lavish) ======= -->
 <aside class="dec proto hidden" id="dec" aria-label="Decisões desta tela">
   <button class="close" id="dec-close" aria-label="Fechar">✕</button>
   <div class="dec-in">
@@ -485,7 +452,6 @@ const SC_NAME={legenda:'Minerar legenda',selecao:'Minerar seleção'};
 const n=x=>x.toLocaleString('pt-BR');
 const frasesTxt=x=>x===1?'1 frase':`${n(x)} frases`;
 
-/* ---------- conta ---------- */
 const CONTA={
   ok:{chip:'Sincronizado há 2 min',st:['ok','Sincronizado há 2 min']},
   sync:{chip:'Sincronizando…',st:['wait','Sincronizando…']},
@@ -500,11 +466,9 @@ const CONTA={
 };
 function renderConta(){
   const c=CONTA[S.conta], name=c.name||'Vinicius', init=c.name?'G':'V';
-  // chip
   $('#chip-av').textContent=c.none?'?':init;$('#chip-av').classList.toggle('none',!!c.none);
   $('#chip-name').textContent=c.none?'Sem conta':name;
   $('#chip-sync').textContent=c.chip;$('#chip-sync').classList.toggle('err',!!c.err);
-  // corpo
   let h='';
   if(c.none){
     h=`<div class="row"><div class="acct"><span class="avatar lg none">?</span><div class="who"><b>Suas frases em qualquer computador</b><span class="muted" style="font-size:12.5px">Sem conta, elas ficam só neste computador.</span></div></div>
@@ -527,7 +491,6 @@ function renderConta(){
   $('#sum-conta').innerHTML=c.none?'<span>Sem conta · só neste computador</span>':`<span class="status ${c.err?'err':''}"><span class="dot ${c.st[0]==='wait'?'wait':c.err?'off':''}"></span>${name} · ${c.chip}</span>`;
 }
 
-/* ---------- atalhos ---------- */
 function renderAtalhos(){
   $$('[data-sc]').forEach(row=>{
     const id=row.dataset.sc, sc=S.sc[id], kbd=row.querySelector('[data-kbd]'), btn=row.querySelector('[data-rec]'), msg=row.querySelector('[data-msg]');
@@ -557,7 +520,7 @@ function stopRec(){
 }
 function onRec(e){
   if(e.type==='keydown'&&['Control','Shift','Alt','Meta'].includes(e.key))return;
-  if(e.type==='mousedown'&&(e.button===0||e.button===2))return; // clique normal: deixa o Cancelar funcionar
+  if(e.type==='mousedown'&&(e.button===0||e.button===2))return;
   e.preventDefault();e.stopImmediatePropagation();
   if(e.type==='keydown'&&e.key==='Escape'&&!mods(e).length){stopRec();return;}
   if(e.type==='mousedown')suppressUp=true;
@@ -570,11 +533,9 @@ function onRec(e){
   S.sc[id].label=label;stopRec();
   const k=$(`[data-sc="${id}"] [data-kbd]`);k.classList.remove('flash');void k.offsetWidth;k.classList.add('flash');
 }
-// botão voltar/avançar do mouse não navega enquanto grava
 ['mouseup','auxclick'].forEach(t=>document.addEventListener(t,e=>{if(suppressUp&&e.button!==0){e.preventDefault();e.stopImmediatePropagation();if(t==='auxclick')suppressUp=false;}},true));
 addEventListener('popstate',e=>{if(suppressUp){suppressUp=false;}});
 
-/* ---------- chave ---------- */
 function renderChave(){
   const masked=KEY_SAMPLE.slice(0,4)+'••••••••'+KEY_SAMPLE.slice(-4);
   let h='';
@@ -594,7 +555,6 @@ function renderChave(){
   $('#sum-chave').innerHTML=S.chave==='saved'?`<span class="mono">${masked}</span>`:'<span class="status err"><span class="dot off"></span>Sem chave</span>';
 }
 
-/* ---------- perigo ---------- */
 function renderPerigo(){
   const none=CONTA[S.conta].none;
   $('#desc-perigo').textContent=none?'Apagar tudo aqui não dá para desfazer.':'Apagar tudo aqui não dá para desfazer, e vale para todos os computadores da sua conta.';
@@ -612,10 +572,8 @@ function openApagar(){
   $('#m-apagar').classList.remove('hidden');$('#m-apagar [data-close]').focus();
 }
 
-/* ---------- toast ---------- */
 let tt;function toast(t){$('#toast-t').textContent=t;$('#toast').classList.remove('hidden');clearTimeout(tt);tt=setTimeout(()=>$('#toast').classList.add('hidden'),Math.max(2600,t.length*80));}
 
-/* ---------- rota / estado ---------- */
 function applyRoute(){
   const h=(location.hash||'#configuracoes').slice(1).split('/');
   S.route=['frases','anki','configuracoes'].includes(h[0])?h[0]:'configuracoes';
@@ -661,7 +619,6 @@ addEventListener('keydown',e=>{
 });
 addEventListener('hashchange',applyRoute);addEventListener('resize',applyState);
 
-/* ---------- interações ---------- */
 $('#cfg').addEventListener('click',e=>{
   const rec=e.target.closest('[data-rec]');
   if(rec){startRec(rec.closest('[data-sc]').dataset.sc);return;}
@@ -698,7 +655,6 @@ $('#go-foto').onclick=()=>{S.chave='empty';applyState();sync();go('configuracoes
 $('#go-chip').onclick=()=>go('configuracoes/conta');
 $('#go-reset').onclick=()=>{const v=S.variant,t=S.theme;S=INIT();S.variant=v;S.theme=t;sync();history.replaceState(null,'',location.pathname+location.search+'#configuracoes');applyState();applyRoute();};
 
-/* ---------- gaveta de decisões (Lavish) ---------- */
 $('#dec-open').onclick=()=>$('#dec').classList.remove('hidden');
 $('#dec-close').onclick=()=>$('#dec').classList.add('hidden');
 $('#dec').addEventListener('click',e=>{

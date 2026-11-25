@@ -1,8 +1,3 @@
-"""O perfil fixo (#149) com o `mw` de mentira: o que a Conexão pede ao Anki, na ordem, e o que o Anki devolve pelo HTTP.
-
-    python3.9 complemento/test_no_anki_perfil.py
-"""
-
 import json
 import os
 import sys
