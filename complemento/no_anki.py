@@ -1,8 +1,3 @@
-"""A ligação do complemento com o Anki de verdade: o que só existe lá dentro (`mw`).
-
-Fica fora do `__init__.py` para que os testes usem o mesmo adaptador que o Anki usa, com um `mw` de mentira.
-"""
-
 import os
 import threading
 import time
@@ -16,27 +11,16 @@ from .servicos_de_fora import ServicosDeFora
 
 LIMITE_DA_LEITURA_S = 10
 ESPERA_DA_ENTRADA_S = 15
-BARALHO_PADRAO = 1  # o id do Baralho que todo Anki tem
+BARALHO_PADRAO = 1
 
 
 def perfil_aberto(mw):
-    """O nome do perfil **aberto** no Anki, ou None. `mw.pm.name` também vale com um perfil só selecionado ou já fechado: só com a coleção carregada (`mw.col`) há perfil aberto."""
     if getattr(mw, "col", None) is None:
         return None
     return getattr(getattr(mw, "pm", None), "name", None)
 
 
 class ColecaoDoAnki(CriacaoNoAnki):
-    """O adaptador da coleção (o contrato, de leitura, de gravação e do perfil fixo, está em `baralhos.py`), sobre o `mw` do Anki.
-
-    A coleção do Anki não é para outras threads: toda leitura e gravação roda na thread principal
-    (`mw.taskman.run_on_main`), uma operação curta de cada vez, e só volta com o resultado; o que se faz com os
-    Cartões (normalizar, contar, montar os campos) fica na thread da Conexão ou na do Envio. Durante uma sincronização
-    (os ganchos `sync_will_start`/`sync_did_finish`, ligados por `ao_carregar`) nada se grava: `anki_syncing`.
-    A lista de perfis vem do gerente de perfis (`mw.pm`), que a conhece mesmo sem coleção aberta, mas também
-    guarda um sqlite da thread principal: ela é lida lá, sem exigir coleção.
-    """
-
     def __init__(self, mw, limite_s=LIMITE_DA_LEITURA_S, espera_da_entrada_s=ESPERA_DA_ENTRADA_S):
         self._mw = mw
         self._limite_s = limite_s
@@ -53,8 +37,6 @@ class ColecaoDoAnki(CriacaoNoAnki):
         self._sincronizando.clear()
 
     def _na_thread_principal(self, leitura, com_colecao=True):
-        """Roda `leitura` na thread principal do Anki e devolve o que ela leu. Com `com_colecao`, `leitura`
-        recebe a coleção aberta (sem ela, `ColecaoIndisponivel`); sem, recebe só o `mw`."""
         resultado = {}
         pronto = threading.Event()
 
@@ -86,17 +68,12 @@ class ColecaoDoAnki(CriacaoNoAnki):
         return perfil_aberto(self._mw)
 
     def fixar_o_perfil(self, fixo):
-        """O perfil fixo (#149, `perfil.PerfilFixo`): daqui em diante toda gravação só vale no perfil marcado."""
         self._fixo = fixo
 
     def entrar_no_perfil_fixo(self):
-        """Com o Anki na tela de perfis, abre o perfil marcado (`mw.pm.load` e `mw.onOpenProfile`, as funções que a janela de perfis
-        usa). Com um perfil aberto não faz nada. Devolve se começou a entrar."""
         return self._na_thread_principal(self._entrar_no_marcado, com_colecao=False)
 
     def trocar_para_o_perfil_fixo(self):
-        """O clique em “Abrir <perfil>”: fecha o perfil aberto pelo caminho normal do Anki (`unloadProfile`, que sincroniza e só então
-        segue) e abre o marcado. Na tela de perfis só abre; já no marcado, não faz nada. Devolve se começou."""
         return self._na_thread_principal(self._trocar_para_o_marcado, com_colecao=False)
 
     def _marcado_que_existe(self, mw):
@@ -108,15 +85,11 @@ class ColecaoDoAnki(CriacaoNoAnki):
 
     @staticmethod
     def _janela_de_perfis_livre(mw):
-        """A janela de perfis é a janela ativa e nenhum diálogo modal está aberto. `run_on_main` roda também dentro do laço de um modal:
-        com o “Excluir” ou o “Renomear” da janela de perfis aberto, entrar no perfil marcado faria o que a pessoa confirmar valer para ele
-        (`pm.remove(pm.name)`, `pm.rename`)."""
         app = mw.app
         ativa = app.activeWindow()
         return not app.activeModalWidget() and (ativa is None or ativa is getattr(mw, "profileDiag", None))
 
     def _entrar_no_marcado(self, mw):
-        """Na thread principal. Só da tela de perfis (`mw.state`), sem coleção aberta, e uma vez por `espera_da_entrada_s`."""
         marcado = self._marcado_que_existe(mw)
         if marcado is None or getattr(mw, "col", None) is not None or getattr(mw, "state", None) != "profileManager":
             return False
@@ -137,11 +110,11 @@ class ColecaoDoAnki(CriacaoNoAnki):
         if getattr(mw, "col", None) is None:
             return self._entrar_no_marcado(mw)
         if mw.pm.name == marcado or self._trocando:
-            return False  # `_trocando`: o Anki ainda sincroniza ao fechar; um segundo clique fecharia o perfil de novo
+            return False
 
         def depois_de_fechar():
             self._trocando = False
-            mw.showProfileManager()  # o que o item Trocar de perfil faz depois de fechar (`unloadProfileAndShowProfileManager`)
+            mw.showProfileManager()
             self._entrando_ate = 0.0
             self._entrar_no_marcado(mw)
 
@@ -160,7 +133,6 @@ class ColecaoDoAnki(CriacaoNoAnki):
         return self._na_thread_principal(lambda colecao: _cartoes_do_baralho(colecao, nome))
 
     def _se_pode_gravar(self, operacao):
-        """A `operacao` de gravação precedida das conferências, que rodam na hora em que ela roda (na thread principal)."""
         def sem_sincronizar(colecao):
             if self._fixo is not None:
                 self._fixo.conferir(self._mw.pm.name, self._mw.pm.profiles())
@@ -171,14 +143,12 @@ class ColecaoDoAnki(CriacaoNoAnki):
         return sem_sincronizar
 
     def _gravando(self, operacao):
-        """A operação de gravação, na thread principal; a sincronização é conferida lá, na hora em que ela roda."""
         return self._na_thread_principal(self._se_pode_gravar(operacao))
 
     def tipo_de_nota(self, nome):
         return self._gravando(lambda colecao: cartoes_do_anki.campos_do_tipo(colecao.models.by_name(nome)))
 
     def tipos_de_nota(self):
-        """Todos os tipos de nota da coleção: `{ nome: [campos, na ordem] }` (#165, o mapeamento de “Usar um tipo que já tenho”)."""
         return self._gravando(lambda colecao: {modelo["name"]: cartoes_do_anki.campos_do_tipo(modelo) for modelo in colecao.models.all()})
 
     def guids_existentes(self, guids):
@@ -191,53 +161,34 @@ class ColecaoDoAnki(CriacaoNoAnki):
         return self._gravando(lambda colecao: _adicionar_nota(colecao, nota))
 
     def cartao_renderizado(self, tipo_de_nota, campos):
-        """O Cartão como o Anki o desenha (#164, `cartoes_do_anki.py`): `{ frente, verso, css }`, ou None se a coleção não tem o tipo."""
         return self._na_thread_principal(lambda colecao: cartoes_do_anki.renderizado(colecao, tipo_de_nota, campos))
 
     def nota_gravada(self, guid):
-        """A nota de `guid`: `{ baralho, tipo_de_nota, campos: { nome: valor } }`, ou None se a coleção não a tem."""
         return self._na_thread_principal(lambda colecao: cartoes_do_anki.nota_gravada(colecao, guid))
 
     def abrir_no_navegador(self, guid):
         return self._na_thread_principal(lambda colecao: cartoes_do_anki.abrir_no_navegador(colecao, self._mw, guid))
 
     def arquivo_de_midia(self, nome, limite_de_bytes):
-        """Os bytes do arquivo `nome` da pasta de mídia (até `limite_de_bytes` + 1), ou None se ele não está lá."""
         return self._na_thread_principal(lambda colecao: cartoes_do_anki.arquivo_de_midia(colecao, nome, limite_de_bytes))
 
     def criar_tipo_de_nota(self, definicao):
-        """Cria o tipo de nota (`tipo_de_nota.definicao`) se a coleção não tem um com o nome; um que já existe não é tocado. Devolve se criou."""
         return self._gravando(lambda colecao: _criar_tipo_de_nota(colecao, definicao))
 
     def modelos_do_tipo_de_nota(self, nome):
-        """Os modelos de Cartão do tipo de nota (`[{ nome, frente, verso }]`), ou None se a coleção não o tem."""
         return self._gravando(lambda colecao: cartoes_do_anki.modelos_do_tipo(colecao.models.by_name(nome)))
 
     def trocar_o_modelo(self, nome, modelo, css):
-        """Reescreve o único modelo de Cartão do tipo de nota e o estilo dele (a troca da frente, #166); devolve se mudou algo (as notas não são tocadas)."""
         return self._gravando(lambda colecao: cartoes_do_anki.trocar_o_modelo(colecao, nome, modelo, css))
 
     def criar_baralhos_da_instalacao_nova(self, nomes):
-        """Cria os Baralhos `nomes` só se a coleção não tem nenhum além do padrão do Anki; devolve os criados (nenhum, para quem já tem Baralho)."""
         return self._gravando(lambda colecao: _criar_baralhos_da_instalacao_nova(colecao, nomes))
 
     def gravar_cartao(self, nota, frente):
-        """O passo de gravar um Cartão, **uma função só** na thread principal: a sincronização, o `guid`, a `frente` no Baralho e a `nota`.
-
-        Devolve `"added"` (a nota é deste Cartão: já estava, ou foi gravada agora) ou `"duplicate"` (a frente já estava no Baralho,
-        de outra nota). A busca da frente fica aqui dentro: uma função que o Anki ocupado atrasou, e que a thread de trabalho
-        deixou de esperar, não faz a volta seguinte contar a própria nota como duplicata. A `midia` da nota (o áudio e a imagem do
-        Cartão) é guardada pela coleção junto com a nota nova, e só com ela."""
         return self._gravando(lambda colecao: _gravar_cartao(colecao, nota, frente))
 
 
 def _adicionar_nota(colecao, nota):
-    """Uma `nota` nova (`NotaAGravar`), na thread principal: o Baralho é criado se falta (`decks.id`), o tipo de nota tem de existir com os campos.
-    A `midia` vai para a pasta de mídia da coleção (`media.write_data`) antes da nota; se a coleção deu outro nome ao arquivo (já
-    havia um de mesmo nome e outro conteúdo), o `[sound:…]` da nota cita o nome que ficou (um `<img src>` segue o nome pedido).
-
-    Uma nota com o mesmo `guid` já gravada fica como está: é a gravação que o Anki ocupado atrasou (o Envio desistiu de
-    esperar e pediu de novo), e o Anki não impede dois `guid` iguais."""
     if colecao.db.all("select 1 from notes where guid = ?", nota.guid):
         return
     modelo = colecao.models.by_name(nota.tipo_de_nota)
@@ -256,7 +207,6 @@ def _adicionar_nota(colecao, nota):
 
 
 def _criar_tipo_de_nota(colecao, definicao):
-    """Na thread principal. Só cria: o que já existe com o nome fica como a pessoa o deixou, qualquer que seja o conteúdo."""
     modelos = colecao.models
     if modelos.by_name(definicao["nome"]) is not None:
         return False
@@ -268,12 +218,11 @@ def _criar_tipo_de_nota(colecao, definicao):
         cartao["qfmt"], cartao["afmt"] = modelo["frente"], modelo["verso"]
         modelos.add_template(novo, cartao)
     novo["css"] = definicao["css"]
-    (modelos.add_dict if hasattr(modelos, "add_dict") else modelos.add)(novo)  # `add_dict` é o do Anki novo; `add`, o dos mais antigos
+    (modelos.add_dict if hasattr(modelos, "add_dict") else modelos.add)(novo)
     return True
 
 
 def _criar_baralhos_da_instalacao_nova(colecao, nomes):
-    """O Baralho padrão do Anki é o de id 1, e o nome dele segue o idioma do Anki (“Default”, “Padrão”, “По умолчанию”): é o id que o reconhece."""
     if any(baralho.id != BARALHO_PADRAO for baralho in colecao.decks.all_names_and_ids()):
         return []
     for nome in nomes:
@@ -291,7 +240,6 @@ def _gravar_cartao(colecao, nota, frente):
 
 
 def _cartoes_do_baralho(colecao, nome):
-    """Os Cartões do Baralho e dos subbaralhos (e os que um Baralho filtrado emprestou), como a busca `deck:` do Anki."""
     ids = [
         int(baralho.id)
         for baralho in colecao.decks.all_names_and_ids()
@@ -322,14 +270,12 @@ def _cartoes_do_baralho(colecao, nome):
 
 
 def _ao_abrir_o_perfil(funcao):
-    """Roda `funcao` cada vez que um perfil abre no Anki (o gancho `profile_did_open`)."""
     from aqt import gui_hooks
 
     gui_hooks.profile_did_open.append(funcao)
 
 
 def _ao_sincronizar(colecao):
-    """Liga o adaptador aos ganchos de sincronização do Anki: enquanto sincroniza, o Envio não grava."""
     from aqt import gui_hooks
 
     gui_hooks.sync_will_start.append(colecao.sincronizacao_comecou)
@@ -346,10 +292,6 @@ def ao_carregar(mw, pasta_do_complemento, *, porta=PORTA, ao_abrir_o_perfil=_ao_
                 abridor=inicio.ABRIDOR_DESTE_COMPUTADOR, ao_sincronizar=_ao_sincronizar, servicos=ServicosDeFora(),
                 esperas=None, qt=None,
                 ao_receber_mensagem=criacao_na_revisao.ao_receber_mensagem):
-    """O que o Anki faz ao importar o complemento: devolve a Conexão, ou None se ela não subiu.
-
-    Depois de subir (ou não), põe o item “PerpetualMiner…” em Ferramentas e o botão Config (#175) pela fronteira `qt`
-    (`qt_do_anki.QtDoAnki`; omitida, a do Anki). O nome da pasta do complemento é o que o Anki chama de módulo dele."""
     colecao = ColecaoDoAnki(mw)
     try:
         ao_sincronizar(colecao)
@@ -372,7 +314,6 @@ def ao_carregar(mw, pasta_do_complemento, *, porta=PORTA, ao_abrir_o_perfil=_ao_
 
 
 def _por_no_menu(mw, conexao, modulo, qt):
-    """O item e a janela. Sem eles (um Anki que mudou o menu) a Conexão segue: o erro vai ao registro, nunca ao Anki."""
     logger = conexao.logger if conexao is not None else registro.silencioso()
     try:
         janela.ligar(mw, janela.Janela(conexao, lambda: perfil_aberto(mw), VERSAO, logger), qt or _qt_do_anki(logger), modulo)

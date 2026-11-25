@@ -1,15 +1,3 @@
-"""O item “PerpetualMiner…” em Ferramentas, a janela dele e os avisos do Envio (#175), sem o Qt.
-
-`Janela` lê o que a Conexão guardou (a fila e o estado de cada Envio, `fila_do_envio.py`) e o devolve já em texto da Voz (`texto_da_janela.py`):
-`estado()` é o que a janela mostra e `passo()` o rótulo do item e os avisos novos. Nada daqui lê o cofre das chaves nem o pedido
-das Frases: a chave da OpenAI, a Palavra e a Frase não têm por onde chegar à tela do Anki.
-
-O Qt fica atrás de uma fronteira de chamadas (`ligar`), implementada em `qt_do_anki.py`; os testes põem outra no lugar. O pareamento (#192) também
-passa por ela: o código que a pessoa digita no painel aparece num diálogo do Anki (`NaTelaDoAnki`), e a janela tem o botão Desconectar navegadores.
-Todo callback que o Anki chama passa por `protegido`: um erro vai ao registro e nunca sai para o Anki, que abriria o diálogo
-de erro culpando o complemento.
-"""
-
 from collections import namedtuple
 
 from . import envio, texto_da_janela
@@ -33,13 +21,10 @@ _FIM = {envio.COMPLETED: "concluido", envio.PARTIAL: "concluidoEmParte", envio.F
 
 
 def baralho_legivel(nome):
-    """O Baralho como a extensão o mostra: sem o `::` do Anki, com os níveis separados por ›."""
     return " › ".join(parte.strip() for parte in str(nome or "").split("::") if parte.strip())
 
 
 class _Lido:
-    """Um Envio como a janela o lê: o estado guardado e o Baralho do pedido."""
-
     def __init__(self, job_id, estado, baralho):
         self.job_id, self.estado, self.baralho = job_id, estado, baralho_legivel(baralho)
         cartoes = estado.get("cards") or {}
@@ -81,11 +66,6 @@ class _Lido:
 
 
 class Janela:
-    """O que a janela mostra e o que o item diz, lidos da Conexão (`None`: ela não subiu).
-
-    `perfil_aberto` devolve o nome do perfil aberto, ou None. Nada aqui levanta erro por causa da Conexão: o que não se lê
-    vira “sem Envio” e vai ao registro (uma vez por erro diferente, não a cada passo)."""
-
     def __init__(self, conexao, perfil_aberto, versao, logger):
         self._conexao = conexao
         self._perfil_aberto = perfil_aberto
@@ -112,7 +92,6 @@ class Janela:
         return nome or texto_da_janela.texto("ANK-02.semPerfil")
 
     def _envios(self):
-        """Os últimos Envios da fila, do mais antigo ao mais novo; vazio se a Conexão não subiu ou a fila não se lê."""
         if self._conexao is None:
             return []
         try:
@@ -129,7 +108,6 @@ class Janela:
             return []
 
     def _situacao_da_conexao(self):
-        """Desligada; ligada (só se ouve na porta); ou, na passagem do Windows do dono (#178), esperando o Envio de agora da Conexão de hoje terminar."""
         if self._conexao is None:
             return "ANK-02.desligada"
         if self._conexao.situacao_da_passagem == "esperando":
@@ -150,12 +128,10 @@ class Janela:
         )
 
     def pareamento_na_tela(self, na_tela):
-        """Dá ao pareamento da Conexão onde mostrar o código; sem Conexão (ela não subiu) não há o que parear."""
         if self._conexao is not None:
             self._conexao.pareamento.na_tela = na_tela
 
     def _navegadores(self):
-        """Quantos navegadores estão conectados (pareados); 0 se a Conexão não subiu ou o arquivo não se lê."""
         if self._conexao is None:
             return 0
         try:
@@ -165,13 +141,11 @@ class Janela:
             return 0
 
     def desconectar_navegadores(self):
-        """O botão Desconectar navegadores: cada navegador pede o código de novo. Devolve quantos saíram."""
         if self._conexao is None:
             return 0
         return self._conexao.pareamento.desconectar()
 
     def passo(self):
-        """(o rótulo do item, os avisos novos): o que o item tem de dizer agora e o que ainda não foi anunciado."""
         envios = self._envios()
         if self._primeiro_passo:
             self._primeiro_passo = False
@@ -180,8 +154,6 @@ class Janela:
         return _rotulo_do_item(envios), avisos
 
     def _aviso_novo(self, lido):
-        """O aviso que o Envio ainda não deu, ou None: o do começo na primeira vez que ele aparece ativo, o do fim na primeira vez que aparece
-        terminado (nunca o de um Envio que já tinha terminado quando a janela o viu pela primeira vez)."""
         if lido.ativo:
             return self._comecou(lido)
         return self._terminou(lido)
@@ -203,7 +175,6 @@ class Janela:
 
 
 def _rotulo_do_item(envios):
-    """Parado, ou quantos Cartões do Envio ativo já foram feitos."""
     agora = next((e for e in envios if e.ativo), None)
     if agora is None:
         return texto_da_janela.texto("ANK-01.parado")
@@ -211,7 +182,6 @@ def _rotulo_do_item(envios):
 
 
 def protegido(funcao, logger, o_que):
-    """A mesma função, sem nunca levantar: o Anki chama estes callbacks, e um erro que sai deles abre o diálogo de erro dele."""
     def chamada(*argumentos):
         try:
             return funcao(*argumentos)
@@ -222,10 +192,6 @@ def protegido(funcao, logger, o_que):
 
 
 class NaTelaDoAnki:
-    """A janela do Anki para o pareamento (`pareamento.Pareamento.na_tela`): o diálogo do código, o fechamento dele e o aviso de conectado.
-
-    Quem chama é a thread do servidor, então cada chamada ao Qt vai pela fronteira `qt`, que a leva à thread principal do Anki."""
-
     def __init__(self, mw, qt):
         self._mw, self._qt = mw, qt
 
@@ -240,12 +206,6 @@ class NaTelaDoAnki:
 
 
 def ligar(mw, janela, qt, modulo):
-    """Põe no Anki o item de Ferramentas, o botão Config do complemento `modulo` e a conferência do Envio, pela fronteira `qt`; os erros vão
-    ao registro da `janela`.
-
-    O item e o Config abrem a mesma janela. Só o Config é opcional: se o Anki não o aceita, o item e a conferência ficam. Se o item
-    não entra, `ligar` levanta e quem chamou (`no_anki`) registra o erro e segue sem a janela. Com a Conexão no ar, o código do
-    pareamento ganha onde aparecer (`NaTelaDoAnki`)."""
     logger = janela.logger
     janela.pareamento_na_tela(NaTelaDoAnki(mw, qt))
     abrir = protegido(lambda: qt.abrir_janela(mw, janela.estado, janela.desconectar_navegadores), logger, "abrir a janela")

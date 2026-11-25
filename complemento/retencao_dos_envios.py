@@ -1,22 +1,3 @@
-"""A retenção dos Envios terminados (#243): passado o prazo, a Conexão apaga a fila e o estado de um Envio e **guarda os custos**.
-
-Um Envio é apagado quando o estado dele diz que terminou (`completed`, `partial` ou `failed`, no fim de verdade: sem `waiting`, com a etapa igual ao
-status) e a última atividade (`updatedAt`) tem `PRAZO_EM_DIAS` dias ou mais. Na dúvida, fica: estado que não se lê, status que não é de fim,
-`updatedAt` que não é um instante ou está no futuro, e texto já pago que ainda não chegou ao Anki (`estado/<jobId>/*.txt`: o Tentar de novo o usaria).
-Em andamento, na fila, pausado e esperando o Anki, o plano ou o teto nunca saem: o status deles não é de fim.
-
-Sai, nesta ordem (morrer no meio deixa só o que a próxima rodada termina: ela acha o Envio pela fila, pelos pedidos soltos em `fila/` e pelos estados soltos em
-`estado/`; o estado é o último porque, sem ele, o pedido refaria um Envio `queued`): a entrada em `fila/fila.json`, o pedido `fila/<jobId>.json`,
-a pasta `estado/<jobId>/` e o estado `estado/<jobId>.json`. Se `estado/<jobId>` é um link para outra pasta (link simbólico ou junção do Windows), só o link sai e a pasta de destino nunca é lida nem apagada; a conferência é
-pelo caminho real, que vale em qualquer Python (`os.path.islink` não vê a junção). Uma subpasta de verdade dentro de `estado/<jobId>/` o Envio não sabe apagar:
-ele fica, com um aviso no registro a cada rodada, e a retenção nunca termina de sair com ele.
-**Nunca** apaga nem reescreve `custos/<jobId>/costs.jsonl`: a aba Custos continua somando o que somava. Como a linha dela vem do pedido e do estado, antes de
-apagar a retenção grava em `custos/<jobId>/ficha.json` o que a linha diz fora os custos (`custos.ficha_do_envio`: idioma, baralho, status, contagens; nunca a Palavra nem a Frase),
-e `Fila.envios_dos_custos` junta esses Envios à fila para a aba Custos e o teto do mês. Quem pede a rodada é a thread de trabalho (`trabalhador.py`), ao subir e a cada 6 h.
-
-Um erro de disco num Envio vai ao registro (só o id e o tipo do erro, nunca o pedido) e a rodada segue nos outros; nada aqui levanta erro.
-"""
-
 import os
 from datetime import datetime, timedelta
 
@@ -29,7 +10,6 @@ PRAZO_EM_DIAS = 30
 
 
 def _instante(valor):
-    """O instante ISO 8601 do `updatedAt` (sem fuso, o do computador), ou None."""
     try:
         quando = datetime.fromisoformat(valor)
     except (TypeError, ValueError):
@@ -46,7 +26,6 @@ def _e_arquivo_de_verdade(caminho):
 
 
 def _json_soltos(pasta):
-    """Os `<jobId>.json` que são arquivos de verdade em `pasta` (sem seguir link), na ordem."""
     if not os.path.isdir(pasta):
         return []
     soltos = []
@@ -58,14 +37,12 @@ def _json_soltos(pasta):
 
 
 def _ids(fila):
-    """Os Envios da fila, os pedidos soltos em `fila/` e os estados soltos em `estado/` (a rodada que morreu no meio deixa um deles)."""
     ids = [item.get("jobId") for item in fila.ordem() if isinstance(item, dict)]
     ids += _json_soltos(fila.dados.fila) + _json_soltos(fila.dados.estado)
     return [job_id for index, job_id in enumerate(ids) if id_que_serve_de_caminho(job_id) and job_id not in ids[:index]]
 
 
 def _e_link(fila, job_id):
-    """Se `estado/<jobId>` leva para outro lugar (link simbólico ou junção): o caminho real não é o da pasta dentro de `estado/`."""
     pasta = os.path.realpath(fila.pasta_dos_textos(job_id))
     return os.path.normcase(pasta) != os.path.normcase(os.path.join(os.path.realpath(fila.dados.estado), job_id))
 
@@ -76,7 +53,6 @@ def _texto_pago(fila, job_id):
 
 
 def venceu(fila, job_id, agora):
-    """Se o Envio terminou há `PRAZO_EM_DIAS` dias ou mais e nada nele ainda vale; na dúvida, False."""
     estado = fila.estado(job_id)
     if not terminou(estado):
         return False
@@ -89,7 +65,6 @@ def venceu(fila, job_id, agora):
 
 
 def _tirar_o_link(caminho):
-    """Tira só a entrada: `os.remove` para o link simbólico, `os.rmdir` para a junção do Windows (que ele não tira); nenhum dos dois entra no destino."""
     try:
         os.remove(caminho)
     except FileNotFoundError:
@@ -137,7 +112,6 @@ def _apagar_o_envio(fila, job_id):
 
 
 def reter(fila, agora=None):
-    """Uma rodada: apaga os Envios que venceram e devolve os ids, na ordem. Repetida logo depois, não acha nada."""
     agora = agora or datetime.now().astimezone()
     apagados = []
     try:

@@ -1,7 +1,3 @@
-"""As rotas de Entrar com o ChatGPT (#155): o estado, entrar e sair, que a extensão pede (POST com a origem dela, listadas em
-`servidor.ROTAS`), e o retorno do login, que o navegador pede (`GET /auth/callback`, em `servidor.PAGINAS`). Nenhuma devolve
-um token; o retorno responde sempre a mesma página."""
-
 PAGINA_DO_RETORNO = (
     "<!doctype html><html lang=\"pt-BR\"><meta charset=\"utf-8\"><title>PerpetualMiner</title>"
     "<p>Pode fechar esta aba e voltar ao PerpetualMiner.</p></html>"
@@ -13,7 +9,6 @@ def estado_do_chatgpt(conexao, corpo):
 
 
 def entrar_com_o_chatgpt(conexao, corpo):
-    """O botão Continuar com o ChatGPT: uma tentativa nova e a URL que a extensão abre numa aba."""
     return 200, {"url": conexao.chatgpt.iniciar(conexao.porta)}
 
 
@@ -22,7 +17,6 @@ def sair_do_chatgpt(conexao, corpo):
 
 
 def retorno_do_login(conexao, consulta, host):
-    """`GET /auth/callback`: entrega o retorno ao login (que só aceita a tentativa certa) e devolve a página fixa, aconteça o que acontecer."""
     try:
         conexao.chatgpt.receber(consulta, host, conexao.porta)
     except Exception as erro:

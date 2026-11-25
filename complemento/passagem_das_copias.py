@@ -1,10 +1,3 @@
-"""O que a passagem copia da Conexão de hoje para esta (#178). **Copia, nunca move**: nada é aberto para escrita nem apagado na origem.
-
-`Antiga` é a Conexão de hoje como ela mesma se descreveu no `GET /health` (onde ficam a fila, o motor e os Envios dela). Cada
-função daqui copia uma coisa e devolve o que fez; repetir a passagem não duplica nada (o que já está no destino não é tocado).
-A chave nunca vai para o log nem para o que estas funções devolvem.
-"""
-
 import json
 import os
 import re
@@ -33,14 +26,12 @@ def _ler_json(caminho, padrao):
 
 
 def id_novo(id_antigo):
-    """O id do Envio aqui: o mesmo se já é um UUID; senão sempre o mesmo UUID para o mesmo id de hoje (repetir não duplica)."""
     if envio.id_valido(id_antigo):
         return id_antigo
     return str(uuid.uuid5(_NAMESPACE, "perpetualminer-passagem:%s" % id_antigo))
 
 
 def perfil_de_hoje(antiga):
-    """O perfil do Anki da configuração de hoje (`bridge/config.json`): da configuração só ele é aproveitado."""
     nome = (_ler_json(os.path.join(antiga.raiz, "bridge", "config.json"), {}) or {}).get("anki_profile")
     return nome.strip() if isinstance(nome, str) and nome.strip() else None
 
@@ -80,9 +71,6 @@ def _chave_do_env(antiga):
 
 
 def copiar_a_chave(antiga, cofre):
-    """A chave do `.env` de hoje para o cofre daqui, sem conferir na OpenAI e sem conta (fica só neste computador: subir para a
-    nuvem da conta é a pessoa confirmando a chave nela, como qualquer chave colada). Uma chave que o cofre já tem fica como está.
-    Devolve `"copiada"`, `"ja_havia"` ou `"sem_chave"`."""
     if cofre.ler("openai"):
         return "ja_havia"
     chave = _chave_do_env(antiga)
@@ -124,8 +112,6 @@ def _gravar_os_custos(destino, linhas):
 
 
 def copiar_os_custos(antiga, fila):
-    """O histórico de custos de cada Envio de hoje (`<Envio>/log/costs.jsonl`) para `custos/<Envio>/costs.jsonl`, sem a Palavra.
-    Devolve quantos Envios ganharam o histórico."""
     copiados = 0
     for pasta in _pastas_dos_envios(antiga):
         origem = os.path.join(antiga.jobs_root, pasta, "log", "costs.jsonl")
@@ -157,8 +143,6 @@ def _e_o_prompt_padrao(nome, texto):
 
 
 def copiar_os_prompts_editados(antiga, pasta_dos_prompts):
-    """Só os prompts de hoje (`<motor>/prompts/*.txt`) que diferem dos padrões que o complemento traz, para a pasta de prompts da pasta
-    de dados, com o mesmo nome (lá o arquivo do dono vale no lugar do padrão). O que já está lá não é tocado. Devolve os nomes copiados."""
     de_hoje = os.path.join(antiga.motor, "prompts")
     copiados = []
     for nome in sorted(os.listdir(de_hoje)) if os.path.isdir(de_hoje) else []:
@@ -185,7 +169,6 @@ def _pedido_e_estado_guardados(pedido, estado):
 
 
 def _envios_de_hoje(antiga):
-    """(id, pedido, estado, status na fila) de cada Envio de hoje, do mais antigo ao mais novo."""
     status_na_fila = _status_na_fila(antiga)
     envios = []
     for pasta in _pastas_dos_envios(antiga):
@@ -228,7 +211,6 @@ def _estado_do_historico(id_, status, estado, criado):
 
 
 def _historico(id_, pedido, estado, status):
-    """Um Envio que terminou, só para a aba Custos: sem as Frases (as linhas ficam em hoje), como um Envio de depois do Apagar tudo."""
     criado = str(pedido.get("createdAt") or estado.get("updatedAt") or "")
     certas = _frases(estado.get("successfulPhraseIds"))
     return _pedido_do_historico(id_, pedido, _entradas_do_historico(pedido, certas), criado), _estado_do_historico(id_, status, estado, criado)
@@ -279,9 +261,6 @@ def _passar_os_que_faltam(envios, fila):
 
 
 def passar_a_fila(antiga, fila):
-    """Os Envios de hoje para esta fila. Os que terminaram entram como histórico (só para a aba Custos); os que ainda têm Frases a
-    enviar (`queued` ou `running`, menos as que já chegaram ao Anki) entram na fila como `queued`, com a linha de cada Frase: um
-    Cartão pronto não é refeito. Devolve `{"historico": n, "fila": n, "recusados": [ids]}`."""
     envios = _envios_de_hoje(antiga)
     historico = _passar_ao_historico(envios, fila)
     passados, recusados = _passar_os_que_faltam(envios, fila)

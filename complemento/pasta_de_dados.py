@@ -1,11 +1,3 @@
-"""A pasta de dados do complemento.
-
-O Anki preserva `user_files` nas atualizações do complemento, então é lá que
-ficam a fila do Envio, o estado de cada Cartão, os custos, os logs e as chaves (`chaves`, separada de
-tudo o que o pacote de diagnóstico lê: veja `chaves.py`). `prompts` é a pasta do dono: um arquivo dele, com o nome de um prompt do
-complemento, vale no lugar do padrão (`motor_do_envio.prompt_do_dono`); fica vazia até ele pôr algum.
-"""
-
 import os
 from collections import namedtuple
 
@@ -13,7 +5,6 @@ PastaDeDados = namedtuple("PastaDeDados", "raiz fila estado custos logs chaves")
 
 
 def preparar(pasta_do_complemento):
-    """Cria `user_files` (e o que mora nela) se faltar; nunca apaga nada."""
     raiz = os.path.join(pasta_do_complemento, "user_files")
     pastas = {nome: os.path.join(raiz, nome) for nome in ("fila", "estado", "custos", "logs", "chaves")}
     for pasta in list(pastas.values()) + [os.path.join(raiz, "prompts")]:

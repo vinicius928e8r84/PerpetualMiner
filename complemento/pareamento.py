@@ -1,23 +1,3 @@
-"""O pareamento da Conexão com o Anki com cada navegador (#192): quem pode pedir, e a prova de que a Conexão é a Conexão.
-
-Um segredo por navegador. Ele nasce aqui, quando a pessoa digita no painel o código que só o Anki dela mostrou, chega à
-extensão uma única vez (a resposta do `concluir`) e nunca mais trafega: cada pedido vai assinado com HMAC-SHA256 e cada
-resposta volta assinada. Só a biblioteca padrão.
-
-    segredo S          `user_files/pareamento.json`, até 5 navegadores, só do dono (0600), gravado de uma vez
-    revogados          o Desconectar navegadores guarda ali (até 20) os segredos que revogou: eles não assinam mais nada, só provam ao `conferir` que
-                       a Conexão desconectou aquele navegador (`401 pairing_revoked` com a prova da revogação), e só essa resposta provada faz a extensão
-                       esquecer a credencial; um 401 sem prova (um impostor também o responde) não a apaga, e o `pairing_required` só oferece o Conectar (#496)
-    código C           só na memória, 5 minutos, 5 tentativas; nunca em arquivo, log nem resposta HTTP
-    sessão             nasce a cada subida da Conexão, só na memória: um pedido assinado numa subida não vale na outra
-    nonce de cada pedido   não se repete dentro da sessão
-
-A assinatura do pedido cobre a sessão, o nonce, o método, o caminho e o sha256 do corpo; a prova da resposta cobre a sessão,
-o nonce do pedido, o status e o sha256 do corpo; a prova do `conferir` cobre o desafio e a sessão. Os rótulos (`pedido`,
-`resposta`, `servidor`) separam os usos: a prova que a Conexão dá a qualquer um no `conferir` não serve para assinar um pedido.
-`servidor.Atendente._pedido_aceito` é o único porteiro; o lado da extensão é `PedidoAoAnki.pedir`.
-"""
-
 import base64
 import hashlib
 import hmac
@@ -64,22 +44,18 @@ def _sha256(corpo):
 
 
 def assinatura_do_pedido(segredo, sessao, nonce, metodo, caminho, corpo):
-    """O que a extensão põe em `X-PerpetualMiner-Assinatura`. `segredo` e `corpo` são bytes."""
     return _hmac(segredo, "pm1\npedido\n%s\n%s\n%s\n%s\n%s" % (sessao, nonce, metodo, caminho, _sha256(corpo)))
 
 
 def prova_da_resposta(segredo, sessao, nonce, status, corpo):
-    """O que a Conexão põe em `X-PerpetualMiner-Prova`, para o pedido de `nonce`."""
     return _hmac(segredo, "pm1\nresposta\n%s\n%s\n%d\n%s" % (sessao, nonce, status, _sha256(corpo)))
 
 
 def prova_do_servidor(segredo, desafio, sessao):
-    """A prova do `conferir`: quem tem `segredo` responde ao `desafio` da extensão e diz a sessão desta subida."""
     return _hmac(segredo, "pm1\nservidor\n%s\n%s" % (desafio, sessao))
 
 
 def prova_da_revogacao(segredo, desafio):
-    """A prova do `conferir` de um navegador desconectado: só quem guardou o segredo dele a dá, e o `desafio` é da extensão (não se repete)."""
     return _hmac(segredo, "pm1\nrevogado\n%s" % desafio)
 
 
@@ -100,12 +76,6 @@ def _so_o_codigo(texto):
 
 
 class Pareamento:
-    """Os navegadores pareados, o código pendente e a conferência de cada pedido.
-
-    `na_tela` é a janela do Anki (`mostrar_codigo(codigo, validade_s, ao_cancelar)`, `fechar_codigo()`, `conectou()`); sem ela
-    (`None`) a Conexão não tem como mostrar o código e o `comecar` responde que o pareamento não está disponível.
-    `relogio` devolve segundos que só crescem (o `time.monotonic`); `sortear` devolve o código (os testes o fixam)."""
-
     def __init__(self, arquivo, logger, relogio=time.monotonic, na_tela=None, sortear=sortear_o_codigo):
         self._arquivo = arquivo
         self._logger = logger
@@ -114,7 +84,7 @@ class Pareamento:
         self.sortear = sortear
         self.sessao = secrets.token_hex(16)
         self._tranca = threading.RLock()
-        self._tranca_do_arquivo = threading.RLock()   # só o arquivo: nenhuma leitura fica aberta durante a troca (no Windows o `os.replace` falha), e a janela do Anki nunca roda sob ela
+        self._tranca_do_arquivo = threading.RLock()
         self._pendente = None
         self._concluido = None
         self._nonces = OrderedDict()
@@ -123,7 +93,6 @@ class Pareamento:
         self._bloqueado_ate = None
 
     def _ler(self, campo="clientes"):
-        """As linhas válidas de `campo` (`clientes` ou `revogados`) do arquivo."""
         try:
             with self._tranca_do_arquivo, open(self._arquivo, encoding="utf-8") as arquivo:
                 dados = json.load(arquivo)
@@ -143,7 +112,6 @@ class Pareamento:
         return validos
 
     def _gravar(self, clientes, revogados=None):
-        """Grava os navegadores; sem `revogados`, os que já estavam no arquivo ficam."""
         with self._tranca_do_arquivo:
             revogados = self._ler("revogados") if revogados is None else revogados
             gravar_so_do_dono(self._arquivo, {"versao": 1, "clientes": clientes, "revogados": revogados})
@@ -157,12 +125,9 @@ class Pareamento:
         return None
 
     def quantos(self):
-        """Quantos navegadores estão pareados."""
         return len(self._ler())
 
     def desconectar(self):
-        """“Desconectar navegadores”: esvazia a lista e guarda os segredos que saíram (`revogados`, até 20), para o `conferir` de cada um dizer que foi
-        desconectado. Os Envios, a chave e o resto ficam. Devolve quantos saíram."""
         with self._tranca:
             saindo = self._ler()
             agora = _agora_iso()
@@ -199,13 +164,11 @@ class Pareamento:
         self._relogio_de_vencer.start()
 
     def expirar(self):
-        """Fecha o código se já venceu (o relógio de 5 minutos o chama)."""
         with self._tranca:
             if self._pendente is not None and self._pendente["vence"] <= self._relogio():
                 self._acabar_o_pendente()
 
     def cancelar(self):
-        """A pessoa apertou Cancelar (ou fechou a janela do código): o código morre."""
         with self._tranca:
             if self._pendente is not None:
                 self._pendente = None
@@ -221,7 +184,6 @@ class Pareamento:
         return pendente
 
     def comecar(self):
-        """Mostra no Anki o código para conectar (o do pendente, se há). Devolve (status, json); o código nunca sai daqui."""
         with self._tranca:
             if self.na_tela is None:
                 return 503, {"error": "pairing_unavailable"}
@@ -248,7 +210,6 @@ class Pareamento:
             self._logger.warning("Pareamento: %d códigos gastaram as tentativas; nenhum código novo por %d minutos", CODIGOS_ESGOTADOS_PARA_BLOQUEAR, BLOQUEIO_S // 60)
 
     def concluir(self, codigo, cliente, nome):
-        """A pessoa digitou `codigo` no painel. Certo: grava o segredo do `cliente` e o devolve, uma vez. Devolve (status, json)."""
         digitado = _so_o_codigo(codigo).encode("ascii")
         with self._tranca:
             feito = self._concluido
@@ -286,8 +247,6 @@ class Pareamento:
         return 200, {"cliente": cliente, "segredo": segredo}
 
     def conferir(self, cliente, desafio):
-        """A prova da Conexão: `{ sessao, prova }`. Quem não é um navegador pareado recebe 401, sem prova nenhuma; o que o Desconectar navegadores
-        tirou recebe `401 pairing_revoked` com a prova da revogação, que só a Conexão que o desconectou sabe dar."""
         segredo = self._segredo_de(cliente)
         if segredo is None:
             revogado = self._segredo_de(cliente, "revogados")
@@ -297,11 +256,6 @@ class Pareamento:
         return 200, {"sessao": self.sessao, "prova": prova_do_servidor(segredo, desafio, self.sessao)}
 
     def verificar(self, metodo, caminho, corpo, cabecalhos):
-        """Confere a assinatura de um pedido. `corpo` são os bytes; `cabecalhos` responde a `.get(nome)`.
-
-        Devolve `Verificacao(status, erro, segredo, nonce)`: `status` 200 e o segredo do navegador, ou 401 e o `erro`:
-        `pairing_required` (sem assinatura ou navegador desconhecido), `session_expired` (assinado numa subida anterior da
-        Conexão) ou `pairing_invalid` (assinatura errada ou nonce repetido)."""
         cliente = cabecalhos.get(CABECALHO_DO_CLIENTE)
         assinatura = cabecalhos.get(CABECALHO_DA_ASSINATURA)
         nonce = cabecalhos.get(CABECALHO_DO_NONCE)

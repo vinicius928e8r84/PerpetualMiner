@@ -1,14 +1,3 @@
-"""O servidor da Conexão com o Anki: HTTP em 127.0.0.1, numa thread, só com a biblioteca padrão.
-
-O Anki do Mac roda o Python 3.9, sem Flask, waitress nem requests. Aqui dentro nada
-mexe no processo do Anki (proxy, stdout, stderr, `excepthook`, avisos): todo erro
-vai ao logger do complemento e vira uma resposta 500, nunca o diálogo de erro do Anki.
-
-Cada rota é uma função `(conexao, corpo) -> (status, json)` em `ROTAS`; `corpo` é o JSON do pedido
-(`{}` sem corpo). Uma rota nova entra junto com seus exemplos em `contrato/exemplos.json`
-(veja `contrato/LEIA-ME.md`).
-"""
-
 import json
 import os
 import sys
@@ -84,22 +73,15 @@ class _Atendente(BaseHTTPRequestHandler):
         return self.server.conexao
 
     def log_message(self, formato, *args):
-        # O padrão escreve no stderr. O acesso comum fica em DEBUG, abaixo do nível do log.
         self.conexao.logger.debug("http: " + formato, *args)
 
     def log_error(self, formato, *args):
-        # Erro do próprio servidor (um pedido que estourou o tempo, por exemplo); o texto é o da biblioteca.
         self.conexao.logger.warning("http: " + formato, *args)
 
     def log_request(self, code="-", size="-"):
         self.conexao.logger.debug("http: resposta %s", code)
 
     def send_error(self, code, message=None, explain=None):
-        """Pedido que o protocolo recusou (sintaxe, versão, método, cabeçalho grande demais).
-
-        A biblioteca repete a linha do pedido na página de erro e no log (`Bad request syntax ('...')`); o que o
-        cliente mandou nunca volta nem é escrito, então aqui a resposta e o log são os mesmos para qualquer pedido.
-        """
         super().send_error(code)
 
     def _responder(self, status, dados=None, origem=None, extras=None):
@@ -122,12 +104,6 @@ class _Atendente(BaseHTTPRequestHandler):
             self.wfile.write(corpo)
 
     def _pedido_aceito(self, caminho, corpo):
-        """O porteiro, num lugar só e antes de escolher a rota: `None` se o pedido segue; senão `(status, erro)`.
-
-        Só a extensão pede, pela origem dela; a exceção é `GET /health` (e o retorno do login), que o Chrome manda sem `Origin`. Mas o `Origin`
-        não é autenticação (uma extensão com `extraHeaders`, ou um programa local, o põe): tudo o mais, a rota que não existe inclusive, exige a
-        assinatura de um navegador pareado (`pareamento.py`, `contrato/LEIA-ME.md`). Só o pareamento, o preflight e `POST /anki/responde` (`ROTAS_SEM_ASSINATURA`) a dispensam. `corpo` são os
-        bytes que a assinatura cobre (`None`: passou do limite)."""
         origem = self.headers.get("Origin")
         aberta = (self.command, caminho) in ROTAS_ABERTAS
         if (origem is None and not aberta) or (origem is not None and origem not in self.conexao.origens_aceitas):
@@ -143,7 +119,6 @@ class _Atendente(BaseHTTPRequestHandler):
         return None
 
     def _ler_o_corpo(self, limite):
-        """Os bytes do pedido (`b""` sem corpo), ou None se o tamanho não vale ou passa do `limite`."""
         try:
             tamanho = int(self.headers.get("Content-Length") or 0)
         except ValueError:
@@ -156,7 +131,6 @@ class _Atendente(BaseHTTPRequestHandler):
 
     @staticmethod
     def _json_do_corpo(bruto):
-        """O JSON do pedido (`{}` sem corpo), ou None se o corpo não é um objeto JSON."""
         if not bruto:
             return {}
         try:
@@ -202,8 +176,6 @@ class _Atendente(BaseHTTPRequestHandler):
         return self._responder(status, dados, origem=origem)
 
     def __getattr__(self, nome):
-        # Todo verbo passa pela mesma autorização: sem isto o `http.server` responderia 501
-        # (HTML) a HEAD, PUT, PATCH e verbos desconhecidos antes de olhar a origem.
         if nome.startswith("do_"):
             return self._atender
         raise AttributeError(nome)
@@ -211,13 +183,9 @@ class _Atendente(BaseHTTPRequestHandler):
 
 class _Servidor(ThreadingHTTPServer):
     daemon_threads = True
-    # No Windows, reaproveitar o endereço deixaria o complemento subir por cima de
-    # outro programa que já escuta na porta (a Conexão antiga do Windows, na passagem): lá a porta ocupada
-    # tem de recusar. No Mac e no Linux o reaproveitamento só pula o TIME_WAIT.
     allow_reuse_address = os.name != "nt"
 
     def handle_error(self, request, client_address):
-        # O padrão imprime o erro no stderr.
         erro = sys.exc_info()[1]
         if sys.excepthook is None or sys.is_finalizing():
             return
@@ -228,11 +196,6 @@ class _Servidor(ThreadingHTTPServer):
 
 
 class Conexao:
-    """O servidor da Conexão e a thread de trabalho do Envio: `iniciar()` sobe as duas, `parar()` encerra.
-
-    Recebe as peças prontas (`montagem_da_conexao.montar`) e a `porta` (`montagem_da_conexao.Porta`). `pecas.sem_trabalhador()` deixa a fila
-    parada (os Envios entram e ficam `queued`): é o que os testes do contrato usam, para um pedido repetido achar a fila como a deixou."""
-
     def __init__(self, porta, pecas, perfil_aberto):
         self.porta = porta.numero
         self.origens_aceitas = tuple(porta.origens_aceitas)
@@ -254,11 +217,9 @@ class Conexao:
 
     @property
     def no_ar(self):
-        """Se a Conexão está mesmo ouvindo na porta (a passagem que falhou deixa a porta com a de hoje)."""
         return self._servidor is not None
 
     def iniciar(self):
-        """Sobe a Conexão. Com a porta ocupada fica quieta, registra o motivo e devolve False."""
         try:
             servidor = _Servidor((ENDERECO, self.porta), _Atendente)
         except OSError as erro:
@@ -275,8 +236,6 @@ class Conexao:
         return True
 
     def iniciar_depois(self, preparo):
-        """Sobe a Conexão depois de `preparo(cancelado)` (a passagem, #178: a porta é da Conexão de hoje até ela sair). O `preparo` roda numa
-        thread, e a Conexão sobe mesmo se ele falha (com a porta ocupada fica quieta, como sem a passagem); `parar()` o cancela."""
         def passar():
             try:
                 preparo(self._cancelar.is_set)

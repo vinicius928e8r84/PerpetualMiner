@@ -1,16 +1,3 @@
-"""Entrar com o ChatGPT (#155): a tentativa de login, o retorno, os tokens e a renovação, só com a biblioteca padrão.
-
-Os endereços e os
-valores do protocolo estão em `chatgpt_oficial.py`. Os tokens moram só em `user_files/chaves/chatgpt.json` (0600, gravado de uma
-vez); nada daqui os devolve, nem os escreve no log: o log diz o que aconteceu e, no máximo, o status HTTP. A tentativa de login
-(`state`, verificador do PKCE e `nonce`) fica na memória, uma por vez, e vale uma vez só. Toda leitura e escrita do arquivo,
-a troca do código, a renovação e o Sair passam pela mesma tranca: o `refresh_token` roda a cada renovação.
-
-O login guardado é uma de três coisas, e o arquivo diz qual (`situacao`): sem login (não há arquivo), conectada (os tokens) ou
-acabou (`{ acabou }`, sem token nenhum: o servidor de login recusou a renovação). Entrar leva a conectada; a renovação recusada,
-de conectada a acabou; Sair, a sem login. De acabou só se sai por escolha da pessoa: entrando de novo, ou saindo.
-"""
-
 import base64
 import hashlib
 import hmac
@@ -36,7 +23,6 @@ MARGEM_DA_RENOVACAO = 180
 SEM_ACESSO = "chatgpt_access_denied"
 SEM_PLANO = "chatgpt_plan_not_granted"
 LOGIN_FALHOU = "chatgpt_login_failed"
-# A segunda troca seguida recusada com `invalid_grant`: a conta (grátis ou Go) não tem o plano (risco 9 da spec). O Envio também grava este código.
 NAO_SERVE = "chatgpt_not_eligible"
 SAIU = "chatgpt_signed_out"
 FORA_DO_AR = "openai_unreachable"
@@ -46,8 +32,6 @@ SEM_LOGIN, CONECTADA, ACABOU = "sem_login", "conectada", "acabou"
 
 
 class ErroDoPlano(Exception):
-    """O plano não serve para o próximo pedido: `codigo` é um dos de cima, o que o Envio grava no Cartão."""
-
     def __init__(self, codigo):
         super().__init__(codigo)
         self.codigo = codigo
@@ -58,7 +42,6 @@ def _base64url(dados):
 
 
 def _nonce_do_id_token(id_token):
-    """O `nonce` do corpo do `id_token` (um JWT); None se ele não se lê. A assinatura não é conferida (limite 5.c do desenho)."""
     try:
         corpo = id_token.split(".")[1]
         dados = json.loads(base64.urlsafe_b64decode(corpo + "=" * (-len(corpo) % 4)).decode("utf-8"))
@@ -68,7 +51,6 @@ def _nonce_do_id_token(id_token):
 
 
 def _tokens(resposta):
-    """O que a troca ou a renovação devolveu, se tem a forma da doc (`Token reference`); None se não."""
     acesso, renovacao, validade, escopos = (resposta.get(campo) for campo in ("access_token", "refresh_token", "expires_in", "scope"))
     if not all(isinstance(valor, str) and valor for valor in (acesso, renovacao, escopos)):
         return None
@@ -90,8 +72,6 @@ def _na_lista_da_conta(modelo):
 
 
 class LoginDoChatGPT:
-    """O login do ChatGPT deste computador. `base` é o servidor de login e `api` a API da OpenAI (os testes dão os de mentira)."""
-
     def __init__(self, pasta, logger, base=oficial.LOGIN, api=OPENAI_BASE):
         self.pasta = pasta
         self.logger = logger
@@ -128,7 +108,6 @@ class LoginDoChatGPT:
             pass
 
     def _id_deste_computador(self):
-        """O `ext_agent_host_id`: criado antes do primeiro login e o mesmo depois (`Registration and sign-in` § 1)."""
         dados = self._ler("chatgpt-host.json") or {}
         guardado = dados.get("ext_agent_host_id")
         if isinstance(guardado, str) and guardado.startswith("urn:uuid:"):
@@ -138,21 +117,18 @@ class LoginDoChatGPT:
         return novo
 
     def situacao(self):
-        """O login guardado agora: `(SEM_LOGIN | CONECTADA | ACABOU, o motivo do acabou)`. Quem paga o Envio sai daqui (`quem_paga`)."""
         dados = self._ler() or {}
         if self._login(dados) is not None:
             return CONECTADA, None
         return (ACABOU, SAIU) if dados.get("acabou") else (SEM_LOGIN, None)
 
     def estado(self):
-        """`{ conectada, entrando, falha, acabou }`: o login guardado, a tentativa aberta, o que a última tentativa deu e o motivo do login que acabou."""
         tentativa, trocando, falha = self._tentativa, self._trocando, self._falha
         situacao, motivo = self.situacao()
         return {"conectada": situacao == CONECTADA, "falha": falha, "acabou": motivo,
                 "entrando": trocando or (tentativa is not None and time.monotonic() < tentativa["expira"])}
 
     def iniciar(self, porta):
-        """Uma tentativa nova (a anterior deixa de valer) e a URL de autorização que a pessoa abre no navegador."""
         with self._tranca:
             computador = self._id_deste_computador()
             verificador = secrets.token_urlsafe(64)
@@ -172,8 +148,6 @@ class LoginDoChatGPT:
         return oficial.AUTORIZAR + "?" + urllib.parse.urlencode(parametros)
 
     def receber(self, consulta, host, porta):
-        """O retorno do navegador. Só a tentativa pendente, pelo `state` dela e no endereço de loopback da Conexão, é aceita; ela
-        é consumida antes da troca do código. Qualquer outro retorno não muda nada."""
         estado = consulta.get("state")
         if host != "127.0.0.1:%d" % porta or not estado:
             return
@@ -226,8 +200,6 @@ class LoginDoChatGPT:
         return None
 
     def token(self):
-        """O `access_token` do próximo pedido, renovado perto da validade; None sem login. Levanta `ErroDoPlano`: a renovação recusada
-        grava que o login acabou, e daí em diante todo pedido levanta `SAIU` (nunca None, que deixaria a chave pagar) até a pessoa escolher."""
         with self._tranca:
             if self.situacao()[0] == ACABOU:
                 raise ErroDoPlano(SAIU)
@@ -255,7 +227,6 @@ class LoginDoChatGPT:
         raise ErroDoPlano(FORA_DO_AR)
 
     def modelos(self, token):
-        """Os modelos da lista da conta (`visibility: list`, na ordem do servidor), o primeiro é o Automático. Levanta `ErroDoPlano`."""
         status, resposta = self._pedir(self.api + oficial.MODELOS, token=token)
         if status in (401, 403):
             raise ErroDoPlano(RECUSOU)
@@ -268,8 +239,6 @@ class LoginDoChatGPT:
         return modelos
 
     def sair(self):
-        """Revoga a sessão renovável, se dá, e apaga o arquivo do login; devolve se a revogação foi confirmada (sem login, ou com ele
-        acabado, não há o que revogar: True). É também como a pessoa deixa o login que acabou para usar a chave."""
         with self._tranca:
             self._tentativa = self._falha = None
             self._recusas = 0
@@ -294,7 +263,6 @@ class LoginDoChatGPT:
         return self._pedir(self.base + oficial.TOKEN, formulario=formulario)
 
     def _pedir(self, url, formulario=None, token=None):
-        """(status, JSON como dict) do pedido; (None, {}) sem resposta. O corpo de um erro só é lido para o `error` dele."""
         dados = None if formulario is None else urllib.parse.urlencode(formulario).encode("utf-8")
         pedido = urllib.request.Request(url, data=dados, method="GET" if dados is None else "POST")
         pedido.add_header("Accept", "application/json")

@@ -1,6 +1,3 @@
-"""O que o navegador pede à Conexão, fora do contrato com a extensão (#155): o retorno do login do ChatGPT (navegação, sem `Origin`;
-decisão da spec #138), e as três rotas do login que a extensão pede. `servidor.py` as lista em `ROTAS`, `PAGINAS` e `ROTAS_ABERTAS`."""
-
 from urllib.parse import parse_qs
 
 from . import chatgpt_oficial
@@ -21,7 +18,6 @@ def _consulta_do_endereco(caminho):
 
 
 def responder_a_pagina(atendente, pagina):
-    """Uma página para o navegador: sem cache, sem referenciador e sem nada a carregar ou executar."""
     corpo = pagina(atendente.conexao, _consulta_do_endereco(atendente.path), atendente.headers.get("Host"))
     atendente.send_response(200)
     for nome, valor in (("Content-Type", "text/html; charset=utf-8"), ("Content-Length", str(len(corpo))), ("Cache-Control", "no-store"),

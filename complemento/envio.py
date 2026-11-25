@@ -1,18 +1,3 @@
-"""O Envio dentro da Conexão (#142): a fila, o estado de cada Cartão e o trabalho que os faz (a thread: `trabalhador.py`).
-
-Estados (a máquina e a tabela: `estado_do_envio.py`; o portão: `Fila.mudar`, em `fila_do_envio.py`): `queued` →
-`running` (`generate_cards`, `wait_anki` ou `send_to_anki`) ⇄ esperando → `completed` | `partial` | `failed`, e apagado; uma Frase está no Anki quando
-todos os Cartões dela estão (`settle`). O estado também é **por Cartão** (`cards`: `pending` → `text` → `added` | `duplicate`,
-ou `failed` com o `error`; `added` leva o `guid` da nota): a retomada não refaz nada pronto. Um Cartão é (`phraseId`, posição da Palavra), `<phraseId>-<n>`.
-
-Os arquivos em `user_files` e quem os lê e grava (a `Fila`): `fila_do_envio.py`.
-
-A rede (a OpenAI e a voz do Google, `audio_do_cartao.py`) é da thread de trabalho; cada nota é gravada pelo adaptador da
-coleção (`gravar_cartao`, na thread principal do Anki). Sem coleção, sincronizando ou ocupado, ele levanta `ColecaoIndisponivel`
-e a thread espera, sem prazo. A chave (ou o login do ChatGPT) é lida antes de cada pedido de texto, só para ele; os erros são
-códigos, nunca o texto da OpenAI.
-"""
-
 import functools
 import hashlib
 import os
@@ -30,7 +15,7 @@ from .login_do_chatgpt import RECUSOU, SAIU
 from .motor_do_cartao import Cartao
 from .motor_do_envio import configuracao_do_motor, motor_do_complemento
 from .nota_a_gravar import FrenteDoCartao, NotaAGravar
-from .paradas_do_envio import Apagado, Interrompido  # noqa: F401  (`envio.Interrompido`)
+from .paradas_do_envio import Apagado, Interrompido  # noqa: F401
 from .tipo_do_envio import TipoDoEnvio
 from .pedido_do_envio import ETIQUETA_DE_TESTE, id_que_serve_de_caminho, id_valido, ids_unicos, impressao, visao_do_pedido
 
@@ -44,13 +29,10 @@ PARA_O_ENVIO = ("openai_key_rejected", "openai_no_credit", SAIU, "chatgpt_not_el
 
 
 def guid_do_cartao(job_id, cartao):
-    """O `guid` da nota de um Cartão: o mesmo a cada volta, para a retomada reconhecer a nota que este Envio já gravou."""
     return "pm" + hashlib.sha1(("%s\x1f%s" % (job_id, cartao)).encode("utf-8")).hexdigest()[:20]
 
 
 def resolver(pedido, estado):
-    """O fim do Envio pelo estado guardado de cada Cartão: o status e as Frases pedidas que chegaram ao Anki, as que falharam e, das que
-    chegaram, as que já estavam lá (todos os Cartões `duplicate`)."""
     por_frase = _status_por_frase(estado)
     no_anki, falharam, duplicadas = [], [], []
     for frase in ids_unicos(entrada.get("phraseId") for entrada in pedido.get("entries", [])):
@@ -78,8 +60,6 @@ def _status_do_fim(no_anki, falharam):
 
 
 def _terminar_o_estado(pedido, erro, estado):
-    """A mudança do fim do Envio pelo estado de cada Cartão (`resolver`); com `erro` (o código que parou o Envio) ele é `partial` ou
-    `failed`. O `lastError` é o `erro`, senão o do primeiro Cartão que falhou, senão o motivo das Frases sem Cartão. O apagado fica como está."""
     if estado.get("wiped"):
         return
     status, no_anki, falharam, duplicadas = resolver(pedido, estado)
@@ -94,9 +74,6 @@ def _terminar_o_estado(pedido, erro, estado):
 
 @dataclass(frozen=True)
 class EnvioEmAndamento:
-    """Um Envio enquanto o `Trabalho` faz os Cartões dele: o id, o pedido guardado, a configuração do motor para ele (`motor_do_envio`), a
-    porta da IA presa a ele (`ia_do_envio.IaDoEnvio`) e o tipo de nota conferido no começo (`TipoDoEnvio`)."""
-
     job_id: str
     pedido: dict
     config: dict
@@ -104,13 +81,10 @@ class EnvioEmAndamento:
     tipo: TipoDoEnvio
 
     def cartao(self, cartao_id, guid, linha):
-        """O Cartão como o Motor do Cartão o vê."""
         return Cartao(cartao_id, guid, linha, self.pedido, self.config, self.job_id)
 
 
 class Trabalho:
-    """Faz um Envio: confere o tipo de nota e, Cartão a Cartão, acha a nota no Anki, gera o texto, monta a nota e a grava."""
-
     def __init__(self, fila, colecao, ia, motor_do_cartao, esperas):
         self.fila, self.ia = fila, ia
         self.logger = fila.logger
@@ -137,7 +111,6 @@ class Trabalho:
         return self.fila.mudar(job_id, mudanca)
 
     def _com_a_colecao(self, job_id, leitura):
-        """Roda `leitura()` na coleção; sem ela (perfil fechado, sincronizando, ocupado), espera em `wait_anki` e tenta de novo."""
         esperando_desde = None
         while True:
             try:
@@ -154,15 +127,12 @@ class Trabalho:
             return resultado
 
     def _comecar_a_esperar_o_anki(self, job_id, motivo):
-        """O Envio passa a `wait_anki`; devolve a etapa em que estava, para voltar a ela quando a coleção responder."""
         etapa = self.fila.estado(job_id).get("stage")
         self.logger.info("Envio %s: esperando o Anki (%s)", job_id, motivo)
         self._etapa(job_id, "wait_anki")
         return etapa
 
     def _esperar_o_anki(self, job_id, motivo):
-        """Uma volta da espera pelo Anki: o estado diz por que espera, o perfil marcado é aberto se nenhum está e, depois da pausa, o
-        Envio apagado no meio para (`Apagado`)."""
         dizer_a_espera(self.fila, job_id, baralhos.espera_pelo_perfil(motivo))
         if str(motivo) == "collection_not_open":
             self._entrar_no_perfil(job_id)
@@ -171,8 +141,6 @@ class Trabalho:
             raise Apagado()
 
     def _entrar_no_perfil(self, job_id):
-        """O Anki está na tela de perfis (ou fechado o perfil): ninguém estuda, e a Conexão abre o perfil marcado. Com um perfil aberto o
-        adaptador não faz nada, e a troca só vem do clique da pessoa."""
         try:
             if self.colecao.entrar_no_perfil_fixo():
                 self.logger.info("Envio %s: o Anki estava sem perfil aberto; a Conexão abriu o perfil marcado", job_id)
@@ -225,8 +193,6 @@ class Trabalho:
         self._terminar(job_id, envio.pedido, parada)
 
     def _um_cartao(self, envio, cartao_id, cartao, parada):
-        """Faz um Cartão: o `guid` antes de tudo (a nota já está: nada se gera nem se paga), depois o texto e a nota.
-        Devolve o código que para o Envio, ou None."""
         job_id = envio.job_id
         guid = guid_do_cartao(job_id, cartao_id)
         if guid in self._com_a_colecao(job_id, lambda: self.colecao.guids_existentes([guid])):
@@ -249,8 +215,6 @@ class Trabalho:
         return None
 
     def _escrever_o_texto(self, envio, cartao_id, frase, guid):
-        """O texto pago do Cartão: o Motor do Cartão o escreve no disco e o Cartão fica `text`. Devolve (o texto está pronto, o código que
-        para o Envio ou None); sem a linha da Frase, sem quem pague, com uma falha ou com as Frases apagadas no meio, ele não está."""
         job_id = envio.job_id
         linha = self.fila.linha_do_cartao(job_id, frase)
         if linha is None:

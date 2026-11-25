@@ -1,16 +1,3 @@
-"""A voz do Cartão: o áudio da Palavra e o da Frase, pedido ao Google Tradutor só com a biblioteca padrão.
-
-É o pedido que o gTTS 2.5 faz (o RPC `jQ1olc` do `translate.google.<sotaque>`), sem a biblioteca: um POST por
-pedaço de texto de até 100 letras, e o áudio (MP3) volta em base64 dentro da resposta; os pedaços de uma Frase comprida são
-pedidos em ordem e colados. O texto e o sotaque (`tld`) vêm do motor (`generate_audio.voices`).
-
-O texto é preparado e quebrado como o gTTS 2.5 faz (`pedacos`). Escrito contra o gTTS 2.5.4: o endereço, o corpo e os cabeçalhos
-de cada pedaço saem iguais aos dele; a biblioteca não é dependência do complemento, então o teste da Conexão confere o pedido
-contra uma voz de mentira (`test_voz_de_mentira.py`), não contra o gTTS.
-
-O que o Google diz ao recusar nunca é copiado para o log nem para a resposta: quem pede recebe só um código.
-"""
-
 import base64
 import json
 import re
@@ -37,7 +24,6 @@ SEM_AUDIO = "tts_empty"
 PASSAGEIROS = (FORA_DO_AR,)
 
 _SOTAQUE = re.compile(r"^(?:com?\.)?[a-z]{2,3}$")
-# Daqui até `pedacos`, o texto como o gTTS 2.5 o prepara e o quebra (`gtts/tts.py`, `tokenizer/`), para o áudio sair igual.
 _ABREVIACOES = ("dr", "jr", "mr", "mrs", "ms", "msgr", "prof", "sr", "st")
 _PONTUACAO = "?!？！.,¡()[]¿…‥،;:—。，、：\n"
 _SO_PONTUACAO_OU_ESPACO = re.compile("^[%s]*$" % re.escape(_PONTUACAO + string.whitespace))
@@ -49,8 +35,6 @@ _AUDIO = re.compile(r'jQ1olc","\[\\"(.*)\\"]')
 
 
 class ErroDaVoz(Exception):
-    """O Google não deu o áudio: `codigo` é um dos de cima."""
-
     def __init__(self, codigo):
         super().__init__(codigo)
         self.codigo = codigo
@@ -61,7 +45,6 @@ def sotaque_valido(sotaque):
 
 
 def _preparar(texto):
-    """Os pré-processadores do gTTS: espaço depois de `?` e `!`, palavra cortada no fim da linha, ponto das abreviações, `Esq.`."""
     texto = re.sub(r"(?<=[?!？！])", " ", texto.strip())
     texto = texto.replace("-\n", "")
     for abreviacao in _ABREVIACOES:
@@ -86,8 +69,6 @@ def _no_ultimo_espaco_que_cabe(trecho):
 
 
 def pedacos(texto):
-    """O texto em pedaços de até 100 letras, como o gTTS: inteiro se cabe; senão cortado na pontuação e, se um trecho ainda
-    é comprido, no último espaço que cabe."""
     texto = _preparar(texto)
     trechos = [texto] if len(texto) <= LIMITE_DO_PEDACO else _CORTES.split(texto)
     achados = []
@@ -130,7 +111,6 @@ def _o_audio_da_resposta(linhas):
 
 
 def pedir_o_audio(base, texto, lang, sotaque):
-    """O MP3 que o Google fala para `texto` em `lang` com o `sotaque`; levanta `ErroDaVoz`. `base` é `VOZ_BASE` (com `{tld}`)."""
     partes = pedacos(texto)
     if not partes:
         raise ErroDaVoz(SEM_AUDIO)

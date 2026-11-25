@@ -1,10 +1,3 @@
-"""O tratamento de imagem do Cartão com o Qt do Anki (#144): o adaptador que o motor usa no lugar do Pillow (`motor/image_utils.py`).
-
-O Anki traz o Qt (`aqt.qt`, PyQt5 ou PyQt6 conforme a versão); o complemento não traz biblioteca de imagem. Só `QImage` e
-`QImageReader`, que servem fora da thread principal (`QPixmap` não): é a thread de trabalho do Envio que converte. Um arquivo
-que o Qt não lê, ou um Qt que falta, vira `UnsupportedImageFormatError` do motor: a imagem falha e o Cartão vai sem ela.
-"""
-
 from .motor.image_utils import UnsupportedImageFormatError
 
 
@@ -17,13 +10,10 @@ def _qt():
 
 
 def _enum(classe, grupo, nome):
-    """O valor de um enum do Qt, escopado (PyQt6: `QIODevice.OpenModeFlag.ReadOnly`) ou solto (PyQt5: `QIODevice.ReadOnly`)."""
     return getattr(getattr(classe, grupo, classe), nome)
 
 
 class AdaptadorQt:
-    """`converter(dados, formato)`: os bytes de uma imagem que o Qt lê, no `formato` pedido (`PNG`, `JPEG`), com a orientação do EXIF aplicada."""
-
     def converter(self, dados, formato):
         qt = _qt()
         entrada = qt.QBuffer()
@@ -46,7 +36,6 @@ class AdaptadorQt:
 
 
 def _sobre_o_branco(qt, imagem):
-    """JPEG não tem transparência: o que é transparente fica sobre o branco, como o Pillow fazia."""
     if not imagem.hasAlphaChannel():
         return imagem.convertToFormat(_enum(qt.QImage, "Format", "Format_RGB32"))
     fundo = qt.QImage(imagem.size(), _enum(qt.QImage, "Format", "Format_RGB32"))

@@ -6,7 +6,6 @@ globalThis.PerpetualMiner = {};
 require('../painel/painel-anki-primeira-conexao-estado.js');
 const { FaseDaPrimeiraConexao, ConversaComOAbridor } = globalThis.PerpetualMiner;
 
-// ─── A fase do card ───────────────────────────────────────────────────────────────────────────────────────────────────────────
 {
   const { FASE, EVENTO, inicial, proxima, cobreAsAbas } = FaseDaPrimeiraConexao;
   const conexao = (situacao, dados = {}) => ({ tipo: EVENTO.CONEXAO, situacao, respondeu: false, jaConectou: false, naArea: true, resolvido: false, ...dados });
@@ -65,7 +64,6 @@ const { FaseDaPrimeiraConexao, ConversaComOAbridor } = globalThis.PerpetualMiner
   }
 }
 
-// ─── A conversa com o abridor (o passo 4) ─────────────────────────────────────────────────────────────────────────────────────
 {
   const { FASE, EVENTO, inicial, proxima, resolvido, acoes } = ConversaComOAbridor;
   const depoisDe = (eventos, comeco = inicial()) => eventos.reduce((estado, evento) => proxima(estado, typeof evento === 'string' ? { tipo: evento } : evento), comeco);

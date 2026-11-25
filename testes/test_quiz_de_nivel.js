@@ -39,7 +39,6 @@ function rodar(lang, inicial, roteiro) {
 const L = TIPOS.LEGENDA, V = TIPOS.VERSO, E = TIPOS.ESCUTA;
 
 for (const lang of ['en', 'ru']) {
-  // Começando pela legenda (a parte 1 aponta Iniciante)
   assert.deepStrictEqual(rodar(lang, L, { legenda: ['errado', 'certo'] }).vistos, [L, E, L], `${lang}: errou uma de legenda, são 3 perguntas`);
   assert.strictEqual(rodar(lang, L, { legenda: ['errado', 'certo'] }).resultado.nivel, NIVEIS.INICIANTE);
   assert.strictEqual(rodar(lang, L, { legenda: ['nao_sei', 'certo'] }).resultado.nivel, NIVEIS.INICIANTE, `${lang}: Não sei não passa o portão`);
@@ -48,7 +47,6 @@ for (const lang of ['en', 'ru']) {
   assert.strictEqual(rodar(lang, L, { verso: ['certo', 'errado'] }).resultado.nivel, NIVEIS.INTERMEDIARIO);
   assert.strictEqual(rodar(lang, L, { verso: ['errado', 'errado'] }).resultado.nivel, NIVEIS.INTERMEDIARIO);
 
-  // Começando pelo verso (a parte 1 aponta Intermediário ou Avançado)
   assert.deepStrictEqual(rodar(lang, V, {}).vistos, [V, E, V], `${lang}: acertou as 2 do verso, são 3 perguntas`);
   assert.strictEqual(rodar(lang, V, {}).resultado.nivel, NIVEIS.AVANCADO);
   assert.deepStrictEqual(rodar(lang, V, { verso: ['certo', 'errado'] }).vistos, [V, E, V, L, E, L], `${lang}: errou uma do verso, entra a legenda: 6 perguntas`);
@@ -56,14 +54,12 @@ for (const lang of ['en', 'ru']) {
   assert.strictEqual(rodar(lang, V, { verso: ['nao_sei', 'certo'], legenda: ['certo', 'errado'] }).resultado.nivel, NIVEIS.INICIANTE);
   assert.strictEqual(rodar(lang, V, { verso: ['errado', 'errado'], legenda: ['errado', 'errado'] }).resultado.nivel, NIVEIS.INICIANTE);
 
-  // A escuta aparece no resultado e não muda o nível
   const surdo = rodar(lang, L, { escuta: ['errado', 'errado'] }).resultado;
   assert.strictEqual(surdo.nivel, NIVEIS.AVANCADO);
   assert.deepStrictEqual(surdo.escuta, { acertos: 0, perguntas: 2 });
   assert.deepStrictEqual(rodar(lang, V, {}).resultado.escuta, { acertos: 1, perguntas: 1 });
 }
 
-// A sequência: cada acerto sobe, “Não sei” a pausa e o chute errado a zera
 {
   const quiz = QuizDeNivel.iniciar('en', L);
   const certa = () => quiz.pergunta().certa;
@@ -83,14 +79,12 @@ for (const lang of ['en', 'ru']) {
   assert.strictEqual(quiz.sequencia(), 0);
 }
 
-// A parte 1 escolhe o portão pela soma das alternativas
 assert.strictEqual(QuizDeNivel.portaoInicial([0, 0]), L);
 assert.strictEqual(QuizDeNivel.portaoInicial([1, 0]), L);
 assert.strictEqual(QuizDeNivel.portaoInicial([1, 1]), V);
 assert.strictEqual(QuizDeNivel.portaoInicial([0, 2]), V);
 assert.strictEqual(QuizDeNivel.portaoInicial([2, 2]), V);
 
-// Cada idioma tem 2 perguntas de cada tipo, de 4 alternativas, com a certa entre elas
 for (const [lang, porTipo] of Object.entries(QuizDeNivel.PERGUNTAS)) {
   for (const tipo of Object.values(TIPOS)) {
     assert.strictEqual(porTipo[tipo].length, 2, `${lang}: duas de ${tipo}`);

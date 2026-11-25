@@ -1,39 +1,3 @@
-"""O abridor: o script pequeno que deixa a extensão abrir o Anki fechado (#118, #147).
-
-A Conexão escreve o script com o caminho do Anki e o perfil (`.sh` no Mac; no Windows, um `.bat` que
-chama o `.ps1` ao lado) e o registra como host de Native Messaging do Chrome e do Opera. A extensão o
-chama por `chrome.runtime.sendNativeMessage` (a permissão `nativeMessaging` é opcional, pedida no passo
-Abrir o Anki sozinho), e nada fica ligado em segundo plano: o navegador roda o script, ele responde uma
-vez e sai.
-
-O perfil é o perfil fixo (#149): o que estava aberto na primeira conexão, até a pessoa escolher outro. O script é reescrito a cada
-`profile_did_open` e a cada escolha (`inicio.py`); sem nenhum perfil marcado ainda (o Anki nunca abriu um), o script abre o Anki sem `-p`.
-
-O script só sabe três coisas, pelas mensagens de `contrato/exemplos.json` › `abridor` e de `contrato/exemplos-do-conserto.json`:
-
-- `conferir`: responde se o Anki está no lugar anotado (`{"achou": …}`), sem abrir nem fechar nada;
-- `abrir`: abre o Anki, no perfil anotado se houver (`-p "<perfil>"`), e responde se abriu;
-- `consertar` (#152): fecha à força o Anki que não responde há 30 s e o abre de novo, ou liga o complemento desativado no
-  `meta.json` do Anki e o reinicia. O que ele faz, e só no Anki que o complemento anotou, está em `conserto_do_anki.py`.
-
-Qualquer outra mensagem é `{"erro": "acao_desconhecida"}`.
-
-Onde se registra:
-
-- **Mac**: o manifesto do host na pasta de hosts do Chrome do usuário
-  (`~/Library/Application Support/Google/Chrome/NativeMessagingHosts`); o script fica em `user_files/abridor`. Só o
-  Chrome: o critério do #147 pede o Opera no Windows, e onde o Opera do Mac procura não foi conferido.
-- **Windows**: o script, o `.ps1` e o manifesto em `user_files/abridor`, e o caminho do manifesto no valor
-  padrão de `HKEY_CURRENT_USER\\Software\\Google\\Chrome\\NativeMessagingHosts\\<host>`. No ensaio W4 de
-  2026-10-10, o Opera GX 136 num Windows real encontrou e chamou o host registrado só nessa chave HKCU do Chrome.
-  Isso não confirma outros builds do Opera. A ajuda do Opera (“Passing Messages in Extensions”) cita HKLM,
-  não HKCU: a evidência de HKCU é o ensaio real, não essa documentação. `ONDE_REGISTRAR_NO_WINDOWS`
-  mantém a entrada do Opera para ajustar o destino caso outro ensaio mostre uma chave diferente.
-
-Só a biblioteca padrão. A escrita é de uma vez (escreve ao lado e troca), e reescrever troca o perfil sem
-duplicar nada. O que o Chrome e o Opera fazem com o host só o ensaio do dono confere (riscos 1 e 2 do #138).
-"""
-
 import json
 import ntpath
 import os
@@ -50,7 +14,6 @@ from .item_de_login import AnkiNaoEncontrado, aplicativo_do_anki_no_mac, program
 NOME_DO_HOST = "com.perpetualminer.abridor"
 DESCRICAO = "PerpetualMiner: abre o Anki para a Conexão com o Anki"
 
-# Chave do usuário: Chrome; Opera GX 136 confirmado no Windows real (W4), sem generalizar a outros builds.
 ONDE_REGISTRAR_NO_WINDOWS = {
     "Chrome": r"Software\Google\Chrome\NativeMessagingHosts",
     "Opera": r"Software\Google\Chrome\NativeMessagingHosts",
@@ -64,8 +27,6 @@ __all__ = ["Abridor", "AnkiNaoEncontrado", "Computador", "NoMac", "NoWindows", "
 
 
 class RegistroDoWindows:
-    """O `HKEY_CURRENT_USER` de verdade: só existe no Windows (os testes usam um de mentira)."""
-
     def gravar(self, chave, valor):
         import winreg
 
@@ -74,9 +35,6 @@ class RegistroDoWindows:
 
 
 class NoMac:
-    """O abridor do Mac: o `.sh` e, em cada pasta de hosts de `onde_registrar` (por navegador), o manifesto do host. `abrir_com` é o `open` do
-    Mac e `ler_json_com` o JavaScript do macOS que lê a mensagem (os testes trocam os dois por programas que anotam o que receberam)."""
-
     nome = "mac"
 
     def __init__(self, onde_registrar, abrir_com="/usr/bin/open", ler_json_com="/usr/bin/osascript"):
@@ -91,9 +49,6 @@ class NoMac:
 
 
 class NoWindows:
-    """O abridor do Windows: o `.bat`, o `.ps1` e o manifesto na pasta do abridor, e o caminho do manifesto na chave do registro de cada
-    navegador de `onde_registrar`, gravada por `registro`."""
-
     nome = "windows"
 
     def __init__(self, onde_registrar, registro):
@@ -110,10 +65,6 @@ class NoWindows:
 
 
 class Abridor:
-    """O abridor de um `sistema` (`NoMac` ou `NoWindows`: o script dele e onde o host se registra), escrito em `pasta`, para o Anki em
-    `programa`. `conserto` (`Conserto`) diz qual Anki o `consertar` pode fechar; sem ele, o script nunca fecha nada.
-    """
-
     def __init__(self, *, sistema, pasta, programa, conserto=None):
         self.sistema = sistema
         self.pasta = pasta
@@ -121,10 +72,6 @@ class Abridor:
         self.conserto = conserto or conserto_do_anki.Conserto()
 
     def escrever(self, perfil):
-        """Escreve o script com o `perfil` (None: abre sem escolher perfil) e registra o host.
-
-        Levanta `AnkiNaoEncontrado` (nada é escrito) ou o `OSError` da escrita.
-        """
         if not self.programa:
             raise AnkiNaoEncontrado("não se sabe onde o Anki está neste computador")
         os.makedirs(self.pasta, exist_ok=True)
@@ -132,16 +79,10 @@ class Abridor:
 
 
 class Computador(namedtuple("Computador", "plataforma ambiente executavel existe", defaults=(os.path.exists,))):
-    """Este computador como o abridor o lê: a `plataforma` (`sys.platform`), o `ambiente` (`os.environ`), o `executavel`, o programa que roda o
-    Anki (e o complemento) agora, e `existe`, se um caminho existe no disco (os testes passam outro)."""
+    pass
 
 
 def deste_computador(*, computador, pasta, complemento=None, registro=None):
-    """O abridor do `computador`, escrito em `pasta`; `None` onde não há (só Mac e Windows).
-
-    O `consertar` só fecha processos do `executavel` do computador. `complemento` é a pasta do complemento, com o `meta.json`; `registro`,
-    o do Windows (sem ele, o `HKEY_CURRENT_USER` de verdade).
-    """
     plataforma, ambiente, executavel, existe = computador
     conserto = conserto_do_anki.Conserto(executavel=executavel, complemento=complemento)
     if plataforma == "darwin":
@@ -170,7 +111,6 @@ def _sem_repetir(valores):
 
 
 def _gravar(caminho, conteudo, modo=None):
-    """Escreve ao lado e troca de uma vez: o navegador nunca roda um script pela metade."""
     pasta = os.path.dirname(caminho)
     descritor, provisorio = tempfile.mkstemp(dir=pasta, suffix=".tmp")
     try:
@@ -188,7 +128,6 @@ def _gravar(caminho, conteudo, modo=None):
 
 
 def _manifesto(script):
-    """O manifesto do host: só a extensão PerpetualMiner pode chamá-lo."""
     return (json.dumps({
         "name": NOME_DO_HOST,
         "description": DESCRICAO,
@@ -262,7 +201,6 @@ esac
 
 
 def _preencher(modelo, valores):
-    """Troca cada `@NOME@` do modelo numa passada só: um valor que traz `@PERFIL@` (num caminho, num perfil) nunca é trocado de novo."""
     return re.sub(r"@([A-Z]+)@", lambda marca: valores[marca.group(1)], modelo)
 
 
@@ -277,11 +215,6 @@ def _script_do_mac(abridor, mac, perfil):
     })
 
 
-# O `.bat` é o que o Chrome roda (pelo cmd.exe). Ele só chama o PowerShell do próprio Windows, pelo caminho
-# completo, com o `.ps1` que está ao lado: a conversa do Native Messaging tem bytes que o cmd não lê.
-# `-ExecutionPolicy Bypass` vale só para este processo: a política padrão do Windows (Restricted) não roda nenhum
-# `.ps1`, nem o nosso. Uma política de grupo da máquina ainda vence, e então o passo diz que o abridor não respondeu.
-# Só ASCII: o cmd lê o `.bat` na página de código do console, e os caminhos com acento ficam no `.ps1`.
 _BAT = "\r\n".join([
     "@echo off",
     "rem PerpetualMiner: o abridor do Anki (host de Native Messaging do Chrome e do Opera).",
@@ -353,8 +286,6 @@ if ($acao -ceq 'conferir') {
 
 
 def _texto_do_powershell(texto):
-    """Um texto entre aspas simples do PowerShell: nada dentro se expande, e cada aspa (também as curvas, que o
-    PowerShell aceita como aspa simples) vai dobrada."""
     for aspa in "'‘’‚‛":
         texto = texto.replace(aspa, aspa * 2)
     return "'" + texto + "'"
