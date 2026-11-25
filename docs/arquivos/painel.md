@@ -8,6 +8,7 @@ A regra `indice-de-arquivos` exige uma linha, aqui ou nas outras tabelas de `doc
 |------|------|
 | `painel/painel.html/js/css` | The Painel page: the Frases list, Google sign-in and sync (skill `painel-frases`). |
 | `painel/esqueleto-modais.js` | The markup of the five modals of the Painel, built with `Veio.elemento` before `painel/painel-shell.js`; no logic (`testes/test_painel_modais.js` keeps the tree equal). |
+| `painel/esqueleto-configuracoes.js` | The markup of the Configurações area (the seven cards `cfg-conta` … `cfg-perigo`), built with `Veio.elemento` and appended to `.shell-conteudo` before `painel/painel-shell.js`; no logic (`testes/test_painel_modais.js` and `testes/test_retrato_do_painel.js` keep the tree equal). |
 | `painel/painel-shell.js` | The "Ilhas" shell: one page, one area per address, the sidebar indicators. |
 | `painel/painel-conta.js` | The Conta in the Painel: the Conta & sync card and the sidebar chip (skill `configuracoes`). |
 | `painel/painel-atalhos.js` | The shortcut recorder, used in Configurações and in a step of Boas-vindas (skill `configuracoes`). |
