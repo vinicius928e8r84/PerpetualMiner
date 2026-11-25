@@ -1,9 +1,3 @@
-"""O Envio na Conexão, visto de fora: o servidor real com a thread de trabalho ligada, a coleção em memória e a
-OpenAI de mentira na fronteira HTTP. Confere o que atravessa o HTTP e o que fica guardado (coleção, pasta de dados).
-
-    python3.9 complemento/test_envio.py
-"""
-
 import contextlib
 import io
 import json
@@ -37,8 +31,6 @@ OUTRO_ID = "66666666-7777-4888-9999-aaaaaaaaaaaa"
 
 
 class EnvioNoTeste(ConexaoNoTeste):
-    """A Conexão com a thread de trabalho ligada, uma chave guardada e a coleção dada."""
-
     def __init__(self, pasta, colecao=None, chave=CHAVE, **argumentos):
         argumentos.setdefault("trabalhando", True)
         super().__init__(pasta, colecao=colecao if colecao is not None else ColecaoEmMemoria(INGLES), **argumentos)
@@ -69,7 +61,6 @@ class EnvioNoTeste(ConexaoNoTeste):
 
 
 def chats(openai):
-    """Os pedidos de texto da OpenAI de mentira: (Authorization, corpo)."""
     return list(openai.chats)
 
 
@@ -165,8 +156,6 @@ class AGravacaoEsperaOAnki(unittest.TestCase):
         from complemento import baralhos
 
         class AtrasaAPrimeira(ColecaoEmMemoria):
-            """A primeira gravação roda (a nota entra) mas o Anki só responde depois dos 10 s: a thread de trabalho desistiu."""
-
             atrasou = False
 
             def gravar_cartao(self, *argumentos):
@@ -421,7 +410,6 @@ class OStatusMoraNoEstado(unittest.TestCase):
 
 class OCriarInterrompido(unittest.TestCase):
     def semear_o_criar_que_parou(self, pasta, ate):
-        """Os arquivos que o criar já tinha gravado quando a Conexão morreu: 'pedido', 'estado' (sem a fila)."""
         with EnvioNoTeste(pasta, trabalhando=False) as conexao:
             conexao.criar(pedido(ID, "give up : She gave up smoking"))
         os.remove(os.path.join(pasta, "fila", "fila.json"))

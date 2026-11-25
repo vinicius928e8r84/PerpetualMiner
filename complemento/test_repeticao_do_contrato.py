@@ -1,8 +1,3 @@
-"""A conferência de “o mesmo POST de novo” do contrato (`confere_a_repeticao`, de `test_estado_guardado.py`): o que ela aceita e o que ela acusa.
-
-    python3.9 complemento/test_repeticao_do_contrato.py
-"""
-
 import os
 import sys
 import unittest
@@ -13,8 +8,6 @@ from complemento.test_estado_guardado import PedidoFeito, confere_a_repeticao
 
 
 class RepeticaoDoContrato(unittest.TestCase):
-    """O que a conferência de “o mesmo POST de novo” aceita e o que ela acusa."""
-
     EXEMPLO = {"nome": "ligar", "resposta": {"status": 200, "json": {"ok": True, "em": "<agora>"}}}
     GUARDADO = {"arquivos": {"a": b"1"}, "nuvem": {}}
     PRIMEIRO = PedidoFeito((200, {}, b""), GUARDADO)

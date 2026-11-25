@@ -1,11 +1,3 @@
-"""A imagem do Cartão com o plano do ChatGPT (#156), vista de fora: o servidor real com a thread de trabalho ligada, o login feito (o teste
-faz o papel do navegador), a coleção em memória, a OpenAI e o Openverse de mentira na fronteira HTTP. Com o login, o juiz de imagem vai
-pela Responses API (o JSON por `text.format`) e a imagem gerada sai sempre pela chave; sem chave, o Cartão leva a foto real ou nenhuma
-imagem gerada; o primeiro limite de uso do plano para o Envio sem estragar o Cartão.
-
-    python3.9 complemento/test_imagem_pelo_plano.py
-"""
-
 import json
 import os
 import sys
@@ -31,7 +23,6 @@ def acesso_do_login(conexao):
 
 
 def enviar_com_o_plano(conexao, *, corpo=None):
-    """Entra com o ChatGPT, envia a Frase e devolve (o login, o estado do Envio, as notas gravadas)."""
     entrar_e_voltar(conexao)
     conexao.criar(corpo or pedido(ID, FRASE))
     estado = conexao.esperar(ID)
@@ -39,7 +30,6 @@ def enviar_com_o_plano(conexao, *, corpo=None):
 
 
 def do_juiz(conexao):
-    """Os pedidos do juiz à Responses API: (Authorization, corpo)."""
     return [(autorizacao, corpo) for autorizacao, corpo in conexao.openai.respostas if corpo["instructions"].startswith(JUIZ)]
 
 
@@ -61,7 +51,7 @@ class OJuizDeImagemPeloPlano(unittest.TestCase):
         self.assertEqual(mensagem["role"], "user")
         partes = mensagem["content"]
         self.assertEqual([parte["type"] for parte in partes], ["input_text"] + ["input_text", "input_image"] * 2)
-        self.assertIn("JSON", partes[0]["text"])  # o `json_object` exige a palavra no que a pessoa manda
+        self.assertIn("JSON", partes[0]["text"])
         self.assertTrue(all(parte["image_url"].startswith("data:image/png;base64,") for parte in partes[2::2]))
         self.assertEqual([(a, modo, [c["imagem"] for c in candidatas]) for a, modo, candidatas in juizes], [(acesso, "real_only", [png_de("foto-a"), png_de("foto-b")])])
         self.assertEqual((conexao.openai.chats, geradas), ([], []))

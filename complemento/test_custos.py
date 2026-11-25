@@ -1,9 +1,3 @@
-"""Os custos de cada Envio como a aba Custos os lê (`custos.py`): o resumo dos registros de um Envio no período, a ficha do
-Envio e a linha de cada um, com os registros e a fila no lugar dos arquivos.
-
-    python3.9 complemento/test_custos.py
-"""
-
 import json
 import os
 import sys

@@ -1,9 +1,3 @@
-"""O porteiro da Conexão (#192): toda rota privada recusa o que não vem assinado por um navegador pareado, a resposta volta com a prova e o
-Desconectar navegadores esvazia a lista. Servidor real por HTTP, como `test_pareamento.py`.
-
-    python3.9 complemento/test_pareamento_porteiro.py
-"""
-
 import json
 import os
 import sys
@@ -21,8 +15,6 @@ from complemento.test_harness import ORIGEM, ConexaoNoTeste
 
 
 class OPorteiro(unittest.TestCase):
-    """Toda rota privada recusa o que não vem assinado por um navegador pareado, e o recusado nem chega à rota."""
-
     def test_toda_rota_privada_recusa_o_pedido_sem_assinatura_ou_com_assinatura_errada_e_aceita_o_certo(self):
         from complemento import servidor
 
@@ -79,7 +71,6 @@ class OPorteiro(unittest.TestCase):
         self.assertEqual((status, json_de(corpo)), (401, {"error": "pairing_required"}))
 
     def test_um_cliente_que_so_forja_a_origem_da_extensao_nao_le_mais_nada(self):
-        """O limite que o #190 aceitou (`contrato/LEIA-ME.md`, regra 3) acabou: o `Origin` ainda é exigido, mas deixou de ser a fronteira."""
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta, colecao=ColecaoEmMemoria({"baralhos": [{"nome": "Inglês", "notas": []}]})) as conexao:
             lidos = [conexao.pedir("POST", caminho, origem=ORIGEM, corpo=corpo, assinar=False) for caminho, corpo in (
                 ("/anki/vocabulary", {"deck": "Inglês", "lang": "en"}), ("/ia/estado", {}), ("/jobs/list", {}), ("/anki/decks", {}),

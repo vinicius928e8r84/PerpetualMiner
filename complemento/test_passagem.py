@@ -1,10 +1,3 @@
-"""A passagem do Windows do dono (#178), vista de fora: uma Conexão de hoje de mentira na porta (`test_conexao_antiga_de_mentira.py`), a
-Conexão nova de verdade subindo depois dela e um sistema de mentira no lugar do Windows (as entradas de início automático e o processo).
-Aqui: a espera do Envio de agora, a ordem e a porta; as cópias e os Envios passados estão em `test_passagem_cartoes.py`.
-
-    python3.9 complemento/test_passagem.py
-"""
-
 import http.client
 import json
 import os

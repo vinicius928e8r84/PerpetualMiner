@@ -1,5 +1,3 @@
-"""O que o contrato confere na repetição de um POST: o estado guardado e a resposta (apoio de `test_servidor.py` e `test_servidor_repeticao.py`)."""
-
 import collections
 import json
 import os
@@ -8,11 +6,6 @@ from complemento.test_comparar_com_o_contrato import igual_ao_do_contrato
 
 
 def estado_guardado(conexao):
-    """Tudo o que o teste enxerga de guardado: os arquivos da pasta da Conexão (menos o log) e os documentos da nuvem de mentira.
-
-    A coleção (`ColecaoEmMemoria`) e as chamadas à OpenAI ficam de fora de propósito: as rotas do contrato que as tocam só as leem
-    (ou só conferem a chave), e quem grava na coleção é o Envio (`gravar_cartao`, em `envio.py`), que os `test_envio*.py` cobrem.
-    Quando uma rota do contrato passar a escrever no Anki, ou a gravar por chamada repetida à OpenAI ou ao Firestore, inclua aqui."""
     arquivos = {}
     for pasta, _, nomes in os.walk(conexao.pasta):
         for nome in nomes:
@@ -24,8 +17,6 @@ def estado_guardado(conexao):
 
 
 class PedidoFeito(collections.namedtuple("PedidoFeito", "resposta guardado")):
-    """A `resposta` de um POST (status, cabeçalhos, corpo) e o `estado_guardado` logo depois dele."""
-
     @property
     def status(self):
         return self.resposta[0]
@@ -36,7 +27,6 @@ class PedidoFeito(collections.namedtuple("PedidoFeito", "resposta guardado")):
 
 
 def confere_a_repeticao(caso, exemplo, primeiro, segundo):
-    """O mesmo POST de novo: a mesma resposta (salvo o instante) e nada novo guardado, ou a exceção que o exemplo declara."""
     igual = segundo.status == primeiro.status and igual_ao_do_contrato(json.loads(segundo.corpo), exemplo["resposta"]["json"])
     intacto = primeiro.guardado == segundo.guardado
     if exemplo.get("repetivel") is False:

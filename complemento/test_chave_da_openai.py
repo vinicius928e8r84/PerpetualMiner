@@ -1,9 +1,3 @@
-"""A chave da OpenAI vista de fora: o que atravessa o HTTP, o que fica no disco e o que o log guarda.
-
-Roda no Python 3.9 (o do Anki do Mac) e no 3.13:
-    python3.9 complemento/test_chave_da_openai.py
-"""
-
 import json
 import http.client
 import time
@@ -36,7 +30,6 @@ def estado(conexao):
 
 
 def tudo_em_disco(raiz):
-    """(caminho relativo, bytes) de cada arquivo embaixo de `raiz`."""
     achados = []
     for pasta, _, arquivos in os.walk(raiz):
         for nome in arquivos:
@@ -156,8 +149,6 @@ def apagar(conexao, **opcoes):
 
 
 class ChaveApagada(unittest.TestCase):
-    """Apagar chave e Apagar tudo na extensão (#154): a cópia da Conexão também sai, e do disco."""
-
     def test_apagar_tira_o_segredo_do_disco_e_mantem_o_valor_vazio_versionado(self):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
             enviar(conexao)
@@ -277,14 +268,12 @@ class CorpoDoPedido(unittest.TestCase):
 
 
 class PedidoQueOProtocoloRecusa(unittest.TestCase):
-    """A linha de um pedido malformado nunca volta na resposta de erro nem vai ao log, nem se ela for a chave."""
-
     LINHAS = (
-        "%s\r\n\r\n",                    # uma palavra só: sintaxe ruim
-        "GET /x %s\r\n\r\n",             # a “versão” é a chave
-        "GET /%s HTTP/9.9\r\n\r\n",       # versão que o servidor não fala
-        "%s /x HTTP/1.1\r\n\r\n",         # método que o servidor não tem
-        "GET /x HTTP/1.1 %s\r\n\r\n",     # palavras demais
+        "%s\r\n\r\n",
+        "GET /x %s\r\n\r\n",
+        "GET /%s HTTP/9.9\r\n\r\n",
+        "%s /x HTTP/1.1\r\n\r\n",
+        "GET /x HTTP/1.1 %s\r\n\r\n",
         "GET /x HTTP/1.1\r\n%s\r\n\r\n",
     )
 
@@ -321,8 +310,6 @@ class PedidoQueOProtocoloRecusa(unittest.TestCase):
 
 
 class AutoridadeVersionada(unittest.TestCase):
-    """Opção B: o cliente observa a revisão; só o cofre a muda após aceitar."""
-
     def test_tres_reconfirmacoes_da_mesma_chave_e_conta_mantem_a_revisao_do_aceite(self):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
             self.assertEqual(conexao.pedir('POST', '/ia/openai/chave',

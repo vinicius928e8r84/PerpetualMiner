@@ -1,5 +1,3 @@
-"""O que um exemplo do contrato (`contexto`) põe na Conexão antes de ela subir: o item de login e a chave que ela já guardava (apoio de `test_harness.ConexaoNoTeste`)."""
-
 import collections
 import os
 
@@ -38,13 +36,11 @@ ITEM_DE_CADA_SITUACAO = {
 
 
 def item_de_login_do_contexto(pasta, situacao):
-    """O item de login na situação que o contrato diz (`itemDeLogin`): numa pasta do teste, nunca na do computador."""
     return ITEM_DE_CADA_SITUACAO.get(situacao, item_desligado)(pasta)
 
 
 class ChaveGuardadaAntes(collections.namedtuple("ChaveGuardadaAntes", "chave versao apagada conta em nao_enviada")):
     def no_arquivo(self):
-        """O `chaves/openai.json` ao subir, ou None (vale o último caso: conta, versão, chave)."""
         antes = "sk-proj-guardada-antes-" + self.chave if self.chave else ""
         if self.conta is not None:
             return {"chave": antes, "versao": self.versao, "conta": self.conta, "em": self.em, "naoEnviada": self.nao_enviada}

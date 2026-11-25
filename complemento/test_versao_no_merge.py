@@ -1,8 +1,3 @@
-"""A versão da Conexão é dada na hora do merge, num commit só (`versao_no_merge.py`).
-
-    python3.9 complemento/test_versao_no_merge.py
-"""
-
 import json
 import os
 import re
@@ -49,13 +44,11 @@ def escrever(pasta, relativo, texto):
 
 
 def mudar_o_codigo(pasta):
-    """O que uma PR de Conexão faz sem mexer na versão: muda um arquivo do pacote (um comentário basta)."""
     with open(os.path.join(pasta, "complemento", "modelo_da_criacao.js"), "a", encoding="utf-8", newline="") as arquivo:
         arquivo.write("// um comentário também muda o que o Anki instala\n")
 
 
 def repositorio(pasta):
-    """Uma cópia do repositório (complemento, engine e o arquivo da extensão) com um commit só."""
     copiar_o_complemento(pasta)
     os.makedirs(os.path.join(pasta, "conexao"))
     shutil.copy(os.path.join(RAIZ, "conexao", "perpetualminer.ankiaddon"), os.path.join(pasta, "conexao"))
@@ -74,8 +67,6 @@ def repositorio(pasta):
 
 
 def dar_a_versao_pendente(pasta):
-    """Uma árvore com código de PR em andamento (hoje, a que roda estes testes) tem versão pendente; a main de que os
-    testes partem é a que já a recebeu, num commit só com o resto."""
     resultado = dar_a_versao(pasta)
     assert resultado.returncode == 0, resultado.stdout + resultado.stderr
     if git(pasta, "rev-list", "--count", "HEAD") != "1":
@@ -93,8 +84,6 @@ def proxima_depois(versao):
 
 
 def a_frente(pasta, quantas):
-    """O número `quantas` versões depois da maior que o `versoes.json` da cópia já registra: os testes de números
-    reservados não dependem de qual é a versão da main de hoje (cada commit de versão a muda)."""
     registradas = json.loads(ler(pasta, "complemento/versoes.json"))
     versao = max(registradas, key=versao_no_merge.como_tupla)
     for _ in range(quantas):
@@ -264,7 +253,6 @@ class QuemMudouOCodigoRecebeAProximaVersao(Casa):
         self.assertIn(velha, resultado.stderr)
 
     def test_o_commit_de_versao_sai_com_a_autoria_do_dono_mesmo_com_outra_identidade_no_git(self):
-        """O check `Autoria dos commits` barra o commit de um clone sem a identidade do dono (as 0.4.38 e 0.4.40)."""
         dono = re.search(r"^const EMAIL_DO_DONO = '([^']+)';$", ler(RAIZ, "scripts/ci/autoria.js"), re.M).group(1)
         git(self.repo, "config", "user.email", "alguem@maquina.local")
         git(self.repo, "config", "user.name", "alguem")
@@ -319,8 +307,6 @@ class QuemNaoPodeSerVersionado(Casa):
 
 
 class AVersaoVemNoMerge(Casa):
-    """Numa PR que não mexe na versão, o teste do hash e o do arquivo da extensão não cobram o que só o commit de versão faz."""
-
     def rodar(self, *testes, **extras):
         return subprocess.run(
             [sys.executable, "-m", "unittest", "-v", *testes],

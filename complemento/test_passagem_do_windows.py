@@ -1,10 +1,3 @@
-"""O Windows da passagem (#178): as entradas de início automático e o processo da Conexão de hoje. Nada aqui toca o sistema de quem roda o teste:
-os comandos do Windows (`schtasks`, `reg`, `taskkill`) entram por um executor de mentira que guarda o que foi pedido, e a pasta Inicializar é
-uma pasta temporária.
-
-    python3.9 complemento/test_passagem_do_windows.py
-"""
-
 import os
 import sys
 import tempfile
@@ -16,8 +9,6 @@ from complemento.passagem_do_windows import PassagemFalhou, SistemaDoWindows
 
 
 class WindowsDeMentira:
-    """`existe`: o que o Windows tem de tarefas e valores de Run. `recusa`: um comando que ele recusa (código 5, acesso negado)."""
-
     def __init__(self, existe=("tarefa", "vigia", "run"), recusa=None):
         self.existe, self.recusa, self.pedidos = set(existe), recusa, []
 

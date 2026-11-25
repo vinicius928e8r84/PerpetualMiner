@@ -1,26 +1,3 @@
-"""O explorador do Envio: o Apagar tudo e a morte da Conexão em cada fronteira da thread de trabalho.
-
-`test_envio_fronteiras.py` mata a Conexão em cada gravação, mas com a thread de trabalho desligada no Apagar tudo. Aqui o
-trabalho (`envio.Trabalho.fazer`) roda de verdade, e em cada fronteira dele (cada leitura e cada gravação do estado, o pedido
-da linha, o texto gravado e o momento logo depois dele) o explorador escolhe: seguir, atender o Apagar tudo inteiro,
-matar a Conexão, ou os dois (o Apagar tudo, depois a morte em qualquer fronteira adiante). Depois sobe outra Conexão na mesma
-pasta, deixa a fila terminar e confere o que o Envio promete:
-
-- depois do Apagar tudo respondido, nem a Palavra nem a Frase ficam em `user_files`, mesmo com a morte no meio;
-- depois dele, no máximo o pedido à OpenAI e a nota que já iam a caminho (um Cartão: a linha já tinha sido lida e o pedido
-  já saía); o segundo Cartão nunca é feito;
-- do apagado não se sai (`job_wiped` ao tentar de novo);
-- nenhum id fica encalhado, e sem Apagar tudo todo Cartão vira uma nota só.
-
-Limite escrito: um Envio de dois Cartões (de um, nas combinações), uma morte e um Apagar tudo por rodada; a morte depois do Apagar tudo, nas duas
-fronteiras seguintes e na última (todas as combinações custariam uns 10 minutos). A corrida real pela tranca (a thread que
-acorda antes de o Apagar tudo gravar) não entra: cada pedido aqui é atendido inteiro entre duas fronteiras.
-
-    python3.9 complemento/test_envio_explorador.py
-
-Para ver o explorador falhar: tire de `Fila.recuperar_os_interrompidos` a limpeza dos textos do Envio apagado.
-"""
-
 import json
 import os
 import shutil
@@ -45,7 +22,6 @@ SEGUNDA = "late : Better late than never [Context: Série - Cervejaria zorblax -
 
 
 def o_envio(cartoes):
-    """Um Envio de uma ou duas Frases, todas com a Palavra ou o texto únicos das sentinelas."""
     return pedido(ID, *(LINHA, SEGUNDA)[:cartoes])
 
 
@@ -56,8 +32,6 @@ def o_trabalho_de(conexao, fila, colecao):
 
 
 class Explorador:
-    """Conta as fronteiras do trabalho e, na de número escolhido, faz o que o plano manda: `apagar` e/ou `morrer`."""
-
     LEITURAS_E_GRAVACOES = ("estado", "estado_ou_refazer", "pedido", "mudar", "linha_do_cartao", "cartao_chegou")
 
     def __init__(self, fila, plano):
@@ -127,7 +101,6 @@ def fila_ids_encalhados(pasta):
 
 
 def recomecar(conexao):
-    """Uma pasta de dados vazia e a OpenAI sem pedidos: cada rodada começa do zero, sem subir outro servidor."""
     for nome in ("fila", "estado", "custos"):
         pasta = getattr(conexao.conexao.dados, nome)
         shutil.rmtree(pasta, ignore_errors=True)
@@ -136,7 +109,6 @@ def recomecar(conexao):
 
 
 def trabalhar(trabalho, fila, job):
-    """O que a thread de trabalho faz com um Envio (`trabalhador.py:_rodar`): o erro dela vira o fim do Envio; a morte a leva."""
     try:
         try:
             trabalho.fazer(job)
@@ -147,7 +119,6 @@ def trabalhar(trabalho, fila, job):
 
 
 def rodar(conexao, plano, cartoes=2):
-    """Uma rodada: o trabalho com o plano; a Conexão "sobe de novo" (uma `Fila` nova na mesma pasta) e termina a fila."""
     recomecar(conexao)
     dados, c = conexao.conexao.dados, conexao.conexao
     colecao = ColecaoEmMemoria(INGLES)

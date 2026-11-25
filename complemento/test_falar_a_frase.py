@@ -1,9 +1,3 @@
-"""A fala do quiz de nível (#170), vista de fora: `POST /voz/falar` no servidor real, com a voz do Google de mentira na fronteira HTTP.
-O que o teste confere é a resposta, o que atravessa o HTTP até o Google e o que a Conexão deixa no log.
-
-    python3.9 complemento/test_falar_a_frase.py
-"""
-
 import base64
 import json
 import os

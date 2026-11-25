@@ -1,10 +1,3 @@
-"""O modelo dos cartões (#157), visto de fora: o servidor real da Conexão com a thread do Envio ligada, a OpenAI de mentira na
-fronteira HTTP e o relógio que o teste dá à Conexão. O que o teste confere é o modelo que a OpenAI recebe em cada Cartão, o que a
-extensão lê (`POST /ia/modelo/estado`) e o que fica guardado.
-
-    python3.9 complemento/test_modelo_dos_cartoes.py
-"""
-
 import json
 import os
 import sys
@@ -24,12 +17,10 @@ AUTOMATICO = {"escolha": "automatico", "trocou": None}
 
 
 def cenario(nome, **mudancas):
-    """Uma cópia do cenário do contrato (o teste muda o `hoje` dela para passar o tempo)."""
     return dict(json.loads(json.dumps(ler_o_contrato()["modelos"][nome])), **mudancas)
 
 
 def modelo_do_motor():
-    """O modelo que o motor usa sem escolha: o que está no `engine/config.json`, e nunca um escrito no código do complemento."""
     with open(os.path.join(os.path.dirname(__file__), "..", "engine", "config.json"), encoding="utf-8") as arquivo:
         return json.load(arquivo)["openai"]["chat_model"]
 
@@ -50,7 +41,6 @@ def enviar(conexao, job_id=ID, *linhas):
 
 
 def modelos_pedidos(conexao):
-    """O `model` de cada pedido de texto que a OpenAI recebeu: pela chave (chat) ou pelo plano (responses)."""
     return [corpo["model"] for _, corpo in list(conexao.openai.chats) + list(conexao.openai.respostas)]
 
 

@@ -1,9 +1,3 @@
-"""A prévia do Cartão (#164) com a biblioteca de verdade do Anki (`pip install anki`, o motor em Rust): o Cartão desenhado pelo renderizador do
-Anki, numa coleção em pasta temporária. Sem a biblioteca instalada, o teste não roda (o CI da Conexão não a instala); a prova é de quem a tem:
-
-    pip install anki && python3 complemento/test_previa_com_o_anki_real.py
-"""
-
 import os
 import sys
 import tempfile

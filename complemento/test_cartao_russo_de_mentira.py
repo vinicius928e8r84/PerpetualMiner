@@ -1,11 +1,7 @@
-"""O Cartão que a OpenAI de mentira devolve para um pedido em russo: o do Iniciante (com o alinhamento) ou, se o prompt pede a seção
-`Morphology:` (#163), o do Intermediário; se pede só a `Same root:`, o do Avançado, monolingue."""
-
 import re
 
 
 def cartao_russo(pedido, texto_do_prompt):
-    """O Cartão do pedido em russo, ou None se o pedido não é em russo."""
     if not re.search(r"[\u0400-\u04FF]", pedido):
         return None
     if "Morphology:" in texto_do_prompt:
@@ -18,7 +14,6 @@ def cartao_russo(pedido, texto_do_prompt):
 
 
 def cartao_russo_com_morfologia(pedido):
-    """O Cartão do Intermediário do russo: a Palavra é a última da frase (sem a pontuação), partida em raiz e sufixo."""
     frase = pedido.split("\n")[0]
     palavra = re.sub(r"\W+$", "", frase.split()[-1])
     corte = max(len(palavra) - 3, 1)
@@ -32,7 +27,6 @@ def cartao_russo_com_morfologia(pedido):
 
 
 def cartao_russo_monolingue(pedido):
-    """O Cartão do Avançado do russo: a Palavra é a última da frase (sem a pontuação), com a Raiz e a Mesma raiz, tudo em russo e sem morfologia."""
     frase = pedido.split("\n")[0]
     palavra = re.sub(r"\W+$", "", frase.split()[-1])
     raiz = palavra[:max(len(palavra) - 3, 1)]
