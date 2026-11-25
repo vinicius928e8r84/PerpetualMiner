@@ -1,22 +1,4 @@
 <!doctype html>
-<!--
-  PROTÓTIPO DESCARTÁVEL: Painel · Conexão com o Anki, identidade Veio, shell “Ilhas” (travado).
-  Ticket: "Protótipo: Painel · Conexão com o Anki" (issue #13 do mapa #1).
-  Pergunta: como fica a área por dentro? Três arrumações ESTRUTURALMENTE diferentes das
-  mesmas 4 abas (Custos · Baralhos e termos · Vocabulário · Ajustes de envio), trocadas por
-  ?variant=A|B|C (barra flutuante, ← →):
-    A · Quadro       números em azulejos, colunas lado a lado, tabela
-    B · Relatório    uma coluna de leitura: frase-resumo + uma barra-veio por assunto, envios por dia
-    C · Por idioma   o idioma é o eixo (azulejos EN | RU), lista × detalhe
-  Fixo nas três (já decidido): shell Ilhas, abas em controle segmentado, [↻ Atualizar],
-  endereços #anki/custos|baralhos|vocabulario|ajustes, Avançado recolhido no pé de cada aba,
-  Envios recentes dentro de Custos, faixa F1 + dado antigo (BRG-12) com a conexão desligada.
-  VEREDITO (2026-09-15): C · Por idioma, travada, com o card “Origem das imagens” do período
-  trazido da A para Custos (visão geral, não só de um envio). Abre em ?variant=C. A e B ficam
-  só como registro das alternativas.
-  Cópia: catálogo da Voz (BRG-01…24, ENV-08/13/14). Sem persistência: tudo em memória.
-  Teclas: ← → trocam a variante · T alterna o tema.
--->
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
@@ -48,7 +30,6 @@ button,input,select{font:inherit;color:inherit}
 .muted{color:var(--muted)}
 svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
 
-/* ---------- shell Ilhas (travado) ---------- */
 .app{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:100vh;padding:12px;gap:12px}
 .side{display:flex;flex-direction:column;gap:6px;padding:18px 12px;position:sticky;top:12px;height:calc(100vh - 24px);min-width:0;background:var(--surface);border:1px solid var(--border);border-radius:20px;box-shadow:var(--shadow)}
 .brand{display:flex;align-items:center;gap:10px;padding:2px 8px 18px}
@@ -84,7 +65,6 @@ svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke
 .app.rail .chip{justify-content:center;padding:8px 0}
 .app.rail .main{padding:22px 20px 120px}
 
-/* ---------- componentes Veio ---------- */
 .btn{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:8px 16px;border:1px solid var(--border-strong);background:transparent;font-weight:600;cursor:pointer;white-space:nowrap}
 .btn:hover:not(:disabled){border-color:var(--accent)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
@@ -169,7 +149,6 @@ details.adv > summary small{font-weight:500}
 .toast{position:fixed;left:50%;bottom:74px;transform:translateX(-50%);background:var(--text);color:var(--bg);border-radius:999px;padding:9px 18px;font-weight:600;z-index:80;box-shadow:var(--shadow);font-size:13px}
 .idtag{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:0 5px}
 
-/* ---------- A · Quadro ---------- */
 .A-hero{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,2fr);gap:10px;margin-bottom:12px}
 .A-total{background:var(--surface-2);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;justify-content:space-between;gap:8px;min-width:0}
 .A-total small{color:var(--muted);font-size:12px}
@@ -198,7 +177,6 @@ details.adv > summary small{font-weight:500}
 .A-aj{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:12px;margin-bottom:12px}
 .lang-pill{font-family:"JetBrains Mono",monospace;font-size:11px;font-weight:600;border:1px solid var(--border-strong);border-radius:999px;padding:1px 7px;margin-right:6px;color:var(--muted)}
 
-/* ---------- B · Relatório ---------- */
 .B-col{max-width:760px}
 .B-lead{font-size:20px;line-height:1.45;font-weight:500;margin:0 0 6px;letter-spacing:-.01em}
 .B-lead b{font-weight:800}
@@ -226,7 +204,6 @@ table.matrix th{font-size:12px;text-align:left;color:var(--muted);font-weight:70
 table.matrix thead th{font-size:13px;color:var(--text);width:auto}
 table.matrix td{padding:0 6px;vertical-align:middle}
 
-/* ---------- C · Por idioma ---------- */
 .C-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr));gap:10px;margin-bottom:14px}
 .C-tile{border:1px solid var(--border);background:var(--bg);border-radius:14px;padding:12px 14px;text-align:left;cursor:pointer;min-width:0}
 .C-tile[aria-pressed=true]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
@@ -261,7 +238,6 @@ table.matrix td{padding:0 6px;vertical-align:middle}
   .main{padding:18px 16px 120px}
 }
 
-/* ---------- ferramentas do protótipo (não fazem parte do design) ---------- */
 .proto{font-family:system-ui,sans-serif}
 .switcher{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);display:flex;align-items:center;gap:6px;background:#fff;color:#111;border-radius:999px;padding:6px;box-shadow:0 6px 24px rgba(0,0,0,.45);z-index:100;font:600 13px system-ui,sans-serif;max-width:calc(100vw - 24px)}
 .switcher button{border:0;background:#111;color:#fff;border-radius:999px;width:32px;height:32px;cursor:pointer;font-size:15px;flex:none}
@@ -321,7 +297,6 @@ table.matrix td{padding:0 6px;vertical-align:middle}
       <div class="empty"><b>Configurações tem o próprio ticket.</b>Volte para <a href="#anki/custos" style="color:var(--accent-text)">Conexão com o Anki</a>.</div>
     </section>
 
-    <!-- ===== CONEXÃO COM O ANKI ===== -->
     <section data-view="anki">
       <div class="area-head">
         <h1>Conexão com o Anki</h1>
@@ -341,7 +316,6 @@ table.matrix td{padding:0 6px;vertical-align:middle}
 
 <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
 
-<!-- ======= ferramentas do protótipo ======= -->
 <details class="lab proto" id="lab" open>
   <summary>⚙ Estados do protótipo</summary>
   <div class="body">
@@ -371,7 +345,6 @@ const S={variant:VARIANTS[qsVariant]?qsVariant:'C',theme:'dark',tab:'custos',con
   vLang:'en',vType:'all',vStatus:'all',vQ:'',selWord:null,deckLang:'en',ajLang:'en',win:'auto',advOpen:{},
   presets:{en:{deck:'English Mining',img:'real',wtld:'com',ptld:'co.uk'},ru:{deck:'RUSSIAN',img:'real',wtld:'ru',ptld:'ru'}}};
 
-/* ---------------- dados (em memória) ---------------- */
 const LANG={en:'inglês',ru:'russo'}, LANGC={en:'Inglês',ru:'Russo'};
 const ENVIOS=[
  {id:'job_8f2c1a',d:0,when:'há 1 h',lang:'en',req:12,ok:12,st:'done',c:{cart:.0810,ger:0,esc:.0021,tri:.0011},img:{real:11,gen:0,skip:1,fail:0}},
@@ -403,7 +376,6 @@ const VOCAB={
 const VST={new:'Novo',recent:'Recente',mature:'Maduro',mixed:'Misto'};
 const VSTP={all:'Todos',new:'Novos',recent:'Recentes',mature:'Maduros',mixed:'Mistos'};
 
-/* ---------------- formatação (V7) ---------------- */
 const nf=(n,d)=>n.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
 function usd(v){ if(S.adv4) return 'US$ '+nf(v,4); if(v>0&&v<.005) return '&lt; US$ 0,01'; return 'US$ '+nf(v,2); }
 const int=n=>n.toLocaleString('pt-BR');
@@ -423,7 +395,7 @@ function agg(l){
   const a={n:l.length,done:0,req:0,ok:0,cart:0,ger:0,esc:0,tri:0,real:0,gen:0,skip:0,fail:0};
   l.forEach(e=>{a.done+=e.st==='done'?1:0;a.req+=e.req;a.ok+=e.ok;for(const k in e.c)a[k]+=e.c[k];for(const k in e.img)a[k]+=e.img[k];});
   a.total=a.cart+a.ger+a.esc+a.tri;a.imgs=a.real+a.gen+a.skip+a.fail;
-  a.econ=a.real*.0138; // economia estimada: fotos reais × custo de gerar
+  a.econ=a.real*.0138;
   return a;
 }
 function stLabel(e){
@@ -444,7 +416,6 @@ function errBlock(e){
   return `<div class="env-err">${e.err}<details class="det"><summary>Detalhes</summary><pre>${e.raw}</pre></details></div>`;
 }
 
-/* ---------------- pedaços compartilhados ---------------- */
 function periodSeg(){return `<div class="seg sm" role="group" aria-label="Período">${Object.entries(PERIOD).map(([k,v])=>`<button data-period="${k}" aria-pressed="${S.period===k}">${v}</button>`).join('')}</div>`;}
 function langSel(){return `<select class="pill-sel" data-set="lang"><option value="all"${S.lang==='all'?' selected':''}>Todos os idiomas</option><option value="en"${S.lang==='en'?' selected':''}>Inglês</option><option value="ru"${S.lang==='ru'?' selected':''}>Russo</option></select>`;}
 const dates=()=>`<span class="date">De <input type="date" value="2026-09-01"></span><span class="date">Até <input type="date" value="2026-09-14"></span>`;
