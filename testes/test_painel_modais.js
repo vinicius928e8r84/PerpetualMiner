@@ -8,6 +8,7 @@ const { prepararAPagina } = require('./painel_de_mentira.js');
 
 const IMPRESSAO_DA_PAGINA = 'aef21fc0f329462ae27f7caf702faab15db98dd970335f85b1e9aa6e7799150b';
 const IMPRESSAO_DA_AREA_DE_FRASES = 'ef7a4b69db36ee3162c61b7e324033f79d79b6efff1a357da7aedcfc87b3a6be';
+const IMPRESSAO_DA_AREA_DO_ANKI = 'e3dce991cf5fb66076b4da6138b6de7de45f7abc689fe421f3d9bb9e777594ba';
 const IMPRESSAO_DA_AREA_DE_CONFIGURACOES = 'f93fd4b4eb4f91e69366935979e95a97a28cc8ea38a11ce5181aca9610279153';
 const IMPRESSAO_DOS_MODAIS = {
   'modal-contexto': 'bd673d6286754141c3f57dbedc93cf9711a28ec616c92bf613dea0a576201dc0',
@@ -17,7 +18,7 @@ const IMPRESSAO_DOS_MODAIS = {
   'modal-resumo': 'de478897349513ca827ff238cb83b6caaeb56619e3a074bb0a2e679e0fd2d7b0',
 };
 
-const CSS_CORTADOS = /(?:painel-anki|painel-primeira-conexao|componentes-formulario)\.css$/;
+const CSS_CORTADOS = /(?:painel-anki|painel-primeira-conexao|painel-configuracoes|painel-frases|painel-envio|painel-boas-vindas|componentes-formulario)\.css$/;
 const ehRecursoDeScriptOuCssCortado = no => no.tag === 'script' || (no.tag === 'link' && CSS_CORTADOS.test(no.atributos.href));
 const semScripts = no => (typeof no === 'string' ? no : { ...no, filhos: no.filhos.filter(filho => !ehRecursoDeScriptOuCssCortado(filho)).map(semScripts) });
 const ehModal = no => no.atributos?.class === 'veio-scrim' && /^modal-/.test(no.atributos.id);
@@ -34,13 +35,15 @@ function osEsqueletosMontados() {
   ponte.id = 'abridor-ponte';
   documento.body.append(ponte);
   require('../painel/esqueleto-modais.js');
+  require('../painel/esqueleto-anki.js');
   require('../painel/esqueleto-configuracoes.js');
   require('../painel/esqueleto-frases.js');
-  const areas = conteudo.childNodes.map(canonicaDoFalso);
+  const montadas = conteudo.childNodes.map(canonicaDoFalso);
+  const ehDeFrases = area => area.atributos['data-area'] === 'frases';
   esqueletosMontados = {
     modais: ponte.parentNode.childNodes.filter(no => no.className === 'veio-scrim').map(canonicaDoFalso),
-    area: areas.find(area => area.atributos['data-area'] === 'configuracoes'),
-    areaDeFrases: areas.find(area => area.atributos['data-area'] === 'frases'),
+    areas: montadas.filter(area => !ehDeFrases(area)),
+    areaDeFrases: montadas.find(ehDeFrases),
   };
   return structuredClone(esqueletosMontados);
 }
@@ -49,9 +52,9 @@ function aPaginaMontada() {
   const pagina = lerHtml(fs.readFileSync('painel/painel.html', 'utf8'));
   const corpo = doCorpo(pagina);
   const posicao = corpo.filhos.findIndex(filho => filho.atributos?.id === 'abridor-ponte');
-  const { modais, area } = osEsqueletosMontados();
+  const { modais, areas } = osEsqueletosMontados();
   corpo.filhos.splice(posicao, 0, ...modais);
-  doConteudo(pagina).filhos.push(area);
+  doConteudo(pagina).filhos.push(...areas);
   return pagina;
 }
 
@@ -63,6 +66,8 @@ const doConteudo = pagina => acharTodos(pagina, no => no.tag === 'main' && no.at
 
 const aAreaDeFrases = pagina => acharTodos(pagina, no => no.tag === 'section' && no.atributos['data-area'] === 'frases')[0];
 
+const aAreaDoAnki = pagina => acharTodos(pagina, no => no.atributos?.['data-area'] === 'anki')[0];
+
 const aAreaDeConfiguracoes = pagina => acharTodos(pagina, no => no.atributos?.['data-area'] === 'configuracoes')[0];
 
 function aAreaDeFrasesTemASuaArvore() {
@@ -71,6 +76,10 @@ function aAreaDeFrasesTemASuaArvore() {
 
 function oEsqueletoDeFrasesMontaAMesmaArvore() {
   assert.strictEqual(impressaoDigital(osEsqueletosMontados().areaDeFrases), IMPRESSAO_DA_AREA_DE_FRASES);
+}
+
+function aAreaDoAnkiTemASuaArvore() {
+  assert.strictEqual(impressaoDigital(aAreaDoAnki(aPaginaMontada())), IMPRESSAO_DA_AREA_DO_ANKI);
 }
 
 function aAreaDeConfiguracoesTemASuaArvore() {
@@ -95,12 +104,14 @@ function oEsqueletoCarregaAntesDoShellENaoDepoisDosModulos() {
   const scripts = acharTodos(lerHtml(fs.readFileSync('painel/painel.html', 'utf8')), no => no.tag === 'script').map(no => no.atributos.src);
   assert.ok(scripts.indexOf('/veio/componentes.js') < scripts.indexOf('esqueleto-modais.js'));
   assert.ok(scripts.indexOf('esqueleto-modais.js') < scripts.indexOf('painel-shell.js'));
-  assert.ok(scripts.indexOf('/veio/componentes.js') < scripts.indexOf('esqueleto-configuracoes.js'));
+  assert.ok(scripts.indexOf('/veio/componentes.js') < scripts.indexOf('esqueleto-anki.js'));
+  assert.ok(scripts.indexOf('esqueleto-anki.js') < scripts.indexOf('esqueleto-configuracoes.js'));
   assert.ok(scripts.indexOf('esqueleto-configuracoes.js') < scripts.indexOf('painel-shell.js'));
 }
 
 aAreaDeFrasesTemASuaArvore();
 oEsqueletoDeFrasesMontaAMesmaArvore();
+aAreaDoAnkiTemASuaArvore();
 aAreaDeConfiguracoesTemASuaArvore();
 cadaModalTemASuaArvore();
 aPaginaInteiraTemAMesmaArvore();

@@ -8,6 +8,7 @@ A regra `indice-de-arquivos` exige uma linha, aqui ou nas outras tabelas de `doc
 |------|------|
 | `painel/painel.html/js/css` | The Painel page: the Frases list, Google sign-in and sync (skill `painel-frases`). |
 | `painel/esqueleto-modais.js` | The markup of the five modals of the Painel, built with `Veio.elemento` before `painel/painel-shell.js`; no logic (`testes/test_painel_modais.js` keeps the tree equal). |
+| `painel/esqueleto-anki.js` | The markup of the Conexão com o Anki area (header, connection strips, first-time panel, the four tabs), built with `Veio.elemento` and appended to `.shell-conteudo` after the Frases area and before `painel/esqueleto-configuracoes.js`; no logic (`testes/test_painel_modais.js` and `testes/test_retrato_do_painel.js` keep the tree equal). |
 | `painel/esqueleto-configuracoes.js` | The markup of the Configurações area (the seven cards `cfg-conta` … `cfg-perigo`), built with `Veio.elemento` and appended to `.shell-conteudo` before `painel/painel-shell.js`; no logic (`testes/test_painel_modais.js` and `testes/test_retrato_do_painel.js` keep the tree equal). |
 | `painel/esqueleto-frases.js` | The markup of the Frases area (the Minerar frases menu, the reminder, the filters, the selection bar, the list and the pagination), built with `Veio.elemento` and prepended to `.shell-conteudo` before `painel/painel-shell.js`; no logic (`testes/test_painel_modais.js` keeps the tree equal). |
 | `painel/painel-shell.js` | The "Ilhas" shell: one page, one area per address, the sidebar indicators. |
@@ -20,8 +21,15 @@ A regra `indice-de-arquivos` exige uma linha, aqui ou nas outras tabelas de `doc
 | `painel/painel-minerar-frases.js` | The Minerar frases menu and modal of the Frases area (skill `painel-frases`). |
 | `painel/painel-frases-cartao.js` | The card of one Frase in the list: the drawing, the Palavra (word click, chip, new group) and the in-place text edit. `painel/painel.js` hands it the Frases, the `keywords` map and the selection with `FrasesCartao.iniciar`. The count of the last Palavra group is `Mineracao.palavrasAposMarcar` (`testes/test_marcar_palavra.js`). |
 | `painel/painel-frases-acoes.js` | What the Frases list does to Frases: delete one or the selection (PAI-12…15), delete everything (Configurações › Zona de perigo, with the OpenAI key), export the selection as a .txt (PAI-19) and edit the Contexto of one or many (PAI-20…22). `painel/painel.js` hands it the Frases, the cloud and the redraws with `FrasesAcoes.iniciar`. |
+| `painel/painel-frases-nuvem.js` | The Frases area's link with the cloud: the session, the sync state shown in Configurações › Conta, the load from the computer or the cloud, the first upload and the OpenAI key sync (skill `painel-frases`). |
+| `painel/painel-frases-selecao.js` | The selection of the Frases list and its contextual bar: the page checkbox, Selecionar todas, Desmarcar, the count, and the bulk edit and delete buttons (skill `painel-frases`). |
+| `painel/painel-frases-filtros.js` | The Frases list filters (fonte, idioma, ordem, Ocultar, busca) and the criterion `painel/painel.js` hands to `lib/filtro-das-frases.js` (skill `painel-frases`). |
 | `painel/painel-anki.css` | The Conexão com o Anki area's rules (`.anki-*`, `.ajustes-*`, `#anki-*`), cut from `painel/painel.css` with their order kept. It loads right after `painel/painel.css`. |
 | `painel/painel-primeira-conexao.css` | The first-connection rules (`.pc-*`, `.apv-*`), cut from `painel/painel.css` with their order kept. It loads right after `painel/painel-anki.css`. |
+| `painel/painel-configuracoes.css` | The Configurações rules (`.cfg-*`, `.ia-*`), cut from `painel/painel.css` with their order kept. It loads right after `painel/painel.css`, before `painel/painel-anki.css`. |
+| `painel/painel-frases.css` | The Frases rules (`.frases-*`, `.frase-*`, `.minerar-*`), cut from `painel/painel.css` with their order kept. It loads right after `painel/painel.css`, before `painel/painel-anki.css`. |
+| `painel/painel-envio.css` | The Envio rules (`.envio-*`), cut from `painel/painel.css` with their order kept. It loads right after `painel/painel.css`, before `painel/painel-anki.css`. |
+| `painel/painel-boas-vindas.css` | The Boas-vindas rules (`.bv-*`), cut from `painel/painel.css` with their order kept. It loads right after `painel/painel.css`, before `painel/painel-anki.css`. |
 | `painel/painel-perigo.js` | The Zona de perigo card and the Apagar tudo confirmation (skill `configuracoes`). |
 | `painel/painel-abrir-anki.js` | The Conexão com o Anki card of Configurações: open the Anki with the computer, and the Perfil do Anki (skill `configuracoes`). |
 | `painel/painel-anki.js` | The Custos tab and the area's first-connection strip (skill `painel-anki`). |
