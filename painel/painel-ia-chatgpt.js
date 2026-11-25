@@ -73,6 +73,13 @@
     desenharTudo();
   }
 
+  const saiu = ({ status, dados }) => status === 200 && dados?.ok === true;
+
+  function anotarASaida({ revogada }, calado) {
+    if (revogada !== true) estado.erro = { motivo: 'sem_revogar', detalhes: 'revogada: false' };
+    else if (!calado) mostrarToastDeSucesso(textoDaVoz('CFG-35.chatgptSaiu'));
+  }
+
   async function sair({ calado = false } = {}) {
     if (estado.pedindo) return;
     estado.pedindo = true;
@@ -80,13 +87,12 @@
     desenharTudo();
     const resposta = await pedir(raiz.PedidoAoAnki.sairDoChatGPT());
     estado.pedindo = false;
-    if (resposta.status === 200 && resposta.dados?.ok === true) {
-      if (resposta.dados.revogada === true) { if (!calado) mostrarToastDeSucesso(textoDaVoz('CFG-35.chatgptSaiu')); }
-      else estado.erro = { motivo: 'sem_revogar', detalhes: 'revogada: false' };
-      return ler();
+    if (!saiu(resposta)) {
+      estado.erro = doPedido(resposta);
+      return desenharTudo();
     }
-    estado.erro = doPedido(resposta);
-    desenharTudo();
+    anotarASaida(resposta.dados, calado);
+    return ler();
   }
 
   function erroDeAgora() {
