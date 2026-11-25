@@ -1,3 +1,7 @@
+     <div class="shell-faixa veio-aviso" hidden id="shell-faixa-conexao" role="status">
+      <p class="veio-aviso__texto" data-voz="ENV-01.aviso">
+      <div class="veio-aviso__acoes">
+       <button class="veio-botao veio-botao--compacto veio-botao--contorno" data-voz="ENV-01.tentarDeNovo" id="shell-tentar-de-novo">
      <div class="anki-faixa-conectando" hidden id="anki-conectando" role="status">
       <span aria-hidden="true" class="anki-ponto">
       <span data-voz="BRG-02">

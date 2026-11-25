@@ -117,6 +117,10 @@ function provarOsMotivosDeCadaCodigo() {
 
 function provarQueCadaCodigoTemTextoNaVoz() {
   require('../lib/voz/catalogo.js');
+  require('../lib/voz/catalogo-configuracoes.js');
+  require('../lib/voz/catalogo-anki.js');
+  require('../lib/voz/catalogo-boas-vindas.js');
+  require('../lib/voz/catalogo-envio.js');
   require('../lib/voz/catalogo-nivel.js');
   require('../lib/voz/texto.js');
   const codigos = ['openai_key_missing', 'openai_key_rejected', 'openai_no_credit', 'openai_rate_limited', 'chatgpt_signed_out', 'chatgpt_not_eligible', 'chatgpt_usage_limit', 'note_type_missing', 'anki_write_failed', 'keyword_missing', null];
