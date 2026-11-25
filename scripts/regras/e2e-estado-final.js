@@ -13,7 +13,7 @@ const conserto = 'Depois de agir, confira o que ficou guardado, com um valor con
   + 'Uma foto, um texto na tela, os pedidos que chegaram ao fake (`requisicoes`) ou uma leitura que nenhum `expect` usa não bastam, '
   + 'e a conferência vem depois da última ação. '
   + 'Um teste que não guarda nada (um filtro, uma aba, um modal) diz isso no comentário logo acima: '
-  + '`// Exceção de teste: sem-estado-guardado — <motivo>` (CODING_STANDARDS.md regra 8).';
+  + '`// Exceção de teste: sem-estado-guardado — <motivo>`.';
 
 const seAplica = arquivo => /^e2e\/tests\/.+\.spec\.js$/.test(arquivo) && !/-visual\.spec\.js$/.test(arquivo);
 

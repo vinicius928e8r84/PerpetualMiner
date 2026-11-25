@@ -1,5 +1,3 @@
-"""O Cartão do russo no Intermediário (a palavra-chave destacada e a morfologia depois do outro exemplo) e no Avançado (monolingue)."""
-
 import re
 import unittest
 

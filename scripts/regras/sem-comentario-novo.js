@@ -8,8 +8,8 @@ const id = 'sem-comentario-novo';
 
 const conserto = 'Apague o comentário. O que ele explicava sobre o código vai para o nome: renomeie a função ou a variável '
   + 'para carregar a ideia. A decisão (o porquê) vai para o corpo da PR, para docs/ ou, se for vocabulário do domínio, '
-  + 'para glossary.md: um comentário envelhece sozinho, e o agente seguinte copia a decisão específica como se fosse regra geral '
-  + '(CODING_STANDARDS.md regra 14). Passam só a linha 1 `#!`, as diretivas de ferramenta (`eslint-disable`/`eslint-enable`/`eslint-env`, '
+  + 'para glossary.md: um comentário envelhece sozinho, e o agente seguinte copia a decisão específica como se fosse regra geral. '
+  + 'Passam só a linha 1 `#!`, as diretivas de ferramenta (`eslint-disable`/`eslint-enable`/`eslint-env`, '
   + '`@ts-*`, `noqa`, `type: ignore`, `istanbul ignore`, `c8 ignore`, `prettier-ignore`, `coding:`), o cabeçalho de licença '
   + '(`SPDX-License-Identifier`, `Copyright`) e as marcas que outra regra lê (`exceção <regra> até …`, `Exceção de teste: …`, '
   + '`@estado-guardado`). Um comentário que já existia numa linha que a mudança tocou, reindentou ou moveu também conta: apague-o. Um caso que precisa ficar leva, na própria linha: '

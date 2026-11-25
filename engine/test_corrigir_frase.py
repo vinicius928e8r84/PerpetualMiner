@@ -1,6 +1,3 @@
-"""The correction of a sentence the Criação front kept (#169), seen from the engine: it asks through the `pedir` it is given
-(the Conexão's IA dos cartões pays and records the cost) and never reads a credential from the config."""
-
 import tempfile
 import unittest
 from pathlib import Path

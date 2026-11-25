@@ -1,5 +1,3 @@
-"""As imagens do Cartão (busca, juiz, triagem, geração e a escolha de qual vale) rodam só com a biblioteca padrão: é o que o Anki tem."""
-
 import subprocess
 import sys
 import unittest

@@ -1,5 +1,3 @@
-"""O modo “imagem gerada” (`imageSource` `"2"`) do Envio: a triagem decide, a geração grava, e o que falha deixa o Cartão sem imagem."""
-
 import json
 import tempfile
 import unittest

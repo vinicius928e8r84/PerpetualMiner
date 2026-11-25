@@ -1,5 +1,3 @@
-"""A frente Lacuna (#166) lê dois campos que o Envio grava: a Frase sem a Palavra e a Dica (sem IA: sai do texto do próprio Cartão)."""
-
 import copy
 import unittest
 from unittest import mock
@@ -9,8 +7,6 @@ from test_nota_do_cartao import AVANCADO, INGLES, INTERMEDIARIO, RUSSO, cores_de
 
 
 class ACacaDaLacuna(unittest.TestCase):
-    """A frente Lacuna (#166) lê dois campos que o Envio grava: a Frase sem a Palavra e a Dica (sem IA: sai do texto do próprio Cartão)."""
-
     def test_a_lacuna_do_ingles_e_a_frase_sem_a_palavra_em_negrito_e_sem_nenhuma_cor(self):
         campos = nota(INGLES, "en")["campos"]
         self.assertEqual(campos["Frase com lacuna"], 'She <b class="lacuna">[\u2026]</b> smoking last year.')

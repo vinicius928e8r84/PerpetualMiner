@@ -3,7 +3,7 @@
 const { test, expect } = require('../fixtures');
 
 const AGORA = new Date('2026-09-18T12:00:00');
-const AGUARDA_O_DONO = 'a referência visual espera a aprovação do dono (regra 10)';
+const AGUARDA_O_DONO = 'a referência visual espera a aprovação do dono';
 const ilha = page => page.locator('.shell-conteudo');
 const frente = page => page.getByRole('form', { name: /^Ajustes de envio · / }).getByRole('radiogroup', { name: 'Frente' });
 const escolher = (page, nome) => frente(page).locator('label', { hasText: nome }).click();

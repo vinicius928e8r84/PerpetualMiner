@@ -1,13 +1,3 @@
-"""
-parser.py — Rich mining.txt parser for PerpetualMiner.
-
-Supported format:
-    keyword1 | keyword2 | keyword3 : phrase [Context: Source - Title - Detail]
-
-Backward-compatible with the original format:
-    keyword: phrase
-"""
-
 import hashlib
 import re
 from dataclasses import dataclass
@@ -16,12 +6,6 @@ from pathlib import Path
 
 
 def safe_filename(text: str) -> str:
-    """Return a Windows/Linux-safe lowercase filename stem.
-
-    Strips bracket content (e.g. [Context: ...]), lowercases,
-    converts spaces to underscores, and removes reserved characters.
-    Hyphens that are part of the word (e.g. do-gooders) are preserved.
-    """
     stem = re.sub(r'\[.*?\]', '', text).strip()
     if not stem:
         stem = re.sub(r'[\[\]]', '', text).strip()
@@ -33,7 +17,6 @@ def safe_filename(text: str) -> str:
 
 
 def normalize_ru_phrase(text: str) -> str:
-    """Normalize a Russian phrase for identity/duplicate checks."""
     text = re.sub(r"\s*\[(?:Context|Contexto):.*?\]\s*$", "", text, flags=re.IGNORECASE).strip()
     text = re.sub(r"\s*\[[^\]]+\]\s*$", "", text).strip()
     text = text.replace("ё", "е").replace("Ё", "Е")
@@ -42,7 +25,6 @@ def normalize_ru_phrase(text: str) -> str:
 
 
 def stable_phrase_stem(text: str, prefix_words: int = 6, hash_len: int = 10) -> str:
-    """Build a readable, stable filename stem from the full phrase."""
     normalized = normalize_ru_phrase(text)
     compact = safe_filename(normalized)
     if not compact:
@@ -75,7 +57,6 @@ class MiningEntry:
 
 @dataclass
 class CardJob:
-    """One card to be generated - one per keyword in a MiningEntry."""
     keyword: str
     phrase: str
     is_generated: bool
@@ -88,7 +69,6 @@ class CardJob:
 
 
 def build_card_stem(keyword: str, phrase: str, hash_len: int = 8) -> str:
-    """Build a stable per-card stem so repeated keywords do not collide."""
     keyword_part = safe_filename(keyword) or "card"
     normalized_phrase = re.sub(r"\s+", " ", phrase or "").strip()
     digest = hashlib.sha1(f"{keyword}\n{normalized_phrase}".encode("utf-8")).hexdigest()[:hash_len]
@@ -96,11 +76,6 @@ def build_card_stem(keyword: str, phrase: str, hash_len: int = 8) -> str:
 
 
 def get_card_jobs(entry: MiningEntry) -> List[CardJob]:
-    """Expand a MiningEntry into one CardJob per keyword.
-
-    - keywords[0] → original phrase, keyword highlighted
-    - keywords[1..N] → AI instruction to create a new sentence
-    """
     jobs: List[CardJob] = []
     for i, keyword in enumerate(entry.keywords):
         if i == 0:
@@ -129,7 +104,6 @@ def get_card_jobs(entry: MiningEntry) -> List[CardJob]:
 
 
 def _split_context(line: str):
-    """(line without the [Context: ...] / [Contexto: ...] block, source, title, detail)."""
     ctx_match = re.search(r'\[(?:Context|Contexto):\s*(.*?)\]', line, re.IGNORECASE)
     if not ctx_match:
         return line, None, None, None
@@ -143,7 +117,6 @@ def _split_context(line: str):
 
 
 def parse_mining_line(raw_line: str) -> Optional[MiningEntry]:
-    """One mining line (`kw1 | kw2 : phrase [Context: Source - Title - Detail]`, or `keyword: phrase`), or None."""
     line = raw_line.strip()
     if not line:
         return None
@@ -165,11 +138,6 @@ def parse_mining_line(raw_line: str) -> Optional[MiningEntry]:
 
 
 def _split_target_word(line: str):
-    """(first Palavra group, phrase) when `line` starts with `palavra : `, else (None, line).
-
-    The panel sends the Palavra only with words that occur in the phrase, so a prefix whose words are not all
-    in the rest is part of the phrase (a Russian sentence may contain ' : ').
-    """
     prefix, _, rest = line.partition(" : ")
     groups = [g.strip() for g in prefix.split("|") if g.strip()]
     if rest.strip() and _every_word_occurs_in(groups, rest):
@@ -178,7 +146,6 @@ def _split_target_word(line: str):
 
 
 def _every_word_occurs_in(groups: List[str], phrase: str) -> bool:
-    """Whether there is a group and each word of every group is a word of `phrase` (case aside)."""
     phrase_words = set(_words(phrase))
     return bool(groups) and all(w in phrase_words for g in groups for w in _words(g))
 
@@ -188,10 +155,6 @@ def _words(text: str) -> List[str]:
 
 
 def parse_mining_line_ru(raw_line: str) -> Optional[MiningEntry]:
-    """One Russian line: the whole line is the phrase (no keyword:phrase split), or None.
-
-    The filename stem is derived from the full normalized phrase so different sentences never collide.
-    """
     line = raw_line.strip()
     if not line:
         return None
@@ -213,7 +176,6 @@ def parse_mining_line_ru(raw_line: str) -> Optional[MiningEntry]:
 
 
 def parse_line(entrada: str, raw_line: str) -> Optional[MiningEntry]:
-    """One mining line the way the language's style reads it (`estilos.json` › `entrada`): `frase` is the whole line, else `kw | kw : phrase`."""
     return parse_mining_line_ru(raw_line) if entrada == "frase" else parse_mining_line(raw_line)
 
 
@@ -223,15 +185,8 @@ def _parse_file(path: Path, parse_line) -> List[MiningEntry]:
 
 
 def parse_mining_file(path: Path) -> List[MiningEntry]:
-    """Parse mining.txt into a list of MiningEntry objects.
-
-    Supports:
-        kw1 | kw2 : phrase [Context: Source - Title - Detail]
-        keyword: phrase                          (legacy format)
-    """
     return _parse_file(path, parse_mining_line)
 
 
 def parse_mining_file_ru(path: Path) -> List[MiningEntry]:
-    """Russian parser: each non-empty line is a full phrase (see `parse_mining_line_ru`)."""
     return _parse_file(path, parse_mining_line_ru)

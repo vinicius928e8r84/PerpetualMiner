@@ -1,10 +1,3 @@
-"""A tabela de entradas e saídas de `send_to_anki.py`, gravada com o código de antes da refatoração do CodeScene (Onda 3): o
-verso do Cartão e os avisos do log, a ordem do verso inglês, os pares do Alignment e a nota inteira, byte a byte.
-
-Um caso que muda de saída é mudança de comportamento: entra na tabela com o motivo na PR, nunca regravado às cegas. Três
-casos guardam um defeito de hoje: o `lstrip('<br>')` do verso tira do começo da segunda linha qualquer `<`, `b`, `r` e `>`
-(`segunda_linha_comeca_com_b`, `blocos_com_rotulo_em_negrito` e `russo_literal_em_negrito`)."""
-
 import logging
 import unittest
 
@@ -426,7 +419,6 @@ class _AvisosDoMotor(logging.Handler):
 
 
 def _com_avisos(funcao, *args, **kwargs):
-    """O que `funcao` devolve e as mensagens que ela deixou no log do motor (`perpetualminer.motor`), sem passá-las adiante."""
     avisos = _AvisosDoMotor()
     log = logging.getLogger("perpetualminer.motor")
     log.addHandler(avisos)
@@ -439,7 +431,6 @@ def _com_avisos(funcao, *args, **kwargs):
 
 
 def _nota(texto, lang, midia):
-    """A nota de `card_fields`; `midia` é o áudio da frase, o áudio da palavra e a imagem, nessa ordem."""
     return send_to_anki.card_fields(texto, lang, send_to_anki.CardMedia(*midia))
 
 

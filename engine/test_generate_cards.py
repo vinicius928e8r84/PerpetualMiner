@@ -79,7 +79,6 @@ def _config(root: Path) -> dict:
 
 
 def roteiro(*respostas, pedidos=None):
-    """The `pedir` of a test: answers `respostas` in order (the last one again when they run out) and keeps (system, message, label) of each request."""
     fila = list(respostas)
 
     def pedir(sistema, mensagem, rotulo):
@@ -367,7 +366,6 @@ Alignment:
 
 
 def _com_o_estilo(root: Path, lang: str) -> dict:
-    """A configuração de um Envio do add-on: o estilo do idioma (com o prompt do nível, lido do disco) no lugar dos `paths.prompts`."""
     estilo = estilos.estilo(lang)
     estilo["prompt"] = str(Path(__file__).resolve().parent / estilo["prompt"])
     return dict(_config(root), lang=lang, estilo=estilo)

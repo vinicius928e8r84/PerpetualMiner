@@ -1,7 +1,3 @@
-"""Cada desfecho da “foto real primeiro” (`imageSource` `"1"`), visto de fora: o que `real_first` devolve, de onde veio a
-imagem, o arquivo gravado e o registro `image_pipeline` que fica no `costs.jsonl`. As fronteiras (busca no Openverse,
-download, juiz, geração) são fakes; o resto é o código real."""
-
 import json
 import tempfile
 import unittest
@@ -48,8 +44,6 @@ def _compare(winner, real_score, generated_score):
 
 @dataclass
 class Scenario:
-    """One card and what each border answers: the card's text on disk, its prompt and policy, the photo search, the
-    downloads, the judge and the generation."""
     prompt: str = "a dinosaur bone"
     policy: str = "normal"
     card: bool = True

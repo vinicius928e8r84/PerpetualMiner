@@ -1,8 +1,3 @@
-"""O texto do motor fala com a OpenAI por HTTP direto, sem o SDK: o que atravessa a fronteira e o que volta.
-
-Uma OpenAI de mentira (um servidor local) responde no lugar da de verdade; o motor recebe o endereço dela por código.
-"""
-
 import json
 import tempfile
 import threading
@@ -30,8 +25,6 @@ Definition: Makes a deliberate personal effort.
 
 
 class OpenAIDeMentira:
-    """Responde `POST /v1/chat/completions` com o que o teste pôs em `respostas` (status, corpo), em ordem."""
-
     def __init__(self, respostas):
         self.respostas = list(respostas)
         self.pedidos = []
@@ -132,7 +125,6 @@ TRABALHO = get_card_jobs(ENTRADA)[0]
 
 
 def pedir_com(cred):
-    """The `pedir` the Conexão's IA dos cartões gives the engine, without its cost record: the text through the provider layer."""
     return lambda sistema, mensagem, rotulo: provedores.texto(cred, sistema, mensagem)[0]
 
 
@@ -189,8 +181,6 @@ class GerarCartoesPorHttp(unittest.TestCase):
 
 
 class PlanoDeMentira:
-    """Responde `POST /v1/responses` como o plano do ChatGPT: `resposta` é (status, corpo JSON) antes do stream ou a lista de eventos."""
-
     def __init__(self, resposta):
         self.resposta = resposta
         self.pedidos = []
