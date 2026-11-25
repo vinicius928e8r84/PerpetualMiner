@@ -3,7 +3,7 @@
 Quem paga cada pedido continua sendo a `IaDosCartoes` (`ia_dos_cartoes.py`); esta porta lê o Usar a minha chave (#158) do Envio a cada
 pedido e conduz as duas esperas: o teto do mês (#160, antes de cada Cartão) e o limite do plano do ChatGPT (#158: o texto que o plano
 recusou por limite é pedido de novo depois da espera). O lado do Envio de cada espera (o `waiting` do estado, o despertador, parar a
-Conexão e apagar as Frases) é a `limite_do_plano.EsperaDoEnvio`. Desenho: `docs/design/ia-dos-cartoes.md`."""
+Conexão e apagar as Frases) é a `limite_do_plano.EsperaDoEnvio`."""
 
 from dataclasses import dataclass
 

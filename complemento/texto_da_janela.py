@@ -1,4 +1,4 @@
-"""A cópia das telas de dentro do Anki (#175), pelo ID do catálogo da Voz (`docs/design/voz/README.md`).
+"""A cópia das telas de dentro do Anki (#175), pelo ID do catálogo da Voz.
 
 O complemento só tem a biblioteca padrão e não carrega o `lib/voz/catalogo.js` da extensão: estes são os textos dos IDs que ele usa, e
 `test_janela.py` confere cada um com o retrato `docs/design/voz/catalogo-textos.json`. Texto novo de tela entra primeiro no catálogo.

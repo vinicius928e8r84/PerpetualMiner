@@ -22,7 +22,7 @@ O motor de texto vem de `engine/` (`ARQUIVOS_DO_MOTOR`) e entra como a pasta `mo
 `motor/__init__.py` deste repositório (ver `motor/__init__.py`).
 
 Rodado como programa, o script confere que o HEAD é um commit verde, marcado pela suíte completa na main
-(`scripts/ci/commit-verde.js`, `docs/commit-verde.md`): sem a tag ele recusa (`PM_COMMIT_VERDE=avisar` só avisa, `ignorar` pula).
+(`scripts/ci/commit-verde.js`): sem a tag ele recusa (`PM_COMMIT_VERDE=avisar` só avisa, `ignorar` pula).
 
 A extensão entrega este arquivo num link de download (`conexao/perpetualminer.ankiaddon`, no pacote da loja).
 A versão e este arquivo são dados na hora do merge por `python3 complemento/versao_no_merge.py`, num commit só;

@@ -2,7 +2,7 @@
 
 Para cada gravação que o criar, o trabalho e o Apagar tudo fazem (os arquivos do Envio, o texto gerado, a nota no Anki, o que se
 apaga) o teste mata a Conexão **ali** (a gravação não acontece e nenhuma outra acontece depois), sobe outra na mesma pasta de
-dados e confere o que o desenho (`docs/design/envio-no-complemento.md`) promete:
+dados e confere o que o Envio promete:
 
 - o mesmo corpo de novo é `201` (nunca `409`), e o Envio termina;
 - nenhum id fica encalhado: todo id da fila tem pedido e estado, e todo pedido gravado entra na fila quando o painel pede de novo;

@@ -1,6 +1,6 @@
 """O teto do mês (#160), visto de fora: vem ligado com US$ 10, conta o gasto da chave no mês (inclusive a imagem gerada quando o texto
 foi pelo plano), pausa o Envio antes do próximo Cartão quando chega, e o Envio continua sozinho quando a pessoa sobe o teto ou o mês
-vira. O teto é deste computador: fica na pasta de dados da Conexão. O desenho: `docs/design/teto-do-mes.md`.
+vira. O teto é deste computador: fica na pasta de dados da Conexão.
 
     python3.9 complemento/test_teto_do_mes.py
 """

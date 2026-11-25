@@ -21,7 +21,7 @@ Three pure pieces, no screen, proven without a browser by `node testes/test_esta
 - **What is stored: `EnvioGravado` (`lib/envio-gravado.js`).** The only writer of `pm_envio`, for the panel and the service worker:
   `proximo(gravado, evento)` over `acompanhar`, `esquecer`, `apagarTudo`, `confirmou`. `confirmou` reads again after the Conexão answered, so
   an Envio created while the Apagar tudo waited stays.
-- **One Envio followed: `EnvioAcompanhado.acompanhar({ jobId } | corpo)` (C3, [design](../../../docs/design/envio-acompanhado.md)).** What the
+- **One Envio followed: `EnvioAcompanhado.acompanhar({ jobId } | corpo)` (C3, [decision](../../../docs/adr/0009-o-envio-roda-na-conexao-com-um-dono-por-dado.md)).** What the
   screens of the Envio share, below the remessa: `criar()` (with the `corpo`: `POST /jobs`; an Envio the Conexão already had that ended
   `failed`/`partial` is retried before the first read; `{ ok }`, `{ apagado }`, `{ falha, semResposta, status }`), `tentarDeNovo()` (`POST /jobs/retry`; a second call before the answer is the same request;
   `{ ok }`, `{ apagado }` for `409 job_wiped`, `{ falha }` with the request and the cause), then a `POST /jobs/get` every 2 s until

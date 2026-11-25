@@ -1,5 +1,4 @@
-"""Quem paga cada pedido (C5), pela porta da IA dos cartões e sem montar um Envio: a tabela etapa × situação de
-`docs/design/ia-dos-cartoes.md`, o que a porta lê do login e do cofre guardados (os arquivos reais, numa pasta temporária) e a
+"""Quem paga cada pedido (C5), pela porta da IA dos cartões e sem montar um Envio: a tabela etapa × situação, o que a porta lê do login e do cofre guardados (os arquivos reais, numa pasta temporária) e a
 credencial que ela entrega a cada etapa, e o texto do Cartão pedido por ela à OpenAI de mentira (quem paga e o custo que fica). O caminho inteiro, com o servidor e a OpenAI de mentira, segue em `test_quem_paga.py`,
 `test_imagem_pelo_plano.py`, `test_voz_de_reserva.py` e `test_ouvir_a_voz.py`.
 

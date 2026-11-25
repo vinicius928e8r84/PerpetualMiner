@@ -1,7 +1,7 @@
 """A fronteira de `janela.ligar` com o Qt do Anki: a única parte do item “PerpetualMiner…” que só existe dentro do Anki.
 
 Nada daqui roda fora do Anki (`aqt` só existe lá, e cada chamada importa o que usa), então o `unittest` não a exercita: o ensaio do
-dono, num Anki de verdade, confere o item, a janela, o botão Config e os avisos (`docs/design/dentro-do-anki.md`). O que a janela diz vem
+dono, num Anki de verdade, confere o item, a janela, o botão Config e os avisos. O que a janela diz vem
 pronto de `janela.Janela.estado()`, já em texto da Voz. Todo callback que o Qt chama aqui passa por `janela.protegido`.
 """
 
