@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 from . import do_computador, pasta_de_dados, registro, tipo_de_nota
 from .baralhos import ColecaoIndisponivel
 from .configuracao import ATUALIZACAO_AUTOMATICA, PORTA, VERSAO
@@ -8,32 +10,35 @@ from .servicos_de_fora import ServicosDeFora
 from .servidor import Conexao
 
 
-def iniciar(
-    pasta_do_complemento,
-    perfil_aberto,
-    *,
-    porta=PORTA,
-    colecao=None,
-    item_de_login=None,
-    servicos=ServicosDeFora(),
-    esperas=None,
-    abridor=ABRIDOR_DESTE_COMPUTADOR,
-    ao_abrir_o_perfil=None,
-    passagem=PASSAGEM_DESTE_COMPUTADOR,
-    anki_web=None,
-    atualizacao_automatica=ATUALIZACAO_AUTOMATICA,
-):
+@dataclass(frozen=True)
+class Arredores:
+    porta: int = PORTA
+    colecao: object = None
+    item_de_login: object = None
+    servicos: object = ServicosDeFora()
+    esperas: object = None
+    abridor: object = ABRIDOR_DESTE_COMPUTADOR
+    ao_abrir_o_perfil: object = None
+    passagem: object = PASSAGEM_DESTE_COMPUTADOR
+    anki_web: object = None
+    atualizacao_automatica: bool = ATUALIZACAO_AUTOMATICA
+
+
+def _montar_a_conexao(dados, ambiente, perfil_aberto, arredores):
+    fronteiras = Fronteiras(
+        colecao=arredores.colecao, item_de_login=do_computador.item_de_login(arredores.item_de_login),
+        atualizacao=do_computador.atualizacao(dados, arredores.anki_web, arredores.atualizacao_automatica, ambiente))
+    return Conexao(Porta(arredores.porta), montar(ambiente, arredores.servicos, arredores.esperas or Esperas(), fronteiras), perfil_aberto)
+
+
+def iniciar(pasta_do_complemento, perfil_aberto, arredores=Arredores()):
     logger = registro.silencioso()
     try:
         dados = pasta_de_dados.preparar(pasta_do_complemento)
         logger = registro.criar(dados.logs)
-        ambiente = Ambiente(dados, logger, VERSAO)
-        fronteiras = Fronteiras(
-            colecao=colecao, item_de_login=do_computador.item_de_login(item_de_login),
-            atualizacao=do_computador.atualizacao(dados, anki_web, atualizacao_automatica, ambiente))
-        conexao = Conexao(Porta(porta), montar(ambiente, servicos, esperas or Esperas(), fronteiras), perfil_aberto)
-        _cuidar_do_perfil(conexao, do_computador.abridor(abridor, pasta_do_complemento, dados), ao_abrir_o_perfil, logger)
-        return _subir(conexao, do_computador.passagem(passagem, porta))
+        conexao = _montar_a_conexao(dados, Ambiente(dados, logger, VERSAO), perfil_aberto, arredores)
+        _cuidar_do_perfil(conexao, do_computador.abridor(arredores.abridor, pasta_do_complemento, dados), arredores.ao_abrir_o_perfil, logger)
+        return _subir(conexao, do_computador.passagem(arredores.passagem, arredores.porta))
     except Exception:
         logger.exception("O complemento não conseguiu iniciar")
         return None
@@ -70,27 +75,34 @@ def _atualizar_o_item_de_login(item, logger):
         logger.warning("O item de login não foi conferido: %s", erro)
 
 
+def _escrever_no_abridor(conexao, abridor, marcado, logger):
+    try:
+        perfis = conexao.colecao.perfis()
+    except Exception:
+        perfis = []
+    if perfis and marcado not in perfis:
+        marcado = None
+    try:
+        abridor.escrever(marcado)
+    except Exception as erro:
+        logger.warning("O abridor não foi escrito: %s", erro)
+
+
+def _reagir_ao_perfil(conexao, abridor, logger):
+    _atualizar_o_item_de_login(conexao.item_de_login, logger)
+    try:
+        marcado = conexao.perfil_fixo.marcar_se_falta(conexao.perfil_aberto())
+    except Exception as erro:
+        logger.warning("O perfil aberto não foi marcado: %s", erro)
+        return
+    _preparar_a_colecao(conexao, logger)
+    if abridor is not None:
+        _escrever_no_abridor(conexao, abridor, marcado, logger)
+
+
 def _cuidar_do_perfil(conexao, abridor, ao_abrir_o_perfil, logger):
     def reagir():
-        _atualizar_o_item_de_login(conexao.item_de_login, logger)
-        try:
-            marcado = conexao.perfil_fixo.marcar_se_falta(conexao.perfil_aberto())
-        except Exception as erro:
-            logger.warning("O perfil aberto não foi marcado: %s", erro)
-            return
-        _preparar_a_colecao(conexao, logger)
-        if abridor is None:
-            return
-        try:
-            perfis = conexao.colecao.perfis()
-        except Exception:
-            perfis = []
-        if perfis and marcado not in perfis:
-            marcado = None
-        try:
-            abridor.escrever(marcado)
-        except Exception as erro:
-            logger.warning("O abridor não foi escrito: %s", erro)
+        _reagir_ao_perfil(conexao, abridor, logger)
 
     conexao.ao_mudar_o_perfil = reagir
     reagir()

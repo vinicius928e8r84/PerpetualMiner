@@ -123,7 +123,7 @@ def iniciar_pareado(pasta, *argumentos, **palavras):
     from complemento import inicio
 
     semear_em(pasta)
-    return inicio.iniciar(pasta, *argumentos, **palavras)
+    return inicio.iniciar(pasta, *argumentos, inicio.Arredores(**palavras))
 
 
 def ao_carregar_pareado(anki, pasta, **palavras):

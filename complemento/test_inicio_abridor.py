@@ -42,14 +42,13 @@ def log_de(raiz):
 
 class OAbridorAcompanhaOPerfil(unittest.TestCase):
     def iniciar(self, raiz, colecao, abridor, perfil_aberto=lambda: "Beto"):
-        return inicio.iniciar(os.path.join(raiz, "complemento"), perfil_aberto, porta=0, colecao=colecao, abridor=abridor)
+        return inicio.iniciar(os.path.join(raiz, "complemento"), perfil_aberto, inicio.Arredores(porta=0, colecao=colecao, abridor=abridor))
 
     def test_ao_subir_o_abridor_recebe_o_perfil_marcado_e_cada_perfil_que_abre_o_escreve_de_novo(self):
         colecao = ColecaoEmMemoria(SO_O_DEFAULT, perfis=("Ana", "Beto"), perfil_aberto="Beto")
         abridor, ganchos = AbridorDeMentira(), []
         with tempfile.TemporaryDirectory() as raiz:
-            conexao = inicio.iniciar(
-                os.path.join(raiz, "complemento"), lambda: "Beto", porta=0, colecao=colecao, abridor=abridor, ao_abrir_o_perfil=ganchos.append)
+            conexao = inicio.iniciar(os.path.join(raiz, "complemento"), lambda: "Beto", inicio.Arredores(porta=0, colecao=colecao, abridor=abridor, ao_abrir_o_perfil=ganchos.append))
             subiu = list(abridor.escritos)
             ganchos[0]()
             conexao.ao_mudar_o_perfil()
@@ -123,8 +122,7 @@ class OAbridorAcompanhaOPerfil(unittest.TestCase):
             raise RuntimeError("o Anki mudou")
 
         with tempfile.TemporaryDirectory() as raiz:
-            conexao = inicio.iniciar(
-                os.path.join(raiz, "complemento"), lambda: "Usuário 1", porta=0, colecao=colecao, abridor=None, ao_abrir_o_perfil=gancho_que_quebra)
+            conexao = inicio.iniciar(os.path.join(raiz, "complemento"), lambda: "Usuário 1", inicio.Arredores(porta=0, colecao=colecao, abridor=None, ao_abrir_o_perfil=gancho_que_quebra))
             subiu = conexao is not None
             if subiu:
                 conexao.parar()
