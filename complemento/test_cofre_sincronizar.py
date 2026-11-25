@@ -1,11 +1,3 @@
-"""Cofre.sincronizar, caso a caso: o que sobe, o que chega, o que fica no cofre e quando recusa.
-
-Caracterização escrita antes de partir `sincronizar` em passos: cada linha da tabela é
-um cofre de partida (quem tem a chave e de que conta), o que a nuvem guarda e o que
-sai: (cofre daqui, nuvem, saída, o que a nuvem recebeu, (chave, conta, versão, hora, naoEnviada) no cofre depois). Roda no Python 3.9 e no 3.13:
-    python3.9 complemento/test_cofre_sincronizar.py
-"""
-
 import os
 import sys
 import tempfile

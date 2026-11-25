@@ -60,7 +60,6 @@ def _e_de_outra_conta(aqui, conta):
 
 
 def _recusa_da_posse(aqui, conta):
-    """A exceção que impede a sincronia: valor sem dono ainda, ou de outra conta que ainda não o enviou."""
     if aqui.get('chave') and not aqui.get('conta'):
         return LegadoNaoVinculado
     if _e_de_outra_conta(aqui, conta) and _pendente(aqui):
@@ -79,7 +78,6 @@ def _resultado_de_adotar(chave_da_nuvem, tinha_chave):
 
 
 def _primeira_vez_da_conta(aqui, remota):
-    """A conta ainda não é a deste cofre: o que a nuvem guarda (ou nada) vira o valor daqui."""
     valor = remota or {'chave': '', 'em': 0}
     return Passo(ADOTAR, valor, _resultado_de_adotar(valor['chave'], bool(aqui.get('chave'))))
 
@@ -91,7 +89,6 @@ def _empatam(remota, hora, chave):
 
 
 def _ja_aceita(atual, chave, conta, versao):
-    """O cofre já tem este valor e esta conta, na revisão anterior (replay) ou na atual (documento completo)."""
     if atual.get('chave', '') != chave or atual.get('conta', '') != conta:
         return False
     revisao = atual.get('versao', 0)
@@ -131,7 +128,6 @@ def _disputa_da_mesma_conta(aqui, remota):
 
 
 def decidir_a_sincronia(aqui, conta, remota):
-    """Pura: o que fazer com o valor daqui e o da nuvem. Nunca manda o valor de A a B."""
     if not remota and _nada_aqui(aqui):
         return SEM_MUDANCA
     if aqui.get('conta', '') != conta:
@@ -176,11 +172,10 @@ class Cofre:
             return None if versao == revisao else False
 
     def guardar(self, nome, chave, versao=0, conta=''):
-        """CAS após validar."""
+        """CAS após validar; cópia da nuvem mantém a hora dela, não cria mudança."""
         return self._guardar(nome, Posse(chave, conta, None), versao, True)
 
     def _guardar(self, nome, posse, versao, nao_enviada):
-        """CAS; a posse com hora é cópia da nuvem: mantém a hora dela e não cria mudança."""
         with self._tranca:
             repetida = self.reentrega(nome, posse.chave, versao, posse.conta)
             if repetida is False:

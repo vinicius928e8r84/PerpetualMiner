@@ -138,7 +138,6 @@ class _Atendente(BaseHTTPRequestHandler):
         return (self.command, caminho) in ROTAS_ABERTAS
 
     def _origem_e_aceita(self, aberta):
-        """Sem `Origin` só passa a rota aberta; com `Origin`, só a de uma extensão que a Conexão aceita."""
         origem = self.headers.get("Origin")
         if origem is None:
             return aberta
@@ -148,7 +147,6 @@ class _Atendente(BaseHTTPRequestHandler):
         return self.command == "OPTIONS" or (self.command, caminho) in ROTAS_SEM_ASSINATURA
 
     def _assinatura_vale(self, caminho, corpo):
-        """`None` se a assinatura de um navegador pareado cobre o pedido; senão `(status, erro)`. O que a assinatura provou fica em `_assinado`."""
         verificacao = self.conexao.pareamento.verificar(self.command, caminho, corpo, self.headers)
         if verificacao.status != 200:
             return verificacao.status, verificacao.erro
@@ -158,11 +156,10 @@ class _Atendente(BaseHTTPRequestHandler):
     def _pedido_aceito(self, caminho, corpo):
         """O porteiro, num lugar só e antes de escolher a rota: `None` se o pedido segue; senão `(status, erro)`.
 
-        Três perguntas, nesta ordem: a origem é aceita, a rota é aberta, a assinatura vale. Só a extensão pede, pela origem dela; a exceção é
-        `GET /health` (e o retorno do login), que o Chrome manda sem `Origin`. Mas o `Origin` não é autenticação (uma extensão com
-        `extraHeaders`, ou um programa local, o põe): tudo o mais, a rota que não existe inclusive, exige a assinatura de um navegador
-        pareado (`pareamento.py`, `contrato/LEIA-ME.md`). Só o pareamento, o preflight e `POST /anki/responde` (`ROTAS_SEM_ASSINATURA`) a
-        dispensam. `corpo` são os bytes que a assinatura cobre (`None`: passou do limite)."""
+        Só a extensão pede, pela origem dela; a exceção é `GET /health` (e o retorno do login), que o Chrome manda sem `Origin`. Mas o `Origin`
+        não é autenticação (uma extensão com `extraHeaders`, ou um programa local, o põe): tudo o mais, a rota que não existe inclusive, exige a
+        assinatura de um navegador pareado (`pareamento.py`, `contrato/LEIA-ME.md`). Só o pareamento, o preflight e `POST /anki/responde` (`ROTAS_SEM_ASSINATURA`) a dispensam. `corpo` são os
+        bytes que a assinatura cobre (`None`: passou do limite)."""
         aberta = self._rota_e_aberta(caminho)
         if not self._origem_e_aceita(aberta):
             return 403, "origin_not_allowed"
