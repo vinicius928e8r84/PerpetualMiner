@@ -150,6 +150,27 @@ async function apagarPmBoasVindas(sw) {
   await sw.evaluate(() => chrome.storage.local.remove('pm_boas_vindas'));
 }
 
+const sessaoDiretoNoIndexedDB = (sw, valor) => sw.evaluate(valor => new Promise((resolve, reject) => {
+  const req = indexedDB.open('pm-sessao', 1);
+  req.onupgradeneeded = () => req.result.createObjectStore('sessao');
+  req.onerror = () => reject(req.error);
+  req.onsuccess = () => {
+    const db = req.result;
+    const tx = db.transaction('sessao', valor === null ? 'readonly' : 'readwrite');
+    const loja = tx.objectStore('sessao');
+    if (valor !== null) loja.put(true, 'migrada');
+    const pedido = valor === null ? loja.get('firebase') : loja.put(valor, 'firebase');
+    tx.oncomplete = () => { db.close(); resolve(pedido.result || null); };
+    tx.onerror = () => { db.close(); reject(tx.error); };
+  };
+}), valor);
+
+async function semearASessao(sw, gravarStorage, { uid = 'uid-teste', email = 'pessoa@teste.dev', displayName = 'Pessoa de Teste', expirada = false } = {}) {
+  await sessaoDiretoNoIndexedDB(sw, { uid, idToken: 'token-teste', refreshToken: 'refresh-teste',
+    expiresAt: expirada ? Date.now() - 60 * 1000 : Date.now() + 60 * 60 * 1000 });
+  await gravarStorage({ pm_user_info: { uid, email, displayName, photoURL: '' } });
+}
+
 async function prepararExtensao(context, { manterAbaDaInstalacao, lembreteDaConfiguracao, navegador }) {
   const sw = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker');
   const id = new URL(sw.url()).host;
@@ -162,37 +183,18 @@ async function prepararExtensao(context, { manterAbaDaInstalacao, lembreteDaConf
   const gravarStorage = valores => sw.evaluate(v => chrome.storage.local.set(v), valores);
   if (!lembreteDaConfiguracao) await apagarPmBoasVindas(sw);
 
-  const sessaoDiretoNoIndexedDB = valor => sw.evaluate(valor => new Promise((resolve, reject) => {
-    const req = indexedDB.open('pm-sessao', 1);
-    req.onupgradeneeded = () => req.result.createObjectStore('sessao');
-    req.onerror = () => reject(req.error);
-    req.onsuccess = () => {
-      const db = req.result;
-      const tx = db.transaction('sessao', valor === null ? 'readonly' : 'readwrite');
-      const loja = tx.objectStore('sessao');
-      if (valor !== null) loja.put(true, 'migrada');
-      const pedido = valor === null ? loja.get('firebase') : loja.put(valor, 'firebase');
-      tx.oncomplete = () => { db.close(); resolve(pedido.result || null); };
-      tx.onerror = () => { db.close(); reject(tx.error); };
-    };
-  }), valor);
-
   return {
     id,
     serviceWorker: sw,
     abaDaInstalacao: manterAbaDaInstalacao ? abaDaInstalacao : null,
     url: caminho => `chrome-extension://${id}/${caminho.replace(/^(painel)\.html/, '$1/$1.html')}`,
     lerStorage,
-    lerSessao: () => sessaoDiretoNoIndexedDB(null),
-    gravarSessao: sessaoDiretoNoIndexedDB,
+    lerSessao: () => sessaoDiretoNoIndexedDB(sw, null),
+    gravarSessao: valor => sessaoDiretoNoIndexedDB(sw, valor),
     gravarStorage,
     permissaoDoAbridor: () => sw.evaluate(() => chrome.permissions.contains({ permissions: ['nativeMessaging'] })),
     frases: async () => (await lerStorage({ frases: [] })).frases,
-    semearSessao: async ({ uid = 'uid-teste', email = 'pessoa@teste.dev', displayName = 'Pessoa de Teste', expirada = false } = {}) => {
-      await sessaoDiretoNoIndexedDB({ uid, idToken: 'token-teste', refreshToken: 'refresh-teste',
-        expiresAt: expirada ? Date.now() - 60 * 1000 : Date.now() + 60 * 60 * 1000 });
-      await gravarStorage({ pm_user_info: { uid, email, displayName, photoURL: '' } });
-    },
+    semearSessao: opcoes => semearASessao(sw, gravarStorage, opcoes),
   };
 }
 
