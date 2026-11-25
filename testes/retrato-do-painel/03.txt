@@ -32,6 +32,7 @@
   <script src="/lib/historico.js">
   <script src="/lib/nuvem-do-firestore.js">
   <script src="/lib/sincronizacao.js">
+  <script src="/lib/entrada-com-google.js">
   <script src="esqueleto-modais.js">
   <script src="esqueleto-configuracoes.js">
   <script src="painel-shell.js">

@@ -11,17 +11,13 @@ const MinerarFrases = PerpetualMiner.MinerarFrases;
 const FrasesCartao = PerpetualMiner.FrasesCartao;
 const FrasesAcoes = PerpetualMiner.FrasesAcoes;
 const { SITUACOES } = Conta;
-const { Sincronizacao, ChaveDaOpenAI, Historico } = PerpetualMiner;
+const { Sincronizacao, EntradaComGoogle, ChaveDaOpenAI, Historico } = PerpetualMiner;
 const { mostrarToastDeSucesso, abrirModal, montarAviso, criar } = PerpetualMiner.Veio;
 const { filtrarFrases, foiEnviadaAoAnki, STATUS_ENVIADA_AO_ANKI } = PerpetualMiner.FiltroDasFrases;
 
 const POR_PAGINA = 10;
 
 let atalhoDeLegenda = Atalhos.ATALHOS_PADRAO.legenda;
-
-const GOOGLE_USERINFO   = 'https://www.googleapis.com/oauth2/v1/userinfo?alt=json';
-const FIREBASE_API_KEY  = Sincronizacao.CHAVE_DA_API;
-const FB_SIGNIN_URL     = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=${FIREBASE_API_KEY}`;
 
 let todasFrases        = [];
 let frasesVisiveis     = [];
@@ -75,72 +71,11 @@ async function inicializarAuth() {
 async function loginGoogle() {
   Conta.mostrarFalhaNoLogin(null);
   try {
-    const redirectUri = chrome.identity.getRedirectURL();
-
-    const rawNonce    = Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join('');
-    const hashBuf     = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(rawNonce));
-    const hashedNonce = Array.from(new Uint8Array(hashBuf), b => b.toString(16).padStart(2, '0')).join('');
-
-    const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
-    authUrl.searchParams.set('client_id', '777592854175-o2ha6n3oqv4f9i2mavbdmfoqbh9iauio.apps.googleusercontent.com');
-    authUrl.searchParams.set('response_type', 'token id_token');
-    authUrl.searchParams.set('redirect_uri', redirectUri);
-    authUrl.searchParams.set('scope', 'openid email profile');
-    authUrl.searchParams.set('nonce', hashedNonce);
-    authUrl.searchParams.set('prompt', 'select_account');
-
-    const responseUrl = await new Promise((resolve, reject) => {
-      chrome.identity.launchWebAuthFlow(
-        { url: authUrl.toString(), interactive: true },
-        (url) => {
-          if (chrome.runtime.lastError || !url) reject(new Error(chrome.runtime.lastError?.message || 'Login cancelado'));
-          else resolve(url);
-        }
-      );
-    });
-
-    const params      = new URLSearchParams(new URL(responseUrl).hash.slice(1));
-    const idToken     = params.get('id_token');
-    const accessToken = params.get('access_token');
-    if (!idToken) throw new Error('id_token não encontrado na resposta do Google');
-
-    const resp = await fetch(GOOGLE_USERINFO, { headers: { Authorization: `Bearer ${accessToken}` } });
-    if (!resp.ok) throw new Error('Falha ao obter dados do usuário Google');
-    const info = await resp.json();
-
-    const fbResp = await fetch(FB_SIGNIN_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        postBody:            `id_token=${idToken}&nonce=${rawNonce}&providerId=google.com`,
-        requestUri:          redirectUri,
-        returnIdpCredential: true,
-        returnSecureToken:   true,
-      }),
-    });
-    if (!fbResp.ok) {
-      const fbErr = await fbResp.json().catch(() => ({}));
-      throw new Error('Firebase Auth falhou: ' + (fbErr?.error?.message || fbResp.status));
-    }
-    const fbData = await fbResp.json();
-
-    usuarioLogado = {
-      uid:          fbData.localId,
-      email:        info.email,
-      displayName:  info.name,
-      photoURL:     info.picture,
-    };
-    const credenciais = {
-      uid:          usuarioLogado.uid,
-      idToken:      fbData.idToken,
-      refreshToken: fbData.refreshToken,
-      expiresAt:    Date.now() + 55 * 60 * 1000,
-    };
+    const { usuario, credenciais } = await EntradaComGoogle.entrar();
+    usuarioLogado = usuario;
     await Sincronizacao.guardarCredenciais(credenciais);
     conectarNuvem(credenciais);
-    await chrome.storage.local.set({
-      pm_user_info: { uid: usuarioLogado.uid, email: usuarioLogado.email, displayName: usuarioLogado.displayName, photoURL: usuarioLogado.photoURL },
-    });
+    await chrome.storage.local.set({ pm_user_info: { ...usuario } });
 
     atualizarUIAuth(usuarioLogado);
     sincronizarAChave();
@@ -153,14 +88,10 @@ async function loginGoogle() {
       await carregarFrasesFirestore();
     }
   } catch (err) {
-    if (loginFoiCancelado(err)) return;
+    if (EntradaComGoogle.foiCancelado(err)) return;
     console.error('[Login] falhou:', err);
     Conta.mostrarFalhaNoLogin(err.message || String(err));
   }
-}
-
-function loginFoiCancelado(err) {
-  return /did not approve|cancel/i.test(err?.message || '');
 }
 
 async function logout() {
