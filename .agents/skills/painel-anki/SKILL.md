@@ -100,7 +100,7 @@ is the feedback, no toast; failure is BRG-23 inline).
 The two tabs read the decks of the Ajustes de envio, which `painel.js` reports through
 `PerpetualMiner.Baralhos.usarBaralhos({ en, ru })` on load and on every save (a new deck is read again). Both read on
 entering the Anki area with the Conexão on, when it comes back, and on ↻ Atualizar, **each on its own**: decks that
-fail never hold the vocabulary (it used to stay in “Aguardando…”, #9).
+fail never hold the vocabulary (#9).
 
 - **Baralhos e termos** reads `POST /anki/stats/decks` with both decks at once (body `{ decks: [{ deckName, lang }, …] }`; `launch: true` on
   ↻ and Tentar de novo only, `refresh: true` on ↻; the add-on ignores both, it never opens the Anki). Reads of the
@@ -112,7 +112,7 @@ fail never hold the vocabulary (it used to stay in “Aguardando…”, #9).
   Recentes · Novos. Ring, bars and legend use the maturity series (ouro · info · muted). An older reading kept by
   the Conexão: the BRG-12 selo “Mostrando dados de … Não deu para atualizar agora.” (`BRG-12.atualizacao`; with the Conexão off it is `BRG-12.anki`, “Anki fechado. Mostrando dados de {quando}.”, `{quando}` being the stored `quando` (never another Baralho's), and the Abrir o Anki button; off with nothing stored the two tabs say BRG-37, with the same button). Loading BRG-10 + skeleton;
   failure is the persistent BRG-11 aviso with Tentar de novo and the cause in Detalhes.
-- **Vocabulário** reads `POST /anki/vocabulary` (`{ deck, lang, limit: 10000 }`) of each language whole and filters in the panel, so
+- **Vocabulário** (`painel-anki-vocabulario.js`) reads `POST /anki/vocabulary` (`{ deck, lang, limit: 10000 }`) of each language whole and filters in the panel, so
   each tile has the language's total and the search never waits for the network. Tipo (Palavras e termos · Só
   palavras · Só termos), Status (Todos · Novos · Recentes · Maduros · Mistos) and the search (with ×), then BRG-21's
   “N itens em inglês · mostrando N” (a polite live region) and the list × detail: a `listbox` (↑ ↓ Home End, at most

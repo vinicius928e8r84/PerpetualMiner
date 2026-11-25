@@ -61,7 +61,7 @@ const MOVIDOS = Object.fromEntries([
 Object.assign(MOVIDOS, { 'popup.js': 'popup/popup.js', 'popup.css': 'popup/popup.css', 'popup.html': 'popup/popup.html' });
 
 const CONTEUDO_VIVO = [/^docs\/(?!design\/)/, /^veio\//, /^lib\//, /^background\.js$/, /^glossary\.md$/, /^manifest\.json$/, /^\.agents\/.*\.(sh|js)$/, /^\.agents\/.*\.md$/, /^\.claude\//, /^\.github\//, /^scripts\//, /^e2e\/(?!tests\/|.*\.png$)/, /^preview\//, /^testes\//, /^complemento\/.*\.(py|js|md)$/, /^(AGENTS|CODING_STANDARDS|README)\.md$/, /^package\.json$/];
-const FORA = [/(^|\/)test_[^/]*$/, /^scripts\/ci\/test_caminhos_movidos\.js$/, /^e2e\/tests\/.*\.png$/, /\.png$/];
+const FORA = [/(^|\/)test_[^/]*$/, /^scripts\/ci\/test_caminhos_movidos\.js$/, /^e2e\/tests\/.*\.png$/, /\.png$/, /^testes\/retrato-do-painel\//];
 const SKILL_CITA_O_ENDERECO_E_O_FRONTMATTER = /^\.agents\/skills\/(?!verify-perpetualminer\/(SKILL|mapa-de-features)\.md$).*\.md$/;
 const PASTAS_DE_PAGINAS = new Set(PASTAS_DA_EXTENSAO);
 

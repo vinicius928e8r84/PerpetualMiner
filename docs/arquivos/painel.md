@@ -15,14 +15,17 @@ A regra `indice-de-arquivos` exige uma linha, aqui ou nas outras tabelas de `doc
 | `painel/painel-boas-vindas-ranking.js` | The ranking under the quiz result. |
 | `painel/painel-chave.js` | The Chave do Gemini card (skill `configuracoes`). |
 | `painel/painel-ia.js`, `painel/painel-ia-chatgpt.js`, `painel/painel-ia-modelo.js/css`, `painel/painel-ia-estado.js` | The IA dos cartões card: the OpenAI key column, the ChatGPT sign-in column and the model choice (skill `configuracoes`). |
+| `painel/painel-minerar-frases.js` | The Minerar frases menu and modal of the Frases area (skill `painel-frases`). |
 | `painel/painel-perigo.js` | The Zona de perigo card and the Apagar tudo confirmation (skill `configuracoes`). |
 | `painel/painel-abrir-anki.js` | The Conexão com o Anki card of Configurações: open the Anki with the computer, and the Perfil do Anki (skill `configuracoes`). |
 | `painel/painel-anki.js` | The Custos tab and the area's first-connection strip (skill `painel-anki`). |
+| `painel/painel-anki-envios.js` | The Envio list and detail of the Custos tab, cut out of `painel/painel-anki.js` (skill `painel-anki`). |
 | `painel/painel-anki-primeira-conexao.js`, `painel/painel-anki-primeira-conexao-estado.js` | The first-connection card over the tabs and its state machines. |
 | `painel/painel-conexao-passos.js`, `painel/painel-conexao-passos-pecas.js`, `painel/painel-conexao-arraste.js/css`, `painel/painel-conexao-passos-estado.js` | The steps to put the Conexão in the Anki, shared by Boas-vindas and the first-connection card. |
 | `painel/painel-anki-plano.js` | The Custos pieces that need no DOM: the ChatGPT plan card, the sums and the period. |
 | `painel/painel-anki-continuar.js` | The Continuar envio of the Custos detail. |
 | `painel/painel-anki-baralhos.js` | The Baralhos e termos and Vocabulário tabs. |
+| `painel/painel-anki-vocabulario.js` | The Vocabulário tab, cut out of `painel/painel-anki-baralhos.js` (skill `painel-anki`). |
 | `painel/painel-ajustes.js` | The Ajustes de envio tab, one card per Idioma. |
 | `painel/painel-anki-estilo.js`, `painel/painel-anki-previa.js`, `painel/painel-anki-tipo-proprio.js`, `painel/painel-previa.css` | The Estilo do cartão of Ajustes de envio: Nível, preview and own note type. |
 | `painel/painel-envio.js`, `painel/painel-envio-estado.js` | The Envio ao Anki modal and the state machines that follow an Envio. |
