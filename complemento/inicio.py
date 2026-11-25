@@ -10,7 +10,10 @@ import sys
 from . import abridor as abridores, item_de_login as itens_de_login, passagem as passagens, pasta_de_dados, registro, tipo_de_nota
 from .baralhos import ColecaoIndisponivel
 from .atualizacao import ARQUIVO_DE_QUEM_DESLIGOU, AnkiWebAusente, Atualizacao, RegistroDaAtualizacao
-from .configuracao import ATUALIZACAO_AUTOMATICA, OPENAI_BASE, OPENVERSE_BASE, ORIGENS_ACEITAS, PORTA, VERSAO, VOZ_BASE
+from .configuracao import ATUALIZACAO_AUTOMATICA, PORTA, VERSAO
+from .esperas import Esperas
+from .montagem_da_conexao import Ambiente, Fronteiras, Porta, montar
+from .servicos_de_fora import ServicosDeFora
 from .servidor import Conexao
 
 ABRIDOR_DESTE_COMPUTADOR = object()
@@ -22,12 +25,10 @@ def iniciar(
     perfil_aberto,
     *,
     porta=PORTA,
-    origens_aceitas=ORIGENS_ACEITAS,
     colecao=None,
     item_de_login=None,
-    openai_base=OPENAI_BASE,
-    openverse_base=OPENVERSE_BASE,
-    voz_base=VOZ_BASE,
+    servicos=ServicosDeFora(),
+    esperas=None,
     abridor=ABRIDOR_DESTE_COMPUTADOR,
     ao_abrir_o_perfil=None,
     passagem=PASSAGEM_DESTE_COMPUTADOR,
@@ -37,6 +38,7 @@ def iniciar(
     """Prepara `user_files`, escreve o abridor e sobe a Conexão, com o adaptador da coleção que ela lê. Devolve a Conexão, ou None se ela não subiu.
 
     O `item_de_login` é o de “Abrir o Anki com o computador”; sem ele, o deste computador (None onde não há).
+    Os `servicos` (`ServicosDeFora`) são onde ficam os serviços de fora e as `esperas` (`Esperas`), quanto dura cada espera; sem eles, os de verdade (cada Conexão com as suas esperas: levam o evento que as corta).
     O `abridor` é o de “Abrir o Anki sozinho” (`abridor.py`); omitido, o deste computador, em `user_files/abridor`.
     `abridor=None` desativa a escrita e o registro (testes); um abridor injetado só usa os destinos dele.
     Ele é escrito agora e de novo a cada perfil que abre (`ao_abrir_o_perfil` recebe a função que o reescreve; no Anki, o gancho
@@ -51,43 +53,50 @@ def iniciar(
     try:
         dados = pasta_de_dados.preparar(pasta_do_complemento)
         logger = registro.criar(dados.logs)
-        if abridor is ABRIDOR_DESTE_COMPUTADOR:
-            abridor = abridores.deste_computador(
-                computador=abridores.Computador(sys.platform, os.environ, sys.executable), pasta=os.path.join(dados.raiz, "abridor"),
-                complemento=pasta_do_complemento,
-            )
-        if item_de_login is None:
-            item_de_login = itens_de_login.deste_computador(plataforma=sys.platform, ambiente=os.environ, executavel=sys.executable)
-        conexao = Conexao(
-            porta=porta,
-            origens_aceitas=origens_aceitas,
-            versao=VERSAO,
-            perfil_aberto=perfil_aberto,
-            logger=logger,
-            dados=dados,
+        fronteiras = Fronteiras(
             colecao=colecao,
-            openai_base=openai_base,
-            openverse_base=openverse_base,
-            voz_base=voz_base,
-            item_de_login=item_de_login,
-            atualizacao=Atualizacao(
-                registro=RegistroDaAtualizacao(os.path.join(dados.raiz, "atualizacao.json"), VERSAO, logger), anki_web=anki_web or AnkiWebAusente(), logger=logger,
-                ligada=atualizacao_automatica and not os.path.exists(os.path.join(dados.raiz, ARQUIVO_DE_QUEM_DESLIGOU))),
-        )
-        _cuidar_do_perfil(conexao, abridor, ao_abrir_o_perfil, logger)
-        if passagem is PASSAGEM_DESTE_COMPUTADOR:
-            passagem = passagens.deste_computador(plataforma=sys.platform, ambiente=os.environ, porta=porta)
-        if passagem is not None and passagem.pendente(conexao):
-            conexao.iniciar_depois(lambda cancelado: passagem.fazer(conexao, cancelado))
-            conexao.atualizacao.iniciar()
-            return conexao
-        if not conexao.iniciar():
-            return None
-        conexao.atualizacao.iniciar()
-        return conexao
+            item_de_login=_item_de_login_deste_computador(item_de_login),
+            atualizacao=_atualizacao_do_anki(dados, anki_web, atualizacao_automatica, logger))
+        conexao = Conexao(Porta(porta), montar(Ambiente(dados, logger, VERSAO), servicos, esperas or Esperas(), fronteiras), perfil_aberto)
+        _cuidar_do_perfil(conexao, _abridor_deste_computador(abridor, pasta_do_complemento, dados), ao_abrir_o_perfil, logger)
+        return _subir(conexao, passagem, porta)
     except Exception:
         logger.exception("O complemento não conseguiu iniciar")
         return None
+
+
+def _abridor_deste_computador(abridor, pasta_do_complemento, dados):
+    if abridor is not ABRIDOR_DESTE_COMPUTADOR:
+        return abridor
+    return abridores.deste_computador(
+        computador=abridores.Computador(sys.platform, os.environ, sys.executable), pasta=os.path.join(dados.raiz, "abridor"),
+        complemento=pasta_do_complemento,
+    )
+
+
+def _item_de_login_deste_computador(item_de_login):
+    if item_de_login is not None:
+        return item_de_login
+    return itens_de_login.deste_computador(plataforma=sys.platform, ambiente=os.environ, executavel=sys.executable)
+
+
+def _atualizacao_do_anki(dados, anki_web, atualizacao_automatica, logger):
+    desligada = os.path.exists(os.path.join(dados.raiz, ARQUIVO_DE_QUEM_DESLIGOU))
+    return Atualizacao(
+        registro=RegistroDaAtualizacao(os.path.join(dados.raiz, "atualizacao.json"), VERSAO, logger), anki_web=anki_web or AnkiWebAusente(), logger=logger,
+        ligada=atualizacao_automatica and not desligada)
+
+
+def _subir(conexao, passagem, porta):
+    """Sobe a Conexão: já, ou depois da passagem do Windows (a Conexão de hoje na porta). Devolve a Conexão, ou None se a porta não deixou."""
+    if passagem is PASSAGEM_DESTE_COMPUTADOR:
+        passagem = passagens.deste_computador(plataforma=sys.platform, ambiente=os.environ, porta=porta)
+    if passagem is not None and passagem.pendente(conexao):
+        conexao.iniciar_depois(lambda cancelado: passagem.fazer(conexao, cancelado))
+    elif not conexao.iniciar():
+        return None
+    conexao.atualizacao.iniciar()
+    return conexao
 
 
 def _preparar_a_colecao(conexao, logger):

@@ -17,6 +17,7 @@ from complemento.test_pareamento_de_mentira import ao_carregar_pareado, pedir_co
 from complemento.test_anki_de_mentira import AnkiComColecaoDeMentira
 from complemento.test_colecao_em_memoria import DESCRICAO
 from complemento.test_no_anki import SemRegistroReal, ler_pelo_http
+from complemento.servicos_de_fora import ServicosDeFora
 
 
 def setUpModule():
@@ -129,7 +130,7 @@ class OPerfilFixoNoAnki(SemRegistroReal, unittest.TestCase):
             os.makedirs(os.path.join(pasta, "user_files"))
             with open(os.path.join(pasta, "user_files", "perfil.json"), "w", encoding="utf-8") as arquivo:
                 json.dump({"perfil": "Ana"}, arquivo)
-            conexao = ao_carregar_pareado(anki, pasta, porta=0, abridor=None, ao_sincronizar=lambda colecao: None, openai_base=openai.base)
+            conexao = ao_carregar_pareado(anki, pasta, porta=0, abridor=None, ao_sincronizar=lambda colecao: None, servicos=ServicosDeFora(openai=openai.base))
             try:
                 conexao.cofre.guardar("openai", "sk-proj-chave-do-anki-0000")
                 ler_pelo_http(conexao.porta, "/jobs", {"jobId": job, "lang": "en", "deckName": "Inglês",

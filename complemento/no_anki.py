@@ -11,7 +11,8 @@ from . import cartoes_do_anki, criacao_na_revisao, inicio, janela, registro
 from .criacao_no_anki import CriacaoNoAnki
 from .baralhos import ColecaoIndisponivel, PerfilIlegivel, TipoDeNotaAusente
 from .atualizacao_do_anki import AnkiWebDoAnki
-from .configuracao import OPENAI_BASE, OPENVERSE_BASE, PORTA, VERSAO, VOZ_BASE
+from .configuracao import PORTA, VERSAO
+from .servicos_de_fora import ServicosDeFora
 
 LIMITE_DA_LEITURA_S = 10
 ESPERA_DA_ENTRADA_S = 15
@@ -342,13 +343,14 @@ def _qt_do_anki(logger):
 
 
 def ao_carregar(mw, pasta_do_complemento, *, porta=PORTA, ao_abrir_o_perfil=_ao_abrir_o_perfil,
-                abridor=inicio.ABRIDOR_DESTE_COMPUTADOR, ao_sincronizar=_ao_sincronizar, openai_base=OPENAI_BASE,
-                openverse_base=OPENVERSE_BASE, voz_base=VOZ_BASE, qt=None,
+                abridor=inicio.ABRIDOR_DESTE_COMPUTADOR, ao_sincronizar=_ao_sincronizar, servicos=ServicosDeFora(),
+                esperas=None, qt=None,
                 ao_receber_mensagem=criacao_na_revisao.ao_receber_mensagem):
     """O que o Anki faz ao importar o complemento: devolve a Conexão, ou None se ela não subiu.
 
     Depois de subir (ou não), põe o item “PerpetualMiner…” em Ferramentas e o botão Config (#175) pela fronteira `qt`
-    (`qt_do_anki.QtDoAnki`; omitida, a do Anki). O nome da pasta do complemento é o que o Anki chama de módulo dele."""
+    (`qt_do_anki.QtDoAnki`; omitida, a do Anki). O nome da pasta do complemento é o que o Anki chama de módulo dele.
+    Os `servicos` (`ServicosDeFora`) e as `esperas` (`Esperas`) chegam à Conexão como são; omitidos, os de verdade."""
     colecao = ColecaoDoAnki(mw)
     try:
         ao_sincronizar(colecao)
@@ -362,9 +364,8 @@ def ao_carregar(mw, pasta_do_complemento, *, porta=PORTA, ao_abrir_o_perfil=_ao_
         colecao=colecao,
         ao_abrir_o_perfil=ao_abrir_o_perfil,
         abridor=abridor,
-        openai_base=openai_base,
-        openverse_base=openverse_base,
-        voz_base=voz_base,
+        servicos=servicos,
+        esperas=esperas,
         anki_web=AnkiWebDoAnki(mw, pasta_do_complemento),
     )
     _por_no_menu(mw, conexao, os.path.basename(os.path.abspath(pasta_do_complemento)), qt)
