@@ -23,6 +23,10 @@ A identidade compartilhada por todas as páginas da extensão. A decisão e as r
 <link rel="stylesheet" href="painel/painel.css">
 …
 <script src="lib/voz/catalogo.js"></script>
+<script src="lib/voz/catalogo-configuracoes.js"></script>
+<script src="lib/voz/catalogo-anki.js"></script>
+<script src="lib/voz/catalogo-boas-vindas.js"></script>
+<script src="lib/voz/catalogo-envio.js"></script>
 <script src="lib/voz/texto.js"></script>
 <script src="veio/componentes.js"></script>
 ```

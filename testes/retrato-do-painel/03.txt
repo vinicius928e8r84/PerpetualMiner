@@ -1,5 +1,9 @@
   <iframe hidden id="abridor-ponte" src="../abridor/ponte.html">
   <script src="/lib/voz/catalogo.js">
+  <script src="/lib/voz/catalogo-configuracoes.js">
+  <script src="/lib/voz/catalogo-anki.js">
+  <script src="/lib/voz/catalogo-boas-vindas.js">
+  <script src="/lib/voz/catalogo-envio.js">
   <script src="/lib/voz/catalogo-nivel.js">
   <script src="/lib/voz/texto.js">
   <script src="/lib/ajustes-de-envio.js">
