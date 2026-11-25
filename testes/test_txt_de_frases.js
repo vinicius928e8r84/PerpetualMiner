@@ -1,32 +1,16 @@
 'use strict';
 
 const assert = require('assert');
-const fs = require('fs');
-const vm = require('vm');
-
-function fantasma() {
-  return new Proxy(function () {}, {
-    get: (_, chave) => (chave === Symbol.toPrimitive ? () => '' : chave === 'then' ? undefined : fantasma()),
-    apply: () => fantasma(),
-    construct: () => fantasma(),
-    has: () => true,
-    set: () => true,
-  });
-}
 
 function carregarOFormato() {
-  const contexto = { console, document: fantasma(), chrome: fantasma(), window: fantasma(), navigator: fantasma(), Blob, URL, setTimeout, clearTimeout, Date, Promise };
-  contexto.PerpetualMiner = new Proxy({}, { get: (alvo, chave) => (chave in alvo ? alvo[chave] : fantasma()), set: (alvo, chave, valor) => { alvo[chave] = valor; return true; } });
-  contexto.globalThis = contexto;
-  vm.createContext(contexto);
-  vm.runInContext(fs.readFileSync('lib/mineracao.js', 'utf8'), contexto, { filename: 'lib/mineracao.js' });
-  vm.runInContext(fs.readFileSync('painel/painel.js', 'utf8'), contexto, { filename: 'painel/painel.js' });
-  const comoPlano = valor => JSON.parse(JSON.stringify(valor));
-  const guardar = (frase, palavras) => vm.runInContext('(frase, palavras) => { keywords[frase.id] = palavras; }', contexto)(frase, palavras);
+  globalThis.PerpetualMiner = {};
+  require('../lib/mineracao.js');
+  require('../lib/txt-de-frases.js');
+  const { TxtDeFrases } = globalThis.PerpetualMiner;
   return {
-    ler: linha => comoPlano(contexto.lerLinhaDoTxt(linha)),
-    escrever: (frase, palavras) => { guardar(frase, palavras); return contexto.linhaDoTxt(frase); },
-    escreverParaOAnki: (frase, palavras) => { guardar(frase, palavras); return contexto.linhaParaOAnki(frase); },
+    ler: linha => JSON.parse(JSON.stringify(TxtDeFrases.ler(linha))),
+    escrever: (frase, palavras) => TxtDeFrases.escrever(frase, palavras),
+    escreverParaOAnki: (frase, palavras) => TxtDeFrases.escreverParaOAnki(frase, palavras),
   };
 }
 
