@@ -95,54 +95,49 @@ async function recomecar() {
   await clicar(sair(), OK(true), 'nenhum');
 }
 
-async function cadaDesfechoDoSair() {
+async function percorrer(casos, passo) {
   const vistos = {};
   await recomecar();
-  for (const [nome, resposta, depois] of SAIDAS) {
-    await lerComoLogin('conectada');
-    vistos[nome] = await clicar(sair(), resposta, depois);
-  }
+  for (const [nome, ...parametros] of casos) vistos[nome] = await passo(...parametros);
   return vistos;
 }
 
-async function cadaEstadoDaColuna() {
-  const vistos = {};
-  await recomecar();
-  for (const [nome, login, temChave] of [['plano com chave', 'conectada', true], ['plano sem chave', 'conectada', false], ['sem login', 'nenhum', true], ['esperando', 'entrando', true]]) {
-    mundo.temChave = temChave;
-    await lerComoLogin(login);
-    vistos[nome] = tela();
-  }
-  vistos.cancelado = (await clicar(textoDaVoz('CFG-35.chaveCancelar'))).coluna;
-  for (const login of ['acabou', 'semPlano']) {
-    await lerComoLogin(login);
-    vistos[login] = tela();
-  }
-  mundo.temChave = true;
-  return vistos;
-}
+const cadaDesfechoDoSair = () => percorrer(SAIDAS, async (resposta, depois) => {
+  await lerComoLogin('conectada');
+  return clicar(sair(), resposta, depois);
+});
 
-async function cadaEntradaQueNaoAbre() {
-  const vistos = {};
-  await recomecar();
+const ESTADOS = [
+  ['plano com chave', 'conectada', true],
+  ['plano sem chave', 'conectada', false],
+  ['sem login', 'nenhum', true],
+  ['esperando', 'entrando', true],
+  ['cancelado', 'entrando', true, 'CFG-35.chaveCancelar'],
+  ['acabou', 'acabou', true],
+  ['semPlano', 'semPlano', true],
+];
+
+const cadaEstadoDaColuna = () => percorrer(ESTADOS, async (login, temChave, cancelar) => {
+  mundo.temChave = temChave;
+  await lerComoLogin(login);
+  return cancelar ? (await clicar(textoDaVoz(cancelar))).coluna : tela();
+});
+
+const ENTRADAS = [['sem conexão', { status: null, dados: null }], ['sem endereço', { status: 200, dados: { url: 'https://evil.exemplo/' } }]];
+
+const cadaEntradaQueNaoAbre = () => percorrer(ENTRADAS, async resposta => {
   await lerComoLogin('nenhum');
-  for (const [nome, resposta] of [['sem conexão', { status: null, dados: null }], ['sem endereço', { status: 200, dados: { url: 'https://evil.exemplo/' } }]]) {
-    fila.entrar.push(resposta);
-    vistos[nome] = await clicar(textoDaVoz('CFG-35.chatgptBotao'));
-  }
-  return vistos;
-}
+  fila.entrar.push(resposta);
+  return clicar(textoDaVoz('CFG-35.chatgptBotao'));
+});
 
-async function usarAChave() {
-  const vistos = {};
-  await recomecar();
-  for (const [nome, login, resposta] of [['com o login acabado', 'acabou', OK(true)], ['sem login acabado', 'semPlano']]) {
-    campos.length = 0;
-    await lerComoLogin(login);
-    vistos[nome] = { ...(await clicar(textoDaVoz('CFG-35.erroChatgptUsarChave'), resposta, 'nenhum')), campos: campos.slice() };
-  }
-  return vistos;
-}
+const CHAVES = [['com o login acabado', 'acabou', OK(true)], ['sem login acabado', 'semPlano']];
+
+const usarAChave = () => percorrer(CHAVES, async (login, resposta) => {
+  campos.length = 0;
+  await lerComoLogin(login);
+  return { ...(await clicar(textoDaVoz('CFG-35.erroChatgptUsarChave'), resposta, 'nenhum')), campos: campos.slice() };
+});
 
 async function doisCliquesSeguidosPedemUmaSaidaSo() {
   await recomecar();

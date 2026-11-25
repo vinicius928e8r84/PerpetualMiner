@@ -129,22 +129,15 @@ class OResumoPorPeriodo(unittest.TestCase):
 
     def test_cada_periodo_soma_so_os_registros_do_dia_dele_em_diante(self):
         resumo = self.resumo(REGISTROS)
-        self.assertEqual(resumo["today"], {
-            "total_usd": 0.955, "by_model": {"gpt-4o": 0.5, "gpt-4o-mini": 0.25, "dall-e-3-1024": 0.04, "gpt-image-1": 0.04},
-            "n_cards": 3, "n_images_dalle": 2, "n_images_google": 1,
-        })
-        self.assertEqual(resumo["week"], {
-            "total_usd": 1.955, "by_model": {"gpt-4o": 1.5, "gpt-4o-mini": 0.25, "dall-e-3-1024": 0.04, "gpt-image-1": 0.04},
-            "n_cards": 5, "n_images_dalle": 2, "n_images_google": 1,
-        })
-        self.assertEqual(resumo["month"], {
-            "total_usd": 7.995, "by_model": {"gpt-4o": 3.5, "gpt-4o-mini": 4.25, "dall-e-3-1024": 0.08, "gpt-image-1": 0.04},
-            "n_cards": 5, "n_images_dalle": 3, "n_images_google": 1,
-        })
-        self.assertEqual(resumo["alltime"], {
-            "total_usd": 16.015, "by_model": {"gpt-4o": 11.5, "gpt-4o-mini": 4.25, "dall-e-3-1024": 0.08, "gpt-image-1": 0.04},
-            "n_cards": 15, "n_images_dalle": 3, "n_images_google": 2,
-        })
+        esperados = {
+            "today": (0.955, {"gpt-4o": 0.5, "gpt-4o-mini": 0.25, "dall-e-3-1024": 0.04, "gpt-image-1": 0.04}, 3, 2, 1),
+            "week": (1.955, {"gpt-4o": 1.5, "gpt-4o-mini": 0.25, "dall-e-3-1024": 0.04, "gpt-image-1": 0.04}, 5, 2, 1),
+            "month": (7.995, {"gpt-4o": 3.5, "gpt-4o-mini": 4.25, "dall-e-3-1024": 0.08, "gpt-image-1": 0.04}, 5, 3, 1),
+            "alltime": (16.015, {"gpt-4o": 11.5, "gpt-4o-mini": 4.25, "dall-e-3-1024": 0.08, "gpt-image-1": 0.04}, 15, 3, 2),
+        }
+        for periodo, (total, por_modelo, cartoes, dalle, google) in esperados.items():
+            with self.subTest(periodo):
+                self.assertEqual(resumo[periodo], dict(vazio(), total_usd=total, by_model=por_modelo, n_cards=cartoes, n_images_dalle=dalle, n_images_google=google))
 
     def test_cada_tipo_de_registro_soma_so_o_que_e_dele(self):
         casos = [
