@@ -1,13 +1,5 @@
 'use strict';
 
-// Um teste de tempo não monta o próprio relógio (#209). `page.clock.install` deixa o relógio correndo, e uma
-// `pauseAt` com a margem inventada pelo teste fica no passado quando o comando seguinte demora: no #183, o timer
-// de 1,4 s corria antes da assertion (edc5a109) e, com 1.701 ms de atraso, a pausa de um segundo à frente foi
-// recusada com “Cannot fast-forward to the past” (e426f7c). A montagem mora num dono só, e2e/relogio-parado.js,
-// atrás da fixture `relogioParado` (e2e/fixtures.js): ela prepara o instante e a pausa juntos, antes de navegar,
-// com uma margem maior que o prazo do teste. Esta regra acusa `clock.install` e `clock.pauseAt` em qualquer outro
-// arquivo de e2e/.
-
 const { linhaDe, semComentariosJs } = require('./comum');
 
 const id = 'relogio-fora-da-fixture';

@@ -104,8 +104,6 @@ assert.deepStrictEqual(coautoresDeFora('Tira o Co-authored-by: Claude <noreply@a
   assert.strictEqual(rodarAutoria().status, 0, 'o comando da mensagem refaz a autoria também com merge');
   assert(gitA(EMAIL_DO_DONO, 'log', '--merges', '--format=%H', 'main..HEAD').trim(), 'o merge continua no histórico');
 
-  // Daqui em diante os commits são assinados e o clone tem log.showSignature ligado: o git log põe a linha da assinatura
-  // antes de cada commit, e nem a conferência nem o comando do conserto a leem.
   const chave = path.join(repoDeAutoria, '.git', 'chave-de-teste');
   execFileSync('ssh-keygen', ['-q', '-t', 'ed25519', '-N', '', '-C', '', '-f', chave]);
   fs.writeFileSync(`${chave}.permitidos`, `${EMAIL_DO_DONO} ${fs.readFileSync(`${chave}.pub`, 'utf8')}`);
@@ -128,7 +126,6 @@ assert.deepStrictEqual(coautoresDeFora('Tira o Co-authored-by: Claude <noreply@a
     && !comCoautor.stdout.includes('No assunto'), `a mensagem nomeia só o commit dos co-autores: ${comCoautor.stdout}`);
   assert(comCoautor.stdout.includes(`\n    ${gitA(EMAIL_DO_DONO, 'rev-parse', 'HEAD').slice(0, 7)} com co-autor (`), `a linha da assinatura não entra no sha: ${comCoautor.stdout}`);
   const [, opcoes, refazer] = /git (-c \S+ )rebase --rebase-merges --exec '([^']+)' main/.exec(comCoautor.stdout);
-  // Quem roda o conserto tem commit.cleanup=strip, que tira de uma mensagem regravada as linhas que começam com #.
   gitA(EMAIL_DO_DONO, 'config', 'commit.cleanup', 'strip');
   const rodarConserto = () => spawnSync('git', [...opcoes.trim().split(' '), 'rebase', '-q', '--rebase-merges', '--exec', refazer, 'main'], {
     cwd: repoDeAutoria, encoding: 'utf8',

@@ -2,7 +2,6 @@
 
 set -u
 
-# O launchd começa com um PATH mínimo, sem o Homebrew.
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
 RAMO=main

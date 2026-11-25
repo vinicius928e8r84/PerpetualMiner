@@ -1,10 +1,5 @@
 'use strict';
 
-// A prova de que a regra testes-no-portao lê um workflow com CRLF como lê o mesmo com LF (scripts/yaml-de-workflow.js).
-// Num clone com core.autocrlf=true (o padrão do Git for Windows) os arquivos chegam com CRLF. O leitor parava num `run: |`
-// com CRLF e escondia os passos seguintes do job: o grupo complemento "sumia" do testes.yml, o verificador acusava
-// scripts/testes.json e o gancho pre-push barrava todo push feito do Windows (o CI, em Linux, passava).
-
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');

@@ -21,13 +21,9 @@ pm_pasta_da_execucao() {
   printf '%s\n' "$run"
 }
 
-# The identity of a process: when it started and its command line. A pid alone proves nothing (pids are reused).
 pm_inicio_do_processo() { ps -o lstart= -p "$1" 2>/dev/null | tr -s ' ' | sed 's/^ //; s/ $//'; }
 pm_comando_do_processo() { ps -o args= -p "$1" 2>/dev/null; }
 pm_vivo() { local estado; estado="$(ps -o stat= -p "$1" 2>/dev/null)"; [ -n "$estado" ] && [[ "$estado" != Z* ]]; }
-
-# drive.pid, one value per line: 1 drive.sh pid, 2 its start time, 3 its exact command line, 4 the canonical path of
-# the drive.sh that wrote it, 5 the process group drive.sh gave the Playwright job, 6 that group leader's start time.
 
 pm_registrar_dono() { { echo "$2"; pm_inicio_do_processo "$2"; pm_comando_do_processo "$2"; echo "$3"; } > "$1/drive.pid"; }
 
@@ -41,7 +37,6 @@ pm_dono_confere() {
   [ "$(pm_inicio_do_processo "$pid")" = "$inicio" ] || return 1
   comando="$(pm_comando_do_processo "$pid")"
   [ "$comando" = "$gravado" ] || return 1
-  # IFS is reset here: pm_alvos is called from a caller that sets IFS to newline, which would leave the command in one word.
   IFS=$' \t\n' read -r -a palavras <<< "$comando"
   for i in 0 1 2; do
     [ "$(basename "${palavras[$i]:-}")" = drive.sh ] && [ "${palavras[$((i + 1))]:-}" = "$2" ] && return 0
@@ -51,9 +46,6 @@ pm_dono_confere() {
 
 pm_membros_do_grupo() { ps -axo pid=,pgid=,stat= 2>/dev/null | awk -v g="$1" -v eu="$$" '$2 == g && $1 != eu && $3 !~ /^Z/ { print $1 }'; }
 
-# pm_grupo_confere <run-dir> <canonical drive.sh path of this checkout>: true when drive.pid was written by this
-# checkout's drive.sh and records a group that still has members and is still the recorded one. A group id cannot be reused while any member lives; if its leader pid is alive again with another start time,
-# the recorded group is gone and the number belongs to something else.
 pm_grupo_confere() {
   local pidfile="$1/drive.pid" pgid inicio atual
   [ -f "$pidfile" ] || return 1

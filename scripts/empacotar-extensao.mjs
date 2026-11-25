@@ -93,10 +93,6 @@ function cabecalho(tamanho, campos) {
   return buffer;
 }
 
-// O manifest do repositório leva `key` (fixa o ID da extensão carregada da
-// pasta no mesmo ID do item da loja); o do zip não, porque a loja atribui a
-// chave dela e pode recusar o campo. Tira só a linha, para o resto do arquivo
-// sair idêntico.
 function manifestoSemChave(texto) {
   const semChave = texto.replace(/^[ \t]*"key"[ \t]*:[ \t]*"[^"\n]*",?[ \t]*\r?\n/m, '');
   if ('key' in JSON.parse(semChave)) throw new Error('não consegui tirar "key" do manifest do pacote');

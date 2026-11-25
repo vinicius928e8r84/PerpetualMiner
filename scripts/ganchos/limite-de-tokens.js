@@ -10,7 +10,7 @@ const { mensagemDeAfrouxamento, mensagemDeErro, tokensDe } = require('./mensagen
 const { globParaRegex } = require('./globs.js');
 const { carregarConfiguracao, lerConfiguracao, mensagemDeConfiguracao } = require('./configuracao-do-indice.js');
 const LIMITE_DE_BYTES = 20000;
-const BYTES_LIDOS_PARA_BINARIO = 8000; // a mesma janela que o git usa para decidir se é binário
+const BYTES_LIDOS_PARA_BINARIO = 8000;
 
 
 const emCache = new WeakMap();
@@ -142,7 +142,7 @@ function arquivosPreparados(raiz, desde = null) {
   const achados = [];
   for (let i = 0; i + 1 < pedacos.length; i += 2) {
     const [, modoNovo, , oid] = pedacos[i].split(' ');
-    if (modoNovo === '160000' || modoNovo === '120000') continue; // submódulo e link simbólico
+    if (modoNovo === '160000' || modoNovo === '120000') continue;
     achados.push({ caminho: pedacos[i + 1], oid });
   }
   const tamanhos = tamanhosDosBlobs(raiz, achados.map(a => a.oid));
@@ -271,7 +271,7 @@ function atualizarLinhaDeBaseDoIndice(raiz, config, doIndice) {
 }
 
 function conferirContraBase(raiz, ref) {
-  if (/^0+$/.test(ref)) { // o primeiro push de um ramo: sem base, como em scripts/regras/verificar.js
+  if (/^0+$/.test(ref)) {
     process.stdout.write('aviso: sem base de comparação (primeiro push); o limite de tamanho não foi conferido\n');
     return 0;
   }

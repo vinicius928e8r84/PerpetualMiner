@@ -70,13 +70,11 @@ const comOsTetosDoBookreader = (linhaDeBase, fonte) => {
 };
 const comLinhas = (fonte, linhaDeBase) => ({ 'bookreader/bookreader.js': fonte, 'scripts/regras/linha-de-base.json': comOsTetosDoBookreader(linhaDeBase, fonte) });
 
-// ANTES: o arquivo real passado de 1.000 linhas, fora da lista, falha com o arquivo, a contagem, o teto e o conserto.
 let r = verificar(comLinhas(acima, LIMPO));
 assert.strictEqual(r.status, 1, r.saida);
 assert.match(r.saida, /✗ limite-de-linhas — bookreader\/bookreader\.js: 1037 linhas; o teto é 1000 \(37 acima\)/);
 assert.match(r.saida, /Divida o arquivo por responsabilidade em módulos menores/);
 total += 3;
-// DEPOIS: o mesmo arquivo de volta ao tamanho real passa.
 r = verificar(comLinhas(bookreader, LIMPO));
 assert.strictEqual(r.status, 0, r.saida);
 total++;

@@ -108,8 +108,6 @@ r = empurrar('origin', 'v-teste');
 assert.strictEqual(r.status, 0, saida(r));
 assert(!/pre-push:/.test(saida(r)), saida(r));
 
-// Um clone com core.autocrlf=true (o padrão do Git for Windows), em que os workflows e o cadastro chegam com CRLF: a branch
-// certa sobe igual. Antes o verificador lia o workflow com CRLF pela metade e o gancho barrava todo push no Windows.
 {
   const comCRLF = path.join(pasta, 'trabalho-crlf');
   git(pasta, 'clone', '-q', '-c', 'core.autocrlf=true', remoto, comCRLF);

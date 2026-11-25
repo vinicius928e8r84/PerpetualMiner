@@ -73,7 +73,6 @@ function escolherPython(env, raiz) {
 function dicaDeModulo(nome, grupo, saidaDeErro, python) {
   if (!/ModuleNotFoundError/.test(saidaDeErro)) return '';
   const falta = /No module named '([^']+)'/.exec(saidaDeErro);
-  // No .venv um pip solto instalaria fora dele; o Python do venv instala nele.
   const precisa = python.origem === 'venv' && grupo.precisa ? grupo.precisa.replace(/\bpip install/g, '.venv/bin/python -m pip install') : grupo.precisa;
   const preparo = python.origem === 'python3'
     ? '\n  numa worktree nova: scripts/preparar-python.sh cria o .venv e instala tudo; este comando passa a usá-lo sozinho'
