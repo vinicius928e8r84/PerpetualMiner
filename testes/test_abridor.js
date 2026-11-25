@@ -7,7 +7,6 @@ const vm = require('vm');
 
 const contrato = require('../complemento/contrato/carregar.js');
 
-// Os objetos que saem do `vm` têm outro protótipo: compara-se o valor deles.
 const comoValores = async promessa => JSON.parse(JSON.stringify(await promessa));
 
 const exemploDoAbridor = (acao, anki) => contrato.abridor.exemplos

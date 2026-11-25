@@ -10,7 +10,6 @@ const ORIGEM = `${contrato.origemDaExtensao}/`;
 
 function conversar(fake, mensagem, espera = 5000) {
   return new Promise((resolve, reject) => {
-    // No Windows o programa é um `.cmd`, que o Node só roda por um shell.
     const host = process.platform === 'win32' ? spawn(`"${fake.programa}"`, [ORIGEM], { shell: true }) : spawn(fake.programa, [ORIGEM]);
     let saida = Buffer.alloc(0);
     const tempo = setTimeout(() => { host.kill(); resolve(null); }, espera);

@@ -17,11 +17,9 @@ const comoEvento = evento => (typeof evento === 'string' ? { tipo: evento } : ev
 const depoisDe = (eventos, comeco = inicial()) => eventos.reduce((maquina, evento) => proxima(maquina, comoEvento(evento)), comeco);
 const visto = maquina => [maquina.estado, maquina.versao];
 
-// --- a lista é fechada ----------------------------------------------------------------------------------------------------------
 assert.deepStrictEqual(Object.values(ESTADO).sort(), ['atualizada', 'atualizando', 'emDia', 'falhou', 'naoReiniciou', 'noDisco', 'reiniciando', 'semAbridor', 'semConexao', 'velha']);
 assert.strictEqual(inicial().estado, ESTADO.SEM_CONEXAO);
 
-// --- o que a saúde diz, sem a pessoa ter feito nada -----------------------------------------------------------------------------
 assert.deepStrictEqual(visto(depoisDe([SEM_CONEXAO])), [ESTADO.SEM_CONEXAO, null]);
 for (const versao of ['0.4.0', '0.4.2', '1.0.0']) assert.strictEqual(depoisDe([leitura(versao)]).estado, ESTADO.EM_DIA, versao);
 assert.strictEqual(depoisDe([leitura('0.4.2', { estado: 'falhou', versao: '0.4.2', atualizada: null })]).estado, ESTADO.EM_DIA);
@@ -34,15 +32,12 @@ assert.deepStrictEqual(visto(depoisDe([NO_DISCO])), [ESTADO.NO_DISCO, '0.4.5']);
 assert.strictEqual(depoisDe([leitura('0.3.8', { estado: 'instalada', versao: '0.3.9', atualizada: null })]).estado, ESTADO.VELHA);
 assert.deepStrictEqual(visto(depoisDe([NOVA])), [ESTADO.ATUALIZADA, '0.4.5']);
 
-// --- “Conexão atualizada” uma vez por versão ------------------------------------------------------------------------------------
-// Já vista em outra vez (storage): não volta.
 assert.strictEqual(depoisDe([NOVA], inicial({ vista: '0.4.5' })).estado, ESTADO.EM_DIA);
 const mostrada = depoisDe([NOVA, EVENTO.MOSTROU]);
 assert.deepStrictEqual([mostrada.estado, mostrada.vista], [ESTADO.ATUALIZADA, '0.4.5']);
 assert.strictEqual(depoisDe([NOVA], mostrada).estado, ESTADO.ATUALIZADA);
 assert.strictEqual(depoisDe([EVENTO.FECHOU, NOVA], mostrada).estado, ESTADO.EM_DIA);
 
-// --- Atualizar agora ------------------------------------------------------------------------------------------------------------
 const atualizando = depoisDe([VELHA, EVENTO.ATUALIZAR]);
 assert.strictEqual(atualizando.estado, ESTADO.ATUALIZANDO);
 assert.strictEqual(depoisDe([VELHA, SEM_CONEXAO, VELHA], atualizando).estado, ESTADO.ATUALIZANDO);
@@ -56,7 +51,6 @@ for (const comeco of [[SEM_CONEXAO], [leitura('0.4.2')], [NO_DISCO], [NOVA], [VE
   assert.strictEqual(proxima(antes, { tipo: EVENTO.ATUALIZAR }), antes, JSON.stringify(comeco));
 }
 
-// --- Reiniciar o Anki -----------------------------------------------------------------------------------------------------------
 const reiniciando = depoisDe([NO_DISCO, EVENTO.REINICIAR]);
 assert.strictEqual(reiniciando.estado, ESTADO.REINICIANDO);
 assert.strictEqual(depoisDe([SEM_CONEXAO], reiniciando).estado, ESTADO.REINICIANDO);
@@ -85,7 +79,6 @@ for (const tipo of [EVENTO.ATUALIZOU, EVENTO.REINICIOU, EVENTO.NAO_REINICIOU, EV
   assert.strictEqual(proxima(antes, { tipo, resultado: { estado: 'instalada', versao: '0.4.5' } }), antes, tipo);
 }
 
-// --- nenhum estado é um beco: de cada um, algum evento leva a outro -------------------------------------------------------------
 function anotarSaida(saidas, de, para) {
   if (de === para) return;
   saidas.set(de, (saidas.get(de) || new Set()).add(para));
