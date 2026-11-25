@@ -4,6 +4,7 @@ const { test, expect } = require('../fixtures');
 const DEN = 'PerpetualMiner::Inglês', DRU = 'PerpetualMiner::Russo';
 const { fotografar, registrarEstado } = require('../evidencias-mineracao');
 const { leituraDoVocabulario: leitura } = require('../leitura-do-vocabulario');
+const { segurarALeituraDaPagina, segurarALeituraDoServiceWorker, quebrarALeituraDoServiceWorker } = require('../apoio-da-leitura-do-popup');
 const POPUP = 'popup/popup.html';
 
 const HOJE = new Date().toLocaleDateString('pt-BR');
@@ -192,16 +193,7 @@ test('a frase minerada em outra aba aparece no topo na hora', async ({ page, ext
 
 test('carregando (POP-01): só esqueleto, sem texto', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: SETE_FRASES });
-  await page.addInitScript(() => {
-    const ler = chrome.storage.local.get.bind(chrome.storage.local);
-    chrome.storage.local.get = (chaves, callback) => {
-      if (chaves && typeof chaves === 'object' && 'frases' in chaves) {
-        window.soltarLeitura = () => ler(chaves, callback);
-        return undefined;
-      }
-      return ler(chaves, callback);
-    };
-  });
+  await segurarALeituraDaPagina(page, 'frases');
   await page.goto(extensao.url(POPUP));
 
   await expect(page.locator('#ultimas .veio-esqueleto')).not.toHaveCount(0);
@@ -358,16 +350,7 @@ test('o limite atingido enquanto a pessoa está no campo troca o campo por POP-0
 });
 
 test('mineração automática carregando: esqueleto nos azulejos, sem texto', async ({ page, extensao }) => {
-  await extensao.serviceWorker.evaluate(() => {
-    const ler = chrome.storage.local.get.bind(chrome.storage.local);
-    chrome.storage.local.get = (chaves, callback) => {
-      if (chaves && typeof chaves === 'object' && 'pm_auto_miner_settings' in chaves) {
-        globalThis.soltarLeitura = () => ler(chaves, callback);
-        return undefined;
-      }
-      return ler(chaves, callback);
-    };
-  });
+  await segurarALeituraDoServiceWorker(extensao, 'pm_auto_miner_settings');
   await page.goto(extensao.url(POPUP));
 
   const azulejos = page.locator('#azulejos');
@@ -386,15 +369,7 @@ test('mineração automática sem o estado do service worker: POP-16 diz o que f
     en: { ligado: true, limite: 20, hoje: 3 },
     ru: { ligado: false, limite: 20, hoje: 0 },
   });
-  await extensao.serviceWorker.evaluate(() => {
-    globalThis.lerDeVerdade = chrome.storage.local.get.bind(chrome.storage.local);
-    chrome.storage.local.get = (chaves, callback) => {
-      if (chaves && typeof chaves === 'object' && 'pm_auto_miner_settings' in chaves) {
-        throw new Error('IO error: disco ilegível');
-      }
-      return globalThis.lerDeVerdade(chaves, callback);
-    };
-  });
+  await quebrarALeituraDoServiceWorker(extensao, 'pm_auto_miner_settings', 'IO error: disco ilegível');
   await page.goto(extensao.url(POPUP));
 
   const erro = page.locator('#azulejos').getByRole('alert');
