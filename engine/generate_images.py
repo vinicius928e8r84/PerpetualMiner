@@ -1,17 +1,3 @@
-"""
-generate_images.py — Generate images via OpenAI Images API and save to Output/.
-
-Reads keyword:prompt pairs from prompts.txt (written by extract_prompts.py).
-Output filenames: {stem}.png  (stem matches the keyword's safe filename).
-
-The key comes bound (`config["pela_chave"]`, a `provedores.PelaChave`), never as a secret. Model is read from config (openai.image_model). gpt-image-* models return
-base64 (b64_json); dall-e-* historically returned a URL. Both are handled.
-
-A failed generation (model retired or unavailable, rate limit, network, ...) never
-raises out of this module: the card just goes on without a generated image and the
-reason is printed and appended to log/image_generation_failures.jsonl.
-"""
-
 import base64
 import json
 import logging
@@ -21,7 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable, List, Optional
 
-if __package__:  # inside the Anki add-on the engine is the package `complemento.motor`
+if __package__:
     from . import openai_http, provedores
 else:
     import openai_http
@@ -33,14 +19,12 @@ FAILURES_LOG = "image_generation_failures.jsonl"
 
 
 def _failure_reason(exc: Exception) -> str:
-    """Short label for why a generation failed: model_unavailable or generation_error."""
     if isinstance(exc, provedores.ErroDoProvedor) and exc.status == 404:
         return "model_unavailable"
     return "generation_error"
 
 
 def _log_failure(config: dict, stem: str, exc: Exception) -> str:
-    """Log the failure and append it to the log dir. Returns the reason label."""
     reason = _failure_reason(exc)
     model = config["openai"]["image_model"]
     LOGGER.warning("Geração de imagem falhou para '%s' (%s, modelo %s): %s", stem, reason, model, exc)
@@ -62,7 +46,6 @@ def _log_failure(config: dict, stem: str, exc: Exception) -> str:
 
 
 def _save_from_response(item: dict, dest: Path) -> bool:
-    """Persist one image result to *dest*, handling both b64 and URL payloads."""
     b64 = item.get("b64_json")
     if b64:
         return _save_gpt_image_base64(b64, dest)
@@ -70,7 +53,6 @@ def _save_from_response(item: dict, dest: Path) -> bool:
 
 
 def _save_gpt_image_base64(b64: str, dest: Path) -> bool:
-    """gpt-image-* models return the image's bytes in base64."""
     try:
         dest.write_bytes(base64.b64decode(b64))
         return True
@@ -79,7 +61,6 @@ def _save_gpt_image_base64(b64: str, dest: Path) -> bool:
 
 
 def _download_legacy_dall_e_url(url: Optional[str], dest: Path) -> bool:
-    """dall-e models return a URL to download the image from."""
     if url and url.startswith(("http://", "https://")):
         try:
             with urllib.request.urlopen(urllib.request.Request(url), timeout=60, context=openai_http.contexto_tls()) as r:
@@ -92,16 +73,10 @@ def _download_legacy_dall_e_url(url: Optional[str], dest: Path) -> bool:
 
 
 def _generate(config: dict, prompt: str) -> dict:
-    """Ask the Images API for one image through the bound key (`config["pela_chave"]`): the answer's first item (`{}` if none)."""
     return config["pela_chave"].imagem(config["openai"]["image_model"], prompt, config["openai"]["image_size"])
 
 
 def generate_one(config: dict, stem: str, prompt: str, dest: Optional[Path] = None) -> bool:
-    """Generate a single image for one prompt and save it to Output/{stem}.png.
-
-    Returns False (never raises) when the generation fails, so the caller keeps the
-    card without a generated image.
-    """
     try:
         output_dir = Path(config["paths"]["output_dir"])
         output_dir.mkdir(exist_ok=True)
@@ -118,11 +93,6 @@ def run(
     config: dict,
     progress_callback: Optional[Callable[[int, int, str], None]] = None,
 ) -> List[str]:
-    """Generate and download one image per prompt in prompts.txt.
-
-    progress_callback(done, total, stem) is called after each image attempt.
-    Returns list of successfully downloaded filenames.
-    """
     output_dir  = Path(config["paths"]["output_dir"])
     log_dir     = Path(config["paths"]["log_dir"])
     prompts_file = Path(config["paths"]["prompts_file"])

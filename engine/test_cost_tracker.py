@@ -1,6 +1,3 @@
-"""O registro de custos do motor: cada pedido vira uma linha de `costs.jsonl`, com o preço de tabela do modelo, e o `summary` soma
-as linhas por período."""
-
 import json
 import tempfile
 import unittest

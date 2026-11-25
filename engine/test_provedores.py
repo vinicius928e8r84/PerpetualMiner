@@ -1,8 +1,3 @@
-"""A camada de provedor: o que o motor pede por `provedores.texto` e `provedores.imagem` chega à OpenAI como chegava antes da camada.
-
-Uma OpenAI de mentira (um servidor local) responde no lugar da de verdade; o endereço dela vai na credencial, por código.
-"""
-
 import unittest
 
 import openai_http

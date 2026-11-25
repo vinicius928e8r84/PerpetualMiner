@@ -1,5 +1,3 @@
-"""A configuração do motor lida sem PyYAML e sem dotenv: o arquivo `config.json` e a chave de onde ela vier."""
-
 import json
 import os
 import tempfile

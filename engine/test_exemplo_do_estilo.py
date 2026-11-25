@@ -1,5 +1,3 @@
-"""O exemplo de Cartão de cada estilo (`estilos.json`, #164): o texto que a prévia mostra, visto de fora: a nota que o Envio gravaria dele."""
-
 import unittest
 
 import estilos
@@ -7,8 +5,6 @@ from test_nota_do_cartao import cores_de, nota
 
 
 class OCartaoDeExemploDeCadaEstilo(unittest.TestCase):
-    """O exemplo que a prévia mostra (`estilos.json`) é um texto de Cartão como o modelo o escreve: vira a nota que o Envio gravaria."""
-
     def exemplos(self):
         for lang in estilos.idiomas():
             for nivel in estilos.niveis(lang):

@@ -1,5 +1,3 @@
-"""A nota que o texto de um Cartão vira, campo por campo, no estilo do idioma e do nível: o que a Conexão grava no tipo de nota."""
-
 import copy
 import re
 import unittest
@@ -110,7 +108,6 @@ Alignment:
 """
 
 def cores_de(html):
-    """Os textos que levam cor, na ordem, com a cor: [(cor, texto)]."""
     return re.findall(r'<span style="color: (#[0-9a-f]{6});">(.*?)</span>', html)
 
 

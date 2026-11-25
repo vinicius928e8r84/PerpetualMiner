@@ -1,5 +1,3 @@
-"""O estilo do Cartão como dado: idioma × nível. O que a Conexão e o motor leem do `estilos.json`, visto de fora."""
-
 import copy
 import json
 import unittest

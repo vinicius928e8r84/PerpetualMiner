@@ -1,20 +1,9 @@
-"""nota_do_cartao.py - the note a card text becomes, field by field, in the style of its language and level.
-
-The add-on writes what `campos_da_nota` returns into the note type of the language (`estilos.json`): each part of the card has
-its own field (the front is the Phrase, the audios and the image are fields too), and the style says which parts of the back
-are filled and whether the Alignment pairs colour the Phrase and the Literal line. A level with `destaque` (the Russian
-Intermediate and Advanced, #163) highlights the key word in the Phrase and in the other example. A level with `morfologia` (the Russian
-Intermediate) also colours, in both sentences, the pieces of the words the model broke down (prefix, root, suffix and ending, one colour for
-each kind), stores them and explains each kind in a block of the back, under the other example. The text of the card is the model's
-answer (`prompts/*.txt`); standard library only.
-"""
-
 import html
 import re
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
-if __package__:  # inside the Anki add-on the engine is the package `complemento.motor`
+if __package__:
     from . import estilos
     from .send_to_anki import (
         _BACK_RE, _apply_chunk_colors, _build_front, _extract_alignments, _extract_tags_from_card, _md_to_html, normalize_front)
@@ -43,14 +32,11 @@ def _valor_do_rotulo(content: str, rotulo: str) -> str:
 
 
 def _palavra_do_verso(content: str) -> str:
-    """The first line of the Back (`gave up – /ɡeɪv ʌp/`): the headword the English card writes there."""
     achou = _BACK_RE.search(content)
     return next((linha.strip() for linha in (achou.group(1).splitlines() if achou else []) if linha.strip()), "").strip("*").strip()
 
 
 def _frase_com_lacuna(frase: str, palavra: str) -> str:
-    """The Phrase without the Word, for the Lacuna front: the bold text of the Phrase (English marks the Word that way) or, without any, the
-    `palavra` where it is in the text. No colours: they would give the gap away. Empty when the Word is not in the Phrase."""
     if _NEGRITO_RE.search(frase):
         so_o_negrito = _TAG_RE.sub(lambda tag: tag.group(0) if tag.group(0) in ("<b>", "</b>") else "", frase)
         texto = _NEGRITO_RE.sub(_MARCA, so_o_negrito)
@@ -62,7 +48,6 @@ def _frase_com_lacuna(frase: str, palavra: str) -> str:
 
 
 def _secao(content: str, titulo: str) -> List[str]:
-    """The lines of a `Title:` section of the card text (up to the next blank line), without the empty ones."""
     linhas: List[str] = []
     dentro = False
     for bruta in content.splitlines():
@@ -81,8 +66,6 @@ def _sem_acento(texto: str) -> str:
 
 
 def morfologia_do_texto(content: str) -> List[Tuple[str, List[Tuple[str, str]]]]:
-    """The words the model broke down, `[(word, [(kind, piece)])]`, from the `Morphology:` section (`word | kind:piece | …`, the
-    pieces in the order of the word). A word whose pieces do not add up to the word is dropped: nothing is guessed."""
     palavras: List[Tuple[str, List[Tuple[str, str]]]] = []
     for linha in _secao(content, "Morphology"):
         partes = [parte.strip() for parte in linha.split("|")]
@@ -107,7 +90,6 @@ MARCA_DA_PALAVRA_CHAVE = "font-weight: bold; border-bottom: 3px solid %s;" % COR
 
 
 def _destacar(texto: str, palavra: str) -> str:
-    """The text (HTML) with the first occurrence of the key word in one colour and bold; a text without the word is returned as it is."""
     achou = re.search(r"(?<!\w)%s(?!\w)" % re.escape(palavra), texto, re.IGNORECASE) if palavra else None
     if not achou:
         return texto
@@ -115,8 +97,6 @@ def _destacar(texto: str, palavra: str) -> str:
 
 
 def _pintar(texto: str, palavras: List[Tuple[str, List[Tuple[str, str]]]], chave: str) -> str:
-    """The sentence (HTML) with the first occurrence of each broken-down word coloured piece by piece (one colour for each kind); the key word is
-    also bold with an underline, and one that is not among the broken-down words is highlighted whole. A word that is not in the sentence is skipped."""
     marcas: Dict[str, str] = {}
     for palavra, pedacos in palavras:
         achou = re.search(r"(?<!\w)%s(?!\w)" % re.escape(palavra), texto, re.IGNORECASE)
@@ -125,7 +105,7 @@ def _pintar(texto: str, palavras: List[Tuple[str, List[Tuple[str, str]]]], chave
         pintado = _pintada_pelos_pedacos(achou.group(0), pedacos)
         if _e_a_palavra_chave(palavra, chave):
             pintado = '<span style="%s">%s</span>' % (MARCA_DA_PALAVRA_CHAVE, pintado)
-        marca = chr(0xE000 + len(marcas))  # Private Use Area: no later word can match it
+        marca = chr(0xE000 + len(marcas))
         marcas[marca] = pintado
         texto = texto[:achou.start()] + marca + texto[achou.end():]
     sem_a_chave = not any(MARCA_DA_PALAVRA_CHAVE in pintado for pintado in marcas.values())
@@ -149,7 +129,6 @@ def _e_a_palavra_chave(palavra: str, chave: str) -> bool:
 
 
 def _explicacao_das_cores(content: str) -> str:
-    """One line per colour from the `Colors:` section (`kind | pieces | explanation`), prefix, root, suffix, ending."""
     por_tipo: Dict[str, str] = {}
     for tipo, pedacos, explicacao in _linhas_das_cores(content):
         por_tipo.setdefault(tipo, '<span style="color: %s;">%s</span> \u2013 %s' % (
@@ -169,8 +148,6 @@ def _cor_completa(partes: List[str]) -> bool:
 
 @dataclass(frozen=True)
 class AlemDoTexto:
-    """What the note has besides the card text: `palavra` is the word the card is about when the text does not say it (the
-    Russian card has no headword); the audios and the image are the file names the note cites."""
     palavra: Optional[str] = None
     audio_da_frase: Optional[str] = None
     audio_da_palavra: Optional[str] = None
@@ -181,9 +158,6 @@ SO_O_TEXTO = AlemDoTexto()
 
 
 def campos_da_nota(content: str, lang: str, *, nivel: Optional[str] = None, alem_do_texto: AlemDoTexto = SO_O_TEXTO) -> Dict[str, object]:
-    """`{ campos: { nome do campo: HTML }, campo_da_frente, frente_normalizada, etiquetas }` of one card text.
-
-    Only the fields with something to say are in `campos` (the note type has the rest, empty)."""
     idioma, estilo = estilos.idioma(lang), estilos.estilo(lang, nivel)
     nomes = idioma["campos"]
     cartao = _TextoDoCartao(content.replace("## Anki Card", "").strip(), lang, estilo)
@@ -210,9 +184,6 @@ _PARTES_DESTACADAS = ("frase", "outro_exemplo")
 
 
 class _TextoDoCartao:
-    """The card text read in the style of its level: the Phrase as the front shows it, the Alignment pairs when the style colours
-    them and the broken-down words when it has `morfologia`."""
-
     def __init__(self, content: str, lang: str, estilo: Dict[str, object]):
         self.content, self.estilo = content, estilo
         self.alinhamentos = _extract_alignments(content) if estilo["cores"] else []
