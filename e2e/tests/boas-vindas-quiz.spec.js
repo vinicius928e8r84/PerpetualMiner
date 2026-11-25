@@ -7,10 +7,32 @@ const {
   grupo, quiz, pergunta, dizeres, abrirOQuiz, responderAParte1, percorrer, usarOEstilo,
 } = require('../apoio-do-quiz');
 
+const CAMINHOS_ATE_O_NIVEL = [
+  {
+    nome: 'quem acerta a legenda e erra o verso chega ao Intermediário',
+    partida: 'iniciante',
+    roteiro: ['certo', 'certo', 'certo', 'certo', 'certo', 'errado'],
+    radio: 'Intermediário',
+    guardado: 'intermediario',
+  },
+  {
+    nome: 'quem erra o verso e a legenda cai no Iniciante, e “Não sei” não passa o portão',
+    partida: 'intermediario',
+    roteiro: ['nao sei', 'certo', 'certo', 'certo', 'certo', 'errado'],
+    radio: 'Iniciante',
+    guardado: 'iniciante',
+  },
+];
+
+async function naParte2(page, extensao, relogioParado, nivel = 'iniciante') {
+  const relogio = await abrirOQuiz(page, extensao, relogioParado);
+  await responderAParte1(page, 'Inglês', nivel);
+  return relogio;
+}
+
 test.describe('a regra dos dois portões, em cada caminho', () => {
   test('quem começa pela legenda e erra uma tem 3 perguntas e fica no Iniciante', async ({ page, extensao, fakes, relogioParado }) => {
-    const relogio = await abrirOQuiz(page, extensao, relogioParado);
-    await responderAParte1(page, 'Inglês', 'iniciante');
+    const relogio = await naParte2(page, extensao, relogioParado);
     await expect(quiz(page, 'Inglês')).toContainText('Pergunta 1 de 3');
 
     const tipos = await percorrer(page, 'Inglês', fakes, relogio, ['errado', 'certo', 'certo']);
@@ -23,8 +45,7 @@ test.describe('a regra dos dois portões, em cada caminho', () => {
   });
 
   test('quem acerta as 2 de legenda e as 2 do verso tem 6 perguntas e chega ao Avançado, mesmo errando a escuta', async ({ page, extensao, fakes, relogioParado }) => {
-    const relogio = await abrirOQuiz(page, extensao, relogioParado);
-    await responderAParte1(page, 'Inglês', 'iniciante');
+    const relogio = await naParte2(page, extensao, relogioParado);
 
     const tipos = await percorrer(page, 'Inglês', fakes, relogio, ['certo', 'errado', 'certo', 'certo', 'errado', 'certo']);
 
@@ -36,20 +57,8 @@ test.describe('a regra dos dois portões, em cada caminho', () => {
     await estadoFinal(extensao, { [CHAVE]: { en: { nivel: 'avancado', versao: 1 } } });
   });
 
-  test('quem acerta a legenda e erra o verso chega ao Intermediário', async ({ page, extensao, fakes, relogioParado }) => {
-    const relogio = await abrirOQuiz(page, extensao, relogioParado);
-    await responderAParte1(page, 'Inglês', 'iniciante');
-
-    await percorrer(page, 'Inglês', fakes, relogio, ['certo', 'certo', 'certo', 'certo', 'certo', 'errado']);
-
-    await expect(quiz(page, 'Inglês').getByRole('radio', { name: 'Intermediário' })).toBeChecked();
-    await usarOEstilo(page, 'Inglês');
-    await estadoFinal(extensao, { [CHAVE]: { en: { nivel: 'intermediario', versao: 1 } } });
-  });
-
   test('quem começa pelo verso e acerta as 2 tem 3 perguntas e chega ao Avançado', async ({ page, extensao, fakes, relogioParado }) => {
-    const relogio = await abrirOQuiz(page, extensao, relogioParado);
-    await responderAParte1(page, 'Inglês', 'intermediario');
+    const relogio = await naParte2(page, extensao, relogioParado, 'intermediario');
     await expect(quiz(page, 'Inglês')).toContainText('Pergunta 1 de 3');
 
     const tipos = await percorrer(page, 'Inglês', fakes, relogio, ['certo', 'certo', 'certo']);
@@ -61,8 +70,7 @@ test.describe('a regra dos dois portões, em cada caminho', () => {
   });
 
   test('quem começa pelo verso e erra uma passa a ter 6 perguntas, com a legenda, e chega ao Intermediário', async ({ page, extensao, fakes, relogioParado }) => {
-    const relogio = await abrirOQuiz(page, extensao, relogioParado);
-    await responderAParte1(page, 'Inglês', 'intermediario');
+    const relogio = await naParte2(page, extensao, relogioParado, 'intermediario');
 
     const tipos = await percorrer(page, 'Inglês', fakes, relogio, ['certo', 'certo', 'errado', 'certo', 'certo', 'certo']);
 
@@ -72,16 +80,17 @@ test.describe('a regra dos dois portões, em cada caminho', () => {
     await estadoFinal(extensao, { [CHAVE]: { en: { nivel: 'intermediario', versao: 1 } } });
   });
 
-  test('quem erra o verso e a legenda cai no Iniciante, e “Não sei” não passa o portão', async ({ page, extensao, fakes, relogioParado }) => {
-    const relogio = await abrirOQuiz(page, extensao, relogioParado);
-    await responderAParte1(page, 'Inglês', 'intermediario');
+  for (const { nome, partida, roteiro, radio, guardado } of CAMINHOS_ATE_O_NIVEL) {
+    test(nome, async ({ page, extensao, fakes, relogioParado }) => {
+      const relogio = await naParte2(page, extensao, relogioParado, partida);
 
-    await percorrer(page, 'Inglês', fakes, relogio, ['nao sei', 'certo', 'certo', 'certo', 'certo', 'errado']);
+      await percorrer(page, 'Inglês', fakes, relogio, roteiro);
 
-    await expect(quiz(page, 'Inglês').getByRole('radio', { name: 'Iniciante' })).toBeChecked();
-    await usarOEstilo(page, 'Inglês');
-    await estadoFinal(extensao, { [CHAVE]: { en: { nivel: 'iniciante', versao: 1 } } });
-  });
+      await expect(quiz(page, 'Inglês').getByRole('radio', { name: radio })).toBeChecked();
+      await usarOEstilo(page, 'Inglês');
+      await estadoFinal(extensao, { [CHAVE]: { en: { nivel: guardado, versao: 1 } } });
+    });
+  }
 });
 
 test.describe('o russo', () => {
