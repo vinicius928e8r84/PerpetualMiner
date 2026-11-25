@@ -20,6 +20,10 @@ function carregarCatalogo() {
   if (catalogoCarregado) return catalogoCarregado;
   globalThis.PerpetualMiner = {};
   require('../lib/voz/catalogo.js');
+  require('../lib/voz/catalogo-configuracoes.js');
+  require('../lib/voz/catalogo-anki.js');
+  require('../lib/voz/catalogo-boas-vindas.js');
+  require('../lib/voz/catalogo-envio.js');
   require('../lib/voz/catalogo-nivel.js');
   catalogoCarregado = globalThis.PerpetualMiner.CATALOGO_DA_VOZ;
   return catalogoCarregado;

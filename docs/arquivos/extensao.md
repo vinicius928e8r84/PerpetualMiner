@@ -22,8 +22,9 @@ A regra `indice-de-arquivos` exige uma linha, aqui ou em [testes-e-ferramentas.m
 | `bookreader/coluna-da-foto.js` | The column states and the list of read phrases of Minerar de uma foto. |
 | `bookreader/leitura-do-gemini.js` | The request that reads the marked passages of a photo with Gemini. |
 | `bookreader/abrir-o-painel.js` | Opens or focuses the Painel from Minerar de uma foto. |
+| `veio/componentes-formulario.css` | The Veio form controls (`veio-campo`, `veio-select`, `veio-checkbox`, `veio-toggle`, `veio-segmentado`, `veio-busca`), cut from `veio/componentes.css` with their order kept. Every page that loads `componentes.css` loads it right after (`painel/painel.html`, `popup/popup.html`, `bookreader/bookreader.html`, `e2e/vitrine/vitrine.html`). |
 | `veio/tokens.css`, `veio/tema.js`, `veio/componentes.css`, `veio/componentes.js` | The shared Veio identity: tokens, the chosen theme and the base components (`veio/README.md`, skill `veio-componentes`); `veio/` also holds the fonts and icons. |
-| `lib/voz/catalogo.js`, `lib/voz/catalogo-nivel.js` | The Voice catalog as data, the source of every screen text. |
+| `lib/voz/catalogo.js`, `lib/voz/catalogo-configuracoes.js`, `lib/voz/catalogo-anki.js`, `lib/voz/catalogo-boas-vindas.js`, `lib/voz/catalogo-envio.js`, `lib/voz/catalogo-nivel.js` | The Voice catalog as data, the source of every screen text, split by area (`catalogo.js` keeps POP, MIN, SHL, GLB, PAI and FOT; CFG, BRG, ONB and ENV/ADD have their own file; `catalogo-nivel.js` extends the ONB and BRG entries and loads last). Every place that loads the catalog loads all of them, in that order. |
 | `lib/voz/texto.js` | `textoDaVoz(id, valores)`: a catalog text by ID, with its templates filled. |
 | `lib/idioma.js` | The one language detector and the Idioma helpers. |
 | `lib/contexto.js` | The Contexto as the screen says it: the Fonte's name, the day and how long ago. |
