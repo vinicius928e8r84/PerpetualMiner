@@ -62,17 +62,27 @@ function serviceWorker(area) {
 }
 
 const fraseDoPainel = { id: 1, texto: 'He barely made it to the station.', data: '18/11/2026', streaming: 'netflix', idioma: 'Inglês' };
+const outraFrase = { ...fraseDoPainel, id: 2, texto: 'Let us call it a day.' };
 
 function salvarFoto(sw, texto) {
   return sw.salvarFrase(texto, 'livro', { fonte: 'livro', titulo: 'Livro', detalhe: '' }, 'Inglês',
     { keywords: ['harbour@3'], autoKeyword: false }, { comPalavraAutomatica: false, comNuvem: false });
 }
 
-
 function cenario(frases) {
   const dados = { frases };
   const { area, segurarAProximaLeitura } = armazenamentoComPortao(dados);
   return { dados, area, segurarAProximaLeitura, sw: serviceWorker(area), historico: Historico.criar({ armazenamento: area }) };
+}
+
+async function corrida({ segurarAProximaLeitura }, retida, chegando) {
+  const portao = segurarAProximaLeitura();
+  const daRetida = retida();
+  await portao.leu;
+  const daChegada = chegando();
+  await deixarCorrer();
+  portao.soltar();
+  return Promise.all([daRetida, daChegada]);
 }
 
 const historicoSobre = dados => Historico.criar({ armazenamento: armazenamentoComPortao(dados).area });
@@ -101,4 +111,4 @@ function sincronizacaoSobre(area, nuvem) {
   return criarSincronizacao({ nuvem, armazenamento: { local: { ...area, remove: async () => {} }, sync } });
 }
 
-module.exports = { fraseDoPainel, salvarFoto, cenario, historicoSobre, deixarCorrer, nuvemComPortaoNaSubida, sincronizacaoSobre };
+module.exports = { fraseDoPainel, outraFrase, salvarFoto, cenario, corrida, historicoSobre, deixarCorrer, nuvemComPortaoNaSubida, sincronizacaoSobre };
