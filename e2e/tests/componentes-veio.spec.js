@@ -38,6 +38,16 @@ async function textosEscritos(page) {
   });
 }
 
+const modalEscuro = page => {
+  const scrim = page.locator('[data-modal="escuro"]');
+  return { abrir: page.locator('[data-abre-o-modal="escuro"]'), scrim, dialogo: scrim.locator('[role="dialog"]') };
+};
+
+function anelDoFoco(no) {
+  const estilo = getComputedStyle(no);
+  return [estilo.outlineStyle, estilo.outlineWidth, estilo.outlineColor, estilo.outlineOffset].join(' ');
+}
+
 test('a vitrine mostra cada componente nos dois temas', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
 
@@ -184,18 +194,11 @@ test('sem atalho gravado, o kbd fica tracejado', async ({ page, paginas }) => {
 test('a amostra de foco parado desenha o mesmo anel do foco de verdade', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
 
-  const parado = await page.locator('[data-tema="escuro"] .veio-botao.amostra-de-foco-parado').first()
-    .evaluate(no => {
-      const estilo = getComputedStyle(no);
-      return [estilo.outlineStyle, estilo.outlineWidth, estilo.outlineColor, estilo.outlineOffset].join(' ');
-    });
+  const parado = await page.locator('[data-tema="escuro"] .veio-botao.amostra-de-foco-parado').first().evaluate(anelDoFoco);
 
-  const deVerdade = await page.locator('[data-tema="escuro"] [data-grupo="Botões"] [data-estado="normal"] .veio-botao').first()
-    .evaluate(no => {
-      no.focus();
-      const estilo = getComputedStyle(no);
-      return [estilo.outlineStyle, estilo.outlineWidth, estilo.outlineColor, estilo.outlineOffset].join(' ');
-    });
+  const botao = page.locator('[data-tema="escuro"] [data-grupo="Botões"] [data-estado="normal"] .veio-botao').first();
+  await botao.focus();
+  const deVerdade = await botao.evaluate(anelDoFoco);
 
   expect(parado).toBe(deVerdade);
 });
@@ -218,9 +221,7 @@ test('o estado vazio ensina o que fazer e leva a ação junto', async ({ page, p
 test('o modal é um diálogo, começa no botão seguro e prende o foco', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
 
-  const abrir = page.locator('[data-abre-o-modal="escuro"]');
-  const scrim = page.locator('[data-modal="escuro"]');
-  const dialogo = scrim.locator('[role="dialog"]');
+  const { abrir, scrim, dialogo } = modalEscuro(page);
 
   await abrir.click();
   await expect(dialogo).toBeVisible();
@@ -246,8 +247,7 @@ test('o modal é um diálogo, começa no botão seguro e prende o foco', async (
 test('Esc fecha o modal e devolve o foco a quem abriu', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
 
-  const abrir = page.locator('[data-abre-o-modal="escuro"]');
-  const scrim = page.locator('[data-modal="escuro"]');
+  const { abrir, scrim } = modalEscuro(page);
 
   await abrir.click();
   await expect(scrim).toBeVisible();
@@ -262,9 +262,7 @@ test('Esc fecha o modal e devolve o foco a quem abriu', async ({ page, paginas }
 test('o clique fora fecha o modal, e dentro dele não', async ({ page, paginas }) => {
   await abrirVitrine(page, paginas);
 
-  const abrir = page.locator('[data-abre-o-modal="escuro"]');
-  const scrim = page.locator('[data-modal="escuro"]');
-  const dialogo = scrim.locator('[role="dialog"]');
+  const { abrir, scrim, dialogo } = modalEscuro(page);
 
   await abrir.click();
   await dialogo.locator('.veio-modal__titulo').click();
