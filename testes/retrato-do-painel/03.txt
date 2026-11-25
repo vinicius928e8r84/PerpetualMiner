@@ -116,6 +116,7 @@
   <script src="/lib/mineracao-do-dia.js">
   <script src="/lib/mineracao-automatica.js">
   <script src="/lib/contexto.js">
+  <script src="/lib/filtro-das-frases.js">
   <script src="/lib/atalhos.js">
   <script src="/lib/pedido-ao-anki.js">
   <script src="/lib/pareamento.js">
@@ -143,4 +144,3 @@
   <script src="painel-boas-vindas-minerar.js">
   <script src="painel-boas-vindas-festa.js">
   <script src="painel-boas-vindas-quiz.js">
-  <script src="painel-boas-vindas-nivel.js">

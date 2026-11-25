@@ -13,6 +13,7 @@ const MinerarFrases = PerpetualMiner.MinerarFrases;
 const { SITUACOES } = Conta;
 const { Sincronizacao, ChaveDaOpenAI, Historico } = PerpetualMiner;
 const { mostrarToastDeSucesso, abrirModal, montarAviso, criar } = PerpetualMiner.Veio;
+const { filtrarFrases, foiEnviadaAoAnki, STATUS_ENVIADA_AO_ANKI } = PerpetualMiner.FiltroDasFrases;
 
 const POR_PAGINA = 10;
 
@@ -29,8 +30,6 @@ const ICONES_DE_FONTE = {
 const GOOGLE_USERINFO   = 'https://www.googleapis.com/oauth2/v1/userinfo?alt=json';
 const FIREBASE_API_KEY  = Sincronizacao.CHAVE_DA_API;
 const FB_SIGNIN_URL     = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=${FIREBASE_API_KEY}`;
-
-const STATUS_ENVIADA_AO_ANKI = 'exported';
 
 let todasFrases        = [];
 let frasesVisiveis     = [];
@@ -563,23 +562,9 @@ function voltarAPrimeiraPagina() {
 }
 
 function aplicarFiltro() {
-  let resultado = filtroFonte === 'all'
-    ? [...todasFrases]
-    : todasFrases.filter(f => fonteDaFrase(f) === filtroFonte);
-  if (filtroIdioma !== 'all')
-    resultado = resultado.filter(f => (f.idioma || IDIOMAS.INGLES) === filtroIdioma);
-  if (esconderEnviadasEExportadas)
-    resultado = resultado.filter(f => !foiEnviadaAoAnki(f) && !f.exportadaTxt);
-  const termo = buscaAtual.trim().toLocaleLowerCase();
-  if (termo)
-    resultado = resultado.filter(f =>
-      String(f.texto || '').toLocaleLowerCase().includes(termo) ||
-      String(f.contexto?.titulo || '').toLocaleLowerCase().includes(termo));
-  if (ordemAtual === 'antigas')
-    resultado.sort((a, b) => (a.id || 0) - (b.id || 0));
-  else
-    resultado.sort((a, b) => (b.id || 0) - (a.id || 0));
-  frasesVisiveis = resultado;
+  frasesVisiveis = filtrarFrases(todasFrases, {
+    fonte: filtroFonte, idioma: filtroIdioma, esconderEnviadasEExportadas, busca: buscaAtual, ordem: ordemAtual,
+  });
   renderizar();
 }
 
@@ -750,10 +735,6 @@ function montarContexto(f) {
   if (foiEnviadaAoAnki(f))  linha.append(criar('span', 'veio-selo veio-selo--ok', textoDaVoz('PAI-08.enviada')));
   else if (f.exportadaTxt)  linha.append(criar('span', 'veio-selo veio-selo--info', textoDaVoz('PAI-08.exportada')));
   return linha;
-}
-
-function foiEnviadaAoAnki(f) {
-  return f.status === STATUS_ENVIADA_AO_ANKI;
 }
 
 function montarAcoesDoCartao(f) {

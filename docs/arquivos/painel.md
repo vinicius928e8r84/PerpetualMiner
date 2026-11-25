@@ -31,6 +31,7 @@ A regra `indice-de-arquivos` exige uma linha, aqui ou nas outras tabelas de `doc
 | `painel/painel-envio-anki-fechado.js` | Enviar ao Anki with the Anki closed. |
 | `painel/painel-envio-cartao.js` | An Envio's card in the modal. |
 | `painel/painel-envio-apagar.js` | The Apagar tudo request to the Conexão. |
+| `painel/painel-envio-resumo.js` | The Envio's summary: when to open it, how it is written and what each answer does. |
 | `painel/painel-envio-parado.js` | The Envio stopped by a closed Anki, and Continuar envio. |
 | `painel/painel-envio-limite.js` | The Envio waiting for the ChatGPT plan's limit. |
 | `painel/painel-teto.js`, `painel/painel-teto.css` | The monthly cap: the warning, the Custos card and the Envio band. |

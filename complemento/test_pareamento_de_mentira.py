@@ -114,7 +114,7 @@ def semear_em(pasta, clientes=((CLIENTE, SEGREDO),)):
 def travar_o_item_de_login_do_computador():
     from unittest.mock import patch
 
-    remendo = patch("complemento.inicio.itens_de_login.deste_computador", return_value=None)
+    remendo = patch("complemento.item_de_login.deste_computador", return_value=None)
     remendo.start()
     unittest.addModuleCleanup(remendo.stop)
 

@@ -1,14 +1,11 @@
-import os
-import sys
-
-from . import abridor as abridores, item_de_login as itens_de_login, passagem as passagens, pasta_de_dados, registro, tipo_de_nota
+from . import do_computador, pasta_de_dados, registro, tipo_de_nota
 from .baralhos import ColecaoIndisponivel
-from .atualizacao import ARQUIVO_DE_QUEM_DESLIGOU, AnkiWebAusente, Atualizacao, RegistroDaAtualizacao
-from .configuracao import ATUALIZACAO_AUTOMATICA, OPENAI_BASE, OPENVERSE_BASE, ORIGENS_ACEITAS, PORTA, VERSAO, VOZ_BASE
+from .configuracao import ATUALIZACAO_AUTOMATICA, PORTA, VERSAO
+from .do_computador import ABRIDOR_DESTE_COMPUTADOR, PASSAGEM_DESTE_COMPUTADOR
+from .esperas import Esperas
+from .montagem_da_conexao import Ambiente, Fronteiras, Porta, montar
+from .servicos_de_fora import ServicosDeFora
 from .servidor import Conexao
-
-ABRIDOR_DESTE_COMPUTADOR = object()
-PASSAGEM_DESTE_COMPUTADOR = object()
 
 
 def iniciar(
@@ -16,12 +13,10 @@ def iniciar(
     perfil_aberto,
     *,
     porta=PORTA,
-    origens_aceitas=ORIGENS_ACEITAS,
     colecao=None,
     item_de_login=None,
-    openai_base=OPENAI_BASE,
-    openverse_base=OPENVERSE_BASE,
-    voz_base=VOZ_BASE,
+    servicos=ServicosDeFora(),
+    esperas=None,
     abridor=ABRIDOR_DESTE_COMPUTADOR,
     ao_abrir_o_perfil=None,
     passagem=PASSAGEM_DESTE_COMPUTADOR,
@@ -32,43 +27,25 @@ def iniciar(
     try:
         dados = pasta_de_dados.preparar(pasta_do_complemento)
         logger = registro.criar(dados.logs)
-        if abridor is ABRIDOR_DESTE_COMPUTADOR:
-            abridor = abridores.deste_computador(
-                computador=abridores.Computador(sys.platform, os.environ, sys.executable), pasta=os.path.join(dados.raiz, "abridor"),
-                complemento=pasta_do_complemento,
-            )
-        if item_de_login is None:
-            item_de_login = itens_de_login.deste_computador(plataforma=sys.platform, ambiente=os.environ, executavel=sys.executable)
-        conexao = Conexao(
-            porta=porta,
-            origens_aceitas=origens_aceitas,
-            versao=VERSAO,
-            perfil_aberto=perfil_aberto,
-            logger=logger,
-            dados=dados,
-            colecao=colecao,
-            openai_base=openai_base,
-            openverse_base=openverse_base,
-            voz_base=voz_base,
-            item_de_login=item_de_login,
-            atualizacao=Atualizacao(
-                registro=RegistroDaAtualizacao(os.path.join(dados.raiz, "atualizacao.json"), VERSAO, logger), anki_web=anki_web or AnkiWebAusente(), logger=logger,
-                ligada=atualizacao_automatica and not os.path.exists(os.path.join(dados.raiz, ARQUIVO_DE_QUEM_DESLIGOU))),
-        )
-        _cuidar_do_perfil(conexao, abridor, ao_abrir_o_perfil, logger)
-        if passagem is PASSAGEM_DESTE_COMPUTADOR:
-            passagem = passagens.deste_computador(plataforma=sys.platform, ambiente=os.environ, porta=porta)
-        if passagem is not None and passagem.pendente(conexao):
-            conexao.iniciar_depois(lambda cancelado: passagem.fazer(conexao, cancelado))
-            conexao.atualizacao.iniciar()
-            return conexao
-        if not conexao.iniciar():
-            return None
-        conexao.atualizacao.iniciar()
-        return conexao
+        ambiente = Ambiente(dados, logger, VERSAO)
+        fronteiras = Fronteiras(
+            colecao=colecao, item_de_login=do_computador.item_de_login(item_de_login),
+            atualizacao=do_computador.atualizacao(dados, anki_web, atualizacao_automatica, ambiente))
+        conexao = Conexao(Porta(porta), montar(ambiente, servicos, esperas or Esperas(), fronteiras), perfil_aberto)
+        _cuidar_do_perfil(conexao, do_computador.abridor(abridor, pasta_do_complemento, dados), ao_abrir_o_perfil, logger)
+        return _subir(conexao, do_computador.passagem(passagem, porta))
     except Exception:
         logger.exception("O complemento não conseguiu iniciar")
         return None
+
+
+def _subir(conexao, passagem):
+    if passagem is not None and passagem.pendente(conexao):
+        conexao.iniciar_depois(lambda cancelado: passagem.fazer(conexao, cancelado))
+    elif not conexao.iniciar():
+        return None
+    conexao.atualizacao.iniciar()
+    return conexao
 
 
 def _preparar_a_colecao(conexao, logger):

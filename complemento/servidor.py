@@ -2,27 +2,14 @@ import json
 import os
 import sys
 import threading
-from datetime import date
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from . import chatgpt_oficial, envio, trabalhador
-from .chaves import Cofre
-from .login_do_chatgpt import LoginDoChatGPT
-from .pareamento import CABECALHO_DA_PROVA, Pareamento, prova_da_resposta
+from .pareamento import CABECALHO_DA_PROVA, prova_da_resposta
 from .paginas_do_navegador import PAGINAS, ROTAS_DO_CHATGPT, responder_a_pagina
 from .rotas_da_chave import (
     apagar_chave_da_openai, estado_da_ia, guardar_chave_da_openai, sincronizar_chave_da_openai, vincular_legado_da_openai,
 )
-from .configuracao import ENDERECO, FIRESTORE_BASE, OPENAI_BASE, OPENVERSE_BASE, VOZ_BASE
-from .esperas import ESPERA_DO_CONTATO, Esperas
-from .montagem_do_cartao import motor_do_cartao
-from .servicos_de_fora import ServicosDeFora
-from .colecao_vazia import SemColecao
-from .ia_dos_cartoes import IaDosCartoes, MotorNaOpenAI
-from .modelo_dos_cartoes import Conta, ListaDosModelos, ModeloDosCartoes, lista_nossa
-from .teto_do_mes import TetoDoMes
-from .perfil import PerfilFixo
-from .atualizacao import AnkiWebAusente, Atualizacao, RegistroDaAtualizacao
+from .configuracao import ENDERECO
 from .rotas_da_atualizacao import ROTAS_DA_ATUALIZACAO
 from .rotas_dos_baralhos import ROTAS_DOS_BARALHOS
 from .rotas_da_frente import ROTAS_DA_FRENTE
@@ -223,74 +210,24 @@ class _Servidor(ThreadingHTTPServer):
 
 
 class Conexao:
-    def __init__(
-        self,
-        *,
-        porta,
-        origens_aceitas,
-        versao,
-        perfil_aberto,
-        logger,
-        dados,
-        colecao=None,
-        item_de_login=None,
-        openai_base=OPENAI_BASE,
-        openverse_base=OPENVERSE_BASE,
-        adaptador_de_imagem=None,
-        voz_base=VOZ_BASE,
-        firestore_base=FIRESTORE_BASE,
-        chatgpt_base=chatgpt_oficial.LOGIN,
-        intervalo_de_parada=0.1,
-        trabalhando=True,
-        intervalo_do_envio=1.0,
-        espera_do_anki=2.0,
-        esperas_da_openai=(2, 8, 30),
-        espera_do_plano=300,
-        espera_do_teto=60,
-        motor=None,
-        espera_do_contato=ESPERA_DO_CONTATO,
-        modelos_da_ia=None,
-        hoje=date.today,
-        atualizacao=None,
-    ):
-        self.porta = porta
-        self.origens_aceitas = tuple(origens_aceitas)
-        self.versao = versao
+    def __init__(self, porta, pecas, perfil_aberto):
+        self.porta = porta.numero
+        self.origens_aceitas = tuple(porta.origens_aceitas)
         self.perfil_aberto = perfil_aberto
-        self.colecao = colecao or SemColecao()
-        self.logger = logger
-        self.dados = dados
-        self.perfil_fixo = PerfilFixo(os.path.join(dados.raiz, "perfil.json"))
-        self.colecao.fixar_o_perfil(self.perfil_fixo)
         self.ao_mudar_o_perfil = lambda: None
-        self.cofre = Cofre(dados.chaves)
-        self.pareamento = Pareamento(os.path.join(dados.raiz, "pareamento.json"), logger)
-        self.chatgpt = LoginDoChatGPT(dados.chaves, logger, base=chatgpt_base, api=openai_base)
-        self.openai_base, self.voz_base = openai_base, voz_base
-        motor = motor or envio.motor_do_complemento()
-        lista = ListaDosModelos(modelos_da_ia or lista_nossa(), hoje, lambda: motor.config_loader.base_config()["openai"]["chat_model"], logger)
-        conta = Conta(self.chatgpt, self.cofre, openai_base)
-        self.modelos = ModeloDosCartoes(os.path.join(dados.raiz, "modelo-dos-cartoes.json"), lista, conta, logger)
-        self.ia = IaDosCartoes(conta, self.modelos, motor=MotorNaOpenAI(motor, openai_base), logger=logger)
-        self.firestore_base = firestore_base
-        self.item_de_login = item_de_login
-        self.atualizacao = atualizacao or Atualizacao(
-            registro=RegistroDaAtualizacao(os.path.join(dados.raiz, "atualizacao.json"), versao, logger), anki_web=AnkiWebAusente(), logger=logger)
-        self.intervalo_de_parada = intervalo_de_parada
+        self.versao, self.logger, self.dados = pecas.ambiente.versao, pecas.ambiente.logger, pecas.ambiente.dados
+        self.colecao, self.item_de_login, self.perfil_fixo = pecas.colecao, pecas.item_de_login, pecas.perfil_fixo
+        self.cofre, self.pareamento, self.chatgpt, self.atualizacao = pecas.cofre, pecas.pareamento, pecas.chatgpt, pecas.atualizacao
+        self.modelos, self.ia, self.fila, self.teto = pecas.modelos, pecas.ia, pecas.fila, pecas.teto
+        self.openai_base, self.voz_base, self.firestore_base = pecas.servicos.openai, pecas.servicos.voz, pecas.servicos.firestore
+        self.intervalo_de_parada = pecas.esperas.da_parada
+        self.contato = pecas.contato
+        self._trabalhador = pecas.trabalhador
         self._servidor = None
         self._thread = None
-        self.contato = threading.Event()
         self.situacao_da_passagem = None
         self._cancelar = threading.Event()
         self._thread_da_passagem = None
-        self.fila = envio.Fila(dados, motor, logger)
-        self.teto = TetoDoMes(os.path.join(dados.raiz, "teto-do-mes.json"), self.fila, hoje)
-        servicos = ServicosDeFora(openai_base, openverse_base, voz_base, firestore_base, chatgpt_base)
-        esperas = Esperas(espera_do_anki, esperas_da_openai, espera_do_plano, espera_do_teto, espera_do_contato, intervalo_do_envio, intervalo_de_parada,
-                          teto=self.teto)
-        trabalho = envio.Trabalho(self.fila, self.colecao, self.ia, motor_do_cartao(self.fila, servicos, esperas, adaptador_de_imagem), esperas)
-        self._trabalhador = trabalhador.Trabalhador(
-            trabalho, intervalo=esperas.do_envio, contato=self.contato, espera_do_contato=esperas.do_contato) if trabalhando else None
 
     @property
     def no_ar(self):

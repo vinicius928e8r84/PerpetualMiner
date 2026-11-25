@@ -8,6 +8,9 @@ RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, RAIZ)
 
 from complemento import configuracao, envio, pasta_de_dados, registro, servidor
+from complemento.esperas import Esperas
+from complemento.montagem_da_conexao import Ambiente, Fronteiras, Porta, montar
+from complemento.servicos_de_fora import ServicosDeFora
 from complemento.login_do_chatgpt import NAO_SERVE, SEM_ACESSO
 from complemento.test_chatgpt_de_mentira import ChatGPTDeMentira, situar_o_login
 from complemento.test_colecao_em_memoria import ColecaoEmMemoria
@@ -43,11 +46,9 @@ def main():
     colecao = ColecaoQueTroca()
     semear(os.path.join(pasta, "pareamento.json"), ((CLIENTE, SEGREDO), (OUTRO_CLIENTE, OUTRO_SEGREDO)))
     tela = TelaDeMentira()
-    conexao = servidor.Conexao(
-        porta=0, origens_aceitas=configuracao.ORIGENS_ACEITAS, versao=configuracao.VERSAO, perfil_aberto=lambda: colecao.perfil_aberto(),
-        logger=logger, dados=dados, colecao=colecao, openai_base=openai.base, firestore_base=firestore.base,
-        voz_base=voz.base, openverse_base=openverse.base, chatgpt_base=login.base, intervalo_de_parada=0.005, trabalhando=False,
-    )
+    servicos = ServicosDeFora(openai=openai.base, openverse=openverse.base, voz=voz.base, firestore=firestore.base, chatgpt=login.base)
+    pecas = montar(Ambiente(dados, logger, configuracao.VERSAO), servicos, Esperas(da_parada=0.005), Fronteiras(colecao=colecao))
+    conexao = servidor.Conexao(Porta(0), pecas.sem_trabalhador(), lambda: colecao.perfil_aberto())
     conexao.pareamento.na_tela = tela
     for servico in de_mentira:
         servico.__enter__()

@@ -1,3 +1,4 @@
+  <script src="painel-boas-vindas-nivel.js">
   <script src="/lib/envio-gravado.js">
   <script src="painel-envio-estado.js">
   <script src="painel-boas-vindas-envio.js">
@@ -18,6 +19,7 @@
   <script src="painel-envio-parado.js">
   <script src="painel-envio-limite.js">
   <script src="painel-envio-apagar.js">
+  <script src="painel-envio-resumo.js">
   <script src="painel-envio.js">
   <script src="painel-anki-primeira-conexao.js">
   <script src="painel-anki-plano.js">
