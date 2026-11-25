@@ -6,7 +6,10 @@
   <link rel="stylesheet" href="/veio/tokens.css">
 <script src="/veio/tema.js"></script>
   <link rel="stylesheet" href="/veio/componentes.css">
+  <link rel="stylesheet" href="/veio/componentes-formulario.css">
   <link rel="stylesheet" href="painel.css">
+  <link rel="stylesheet" href="painel-anki.css">
+  <link rel="stylesheet" href="painel-primeira-conexao.css">
   <link rel="stylesheet" href="painel-ia-modelo.css">
   <link rel="stylesheet" href="painel-teto.css">
   <link rel="stylesheet" href="painel-previa.css">
@@ -278,120 +281,14 @@ data-voz-aria="BRG-35.limparBusca" data-voz-title="BRG-35.limparBusca" hidden><s
           </div>
         </div>
       </section>
-      <section class="shell-area" data-area="configuracoes" aria-labelledby="titulo-configuracoes" hidden>
-        <header class="shell-cabecalho">
-          <h1 id="titulo-configuracoes" data-voz="SHL-02.configuracoes"></h1>
-        </header>
-        <div class="shell-cards">
-        <section class="shell-card cfg-card" id="cfg-conta" aria-labelledby="cfg-conta-titulo">
-          <div class="cfg-cabeca">
-            <span class="cfg-icone"><span data-icone="conta"></span></span>
-            <div class="cfg-titulos">
-              <h2 class="shell-card__titulo">
-                <button class="cfg-alternar" id="cfg-conta-titulo" aria-expanded="false" aria-controls="cfg-conta-corpo" data-voz="SHL-04.conta"></button>
-              </h2>
-              <p class="cfg-descricao" data-voz="CFG-25"></p>
-            </div>
-            <span class="cfg-resumo" id="cfg-conta-resumo"></span>
-            <span class="cfg-chevron"><span data-icone="abrir"></span></span>
-          </div>
-          <div class="cfg-corpo" id="cfg-conta-corpo" hidden></div>
-        </section>
-        <section class="shell-card cfg-card" id="cfg-atalhos" aria-labelledby="cfg-atalhos-titulo">
-          <div class="cfg-cabeca">
-            <span class="cfg-icone"><span data-icone="teclado"></span></span>
-            <div class="cfg-titulos">
-              <h2 class="shell-card__titulo">
-                <button class="cfg-alternar" id="cfg-atalhos-titulo" aria-expanded="false" aria-controls="cfg-atalhos-corpo" data-voz="SHL-04.atalhos"></button>
-              </h2>
-              <p class="cfg-descricao" data-voz="CFG-33"></p>
-            </div>
-            <span class="cfg-resumo" id="cfg-atalhos-resumo"></span>
-            <span class="cfg-chevron"><span data-icone="abrir"></span></span>
-          </div>
-          <div class="cfg-corpo" id="cfg-atalhos-corpo" hidden></div>
-        </section>
-        <section class="shell-card cfg-card" id="cfg-ia" aria-labelledby="cfg-ia-titulo">
-          <div class="cfg-cabeca">
-            <span class="cfg-icone"><span data-icone="ia"></span></span>
-            <div class="cfg-titulos">
-              <h2 class="shell-card__titulo">
-                <button class="cfg-alternar" id="cfg-ia-titulo" aria-expanded="false" aria-controls="cfg-ia-corpo" data-voz="CFG-35.titulo"></button>
-              </h2>
-              <p class="cfg-descricao" data-voz="CFG-35.descricao"></p>
-            </div>
-            <span class="cfg-resumo" id="cfg-ia-resumo"></span>
-            <span class="cfg-chevron"><span data-icone="abrir"></span></span>
-          </div>
-          <div class="cfg-corpo" id="cfg-ia-corpo" hidden></div>
-        </section>
-        <section class="shell-card cfg-card" id="cfg-chave" aria-labelledby="cfg-chave-titulo">
-          <div class="cfg-cabeca">
-            <span class="cfg-icone"><span data-icone="chave"></span></span>
-            <div class="cfg-titulos">
-              <h2 class="shell-card__titulo">
-                <button class="cfg-alternar" id="cfg-chave-titulo" aria-expanded="false" aria-controls="cfg-chave-corpo" data-voz="CFG-15.titulo"></button>
-              </h2>
-              <p class="cfg-descricao" data-voz="CFG-15.descricao"></p>
-            </div>
-            <span class="cfg-resumo" id="cfg-chave-resumo"></span>
-            <span class="cfg-chevron"><span data-icone="abrir"></span></span>
-          </div>
-          <div class="cfg-corpo" id="cfg-chave-corpo" hidden></div>
-        </section>
-          <section class="shell-card cfg-card" id="cfg-anki" aria-labelledby="cfg-anki-titulo">
-            <div class="cfg-cabeca">
-              <span class="cfg-icone"><span data-icone="anki"></span></span>
-              <div class="cfg-titulos">
-                <h2 class="shell-card__titulo">
-                  <button class="cfg-alternar" id="cfg-anki-titulo" aria-expanded="false" aria-controls="cfg-anki-corpo" data-voz="SHL-04.anki"></button>
-                </h2>
-                <p class="cfg-descricao" data-voz="CFG-40"></p>
-              </div>
-              <span class="cfg-resumo" id="cfg-anki-resumo"></span>
-              <span class="cfg-chevron"><span data-icone="abrir"></span></span>
-            </div>
-            <div class="cfg-corpo" id="cfg-anki-corpo" hidden></div>
-          </section>
-          <section class="shell-card cfg-card" id="cfg-aparencia" aria-labelledby="cfg-aparencia-titulo">
-            <div class="cfg-cabeca">
-              <span class="cfg-icone"><span data-icone="tema"></span></span>
-              <div class="cfg-titulos">
-                <h2 class="shell-card__titulo">
-                  <button class="cfg-alternar" id="cfg-aparencia-titulo" aria-expanded="false" aria-controls="cfg-aparencia-corpo" data-voz="CFG-29.titulo"></button>
-                </h2>
-                <p class="cfg-descricao" data-voz="CFG-29.descricao"></p>
-              </div>
-              <span class="cfg-resumo" id="cfg-aparencia-resumo"></span>
-              <span class="cfg-chevron"><span data-icone="abrir"></span></span>
-            </div>
-            <div class="cfg-corpo" id="cfg-aparencia-corpo" hidden>
-              <div class="veio-segmentado" id="cfg-tema" role="radiogroup" data-voz-aria="CFG-30.rotulo">
-                <label class="veio-segmentado__opcao"><input type="radio" name="tema" value="escuro"><span data-voz="CFG-30.escuro"></span></label>
-                <label class="veio-segmentado__opcao"><input type="radio" name="tema" value="claro"><span data-voz="CFG-30.claro"></span></label>
-              </div>
-            </div>
-          </section>
-          <section class="shell-card cfg-card shell-card--perigo" id="cfg-perigo" aria-labelledby="cfg-perigo-titulo">
-            <div class="cfg-cabeca">
-              <span class="cfg-icone"><span data-icone="perigo"></span></span>
-              <div class="cfg-titulos">
-                <h2 class="shell-card__titulo">
-                  <button class="cfg-alternar" id="cfg-perigo-titulo" aria-expanded="false" aria-controls="cfg-perigo-corpo" data-voz="SHL-04.perigo"></button>
-                </h2>
-                <p class="cfg-descricao" id="cfg-perigo-descricao"></p>
-              </div>
-              <span class="cfg-resumo" id="cfg-perigo-resumo"></span>
-              <span class="cfg-chevron"><span data-icone="abrir"></span></span>
-            </div>
-            <div class="cfg-corpo" id="cfg-perigo-corpo" hidden></div>
-          </section>
-        </div>
-      </section>
     </main>
   </div>
 <iframe id="abridor-ponte" src="../abridor/ponte.html" hidden></iframe>
 <script src="/lib/voz/catalogo.js"></script>
+<script src="/lib/voz/catalogo-configuracoes.js"></script>
+<script src="/lib/voz/catalogo-anki.js"></script>
+<script src="/lib/voz/catalogo-boas-vindas.js"></script>
+<script src="/lib/voz/catalogo-envio.js"></script>
 <script src="/lib/voz/catalogo-nivel.js"></script>
 <script src="/lib/voz/texto.js"></script>
 <script src="/lib/ajustes-de-envio.js"></script>
@@ -421,6 +318,7 @@ data-voz-aria="BRG-35.limparBusca" data-voz-title="BRG-35.limparBusca" hidden><s
 <script src="/lib/nuvem-do-firestore.js"></script>
 <script src="/lib/sincronizacao.js"></script>
 <script src="esqueleto-modais.js"></script>
+<script src="esqueleto-configuracoes.js"></script>
 <script src="painel-shell.js"></script>
 <script src="painel-conta.js"></script>
 <script src="painel-atalhos.js"></script>
@@ -469,6 +367,8 @@ data-voz-aria="BRG-35.limparBusca" data-voz-title="BRG-35.limparBusca" hidden><s
 <script src="painel-anki-estilo.js"></script>
 <script src="painel-ajustes.js"></script>
 <script src="painel-minerar-frases.js"></script>
+<script src="painel-frases-cartao.js"></script>
+<script src="painel-frases-acoes.js"></script>
 <script src="painel.js"></script>
 </body>
 </html>
