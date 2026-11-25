@@ -1,12 +1,3 @@
-"""O `Pareamento.concluir` por dentro (#745): cada desfecho, o que fica no arquivo e o que a janela do Anki vê.
-
-`test_pareamento.py` prova o `concluir` por HTTP; aqui o `Pareamento` roda sozinho, com relógio de mentira, para fixar o que o
-HTTP não mostra: o arquivo `pareamento.json` depois de cada desfecho (navegadores e revogados), a contagem de códigos esgotados,
-o aviso de conectado e os registros do log. Serve de rede para quem corta o método.
-
-    python3.9 complemento/test_pareamento_concluir.py
-"""
-
 import base64
 import json
 import logging
