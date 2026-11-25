@@ -1,5 +1,4 @@
-"""A IA dos cartões como porta (C5): quem paga cada pedido pago do Envio e do Ouvir, num lugar só. A tabela etapa × situação
-(`quem_paga_a_etapa`) e o porquê de cada linha estão em `docs/design/ia-dos-cartoes.md`.
+"""A IA dos cartões como porta (C5): quem paga cada pedido pago do Envio e do Ouvir, num lugar só. A tabela etapa × situação é `quem_paga_a_etapa`.
 
 A porta é a única do Envio e das rotas que lê o login do ChatGPT e o cofre para decidir quem paga; o Modelo dos cartões, que diz quem
 paga na tela dele (`ModeloDosCartoes.conta`), pergunta à mesma tabela (`quem_paga`). Ela embrulha as funções de hoje

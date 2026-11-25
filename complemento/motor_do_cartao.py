@@ -1,5 +1,4 @@
-"""O Motor do Cartão (C4): as duas entradas que o Envio chama para fazer um Cartão, no lugar das heranças do `Trabalho`. Desenho:
-`docs/design/ia-dos-cartoes.md`. As duas recebem `ia`, a porta da IA dos cartões presa ao Envio (`ia_do_envio.IaDoEnvio`).
+"""O Motor do Cartão (C4): as duas entradas que o Envio chama para fazer um Cartão, no lugar das heranças do `Trabalho`. As duas recebem `ia`, a porta da IA dos cartões presa ao Envio (`ia_do_envio.IaDoEnvio`).
 
 `escrever(cartao, ia)` escreve o texto do Cartão, pago e guardado no disco (`motor/generate_cards.py`): o que já está lá nunca é pedido de
 novo, a falha passageira é pedida de novo nas esperas da OpenAI e o plano no limite é uma espera da porta.

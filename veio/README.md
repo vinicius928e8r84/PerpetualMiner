@@ -1,7 +1,7 @@
 # Base Veio
 
-A identidade compartilhada por todas as páginas da extensão. A spec travada está em
-[`docs/design/identidade-veio/`](../docs/design/identidade-veio/README.md), variante F.
+A identidade compartilhada por todas as páginas da extensão. A decisão e as regras que os tokens não dizem estão em
+[`docs/adr/0006-identidade-veio.md`](../docs/adr/0006-identidade-veio.md); o protótipo (variante F) é `docs/design/identidade-veio/prototipo-identidade.html`.
 
 | Caminho | O que é |
 |---|---|

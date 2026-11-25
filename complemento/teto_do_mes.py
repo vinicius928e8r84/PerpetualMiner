@@ -5,7 +5,6 @@ Cartão que o plano do ChatGPT fez custa 0, e a imagem gerada que ele pediu à c
 próximo Cartão**: o estado segue `running` e diz `waiting: { reason: "monthly_cap" }`, nada novo é pedido à OpenAI, e a thread de
 trabalho confere de novo a cada `espera_do_teto` s (a espera é da porta presa ao Envio, `ia_do_envio.py`). Quem acorda a espera antes é subir o teto (`POST /custos/teto/definir`); o mês
 virando zera a conta sozinho. O teto fica em `user_files/teto-do-mes.json` (`{ "limitUsd" }`; sem o arquivo vale o padrão).
-Desenho: `docs/design/teto-do-mes.md`.
 """
 
 import json

@@ -1,5 +1,5 @@
 """O diálogo do código do pareamento e o botão Desconectar navegadores (#192) pedidos ao Qt do Anki (`qt_do_anki.py`), com um `aqt` de mentira que guarda
-o texto de cada peça e liga o clique de cada botão. A janela de verdade num Anki de verdade é o ensaio do dono (`docs/design/pareamento-da-conexao.md` § 6).
+o texto de cada peça e liga o clique de cada botão. A janela de verdade num Anki de verdade é o ensaio do dono.
 
     python3.9 complemento/test_qt_do_anki_pareamento.py
 """

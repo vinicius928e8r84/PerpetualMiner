@@ -1,0 +1,11 @@
+# Apagar tudo is refused when the Conexão com o Anki does not answer
+
+Frases exist in two places: the extension and the copy the Conexão keeps while an Envio needs it (ADR 0009). Apagar tudo must remove both, and no Envio may go on spending the OpenAI key on Frases that were deleted.
+
+Before it deletes anything, the Zona de perigo checks the Conexão at that instant. If the Conexão does not answer, nothing is deleted and nothing is marked, whether or not an Envio exists (the owner's decision). The reason: with the Conexão out, the wipe would exist only in the browser, and a stopped Envio on disk would resume by itself when the Anki opened, spending the key on Frases the person had deleted. The confirmation comes from the Conexão and not from the Painel's memory, so it holds for a tab opened before the Enviar, for a Continuar envio started from Custos and for an Envio that did not start. Meanwhile the person can still delete Frases by selection (that delete does not remove the key).
+
+Two further rules make it hold. When the Conexão confirms, it fails a queued or running Envio with `wiped` and removes the request lines and the generated texts; the mark in `pm_envio` goes away only on that confirmation, and without it the request repeats. After the Conexão starts, its worker waits up to 60 s for the extension's first Envio request before resuming what was stopped, so a pending wipe arrives first. The wipe's cutoff compares ids, which are the clock of the computer that mined each Frase, so a computer with a clock far ahead or behind can fall on the wrong side of it.
+
+Accepted by the owner (2026-10-25): if the Anki opens again and no Chrome reaches the Conexão within the 60 s (Chrome closed, say, the next day), the Conexão resumes by itself the Envio of the deleted Frases: it calls OpenAI with the key and creates those notes in the Anki (24 calls and 24 notes in the real test). When a Chrome returns, the alarm removes what is left in the Conexão, but the notes and the spend stay. It stays like this, with no code change. A wipe mark can also survive only in the short window between the check and `POST /jobs/apagar-frases`, if the Conexão dies right after the click.
+
+We rejected allowing Apagar tudo with the Conexão off, marked to be finished later, because that is the exact case in which an Envio resumes against deleted Frases.

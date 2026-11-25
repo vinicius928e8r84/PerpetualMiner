@@ -11,7 +11,7 @@ alvo (`LinkInfo`) e a pasta de trabalho: sem a lista o Windows recusa o atalho (
 associados”).
 
 Os testes conferem o que fica no disco; o que o sistema faz com o item (abrir o Anki no login) só um
-computador de verdade mostra: o que já foi visto e o que falta está em `docs/design/ensaios-do-dono-da-conexao.md`.
+computador de verdade mostra.
 """
 
 import ntpath

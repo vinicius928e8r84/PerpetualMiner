@@ -1,6 +1,6 @@
 """Entrar com o ChatGPT (#155), visto de fora: o servidor real da Conexão, o servidor de login de mentira
 (`test_chatgpt_de_mentira.py`) e a OpenAI de mentira na fronteira HTTP. O teste faz o papel do navegador da pessoa: abre a URL
-de autorização que a Conexão deu e volta pelo `GET /auth/callback`. O desenho: `docs/design/login-do-chatgpt.md`.
+de autorização que a Conexão deu e volta pelo `GET /auth/callback`.
 
     python3.9 complemento/test_login_do_chatgpt.py
 """
