@@ -70,6 +70,19 @@ class OPorteiro(unittest.TestCase):
             status, _, corpo = conexao.pedir("POST", "/ia/estado", corpo={}, assinar=False, cabecalhos=cabecalhos)
         self.assertEqual((status, json_de(corpo)), (401, {"error": "pairing_required"}))
 
+    def test_o_cliente_que_vem_sem_assinatura_e_tratado_como_quem_nao_se_pareou(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            cabecalhos = PRIMEIRO.com_nonce("nonce-sem-assinatura").assinar(conexao.conexao.pareamento.sessao, "POST", "/ia/estado", b"{}")
+            del cabecalhos[pareamento.CABECALHO_DA_ASSINATURA]
+            status, _, corpo = conexao.pedir("POST", "/ia/estado", corpo={}, assinar=False, cabecalhos=cabecalhos)
+        self.assertEqual((status, json_de(corpo)), (401, {"error": "pairing_required"}))
+
+    def test_a_sessao_velha_e_dita_antes_do_nonce_fora_do_formato(self):
+        with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta) as conexao:
+            cabecalhos = PRIMEIRO.com_nonce("curto").assinar("sessao-velha", "POST", "/ia/estado", b"{}")
+            status, _, corpo = conexao.pedir("POST", "/ia/estado", corpo={}, assinar=False, cabecalhos=cabecalhos)
+        self.assertEqual((status, json_de(corpo)), (401, {"error": "session_expired"}))
+
     def test_um_cliente_que_so_forja_a_origem_da_extensao_nao_le_mais_nada(self):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta, colecao=ColecaoEmMemoria({"baralhos": [{"nome": "Inglês", "notas": []}]})) as conexao:
             lidos = [conexao.pedir("POST", caminho, origem=ORIGEM, corpo=corpo, assinar=False) for caminho, corpo in (
