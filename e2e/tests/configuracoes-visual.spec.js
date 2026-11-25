@@ -61,7 +61,7 @@ test('Aparência aberto, no claro: a mesma tela com os tokens claros', async ({ 
 
 test('janela estreita: sem resumo na linha e sem recuo no conteúdo', async ({ page, extensao, fakes }) => {
   await semearContaVisual(extensao, fakes);
-  await abrirConfiguracoes(page, extensao, '#configuracoes/conta', 700);
+  await abrirConfiguracoes(page, extensao, '#configuracoes/conta', { largura: 700 });
   await expect(page.locator('#cfg-conta').getByText('Sincronizado agora', { exact: true })).toBeVisible();
   await esperarALigacao(page);
 
@@ -209,7 +209,7 @@ test('IA dos cartões com a chave sem crédito, no tema claro', async ({ page, e
 test('IA dos cartões em janela estreita: as colunas viram linhas', async ({ page, extensao, fakes }) => {
   test.fixme(true, AGUARDA_O_DONO);
   await semearComoNoPrototipo(extensao, fakes);
-  await abrirConfiguracoes(page, extensao, '#configuracoes/ia', 760);
+  await abrirConfiguracoes(page, extensao, '#configuracoes/ia', { largura: 760 });
   await expect(page.locator('#cfg-ia').getByRole('region', { name: /Conta do ChatGPT/ })).toBeVisible();
   await esperarALigacao(page);
 
