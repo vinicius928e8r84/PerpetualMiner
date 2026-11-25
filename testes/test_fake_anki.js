@@ -42,8 +42,8 @@ async function pedirAoFake(fakeDaConexao, metodo, caminho, corpo = null) {
 const comO = (chave, preparar) => ({ quando: c => c[chave], preparar: (fake, c, google) => preparar(fake, c[chave], google) });
 const sempre = preparar => ({ quando: () => true, preparar });
 
-const guardarAChaveDoContexto = (fake, c) => fake.guardarChaveNaConexao(c.chaveNaConexao, c.versaoNaConexao || 0,
-  c.contaNaConexao ?? null, c.emNaConexao || 0, c.naoEnviada ?? true);
+const guardarAChaveDoContexto = (fake, c) => fake.guardarChaveNaConexao(c.chaveNaConexao, {
+  versao: c.versaoNaConexao || 0, conta: c.contaNaConexao ?? null, em: c.emNaConexao || 0, naoEnviada: c.naoEnviada ?? true });
 const soARemocaoNaConexao = c => !c.chaveNaConexao && c.versaoNaConexao;
 
 const PREPAROS_DO_CONTEXTO = [
@@ -252,13 +252,13 @@ function conferirAChaveGuardadaNaConexao() {
   assert.deepStrictEqual(naFrente(padrao), [{ chave: { chave: 'sk-proj-guardada-antes-9f3a' } }]);
 
   const completa = criarFakeAnki();
-  completa.guardarChaveNaConexao('bbbb', 42, 'B', 101, false);
+  completa.guardarChaveNaConexao('bbbb', { versao: 42, conta: 'B', em: 101, naoEnviada: false });
   assert.strictEqual(completa.chaveNaConexao(), 'sk-proj-guardada-antes-bbbb');
   assert.deepStrictEqual(completa.estadoDaChave(), { versao: 42, conta: 'B', em: 101, naoEnviada: false });
   assert.deepStrictEqual(naFrente(completa), [{ chave: { chave: 'sk-proj-guardada-antes-bbbb', versao: 42, conta: 'B', em: 101, naoEnviada: false } }]);
 
   const soComVersao = criarFakeAnki();
-  soComVersao.guardarChaveNaConexao('wxyz', 7);
+  soComVersao.guardarChaveNaConexao('wxyz', { versao: 7 });
   assert.deepStrictEqual(soComVersao.estadoDaChave(), { versao: 7, conta: null, em: 0, naoEnviada: true });
   assert.deepStrictEqual(naFrente(soComVersao), [{ chave: { versao: 7, chave: 'sk-proj-guardada-antes-wxyz' } }]);
 

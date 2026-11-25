@@ -2,7 +2,7 @@
 
 const { test, expect } = require('../fixtures');
 const { fotografar } = require('../evidencias-mineracao');
-const { chaveNaNuvem, VARIANTES_DO_O1 } = require('../apoio-da-chave-autoridade');
+const { chaveNaNuvem, VARIANTES_DO_O1, DA_CONTA_B } = require('../apoio-da-chave-autoridade');
 const CHAVE = 'sk-fake-autoridade-primeira-aaaa';
 async function segredosLocais(page) {
   return page.evaluate(() => new Promise((resolve, reject) => {
@@ -79,7 +79,7 @@ test('K1-delete: dono mudou para B durante o modal de A, confirmar não apaga ne
   await expect(page.locator('#shell-chip')).toContainText('Sincronizado agora');
   await expect(resumo(page)).toHaveText('••••••••aaaa');
   await card(page).getByRole('button', { name: 'Apagar chave', exact: true }).click();
-  fakes.anki.guardarChaveNaConexao('bbbb', 42, 'B', 101, false);
+  fakes.anki.guardarChaveNaConexao('bbbb', DA_CONTA_B);
   const dono = fakes.anki.estadoDaChave();
   await page.getByRole('dialog').getByRole('button', { name: 'Apagar chave', exact: true }).click();
   const aviso = card(page).getByRole('alert');
@@ -108,7 +108,7 @@ test('K1-delete: Apagar tudo em A não apaga o dono de B nem a chave da nuvem de
   fakes.google.gravarChaveDaOpenAI('B', { chave: NOVA, em: 101 });
   await abrir(page, extensao);
   await expect(page.locator('#shell-chip')).toContainText('Sincronizado agora');
-  fakes.anki.guardarChaveNaConexao('bbbb', 42, 'B', 101, false);
+  fakes.anki.guardarChaveNaConexao('bbbb', DA_CONTA_B);
   const dono = fakes.anki.estadoDaChave();
   await relogio.avancar(16000);
   await expect(resumo(page)).toHaveText('••••••••bbbb');

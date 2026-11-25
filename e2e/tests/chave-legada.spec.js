@@ -29,7 +29,7 @@ const segredosLocais = page => page.evaluate(() => new Promise((resolve, reject)
 }));
 
 test('legado com a pessoa já vinculada a uma Conta: a chave antiga não vai à Conexão, a da Conta fica e o segredo antigo sai do navegador', async ({ page, extensao, fakes }) => {
-  fakes.anki.guardarChaveNaConexao('bbbb', 3, 'A', 100, false);
+  fakes.anki.guardarChaveNaConexao('bbbb', { versao: 3, conta: 'A', em: 100, naoEnviada: false });
   await extensao.semearSessao({ uid: 'A' });
   await page.goto(extensao.url('manifest.json'));
   await guardarNoBancoAntigo(page);
