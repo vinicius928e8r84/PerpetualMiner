@@ -30,7 +30,7 @@ function textoDaTag(nome, texto) {
 
 const ultimo = lista => lista[lista.length - 1];
 
-function arvoreDe(html) {
+function leitorDaArvore() {
   const linhas = [];
   const abertas = [];
   const escrever = texto => linhas.push({ texto: `${' '.repeat(abertas.length)}${texto}` });
@@ -46,15 +46,24 @@ function arvoreDe(html) {
     escrever(textoDaTag(nome, atributos.replace(/\/\s*$/, '')));
     if (!SEM_FILHOS.has(nome)) abertas.push(nome);
   };
+  const dentroDeScriptOuStyle = () => TEXTO_CRU.has(ultimo(abertas));
+  return { linhas, abertas, escreverTexto, fechar, abrir, dentroDeScriptOuStyle };
+}
+
+function lerUmaMarcacao(leitor, html, [achado, fechada, aberta, atributos = ''], fim) {
+  const inicio = html.indexOf(achado, fim);
+  if (!leitor.dentroDeScriptOuStyle()) leitor.escreverTexto(html.slice(fim, inicio));
+  if (fechada) leitor.fechar(fechada);
+  else if (aberta) leitor.abrir(aberta.toLowerCase(), atributos);
+  return inicio + achado.length;
+}
+
+function arvoreDe(html) {
+  const leitor = leitorDaArvore();
   let fim = 0;
-  for (const [achado, fechada, aberta, atributos = ''] of html.matchAll(MARCACAO)) {
-    if (!TEXTO_CRU.has(ultimo(abertas))) escreverTexto(html.slice(fim, html.indexOf(achado, fim)));
-    fim = html.indexOf(achado, fim) + achado.length;
-    if (fechada) fechar(fechada);
-    else if (aberta) abrir(aberta.toLowerCase(), atributos);
-  }
-  assert.deepStrictEqual(abertas, [], 'o HTML tem tag que não fecha');
-  return linhas;
+  for (const marcacao of html.matchAll(MARCACAO)) fim = lerUmaMarcacao(leitor, html, marcacao, fim);
+  assert.deepStrictEqual(leitor.abertas, [], 'o HTML tem tag que não fecha');
+  return leitor.linhas;
 }
 
 const comecaUmBloco = linha => /^ {1,5}</.test(linha.texto);
