@@ -19,17 +19,17 @@ import os
 from dataclasses import dataclass
 
 from . import baralhos, voz
-from .audio_do_cartao import FRASE_APAGADA, AudioDoCartao, VozDeReserva, VozDoGoogle
+from .audio_do_cartao import FRASE_APAGADA
 from .correcao_da_criacao import CorrecaoDaCriacao
 from .fila_do_envio import ADICIONADO, DUPLICADO, FALHOU, NO_ANKI, TEXTO, Fila, frase_inteira_no_anki, id_do_cartao
 from .gravacao_de_json import apagar as _apagar, gravar_json as _gravar_json
-from .configuracao import OPENVERSE_BASE, VOZ_BASE
-from .imagem_do_cartao import ImagemDoCartao, ParaOEnvio
+from .imagem_do_cartao import ParaOEnvio
 from .ia_do_envio import EsperasDaPorta, IaDoEnvio, SemQuemPague
 from .limite_do_plano import EsperaDoEnvio, dizer_a_espera
 from .login_do_chatgpt import RECUSOU, SAIU
-from .motor_do_cartao import Cartao, EsperasDaOpenai, MotorDoCartao
+from .motor_do_cartao import Cartao
 from .motor_do_envio import configuracao_do_motor, motor_do_complemento
+from .nota_a_gravar import FrenteDoCartao, NotaAGravar
 from .paradas_do_envio import Apagado, Interrompido  # noqa: F401  (`envio.Interrompido`)
 from .tipo_do_envio import TipoDoEnvio
 from .pedido_do_envio import ETIQUETA_DE_TESTE, id_que_serve_de_caminho, id_valido, ids_unicos, impressao, visao_do_pedido
@@ -111,19 +111,16 @@ class EnvioEmAndamento:
 class Trabalho:
     """Faz um Envio: confere o tipo de nota e, Cartão a Cartão, acha a nota no Anki, gera o texto, monta a nota e a grava."""
 
-    def __init__(self, fila, colecao, ia, logger, openai_base, parar, espera_do_anki=2.0, esperas_da_openai=(2, 8, 30),
-                 voz_base=VOZ_BASE, openverse_base=OPENVERSE_BASE, adaptador_de_imagem=None, espera_do_plano=300, teto=None, espera_do_teto=60):
+    def __init__(self, fila, colecao, ia, motor_do_cartao, esperas):
         self.fila, self.ia = fila, ia
-        self.correcao = CorrecaoDaCriacao(fila, colecao, fila.motor, logger)
-        self.da_porta = EsperasDaPorta(teto, do_teto=espera_do_teto, do_plano=espera_do_plano)
+        self.logger = fila.logger
+        self.correcao = CorrecaoDaCriacao(fila, colecao, fila.motor, self.logger)
+        self.da_porta = EsperasDaPorta(esperas.teto, do_teto=esperas.do_teto, do_plano=esperas.do_plano)
         self.motor = fila.motor
         self.colecao = colecao
-        self.logger = logger
-        self.parar = parar
-        self.espera_do_anki = espera_do_anki
-        esperas = EsperasDaOpenai(parar, esperas_da_openai)
-        audio = AudioDoCartao(self.motor, logger, VozDoGoogle(voz_base, esperas), VozDeReserva(openai_base, fila.tranca, logger))
-        self.motor_do_cartao = MotorDoCartao(self.motor, esperas, audio, ImagemDoCartao(self.motor, logger, openverse_base, adaptador_de_imagem))
+        self.parar = esperas.parar
+        self.espera_do_anki = esperas.do_anki
+        self.motor_do_cartao = motor_do_cartao
 
     def _dormir(self, segundos):
         if self.parar.wait(segundos):
@@ -296,10 +293,11 @@ class Trabalho:
         frentes = (nota["campo_da_frente"],) + self.motor.estilos.nomes_da_frente_de_antes()
         nome, frentes, nota = envio.tipo.nota_no_tipo(frentes, nota)
         self._etapa(job_id, "send_to_anki")
+        etiquetas = nota["etiquetas"] + [ETIQUETA_DE_TESTE] * bool(pedido.get("teste"))
+        a_gravar = NotaAGravar(baralho, nome, nota["campos"], etiquetas, guid, arquivos)
+        frente = FrenteDoCartao(frentes, nota["frente_normalizada"], lambda valor: send_to_anki.normalize_front(valor, lang))
         try:
-            resultado = self._com_a_colecao(job_id, lambda: self.colecao.gravar_cartao(
-                baralho, nome, nota["campos"], nota["etiquetas"] + [ETIQUETA_DE_TESTE] * bool(pedido.get("teste")), guid,
-                frentes, nota["frente_normalizada"], lambda valor: send_to_anki.normalize_front(valor, lang), arquivos))
+            resultado = self._com_a_colecao(job_id, lambda: self.colecao.gravar_cartao(a_gravar, frente))
         except baralhos.TipoDeNotaAusente:
             return self._cartao(job_id, cartao_id, status=FALHOU, error=SEM_TIPO_DE_NOTA)
         except (Interrompido, Apagado):

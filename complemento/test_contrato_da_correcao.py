@@ -5,6 +5,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import baralhos, tipo_de_nota
 from complemento.motor import estilos
+from complemento.nota_a_gravar import NotaAGravar
 
 MENSAGEM = tipo_de_nota.MENSAGEM_DA_CRIACAO
 INGLES = "PerpetualMiner::Inglês"
@@ -22,7 +23,7 @@ class ContratoDaCorrecao:
 
     def test_uma_nota_sem_frase_escrita_ou_de_outro_tipo_de_nota_nao_sai(self):
         colecao = self.com_notas_gravadas()
-        colecao.adicionar_nota("Default", "Básico", {"Frente": "a", "Verso": "b"}, [], "g-basico")
+        colecao.adicionar_nota(NotaAGravar("Default", "Básico", {"Frente": "a", "Verso": "b"}, [], "g-basico"))
         self.assertEqual(colecao.frases_a_corrigir("en", 10), [])
 
     def test_depois_de_gravar_a_correcao_a_nota_deixa_de_sair_e_os_campos_dizem_o_que_foi_lido_e_o_que_a_ia_devolveu(self):
@@ -59,7 +60,7 @@ class ContratoDaCorrecao:
     def test_o_limite_corta_a_lista_na_ordem_em_que_as_notas_foram_gravadas(self):
         colecao = self.com_notas_gravadas()
         for numero in range(2, 5):
-            colecao.adicionar_nota(INGLES, "PerpetualMiner Inglês", {"Frase": "Frase %d" % numero, "Palavra": "w%d" % numero}, [], "g%d" % numero)
+            colecao.adicionar_nota(NotaAGravar(INGLES, "PerpetualMiner Inglês", {"Frase": "Frase %d" % numero, "Palavra": "w%d" % numero}, [], "g%d" % numero))
         for guid in ("g1", "g2", "g3", "g4"):
             colecao.gravar_frase_escrita(guid, "escrita " + guid)
         self.assertEqual([nota["guid"] for nota in colecao.frases_a_corrigir("en", 2)], ["g1", "g2"])
@@ -67,14 +68,14 @@ class ContratoDaCorrecao:
     def test_no_russo_a_nota_sai_so_para_o_idioma_dela(self):
         colecao = self.adaptador({"baralhos": [{"nome": "Default"}]})
         self.preparar(colecao)
-        colecao.adicionar_nota("PerpetualMiner::Russo", "PerpetualMiner Russo", {"Frase": "Я не мальчик!", "Palavra": "мальчик"}, [], "g-ru")
+        colecao.adicionar_nota(NotaAGravar("PerpetualMiner::Russo", "PerpetualMiner Russo", {"Frase": "Я не мальчик!", "Palavra": "мальчик"}, [], "g-ru"))
         colecao.gravar_frase_escrita("g-ru", "Он мальчик.")
         self.assertEqual([nota["escrita"] for nota in colecao.frases_a_corrigir("ru", 10)], ["Он мальчик."])
         self.assertEqual(colecao.frases_a_corrigir("en", 10), [])
 
     def test_uma_frase_escrita_so_de_marcas_sem_texto_nao_sai(self):
         colecao = self.com_notas_gravadas()
-        colecao.adicionar_nota(INGLES, "PerpetualMiner Inglês", {"Frase": "Frase 2", "Palavra": "w2", "Frase escrita": "<b> </b><br>"}, [], "g2")
+        colecao.adicionar_nota(NotaAGravar(INGLES, "PerpetualMiner Inglês", {"Frase": "Frase 2", "Palavra": "w2", "Frase escrita": "<b> </b><br>"}, [], "g2"))
         colecao.gravar_frase_escrita("g1", "escrita")
         self.assertEqual([nota["guid"] for nota in colecao.frases_a_corrigir("en", 10)], ["g1"])
 
@@ -85,7 +86,7 @@ class ContratoDaCorrecao:
         def guids_com(ficam):
             colecao = self.adaptador({"baralhos": [{"nome": "Default"}], "tiposDeNota": {"PerpetualMiner Inglês": ficam}})
             escritos = {nome: "escrita" for nome in ficam if nome != campos["escrito_antes"]}
-            colecao.adicionar_nota("Default", "PerpetualMiner Inglês", escritos, [], "g1")
+            colecao.adicionar_nota(NotaAGravar("Default", "PerpetualMiner Inglês", escritos, [], "g1"))
             return [nota["guid"] for nota in colecao.frases_a_corrigir("en", 10)]
 
         self.assertEqual(guids_com(da_criacao), ["g1"])
@@ -96,7 +97,7 @@ class ContratoDaCorrecao:
     def test_gravar_a_correcao_de_uma_nota_de_outro_tipo_ou_que_nao_existe_nao_muda_nada(self):
         colecao = self.adaptador(self.DESCRICAO)
         self.preparar(colecao)
-        colecao.adicionar_nota("Inglês", "Básico", {"Frente": "a", "Verso": "b"}, [], "g-basico")
+        colecao.adicionar_nota(NotaAGravar("Inglês", "Básico", {"Frente": "a", "Verso": "b"}, [], "g-basico"))
         antes = colecao.cartoes_do_baralho("Inglês")
         self.assertFalse(colecao.gravar_correcao("g-basico", "x", "y"))
         self.assertFalse(colecao.gravar_correcao("g-que-nao-existe", "x", "y"))

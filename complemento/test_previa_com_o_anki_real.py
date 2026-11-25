@@ -14,6 +14,7 @@ except ImportError:
 from complemento import no_anki, previa_do_cartao
 from complemento.motor import estilos
 from complemento.test_contrato_da_previa import texto_de
+from complemento.nota_a_gravar import NotaAGravar
 
 
 @unittest.skipIf(Collection is None, "a biblioteca `anki` não está instalada")
@@ -43,10 +44,7 @@ class PreviaNaColecaoDeVerdade(unittest.TestCase):
 
     def test_o_anki_desenha_o_cartao_da_nota_gravada_com_a_imagem_da_pasta_de_midia(self):
         previa_do_cartao.previa_do_exemplo(self.adaptador, "en", "intermediario")
-        self.adaptador.adicionar_nota(
-            "PerpetualMiner::Inglês", "PerpetualMiner Inglês",
-            {"Frase": "I <b>keep</b> trying", "Definição": "Continuar", "Imagem": '<img src="foto.png">', "Áudio da frase": "[sound:frase.mp3]"},
-            [], "guid-1", {"foto.png": b"\x89PNG", "frase.mp3": b"mp3"})
+        self.adaptador.adicionar_nota(NotaAGravar("PerpetualMiner::Inglês", "PerpetualMiner Inglês", {"Frase": "I <b>keep</b> trying", "Definição": "Continuar", "Imagem": '<img src="foto.png">', "Áudio da frase": "[sound:frase.mp3]"}, [], "guid-1", {"foto.png": b"\x89PNG", "frase.mp3": b"mp3"}))
         previa = previa_do_cartao.previa_da_nota(self.adaptador, "guid-1")
         self.assertEqual(texto_de(previa["front"]), "I keep trying ▶")
         self.assertIn("Continuar", texto_de(previa["back"]))

@@ -40,7 +40,7 @@ take trusted events.
   `pointer-events: none`): a 3 px gold line under each line of the captured text, the Palavra's `kw-bg` band
   (50%–94% of the line) over each of its words, and the chip above the text (below it when there is no room):
   icon · title · `auto:`/`palavra:` (`montarChipDaPalavra`, from `autoKeyword`) · meta. The scraping returns
-  `{ texto, elementos }` (`lerLegenda`; `obterLegendaAtual` is its text); `lugarDaLegenda` and
+  `{ texto, elementos }` (`LegendaDaPagina.lerLegenda`, in `lib/legenda-da-pagina.js`); `lugarDaLegenda` (same module) and
   `lugarDaSelecao` hand the overlay a function that gives a `Range` only while those elements (or that
   selection) still say the captured text. The mark follows it every frame and leaves at once when it changes.
   A caption that changed before the answer, a selection inside an `input`/`textarea` (no range over the

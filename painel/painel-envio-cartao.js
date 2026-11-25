@@ -126,6 +126,62 @@
     return lista;
   }
 
+  function montarTitulo(envio) {
+    const titulo = elemento('h3', 'envio-cartao__titulo', textoDaVoz('ENV-08.titulo', { idioma: nomeDoIdioma(envio.lang), n: envio.ids.length }));
+    titulo.id = `envio-titulo-${envio.id}`;
+    return titulo;
+  }
+
+  function montarTopo(titulo, retrato) {
+    const rotuloDaEtapa = elemento('span', `envio-cartao__etapa${retrato.tom ? ` envio-cartao__etapa--${retrato.tom}` : ''}`, textoDaVoz(retrato.etapa));
+    return elemento('div', 'envio-cartao__topo', titulo, rotuloDaEtapa);
+  }
+
+  function montarMotivo(texto) {
+    const motivo = elemento('p', 'envio-cartao__motivo');
+    raiz.EnvioParado.escrever(motivo, texto);
+    return motivo;
+  }
+
+  const temAcaoSolta = pedido => Boolean(pedido?.rotulo && !pedido.acoes);
+
+  function montarAcaoSolta(pedido) {
+    const acao = botaoLink(pedido.rotulo, pedido.foco, pedido.aoUsar);
+    if (pedido.emAndamento) acao.setAttribute('aria-disabled', 'true');
+    return pedido.ligacao ? [acao, ligacaoDeUso(pedido.ligacao, 'veio-botao veio-botao--link envio-cartao__acao')] : [acao];
+  }
+
+  function montarLinhaDeBaixo(pedido, retrato, atualizadoEm) {
+    const atualizado = textoDaVoz('ENV-08.atualizado', { quando: Contexto.haQuanto(atualizadoEm) });
+    const meta = elemento('div', 'envio-cartao__meta');
+    if (temAcaoSolta(pedido)) meta.append(...montarAcaoSolta(pedido));
+    meta.append(elemento('span', '', retrato.indice == null ? atualizado : `${etapaDeSete(retrato)} · ${atualizado}`));
+    return meta;
+  }
+
+  const atualizadoEmDe = (estado, envio) => (estado?.updatedAt ? Date.parse(estado.updatedAt) : envio.criadoEm);
+
+  function linhasDaCausa(envio, estado, atualizadoEm) {
+    return [
+      `${envio.jobId || envio.id} · lang=${envio.lang} · stage=${estado?.stage || 'queued'}`,
+      `updatedAt ${estado?.updatedAt || new Date(atualizadoEm).toISOString()}`,
+      estado?.lastError || '',
+    ];
+  }
+
+  function causaDoCartao(envio, estado, falhaAoContinuar, atualizadoEm) {
+    if (envio.falhaAoCriar) return envio.falhaAoCriar.causa;
+    return [...linhasDaCausa(envio, estado, atualizadoEm), falhaAoContinuar || '', raiz.EnvioParado.causa(envio)].filter(Boolean).join('\n');
+  }
+
+  function montarMotivoEAcoes(pedido) {
+    return [pedido?.motivo && montarMotivo(pedido.motivo), pedido?.acoes && montarAcoes(pedido.acoes)].filter(Boolean);
+  }
+
+  function assinaturaDoCartao(retrato, pedido, meta, causa) {
+    return [retrato.etapa, retrato.pct, retrato.tom, pedido?.motivo || '', pedido?.acoes?.map(a => a.rotulo + a.emAndamento) || '', meta.textContent, causa].join('|');
+  }
+
   function criar({ situacaoDe, estadoDoJob, esquecerOEnvio, falhaAoRetomar, tentarCriarDeNovo, continuarEnvio, pedirAChave, redesenhar }) {
     function retratoDe(situacao) {
       const fora = FORA_DAS_ETAPAS[situacao.estado];
@@ -141,51 +197,21 @@
     function montarCartao(envio) {
       const situacao = situacaoDe(envio);
       const estado = envio.jobId && situacao.estado !== ESTADO.DESCONHECIDO ? estadoDoJob(envio) || { status: 'queued', stage: 'queued' } : undefined;
-      const atualizadoEm = estado?.updatedAt ? Date.parse(estado.updatedAt) : envio.criadoEm;
+      const atualizadoEm = atualizadoEmDe(estado, envio);
       const retrato = retratoDe(situacao);
-      const idioma = nomeDoIdioma(envio.lang);
-      const cartao = elemento('section', 'envio-cartao');
-      cartao.setAttribute('role', 'group');
-
-      const titulo = elemento('h3', 'envio-cartao__titulo', textoDaVoz('ENV-08.titulo', { idioma, n: envio.ids.length }));
-      titulo.id = `envio-titulo-${envio.id}`;
-      cartao.setAttribute('aria-labelledby', titulo.id);
       const pedido = pedidoDoCartao(envio, situacao, estado);
       if (pedido) retrato.tom = 'calmo';
-      const rotuloDaEtapa = elemento('span', `envio-cartao__etapa${retrato.tom ? ` envio-cartao__etapa--${retrato.tom}` : ''}`, textoDaVoz(retrato.etapa));
-      const topo = elemento('div', 'envio-cartao__topo', titulo, rotuloDaEtapa);
-
-      cartao.append(topo, montarEtapas(retrato, titulo.id));
-
-      if (pedido?.motivo) {
-        const motivo = elemento('p', 'envio-cartao__motivo');
-        raiz.EnvioParado.escrever(motivo, pedido.motivo);
-        cartao.append(motivo);
-      }
-
-      if (pedido?.acoes) cartao.append(montarAcoes(pedido.acoes));
-      const atualizado = textoDaVoz('ENV-08.atualizado', { quando: Contexto.haQuanto(atualizadoEm) });
-      const meta = elemento('div', 'envio-cartao__meta');
-      if (pedido?.rotulo && !pedido.acoes) {
-        const acao = botaoLink(pedido.rotulo, pedido.foco, pedido.aoUsar);
-        if (pedido.emAndamento) acao.setAttribute('aria-disabled', 'true');
-        meta.append(acao);
-        if (pedido.ligacao) meta.append(ligacaoDeUso(pedido.ligacao, 'veio-botao veio-botao--link envio-cartao__acao'));
-      }
-      meta.append(elemento('span', '', retrato.indice == null ? atualizado : `${etapaDeSete(retrato)} · ${atualizado}`));
+      const titulo = montarTitulo(envio);
+      const cartao = elemento('section', 'envio-cartao');
+      cartao.setAttribute('role', 'group');
+      cartao.setAttribute('aria-labelledby', titulo.id);
+      cartao.append(montarTopo(titulo, retrato), montarEtapas(retrato, titulo.id));
+      cartao.append(...montarMotivoEAcoes(pedido));
+      const meta = montarLinhaDeBaixo(pedido, retrato, atualizadoEm);
       cartao.append(meta);
-
-      const falhaAoContinuar = falhaAoRetomar(envio);
-      const causa = envio.falhaAoCriar ? envio.falhaAoCriar.causa : [
-          `${envio.jobId || envio.id} · lang=${envio.lang} · stage=${estado?.stage || 'queued'}`,
-          `updatedAt ${estado?.updatedAt || new Date(atualizadoEm).toISOString()}`,
-          estado?.lastError || '',
-          falhaAoContinuar || '',
-          raiz.EnvioParado.causa(envio),
-        ].filter(Boolean).join('\n');
+      const causa = causaDoCartao(envio, estado, falhaAoRetomar(envio), atualizadoEm);
       if (causa) cartao.append(Veio.montarDetalhes(causa));
-
-      cartao.dataset.assinatura = [retrato.etapa, retrato.pct, retrato.tom, pedido?.motivo || '', pedido?.acoes?.map(a => a.rotulo + a.emAndamento) || '', meta.textContent, causa].join('|');
+      cartao.dataset.assinatura = assinaturaDoCartao(retrato, pedido, meta, causa);
       return cartao;
     }
 

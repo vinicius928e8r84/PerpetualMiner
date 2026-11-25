@@ -18,6 +18,7 @@ from complemento.test_colecao_em_memoria import DESCRICAO, ContratoDoAdaptadorDa
 from complemento.test_contrato_da_criacao import ContratoDaCriacao
 from complemento.test_contrato_da_previa import ContratoDaPrevia
 from complemento.test_contrato_do_perfil_fixo import ContratoDoPerfilFixo
+from complemento.nota_a_gravar import FrenteDoCartao, NotaAGravar
 
 
 def setUpModule():
@@ -72,7 +73,7 @@ class AdaptadorDoAnki(ContratoDoAdaptadorDaColecao, ContratoDoPerfilFixo, Contra
     def test_a_gravacao_tambem_so_toca_a_colecao_pela_thread_principal(self):
         colecao = self.adaptador(DESCRICAO)
         colecao.tipo_de_nota("Básico")
-        colecao.adicionar_nota("Inglês", "Básico", {"Frente": "a", "Verso": "b"}, ["perpetual_miner"], "guid-1")
+        colecao.adicionar_nota(NotaAGravar("Inglês", "Básico", {"Frente": "a", "Verso": "b"}, ["perpetual_miner"], "guid-1"))
         colecao.guids_existentes(["guid-1"])
         self.assertEqual(self.anki.col.fora_da_principal, [])
         self.assertEqual(self.anki.col.notas_gravadas(), [["a\x1fb", "guid-1", "perpetual_miner"]])
@@ -81,14 +82,13 @@ class AdaptadorDoAnki(ContratoDoAdaptadorDaColecao, ContratoDoPerfilFixo, Contra
         colecao = no_anki.ColecaoDoAnki(self.adaptador(DESCRICAO)._mw, limite_s=0.2)
         self.anki.taskman.livre.clear()
         with self.assertRaises(baralhos.ColecaoIndisponivel):
-            colecao.adicionar_nota("Inglês", "Básico", {"Frente": "a", "Verso": "b"}, [], "guid-1")
+            colecao.adicionar_nota(NotaAGravar("Inglês", "Básico", {"Frente": "a", "Verso": "b"}, [], "guid-1"))
         self.anki.taskman.livre.set()
-        colecao.adicionar_nota("Inglês", "Básico", {"Frente": "a", "Verso": "b"}, [], "guid-1")
+        colecao.adicionar_nota(NotaAGravar("Inglês", "Básico", {"Frente": "a", "Verso": "b"}, [], "guid-1"))
         self.assertEqual([guid for _, guid, _ in self.anki.col.notas_gravadas()], ["guid-1"])
 
     def gravar_o_cartao(self, colecao, guid="guid-1", frente="a"):
-        return colecao.gravar_cartao(
-            "Inglês", "Básico", {"Frente": frente, "Verso": "b"}, [], guid, "Frente", frente.strip().lower(), lambda valor: valor.strip().lower())
+        return colecao.gravar_cartao(NotaAGravar("Inglês", "Básico", {"Frente": frente, "Verso": "b"}, [], guid), FrenteDoCartao("Frente", frente.strip().lower(), lambda valor: valor.strip().lower()))
 
     def test_o_cartao_que_o_anki_ocupado_atrasou_da_uma_nota_so_e_a_volta_seguinte_diz_added(self):
         colecao = no_anki.ColecaoDoAnki(self.adaptador(DESCRICAO)._mw, limite_s=0.2)
@@ -132,7 +132,7 @@ class AdaptadorDoAnki(ContratoDoAdaptadorDaColecao, ContratoDoPerfilFixo, Contra
     @staticmethod
     def _erro_de(colecao):
         try:
-            colecao.adicionar_nota("Inglês", "Básico", {"Frente": "a", "Verso": "b"}, [], "guid-1")
+            colecao.adicionar_nota(NotaAGravar("Inglês", "Básico", {"Frente": "a", "Verso": "b"}, [], "guid-1"))
         except baralhos.ColecaoIndisponivel as erro:
             return str(erro)
         return None
@@ -140,7 +140,7 @@ class AdaptadorDoAnki(ContratoDoAdaptadorDaColecao, ContratoDoPerfilFixo, Contra
     def test_um_campo_que_o_tipo_de_nota_nao_tem_nao_grava_nada(self):
         colecao = self.adaptador(DESCRICAO)
         with self.assertRaises(baralhos.TipoDeNotaAusente):
-            colecao.adicionar_nota("Inglês", "Básico", {"Front": "a", "Verso": "b"}, [], "guid-1")
+            colecao.adicionar_nota(NotaAGravar("Inglês", "Básico", {"Front": "a", "Verso": "b"}, [], "guid-1"))
         self.assertEqual(self.anki.col.notas_gravadas(), [])
 
     def test_a_colecao_so_e_tocada_pela_thread_principal_do_anki(self):

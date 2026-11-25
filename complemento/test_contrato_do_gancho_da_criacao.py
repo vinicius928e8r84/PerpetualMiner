@@ -5,6 +5,7 @@ import types
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import criacao_na_revisao, tipo_de_nota
+from complemento.nota_a_gravar import NotaAGravar
 
 SO_O_DEFAULT = {"baralhos": [{"nome": "Default"}]}
 
@@ -23,7 +24,7 @@ class ContratoDoGanchoDaCriacao:
 
     def test_o_gancho_da_revisao_grava_a_frase_escrita_no_campo_da_nota_e_as_outras_notas_nao_mudam(self):
         colecao = self.com_notas_gravadas()
-        colecao.adicionar_nota("PerpetualMiner::Inglês", "PerpetualMiner Inglês", {"Frase": "Outra", "Palavra": "outra"}, [], "g2")
+        colecao.adicionar_nota(NotaAGravar("PerpetualMiner::Inglês", "PerpetualMiner Inglês", {"Frase": "Outra", "Palavra": "outra"}, [], "g2"))
         outra_antes = dict(colecao.cartoes_do_baralho("PerpetualMiner::Inglês")[1]["campos"])
         self.assertEqual(self.na_revisao(colecao, "g1", tipo_de_nota.MENSAGEM_DA_CRIACAO + "I gave up sugar last year."), (True, None))
         self.assertEqual(self.escrita_da_nota(colecao), "I gave up sugar last year.")
@@ -48,7 +49,7 @@ class ContratoDoGanchoDaCriacao:
     def test_uma_nota_de_outro_tipo_de_nota_nao_recebe_a_frase(self):
         colecao = self.adaptador(self.DESCRICAO)
         self.preparar(colecao)
-        colecao.adicionar_nota("Inglês", "Básico", {"Frente": "a", "Verso": "b"}, [], "g-basico")
+        colecao.adicionar_nota(NotaAGravar("Inglês", "Básico", {"Frente": "a", "Verso": "b"}, [], "g-basico"))
         antes = colecao.cartoes_do_baralho("Inglês")
         self.na_revisao(colecao, "g-basico", tipo_de_nota.MENSAGEM_DA_CRIACAO + "frase")
         self.na_revisao(colecao, "g-que-nao-existe", tipo_de_nota.MENSAGEM_DA_CRIACAO + "frase")
@@ -69,6 +70,6 @@ class ContratoDoGanchoDaCriacao:
     def test_no_russo_a_frase_vai_para_o_campo_do_tipo_do_russo(self):
         colecao = self.adaptador(SO_O_DEFAULT)
         self.preparar(colecao)
-        colecao.adicionar_nota("PerpetualMiner::Russo", "PerpetualMiner Russo", {"Frase": "Я не мальчик!", "Palavra": "мальчик"}, [], "g-ru")
+        colecao.adicionar_nota(NotaAGravar("PerpetualMiner::Russo", "PerpetualMiner Russo", {"Frase": "Я не мальчик!", "Palavra": "мальчик"}, [], "g-ru"))
         self.na_revisao(colecao, "g-ru", tipo_de_nota.MENSAGEM_DA_CRIACAO + "Он мальчик.")
         self.assertEqual(self.escrita_da_nota(colecao, "PerpetualMiner::Russo"), "Он мальчик.")

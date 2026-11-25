@@ -5,6 +5,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import baralhos
 from complemento.test_contrato_da_criacao import SO_O_DEFAULT
+from complemento.nota_a_gravar import NotaAGravar
 
 
 class ContratoDoNavegador:
@@ -13,7 +14,7 @@ class ContratoDoNavegador:
 
     def test_abrir_no_anki_abre_o_navegador_na_nota_do_guid(self):
         colecao = self.adaptador(SO_O_DEFAULT)
-        colecao.adicionar_nota("Default", "Básico", {"Frente": "a", "Verso": "b"}, [], "guid-1")
+        colecao.adicionar_nota(NotaAGravar("Default", "Básico", {"Frente": "a", "Verso": "b"}, [], "guid-1"))
         self.assertTrue(colecao.abrir_no_navegador("guid-1"))
         self.assertEqual(self.navegador_aberto(colecao), ["guid-1"])
 
