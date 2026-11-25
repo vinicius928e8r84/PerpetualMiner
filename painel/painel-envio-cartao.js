@@ -85,9 +85,10 @@
     etapas.setAttribute('aria-valuemax', '100');
     etapas.setAttribute('aria-valuenow', String(pct));
     if (indice != null) etapas.setAttribute('aria-valuetext', etapaDeSete(situacao));
+    const etapaFeita = k => fim || k < indice;
     ETAPAS.forEach((_, k) => {
       const segmento = document.createElement('i');
-      if (!semEtapas && (fim || k < indice)) segmento.className = 'feito';
+      if (!semEtapas && etapaFeita(k)) segmento.className = 'feito';
       if (!fim && k === indice) {
         const enchendo = document.createElement('b');
         enchendo.style.width = `${Math.round(fracao * 100)}%`;
@@ -215,55 +216,76 @@
       return cartao;
     }
 
-    function pedidoDaEspera(envio, { espera }, estado, noLimite) {
-      if (espera === ESPERA.PLANO) return noLimite;
-      if (espera === ESPERA.TETO) return raiz.EnvioNoTeto.pedido(envio, estado);
-      const { profile: aberto, marked: perfil } = estado.waiting || {};
-      if (espera === ESPERA.OUTRO_PERFIL) {
-        return {
-          motivo: textoDaVoz(falhasAoAbrirOPerfil.has(envio.jobId) ? 'ENV-17.falha' : 'ENV-17.espera', { aberto }),
-          rotulo: textoDaVoz('ENV-17.abrir', { perfil }), foco: 'abrir-perfil', aoUsar: () => abrirOPerfil(envio),
-        };
-      }
-      if (espera === ESPERA.PERFIL_SUMIU) return { motivo: textoDaVoz('ENV-17.sumiu', { perfil }), rotulo: textoDaVoz('ENV-17.escolher'), foco: 'escolher-perfil', aoUsar: escolherOutroPerfil };
-      return { motivo: textoDaVoz('ENV-22.demora') };
-    }
-
     function pedidoDoCartao(envio, situacao, estado) {
-      const esquecer = motivo => ({ motivo, rotulo: textoDaVoz('ENV-23.esquecer'), foco: 'esquecer', aoUsar: () => esquecerOEnvio(envio) });
-      const continuar = { rotulo: textoDaVoz('ENV-03.tentarDeNovo'), foco: 'continuar', aoUsar: () => continuarEnvio(envio) };
       const falhou = Boolean(falhaAoRetomar(envio));
-      const noLimite = estado ? raiz.EnvioNoLimite.pedido(envio, estado, { tentarDeNovo: () => continuarEnvio(envio), usarAChave: () => pedirAChave(envio), falhou, redesenhar }) : null;
-      switch (situacao.estado) {
-        case ESTADO.NAO_COMECOU:
-          return { motivo: textoDaVoz(MOTIVO_DE_NAO_COMECAR[situacao.causa]), rotulo: textoDaVoz('ENV-03.tentarDeNovo'), foco: 'tentar', aoUsar: () => tentarCriarDeNovo(envio) };
-        case ESTADO.DESCONHECIDO:
-          return esquecer(textoDaVoz('ENV-23.motivo'));
-        case ESTADO.APAGADO:
-          return esquecer(textoDaVoz('ENV-24.apagado'));
-        case ESTADO.PARADO:
-          return raiz.EnvioParado.pedido(envio, estado);
-        case ESTADO.ESPERANDO: {
-          const pedido = pedidoDaEspera(envio, situacao, estado, noLimite);
-          if (pedido) return pedido;
-          break;
-        }
-        case ESTADO.EM_PARTE:
-        case ESTADO.NAO_CONCLUIDO: {
-          if (falhou) break;
-          if (!SituacaoDoEnvio.retomavel(situacao)) return null;
-          const dito = doMotivo(situacao.motivo);
-          if (!dito) return continuar;
-          if (ROTULO_DA_CHAVE[dito.ajuda]) return { motivo: dito.motivo, rotulo: textoDaVoz(ROTULO_DA_CHAVE[dito.ajuda]), foco: 'usar-chave', aoUsar: usarAChave };
-          return { motivo: dito.motivo, ligacao: gerenciarUso(dito.ajuda), ...continuar };
-        }
-        default:
-      }
-      return falhou ? { motivo: textoDaVoz('ENV-14.falha'), ...continuar } : null;
+      const fatos = {
+        envio, situacao, estado, falhou,
+        noLimite: estado ? raiz.EnvioNoLimite.pedido(envio, estado, { tentarDeNovo: () => continuarEnvio(envio), usarAChave: () => pedirAChave(envio), falhou, redesenhar }) : null,
+        acoes: { esquecerOEnvio, continuarEnvio, tentarCriarDeNovo },
+      };
+      const doEstado = Object.hasOwn(PEDIDO_DO_ESTADO, situacao.estado) ? PEDIDO_DO_ESTADO[situacao.estado] : () => SEM_PEDIDO_DO_ESTADO;
+      const pedido = doEstado(fatos);
+      return pedido === SEM_PEDIDO_DO_ESTADO ? pedidoDaFalhaAoRetomar(fatos) : pedido;
     }
 
     return { montarCartao, pedidoDoCartao };
   }
+
+  const SEM_PEDIDO_DO_ESTADO = Object.freeze({});
+
+  const pedidoParaContinuar = ({ envio, acoes }) => ({ rotulo: textoDaVoz('ENV-03.tentarDeNovo'), foco: 'continuar', aoUsar: () => acoes.continuarEnvio(envio) });
+
+  const pedidoParaEsquecer = (motivo, { envio, acoes }) => ({ motivo, rotulo: textoDaVoz('ENV-23.esquecer'), foco: 'esquecer', aoUsar: () => acoes.esquecerOEnvio(envio) });
+
+  const pedidoDaFalhaAoRetomar = fatos => (fatos.falhou ? { motivo: textoDaVoz('ENV-14.falha'), ...pedidoParaContinuar(fatos) } : null);
+
+  function pedidoParaTentarCriarDeNovo({ envio, situacao, acoes }) {
+    return { motivo: textoDaVoz(MOTIVO_DE_NAO_COMECAR[situacao.causa]), rotulo: textoDaVoz('ENV-03.tentarDeNovo'), foco: 'tentar', aoUsar: () => acoes.tentarCriarDeNovo(envio) };
+  }
+
+  function pedidoDoQueTerminouSemChegar(fatos) {
+    if (fatos.falhou) return SEM_PEDIDO_DO_ESTADO;
+    if (!SituacaoDoEnvio.retomavel(fatos.situacao)) return null;
+    const dito = doMotivo(fatos.situacao.motivo);
+    if (!dito) return pedidoParaContinuar(fatos);
+    if (ROTULO_DA_CHAVE[dito.ajuda]) return { motivo: dito.motivo, rotulo: textoDaVoz(ROTULO_DA_CHAVE[dito.ajuda]), foco: 'usar-chave', aoUsar: usarAChave };
+    return { motivo: dito.motivo, ligacao: gerenciarUso(dito.ajuda), ...pedidoParaContinuar(fatos) };
+  }
+
+  const pedidoDeAbrirOPerfil = ({ envio, estado }) => {
+    const { profile: aberto, marked: perfil } = estado.waiting || {};
+    return {
+      motivo: textoDaVoz(falhasAoAbrirOPerfil.has(envio.jobId) ? 'ENV-17.falha' : 'ENV-17.espera', { aberto }),
+      rotulo: textoDaVoz('ENV-17.abrir', { perfil }), foco: 'abrir-perfil', aoUsar: () => abrirOPerfil(envio),
+    };
+  };
+
+  const pedidoDeEscolherOutroPerfil = ({ estado }) => ({
+    motivo: textoDaVoz('ENV-17.sumiu', { perfil: (estado.waiting || {}).marked }), rotulo: textoDaVoz('ENV-17.escolher'), foco: 'escolher-perfil', aoUsar: escolherOutroPerfil,
+  });
+
+  const PEDIDO_DA_ESPERA = {
+    [ESPERA.PLANO]: ({ noLimite }) => noLimite,
+    [ESPERA.TETO]: ({ envio, estado }) => raiz.EnvioNoTeto.pedido(envio, estado),
+    [ESPERA.OUTRO_PERFIL]: pedidoDeAbrirOPerfil,
+    [ESPERA.PERFIL_SUMIU]: pedidoDeEscolherOutroPerfil,
+    [ESPERA.ANKI]: () => ({ motivo: textoDaVoz('ENV-22.demora') }),
+  };
+
+  function pedidoDeQuemEspera(fatos) {
+    const doQueEspera = Object.hasOwn(PEDIDO_DA_ESPERA, fatos.situacao.espera) ? PEDIDO_DA_ESPERA[fatos.situacao.espera] : PEDIDO_DA_ESPERA[ESPERA.ANKI];
+    return doQueEspera(fatos) || SEM_PEDIDO_DO_ESTADO;
+  }
+
+  const PEDIDO_DO_ESTADO = {
+    [ESTADO.NAO_COMECOU]: pedidoParaTentarCriarDeNovo,
+    [ESTADO.DESCONHECIDO]: fatos => pedidoParaEsquecer(textoDaVoz('ENV-23.motivo'), fatos),
+    [ESTADO.APAGADO]: fatos => pedidoParaEsquecer(textoDaVoz('ENV-24.apagado'), fatos),
+    [ESTADO.PARADO]: ({ envio, estado }) => raiz.EnvioParado.pedido(envio, estado),
+    [ESTADO.ESPERANDO]: pedidoDeQuemEspera,
+    [ESTADO.EM_PARTE]: pedidoDoQueTerminouSemChegar,
+    [ESTADO.NAO_CONCLUIDO]: pedidoDoQueTerminouSemChegar,
+  };
 
   function nomeDoBaralho({ lang, baralho }) {
     return raiz.AjustesDeEnvio.nomeDoBaralho(baralho || raiz.AjustesDeEnvio.atual()[lang].deckName);
