@@ -8,6 +8,10 @@
   <link href="/veio/componentes.css" rel="stylesheet">
   <link href="/veio/componentes-formulario.css" rel="stylesheet">
   <link href="painel.css" rel="stylesheet">
+  <link href="painel-configuracoes.css" rel="stylesheet">
+  <link href="painel-frases.css" rel="stylesheet">
+  <link href="painel-envio.css" rel="stylesheet">
+  <link href="painel-boas-vindas.css" rel="stylesheet">
   <link href="painel-anki.css" rel="stylesheet">
   <link href="painel-primeira-conexao.css" rel="stylesheet">
   <link href="painel-ia-modelo.css" rel="stylesheet">
@@ -152,9 +156,3 @@
        <span data-icone="proxima">
       <button class="veio-botao-icone" data-voz-aria="PAI-26.ultima" data-voz-title="PAI-26.ultima" id="btn-last">
        <span data-icone="ultima">
-    <section aria-labelledby="titulo-anki" class="shell-area" data-area="anki" hidden>
-     <header class="shell-cabecalho">
-      <h1 data-voz="SHL-02.anki" id="titulo-anki">
-      <button class="veio-botao veio-botao--contorno" data-voz-title="BRG-24" id="btn-anki-atualizar">
-       <span data-icone="atualizar">
-       <span data-voz="SHL-06">
