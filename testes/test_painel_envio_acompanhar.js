@@ -72,6 +72,14 @@ test('o apagar das Frases pedido de outro lugar encerra o acompanhamento só qua
   assert.deepStrictEqual(rastro(mundo), ['clearInterval 1', 'fecharModal modal-envio', 'resumoDescartar']);
 });
 
+test('o apagar das Frases pedido de fora, sem remessa acompanhada, não mexe em nada', async () => {
+  const mundo = await preparar();
+  mundo.log.length = 0;
+  mundo.aoMudarOArmazenamento({ pm_envio: { newValue: { apagarFrases: true, envios: [] } } }, 'local');
+  await adiante();
+  assert.deepStrictEqual(rastro(mundo), []);
+});
+
 test('apagarTudo encerra, grava só a marca e pede o apagar das Frases', async () => {
   const mundo = await comUmEnvio();
   mundo.log.length = 0;
