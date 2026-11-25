@@ -345,8 +345,6 @@
       width: 100%;
       min-width: 0;
 
-    /* O badge da toolbar fica fora das colunas: o Chrome o desenha igual nos
-       dois temas, então ele não segue o tema da página. */
     .toolbar {
       max-width: 1120px;
       margin: 20px auto 0;
@@ -400,9 +398,6 @@
       height: 32px;
     }
 
-    /* A proporção do badge do Chrome: pílula baixa, colada no canto de baixo.
-       O tamanho da letra e o raio são os que o Chrome desenha, não da Veio, então
-       ficam fora de `veio/tokens.css`; só as cores são da identidade. */
     .icone-com-badge b {
       position: absolute;
       right: -3px;
@@ -648,9 +643,6 @@
       ['', 'PerpetualMiner', 'Os dois idiomas desligados'],
     ];
 
-    // A cor sai dos tokens do tema escuro, que é de onde `background.js` copiou
-    // as duas: se o token mudar e a cópia de lá não mudar junto, a vitrine passa
-    // a discordar do badge de verdade. O teste do badge compara as duas.
     const tokensDoEscuro = getComputedStyle(document.querySelector('[data-tema="escuro"]'));
     const badgeFundo = tokensDoEscuro.getPropertyValue('--veio-accent').trim();
     const badgeTinta = tokensDoEscuro.getPropertyValue('--veio-accent-ink').trim();

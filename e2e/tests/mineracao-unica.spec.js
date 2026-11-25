@@ -6,10 +6,6 @@ const { fotografar, registrarEstado } = require('../evidencias-mineracao');
 const TRECHO = 'Every lantern along the pier flickered in the salt wind.';
 
 // Exceção de teste: chrome-nativo (docs/testes.md).
-// O Playwright não abre o menu de contexto nativo do Chrome. É a exceção
-// documentada em docs/testes.md: o teste chama o callback que o Chrome
-// chamaria, com o mesmo `info` e a mesma `tab`; o que ele grava é conferido
-// depois na tela do painel, como a pessoa vê.
 const minerarPeloMenu = (extensao, { selecao, pageUrl, titulo }) => extensao.serviceWorker.evaluate(
   ({ selecao, pageUrl, titulo }) => minerarSelecaoDoMenu(
     { menuItemId: 'minerar-perpetualminer', selectionText: selecao, pageUrl },
@@ -123,8 +119,6 @@ for (const sufixo of ['', '?download=1#page=2']) {
       pm_atalho: { type: 'keyboard', code: 'KeyE', altKey: true, ctrlKey: false, shiftKey: false },
     });
     const url = paginas.url(`texto.pdf${sufixo}`);
-    // Texto HTML num endereço .pdf: exerce a classificação da URL no content
-    // script real, não o visualizador nativo de PDF do Chrome.
     await page.route('**/texto.pdf*', async route => {
       const resposta = await route.fetch({ url: paginas.url('texto.html') });
       await route.fulfill({ response: resposta });

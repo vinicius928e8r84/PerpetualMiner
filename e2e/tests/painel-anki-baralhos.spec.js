@@ -64,7 +64,6 @@ test('baralhos: azulejos Inglês · Russo com as palavras; o escolhido mostra o 
   await expect(numeros).toContainText('Termos-alvo1.870');
   await expect(numeros).toContainText('Palavra nova por cartão1,6');
   await expect(numeros).toContainText('Maduros1.410');
-  // Recentes junta os que estão aprendendo e os jovens do Anki.
   await expect(numeros).toContainText('Recentes420');
   await expect(numeros).toContainText('Novos310');
 

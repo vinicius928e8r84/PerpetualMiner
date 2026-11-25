@@ -22,9 +22,6 @@ function criarFakeGemini() {
     if (resposta.espera) {
       const { espera, respondida } = resposta;
       await espera;
-      // A página pode ter desistido do pedido enquanto ele esperava
-      // (Cancelar, Recomeçar): responder a um pedido cancelado falha, e isso
-      // não é erro do teste.
       await responder(route, resposta.resposta).catch(() => {});
       respondida();
       return undefined;

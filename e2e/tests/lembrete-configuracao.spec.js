@@ -150,8 +150,6 @@ test.describe('quem atualizou a extensão', () => {
 
   test('a atualização não deixa a configuração começada', async ({ extensao }) => {
     // Exceção de teste: chrome-nativo (docs/testes.md).
-    // O Chromium do Playwright não sabe atualizar uma extensão desempacotada: o
-    // teste chama o ouvinte do onInstalled como o Chrome chamaria, com `update`.
     await extensao.serviceWorker.evaluate(() => aoInstalar({ reason: 'update', previousVersion: '4.9' }));
     expect((await extensao.lerStorage('pm_boas_vindas')).pm_boas_vindas).toBeUndefined();
   });

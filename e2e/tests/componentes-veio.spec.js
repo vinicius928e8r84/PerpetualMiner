@@ -20,9 +20,6 @@ const abrirVitrine = async (page, paginas) => {
   await expect(page.locator('[data-grupo="Botões"]').first()).toBeVisible();
 };
 
-// textContent, e não innerText: o cabeçalho de data é escrito "hoje" e só aparece em
-// maiúsculas por causa do text-transform. A abertura em negrito de um aviso é uma
-// parte do estado e o resto é outra: cada uma é conferida sozinha.
 async function textosEscritos(page) {
   return page.evaluate(() => {
     const SELETORES = ['.veio-botao', '.veio-selo', '.veio-kbd', '.veio-segmentado__opcao',
@@ -287,7 +284,6 @@ test('o toast de sucesso some sozinho, depois do tempo de leitura', async ({ pag
   await expect(toast).toBeVisible();
   await expect(toast).toHaveText('12 frases apagadas');
 
-  // Nunca some antes de dar para ler: 2,6 s é o mínimo.
   await page.waitForTimeout(2400);
   await expect(toast).toBeVisible();
 
@@ -354,7 +350,6 @@ test('o aviso persistente fica até ser fechado e tem Detalhes recolhido', async
   await expect(detalhes.locator('pre')).toBeVisible();
   await expect(detalhes.locator('pre')).toContainText('HTTP 403');
 
-  // Ao contrário do toast, ele continua ali depois do tempo de leitura.
   await page.waitForTimeout(4000);
   await expect(aviso).toBeVisible();
 

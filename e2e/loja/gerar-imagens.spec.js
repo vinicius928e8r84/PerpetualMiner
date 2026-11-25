@@ -10,7 +10,6 @@ const AGORA = new Date('2026-09-18T12:00:00');
 const HOJE = '18/09/2026';
 const JANELA = { width: CAPTURA.largura, height: CAPTURA.altura };
 
-// A contagem do dia é do service worker, que não tem o relógio parado: ela vale para o dia de verdade.
 const diaDeHoje = () => {
   const hoje = new Date();
   return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
@@ -40,10 +39,6 @@ test('captura 1: legenda com o overlay e o aviso de minerada', async ({ page, co
   await salvar(page, IMAGENS.captura1);
 });
 
-/**
- * A Palavra como o painel a guarda (`palavra@índice`): o índice é o do token na
- * frase, contando os espaços e a pontuação, como `tokenizarFrase` (painel.js).
- */
 function palavra(texto, alvo) {
   const tokens = texto.match(/[\p{L}\p{N}]+(?:[-'][\p{L}\p{N}]+)*|[^\p{L}\p{N}]/gu);
   return `${alvo}@${tokens.findIndex(token => token.toLowerCase() === alvo)}`;

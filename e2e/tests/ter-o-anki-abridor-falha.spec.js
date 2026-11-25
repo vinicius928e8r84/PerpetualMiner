@@ -15,9 +15,7 @@ test.describe('com a permissão que o Chrome guardou depois de Permitir', () => 
   test.use({ permissaoDoAbridor: true });
 
   test('a conversa com o abridor rejeita: “Já tenho” cai no caminho manual de sempre, e nada é guardado', async ({ page, extensao, fakes }) => {
-    // Exceção de teste: chrome-nativo (docs/testes.md). Uma conversa que rejeita (o Chrome recusando a pergunta
-    // da permissão) não tem como ser pedida pela tela nem pelo fake do abridor, que nunca rejeita: o teste troca
-    // `chrome.permissions.contains` por uma função que rejeita, antes de o painel carregar.
+    // Exceção de teste: chrome-nativo (docs/testes.md).
     await page.addInitScript(() => {
       chrome.permissions.contains = () => Promise.reject(new Error('o Chrome recusou a pergunta da permissão'));
     });

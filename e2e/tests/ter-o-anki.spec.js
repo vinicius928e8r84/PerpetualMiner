@@ -8,7 +8,6 @@ const contrato = require('../../complemento/contrato/exemplos.json');
 
 const ORIGEM = `${contrato.origemDaExtensao}/`;
 const ABRIR = { mensagem: { acao: 'abrir' }, origem: ORIGEM };
-// A página de download do Anki: ela existe sempre e escolhe o arquivo do processador sozinha.
 const PAGINA_DO_ANKI = 'https://apps.ankiweb.net/';
 const CONFERIR = { mensagem: { acao: 'conferir' }, origem: ORIGEM };
 
@@ -187,7 +186,6 @@ test.describe('com a permissão que o Chrome guardou depois de Permitir', () => 
   });
 
   test('sem o abridor no computador: “Já tenho” cai no caminho manual de sempre', async ({ page, extensao, fakes }) => {
-    // Sem o abridor (Conexão antiga): o Chrome não acha o host e o passo não trava.
     test.skip(SEM_ABRIDOR_IMPOSSIVEL, 'no Windows o Chromium usa o abridor real');
     fakes.abridor.desregistrar();
     await page.goto(extensao.url('painel.html#anki/custos'));
@@ -236,8 +234,6 @@ test('no passo de baixar o arquivo, a animação mostra o aviso do Anki e de ond
 
   const aviso = card(page).locator('.pc-animacao');
   await expect(aviso).toBeVisible();
-  // As palavras da janela do próprio Anki em pt-BR (addons-install-anki-addon e o começo de
-  // addons-important-as-addons-are-programs-downloaded, Anki 25.9): o Anki diz “extensões”.
   await expect(aviso).toContainText('Instalar extensão do Anki');
   await expect(aviso).toContainText('Importante: Como as extensões são programas baixados da internet, elas são potencialmente maliciosas.');
   await expect(aviso.locator('.pc-animacao__quadro')).toHaveCount(2);
@@ -264,7 +260,6 @@ test('com menos movimento, a animação vira quadros parados, lado a lado', asyn
   await expect(quadros).toHaveCount(2);
   await expect(quadros.first()).toHaveCSS('animation-name', 'none');
   await expect(quadros.nth(1)).toHaveCSS('animation-name', 'none');
-  // Visíveis de verdade: o toBeVisible do Playwright conta um quadro com opacidade 0 como visível.
   await expect(quadros.first()).toHaveCSS('opacity', '1');
   await expect(quadros.nth(1)).toHaveCSS('opacity', '1');
   const caixas = await quadros.evaluateAll(els => els.map(el => {
@@ -283,7 +278,6 @@ test('com menos movimento numa janela estreita, os quadros parados empilham e ca
   await expect(card(page)).toBeVisible();
   await lista(page).getByRole('button', { name: 'Pôr a Conexão no Anki' }).click();
 
-  // Larguras de uma janela de Chrome de verdade (ela não fica mais estreita que ~500 px) em que dois quadros não cabem.
   for (const largura of [540, 500]) {
     await page.setViewportSize({ width: largura, height: 1000 });
     const caixas = await card(page).locator('.pc-controle').evaluate(controle => {

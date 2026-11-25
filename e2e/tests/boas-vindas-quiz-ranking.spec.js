@@ -106,7 +106,6 @@ test.describe('o ranking do grupo', () => {
     const ranking = await ateOResultado(page, extensao, fakes, relogioParado);
     fakes.google.autenticarComo('outra-conta');
 
-    // `click`, não `check`: a caixa volta sozinha ao estado de antes, e `check` falha por ela não ficar marcada.
     await ranking.getByRole('checkbox', { name: 'Aparecer no ranking do grupo' }).click();
 
     await expect(ranking).toContainText('Não deu para atualizar a sua escolha. Tente de novo.');

@@ -9,10 +9,6 @@
   </style>
 </head>
 <body>
-  <!-- O player vem de outra origem (?player=<url>, dada pelo teste) e o iframe
-       não delega clipboard-write, como nos sites que embutem o player de um
-       terceiro: o clipboard falha dentro do iframe e a cópia cai para o frame
-       de cima. -->
   <iframe id="player"></iframe>
   <script>
     document.getElementById('player').src = new URLSearchParams(location.search).get('player');

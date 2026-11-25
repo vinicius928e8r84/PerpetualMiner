@@ -10,13 +10,6 @@ const { estadoFinal } = require('../estado-final');
 const FRASE_RUSSA = 'Я улыбаюсь';
 const ALARME_VIRADA_DO_DIA = 'pm-virada-do-dia';
 
-/**
- * O valor de um token no tema padrão de `veio/tokens.css`.
- *
- * O badge não é CSS — o Chrome recebe a cor escrita —, então `background.js`
- * guarda uma cópia das duas. Lendo o token aqui, o teste falha se a cópia e o
- * token se separarem.
- */
 function tokenDoTemaPadrao(nome) {
   const css = fs.readFileSync(path.join(__dirname, '..', '..', 'veio', 'tokens.css'), 'utf8');
   const ateOClaro = css.slice(0, css.indexOf('[data-tema="claro"]'));
@@ -201,15 +194,11 @@ test('o alarme da meia-noite acerta o badge e se reagenda para a meia-noite segu
 
   await extensao.serviceWorker.evaluate(() => chrome.action.setBadgeText({ text: '99' }));
 
-  // O Chrome não deixa o teste esperar a meia-noite: o teste troca o alarme por
-  // um de mesmo nome que dispara já, que é o que o Chrome faria à meia-noite.
   await extensao.serviceWorker.evaluate(
     nome => chrome.alarms.create(nome, { when: Date.now() + 100 }), ALARME_VIRADA_DO_DIA);
 
   await expect.poll(async () => (await naToolbar(extensao)).badge).toBe('12');
 
-  // E o próximo é o da meia-noite seguinte no relógio local, de novo. Um período
-  // fixo de 24 h escorregaria uma hora a cada mudança de horário de verão.
   const amanha = new Date();
   amanha.setDate(amanha.getDate() + 1);
   await expect.poll(() => proximoAlarme(extensao)).toEqual({
@@ -220,9 +209,6 @@ test('o alarme da meia-noite acerta o badge e se reagenda para a meia-noite segu
 });
 
 test('a vitrine mostra os três estados do badge, nas cores dos tokens', async ({ page, paginas, extensao }) => {
-  // O badge de verdade é desenhado pelo Chrome na barra do navegador, então o
-  // preview do Vercel não o alcança. A vitrine tem uma imitação dele, para
-  // conferir cor e contraste no navegador comum.
   await page.goto(paginas.url('vitrine.html'));
 
   const voz = await extensao.serviceWorker.evaluate(() => ({

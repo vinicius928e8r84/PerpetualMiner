@@ -1,18 +1,5 @@
 'use strict';
 
-// A extensão carregada de uma pasta se recarrega sozinha quando um arquivo da
-// pasta muda (é o que atualiza o Chrome/Opera depois de um `git pull`).
-//
-// Cada teste carrega uma cópia da extensão numa pasta temporária (a opção
-// `pastaDaExtensao` da fixture), para poder mudar um arquivo sem tocar no
-// repositório. O alarme de 1 minuto é disparado antes da hora pelo próprio nome
-// (o relógio não dá para o teste dirigir).
-//
-// O recarregamento em si não dá para fazer de verdade aqui: numa extensão que o
-// Chromium do Playwright carrega pela linha de comando, `chrome.runtime.reload()`
-// a descarrega e ela não volta. Então o teste troca essa única chamada por um
-// contador, a fronteira com o navegador, e afirma quantas vezes ela foi pedida.
-
 const { test: base, expect } = require('../fixtures');
 const fs = require('fs');
 const os = require('os');
