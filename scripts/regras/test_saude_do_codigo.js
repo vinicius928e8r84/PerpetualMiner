@@ -236,7 +236,7 @@ const criada = JSON.parse(fs.readFileSync(path.join(raiz, LINHA_DE_BASE), 'utf8'
 prova([r.status, criada['tokens-veio'], criada['saude-do-codigo']], [0, outraRegra['tokens-veio'], { 'ferramenta/a.js': 2, 'ferramenta/b.py': 1 }],
   `--criar-linha-de-base cria a da regra que chega e não toca as outras:\n${r.stdout}`);
 r = spawnSync('node', [path.join(__dirname, 'verificar.js'), '--raiz', raiz, '--criar-linha-de-base'], { encoding: 'utf8', env: semBaseDoAmbiente() });
-prova([r.status, /já existe com todas as regras; a linha de base só desce/.test(r.stdout)], [1, true], `com todas as regras, recusa:\n${r.stdout}`);
+prova([r.status, /já existe com todas as regras; ela só desce/.test(r.stdout)], [1, true], `com todas as regras, recusa:\n${r.stdout}`);
 
 fs.rmSync(raiz, { recursive: true, force: true });
 console.log(`saude-do-codigo: ${total} provas passaram`);
