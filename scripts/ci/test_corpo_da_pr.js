@@ -36,6 +36,7 @@ git('commit', '-q', '-m', 'base');
 ramo('so-docs', 'docs/leia.md', 'dois\n');
 ramo('superficie', 'popup/popup.js', "'use strict';\nconst a = 1;\n");
 ramo('dados', 'manifest.json', '{ "permissions": ["storage", "history"] }\n');
+ramo('sensivel', '.github/workflows/novo.yml', 'on: push\n');
 
 const MODELO = ['## Summary', '', 'O que mudou.', '', '## Evidence', '', 'Rodei.', '', '## Merge Danger', '', '**Door:** two-way', '', '**Blast Radius:** CI', ''];
 const corpoCom = (...linhas) => [...MODELO, ...linhas].join('\n');
@@ -55,6 +56,10 @@ assert.match(doModeloDoSkill[2], /não diz a issue/);
 
 assert.match(faltas('so-docs', COMPLETO.replace('Sem issue', 'Refs https://github.com/dono/repo/issues/7')).join('\n'), /"Refs" sem a linha "Prova que falta: <texto>"/);
 assert.match(faltas('so-docs', COMPLETO.replace('Sem issue', 'Closes #7')).join('\n'), /não tem a URL completa da issue \(https:\/\/github\.com\/dono\/repo\/issues\/<N>/);
+
+const emCaminhoSensivel = faltas('sensivel', COMPLETO);
+assert.strictEqual(emCaminhoSensivel.length, 1, emCaminhoSensivel.join('\n'));
+assert.match(emCaminhoSensivel[0], /^caminho sensível \([^)]*\.github\/[^)]*\): o corpo não tem a seção "Prova real"/, 'a PR que mexe em .github/ e diz BAIXA pede a prova antes de abrir');
 
 const semMapa = faltas('superficie', COMPLETO);
 assert.strictEqual(semMapa.length, 1, semMapa.join('\n'));

@@ -1,7 +1,7 @@
 'use strict';
 
 const { test, expect } = require('../fixtures');
-const { quiz, responderAParte1, responder, percorrer, abrirOQuiz, fraseDaPergunta, CERTA, OS_DOIS, grupo } = require('../apoio-do-quiz');
+const { quiz, responder, fraseDaPergunta, CERTA, OS_DOIS, grupo, CINCO_CERTAS_E_UMA_ERRADA, naParte2, chegarAoNivelSugerido } = require('../apoio-do-quiz');
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -39,28 +39,26 @@ test.describe('o som', () => {
   });
 
   test('cada acerto seguido toca uma nota mais alta, e errar não toca nada', async ({ page, extensao, fakes, relogioParado }) => {
-    const relogio = await abrirOQuiz(page, extensao, relogioParado);
-    await responderAParte1(page, 'Inglês', 'iniciante');
+    const partida = await naParte2({ page, extensao, fakes, relogioParado });
 
-    await responder(page, 'Inglês', fakes, relogio, 'certo');
+    await responder(partida, 'certo');
     const primeiro = (await sons(page)).notas;
-    await responder(page, 'Inglês', fakes, relogio, 'certo');
+    await responder(partida, 'certo');
     const depois = (await sons(page)).notas;
     expect(primeiro).toHaveLength(2);
     expect(depois).toHaveLength(4);
     expect(depois[2].hz).toBeGreaterThan(primeiro[0].hz);
 
-    await responder(page, 'Inglês', fakes, relogio, 'errado');
+    await responder(partida, 'errado');
     expect((await sons(page)).notas.slice(0, 4)).toEqual(depois);
     expect((await sons(page)).notas.length).toBeGreaterThan(4);
   });
 
   test('o chute errado e “Não sei” não tocam a nota de acerto', async ({ page, extensao, fakes, relogioParado }) => {
     // Exceção de teste: sem-estado-guardado
-    const relogio = await abrirOQuiz(page, extensao, relogioParado);
-    await responderAParte1(page, 'Inglês', 'iniciante');
+    const partida = await naParte2({ page, extensao, fakes, relogioParado });
 
-    await responder(page, 'Inglês', fakes, relogio, 'errado');
+    await responder(partida, 'errado');
     expect((await sons(page)).notas).toEqual([]);
     await quiz(page, 'Inglês').getByRole('button', { name: 'Não sei', exact: true }).click();
     expect((await sons(page)).notas).toEqual([{ hz: 330, tipo: 'triangle' }]);
@@ -68,12 +66,11 @@ test.describe('o som', () => {
 
   test('com o som desligado, o acerto não toca nada e o botão diz que está desligado', async ({ page, extensao, fakes, relogioParado }) => {
     // Exceção de teste: sem-estado-guardado
-    const relogio = await abrirOQuiz(page, extensao, relogioParado);
-    await responderAParte1(page, 'Inglês', 'iniciante');
+    const partida = await naParte2({ page, extensao, fakes, relogioParado });
 
     await botaoDeSom(page).click();
     await expect(botaoDeSom(page)).toHaveAttribute('aria-pressed', 'false');
-    await responder(page, 'Inglês', fakes, relogio, 'certo');
+    await responder(partida, 'certo');
     await expect(quiz(page, 'Inglês')).toContainText('Pontos: 10');
     expect(await sons(page)).toEqual({ contextos: 0, notas: [] });
   });
@@ -82,8 +79,7 @@ test.describe('o som', () => {
 test.describe('a festa do acerto', () => {
   test('o acerto pula, solta confete, mostra os pontos e sobe o placar; a sequência faz os pontos crescerem', async ({ page, extensao, fakes, relogioParado }) => {
     // Exceção de teste: sem-estado-guardado
-    const relogio = await abrirOQuiz(page, extensao, relogioParado);
-    await responderAParte1(page, 'Inglês', 'iniciante');
+    const partida = await naParte2({ page, extensao, fakes, relogioParado });
     await expect(quiz(page, 'Inglês')).toContainText('Pontos: 0');
 
     const certa = quiz(page, 'Inglês').locator('.quiz__opcao[data-estado="certa"]');
@@ -96,7 +92,7 @@ test.describe('a festa do acerto', () => {
     await expect(quiz(page, 'Inglês').locator('.quiz__ganho')).toHaveText('+10');
     await expect(quiz(page, 'Inglês')).toContainText('Pontos: 10');
     await expect(certa.locator('.quiz__ganho')).toHaveCount(1);
-    await relogio.avancar(1000);
+    await partida.relogio.avancar(1000);
 
     const certa2 = CERTA[await fraseDaPergunta(page, 'Inglês', fakes)];
     await quiz(page, 'Inglês').locator('.quiz__opcao').getByText(certa2, { exact: true }).click();
@@ -107,8 +103,7 @@ test.describe('a festa do acerto', () => {
 
   test('errar mostra a certa marcada, sem pulo, sem confete e sem pontos', async ({ page, extensao, fakes, relogioParado }) => {
     // Exceção de teste: sem-estado-guardado — a festa é só o que aparece na tela; nada é guardado até Usar este estilo.
-    await abrirOQuiz(page, extensao, relogioParado);
-    await responderAParte1(page, 'Inglês', 'iniciante');
+    await naParte2({ page, extensao, fakes, relogioParado });
 
     await quiz(page, 'Inglês').locator('.quiz__opcao').nth(0).click();
     await expect(quiz(page, 'Inglês').locator('.quiz__opcao[data-estado="certa"]')).toHaveCount(1);
@@ -121,9 +116,7 @@ test.describe('a festa do acerto', () => {
 
 test.describe('a Revelação', () => {
   test('as portas enchem até o nível, o acorde e o confete grande vêm, e os números entram depois', async ({ page, extensao, fakes, relogioParado }) => {
-    const relogio = await abrirOQuiz(page, extensao, relogioParado);
-    await responderAParte1(page, 'Inglês', 'iniciante');
-    await percorrer(page, 'Inglês', fakes, relogio, ['certo', 'certo', 'certo', 'certo', 'certo', 'errado']);
+    await chegarAoNivelSugerido({ page, extensao, fakes, relogioParado }, CINCO_CERTAS_E_UMA_ERRADA);
 
     const portas = quiz(page, 'Inglês').locator('.quiz__porta');
     await expect(portas).toHaveCount(3);
@@ -143,9 +136,7 @@ test.describe('em 390 px', () => {
 
   test('a Revelação cabe no quiz: nada passa da borda e o nome de cada porta fica dentro dela', async ({ page, extensao, fakes, relogioParado }) => {
     // Exceção de teste: sem-estado-guardado
-    const relogio = await abrirOQuiz(page, extensao, relogioParado);
-    await responderAParte1(page, 'Inglês', 'iniciante');
-    await percorrer(page, 'Inglês', fakes, relogio, ['certo', 'certo', 'certo', 'certo', 'certo', 'errado']);
+    await chegarAoNivelSugerido({ page, extensao, fakes, relogioParado }, CINCO_CERTAS_E_UMA_ERRADA);
 
     const medidas = await quiz(page, 'Inglês').evaluate(no => {
       const caixa = no.getBoundingClientRect();
@@ -173,8 +164,7 @@ test.describe('menos movimento', () => {
 
   test('a certa só muda de cor: não pula, não solta confete nem mostra “+10”', async ({ page, extensao, fakes, relogioParado }) => {
     // Exceção de teste: sem-estado-guardado — a festa é só o que aparece na tela; nada é guardado até Usar este estilo.
-    await abrirOQuiz(page, extensao, relogioParado);
-    await responderAParte1(page, 'Inglês', 'iniciante');
+    await naParte2({ page, extensao, fakes, relogioParado });
 
     await quiz(page, 'Inglês').locator('.quiz__opcao').nth(1).click();
     const certa = quiz(page, 'Inglês').locator('.quiz__opcao[data-estado="certa"]');
@@ -187,9 +177,7 @@ test.describe('menos movimento', () => {
   });
 
   test('a Revelação já mostra as portas no nível, sem confete e sem animação', async ({ page, extensao, fakes, relogioParado }) => {
-    const relogio = await abrirOQuiz(page, extensao, relogioParado);
-    await responderAParte1(page, 'Inglês', 'iniciante');
-    await percorrer(page, 'Inglês', fakes, relogio, ['errado', 'certo', 'certo']);
+    await chegarAoNivelSugerido({ page, extensao, fakes, relogioParado }, ['errado', 'certo', 'certo']);
 
     await expect(quiz(page, 'Inglês').locator('.quiz__porta[data-cheia]')).toHaveCount(1);
     await expect(quiz(page, 'Inglês').locator('.quiz__porta[data-alvo]')).toHaveText('Iniciante');

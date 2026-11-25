@@ -12,9 +12,9 @@ A regra `indice-de-arquivos` exige uma linha, aqui ou em `extensao.md`, para cad
 | `scripts/preparar-python.sh` | Makes the Python venv of the engine tests. |
 | `scripts/gerar-catalogo-da-voz.js`, `scripts/conferir-voz.js`, `scripts/voz-do-catalogo.js` | Generates and checks the derived copies of the Voice catalog. |
 | `scripts/yaml-de-workflow.js` | Reads workflow YAML for the CI tests. |
-| `scripts/ci/` | The code the workflows run: required checks, the green commit, the PR body checks, the test selection. |
+| `scripts/ci/` | The code the workflows run: required checks, the green commit, the PR body checks (and the sensitive paths that make a PR ALTA), the lint and dependency audit of what a change adds, the test selection. |
 | `scripts/ganchos/` | The size limit hook (`scripts/ganchos/LEIA-ME.md`). |
-| `scripts/regras/` | The review rules a script can check, one file per rule, with the baseline and the proofs (`node scripts/regras/verificar.js --help`). |
+| `scripts/regras/` | The review rules a script can check, one file per rule (the secret, binary and debug locks among them), with the baseline and the proofs (`node scripts/regras/verificar.js --help`). |
 | `scripts/qualidade/`, `.qlty/qlty.toml` | The second, informative opinion on Code Health. |
 | `complemento/` | The Conexão com o Anki as an Anki add-on (`complemento/LEIA-ME.md`). |
 | `e2e/` | The Playwright suite that runs the unpacked extension in Chromium (`docs/testes.md`, skill `e2e-suite`). |

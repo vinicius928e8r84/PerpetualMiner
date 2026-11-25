@@ -134,12 +134,12 @@ async function russianManualSaveDoesNotAutoKeyword() {
     frases: [],
   };
   const context = loadBackground(storage);
-  const frase = await context.salvarFrase(
-    '\u042f \u0443\u043b\u044b\u0431\u0430\u044e\u0441\u044c',
-    'manual',
-    { fonte: 'manual', titulo: 'Manual Input', detalhe: '' },
-    'Russo',
-  );
+  const frase = await context.salvarComPalavraAutomatica({
+    texto: '\u042f \u0443\u043b\u044b\u0431\u0430\u044e\u0441\u044c',
+    origem: 'manual',
+    contexto: { fonte: 'manual', titulo: 'Manual Input', detalhe: '' },
+    idioma: 'Russo',
+  });
 
   assert.strictEqual(frase.idioma, 'Russo');
   assert.ok(!Object.prototype.hasOwnProperty.call(frase, 'keywords'), 'Manual Russian save should not create keywords');

@@ -58,7 +58,7 @@ async function fraseDaPergunta(page, idioma, fakes) {
   return dizeres(fakes).at(-1).texto;
 }
 
-async function responder(page, idioma, fakes, relogio, jeito) {
+async function responder({ page, idioma, fakes, relogio }, jeito) {
   const tipo = (await pergunta(page, idioma).textContent()).trim();
   const certa = CERTA[await fraseDaPergunta(page, idioma, fakes)];
   expect(certa, `a certa da pergunta “${tipo}”`).toBeTruthy();
@@ -71,13 +71,29 @@ async function responder(page, idioma, fakes, relogio, jeito) {
   return tipo;
 }
 
-async function percorrer(page, idioma, fakes, relogio, roteiro) {
+async function percorrer(partida, roteiro) {
+  const { page, idioma } = partida;
   const tipos = [];
-  for (const jeito of roteiro) tipos.push(await responder(page, idioma, fakes, relogio, jeito));
+  for (const jeito of roteiro) tipos.push(await responder(partida, jeito));
   await expect(quiz(page, idioma).getByRole('heading', { level: 4 })).toContainText('Nível sugerido em');
   return tipos;
 }
 
+const partidaDoQuiz = (page, fakes, relogio, idioma = 'Inglês') => ({ page, idioma, fakes, relogio });
+
+async function naParte2({ page, extensao, fakes, relogioParado }, nivel = 'iniciante') {
+  const relogio = await abrirOQuiz(page, extensao, relogioParado);
+  await responderAParte1(page, 'Inglês', nivel);
+  return partidaDoQuiz(page, fakes, relogio);
+}
+
+async function chegarAoNivelSugerido(cenario, roteiro, nivel = 'iniciante') {
+  const partida = await naParte2(cenario, nivel);
+  await percorrer(partida, roteiro);
+  return partida;
+}
+
+const CINCO_CERTAS_E_UMA_ERRADA = ['certo', 'certo', 'certo', 'certo', 'certo', 'errado'];
 const LEGENDA = 'Leia como numa legenda e escolha o sentido';
 const VERSO = 'Este verso explica qual palavra?';
 const ESCUTA = 'Ouça e escolha o que foi dito';
@@ -89,5 +105,7 @@ async function usarOEstilo(page, idioma) {
 
 module.exports = {
   CHAVE, FALAR, SO_O_INGLES, OS_DOIS, PAUSA_DA_RESPOSTA_MS, CERTA, LEGENDA, VERSO, ESCUTA,
+  CINCO_CERTAS_E_UMA_ERRADA,
   card, grupo, quiz, pergunta, dizeres, pedidosDaPrevia, abrirOQuiz, responderAParte1, fraseDaPergunta, responder, percorrer, usarOEstilo,
+  partidaDoQuiz, naParte2, chegarAoNivelSugerido,
 };

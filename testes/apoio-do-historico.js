@@ -65,8 +65,10 @@ const fraseDoPainel = { id: 1, texto: 'He barely made it to the station.', data:
 const outraFrase = { ...fraseDoPainel, id: 2, texto: 'Let us call it a day.' };
 
 function salvarFoto(sw, texto) {
-  return sw.salvarFrase(texto, 'livro', { fonte: 'livro', titulo: 'Livro', detalhe: '' }, 'Inglês',
-    { keywords: ['harbour@3'], autoKeyword: false }, { comPalavraAutomatica: false, comNuvem: false });
+  return sw.salvarFrase({
+    texto, origem: 'livro', contexto: { fonte: 'livro', titulo: 'Livro', detalhe: '' }, idioma: 'Inglês',
+    extras: { keywords: ['harbour@3'], autoKeyword: false },
+  }, { comNuvem: false });
 }
 
 function cenario(frases) {

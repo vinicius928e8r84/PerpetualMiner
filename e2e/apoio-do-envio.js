@@ -1,6 +1,7 @@
 'use strict';
 
 const { expect } = require('@playwright/test');
+const { falharAPrimeiraLeitura } = require('./apoio-da-leitura-dos-ajustes');
 
 const AGORA = new Date('2026-09-18T12:00:00');
 const HOJE = '18/09/2026';
@@ -78,4 +79,4 @@ async function umaVoltaDoEnvio(page, { resposta } = {}) {
   });
 }
 
-module.exports = { cartoesDe, pedirConferenciaDaConexao, umaVoltaDoEnvio, AGORA, HOJE, frase, INGLESAS, RUSSA, SACK, ARM, LATE, abrirPainel, cartao, marcar, enviarAoAnki, progresso, resumo, envio, baralho, toasts, marcarEEnviar, enviosCriados, pedidosDeCriar, apagarAFrase };
+module.exports = { falharAPrimeiraLeitura, cartoesDe, pedirConferenciaDaConexao, umaVoltaDoEnvio, AGORA, HOJE, frase, INGLESAS, RUSSA, SACK, ARM, LATE, abrirPainel, cartao, marcar, enviarAoAnki, progresso, resumo, envio, baralho, toasts, marcarEEnviar, enviosCriados, pedidosDeCriar, apagarAFrase };

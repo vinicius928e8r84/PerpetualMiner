@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const { faltasDoCorpo, lotesQueContemOHead } = require('./registro-da-pr.js');
 const politicaDoSite = require('./politica-do-site.js');
+const { caminhosDaPrNoGit } = require('./caminhos-sensiveis.js');
 
 const MAPA_DE_FEATURES = '.agents/skills/verify-perpetualminer/scripts/mapa-de-features.sh';
 const BASE_PADRAO = 'origin/main';
@@ -36,7 +37,7 @@ function conferirCorpo({ corpo, raiz, base, repositorio = repositorioDoRemoto(ra
   const head = git(raiz, 'rev-parse', 'HEAD');
   const daPolitica = politicaDoSite.conferir({ raiz, base, ponta: 'HEAD', corpo });
   return [
-    ...faltasDoCorpo({ corpo, rotulos: [], head, repositorio, lotes: lotesQueContemOHead({ corpo, head, raiz }) }),
+    ...faltasDoCorpo({ corpo, rotulos: [], head, repositorio, lotes: lotesQueContemOHead({ corpo, head, raiz }), caminhosSensiveis: caminhosDaPrNoGit({ raiz, base, head }) }),
     ...faltasDoMapaDeFeatures({ raiz, base, corpo }),
     ...(daPolitica.codigo ? [daPolitica.mensagem] : []),
   ];

@@ -17,6 +17,11 @@ async function abrirCard(page, extensao) {
   await expect(page.getByRole('button', { name: 'Conexão com o Anki', expanded: true })).toBeVisible();
 }
 
+async function abrirCardComOInterruptorPronto(page, extensao) {
+  await abrirCard(page, extensao);
+  await expect(interruptor(page)).toBeEnabled();
+}
+
 test('o interruptor vem desligado e a linha fechada diz que o Anki não abre com o computador', async ({ page, extensao, fakes }) => {
   await page.goto(extensao.url('painel.html#configuracoes'));
 
@@ -36,8 +41,7 @@ test('o endereço #configuracoes/anki abre o card', async ({ page, extensao, fak
 });
 
 test('ligar o interruptor pede à Conexão que escreva o item de login', async ({ page, extensao, fakes }) => {
-  await abrirCard(page, extensao);
-  await expect(interruptor(page)).toBeEnabled();
+  await abrirCardComOInterruptorPronto(page, extensao);
 
   await trilho(page).click();
 
@@ -62,8 +66,7 @@ test('desligar o interruptor pede à Conexão que apague o item de login', async
 });
 
 test('o teclado liga o interruptor com o espaço e o foco fica nele', async ({ page, extensao, fakes }) => {
-  await abrirCard(page, extensao);
-  await expect(interruptor(page)).toBeEnabled();
+  await abrirCardComOInterruptorPronto(page, extensao);
 
   await interruptor(page).focus();
   await page.keyboard.press('Space');
@@ -74,8 +77,7 @@ test('o teclado liga o interruptor com o espaço e o foco fica nele', async ({ p
 });
 
 test('ao reabrir o painel o interruptor mostra o que a Conexão tem, não o que ficou na tela', async ({ page, extensao, fakes }) => {
-  await abrirCard(page, extensao);
-  await expect(interruptor(page)).toBeEnabled();
+  await abrirCardComOInterruptorPronto(page, extensao);
   await trilho(page).click();
   await expect(interruptor(page)).toBeChecked();
 
@@ -94,8 +96,7 @@ test('enquanto a Conexão escreve o item o interruptor espera, mostrando o que e
     fakes.anki.definirItemDeLogin('ligado');
     return { json: { ok: true, ligado: true } };
   });
-  await abrirCard(page, extensao);
-  await expect(interruptor(page)).toBeEnabled();
+  await abrirCardComOInterruptorPronto(page, extensao);
 
   await trilho(page).click();
 
@@ -143,26 +144,44 @@ test.describe('com a Conexão desligada', () => {
   });
 });
 
+const LEITURAS_SEM_RESPOSTA_UTIL = [
+  {
+    nome: 'a Conexão de antes do complemento, sem a rota, deixa o interruptor indisponível e diz o motivo',
+    resposta: { status: 404, json: { error: 'not_found' } },
+    nota: 'Indisponível: esta versão da Conexão com o Anki ainda não abre o Anki com o computador.',
+  },
+  {
+    nome: 'uma leitura que falha deixa o interruptor indisponível em vez de ficar conferindo para sempre',
+    resposta: { status: 500, json: { error: 'internal_error' } },
+    nota: 'Indisponível: não deu para conferir como está. Abra Configurações de novo para tentar.',
+  },
+];
+
+const ITEM_QUE_NAO_SE_ESCREVE = [
+  {
+    nome: 'sem saber onde o Anki está, o aviso diz isso',
+    situacao: 'sem_anki',
+    dizeres: 'A Conexão não sabe onde o Anki está instalado neste computador, então não dá para abri-lo sozinha.',
+  },
+  {
+    nome: 'num computador sem item de login o aviso diz que ele não deixa',
+    situacao: 'indisponivel',
+    dizeres: 'Este computador não deixa a Conexão abrir o Anki sozinha.',
+  },
+];
+
 test.describe('com uma Conexão que não sabe responder', () => {
-  test('a Conexão de antes do complemento, sem a rota, deixa o interruptor indisponível e diz o motivo', async ({ page, extensao, fakes }) => {
-    fakes.anki.responder('POST', '/abrir-com-o-computador/estado', () => ({ status: 404, json: { error: 'not_found' } }));
-    await abrirCard(page, extensao);
+  for (const { nome, resposta, nota: dizeres } of LEITURAS_SEM_RESPOSTA_UTIL) {
+    test(nome, async ({ page, extensao, fakes }) => {
+      fakes.anki.responder('POST', '/abrir-com-o-computador/estado', () => resposta);
+      await abrirCard(page, extensao);
 
-    await expect(nota(page)).toHaveText('Indisponível: esta versão da Conexão com o Anki ainda não abre o Anki com o computador.');
-    await expect(interruptor(page)).toBeDisabled();
-    await expect(resumo(page)).toHaveText('Indisponível agora');
-    expect(fakes.anki.itemInstalado()).toBe(false);
-  });
-
-  test('uma leitura que falha deixa o interruptor indisponível em vez de ficar conferindo para sempre', async ({ page, extensao, fakes }) => {
-    fakes.anki.responder('POST', '/abrir-com-o-computador/estado', () => ({ status: 500, json: { error: 'internal_error' } }));
-    await abrirCard(page, extensao);
-
-    await expect(nota(page)).toHaveText('Indisponível: não deu para conferir como está. Abra Configurações de novo para tentar.');
-    await expect(interruptor(page)).toBeDisabled();
-    await expect(resumo(page)).toHaveText('Indisponível agora');
-    expect(fakes.anki.itemInstalado()).toBe(false);
-  });
+      await expect(nota(page)).toHaveText(dizeres);
+      await expect(interruptor(page)).toBeDisabled();
+      await expect(resumo(page)).toHaveText('Indisponível agora');
+      expect(fakes.anki.itemInstalado()).toBe(false);
+    });
+  }
 
   for (const [nome, resposta] of [
     ['sem o campo ligado', { ok: true }],
@@ -202,8 +221,7 @@ test.describe('com uma Conexão que não sabe responder', () => {
 test.describe('quando o item não muda', () => {
   test('sem poder escrever o item, o interruptor continua desligado e o aviso diz o que aconteceu', async ({ page, extensao, fakes }) => {
     fakes.anki.definirItemDeLogin('falha');
-    await abrirCard(page, extensao);
-    await expect(interruptor(page)).toBeEnabled();
+    await abrirCardComOInterruptorPronto(page, extensao);
 
     await trilho(page).click();
 
@@ -216,30 +234,18 @@ test.describe('quando o item não muda', () => {
     expect(fakes.anki.itemInstalado()).toBe(false);
   });
 
-  test('sem saber onde o Anki está, o aviso diz isso', async ({ page, extensao, fakes }) => {
-    fakes.anki.definirItemDeLogin('sem_anki');
-    await abrirCard(page, extensao);
-    await expect(interruptor(page)).toBeEnabled();
+  for (const { nome, situacao, dizeres } of ITEM_QUE_NAO_SE_ESCREVE) {
+    test(nome, async ({ page, extensao, fakes }) => {
+      fakes.anki.definirItemDeLogin(situacao);
+      await abrirCardComOInterruptorPronto(page, extensao);
 
-    await trilho(page).click();
+      await trilho(page).click();
 
-    await expect(aviso(page)).toContainText(
-      'A Conexão não sabe onde o Anki está instalado neste computador, então não dá para abri-lo sozinha.');
-    await expect(interruptor(page)).not.toBeChecked();
-    expect(fakes.anki.itemInstalado()).toBe(false);
-  });
-
-  test('num computador sem item de login o aviso diz que ele não deixa', async ({ page, extensao, fakes }) => {
-    fakes.anki.definirItemDeLogin('indisponivel');
-    await abrirCard(page, extensao);
-    await expect(interruptor(page)).toBeEnabled();
-
-    await trilho(page).click();
-
-    await expect(aviso(page)).toContainText('Este computador não deixa a Conexão abrir o Anki sozinha.');
-    await expect(interruptor(page)).not.toBeChecked();
-    expect(fakes.anki.itemInstalado()).toBe(false);
-  });
+      await expect(aviso(page)).toContainText(dizeres);
+      await expect(interruptor(page)).not.toBeChecked();
+      expect(fakes.anki.itemInstalado()).toBe(false);
+    });
+  }
 
   test('a falha ao desligar mantém o interruptor ligado', async ({ page, extensao, fakes }) => {
     fakes.anki.definirItemDeLogin('ligado');
@@ -257,8 +263,7 @@ test.describe('quando o item não muda', () => {
 
   test('fechar o aviso o tira da tela e o interruptor segue funcionando', async ({ page, extensao, fakes }) => {
     fakes.anki.definirItemDeLogin('falha');
-    await abrirCard(page, extensao);
-    await expect(interruptor(page)).toBeEnabled();
+    await abrirCardComOInterruptorPronto(page, extensao);
     await trilho(page).click();
     await expect(aviso(page)).toBeVisible();
 
@@ -276,8 +281,7 @@ test.describe('quando a resposta de ligar não chega', () => {
   const SEM_CONFIRMAR = 'Não deu para confirmar se o Anki vai abrir com o computador. A tela confere de novo sozinha.';
 
   test('com o item escrito antes de a resposta se perder, a tela confere e mostra o item ligado, sem aviso de falha', async ({ page, extensao, fakes }) => {
-    await abrirCard(page, extensao);
-    await expect(interruptor(page)).toBeEnabled();
+    await abrirCardComOInterruptorPronto(page, extensao);
     fakes.anki.perderARespostaDoItemDeLogin({ aplicada: true });
 
     await trilho(page).click();
@@ -290,8 +294,7 @@ test.describe('quando a resposta de ligar não chega', () => {
   });
 
   test('com o item que não chegou a ser escrito, a tela confere e diz que não foi ligado', async ({ page, extensao, fakes }) => {
-    await abrirCard(page, extensao);
-    await expect(interruptor(page)).toBeEnabled();
+    await abrirCardComOInterruptorPronto(page, extensao);
     fakes.anki.perderARespostaDoItemDeLogin({ aplicada: false });
 
     await trilho(page).click();
@@ -304,8 +307,7 @@ test.describe('quando a resposta de ligar não chega', () => {
   });
 
   test('sem conseguir conferir depois, o interruptor fica indisponível e o aviso não afirma o que não se sabe', async ({ page, extensao, fakes }) => {
-    await abrirCard(page, extensao);
-    await expect(interruptor(page)).toBeEnabled();
+    await abrirCardComOInterruptorPronto(page, extensao);
     fakes.anki.responder('POST', '/abrir-com-o-computador/estado', () => ({ status: 500, json: { error: 'internal_error' } }));
     fakes.anki.perderARespostaDoItemDeLogin({ aplicada: true });
 
@@ -326,8 +328,7 @@ test.describe('quando a resposta de ligar não chega', () => {
       await segurando;
       return { json: { ok: true, ligado: true } };
     });
-    await abrirCard(page, extensao);
-    await expect(interruptor(page)).toBeEnabled();
+    await abrirCardComOInterruptorPronto(page, extensao);
 
     await trilho(page).click();
 

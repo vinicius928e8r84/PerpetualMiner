@@ -21,25 +21,7 @@ function assert(condition, label) {
   else { fail(label); failed++; }
 }
 
-const clone = (v) => JSON.parse(JSON.stringify(v));
-
-function areaEmMemoria(dados) {
-  return {
-    async get(chaves) {
-      if (chaves === null) return clone(dados);
-      const pedidas = typeof chaves === 'string' ? { [chaves]: undefined }
-        : Array.isArray(chaves) ? Object.fromEntries(chaves.map(k => [k, undefined])) : chaves;
-      const resultado = {};
-      for (const [k, padrao] of Object.entries(pedidas)) {
-        if (k in dados) resultado[k] = clone(dados[k]);
-        else if (padrao !== undefined) resultado[k] = padrao;
-      }
-      return resultado;
-    },
-    async set(itens) { for (const [k, v] of Object.entries(itens)) dados[k] = clone(v); },
-    async remove(chaves) { for (const k of [].concat(chaves)) delete dados[k]; },
-  };
-}
+const { clone, areaEmMemoria } = require('./area_em_memoria_do_sync');
 
 let firestore = {};
 let firestoreTomb = {};
@@ -678,18 +660,28 @@ async function gravarCamposComMascara() {
   assert(pedidos[2].url.endsWith('/frases/10') && pedidos[2].corpo.fields.texto.stringValue === 'y', 'sem campos, grava todos');
 }
 
-async function apagarDistingueAusenteDeRecusa() {
+async function apagarAusenteNaoEFalha() {
   const a = nuvemDeTeste(() => ({ status: 404, corpo: {} }));
-  let erro = await erroDe(() => a.nuvem.apagarFrases(['1', '2']));
+  const erro = await erroDe(() => a.nuvem.apagarFrases(['1', '2']));
   assert(erro === null && a.pedidos.length === 2 && a.pedidos.every(p => p.metodo === 'DELETE'), 'um DELETE por frase; 404 não é falha');
+}
 
+async function apagarRecusadoSobeComOMotivo() {
   const b = nuvemDeTeste(recusa(403, { status: 'PERMISSION_DENIED', message: 'Missing or insufficient permissions.' }));
-  erro = await erroDe(() => b.nuvem.apagarFrases(['1']));
+  const erro = await erroDe(() => b.nuvem.apagarFrases(['1']));
   assert(erro?.motivo === MOTIVO.RECUSADO && /insufficient/.test(erro.message), '403 → motivo RECUSADO, com a mensagem da nuvem');
+}
 
+async function indisponivelEFalhaComum() {
   const c = nuvemDeTeste(recusa(503, { message: 'UNAVAILABLE' }));
-  erro = await erroDe(() => c.nuvem.listarFrases());
+  const erro = await erroDe(() => c.nuvem.listarFrases());
   assert(erro?.status === 503 && !erro.motivo, '503 → falha comum, com o status');
+}
+
+async function apagarDistingueAusenteDeRecusa() {
+  await apagarAusenteNaoEFalha();
+  await apagarRecusadoSobeComOMotivo();
+  await indisponivelEFalhaComum();
 }
 
 async function tombstoneDaNuvemGravaELe() {
@@ -724,19 +716,29 @@ async function renovaUmaVezApos401() {
   assert(b.pedidos.map(p => p.token || 'renovação').join() === 'Bearer token-bom,renovação,Bearer token-novo', '401: renova e repete uma vez');
 }
 
-async function sessaoQueNaoRenovaExpira() {
+async function oUm401QueSeRepeteExpira() {
   const c = nuvemDeTeste(recusa(401, { message: 'sempre' }));
-  let erro = await erroDe(() => c.nuvem.listarFrases());
+  const erro = await erroDe(() => c.nuvem.listarFrases());
   assert(erro?.motivo === MOTIVO.EXPIROU, 'um 401 que se repete → motivo EXPIROU');
+}
 
+async function semRefreshTokenExpiraSemPedido() {
   const d = nuvemDeTeste(() => ({}), { refreshToken: null, expiresAt: 0 });
-  erro = await erroDe(() => d.nuvem.listarFrases());
+  const erro = await erroDe(() => d.nuvem.listarFrases());
   assert(erro?.motivo === MOTIVO.EXPIROU && d.pedidos.length === 0, 'sem refresh token → EXPIROU, sem pedido');
+}
 
+async function renovacaoRecusadaExpiraComAMensagem() {
   const renovacaoRecusada = recusa(400, { message: 'TOKEN_EXPIRED' });
   const e2 = nuvemDeTeste((url) => (ehRenovacao(url) ? renovacaoRecusada() : {}), { expiresAt: 0 });
-  erro = await erroDe(() => e2.nuvem.listarFrases());
+  const erro = await erroDe(() => e2.nuvem.listarFrases());
   assert(erro?.motivo === MOTIVO.EXPIROU && erro.message === 'TOKEN_EXPIRED', 'renovação recusada → EXPIROU, com a mensagem');
+}
+
+async function sessaoQueNaoRenovaExpira() {
+  await oUm401QueSeRepeteExpira();
+  await semRefreshTokenExpiraSemPedido();
+  await renovacaoRecusadaExpiraComAMensagem();
 }
 
 async function sessaoRenovaEExpira() {

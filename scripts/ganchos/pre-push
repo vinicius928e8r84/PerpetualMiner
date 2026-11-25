@@ -27,6 +27,8 @@ while read -r ref_local sha_local ref_remota _; do
   if [ "$sha_local" = "$cabeca" ]; then
     (cd "$raiz" && node scripts/regras/verificar.js --base "$base") || barrado=1
     (cd "$raiz" && node scripts/ganchos/limite-de-tokens.js --base "$base") || barrado=1
+    (cd "$raiz" && node scripts/ci/lint-do-que-mudou.js --base "$base") || barrado=1
+    (cd "$raiz" && node scripts/ci/auditoria-de-dependencias.js --base "$base") || barrado=1
   else
     echo "aviso: $ref_local não é o HEAD; as regras de revisão e o limite de tamanho foram pulados (a autoria é conferida)" >&2
   fi

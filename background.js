@@ -52,7 +52,7 @@ function minerarSelecaoDoMenu(info, tab) {
 
   const contexto = Mineracao.contextoDaSelecao({ url: info.pageUrl || tab?.url, titulo: tab?.title });
 
-  salvarFrase(selecao, contexto.fonte, contexto, detectarIdioma(selecao));
+  salvarComPalavraAutomatica({ texto: selecao, origem: contexto.fonte, contexto, idioma: detectarIdioma(selecao) });
 }
 
 function veioDeUmaAbaDestaExtensao(remetente) {
@@ -79,10 +79,18 @@ const palavrasEscolhidas = request => (Array.isArray(request.palavras) ? request
 
 const extrasDasPalavras = palavras => (palavras?.length ? { keywords: palavras, autoKeyword: false } : {});
 
+const capturaDoPedido = (request, palavras) => ({
+  texto: request.texto,
+  origem: request.origem,
+  contexto: request.contexto || null,
+  idioma: request.idioma || IDIOMAS.INGLES,
+  extras: extrasDasPalavras(palavras),
+});
+
 function salvarNoHistorico(request, remetente, responder) {
   const palavras = palavrasEscolhidas(request);
-  const opcoes = { comPalavraAutomatica: !palavras, comNuvem: !request.semNuvem };
-  salvarFrase(request.texto, request.origem, request.contexto || null, request.idioma || IDIOMAS.INGLES, extrasDasPalavras(palavras), opcoes)
+  const salvar = palavras ? salvarFrase : salvarComPalavraAutomatica;
+  salvar(capturaDoPedido(request, palavras), { comNuvem: !request.semNuvem })
     .then(frase => responder({ ok: true, frase }))
     .catch(err => responder({ ok: false, error: err?.message || 'save_failed' }));
   return true;
@@ -132,30 +140,33 @@ chrome.runtime.onMessage.addListener(aoReceberMensagem);
 
 const historico = PerpetualMiner.Historico.criar({ armazenamento: { get: chromeGet, set: chromeSet } });
 
-async function salvarFrase(texto, origem, contexto = null, idioma = IDIOMAS.INGLES, extras = {},
-  { comPalavraAutomatica = true, comNuvem = true, soSe = null } = {}) {
-  const novaFrase = {
-    texto,
-    data:      new Date().toLocaleDateString('pt-BR'),
-    streaming: origem,
-    id:        0,
-    idioma,
-    ...(contexto && { contexto }),
-    ...extras,
-  };
-  const autoKeywords = novaFrase.keywords?.length || !comPalavraAutomatica
-    ? (novaFrase.keywords || [])
-    : await autoKeywordsForPhrase(novaFrase);
-  if (autoKeywords.length > 0 && !novaFrase.keywords?.length) {
-    novaFrase.keywords = autoKeywords;
-    novaFrase.autoKeyword = true;
-  }
+const novaFraseDaCaptura = ({ texto, origem, contexto, idioma, extras }) => ({
+  texto,
+  data:      new Date().toLocaleDateString('pt-BR'),
+  streaming: origem,
+  id:        0,
+  idioma,
+  ...(contexto && { contexto }),
+  ...extras,
+});
 
+async function comPalavraAutomatica(captura) {
+  const palavras = await autoKeywordsForPhrase(captura);
+  if (!palavras.length) return captura;
+  return { ...captura, extras: { ...captura.extras, keywords: palavras, autoKeyword: true } };
+}
+
+async function salvarFrase(captura, { comNuvem = true, soSe = null } = {}) {
+  const novaFrase = novaFraseDaCaptura(captura);
   const gravada = await (soSe ? historico.acrescentarSe(novaFrase, soSe) : historico.acrescentar(novaFrase));
   if (!gravada) return null;
 
   if (comNuvem) sincronizarComFirestore(gravada);
   return gravada;
+}
+
+async function salvarComPalavraAutomatica(captura, opcoes) {
+  return salvarFrase(await comPalavraAutomatica(captura), opcoes);
 }
 
 async function nuvemDaConta() {
@@ -212,7 +223,7 @@ function autoVocabularyFromCache(value) {
 const mineracaoAutomatica = MineracaoAutomatica.criar({
   vocabulario: lang => getAutoKeywordVocabulary(lang),
   historico: {
-    salvarSeNova: ({ texto, origem, contexto, idioma, extras }, jaTem) => salvarFrase(texto, origem, contexto, idioma, extras, { soSe: jaTem }),
+    salvarSeNova: (captura, jaTem) => salvarFrase(captura, { soSe: jaTem }),
   },
   ajustes: {
     ler: () => getAutoMinerState(),

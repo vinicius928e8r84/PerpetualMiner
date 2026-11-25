@@ -22,7 +22,7 @@ async function semearComoNoPrototipo(extensao, fakes, uid = null) {
   if (uid) fakes.google.gravarFrases(uid, FRASES_DO_PROTOTIPO);
 }
 
-async function abrirConfiguracoes(page, extensao, endereco, largura = 1280, altura = 800) {
+async function abrirConfiguracoes(page, extensao, endereco, { largura = 1280, altura = 800 } = {}) {
   await page.clock.setFixedTime(AGORA);
   await page.setViewportSize({ width: largura, height: altura });
   await page.goto(extensao.url(`painel.html${endereco}`));
