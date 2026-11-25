@@ -42,7 +42,7 @@ PACOTE = os.path.normpath(empacotar.ARQUIVO_DA_EXTENSAO)
 ARQUIVOS_DA_VERSAO = [CONFIGURACAO, VERSOES, *EXEMPLOS, PACOTE]
 PASTAS_DO_PACOTE = [PASTA, empacotar.ENGINE, os.path.dirname(PACOTE)]
 LINHA_DA_VERSAO = re.compile(r'^VERSAO = "([^"]+)"', re.M)
-ASSUNTO = "Conexão %s: versão dada no merge"  # a regra `versoes-publicadas` (scripts/regras) reconhece o commit por ele
+ASSUNTO = "Conexão %s: versão dada no merge"
 AUTORIA = os.path.join(RAIZ, "scripts", "ci", "autoria.js")
 LINHA_DO_DONO = re.compile(r"^const EMAIL_DO_DONO = '([^']+)';$", re.M)
 

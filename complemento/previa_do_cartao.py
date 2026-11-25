@@ -1,14 +1,3 @@
-"""A prévia do Cartão (#164): o Cartão como o Anki o mostra, de um exemplo do estilo ou de uma nota gravada.
-
-Quem desenha o Cartão é o Anki (o renderizador dele, com o modelo de Cartão do tipo de nota que a coleção tem): a Conexão só escolhe os
-campos. O exemplo de um estilo (idioma × nível) é o texto de Cartão do `estilos.json` passado pela mesma `campos_da_nota` do Envio, e
-vai para o tipo de nota que a coleção tem, então a prévia mostra também o verso que o Cartão vai ter de verdade. Uma nota gravada vai pelo
-`guid` dela. Nada é gravado, salvo o tipo de nota do idioma, que a Conexão cria se a coleção ainda não o tem (o que o Envio faria).
-
-A resposta é para uma página da extensão que a mostra num quadro isolado (sem scripts): o áudio vira um botão ▶ (a página não toca o
-áudio do Anki) e a imagem vai dentro do HTML (`data:`), porque a página não alcança a pasta de mídia da coleção.
-"""
-
 import base64
 import mimetypes
 import re
@@ -37,7 +26,6 @@ _IMAGEM_RE = re.compile(r"""(<img\b[^>]*?\bsrc\s*=\s*)(["'])(.*?)\2""", re.IGNOR
 
 
 def _imagem_de_dentro(colecao, nome):
-    """O `data:` da imagem da mídia da coleção, ou o espaço da imagem se ela não está lá, é grande demais ou não é imagem."""
     if re.match(r"(?i)(data|https?):", nome):
         return nome
     dados = colecao.arquivo_de_midia(nome, TETO_DA_IMAGEM)
@@ -53,7 +41,6 @@ def _para_a_pagina(colecao, html):
 
 
 def campos_do_exemplo(lang, nivel):
-    """Os campos da nota que o Envio gravaria para o Cartão de exemplo do estilo, nos nomes do tipo de nota do idioma."""
     exemplo = estilos.exemplo(lang, nivel)
     alem_do_texto = nota_do_cartao.AlemDoTexto(
         palavra=exemplo["palavra"], audio_da_frase=AUDIO_DO_EXEMPLO[0], audio_da_palavra=AUDIO_DO_EXEMPLO[1], imagem=IMAGEM_DO_EXEMPLO)
@@ -68,7 +55,6 @@ def _renderizado(colecao, tipo, campos):
 
 
 def previa_do_exemplo(colecao, lang, nivel):
-    """O Cartão de exemplo do estilo, ou None se o tipo de nota some da coleção depois de criado. Cria o tipo de nota do idioma, se falta."""
     tipo_de_nota.garantir(colecao, tipo_de_nota.definicao(lang, nivel))
     idioma = estilos.idioma(lang)
     saida = _renderizado(colecao, idioma["tipo_de_nota"], campos_do_exemplo(lang, nivel))
@@ -76,8 +62,6 @@ def previa_do_exemplo(colecao, lang, nivel):
 
 
 def previa_no_tipo_da_pessoa(colecao, lang, nivel, proprio):
-    """O Cartão de exemplo no tipo de nota da pessoa (#165), com os campos onde o mapeamento os põe: a prévia do que o Envio gravaria.
-    Nada é criado nem gravado. `(None, motivo)` se o tipo não está na coleção (`note_type_missing`) ou o mapa não serve a ele (`invalid_mapping`)."""
     campos = colecao.tipo_de_nota(proprio["nome"])
     if campos is None:
         return None, "note_type_missing"
@@ -90,14 +74,12 @@ def previa_no_tipo_da_pessoa(colecao, lang, nivel, proprio):
 
 
 def previa_da_nota(colecao, guid):
-    """O Cartão de uma nota gravada, pelo `guid`; None se a coleção não tem a nota (ou o tipo de nota dela)."""
     nota = colecao.nota_gravada(guid)
     saida = nota and _renderizado(colecao, nota["tipo_de_nota"], nota["campos"])
     return saida and dict(saida, source="note", deck=nota["baralho"], noteType=nota["tipo_de_nota"])
 
 
 def pedir(conexao, corpo):
-    """A rota `POST /anki/card-preview`: `{ lang, nivel? }` (o exemplo do estilo; sem `nivel`, o Iniciante) ou `{ guid }` (uma nota gravada)."""
     guid, lang = corpo.get("guid"), corpo.get("lang")
     if isinstance(guid, str) and guid and "lang" not in corpo:
         leitura = lambda: previa_da_nota(conexao.colecao, guid)
@@ -130,8 +112,6 @@ def pedir(conexao, corpo):
 
 
 def abrir_no_anki(conexao, corpo):
-    """A rota `POST /anki/browse` (o “Abrir no Anki”, #173): `{ guid }` → `200 { ok: true }`, e o Anki abre o navegador dele na nota (a thread principal dele, `no_anki`).
-    `404 note_not_found` se a coleção não a tem; `503 anki_browse_unavailable` sem coleção aberta. Nada é gravado."""
     guid = corpo.get("guid")
     if not isinstance(guid, str) or not guid:
         return 400, {"error": "invalid_request"}

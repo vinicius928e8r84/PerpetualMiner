@@ -1,15 +1,3 @@
-"""A rota do Ouvir dos Ajustes de envio (#174): a Conexão fala uma frase de amostra com a voz que a pessoa escolheu e devolve o MP3.
-
-É a Conexão quem fala (o Google e a OpenAI não deixam uma página da extensão pedir, e a chave é dela). A frase é da Conexão, uma
-por idioma: a extensão não escolhe o que ela diz, então o pedido nunca gasta mais que uma frase curta. O pedido diz o idioma, o
-`provedor` (`google` com o `sotaque`, ou `openai`, pela chave) e a resposta traz o `audio` em base64. A voz de reserva do Envio é outra
-coisa (`audio_do_cartao.py`): aqui a pessoa pede uma voz e ouve essa, nunca a reserva.
-
-O quiz de nível (#170) pede outra coisa: `POST /voz/falar`, a Conexão fala a frase que o pedido traz (de até `LIMITE_DA_FRASE` letras) com a voz do
-Google no sotaque dado. É uma rota à parte para uma Conexão antiga não responder o `Ouvir` (a amostra) no lugar da frase: sem a rota, ela dá 404 e a
-extensão pede para atualizar. Só o Google: é de graça, e a OpenAI gastaria a chave da pessoa numa frase de quiz.
-"""
-
 import base64
 
 from . import voz, voz_da_openai

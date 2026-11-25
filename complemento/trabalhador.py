@@ -1,5 +1,3 @@
-"""A thread de trabalho do Envio (#142): tira um Envio da fila de cada vez e o faz (`envio.Trabalho`)."""
-
 import threading
 import time
 
@@ -10,8 +8,6 @@ RETENCAO_A_CADA_S = 6 * 60 * 60
 
 
 class Trabalhador:
-    """A thread de trabalho: tira um Envio da fila de cada vez. Nenhum erro dela sai do logger."""
-
     def __init__(self, trabalho, intervalo=1.0, contato=None, espera_do_contato=0.0):
         self.trabalho = trabalho
         self.fila = trabalho.fila

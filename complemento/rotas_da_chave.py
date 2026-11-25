@@ -1,6 +1,3 @@
-"""As rotas da chave da OpenAI da Conexão com o Anki (`/ia/openai/…`, #154): guardar, apagar, vincular a chave de antes da conta,
-sincronizá-la com a conta e dizer o estado. Cada uma é uma função `(conexao, corpo) -> (status, json)`, listada em `servidor.ROTAS`."""
-
 import re
 from collections import namedtuple
 
@@ -71,7 +68,6 @@ def _conferir_na_openai_e_guardar(conexao, chave, base):
 
 
 def apagar_chave_da_openai(conexao, corpo):
-    """Apagar chave e Apagar tudo na extensão tiram a cópia daqui também (#154). Trocar a chave a substitui pelo POST /ia/openai/chave."""
     base = _base_da_chave(corpo)
     if base is None:
         return 400, {'error': 'invalid_request'}

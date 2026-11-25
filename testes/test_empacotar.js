@@ -82,8 +82,6 @@ const zip = fs.readFileSync(path.join(saida, `perpetualminer-${versao}.zip`));
 assert.strictEqual(zip.readUInt32LE(0), 0x04034b50, 'o arquivo não começa como um zip');
 assert.strictEqual(zip.readUInt16LE(zip.length - 22 + 10), arquivos.length, 'o zip não tem todos os arquivos listados');
 
-// O manifest do repositório tem `key` (fixa o ID da extensão carregada da pasta;
-// o ID em si é conferido em e2e/tests/id-fixo.spec.js) e o zip da loja não tem.
 function lerBytesDoZip(bytes, nome) {
   const fim = bytes.length - 22;
   const total = bytes.readUInt16LE(fim + 10);
@@ -131,9 +129,6 @@ assert.deepStrictEqual(
   'os hosts do bloco "Host permission use" do guia da loja diferem dos do manifest'
 );
 
-// “Abrir o Anki sozinho” (#147): o abridor é chamado por Native Messaging, e `nativeMessaging` é uma
-// permissão com aviso. Obrigatória, ela desativaria a extensão de quem já instalou até a pessoa aceitar o
-// aviso novo; opcional, ela só é pedida quando a pessoa aperta Permitir abrir o Anki.
 for (const [onde, manifesto] of [['do repositório', manifestoDoRepo], ['do zip', manifestoDoZip]]) {
   assert(!(manifesto.permissions || []).includes('nativeMessaging'),
     `o manifest ${onde} pede nativeMessaging como obrigatória: a extensão de quem já instalou seria desativada`);

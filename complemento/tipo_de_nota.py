@@ -1,12 +1,3 @@
-"""O tipo de nota próprio de cada idioma (#161) e o que a Conexão prepara na coleção: os tipos e, numa instalação nova, os Baralhos.
-
-Os nomes, os campos e as partes do verso vêm do `estilos.json` (`motor/estilos.py`): um idioma novo entra por dados. Os campos são
-**todos** os que o idioma vai usar (os níveis, a morfologia do russo, as frentes e a Criação): mudar os campos de um tipo de nota
-depois obriga o Anki a uma sincronização completa, então eles nascem juntos e o que o nível não usa fica vazio. A Conexão só **cria**:
-um tipo de nota ou um Baralho que já existe não é tocado, e nada do que a pessoa já tem é renomeado, convertido nem apagado. A única exceção é o modelo
-do Cartão Criação intacto, que acompanha a Conexão (`atualizar_a_criacao`, #390).
-"""
-
 import os
 
 from .baralhos import TipoDeNotaAlterado
@@ -49,7 +40,6 @@ CSS_DA_CRIACAO = """.pedido { font-size: 18px; margin: 14px 0 6px; }
 
 
 def _parte(classe, *campos, audio=()):
-    """Um bloco do verso, que só aparece se o campo principal tem o que mostrar."""
     principal = campos[0]
     corpo = " ".join("{{%s}}" % campo for campo in campos + tuple(audio))
     return "{{#%s}}<div class=\"%s\">%s</div>{{/%s}}" % (principal, classe, corpo, principal)
@@ -75,15 +65,12 @@ def _verso(idioma, partes):
 
 
 def _frente_com_lacuna(nomes):
-    """Lacuna: a Frase sem a Palavra e a Dica, sem áudio (ele entregaria a resposta); o verso tem a Frase com o áudio. Uma nota sem a Frase com lacuna
-    (a Palavra não estava na Frase) mostra a Frase, também sem áudio."""
     frase, audio, lacuna, dica = nomes["frase"], nomes["audio_da_frase"], nomes["lacuna"], nomes["dica"]
     return ('<div class="frase">{{#%s}}{{%s}}{{/%s}}{{^%s}}{{%s}}{{/%s}}</div>\n{{#%s}}<div class="dica cena">{{%s}}</div>{{/%s}}' % (
         lacuna, lacuna, lacuna, lacuna, frase, lacuna, dica, dica, dica), '<div class="frase">{{%s}}</div>\n{{%s}}' % (frase, audio))
 
 
 def _frente_ouvir_primeiro(nomes):
-    """Ouvir primeiro: só o ▶ e, no verso, a Frase com a Palavra marcada (o negrito do campo)."""
     return '<div class="ouvir">{{%s}}</div>' % nomes["audio_da_frase"], '{{FrontSide}}\n<div class="frase">{{%s}}</div>' % nomes["frase"]
 
 
@@ -103,26 +90,16 @@ def _frente_com_audio(nomes):
 
 
 def _frente(frente, nomes):
-    """A frente e o começo do verso (o que vem antes das partes do nível) de cada frente.
-    Produção e Ditado (#167) usam o campo de digitação do Anki (`{{type:Frase}}`): a pessoa escreve e o Anki compara com a Frase original. A Produção
-    mostra a Frase em português (a Tradução natural; nos níveis que não a preenchem, que a extensão nem oferece, a Definição, para a frente nunca ficar só com o campo) e o Ditado só o ▶. Como no Basic (digitando a resposta) do
-    Anki, o verso repete a frente (com o `{{type:Frase}}`, que vira a comparação letra por letra) em vez de `{{FrontSide}}`."""
     return FRENTES_DO_MODELO.get(frente, _frente_com_audio)(nomes)
 
 
 def _script_da_criacao():
-    """O script de `modelo_da_criacao.js`, sem as linhas só de comentário (o modelo leva o que roda)."""
     with open(os.path.join(PASTA, "modelo_da_criacao.js"), encoding="utf-8") as arquivo:
         linhas = [linha for linha in arquivo.read().splitlines() if not linha.lstrip().startswith("//")]
     return "<script>\n%s\n</script>" % "\n".join(linhas)
 
 
 def _criacao(nomes):
-    """A frente Criação (#168). Frente: a Palavra com o áudio, a Dica e o campo onde a pessoa escreve a frase dela (o campo de digitação do Anki não serve
-    para resposta livre: o script guarda o texto, “Anki Persistence”). Verso: o que ela escreveu com “✓ usou a palavra” (conferido pelo script, sem IA)
-    ao lado do exemplo (a Frase com o áudio); depois que a IA corrigiu a frase (#169), “Da última vez você escreveu … → correção”, dos campos “Escrito antes” e
-    “Correção”. Os campos “Frase escrita” e “Raiz” chegam ao script como texto escondido: a frase gravada pela Conexão,
-    para quando a página não guardou nada, e o radical da Palavra."""
     textos = TEXTOS_DA_CRIACAO
     frente = (
         '<div class="palavra">{{%(palavra)s}} {{%(audio_da_palavra)s}}</div>\n{{#%(dica)s}}<div class="dica cena">{{%(dica)s}}</div>{{/%(dica)s}}\n'
@@ -155,8 +132,6 @@ def _partes_so_dos_niveis_sem_a_frase(niveis):
 
 
 def _campo_do_verso_sem_a_frase(idioma, lang):
-    """O campo que só os níveis cujo verso não repete a Frase (`repete_a_frase: false`) preenchem, ou None se todos a repetem: o verso do
-    modelo só traz a frente (`{{FrontSide}}`) quando ele está vazio. O primeiro na ordem do verso, para ser o mesmo a cada vez."""
     so_dos_sem = _partes_so_dos_niveis_sem_a_frase([estilos.estilo(lang, nivel) for nivel in estilos.niveis(lang)])
     return next((idioma["campos"][parte] for parte in idioma.get("ordem_do_verso", []) if parte in so_dos_sem), None)
 
@@ -175,12 +150,6 @@ def _campos_do_cartao(nomes, estilo):
 
 
 def definicao(lang, nivel=None, frente=FRENTE_PADRAO, sem=()):
-    """O tipo de nota do idioma como a coleção o cria: `{ nome, campos: [nomes, na ordem], campos_do_cartao, modelos: [{ nome, frente, verso }], css }`.
-    O verso do modelo é um só para todos os níveis do idioma: tem todas as partes que um verso pode ter (`ordem_do_verso`), cada uma só aparece se o
-    campo dela tem texto, e o que o nível não usa fica vazio. `campos_do_cartao` são os que o Envio grava no `nivel` (o padrão, sem ele). A `frente`
-    (uma de `FRENTES`; `KeyError` se não é) escolhe a frente e o começo do verso do único modelo. `opcionais` são os campos que entraram depois da
-    publicação do tipo (`{campo: campo onde o texto vai se o tipo da pessoa não o tem}`): um tipo criado antes não os tem e a Conexão não o muda;
-    `sem` (nomes de campo) tira do verso as partes desses campos."""
     idioma, estilo = estilos.idioma(lang), estilos.estilo(lang, nivel)
     nomes = idioma["campos"]
     if frente not in NOMES_DAS_FRENTES:
@@ -195,16 +164,11 @@ def definicao(lang, nivel=None, frente=FRENTE_PADRAO, sem=()):
 
 
 def garantir(colecao, tipo):
-    """Os campos do tipo de nota na coleção, criado se falta (a Conexão o prepara ao abrir o perfil; o Envio só o cria se a pessoa o apagou); None se não há."""
     colecao.criar_tipo_de_nota(tipo)
     return colecao.tipo_de_nota(tipo["nome"])
 
 
 def trocar_a_frente(colecao, lang, frente):
-    """Põe a `frente` (`FRENTES`) no tipo de nota do idioma: reescreve o único modelo de Cartão (frente, verso, nome e estilo) e nada mais. Nenhuma nota
-    é criada nem tocada, e a IA não é chamada: os Cartões que já existem passam a ter a frente nova na hora. Sem o tipo de nota (a pessoa o apagou), ele
-    nasce já com a frente. Devolve se mudou algo; repetir devolve False. Levanta `TipoDeNotaAlterado` se o tipo não tem só o nosso modelo: a pessoa
-    mexeu nele, e a Conexão não o regrava; `ColecaoIndisponivel` como toda gravação."""
     tipo = definicao(lang, frente=frente)
     existente = colecao.tipo_de_nota(tipo["nome"])
     faltam = set(tipo["opcionais"]) - set(existente or tipo["campos"])
@@ -216,8 +180,6 @@ def trocar_a_frente(colecao, lang, frente):
 
 
 def atualizar_a_criacao(colecao, lang):
-    """Regrava o modelo do Cartão Criação (frente, verso e estilo) se o que a Conexão entrega mudou (#390). Só se o tipo de nota do idioma ainda tem o nosso
-    modelo Criação sozinho: a pessoa que o mexeu, ou que trocou de frente, fica como está. Nenhuma nota nem campo é tocado. Devolve se regravou."""
     nome = definicao(lang, frente="criacao")["nome"]
     nomes_dos_modelos = [modelo["nome"] for modelo in colecao.modelos_do_tipo_de_nota(nome) or ()]
     if nomes_dos_modelos != [NOMES_DAS_FRENTES["criacao"]]:
@@ -229,9 +191,6 @@ def atualizar_a_criacao(colecao, lang):
 
 
 def preparar(colecao):
-    """Deixa a coleção pronta para o Envio: o tipo de nota de cada idioma (criado se falta) e, numa instalação nova (nenhum Baralho além
-    do “Default”), o Baralho de cada idioma. Um tipo Criação já instalado e intacto recebe o modelo novo da Conexão (`atualizar_a_criacao`, #390). Repetir não cria nada de novo. Devolve `{ tipos: { idioma: criado }, baralhos: [criados] }`;
-    levanta `ColecaoIndisponivel` se a coleção não está aberta, sincroniza ou está noutro perfil que o marcado."""
     tipos = {lang: colecao.criar_tipo_de_nota(definicao(lang)) for lang in estilos.idiomas()}
     for lang, criado in tipos.items():
         if not criado:

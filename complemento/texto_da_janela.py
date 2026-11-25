@@ -1,11 +1,3 @@
-"""A cópia das telas de dentro do Anki (#175), pelo ID do catálogo da Voz.
-
-O complemento só tem a biblioteca padrão e não carrega o `lib/voz/catalogo.js` da extensão: estes são os textos dos IDs que ele usa, e
-`test_janela.py` confere cada um com o retrato `docs/design/voz/catalogo-textos.json`. Texto novo de tela entra primeiro no catálogo.
-
-Os modelos são os da extensão (`lib/voz/texto.js`): `{nome}` troca pelo valor (número em PT-BR, “1.284”) e `{n|singular|plural}` escolhe pelo valor.
-"""
-
 import re
 
 TEXTOS = {
@@ -65,5 +57,4 @@ def _preencher(modelo, valores, id_):
 
 
 def texto(id_, **valores):
-    """O texto do catálogo com os valores no lugar: `texto("ANK-03.terminou", n=12, baralho="Inglês")`. ID fora do catálogo: KeyError."""
     return _preencher(TEXTOS[id_], valores, id_)

@@ -1,5 +1,3 @@
-"""As rotas de “Abrir o Anki com o computador”: o estado do item de login e ligá-lo ou desligá-lo (`item_de_login.py`)."""
-
 from .item_de_login import AnkiNaoEncontrado
 
 
@@ -17,7 +15,6 @@ def _recusa_do_pedido(ligado, item):
 
 
 def _abrir_com_o_computador(conexao, corpo):
-    """Escreve (`ligado: true`) ou apaga (`ligado: false`) o item de login que abre o Anki com o computador."""
     ligado, item = corpo.get("ligado"), conexao.item_de_login
     recusa = _recusa_do_pedido(ligado, item)
     if recusa:

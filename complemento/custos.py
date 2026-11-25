@@ -1,13 +1,3 @@
-"""Os custos de cada Envio, como a aba Custos os lê (`POST /analytics/jobs`).
-
-Cada Envio guarda os registros do `cost_tracker` do motor em `custos/<jobId>/costs.jsonl` (`fila_do_envio.py`). As linhas e o
-resumo são os que o painel lê: as chaves e as regras (o texto em `cardUsd`; o juiz e a triagem de imagem pela Palavra `[image_judge]`/`[image_guard]`;
-as imagens pelos registros `image` e `image_pipeline`), só com a biblioteca padrão. O Envio que o plano do ChatGPT escreveu
-leva `plan` (`cards`, `wouldCostUsd`: o que a chave teria cobrado, #159); sem Cartão do plano, a linha não tem a chave `plan`.
-A correção das frases da Criação (#169) é um registro à parte (`correction_tokens`): `costs.correctionUsd`, que entra no total; sem correção
-no período, `costs` não tem a chave.
-"""
-
 import json
 import os
 from datetime import date
@@ -21,7 +11,6 @@ _CHAVES_DO_TEXTO_PELA_PALAVRA = (("[image_judge]", "imageJudgeUsd"), ("[image_gu
 
 
 def dia(valor):
-    """O dia de um instante ISO 8601 (o do computador de quem usa), ou None."""
     try:
         return date.fromisoformat(str(valor or "").strip()[:10])
     except ValueError:
@@ -172,7 +161,6 @@ def _imagens_do_resumo(imagens):
 
 
 def anotar_a_voz(pasta, modelo, letras, dolares_por_mil_letras):
-    """Anota no Envio o custo de uma voz paga que falou (a de reserva, #174), no formato dos registros do motor: cai em `otherUsd`."""
     os.makedirs(pasta, exist_ok=True)
     registro = {"date": date.today().isoformat(), "type": "tts", "model": modelo, "characters": letras,
                 "cost_usd": round(letras * dolares_por_mil_letras / 1000, 6)}
@@ -181,7 +169,6 @@ def anotar_a_voz(pasta, modelo, letras, dolares_por_mil_letras):
 
 
 def registros(pasta):
-    """Os registros de custo de um Envio, da pasta dos custos dele (linhas que não se leem ficam de fora)."""
     lidos = []
     try:
         with open(os.path.join(pasta, "costs.jsonl"), encoding="utf-8") as arquivo:
@@ -198,7 +185,6 @@ def registros(pasta):
 
 
 def resumir(lidos, dia_do_envio, de, ate):
-    """O resumo dos registros de um Envio no período."""
     return _resumo_no_periodo(lidos, dia_do_envio, _Periodo(de, ate))
 
 
@@ -221,8 +207,6 @@ def ficha_valida(ficha):
 
 
 def ficha_do_envio(item, pedido, estado):
-    """O que a linha da aba Custos diz de um Envio fora os custos: de onde vêm o idioma, o baralho, o status e as contagens (só números e ids, nunca a Palavra nem a Frase).
-    Quando a retenção apaga o Envio (`retencao_dos_envios.py`), isto fica em `custos/<jobId>/ficha.json` e a linha continua a mesma."""
     status = estado.get("status") or "unknown"
     return {
         **_datas_do_envio(item, pedido, estado), **_destino_do_envio(item, pedido),
@@ -256,7 +240,6 @@ def _cartoes_do_envio(pedido, estado, status):
 
 
 def linhas(fila, de, ate, lang):
-    """Uma linha por Envio do período e do idioma, do mais novo ao mais velho: os da fila e os que a retenção apagou."""
     periodo, resultado = _Periodo(de, ate), []
     for item in fila.envios_dos_custos():
         job_id = item["jobId"]

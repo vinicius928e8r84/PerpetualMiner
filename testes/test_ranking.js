@@ -15,12 +15,10 @@ assert.strictEqual(comOutrosNiveis.PerpetualMiner.Ranking.nota({ nivel: 'fluente
 
 const resultado = (nivel, acertos, perguntas, melhorSequencia) => ({ nivel, acertos, perguntas, melhorSequencia });
 
-// A nota ordena primeiro pelo nível e, dentro dele, pela parte de acertos
 assert(Ranking.nota(resultado('intermediario', 0, 6, 0)) > Ranking.nota(resultado('iniciante', 3, 3, 3)), 'o nível pesa mais que os acertos');
 assert(Ranking.nota(resultado('avancado', 6, 6, 6)) > Ranking.nota(resultado('avancado', 5, 6, 5)));
 assert.strictEqual(Ranking.nota(resultado('iniciante', 1, 3, 1)), Ranking.nota(resultado('iniciante', 2, 6, 1)), 'a mesma parte de acertos vale igual em 3 ou 6 perguntas');
 
-// O registro: o que o ranking mostra e o que os recortes pedem
 const perfil = { uid: 'u1', nome: 'Ana', foto: 'https://foto/ana.png' };
 const registro = Ranking.registro({ ...perfil, idioma: 'en', resultado: resultado('avancado', 4, 6, 3), em: 1000 });
 assert.deepStrictEqual(registro, {
@@ -29,7 +27,6 @@ assert.deepStrictEqual(registro, {
 });
 assert.strictEqual(Ranking.idDoRegistro('en', 'u1'), 'en_u1');
 
-// O melhor que X%: só quem topou conta, sem a própria pessoa; sem ninguém não há porcentagem
 const doGrupo = [
   { uid: 'a', nota: 100 }, { uid: 'b', nota: 1050 }, { uid: 'c', nota: 2000 }, { uid: 'u1', nota: 1500 },
 ];
@@ -38,12 +35,10 @@ assert.strictEqual(Ranking.melhorQue(1500, [{ uid: 'u1', nota: 1500 }], 'u1'), n
 assert.strictEqual(Ranking.melhorQue(0, [{ uid: 'a', nota: 0 }], 'u1'), 0, 'empate não é ser melhor');
 assert.strictEqual(Ranking.melhorQue(3000, [{ uid: 'a', nota: 0 }, { uid: 'b', nota: 10 }], 'u1'), 100);
 
-// A lista: nota maior primeiro, empate pela melhor sequência
 assert.deepStrictEqual(Ranking.ordenar([
   { uid: 'a', nota: 10, melhorSequencia: 1 }, { uid: 'b', nota: 20, melhorSequencia: 1 }, { uid: 'c', nota: 10, melhorSequencia: 3 },
 ]).map(p => p.uid), ['b', 'c', 'a']);
 
-// Os pedidos ao Firestore
 async function comNuvem(fazer) {
   const pedidos = [];
   const resposta = {};

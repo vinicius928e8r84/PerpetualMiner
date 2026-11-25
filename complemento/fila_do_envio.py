@@ -1,20 +1,3 @@
-"""A fila do Envio e o estado gravado de cada Cartão (#142): a `Fila`, única dona dos arquivos do Envio; quem faz o Envio é o
-`Trabalho` (`envio.py`), e os estados e a máquina estão lá e em `estado_do_envio.py`.
-
-Os arquivos em `user_files`, cada um gravado num temporário e trocado de uma vez:
-
-    fila/fila.json              a ordem e o id de cada Envio: [{ jobId, lang, createdAt }] (nunca o status)
-    fila/<jobId>.json           o pedido: o corpo do POST /jobs, `createdAt` e a impressão dele (`corpoSha256`)
-    estado/<jobId>.json         o status do Envio e o estado de cada Cartão (nunca a Palavra nem a Frase)
-    estado/<jobId>/<id>.txt     o texto de cada Cartão, escrito pelo motor (pago: nunca pedido de novo)
-    custos/<jobId>/costs.jsonl  os custos, escritos pelo `cost_tracker` do motor (o Cartão no lugar da Palavra)
-
-A Palavra e a Frase só existem na linha do pedido (`entries[].line`) e no texto gerado, até o Cartão chegar ao Anki: a nota
-gravada tira o texto, a Frase inteira no Anki reduz a linha a `{ phraseId, noAnki }` (`cartao_chegou`) e o Apagar tudo tira o
-resto (`apagar_as_frases`). Toda gravação passa por `_gravar_json` e `_apagar`, onde `test_envio_fronteiras.py` mata a Conexão.
-Tudo passa pela tranca da fila (no Windows, `os.replace` de um arquivo aberto por outra thread falha).
-"""
-
 import copy
 import functools
 import json
@@ -35,7 +18,6 @@ NO_ANKI = (ADICIONADO, DUPLICADO)
 
 
 def agora_local():
-    """O instante com o fuso do computador."""
     return datetime.now().astimezone().isoformat(timespec="seconds")
 
 
@@ -52,31 +34,26 @@ def _ler_json(caminho, padrao):
 
 
 def _os_cartoes_da_frase(estado, cartao_id):
-    """A Frase do Cartão e o status de cada Cartão dela (os irmãos, ele incluído); um Cartão que o estado não tem não tem irmãos."""
     cartoes = estado.get("cards", {})
     frase = cartoes.get(cartao_id, {}).get("phraseId")
     return frase, {c: v["status"] for c, v in cartoes.items() if v["phraseId"] == frase}
 
 
 def frase_inteira_no_anki(status_dos_cartoes):
-    """Uma Frase está no Anki quando tem Cartões e todos estão lá (`added` ou `duplicate`)."""
     return bool(status_dos_cartoes) and all(status in NO_ANKI for status in status_dos_cartoes)
 
 
 def _ainda_tem_a_frase(pedido):
-    """O pedido ainda guarda a Palavra ou a Frase, ou ainda não foi marcado apagado: o Apagar tudo tem o que gravar nele."""
     return any("line" in entrada or "keywords" in entrada for entrada in pedido.get("entries", [])) or not pedido.get("wiped")
 
 
 def _estado_por_apagar(estado):
-    """O estado ainda anda, ou ganhou um texto depois do Apagar tudo: ele tem de passar pelo portão."""
     if estado.get("status") not in STATUS:
         return False
     return not estado.get("wiped") or any(cartao["status"] == TEXTO for cartao in estado["cards"].values())
 
 
 def _apagar_o_estado(estado):
-    """O texto pago saiu do disco, então o Cartão com texto volta a `pending`; e o Envio fica apagado (`estado_do_envio.apagar`)."""
     for cartao in estado["cards"].values():
         if cartao["status"] == TEXTO:
             cartao["status"] = PENDENTE
@@ -84,8 +61,6 @@ def _apagar_o_estado(estado):
 
 
 class Fila(EnviosDosCustos):
-    """A fila e o estado, únicos donos dos arquivos do Envio. Toda leitura-e-escrita passa pela tranca."""
-
     def __init__(self, dados, motor, logger=None):
         self.dados = dados
         self.motor = motor
@@ -117,14 +92,12 @@ class Fila(EnviosDosCustos):
             return _ler_json(self._arquivo_da_fila(), {"jobs": []}).get("jobs", [])
 
     def pedido(self, job_id):
-        """O pedido guardado (com a impressão do corpo), ou None; um id que não serve de caminho nunca o acha."""
         if not id_que_serve_de_caminho(job_id):
             return None
         with self.tranca:
             return _ler_json(self._arquivo_do_pedido(job_id), None)
 
     def estado(self, job_id):
-        """O estado guardado; `{}` se não há (quem trabalha usa `estado_ou_refazer`, nunca lê `{}` como um estado)."""
         with self.tranca:
             return _ler_json(self._arquivo_do_estado(job_id), {})
 
@@ -136,7 +109,6 @@ class Fila(EnviosDosCustos):
             return custos.registros(self.pasta_dos_custos(job_id))
 
     def linha_do_cartao(self, job_id, phrase_id):
-        """A linha de mineração da Frase no pedido, ou None se ela já não está (a Frase chegou ao Anki ou foi apagada)."""
         pedido = self.pedido(job_id) or {}
         return next((e.get("line") for e in pedido.get("entries", []) if e.get("phraseId") == phrase_id), None)
 
@@ -150,8 +122,6 @@ class Fila(EnviosDosCustos):
         _gravar_json(self._arquivo_da_fila(), {"jobs": ordem})
 
     def _estado_do_pedido(self, pedido):
-        """O estado que um pedido guardado diz: cada Cartão `pending` (o `guid` acha as notas que já estão no Anki), os que o pedido
-        diz que já chegaram ao Anki como estavam. Sem a linha (apagada) e sem `noAnki`, a Frase não tem Cartões."""
         cartoes = {}
         for entrada in pedido["entries"]:
             cartoes.update(self._cartoes_da_entrada(pedido, entrada))
@@ -166,8 +136,6 @@ class Fila(EnviosDosCustos):
         return estado
 
     def _cartoes_da_entrada(self, pedido, entrada):
-        """Os Cartões que uma entrada do pedido diz: os que chegaram ao Anki (`noAnki`) com o status de lá, senão um `pending` por
-        Palavra da linha; sem a linha e sem `noAnki`, nenhum."""
         if entrada.get("noAnki"):
             return {cartao: {"phraseId": entrada["phraseId"], "status": status, "error": None} for cartao, status in entrada["noAnki"].items()}
         if not isinstance(entrada.get("line"), str):
@@ -176,7 +144,6 @@ class Fila(EnviosDosCustos):
                 for posicao in range(quantos_cartoes(self.motor, pedido["lang"], entrada))}
 
     def estado_ou_refazer(self, job_id):
-        """O estado do Envio; se o arquivo falta (ou não se lê), refeito do pedido guardado e gravado. None se nem o pedido existe."""
         with self.tranca:
             estado = self.estado(job_id)
             if estado.get("status") in STATUS and isinstance(estado.get("cards"), dict):
@@ -191,7 +158,6 @@ class Fila(EnviosDosCustos):
             return estado
 
     def criar(self, corpo):
-        """`POST /jobs`: (status, resposta). O mesmo corpo de novo devolve o Envio que já existe (ou termina o criar que parou) e nada se regrava."""
         pedido, recusa = validar_pedido(corpo)
         if recusa:
             return recusa[0], {"error": recusa[1]}
@@ -216,8 +182,6 @@ class Fila(EnviosDosCustos):
         return 201, {"jobId": job_id, "status": QUEUED}
 
     def tentar_de_novo(self, job_id):
-        """`POST /jobs/retry`: (status, resposta). Um Envio que terminou volta à fila (`_repetir`); os outros pedidos só têm a
-        resposta de `_resposta_sem_repetir`."""
         with self.tranca:
             resposta = self._resposta_sem_repetir(job_id)
             if resposta is not None:
@@ -227,8 +191,6 @@ class Fila(EnviosDosCustos):
         return 200, {"jobId": job_id, "status": QUEUED}
 
     def _resposta_sem_repetir(self, job_id):
-        """A resposta do Tentar de novo que não muda nada, ou None se o Envio terminou e volta à fila. Já na fila ou rodando, só diz o
-        estado (e acorda o Envio que espera o plano); com as Frases apagadas, 409 `job_wiped` (do apagado não se sai). Nada é gravado."""
         pedido = self.pedido(job_id)
         if pedido is None:
             return 404, {"error": "job_not_found"}
@@ -242,8 +204,6 @@ class Fila(EnviosDosCustos):
         return 200, {"jobId": job_id, "status": estado["status"]}
 
     def _repetir(self, job_id, estado):
-        """A mudança do Tentar de novo: cada Cartão que falhou volta a `text` se o texto pago está no disco, senão a `pending`, sem o
-        erro; e o Envio volta à fila (`estado_do_envio.repetir`)."""
         for cartao_id, cartao in estado.get("cards", {}).items():
             if cartao["status"] == FALHOU:
                 pronto = os.path.exists(self.arquivo_do_texto(job_id, cartao_id))
@@ -251,7 +211,6 @@ class Fila(EnviosDosCustos):
         estado_do_envio.repetir(estado)
 
     def reservar_o_proximo(self):
-        """O próximo Envio da fila, já marcado `running` no estado; None se não há."""
         with self.tranca:
             for item in self.ordem():
                 estado = self.estado_ou_refazer(item["jobId"])
@@ -261,8 +220,6 @@ class Fila(EnviosDosCustos):
         return None
 
     def recuperar_os_interrompidos(self):
-        """A Conexão subiu: um estado `running` volta a `queued` e o Envio continua de onde parou; um id da fila sem estado
-        tem o estado refeito do pedido, e sem pedido sai da fila (o log diz por quê). Um pedido fora da fila **não** entra nela."""
         with self.tranca:
             limpar_ao_subir(self.dados, self.estado, self.logger)
             ordem = self.ordem()
@@ -280,8 +237,6 @@ class Fila(EnviosDosCustos):
                 _gravar_json(self._arquivo_da_fila(), {"jobs": ficam})
 
     def mudar(self, job_id, mudanca):
-        """O portão do estado gravado: aplica `mudanca(estado)`, confere-a com a máquina (`estado_do_envio.conferir`: a tabela das
-        transições; do apagado nada sai) e grava, sob a tranca; devolve o estado novo. Todo escritor do estado passa por aqui."""
         with self.tranca:
             estado = self.estado_ou_refazer(job_id)
             antes = estado_do_envio.retrato(estado)
@@ -291,7 +246,6 @@ class Fila(EnviosDosCustos):
             return estado
 
     def cartao_chegou(self, job_id, cartao_id):
-        """O Cartão está no Anki: o texto dele sai da Conexão; se a Frase inteira chegou, a linha dela vira só o `phraseId`."""
         with self.tranca:
             _apagar(self.arquivo_do_texto(job_id, cartao_id))
             estado, pedido = self.estado(job_id), self.pedido(job_id)
@@ -305,9 +259,6 @@ class Fila(EnviosDosCustos):
                 _gravar_json(self._arquivo_do_pedido(job_id), pedido)
 
     def apagar_as_frases(self):
-        """`POST /jobs/apagar-frases` (o Apagar tudo, CFG-17): de todo pedido da pasta, tenha ou não entrada na fila, somem as linhas
-        das Frases e os textos gerados; um Envio na fila ou rodando vai a `failed` com `wiped`. Ficam os `phraseId`, o estado de
-        cada Cartão e os custos. Repetido, não grava nada. Cada passo grava só o que falta, então morrer no meio e pedir de novo termina."""
         self.despertador.set()
         with self.tranca:
             apagar_os_provisorios(self.dados)
@@ -315,12 +266,10 @@ class Fila(EnviosDosCustos):
                 self._apagar_um_pedido(job_id)
 
     def _ids_dos_pedidos_guardados(self):
-        """O id de cada pedido na pasta da fila, em ordem, tenha ou não entrada na fila (`fila.json` e um nome fora de UUID não contam)."""
         nomes = sorted(os.listdir(self.dados.fila)) if os.path.isdir(self.dados.fila) else []
         return [nome[:-5] for nome in nomes if nome.endswith(".json") and nome != "fila.json" and id_valido(nome[:-5])]
 
     def _apagar_um_pedido(self, job_id):
-        """O Apagar tudo de um Envio: a linha e as Palavras saem do pedido, os textos gerados saem do disco e o estado passa pelo portão."""
         pedido = self.pedido(job_id)
         if pedido is None:
             return

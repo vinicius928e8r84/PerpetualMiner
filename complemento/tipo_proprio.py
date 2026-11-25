@@ -1,12 +1,3 @@
-"""“Usar um tipo que já tenho” (#165): o Cartão gravado num tipo de nota da pessoa, pelo mapeamento que ela fez, em vez do tipo da Conexão.
-
-O mapeamento diz em que campo do tipo dela vai cada **parte** do Cartão; várias partes podem ir no mesmo campo (os textos se juntam, um por linha). A Conexão
-**só grava notas** nesse tipo: não o cria, não o conserta, não troca o modelo nem a frente dele (a frente que a pessoa já tem fica), e nunca escreve num campo
-que o mapeamento não cita. Sem um campo para a Frase e outro, diferente, para a resposta, o Cartão não tem frente nem verso: o pedido é recusado e nada é gravado.
-
-`tipoProprio` no pedido do Envio e da prévia: `{ nome: "o tipo de nota", mapa: { parte: "campo do tipo" } }`.
-"""
-
 from . import baralhos
 from .motor import estilos
 
@@ -17,8 +8,6 @@ SEPARADOR = "<br>"
 
 
 def forma(bruto):
-    """O `tipoProprio` normalizado (`{ nome, mapa }`, só as partes que a Conexão conhece, sem campo em branco), ou None se não tem a forma certa.
-    Não olha a coleção: ver `recusa`."""
     if not isinstance(bruto, dict) or not _e_um_nome_de_tipo(bruto.get("nome")):
         return None
     mapa = bruto.get("mapa")
@@ -40,8 +29,6 @@ def _e_um_nome_de_campo(campo):
 
 
 def recusa(tipo_proprio, campos_do_tipo):
-    """Por que o mapeamento não serve ao tipo de nota (que tem `campos_do_tipo`), ou None se serve: `missing_field` (a Frase ou a resposta sem campo, ou os
-    dois no mesmo) e `unknown_field` (o mapa cita um campo que o tipo não tem)."""
     mapa = tipo_proprio["mapa"]
     if any(campo not in campos_do_tipo for campo in mapa.values()):
         return "unknown_field"
@@ -61,8 +48,6 @@ def _chaves(parte, estilo):
 
 
 def campos_do_tipo_proprio(campos_do_cartao, lang, nivel, mapa):
-    """Os campos da nota no tipo da pessoa: o texto de cada parte (`campos_do_cartao` são os da Conexão, `campos_da_nota`) no campo em que o `mapa` a põe; as
-    partes que dividem um campo se juntam na ordem de `PARTES`. Uma parte sem texto no Cartão não escreve nada, e um campo sem parte com texto não aparece."""
     nomes, estilo = estilos.idioma(lang)["campos"], estilos.estilo(lang, nivel)
     juntos = {}
     for parte in PARTES:
@@ -75,13 +60,11 @@ def campos_do_tipo_proprio(campos_do_cartao, lang, nivel, mapa):
 
 
 def tipos_da_pessoa(colecao):
-    """Os tipos de nota da coleção que servem ao mapeamento: `[{ name, fields }]` pelo nome, sem os que a Conexão cria (esses a pessoa já tem pelo estilo pronto)."""
     nossos = {estilos.idioma(lang)["tipo_de_nota"] for lang in estilos.idiomas()}
     return [{"name": nome, "fields": campos} for nome, campos in sorted(colecao.tipos_de_nota().items()) if nome not in nossos]
 
 
 def listar(conexao, corpo):
-    """A rota `POST /anki/note-types`: os tipos de nota da pessoa e os campos deles, para o mapeamento."""
     try:
         return 200, {"noteTypes": tipos_da_pessoa(conexao.colecao)}
     except baralhos.ColecaoIndisponivel as motivo:

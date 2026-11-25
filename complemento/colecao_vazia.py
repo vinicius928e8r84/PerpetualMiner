@@ -1,11 +1,7 @@
-"""A coleção de uma Conexão que nasceu sem adaptador (`servidor.Conexao`): nada a ler nem a gravar, e o Envio espera."""
-
 from . import baralhos
 
 
 class SemColecao:
-    """A coleção de uma Conexão que nasceu sem adaptador: nada a ler nem a gravar (o Envio espera)."""
-
     def perfis(self):
         return []
 

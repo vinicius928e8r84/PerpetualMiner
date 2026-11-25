@@ -1,18 +1,3 @@
-"""Conferir uma chave da OpenAI: dois pedidos baratos, só com a biblioteca padrão.
-
-A extensão não fala com a OpenAI (não tem a permissão de host, e é a Conexão quem gasta a chave): quem
-confere é a Conexão, e responde só um código. O que a OpenAI diz ao recusar nunca é copiado para o log nem para
-a resposta, porque a mensagem de uma chave recusada repete pedaços dela.
-
-1. `GET /v1/models`: a chave vale? Só um 200 é a OpenAI dizendo que sim (401 → recusada; 402 ou 429 → a conta
-   não tem como pagar o uso agora, “sem crédito”; qualquer outra resposta é “não deu para conferir” e nada é guardado)
-2. `POST /v1/embeddings` com uma palavra: a conta tem crédito? É o pedido pago mais barato que existe, e é ele que
-   diz “sem crédito” (402 ou 429, de falta de crédito ou de limite de uso) antes do primeiro Cartão. Um modelo que
-   a OpenAI tire do ar (404) ou uma chave restrita sem esta permissão não reprova a chave.
-
-Em qualquer dos dois, 402 e 429 são o mesmo aviso e nada é guardado: a pessoa precisa de crédito ou de limite.
-"""
-
 import json
 import ssl
 import urllib.error
@@ -27,15 +12,12 @@ FORA_DO_AR = "openai_unreachable"
 
 
 class ErroDaChave(Exception):
-    """A OpenAI não aceitou a chave: `codigo` é um dos de cima, o que o contrato devolve à extensão."""
-
     def __init__(self, codigo):
         super().__init__(codigo)
         self.codigo = codigo
 
 
 def contexto_tls():
-    # O Python do Anki do Mac nem sempre acha as autoridades do sistema; o Anki leva o `certifi`.
     try:
         import certifi
 
@@ -54,7 +36,6 @@ def _pedido(base, chave, caminho, corpo=None):
 
 
 def _pedir(pedido, ler=False):
-    """(status, erro) da OpenAI (com `ler`, o corpo de um 200); levanta `ErroDaChave(FORA_DO_AR)` se nem a resposta chegou."""
     try:
         with urllib.request.urlopen(pedido, timeout=TEMPO_DE_CADA_PEDIDO, context=contexto_tls()) as resposta:
             lido = json.loads(resposta.read(1024 * 1024).decode("utf-8")) if ler and resposta.status == 200 else {}
@@ -70,7 +51,6 @@ def _pedir(pedido, ler=False):
 
 
 def _classificar(status, erro):
-    """O código do erro da chave que esta resposta mostra, ou None se ela não diz nada contra a chave."""
     if status >= 500:
         return FORA_DO_AR
     if status == 401:
@@ -95,7 +75,6 @@ def _codigo_da_lista_de_modelos(status, erro):
 
 
 def conferir(base, chave, logger):
-    """Levanta `ErroDaChave` se a OpenAI não aceita a chave; volta sem nada se aceita."""
     try:
         status, erro = _pedir(_pedido(base, chave, "/v1/models"))
         codigo = _codigo_da_lista_de_modelos(status, erro)
@@ -111,7 +90,6 @@ def conferir(base, chave, logger):
 
 
 def modelos_da_conta(base, chave):
-    """Os ids da lista de modelos da conta (`GET /v1/models`, #157); levanta `ErroDaChave` se a lista não veio."""
     status, corpo = _pedir(_pedido(base, chave, "/v1/models"), ler=True)
     if status != 200:
         raise ErroDaChave(_classificar(status, corpo) or FORA_DO_AR)

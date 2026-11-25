@@ -1,9 +1,3 @@
-"""PerpetualMiner: a Conexão com o Anki, como complemento do Anki.
-
-O Anki importa esta pasta ao abrir. Fora do Anki (nos testes) não há `aqt`, e nada
-acontece ao importar.
-"""
-
 import os
 
 try:
