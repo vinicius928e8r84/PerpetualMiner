@@ -17,26 +17,21 @@ const ROTAS = { '/ia/chatgpt/estado': 'estado', '/ia/chatgpt/sair': 'sair', '/ia
 const { login: LOGIN, cenarios: CENARIOS } = require('./painel_ia_chatgpt_cenarios.json');
 const mundo = { temChave: true };
 
-raiz.ConexaoAnki = {
-  SITUACAO: { CONECTANDO: 'conectando', LIGADA: 'ligada', DESLIGADA: 'desligada' },
-  acompanhar: seguidor => seguidores.push(seguidor),
-  situacao: () => 'ligada',
-};
-raiz.Veio = { ...raiz.Veio, mostrarToastDeSucesso: texto => avisos.push(texto) };
-raiz.ModeloDosCartoes = { reler: () => {} };
-raiz.CartaoDaIA = { temChave: () => mundo.temChave, baixarConexao: () => {} };
-raiz.ConversaComOAnki = {
-  ...raiz.ConversaComOAnki,
-  pedir: async pedido => {
-    const rota = ROTAS[pedido.caminho];
-    pedidos.push(rota);
-    return fila[rota].shift();
-  },
-};
+Object.assign(raiz, {
+  ConexaoAnki: { SITUACAO: { CONECTANDO: 'conectando', LIGADA: 'ligada', DESLIGADA: 'desligada' }, acompanhar: seguidor => seguidores.push(seguidor), situacao: () => 'ligada' },
+  Veio: { ...raiz.Veio, mostrarToastDeSucesso: texto => avisos.push(texto) },
+  ModeloDosCartoes: { reler: () => {} },
+  CartaoDaIA: { temChave: () => mundo.temChave, baixarConexao: () => {} },
+  ConversaComOAnki: { ...raiz.ConversaComOAnki, pedir: async pedido => responder(ROTAS[pedido.caminho]) },
+});
+Object.assign(globalThis, { addEventListener: () => {}, window: { addEventListener() {}, open() {} } });
+Object.assign(globalThis.chrome, { tabs: { create: () => {} } });
 globalThis.chrome.storage.local.get = (padrao, quando) => quando({ pm_plano_do_chatgpt_avisado: true });
-globalThis.chrome.tabs = { create: () => {} };
-globalThis.addEventListener = () => {};
-globalThis.window = { addEventListener() {}, open() {} };
+
+function responder(rota) {
+  pedidos.push(rota);
+  return fila[rota].shift();
+}
 
 const lugar = { prefixo: 'cfg' };
 noComId(documento, 'cfg-ia-campo').focus = () => campos.push('foco');
