@@ -30,3 +30,5 @@ per `kbd` (`Veio.montarTeclas`); with no shortcut, `POP-02.semAtalho` and Defini
 Minerar legenda shortcut (POP-11, one key per `kbd`) with Mudar atalho, or “Sem atalho” and Definir atalho (GLB-02);
 both, and Definir atalho in the empty state, take the panel tab to `#configuracoes/atalhos`, and “Ver todas” to `#frases`.
 The popup does not delete, select or record anything.
+
+Linha de prova descartável: caminho sensível com a atenção BAIXA no corpo.
