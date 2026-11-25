@@ -108,7 +108,7 @@
       <label class="frases-busca veio-busca">
        <span class="veio-busca__lupa">
         <span data-icone="busca">
-       <input autocomplete="off" class="veio-campo" data-voz-aria="PAI-23" id="busca-frases" placeholder="" type="search">
+       <input autocomplete="off" class="veio-campo" data-voz-aria="PAI-23" id="busca-frases" placeholder type="search">
        <button class="veio-botao-icone veio-busca__limpar" data-voz-aria="PAI-04.acao" data-voz-title="PAI-04.acao" hidden id="btn-limpar-busca">
         <span data-icone="fechar">
       <label class="veio-toggle">

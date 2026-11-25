@@ -73,108 +73,6 @@
 <span id="shell-conexao-descricao" hidden></span>
     </aside>
     <main class="shell-conteudo">
-      <section class="shell-area" data-area="frases" aria-labelledby="titulo-frases">
-        <header class="shell-cabecalho">
-          <h1 id="titulo-frases" data-voz="SHL-02.frases"></h1>
-          <div class="minerar-menu">
-            <button class="veio-botao veio-botao--primario" id="btn-minerar-frases"
-                    aria-haspopup="menu" aria-expanded="false" aria-controls="menu-minerar">
-              <span data-voz="ADD-01.botao"></span><span data-icone="abaixo"></span>
-            </button>
-            <div class="minerar-menu__lista" id="menu-minerar" role="menu" data-voz-aria="ADD-01.botao" hidden>
-              <button class="minerar-menu__item" role="menuitem" tabindex="-1" data-minerar="colar">
-                <span data-icone="colar"></span>
-                <span><b data-voz="ADD-11.colar"></b><small data-voz="ADD-11.colarAjuda"></small></span>
-              </button>
-              <button class="minerar-menu__item" role="menuitem" tabindex="-1" data-minerar="arquivo">
-                <span data-icone="arquivo"></span>
-                <span><b data-voz="ADD-11.arquivo"></b><small data-voz="ADD-11.arquivoAjuda"></small></span>
-              </button>
-              <button class="minerar-menu__item" role="menuitem" tabindex="-1" data-minerar="foto">
-                <span data-icone="foto"></span>
-                <span><b data-voz="ADD-11.foto"></b><small data-voz="ADD-11.fotoAjuda"></small></span>
-              </button>
-            </div>
-          </div>
-        </header>
-        <aside class="frases-lembrete" id="frases-lembrete" aria-labelledby="frases-lembrete-texto" hidden>
-          <span class="frases-lembrete__anel" id="frases-lembrete-anel"></span>
-          <p class="frases-lembrete__texto" id="frases-lembrete-texto"></p>
-          <div class="frases-lembrete__acoes">
-            <button class="veio-botao veio-botao--fantasma veio-botao--compacto" id="frases-lembrete-ocultar"
-                    data-voz="ONB-15.ocultar"></button>
-            <button class="veio-botao veio-botao--contorno veio-botao--compacto" id="frases-lembrete-continuar"
-                    data-voz="ONB-15.continuar"></button>
-          </div>
-        </aside>
-        <div class="frases-avisos" id="frases-avisos"></div>
-        <div class="frases-filtros">
-          <span class="veio-select"><select class="veio-campo frases-filtro" id="filtro-fonte" data-voz-aria="PAI-25.fonte"></select></span>
-          <span class="veio-select"><select class="veio-campo frases-filtro" id="filtro-idioma" data-voz-aria="PAI-25.idioma"></select></span>
-          <span class="veio-select">
-            <select class="veio-campo frases-filtro" id="filtro-ordem" data-voz-aria="PAI-25.ordem">
-              <option value="novas" data-voz="PAI-24.novas"></option>
-              <option value="antigas" data-voz="PAI-24.antigas"></option>
-            </select>
-          </span>
-          <label class="veio-busca frases-busca">
-            <span class="veio-busca__lupa"><span data-icone="busca"></span></span>
-            <input class="veio-campo" id="busca-frases" type="search" autocomplete="off"
-                   data-voz-aria="PAI-23" placeholder="">
-            <button class="veio-botao-icone veio-busca__limpar" id="btn-limpar-busca"
-                    data-voz-aria="PAI-04.acao" data-voz-title="PAI-04.acao" hidden><span data-icone="fechar"></span></button>
-          </label>
-          <label class="veio-toggle">
-            <input type="checkbox" role="switch" id="filtro-ocultar">
-            <span class="veio-toggle__trilho"></span>
-            <span data-voz="PAI-09"></span>
-          </label>
-        </div>
-        <div class="frases-selecao" id="frases-selecao" hidden>
-          <label class="frases-selecao__pagina">
-            <input type="checkbox" class="veio-checkbox" id="sel-pagina" data-voz-aria="PAI-31">
-            <span id="sel-pagina-rotulo" data-voz="PAI-31"></span>
-          </label>
-          <div class="frases-barra" id="frases-barra" hidden>
-            <button class="veio-botao-icone" id="btn-desmarcar-todas"
-                    data-voz-aria="PAI-32.desmarcar" data-voz-title="PAI-32.desmarcar"><span data-icone="fechar"></span></button>
-            <span class="frases-barra__contagem" id="selection-count" aria-live="polite"></span>
-            <button class="veio-botao veio-botao--link frases-barra__todas" id="btn-sel-todas" hidden></button>
-            <span class="frases-barra__acoes">
-              <button class="veio-botao veio-botao--fantasma veio-botao--compacto" id="btn-bulk-edit">
-                <span data-icone="contexto"></span><span data-voz="PAI-32.editarContexto"></span>
-              </button>
-              <button class="veio-botao veio-botao--fantasma veio-botao--compacto" id="btn-export">
-                <span data-icone="arquivo"></span><span data-voz="PAI-32.exportar"></span>
-              </button>
-              <button class="veio-botao veio-botao--perigo-fantasma veio-botao--compacto" id="btn-delete-selected">
-                <span data-icone="apagar"></span><span data-voz="PAI-32.apagar"></span>
-              </button>
-              <span class="veio-com-dica">
-                <button class="veio-botao veio-botao--primario veio-botao--compacto" id="btn-send-anki">
-                  <span data-icone="enviar"></span><span data-voz="PAI-32.enviar"></span>
-                </button>
-                <span class="veio-dica" id="envio-indisponivel" role="tooltip"></span>
-              </span>
-            </span>
-          </div>
-        </div>
-        <div id="frases-lista" class="frases-lista" aria-busy="true">
-          <div class="veio-esqueleto veio-frase-esqueleto" aria-hidden="true"></div>
-          <div class="veio-esqueleto veio-frase-esqueleto" aria-hidden="true"></div>
-          <div class="veio-esqueleto veio-frase-esqueleto" aria-hidden="true"></div>
-          <div class="veio-esqueleto veio-frase-esqueleto" aria-hidden="true"></div>
-          <div class="veio-esqueleto veio-frase-esqueleto" aria-hidden="true"></div>
-        </div>
-        <nav class="frases-paginas" id="frases-paginas" data-voz-aria="PAI-26.rotulo" hidden>
-          <span class="frases-paginas__intervalo" id="paginas-intervalo"></span>
-          <button class="veio-botao-icone" id="btn-first" data-voz-aria="PAI-26.primeira" data-voz-title="PAI-26.primeira"><span data-icone="primeira"></span></button>
-          <button class="veio-botao-icone" id="btn-prev" data-voz-aria="PAI-26.anterior" data-voz-title="PAI-26.anterior"><span data-icone="anterior"></span></button>
-          <span class="frases-paginas__atual" id="paginas-atual"></span>
-          <button class="veio-botao-icone" id="btn-next" data-voz-aria="PAI-26.proxima" data-voz-title="PAI-26.proxima"><span data-icone="proxima"></span></button>
-          <button class="veio-botao-icone" id="btn-last" data-voz-aria="PAI-26.ultima" data-voz-title="PAI-26.ultima"><span data-icone="ultima"></span></button>
-        </nav>
-      </section>
     </main>
   </div>
 <iframe id="abridor-ponte" src="../abridor/ponte.html" hidden></iframe>
@@ -215,6 +113,7 @@
 <script src="esqueleto-modais.js"></script>
 <script src="esqueleto-anki.js"></script>
 <script src="esqueleto-configuracoes.js"></script>
+<script src="esqueleto-frases.js"></script>
 <script src="painel-shell.js"></script>
 <script src="painel-conta.js"></script>
 <script src="painel-atalhos.js"></script>

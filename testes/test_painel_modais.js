@@ -7,6 +7,7 @@ const { lerHtml, acharTodos, canonicaDoFalso, impressaoDigital } = require('./ar
 const { prepararAPagina } = require('./painel_de_mentira.js');
 
 const IMPRESSAO_DA_PAGINA = 'aef21fc0f329462ae27f7caf702faab15db98dd970335f85b1e9aa6e7799150b';
+const IMPRESSAO_DA_AREA_DE_FRASES = 'ef7a4b69db36ee3162c61b7e324033f79d79b6efff1a357da7aedcfc87b3a6be';
 const IMPRESSAO_DA_AREA_DO_ANKI = 'e3dce991cf5fb66076b4da6138b6de7de45f7abc689fe421f3d9bb9e777594ba';
 const IMPRESSAO_DA_AREA_DE_CONFIGURACOES = 'f93fd4b4eb4f91e69366935979e95a97a28cc8ea38a11ce5181aca9610279153';
 const IMPRESSAO_DOS_MODAIS = {
@@ -36,9 +37,12 @@ function osEsqueletosMontados() {
   require('../painel/esqueleto-modais.js');
   require('../painel/esqueleto-anki.js');
   require('../painel/esqueleto-configuracoes.js');
+  require('../painel/esqueleto-frases.js');
+  const areas = conteudo.childNodes.map(canonicaDoFalso);
   esqueletosMontados = {
     modais: ponte.parentNode.childNodes.filter(no => no.className === 'veio-scrim').map(canonicaDoFalso),
-    areas: conteudo.childNodes.map(canonicaDoFalso),
+    areas,
+    areaDeFrases: areas.find(area => area.atributos['data-area'] === 'frases'),
   };
   return structuredClone(esqueletosMontados);
 }
@@ -59,9 +63,19 @@ function osModaisDa(pagina) {
 
 const doConteudo = pagina => acharTodos(pagina, no => no.tag === 'main' && no.atributos.class === 'shell-conteudo')[0];
 
+const aAreaDeFrases = pagina => acharTodos(pagina, no => no.tag === 'section' && no.atributos['data-area'] === 'frases')[0];
+
 const aAreaDoAnki = pagina => acharTodos(pagina, no => no.atributos?.['data-area'] === 'anki')[0];
 
 const aAreaDeConfiguracoes = pagina => acharTodos(pagina, no => no.atributos?.['data-area'] === 'configuracoes')[0];
+
+function aAreaDeFrasesTemASuaArvore() {
+  assert.strictEqual(impressaoDigital(aAreaDeFrases(aPaginaMontada())), IMPRESSAO_DA_AREA_DE_FRASES);
+}
+
+function oEsqueletoDeFrasesMontaAMesmaArvore() {
+  assert.strictEqual(impressaoDigital(osEsqueletosMontados().areaDeFrases), IMPRESSAO_DA_AREA_DE_FRASES);
+}
 
 function aAreaDoAnkiTemASuaArvore() {
   assert.strictEqual(impressaoDigital(aAreaDoAnki(aPaginaMontada())), IMPRESSAO_DA_AREA_DO_ANKI);
@@ -92,8 +106,12 @@ function oEsqueletoCarregaAntesDoShellENaoDepoisDosModulos() {
   assert.ok(scripts.indexOf('/veio/componentes.js') < scripts.indexOf('esqueleto-anki.js'));
   assert.ok(scripts.indexOf('esqueleto-anki.js') < scripts.indexOf('esqueleto-configuracoes.js'));
   assert.ok(scripts.indexOf('esqueleto-configuracoes.js') < scripts.indexOf('painel-shell.js'));
+  assert.ok(scripts.indexOf('/veio/componentes.js') < scripts.indexOf('esqueleto-frases.js'));
+  assert.ok(scripts.indexOf('esqueleto-frases.js') < scripts.indexOf('painel-shell.js'));
 }
 
+aAreaDeFrasesTemASuaArvore();
+oEsqueletoDeFrasesMontaAMesmaArvore();
 aAreaDoAnkiTemASuaArvore();
 aAreaDeConfiguracoesTemASuaArvore();
 cadaModalTemASuaArvore();
