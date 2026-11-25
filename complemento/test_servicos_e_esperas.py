@@ -1,9 +1,3 @@
-"""Os endereços dos serviços de fora e as esperas da Conexão: os valores de fábrica são os que a Conexão sempre teve, cada `Esperas` tem o seu
-`parar`, e o Motor do Cartão sai montado com o que as duas dizem.
-
-    python3.9 complemento/test_servicos_e_esperas.py
-"""
-
 import os
 import sys
 import unittest

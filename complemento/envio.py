@@ -112,7 +112,6 @@ class Trabalho:
     """Faz um Envio: confere o tipo de nota e, Cartão a Cartão, acha a nota no Anki, gera o texto, monta a nota e a grava."""
 
     def __init__(self, fila, colecao, ia, motor_do_cartao, esperas):
-        """`fila` traz o motor, a tranca e o logger; `motor_do_cartao` vem montado (`montagem_do_cartao.py`) e `esperas` são as `Esperas` da Conexão."""
         self.fila, self.ia = fila, ia
         self.logger = fila.logger
         self.correcao = CorrecaoDaCriacao(fila, colecao, fila.motor, self.logger)
