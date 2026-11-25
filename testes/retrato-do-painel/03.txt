@@ -85,4 +85,7 @@
   <script src="painel-minerar-frases.js">
   <script src="painel-frases-cartao.js">
   <script src="painel-frases-acoes.js">
+  <script src="painel-frases-nuvem.js">
+  <script src="painel-frases-selecao.js">
+  <script src="painel-frases-filtros.js">
   <script src="painel.js">
