@@ -1,10 +1,3 @@
-"""Quem paga cada pedido (C5), pela porta da IA dos cartões e sem montar um Envio: a tabela etapa × situação, o que a porta lê do login e do cofre guardados (os arquivos reais, numa pasta temporária) e a
-credencial que ela entrega a cada etapa, e o texto do Cartão pedido por ela à OpenAI de mentira (quem paga e o custo que fica). O caminho inteiro, com o servidor e a OpenAI de mentira, segue em `test_quem_paga.py`,
-`test_imagem_pelo_plano.py`, `test_voz_de_reserva.py` e `test_ouvir_a_voz.py`.
-
-    python3.9 complemento/test_ia_dos_cartoes.py
-"""
-
 import base64
 import json
 import logging
@@ -44,7 +37,6 @@ TABELA = {TEXTO: PELO_PLANO, CORRECAO: PELO_PLANO, JUIZ: PELO_PLANO, IMAGEM: SO_
 
 
 def guardar(pasta, login, tem_chave, api="http://127.0.0.1:9"):
-    """Os arquivos do login e da chave de uma situação, como a Conexão os deixa em `user_files/chaves`."""
     if login == CONECTADA:
         guardado = {"client_id": "cliente", "access_token": "acesso-do-teste", "refresh_token": "renovar", "expira_em": time.time() + 3600}
     else:
@@ -144,13 +136,11 @@ class ACredencialDeCadaEtapa(unittest.TestCase):
 
 
 def porta_na_openai(pasta, situacao, openai):
-    """A porta como a Conexão a monta (`servidor.Conexao`), com o login, o cofre, o modelo dos cartões e o motor, falando com a OpenAI de mentira."""
     ia, _, config = porta_e_modelos_na_openai(pasta, situacao, openai)
     return ia, config
 
 
 def porta_e_modelos_na_openai(pasta, situacao, openai):
-    """(a porta, o `ModeloDosCartoes` dela, o config do motor), como em `porta_na_openai`."""
     motor = envio.motor_do_complemento()
     login, cofre = guardar(pasta, SITUACOES[situacao][0], SITUACOES[situacao][3], api=openai.base)
     lista = ListaDosModelos(lista_nossa(), date.today, lambda: motor.config_loader.base_config()["openai"]["chat_model"], logging.getLogger("teste"))
@@ -272,7 +262,6 @@ PEDIDO_AO_JUIZ = ("gpt-4.1-mini", "You are an expert visual selector.", [
 
 
 def julgar(situacao, preparar=lambda openai: None):
-    """(o veredito, se a chave pagou, quem a OpenAI de mentira viu julgar) de um pedido ao juiz da porta na `situacao`."""
     with tempfile.TemporaryDirectory() as pasta, OpenAIDeMentira() as openai:
         preparar(openai)
         ia, _ = porta_na_openai(pasta, situacao, openai)

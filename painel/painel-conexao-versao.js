@@ -7,7 +7,6 @@
   const { ESTADO } = PareamentoComOAnki;
   const { ESTADO: AVISO, EVENTO } = AvisoDaVersao;
   const CHAVE_DA_ATUALIZADA_VISTA = 'pm_conexao_atualizada_vista';
-  /** Quanto o Anki tem para fechar (ele sincroniza ao fechar) antes de a extensão desistir de esperar a Conexão calar. */
   const PRAZO_DE_FECHAR_MS = 60 * 1000;
   const FOLGA_DO_FECHAMENTO_MS = 3000;
   const INTERVALO_MS = 1000;
@@ -38,7 +37,6 @@
     despachar({ tipo: EVENTO.ATUALIZOU, resultado });
   }
 
-  /** O clique de Reiniciar o Anki. A permissão do abridor é pedida primeiro, no gesto; sem ela o Anki não é fechado (ninguém o abriria de volta). */
   async function reiniciarOAnki() {
     const permissao = Abridor.pedirPermissao();
     if (!despachar({ tipo: EVENTO.REINICIAR })) return;
@@ -222,7 +220,7 @@
     ConexaoAnki.acompanhar(lerASaude);
     ConexaoAnki.acompanhar(desenharOPareamento);
     PareamentoComOAnki.aoMudar(desenharOPareamento);
-    addEventListener('hashchange', () => setTimeout(() => { const no = porId('painel-pareamento'); if (no) ponhaNoLugar(no); }));   // a Boas-vindas e o Painel trocam de lugar sem recarregar
+    addEventListener('hashchange', () => setTimeout(() => { const no = porId('painel-pareamento'); if (no) ponhaNoLugar(no); }));
   }
 
   raiz.ConexaoVersao = { iniciar, conectar };

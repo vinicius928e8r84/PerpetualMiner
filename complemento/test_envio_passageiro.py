@@ -1,9 +1,3 @@
-"""A recusa passageira da OpenAI no texto de um Cartão (#605): o Envio pede o texto de novo (`PASSAGEIROS` em `envio.py`) e,
-quando a OpenAI volta a aceitar, o Cartão entra como se nada tivesse falhado.
-
-    python3.9 complemento/test_envio_passageiro.py
-"""
-
 import os
 import sys
 import tempfile

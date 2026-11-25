@@ -1,9 +1,3 @@
-"""O que a Conexão lê da coleção (`baralhos.py`): o vocabulário de um Baralho com os filtros da aba e os números dos Baralhos
-pedidos, sobre a coleção em memória dos testes.
-
-    python3.9 complemento/test_baralhos.py
-"""
-
 import os
 import re
 import sys

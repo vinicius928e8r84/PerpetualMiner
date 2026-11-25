@@ -1,9 +1,3 @@
-"""Os prompts do dono (#178), vistos de fora: o complemento traz os prompts padrão; um arquivo do dono na pasta de prompts da pasta de dados
-(`user_files/prompts`) vale no lugar do padrão, e apagar o arquivo volta ao padrão. O que se confere é o prompt que chega à OpenAI de mentira.
-
-    python3.9 complemento/test_prompts_do_dono.py
-"""
-
 import os
 import sys
 import tempfile
@@ -24,7 +18,6 @@ def prompt_do_padrao(nome):
 
 
 def prompt_enviado(conexao, id_, linha=FRASE, **argumentos):
-    """O prompt de sistema que a OpenAI de mentira recebeu para o Envio."""
     antes = len(conexao.openai.chats)
     conexao.criar(pedido(id_, linha, **argumentos))
     conexao.esperar(id_)

@@ -1,9 +1,3 @@
-"""A Frase sem Palavra marcada (#543): a linha sem `palavra : ` não vira Cartão nem vai à OpenAI, e o Envio termina dizendo
-`keyword_missing`, para o painel dizer que falta marcar a Palavra (não só “1 não entrou”).
-
-    python3.9 complemento/test_envio_sem_palavra.py
-"""
-
 import json
 import os
 import sys

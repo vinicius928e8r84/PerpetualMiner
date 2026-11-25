@@ -1,9 +1,3 @@
-"""O motor de texto de `engine/` visto como o pacote `complemento.motor`: o mesmo código que o Anki roda (Python 3.9, sem PyYAML,
-dotenv nem o SDK da OpenAI), conferido nos grupos 3.9 e 3.13 do complemento.
-
-    python3.9 complemento/test_motor.py
-"""
-
 import os
 import sys
 import tempfile
@@ -35,18 +29,14 @@ def configuracao_do_teste(motor, pasta):
 
 
 class MotorPelaChave:
-    """O `motor` com a `config` do teste, pago pela chave dela contra a OpenAI de `openai_base`, como a IA dos cartões o entrega."""
-
     def __init__(self, motor, config, openai_base):
         self.motor, self.config, self.openai_base = motor, config, openai_base
 
     def pedido_do_texto(self):
-        """O `pedir` do texto que a IA dos cartões dá ao motor quando a chave de `config` paga."""
         ia = IaDosCartoes(Conta(None, None), None, motor=MotorNaOpenAI(self.motor, self.openai_base))
         return ia.pedido_do_texto(Pagador(CHAVE, {"provedor": "openai", "segredo": self.config["openai_api_key"], "modelo": None}, None), self.config)
 
     def gerar_a_imagem(self, cartao, destino):
-        """A imagem gerada do `cartao` pelo pipeline do motor, paga pela chave de `config`, presa como a IA dos cartões a entrega."""
         config = self.config
         presa = self.motor.provedores.PelaChave(config["openai_api_key"], self.openai_base)
         escolha = self.motor.image_pipeline.build(dict(config, pela_chave=presa), Path(config["paths"]["output_dir"]), "2", presa, config["paths"]["log_dir"])

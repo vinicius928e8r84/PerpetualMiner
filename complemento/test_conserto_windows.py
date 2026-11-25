@@ -1,8 +1,3 @@
-"""O abridor que conserta sozinho (#152), o `.ps1` do Windows: só se confere por inspeção, e onde houver `pwsh`.
-
-    python3.9 complemento/test_conserto_windows.py
-"""
-
 import json
 import os
 import shutil
@@ -18,8 +13,6 @@ from complemento.test_abridor import ANKI_DO_WINDOWS, RegistroDeMentira
 
 
 class NoWindows(unittest.TestCase):
-    """O `.ps1` do Windows só se confere por inspeção aqui; onde houver `pwsh` ele ainda roda o caso que não toca em nada."""
-
     def setUp(self):
         self._raiz = tempfile.TemporaryDirectory()
         self.pasta = os.path.join(self._raiz.name, "user_files", "abridor")

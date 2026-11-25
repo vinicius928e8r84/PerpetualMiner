@@ -1,9 +1,3 @@
-"""A correção da Criação (#169, C4) sem a thread do Envio: ela pede à porta presa ao Envio (o pagador com a etapa da correção e o teto) e grava
-na nota. A coleção é a em memória com uma frase escrita na Criação; o caminho inteiro, com o HTTP e o custo, está em `test_envio_correcao.py`.
-
-    python3.9 complemento/test_correcao_da_criacao.py
-"""
-
 import logging
 import os
 import sys
@@ -24,8 +18,6 @@ LOGGER.propagate = False
 
 
 class PortaDeRoteiro:
-    """A porta presa ao Envio de um teste: responde a correção com `resposta`, ou ninguém paga (`parado`), ou o teto chegou."""
-
     def __init__(self, resposta=CORRIGIDA, parado=None, teto=False):
         self.resposta, self.parado, self.teto, self.pedidos = resposta, parado, teto, []
 

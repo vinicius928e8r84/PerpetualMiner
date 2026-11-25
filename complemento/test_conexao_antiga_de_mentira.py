@@ -1,11 +1,3 @@
-"""A Conexão de hoje (`bridge/`) de mentira dos testes da passagem (#178): a pasta do projeto dela e um servidor local que responde o
-`GET /health` como ela responde, na porta que o teste escolher.
-
-Não é um teste: é o que a passagem encontra no lugar da Conexão de hoje do dono. Só tem o que a passagem lê (`bridge/config.json`,
-`engine/.env`, `engine/prompts`, a fila `queue.json` e os Envios com `job.json`, `state.json` e `log/costs.jsonl`). Nada da Conexão
-nem do Windows de verdade: o pid é inventado e `parar()` só fecha o servidor daqui.
-"""
-
 import hashlib
 import json
 import os
@@ -64,7 +56,6 @@ class ConexaoAntigaDeMentira:
         self.servidor = None
 
     def envio(self, id_, status, frases, **campos):
-        """`frases`: [(phraseId, linha)]. `prontas`/`falharam`: os phraseId que o estado de hoje diz já enviados/falhados."""
         self._gravar_envio(Envio(id_, status, frases, **campos))
 
     def _gravar_envio(self, envio):
@@ -94,7 +85,6 @@ class ConexaoAntigaDeMentira:
         self.estado(id_, "completed", prontas)
 
     def fotografia(self):
-        """Cada arquivo da pasta do projeto com o hash do conteúdo: a origem de antes e de depois tem de ser a mesma."""
         achados = {}
         for pasta, _, nomes in os.walk(self.raiz):
             for nome in nomes:
@@ -129,7 +119,6 @@ class ConexaoAntigaDeMentira:
         return self
 
     def parar(self):
-        """O processo de hoje encerrado: o servidor fecha e a porta fica livre."""
         if self.servidor is not None:
             self.servidor.shutdown()
             self.servidor.server_close()

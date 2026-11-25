@@ -20,16 +20,8 @@ const lerRecurso = (extensao, caminho) =>
     return Array.from(new Uint8Array(await resposta.arrayBuffer()));
   }, extensao.url(caminho));
 
-/**
- * Como a página renderiza este texto com a fonte que ela própria usa.
- *
- * Mede um trecho que herda o estilo da página, sem forçar família nenhuma, e
- * compara com o mesmo trecho forçado à fonte do sistema: se as duas larguras
- * batem, a página caiu numa fonte substituta.
- */
 const comoAPaginaRenderiza = (page, texto) =>
   page.evaluate(async texto => {
-    // O subset só é buscado quando alguém pede este texto nesta família.
     await document.fonts.load(`400 40px ${getComputedStyle(document.body).fontFamily}`, texto);
     await document.fonts.ready;
 
@@ -64,7 +56,6 @@ test('o manifest e a toolbar usam os PNG da Veio', async ({ extensao }) => {
     const bytes = await lerRecurso(extensao, `veio/icones/icone-${tamanho}.png`);
     expect(digest(bytes)).toBe(digest(fs.readFileSync(path.join(ASSETS_DA_MARCA, `icone-${tamanho}.png`))));
 
-    // Cabeçalho IHDR do PNG: assinatura e as dimensões declaradas.
     const png = Buffer.from(bytes);
     expect(png.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a');
     expect(png.readUInt32BE(16)).toBe(tamanho);

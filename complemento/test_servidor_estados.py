@@ -1,8 +1,3 @@
-"""Cada rota do servidor, pedida por HTTP em cada estado do Anki (parte de `test_servidor.py`).
-
-    python3.9 complemento/test_servidor_estados.py
-"""
-
 import contextlib
 import io
 import json
@@ -21,27 +16,16 @@ from test_harness import tearDownModule
 
 
 class QuebradaAoLer(ColecaoEmMemoria):
-    """O Anki que levanta um erro inesperado ao ler a coleção."""
-
     def __init__(self):
         super().__init__({"quebra": True, "baralhos": []})
 
 
 class EstadosDeCadaRota(unittest.TestCase):
-    """Cada rota que o servidor tem é pedida de verdade, por HTTP, em cada estado em que o Anki pode estar.
-
-    Não depende dos exemplos do contrato: o que o servidor responde fica registrado (`registrar_a_resposta`) e,
-    no fim do arquivo, `tearDownModule` exige um exemplo para cada resposta. Tirar um exemplo, ou uma rota
-    nova que responde um estado que ninguém escreveu, quebra por aqui, dizendo o estado.
-    Os métodos `conferir_*` recebem a matriz e as rotas, para o teste da própria matriz usar uma rota inventada.
-    A rota inventada que não lê a coleção é como a de estado da chave de IA (PR 191): não toca a coleção nem o perfil, e o corpo `{}` basta."""
-
     def conferir_que_toda_rota_esta_na_matriz(self, rotas, matriz):
         sem_entrada = sorted(rota for rota in rotas if rota not in matriz)
         self.assertEqual(sem_entrada, [], "rota nova sem entrada em MATRIZ (complemento/test_matriz_de_rotas.py): diga o corpo, se lê a coleção e o perfil, e as recusas dela")
 
     def pedir_cada_rota(self, conexao, rotas, matriz):
-        """`abre_perfil`: a rota abre um perfil no Anki (a tela de perfis passa a ter coleção); vai por último, para as outras a pedirem como estava."""
         return {rota: conexao.pedir(rota[0], rota[1], corpo=matriz[rota]["corpo"]) for rota in sorted(rotas, key=lambda r: (matriz[r].get("abre_perfil", False), r))}
 
     def conferir_a_colecao_que_quebra(self, rotas, matriz):

@@ -18,7 +18,6 @@ const botaoDoCard = (page, nome) => card(page).getByRole('button', { name: nome,
 const grupo = (page, idioma) => card(page).getByRole('group', { name: idioma });
 const estilo = (page, idioma) => grupo(page, idioma).getByRole('radiogroup', { name: 'Estilo do cartão' });
 const nivel = (page, idioma, nome) => estilo(page, idioma).getByRole('radio', { name: nome });
-// O radio do controle segmentado é invisível: a pessoa clica no rótulo.
 const escolher = (page, idioma, nome) => estilo(page, idioma).locator('label', { hasText: nome }).click();
 const previa = (page, idioma) => grupo(page, idioma).locator('.previa');
 const cartao = (page, idioma) => previa(page, idioma).frameLocator('iframe').locator('body');

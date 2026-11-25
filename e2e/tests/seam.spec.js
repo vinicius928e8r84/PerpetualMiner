@@ -40,7 +40,6 @@ test('numa página sem vídeo, Alt+S não minera nada', async ({ page, paginas, 
   await page.goto(paginas.url('sem-video.html'));
   await page.keyboard.press('Alt+KeyS');
 
-  // Dá tempo ao content script de rodar os intervalos dele antes de afirmar a ausência.
   await page.waitForTimeout(1500);
   await expect(page.getByRole('button', { name: /^Minerar legenda/ })).toHaveCount(0);
   expect(await extensao.frases()).toEqual([]);

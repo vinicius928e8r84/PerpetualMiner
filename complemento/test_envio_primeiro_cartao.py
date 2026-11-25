@@ -1,10 +1,3 @@
-"""O primeiro Cartão da Boas-vindas (#173), visto de fora: o servidor real com a thread de trabalho ligada e a coleção em memória. O teste confere o
-que fica na coleção (a etiqueta da Frase de teste, o Cartão que não dobra ao repetir o passo) e o que atravessa HTTP (o `guid` do Cartão no estado do
-Envio, a prévia dele e o “Abrir no Anki”).
-
-    python3.9 complemento/test_envio_primeiro_cartao.py
-"""
-
 import json
 import os
 import sys
@@ -25,7 +18,6 @@ BARALHO = "PerpetualMiner::Inglês"
 
 
 def enviar(corpo, colecao=None, id_=ID):
-    """Faz o Envio inteiro e devolve o estado, a coleção e o que a Conexão respondeu ao pedir de novo o mesmo Envio."""
     colecao = colecao or ColecaoEmMemoria(ANKI_EM_INGLES)
     with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta, colecao=colecao) as conexao:
         conexao.criar(dict(corpo, jobId=id_))

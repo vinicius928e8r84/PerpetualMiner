@@ -1,11 +1,3 @@
-"""O perfil fixo do Anki (#149), visto de fora: a Conexão real pelo HTTP, a coleção em memória e a thread de trabalho do Envio.
-
-Os Cartões só entram no perfil marcado na primeira conexão; a lista de perfis e o marcado atravessam o HTTP; com outro perfil
-aberto o Envio espera sem trocar nada; com o Anki na tela de perfis a Conexão entra no perfil certo; o clique troca o perfil.
-
-    python3.9 complemento/test_perfil_fixo.py
-"""
-
 import json
 import os
 import sys
@@ -61,7 +53,6 @@ class AListaDePerfis(unittest.TestCase):
 
 
 def estragar_o_perfil_json(pasta, como):
-    """O `perfil.json` que não se lê: texto que não é JSON, ou uma pasta no lugar do arquivo. Devolve o que há lá para conferir depois."""
     caminho = os.path.join(pasta, "perfil.json")
     if como == "texto":
         with open(caminho, "w", encoding="utf-8") as arquivo:

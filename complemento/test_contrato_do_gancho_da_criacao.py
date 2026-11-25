@@ -1,7 +1,3 @@
-"""O gancho da revisão da frente Criação (#168) como qualquer adaptador de coleção o cumpre: a frase que a página do Cartão manda vai para o campo
-“Frase escrita” da nota em revisão. Uma parte de `test_contrato_da_criacao.ContratoDaCriacao` (de onde vêm `adaptador`, `preparar`, `sincronizar` e
-`com_notas_gravadas`): o adaptador em memória e o do Anki passam pelos mesmos testes."""
-
 import os
 import sys
 import types
@@ -16,7 +12,6 @@ SO_O_DEFAULT = {"baralhos": [{"nome": "Default"}]}
 class ContratoDoGanchoDaCriacao:
 
     def na_revisao(self, colecao, guid, mensagem):
-        """A página do Cartão manda `mensagem` (`pycmd`) durante a revisão da nota de `guid`; devolve o que o gancho responde. O adaptador do Anki roda na thread principal."""
         contexto = types.SimpleNamespace(card=types.SimpleNamespace(note=lambda: types.SimpleNamespace(guid=guid)))
         return self.na_thread_principal(lambda: criacao_na_revisao.gancho(colecao)((False, None), mensagem, contexto))
 

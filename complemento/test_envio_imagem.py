@@ -1,10 +1,3 @@
-"""A imagem do Cartão (#144), vista de fora: o servidor real com a thread de trabalho ligada, a coleção em memória, a OpenAI e o
-Openverse de mentira, os dois na fronteira HTTP. O que o teste confere é o que atravessa o HTTP e o que fica guardado: a nota, a
-mídia que a coleção guarda para ela e os arquivos da pasta de dados.
-
-    python3.9 complemento/test_envio_imagem.py
-"""
-
 import json
 import os
 import re
@@ -25,22 +18,18 @@ FOTOS = {"gave up": ["foto-a", "foto-b"]}
 
 
 def imagens(campos):
-    """Os arquivos que os campos da nota mostram (`<img src="...">`)."""
     return re.findall(r'<img src="([^"]+)">', "".join(campos.values()))
 
 
 def so_a_imagem(midia):
-    """A mídia da nota que é imagem: a voz (#143) vai na mesma nota e tem os seus testes."""
     return {nome: dados for nome, dados in midia.items() if nome.endswith(".png")}
 
 
 def juiz_que_prefere(escolhida, nota=95):
-    """Um juiz que dá `nota` à candidata `escolhida` e 10 às outras, e na comparação com a gerada mantém a foto."""
     return lambda modo, candidatas: veredito_do_juiz(escolhida, [nota if i == escolhida else 10 for i in range(len(candidatas))])
 
 
 def juiz_fraco_que_prefere_a_gerada(modo, candidatas):
-    """Nenhuma foto presta (nota 10); na comparação, a gerada ganha de longe."""
     return veredito_do_juiz(0, [10, 10]) if modo == "real_only" else veredito_do_juiz(1, [30, 80])
 
 
@@ -161,8 +150,6 @@ class AImagemGeradaPelaChave(unittest.TestCase):
 
 
 class JuntoComOAudio(unittest.TestCase):
-    """A voz (#143) e a imagem (#144) vão na mesma nota; só a falha da voz derruba o Cartão."""
-
     def test_o_cartao_leva_a_voz_e_a_foto_na_mesma_nota_e_a_colecao_guarda_os_tres_arquivos(self):
         with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta) as conexao:
             conexao.openverse.fotos = FOTOS
@@ -207,8 +194,6 @@ class JuntoComOAudio(unittest.TestCase):
 
 
 class SoAImagemFalha(unittest.TestCase):
-    """Se só a imagem falha, o Cartão vai sem ela e conta como enviado."""
-
     def conferir_cartao_sem_imagem(self, estado, notas, conexao, tentou_gerar=True):
         self.assertEqual(bool(conexao.openai.imagens), tentou_gerar)
         self.assertEqual((estado["status"], estado["successfulPhraseIds"], estado["failedPhraseIds"]), ("completed", [1760000000000], []))

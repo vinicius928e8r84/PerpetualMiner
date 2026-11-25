@@ -1,10 +1,3 @@
-"""A leitura do vocabulário e dos números de um Baralho (`normalizacao.py`) em tabelas de entrada e saída, gravadas com o
-código de hoje: a palavra inglesa reduzida, o termo-alvo de um Cartão, as palavras literais da frente, as linhas do Vocabulário,
-o catálogo de um Baralho e os totais de vários. A saída é comparada como o JSON que a Conexão responde, com a ordem das chaves.
-
-    python3.9 complemento/test_normalizacao.py
-"""
-
 import json
 import os
 import sys

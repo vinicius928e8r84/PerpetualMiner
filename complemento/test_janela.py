@@ -1,12 +1,3 @@
-"""A janela do item “PerpetualMiner…” em Ferramentas e os avisos do Envio (#175), sem o Qt.
-
-O que o teste confere é o que a pessoa lê: o estado que a janela mostra, o rótulo do item e os avisos, lidos do que a Conexão
-guardou (o Envio de verdade, com a thread de trabalho, a coleção em memória e a OpenAI de mentira). O Qt fica atrás de uma
-fronteira pequena (`janela.ligar`), que aqui é um Qt de mentira; a janela de verdade num Anki de verdade é o ensaio do dono.
-
-    python3.9 complemento/test_janela.py
-"""
-
 import json
 import os
 import re
@@ -36,10 +27,6 @@ def setUpModule():
 
 
 class ColecaoQueSegura(ColecaoEmMemoria):
-    """Grava `ate` Cartões e segura o seguinte até `liberar()`: o Envio fica no meio, com o estado que a janela lê.
-
-    `segurando` só vale a partir de quando o Cartão seguinte já está na etapa de gravar (a etapa muda antes de chegar aqui)."""
-
     def __init__(self, descricao, ate):
         super().__init__(descricao)
         self.ate, self._solta, self.segurando = ate, threading.Event(), threading.Event()
@@ -69,7 +56,6 @@ def esperar(condicao, limite=15):
 
 
 def tudo_o_que_a_pessoa_le(estado, rotulo, avisos):
-    """Todo texto que a janela, o item e os avisos mostram, num texto só (para conferir o que nunca aparece)."""
     return "\n".join([repr(estado), rotulo] + list(avisos))
 
 
@@ -230,8 +216,6 @@ class OsAvisosEORotuloDoItem(unittest.TestCase):
 
 
 class QtDeMentira:
-    """A fronteira com o Qt do Anki (`janela.ligar`): o que o complemento pede a ele, anotado."""
-
     def __init__(self):
         self.itens, self.configuracoes, self.avisos, self.janelas, self.tique = [], {}, [], [], None
 
@@ -359,7 +343,6 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 class ACopiaDaJanelaEADaVoz(unittest.TestCase):
     def test_nenhum_texto_da_janela_chama_o_menu_do_anki_de_complementos(self):
-        # #237: o Anki em pt-BR chama o menu de Extensões; o mesmo critério do teste do catálogo da extensão.
         com_complementos = {id_: modelo for id_, modelo in texto_da_janela.TEXTOS.items() if re.search(r"complemento", modelo, re.I)}
         self.assertEqual(com_complementos, {})
 

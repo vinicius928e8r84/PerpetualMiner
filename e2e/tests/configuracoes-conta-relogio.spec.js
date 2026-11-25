@@ -14,8 +14,6 @@ test('voltar à aba do painel não recomeça o “Sincronizado há N min”', as
   await relogio.avancar('02:30');
   await expect(estadoDoChip(page)).toHaveText('Sincronizado há 2 min');
 
-  // O Chromium do teste não esconde nem mostra a aba: o teste dispara o `visibilitychange` que o Chrome dispararia
-  // quando a pessoa volta a ela, e espera a conferência da chave que ele pede terminar.
   const antes = sincronizacoesDaChave(fakes);
   const conferida = page.waitForResponse(r => new URL(r.url()).pathname === '/ia/openai/sincronizar');
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));

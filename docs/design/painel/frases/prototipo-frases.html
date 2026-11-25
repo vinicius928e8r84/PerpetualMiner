@@ -1,21 +1,4 @@
 <!doctype html>
-<!--
-  PROTÓTIPO DESCARTÁVEL: Painel · Frases mineradas, identidade Veio, shell Ilhas.
-  Ticket: "Protótipo: Painel · Frases mineradas" (issue #12 do mapa #1).
-  Pergunta: como fica a área Frases mineradas dentro do shell Ilhas?
-  VEREDITO (Lavish, 2026-09-15): A · Cartões travada, as 5 recomendações aceitas. B e C ficam só como registro.
-  Três layouts da MESMA área, trocados por ?variant=A|B|C (barra flutuante, ← →):
-    A · Cartões   um cartão por frase sob cabeçalhos de data; ações só-ícone no hover;
-                  barra de seleção grudada no topo da lista
-    B · Planilha  uma linha densa por frase em colunas; ações num menu ⋯;
-                  a barra de seleção toma o lugar dos filtros
-    C · Leitor    lista compacta à esquerda + a frase aberta num painel à direita
-                  (keyword e contexto editados ali); seleção numa doca flutuante
-  Os modais são os mesmos nas três: Editar contexto · Minerar frases (Colar · Arquivo .txt · Foto)
-  · Envio ao Anki (progresso → resumo) · Apagar 1 / N. A cópia vem do catálogo da Voz (PAI, ADD, ENV).
-  Sem persistência: tudo em memória. Abrir com dois cliques ou `python3 -m http.server`.
-  Teclas: ← → trocam a variante · T alterna o tema · Esc fecha modal/menu.
--->
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
@@ -47,7 +30,6 @@ svg.i.s{width:16px;height:16px} svg.i.xs{width:14px;height:14px}
 mark.kw,.w.on{background:linear-gradient(transparent 50%,var(--kw-bg) 50%,var(--kw-bg) 94%,transparent 94%);color:var(--kw-fg);padding:0 1px}
 @media (prefers-reduced-motion:reduce){.brand .cur{animation:none!important}}
 
-/* ---------- shell Ilhas (travado no ticket do shell) ---------- */
 .app{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:100vh;padding:12px;gap:12px}
 .side{display:flex;flex-direction:column;gap:6px;padding:18px 12px;position:sticky;top:12px;height:calc(100vh - 24px);min-width:0;background:var(--surface);border:1px solid var(--border);border-radius:20px;box-shadow:var(--shadow)}
 .brand{display:flex;align-items:center;gap:10px;padding:2px 8px 18px}
@@ -86,7 +68,6 @@ mark.kw,.w.on{background:linear-gradient(transparent 50%,var(--kw-bg) 50%,var(--
 .stub{border:1px dashed var(--border-strong);border-radius:20px;padding:40px 20px;text-align:center;color:var(--muted)}
 .stub b{display:block;color:var(--text);font-size:15px;margin-bottom:4px}
 
-/* ---------- componentes Veio ---------- */
 .btn{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:8px 16px;border:1px solid var(--border-strong);background:transparent;font-weight:600;cursor:pointer;white-space:nowrap}
 .btn:hover{border-color:var(--accent)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
@@ -168,14 +149,12 @@ mark.kw,.w.on{background:linear-gradient(transparent 50%,var(--kw-bg) 50%,var(--
 .skel{height:74px;border-radius:14px;background:linear-gradient(90deg,var(--surface-2),color-mix(in srgb,var(--surface-2) 55%,var(--bg)),var(--surface-2));margin-bottom:8px;opacity:.7}
 .sep{color:var(--border-strong)}
 
-/* toast */
 .toasts{position:fixed;left:50%;bottom:72px;transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;align-items:center;z-index:70;pointer-events:none}
 .toast{display:flex;align-items:center;gap:10px;background:var(--text);color:var(--bg);border-radius:999px;padding:9px 18px 9px 12px;font-weight:600;box-shadow:var(--shadow);max-width:min(480px,calc(100vw - 32px))}
 .toast .ok{width:18px;height:18px;border-radius:999px;background:var(--success);display:grid;place-items:center;flex:none}
 .toast .ok::after{content:"";width:7px;height:3px;border:2px solid var(--bg);border-top:0;border-right:0;transform:rotate(-45deg) translate(1px,-1px)}
 .toast.proto{background:#fff;color:#111;font:600 12.5px system-ui,sans-serif}
 
-/* modal */
 .scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);display:grid;place-items:center;z-index:60;padding:16px;overflow-y:auto}
 .modal{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:22px;max-width:480px;width:100%;box-shadow:var(--shadow);position:relative}
 .modal.wide{max-width:600px}
@@ -211,7 +190,6 @@ mark.kw,.w.on{background:linear-gradient(transparent 50%,var(--kw-bg) 50%,var(--
 .sum{display:flex;gap:8px;flex-wrap:wrap}
 .sum .selo{font-size:12.5px;padding:3px 10px}
 
-/* ============ A · Cartões ============ */
 .vA .toolbar{display:flex;flex-direction:column;gap:10px}
 .vA .selrow{margin-top:10px;display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12.5px;font-weight:600;padding:2px 4px}
 .vA .selrow label{display:inline-flex;align-items:center;gap:8px;cursor:pointer}
@@ -229,7 +207,6 @@ mark.kw,.w.on{background:linear-gradient(transparent 50%,var(--kw-bg) 50%,var(--
 .vA .card:hover .acts,.vA .card:focus-within .acts{opacity:1}
 .vA .card.editing .acts{opacity:1}
 
-/* ============ B · Planilha ============ */
 .vB .bar-top{min-height:46px;display:flex;align-items:center}
 .vB .bar-top .filters{flex:1}
 .vB .ctxbar{flex:1;display:flex;gap:6px;align-items:center;flex-wrap:wrap;background:color-mix(in srgb,var(--accent) 8%,var(--surface-2));border:1px solid color-mix(in srgb,var(--accent) 45%,var(--border));border-radius:22px;padding:5px 6px 5px 12px}
@@ -248,7 +225,6 @@ mark.kw,.w.on{background:linear-gradient(transparent 50%,var(--kw-bg) 50%,var(--
 .vB .rowmenu{position:relative}
 @media (max-width:1180px){.vB .gr{grid-template-columns:36px minmax(0,1fr) minmax(0,.7fr) 38px}.vB .gc-when,.vB .gc-st{display:none}}
 
-/* ============ C · Leitor ============ */
 .vC .lay{display:grid;grid-template-columns:minmax(300px,.9fr) minmax(0,1.1fr);gap:14px;margin-top:12px;align-items:start}
 .vC .lst{display:flex;flex-direction:column;gap:6px;min-width:0}
 .vC .lhead{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12.5px;font-weight:600;padding:2px 4px 4px}
@@ -275,7 +251,6 @@ mark.kw,.w.on{background:linear-gradient(transparent 50%,var(--kw-bg) 50%,var(--
 .vC .toasts{bottom:128px}
 @media (max-width:980px){.vC .lay{grid-template-columns:minmax(0,1fr)}.vC .pane{position:static}.vC .dock{left:50%}}
 
-/* ---------- ferramentas do protótipo (não fazem parte do design) ---------- */
 .switcher{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);display:flex;align-items:center;gap:6px;background:#fff;color:#111;border-radius:999px;padding:6px;box-shadow:0 6px 24px rgba(0,0,0,.45);z-index:100;font:600 13px system-ui,sans-serif;max-width:calc(100vw - 24px)}
 .switcher button{border:0;background:#111;color:#fff;border-radius:999px;width:32px;height:32px;cursor:pointer;font-size:15px;flex:none}
 .switcher span{padding:0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -354,7 +329,6 @@ mark.kw,.w.on{background:linear-gradient(transparent 50%,var(--kw-bg) 50%,var(--
 <div class="toasts" id="toasts" aria-live="polite"></div>
 <div id="modal-root"></div>
 
-<!-- ======= ferramentas do protótipo ======= -->
 <details class="lab" id="lab">
   <summary>⚙ Estados do protótipo</summary>
   <div class="body">
@@ -409,7 +383,6 @@ const FONTES={
 };
 const fonteBadge=f=>{const d=FONTES[f]||[f,FONTES.manual[1]];return `<span class="fonte"><svg class="i" viewBox="0 0 24 24">${d[1]}</svg>${esc(d[0])}</span>`;};
 
-// ---------- dados (em memória) ----------
 const RAW=[
  ['I never take it for granted.','take for granted',0,'netflix','Dark','T1E3','hoje','env'],
  ['She was reluctant to say anything.','reluctant',1,'youtube','Vsauce','','hoje',''],
@@ -453,7 +426,6 @@ const S={variant:new URLSearchParams(location.search).get('variant')||'A',route:
   banners:[],menuRow:null,envio:null};
 if(!VARIANTS[S.variant]) S.variant='A';
 
-// ---------- derivados ----------
 function visible(){
   const q=S.busca.trim().toLowerCase();
   let r=ALL.filter(f=>(!S.fonte||f.fonte===S.fonte)&&(!S.idioma||f.lang===S.idioma)&&(!S.ocultar||!f.st)
@@ -465,7 +437,6 @@ const totalPages=n=>Math.max(1,Math.ceil(n/POR_PAGINA));
 function pageRows(vis){const tp=totalPages(vis.length);if(S.page>tp)S.page=tp;return vis.slice((S.page-1)*POR_PAGINA,S.page*POR_PAGINA);}
 const filtersOn=()=>!!(S.fonte||S.idioma||S.ocultar);
 
-// ---------- pedaços compartilhados ----------
 function textHTML(f,clickable=true){
   const set=new Set(f.kw.filter(w=>w!=='|'));
   return f.t.replace(/[\p{L}\p{M}’'-]+/gu,(w)=>{
@@ -539,7 +510,6 @@ function editBox(f){
 const skeleton=n=>Array.from({length:n},()=>'<div class="skel"></div>').join('');
 function byDay(rows){const g=[];rows.forEach(f=>{const l=g[g.length-1];if(l&&l.day===f.day)l.items.push(f);else g.push({day:f.day,items:[f]});});return g;}
 
-// ---------- A · Cartões ----------
 function renderA(vis){
   const rows=pageRows(vis);
   let h=`<div class="toolbar">${filtersHTML()}</div>`;
@@ -585,7 +555,6 @@ function renderB(vis){
   return h+'</div>'+pagerHTML(vis);
 }
 
-// ---------- C · Leitor ----------
 function renderC(vis){
   const rows=pageRows(vis);
   let h=filtersHTML();
@@ -625,7 +594,6 @@ function renderC(vis){
   return h;
 }
 
-// ---------- render ----------
 function render(){
   document.body.className='v'+S.variant;
   document.documentElement.dataset.theme=S.theme;
@@ -636,9 +604,7 @@ function render(){
   $$('#frases-root .cb[data-ind]').forEach(c=>c.indeterminate=true);
   if(keepFocus!==null){const i=$('#f-busca');if(i){i.focus();i.setSelectionRange(keepFocus,keepFocus);}}
   const ta=$('#frases-root textarea[data-edit]'); if(ta&&document.activeElement!==ta){ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length);}
-  // banners persistentes (ADD-06, PAI-15)
   $('#banners').innerHTML=S.banners.map((b,i)=>`<div class="banner" role="alert"><p>${b.msg}</p><button class="btn sm" data-act="banner-retry" data-i="${i}">Tentar de novo</button><button class="ib" data-act="banner-close" data-i="${i}" aria-label="Fechar aviso">${IC.x}</button><details><summary>Detalhes</summary><pre>${esc(b.det)}</pre></details></div>`).join('');
-  // shell
   $('#nav-count').textContent=fmt(S.lista==='zero'?0:ALL.length);
   const dot=$('#nav-dot');dot.className='dot'+(S.con==='off'?' off':'');
   $('#nav-anki').title='Conexão com o Anki: '+(S.con==='off'?'desligada':'ligada');
@@ -662,7 +628,6 @@ envio     ${S.envio?S.envio.phase:'nenhum'}
 conexão   ${S.con} · conta ${S.conta} · nuvem ${S.nuvem}`;
 }
 
-// ---------- toasts ----------
 function toast(msg,proto=false){
   const el=document.createElement('div');el.className='toast'+(proto?' proto':'');
   el.innerHTML=(proto?'':'<span class="ok"></span>')+esc(msg);
@@ -670,7 +635,6 @@ function toast(msg,proto=false){
   setTimeout(()=>el.remove(),Math.max(2600,msg.length*70));
 }
 
-// ---------- modais ----------
 let modalCloser=null;
 function openModal(html,{wide=false,onClose}={}){
   $('#modal-root').innerHTML=`<div class="scrim" data-scrim><div class="modal${wide?' wide':''}" role="dialog" aria-modal="true">${html}</div></div>`;
@@ -680,7 +644,6 @@ function openModal(html,{wide=false,onClose}={}){
 function closeModal(){ $('#modal-root').innerHTML=''; const c=modalCloser; modalCloser=null; c&&c(); }
 const xBtn='<button class="ib x" data-m="close" aria-label="Fechar"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>';
 
-// Apagar 1 / N (PAI-12, PAI-13)
 function askDelete(ids,after){
   const n=ids.length, one=n===1, conta=S.conta!=='none';
   const body=(one?(conta?'Ela some também dos outros dispositivos conectados à sua conta. ':''):(conta?'Elas somem também dos outros dispositivos conectados à sua conta. ':''))+'Não dá para desfazer.';
@@ -695,7 +658,6 @@ function askDelete(ids,after){
   };
 }
 
-// Editar contexto (PAI-20, PAI-21, PAI-22)
 function editCtx(ids){
   const one=ids.length===1, f=one?ALL.find(x=>x.id===ids[0]):null;
   openModal(`${xBtn}<h2>Editar contexto</h2>${one?`<p class="sub">${esc(f.t)}</p>`:`<p class="sub">Editar contexto de ${pl(ids.length,'frase','frases')} · campos em branco ficam como estão</p>`}
@@ -712,7 +674,6 @@ function editCtx(ids){
   };
 }
 
-// Minerar frases (ADD-01…10, C7)
 function minerar(tab){
   if(tab==='foto'){toast('Protótipo: abriria “Minerar de uma foto” numa aba nova',true);return;}
   const M={tab,phase:'edit',file:null,err:''};
@@ -766,7 +727,6 @@ function minerar(tab){
   draw();
 }
 
-// Envio ao Anki (ENV-01…14, R2·Q3 do shell: resumo abre em qualquer área)
 const ETAPAS=['Na fila','Criando cartões','Preparando imagens','Gerando áudio','Escolhendo imagens','Esperando o Anki','Enviando ao Anki'];
 function iniciarEnvio(ids){
   if(S.con!=='on') return;
@@ -824,7 +784,6 @@ function terminarEnvio(){
   const ap=$('#modal-root [data-m=apagar]'); if(ap) ap.onclick=()=>{ALL=ALL.filter(f=>!sent.includes(f.id));ALL.forEach(f=>{if(dups.includes(f.id))f.st='env';});sent.forEach(id=>S.sel.delete(id));modalCloser=null;S.envio=null;$('#modal-root').innerHTML='';toast(pl(sent.length,'frase apagada','frases apagadas'));render();};
 }
 
-// ---------- rotas ----------
 function applyRoute(){
   const h=(location.hash||'#frases').slice(1).split('/');
   S.route=['frases','anki','configuracoes'].includes(h[0])?h[0]:'frases';
@@ -833,7 +792,6 @@ function applyRoute(){
   render();
 }
 
-// ---------- eventos ----------
 function setVariant(k){S.variant=k;S.menuRow=null;const u=new URL(location);u.searchParams.set('variant',k);history.replaceState(null,'',u);render();}
 function cycle(d){const i=KEYS.indexOf(S.variant);setVariant(KEYS[(i+d+KEYS.length)%KEYS.length]);}
 $('#sw-prev').onclick=()=>cycle(-1);$('#sw-next').onclick=()=>cycle(1);
@@ -867,15 +825,12 @@ $('#main').addEventListener('change',e=>{
   if(f){S[f]=e.target.value;S.page=1;render();}
 });
 document.addEventListener('click',e=>{
-  // menu Minerar frases
   if(e.target.closest('#btn-minerar')){const m=$('#menu-minerar');m.classList.toggle('hidden');$('#btn-minerar').setAttribute('aria-expanded',!m.classList.contains('hidden'));return;}
   const mi=e.target.closest('[data-mine]'); if(mi){$('#menu-minerar').classList.add('hidden');minerar(mi.dataset.mine);return;}
   if(!e.target.closest('#menu-minerar')) $('#menu-minerar').classList.add('hidden');
-  // modal
   if(e.target.matches('[data-scrim]')||e.target.closest('[data-m=close]')){closeModal();return;}
   if(e.target.closest('#modal-root')) return;
   if(!e.target.closest('#main')) return;
-  // palavra → keyword
   const w=e.target.closest('.w'); if(w){toggleWord(+w.dataset.id,w.dataset.w);return;}
   const pg=e.target.closest('[data-pg]');
   if(pg){const tp=totalPages(visible().length);S.page={first:1,prev:Math.max(1,S.page-1),next:Math.min(tp,S.page+1),last:tp}[pg.dataset.pg];render();$('#main').scrollIntoView({block:'start'});return;}
@@ -915,7 +870,6 @@ document.addEventListener('click',e=>{
   }
 });
 
-// laboratório
 const bind=(sel,key,cb)=>$(sel).onchange=e=>{S[key]=e.target.value;cb&&cb();render();};
 bind('#s-lista','lista',()=>{S.sel.clear();S.page=1;});
 bind('#s-con','con');bind('#s-conta','conta');bind('#s-envio','envioOut');bind('#s-arq','arq');bind('#s-nuvem','nuvem');bind('#s-win','win');

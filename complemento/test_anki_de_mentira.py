@@ -1,9 +1,3 @@
-"""O `mw` do Anki de mentira que os testes do adaptador (`no_anki.py`) usam: o que o complemento lê dele (`pm.name`, `pm.profiles`,
-`col`), a thread principal (`taskman.run_on_main`), uma coleção sobre um sqlite de verdade e as funções de perfil que a Conexão
-chama (`pm.load`, `onOpenProfile`, `unloadProfile`, `showProfileManager`; `passos` anota a ordem). Não é teste: fica fora do
-`.ankiaddon` pelo nome.
-"""
-
 import copy
 import os
 import queue
@@ -18,25 +12,21 @@ from complemento.test_renderizador_de_mentira import renderizar
 
 
 class AnkiDeMentira:
-    """O que o complemento lê do `mw`: `pm.name` (o perfil que o gerente guarda) e `col` (a coleção aberta)."""
-
     def __init__(self):
         self.pm = types.SimpleNamespace(name=None)
         self.col = None
 
     def selecionar_na_janela_de_perfis(self, nome):
-        self.pm.name, self.col = nome, None  # `pm.load(nome)` guarda o nome sem abrir a coleção
+        self.pm.name, self.col = nome, None
 
     def abrir(self, nome):
         self.pm.name, self.col = nome, object()
 
     def fechar_o_perfil(self):
-        self.col = None  # volta à janela de perfis; o gerente ainda lembra o nome
+        self.col = None
 
 
 class ThreadPrincipalDeMentira:
-    """A thread principal do Anki: `run_on_main` roda a função nela, como o `taskman` do Anki."""
-
     def __init__(self):
         self._tarefas = queue.Queue()
         self.thread = threading.Thread(target=self._rodar, name="principal-do-anki", daemon=True)
@@ -62,8 +52,6 @@ class ThreadPrincipalDeMentira:
 
 
 class NotaDeMentira:
-    """A nota nova de `col.new_note`: os campos por nome (um nome que o tipo não tem é `KeyError`, como no Anki)."""
-
     def __init__(self, modelo, nomes, tipo=None):
         self.modelo, self._valores, self._tipo = modelo, {nome: "" for nome in nomes}, tipo or {}
         self.tags, self.guid = [], None
@@ -80,7 +68,6 @@ class NotaDeMentira:
         return list(self._valores.values())
 
     def ephemeral_card(self, ord=0):
-        """O Cartão que o Anki desenha sem gravar (`Note.ephemeral_card`): o modelo é o primeiro do tipo, ou o “Básico” do Anki."""
         nomes = list(self._valores)
         modelo = (self._tipo.get("tmpls") or [{"qfmt": "{{%s}}" % nomes[0], "afmt": "{{FrontSide}}\n\n<hr id=answer>\n\n{{%s}}" % nomes[1]}])[ord]
         frente, verso = renderizar(modelo["qfmt"], modelo["afmt"], self._valores)
@@ -89,10 +76,6 @@ class NotaDeMentira:
 
 
 class ColecaoDoAnkiDeMentira:
-    """O que o adaptador usa de `mw.col`, sobre um sqlite de verdade (as tabelas `cards` e `notes` do Anki, só com as
-    colunas que o Anki tem e o complemento lê ou grava): `decks.all_names_and_ids` e `decks.id` (que cria o Baralho),
-    `models.get` e `models.by_name`, `new_note`, `add_note` e `db.all`. Toda chamada fora da thread principal fica anotada."""
-
     def __init__(self, descricao, thread_principal):
         self._principal = thread_principal
         self.fora_da_principal = []
@@ -104,7 +87,7 @@ class ColecaoDoAnkiDeMentira:
         self._baralhos, self._modelos = [], {}
         proxima, padrao, seguinte = 1700000000000, descricao.get("baralhoPadrao", "Default"), 2
         for baralho in descricao["baralhos"]:
-            indice = 1 if baralho["nome"] == padrao else seguinte  # o Baralho padrão do Anki tem o id 1, qualquer que seja o nome dele
+            indice = 1 if baralho["nome"] == padrao else seguinte
             seguinte += indice != 1
             self._baralhos.append(types.SimpleNamespace(id=indice, name=baralho["nome"]))
             for nota in baralho.get("notas", []):
@@ -133,7 +116,6 @@ class ColecaoDoAnkiDeMentira:
             write_data=self._conferido(self._guardar_a_midia), dir=lambda: self._pasta_da_midia.name)
 
     def _gravar_a_nota(self, nid, baralho, nota):
-        """A nota da descrição no sqlite, com o tipo de nota pelos nomes dos campos (o primeiro que os tem, ou um novo) e os cartões dela no Baralho."""
         campos = list((nota.get("campos") or {"Frente": nota["frente"], "Verso": nota["verso"]}).items())
         modelo = self._modelos.setdefault(tuple(nome for nome, _ in campos), len(self._modelos) + 1)
         self._sqlite.execute("insert into notes (id, mid, flds) values (?, ?, ?)", (nid, modelo, "\x1f".join(valor for _, valor in campos)))
@@ -182,7 +164,6 @@ class ColecaoDoAnkiDeMentira:
 
     @staticmethod
     def _conferir_os_modelos(tipo):
-        """O Anki recusa um modelo que cita um campo que o tipo não tem (o filtro, como o `type:` da Produção e do Ditado, #167, não é o campo)."""
         nomes = tuple(campo["name"] for campo in tipo["flds"])
         for modelo in tipo["tmpls"]:
             for citado in re.findall(r"\{\{[#^/]?([^{}]+)\}\}", modelo["qfmt"] + modelo["afmt"]):
@@ -191,7 +172,6 @@ class ColecaoDoAnkiDeMentira:
                     raise ValueError("o modelo %r cita o campo %r, que o tipo não tem" % (modelo["name"], citado))
 
     def _guardar_o_tipo(self, tipo):
-        """`models.add_dict` do Anki: confere os modelos, e o nome que já existe não passa (o Anki renomearia)."""
         nomes = tuple(campo["name"] for campo in tipo["flds"])
         self._conferir_os_modelos(tipo)
         if tipo["name"] in self._nomes_dos_modelos or not tipo["tmpls"]:
@@ -201,7 +181,6 @@ class ColecaoDoAnkiDeMentira:
         self.tipos_criados[tipo["name"]] = tipo
 
     def _atualizar_o_tipo(self, tipo):
-        """`models.update_dict` do Anki: grava o tipo de nota que já existe (os modelos e o estilo; os campos ficam como estão)."""
         if tipo["name"] not in self._nomes_dos_modelos:
             raise ValueError("tipo de nota que não existe: %r" % tipo["name"])
         self._conferir_os_modelos(tipo)
@@ -215,7 +194,6 @@ class ColecaoDoAnkiDeMentira:
         self._sqlite.execute("insert into cards (nid, did, odid, type, ivl) values (?, ?, 0, 0, 0)", (cursor.lastrowid, id_do_baralho))
 
     def _nota_gravada(self, id_da_nota):
-        """`col.get_note` do Anki: a nota com os campos pelo nome (um que o tipo não tem é `KeyError`)."""
         modelo, campos = self._sqlite.execute("select mid, flds from notes where id = ?", (id_da_nota,)).fetchone()
         tipo = self._modelo_por_nome(self._modelo(modelo)["name"])
         nota = NotaDeMentira(modelo, tipo["nomes"], tipo)
@@ -225,7 +203,6 @@ class ColecaoDoAnkiDeMentira:
         return nota
 
     def _regravar(self, nota):
-        """`col.update_note` do Anki: grava os campos da nota que já existe."""
         self._sqlite.execute("update notes set flds = ? where id = ?", ("\x1f".join(nota.valores()), nota.id))
 
     def notas_gravadas(self):
@@ -240,8 +217,6 @@ class ColecaoDoAnkiDeMentira:
 
 
 class AnkiComColecaoDeMentira(AnkiDeMentira):
-    """Um `mw` com perfis, a thread principal e, quando há descrição, a coleção do perfil aberto."""
-
     def __init__(self, descricao=None, perfis=("Usuário 1",), aberto=None):
         super().__init__()
         self.taskman = ThreadPrincipalDeMentira()
@@ -259,7 +234,6 @@ class AnkiComColecaoDeMentira(AnkiDeMentira):
         if descricao is not None:
             self.abrir(aberto or perfis[0])
 
-    # As funções de perfil do Anki que a Conexão chama (aqt/main.py): só na thread principal.
     def _carregar_o_perfil(self, nome):
         self.passos.append(("pm.load", nome))
         if nome not in self._perfis:
@@ -277,11 +251,10 @@ class AnkiComColecaoDeMentira(AnkiDeMentira):
         if self.fechamentos_adiados is not None:
             self.fechamentos_adiados.append(depois)
             return
-        self.fechar_o_perfil()  # o Anki sincroniza ao fechar e só então chama `depois`
+        self.fechar_o_perfil()
         depois()
 
     def terminar_o_fechamento(self):
-        """A sincronização ao fechar terminou: o perfil fecha e o `depois` do `unloadProfile` roda, na thread principal."""
         depois, pronto = self.fechamentos_adiados.pop(), threading.Event()
 
         def terminar():
@@ -297,12 +270,10 @@ class AnkiComColecaoDeMentira(AnkiDeMentira):
         self.state = "profileManager"
 
     def encerrar(self):
-        """Desliga a thread principal de mentira e fecha o sqlite da coleção."""
         self.taskman.encerrar()
         self._fechar_o_sqlite()
 
     def _perfis_do_gerente(self):
-        """O gerente de perfis do Anki lê um sqlite criado na thread principal: de outra thread, ele recusa."""
         if threading.current_thread() is not self.taskman.thread:
             raise sqlite3.ProgrammingError("SQLite objects created in a thread can only be used in that same thread")
         return list(self._perfis)

@@ -1,9 +1,3 @@
-"""A passagem do Windows do dono (#178), o que ela copia e passa: a chave, os custos, os prompts editados, o perfil, a fila e os Cartões antigos
-do “Básico”, com a origem sempre intacta. O mesmo mundo de mentira de `test_passagem.py`.
-
-    python3.9 complemento/test_passagem_cartoes.py
-"""
-
 import http.client
 import json
 import os
@@ -101,7 +95,6 @@ class APassagemCopiaSemMoverNada(unittest.TestCase):
 
 
 def a_fila_que_passou(fila):
-    """A ordem dos Envios na fila da Conexão nova, com o pedido e o estado de cada um."""
     ordem = [item["jobId"] for item in fila.ordem()]
     return ordem, {i: fila.pedido(i) for i in ordem}, {i: fila.estado(i)["status"] for i in ordem}
 

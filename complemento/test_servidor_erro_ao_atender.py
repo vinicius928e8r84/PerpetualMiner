@@ -1,8 +1,3 @@
-"""Os erros de um pedido que o servidor da Conexão não deve pôr no log do Anki (complemento de `test_servidor.py`).
-
-    python3.9 complemento/test_servidor_erro_ao_atender.py
-"""
-
 import os
 import sys
 import tempfile
@@ -15,7 +10,6 @@ from complemento.test_harness import ConexaoNoTeste
 
 class OErroAoAtender(unittest.TestCase):
     def erro_ao_atender(self, conexao, erro):
-        """Entrega ao servidor real um erro de pedido, como o `socketserver` faz, e devolve o que o log ganhou."""
         antes = conexao.log()
         try:
             raise erro

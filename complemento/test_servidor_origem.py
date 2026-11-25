@@ -1,8 +1,3 @@
-"""A origem dos pedidos à Conexão, vista de fora (parte de `test_servidor.py`): só a extensão é atendida, e o resto recebe 403.
-
-    python3.9 complemento/test_servidor_origem.py
-"""
-
 import json
 import os
 import sys

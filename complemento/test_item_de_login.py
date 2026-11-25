@@ -1,11 +1,3 @@
-"""O item de login de “Abrir o Anki com o computador”: escrito e apagado numa pasta temporária, por sistema.
-
-    python3.9 complemento/test_item_de_login.py
-
-O que o Mac e o Windows fazem com o item (abrir o Anki no login) só o dono vê, no ensaio dele;
-aqui se confere o que fica no disco: o arquivo certo, no lugar certo, com o conteúdo certo.
-"""
-
 import ntpath
 import os
 import plistlib
@@ -24,7 +16,6 @@ ANKI_DO_WINDOWS = r"C:\Users\Maria\AppData\Local\Programs\Anki\anki.exe"
 
 
 def ler_lista_do_alvo(conteudo):
-    """Os itens do `LinkTargetIDList` de um `.lnk`: (tipo, bytes depois do tipo) de cada um, até o terminador."""
     flags, = struct.unpack_from("<I", conteudo, 20)
     assert flags & 0x01, "sem LinkTargetIDList o Windows diz que não há aplicativo para o atalho"
     tamanho, = struct.unpack_from("<H", conteudo, 0x4C)
@@ -41,7 +32,6 @@ def ler_lista_do_alvo(conteudo):
 
 
 def atalho_das_conexoes_0_4_21_a_0_4_24(alvo):
-    """O `.lnk` que essas Conexões gravavam: o de hoje sem o `LinkTargetIDList` (só o `LinkInfo` e a pasta), que o Windows recusa."""
     atual = item_de_login._atalho_do_windows(alvo)
     flags, = struct.unpack_from("<I", atual, 20)
     tamanho, = struct.unpack_from("<H", atual, 0x4C)
@@ -49,7 +39,6 @@ def atalho_das_conexoes_0_4_21_a_0_4_24(alvo):
 
 
 def ler_atalho(conteudo):
-    """O alvo e a pasta de trabalho de um `.lnk` (MS-SHLLINK), lidos como o Windows os lê."""
     tamanho_do_cabecalho, = struct.unpack_from("<I", conteudo, 0)
     clsid = conteudo[4:20]
     flags, = struct.unpack_from("<I", conteudo, 20)
@@ -57,7 +46,7 @@ def ler_atalho(conteudo):
     assert clsid == bytes.fromhex("0114020000000000c000000000000046")
     assert flags & 0x02, "sem LinkInfo o Windows não acha o alvo"
     posicao = 0x4C
-    if flags & 0x01:  # LinkTargetIDList
+    if flags & 0x01:
         tamanho, = struct.unpack_from("<H", conteudo, posicao)
         lista_do_alvo = conteudo[posicao + 2 : posicao + 2 + tamanho]
         posicao += 2 + tamanho
@@ -220,8 +209,6 @@ class NoWindows(unittest.TestCase):
 
 
 class ReescreverSeDifere(unittest.TestCase):
-    """#401: o item que já existe e difere do que a Conexão escreveria agora é trocado; o igual e o que falta ficam como estão."""
-
     def windows(self, pasta, comando=ANKI_DO_WINDOWS):
         return item_de_login.ItemDeLogin(sistema="windows", pasta=pasta, comando=comando)
 
@@ -330,8 +317,6 @@ class SemComoAbrirOAnki(unittest.TestCase):
 
 
 class DesteComputador(unittest.TestCase):
-    """Onde cada sistema guarda o item, e como o Anki é aberto, pelo ambiente em que o complemento roda."""
-
     def test_no_mac_o_item_mora_nos_launchagents_do_usuario(self):
         item = item_de_login.deste_computador(plataforma="darwin", ambiente={"HOME": "/Users/maria"}, executavel="/x/python")
         self.assertEqual((item.sistema, item.pasta), ("mac", "/Users/maria/Library/LaunchAgents"))

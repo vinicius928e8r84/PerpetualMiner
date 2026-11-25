@@ -1,8 +1,3 @@
-"""Dentro do Anki a Conexão não mexe no processo (complemento de `test_servidor.py`).
-
-    python3.9 complemento/test_servidor_processo.py
-"""
-
 import contextlib
 import io
 import os
@@ -21,8 +16,6 @@ VARIAVEIS_DE_PROXY = ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY", "htt
 
 
 class ProcessoDoAnki(unittest.TestCase):
-    """Dentro do Anki a Conexão não mexe no processo e nenhum erro abre o diálogo dele."""
-
     def estado_do_processo(self):
         return {
             "proxy": {nome: os.environ.get(nome) for nome in VARIAVEIS_DE_PROXY},
@@ -71,7 +64,7 @@ class ProcessoDoAnki(unittest.TestCase):
                 conexao.pedir("GET", "/health")
                 registrado = conexao.log()
         self.assertEqual(erro.getvalue(), "")
-        self.assertIn("http: code 400, message Bad Request", registrado)  # o texto da biblioteca, sem a linha do pedido
+        self.assertIn("http: code 400, message Bad Request", registrado)
         self.assertNotIn("isto nao e http", registrado)
 
 

@@ -681,7 +681,6 @@ test('o que a página anuncia de formatos é o que ela aceita: HEIC entra e vai 
   for (const formato of ['.jpg', '.jpeg', '.png', '.heic', '.webp']) expect(aceita).toContain(formato);
   expect(aceita).not.toMatch(/heif/);
 
-  // O Chrome no Windows entrega o HEIC sem tipo: a página reconhece pela extensão.
   await enviarFotos(page, { name: 'IMG_2041.HEIC', mimeType: '', buffer: PNG_1X1 });
   await page.getByRole('button', { name: 'Ler marcações' }).click();
 

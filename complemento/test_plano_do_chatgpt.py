@@ -1,10 +1,3 @@
-"""O Cartão de texto pelo plano do ChatGPT (#155), visto de fora: com o login feito (o teste faz o papel do navegador, como em
-`test_login_do_chatgpt.py`), o Envio pede o texto pela Responses API, renova o token, para quando o login acaba ou o plano chega ao
-limite, e nenhum token, código ou verificador sai do arquivo do login.
-
-    python3.9 complemento/test_plano_do_chatgpt.py
-"""
-
 import json
 import os
 import re
@@ -103,7 +96,6 @@ class OsCustosDoPlano(unittest.TestCase):
             conexao.esperar(ID, limite=60)
             [linha] = json.loads(conexao.pedir("POST", "/analytics/jobs", corpo={"lang": "all"})[2])["jobs"]
             registros = conexao.arquivos()[os.path.join("custos", ID, "costs.jsonl")].decode("utf-8")
-        # 1000 tokens de entrada e 200 de saída por Cartão, ao preço do gpt-4o da chave (US$ 0,0045 cada).
         self.assertEqual(linha["plan"], {"cards": 2, "wouldCostUsd": 0.009})
         self.assertEqual((linha["successfulCards"], linha["costs"]["cardUsd"]), (2, 0.0))
         self.assertNotIn("gave up", registros)

@@ -1,10 +1,3 @@
-"""O pareamento na janela do Anki (#192): o diálogo do código, o aviso de conectado e o Desconectar navegadores, pela fronteira `janela.ligar`.
-
-O Qt é o de mentira de `test_janela.QtDeMentira`; a Conexão é a de verdade (o pareamento por HTTP). A tela do Anki de verdade é o ensaio do dono.
-
-    python3.9 complemento/test_janela_pareamento.py
-"""
-
 import json
 import os
 import sys
@@ -20,8 +13,6 @@ from complemento.test_harness import ConexaoNoTeste
 
 
 class QtComCodigo(QtDeMentira):
-    """A fronteira com o Qt do Anki com o diálogo do código do pareamento e o botão Desconectar navegadores, anotados."""
-
     def __init__(self):
         super().__init__()
         self.desconectar = None

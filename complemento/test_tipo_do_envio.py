@@ -1,9 +1,3 @@
-"""O tipo de nota de um Envio (C4) sem o Envio: conferido uma vez no começo, ele é um valor do Envio, e a nota de cada Cartão é posta nele.
-A coleção é a em memória; o caminho inteiro está em `test_envio_tipo_de_nota.py` e `test_tipo_proprio.py`.
-
-    python3.9 complemento/test_tipo_do_envio.py
-"""
-
 import os
 import sys
 import unittest

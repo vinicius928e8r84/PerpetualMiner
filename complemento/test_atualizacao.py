@@ -1,10 +1,3 @@
-"""A atualização em silêncio pelo AnkiWeb (#177): a consulta pelo id, a instalação, a marca e o que acontece quando o Anki muda por dentro.
-
-O AnkiWeb é de mentira (`AnkiWebDeMentira`): nada sai da máquina, e o teste confere o que a Conexão perguntou e o que ela instalou.
-
-    python3.9 complemento/test_atualizacao.py
-"""
-
 import json
 import logging
 import os
@@ -19,9 +12,6 @@ from complemento import atualizacao, configuracao
 
 
 class AnkiWebDeMentira:
-    """O AnkiWeb e o gerente de complementos do Anki, por trás da fronteira `atualizacao_do_anki.AnkiWebDoAnki`: guarda o que lhe perguntaram,
-    o que instalaram e a marca (`update_enabled`) como o `meta.json` do Anki a guarda."""
-
     def __init__(self, id_=12345678, versao_no_ankiweb="0.9.0", pronto=True):
         self.id_, self.versao_no_ankiweb, self._pronto = id_, versao_no_ankiweb, pronto
         self.consultas, self.instalacoes, self.fechamentos = [], [], 0
@@ -47,7 +37,6 @@ class AnkiWebDeMentira:
         self.instalacoes.append(id_)
         if self.instalar_funciona:
             self.instalado = self.versao_no_ankiweb
-        # a instalação do Anki grava o meta.json de antes, com o `update_enabled` que estava: a marca sobrevive
         return self.instalar_funciona
 
     def versao_instalada(self):
@@ -75,8 +64,6 @@ MATRIZ_DA_ATUALIZACAO = {
 
 
 def atualizacao_do_exemplo(pasta, guardado, ankiweb, logger):
-    """A atualização no contexto de um exemplo do contrato (`atualizacao` e `ankiweb`): `guardado` é o que ficou da última vez (`instalada`, `falhou`,
-    `atualizada`) e `ankiweb`, como o AnkiWeb de mentira responde (`com_versao_nova`, `sem_versao_nova`, `recusa`); sem os dois, None (a Conexão sem o Anki)."""
     if not (guardado or ankiweb):
         return None
     arquivo = os.path.join(pasta, "atualizacao.json")
@@ -226,8 +213,6 @@ class _InstalouBem:
 
 
 class GerenteDeMentira:
-    """O `mw.addonManager` do Anki, com o `meta.json` na memória."""
-
     def __init__(self):
         self.meta = _Meta()
         self.gravacoes = 0
@@ -243,8 +228,6 @@ class GerenteDeMentira:
 
 
 class AqtAddonsDeMentira:
-    """O `aqt.addons` do Anki (lido no código dele): quem pergunta ao AnkiWeb e quem baixa e instala. Guarda o que lhe perguntaram."""
-
     InstallOk = _InstalouBem
 
     def __init__(self, modificado=200, resultado=None):
@@ -264,8 +247,6 @@ class AqtAddonsDeMentira:
 
 
 class PeloAnkiDeMentira(unittest.TestCase):
-    """`AnkiWebDoAnki` falando com um `aqt.addons` e um `mw` de mentira: a consulta pelo id, a instalação e a marca."""
-
     def setUp(self):
         from complemento import atualizacao_do_anki
 
@@ -319,7 +300,6 @@ class PeloAnkiDeMentira(unittest.TestCase):
         self.assertEqual(self.anki.versao_instalada(), "0.9.0")
 
     def test_o_log_aberto_em_user_files_nao_segura_o_backup_do_anki_e_volta_a_gravar_depois(self):
-        # No Windows o Anki renomeia `user_files` e o rename falha com o log da Conexão aberto (#370).
         from complemento import registro
 
         logs = os.path.join(self.complemento, "user_files", "logs")

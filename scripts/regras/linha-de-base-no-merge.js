@@ -2,12 +2,13 @@
 
 const { execFileSync } = require('child_process');
 const { renomeacoes } = require('./comum');
+const { arquivoDaLinhaDeBase: ARQUIVO_DO_SEM_COMENTARIO } = require('./sem-comentario');
 
 const id = 'linha-de-base-no-merge';
 
 const ARQUIVO_DAS_REGRAS = 'scripts/regras/linha-de-base.json';
 const ARQUIVO_DE_TAMANHO = 'scripts/ganchos/linha-de-base-de-tamanho.json';
-const ARQUIVOS = [ARQUIVO_DAS_REGRAS, ARQUIVO_DE_TAMANHO];
+const ARQUIVOS = [ARQUIVO_DAS_REGRAS, ARQUIVO_DE_TAMANHO, ARQUIVO_DO_SEM_COMENTARIO];
 const ASSUNTO = 'Linha de base: desce no merge';
 
 const conserto = `Desfaça a edição: \`git restore --source=origin/main -- ${ARQUIVOS.join(' ')}\`. `
@@ -26,7 +27,8 @@ const git = (raiz, args) => {
   }
 };
 
-const entradasPorGrupo = (arquivo, json) => (arquivo === ARQUIVO_DE_TAMANHO ? { tamanho: json.arquivos || {} } : json);
+const semMarcas = json => Object.fromEntries(Object.entries(json).filter(([chave]) => !chave.startsWith('@')));
+const entradasPorGrupo = (arquivo, json) => (arquivo === ARQUIVO_DE_TAMANHO ? { tamanho: json.arquivos || {} } : semMarcas(json));
 
 function lerEntradas(arquivo, texto) {
   try {

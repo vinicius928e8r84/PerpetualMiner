@@ -1,13 +1,3 @@
-"""O pareamento da Conexão com o Anki, visto de fora (#192): o código, o segredo e a prova da Conexão.
-
-O servidor é o real, por HTTP, sem Anki e sem Qt (a janela do Anki é `TelaDeMentira`). O que cada teste confere é o que a extensão e um
-cliente hostil enxergam: o status, o JSON, os cabeçalhos e o que fica em disco e no log. Os exemplos do contrato
-(`contrato/exemplos-do-pareamento.json`) dizem cada resposta; aqui estão os caminhos que um exemplo só não mostra. O porteiro, a prova da
-resposta e o desconectar estão em `test_pareamento_porteiro.py`.
-
-    python3.9 complemento/test_pareamento.py
-"""
-
 import base64
 import hmac
 import logging
@@ -28,8 +18,6 @@ from complemento.test_harness import ConexaoNoTeste
 
 
 class OVetorDeAssinatura(unittest.TestCase):
-    """A mesma conta que o WebCrypto faz na extensão (`test_pareamento_do_anki.js` confere o mesmo vetor)."""
-
     def test_o_vetor_do_contrato_da_a_mesma_assinatura_que_o_webcrypto_deu(self):
         assinatura = pareamento.assinatura_do_pedido(
             base64.b64decode(VETOR["segredo"]), VETOR["sessao"], VETOR["nonce"], VETOR["metodo"], VETOR["caminho"], VETOR["corpo"].encode("utf-8"))
@@ -243,7 +231,6 @@ class ConcluirOPareamento(unittest.TestCase):
 
 
 def esgotar(conexao, codigos=1):
-    """Gasta as 5 tentativas de `codigos` códigos seguidos, como um programa que só adivinha."""
     for _ in range(codigos):
         comecar(conexao)
         for _ in range(pareamento.TENTATIVAS):
@@ -251,8 +238,6 @@ def esgotar(conexao, codigos=1):
 
 
 class OTetoDosCodigosNovos(unittest.TestCase):
-    """Cinco tentativas por código não fecham a força bruta se o código novo não tem teto (o review do #192): três códigos esgotados seguidos bloqueiam o seguinte."""
-
     def test_o_quarto_codigo_depois_de_tres_esgotados_e_recusado_sem_abrir_o_dialogo(self):
         with tempfile.TemporaryDirectory() as pasta, ConexaoNoTeste(pasta, pareado=False) as conexao:
             esgotar(conexao, 3)

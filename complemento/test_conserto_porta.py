@@ -1,11 +1,3 @@
-"""O abridor que conserta sozinho (#152), a porta da Conexão: só se fecha à força o Anki que é dono dela, e só os pids que a ouvem.
-
-    python3.9 complemento/test_conserto_porta.py
-
-O mundo de mentira (`Mundo`) é o de `test_conserto.py`: `lsof` de mentira diz quem ouve a porta e o `ps` lista o Anki (e, se o teste
-quiser, mais um processo que roda o mesmo programa). Nenhum processo de verdade é fechado, nenhum Anki é aberto.
-"""
-
 import os
 import sys
 import tempfile

@@ -42,6 +42,7 @@ A regra `indice-de-arquivos` exige uma linha, aqui ou em [testes-e-ferramentas.m
 | `lib/palavra-automatica.js` | The choice of the Termo for the Mineração automática and for saving a Frase, as a pure function. |
 | `lib/mineracao-automatica-decisao.js` | The Mineração automática's decision, through ports. |
 | `lib/mineracao-automatica.js` | The Mineração automática seen from a page: state, save and the daily-limit field. |
+| `lib/mineracao-automatica-na-pagina.js` | The Mineração automática seen from the page, loaded before `content.js`: waits for the caption to stop, sends the candidate, draws the badge and the notice. |
 | `lib/arquivos-da-extensao.js` | The files the extension uses at run time, found from `manifest.json`. |
 | `lib/ankiweb.js` | The code of the Conexão's AnkiWeb page and its download link. |
 | `lib/quiz-de-nivel.js`, `lib/festa-do-quiz.js`, `lib/som-do-quiz.js` | The level quiz of Boas-vindas, its celebration and its sound. |

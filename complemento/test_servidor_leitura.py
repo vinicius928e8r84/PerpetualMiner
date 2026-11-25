@@ -1,8 +1,3 @@
-"""O que a extensão lê dos Baralhos pela Conexão real, além dos exemplos do contrato (`test_servidor.py`): paginação, filtros, corpo recusado, o limite do `Origin`.
-
-    python3.9 complemento/test_servidor_leitura.py
-"""
-
 import contextlib
 import io
 import json
@@ -19,8 +14,6 @@ from complemento.test_harness import ORIGEM, ConexaoNoTeste, ler_o_contrato
 
 
 class LeituraDaColecao(unittest.TestCase):
-    """O que a extensão lê dos Baralhos, além dos exemplos do contrato."""
-
     DECKS = {"decks": [{"deckName": "Inglês", "lang": "en"}]}
 
     def com_a_colecao(self, pasta, **argumentos):
@@ -62,9 +55,6 @@ class LeituraDaColecao(unittest.TestCase):
                     self.assertEqual((status, filtros["limit"], filtros["offset"]), (200, baralhos.LIMITE_PADRAO, 0))
 
     def test_um_cliente_fora_do_navegador_que_declara_a_origem_da_extensao_sem_a_assinatura_nao_recebe_o_vocabulario(self):
-        """O limite que o contrato aceitava (LEIA-ME, “Quem o complemento atende”, item 3) acabou com o pareamento (#192): o `Origin` não é
-        autenticação, e quem só o declara (um programa local, uma extensão com `extraHeaders`) recebe 401 em vez dos Baralhos. Assinado
-        como o navegador pareado, a mesma leitura responde. Sem a origem, ou com a de outro site, 403."""
         with tempfile.TemporaryDirectory() as pasta, self.com_a_colecao(pasta) as conexao:
             forjado = conexao.pedir("POST", "/anki/vocabulary", origem=ORIGEM, corpo={"deck": "Inglês", "lang": "en"}, assinar=False)
             pareado = conexao.pedir("POST", "/anki/vocabulary", origem=ORIGEM, corpo={"deck": "Inglês", "lang": "en"})

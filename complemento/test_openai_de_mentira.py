@@ -1,9 +1,3 @@
-"""A OpenAI de mentira dos testes do complemento: um servidor HTTP local que responde como a OpenAI.
-
-Não é um teste: é o que os testes põem no lugar de `https://api.openai.com`. O complemento só fala com
-ela por HTTP, então é aqui, na fronteira, que o teste decide como a OpenAI responde.
-"""
-
 import base64
 import json
 import re
@@ -17,13 +11,11 @@ from complemento.test_imagens_de_mentira import png_de
 
 MODELOS_OK = (200, {"object": "list", "data": [{"id": "gpt-4.1-mini", "object": "model"}]})
 EMBEDDINGS_OK = (200, {"object": "list", "data": [{"embedding": [0.0]}]})
-# A lista de modelos que o plano do ChatGPT devolve ao `access_token` do login (a forma da doc: `models`, `slug`, `visibility`).
 MODELOS_DO_PLANO = (200, {"models": [{"slug": "gpt-interno", "visibility": "hide"}, {"slug": "gpt-6-luna", "display_name": "GPT-6 Luna", "visibility": "list"},
                                      {"slug": "gpt-6-sol", "display_name": "GPT-6 Sol", "visibility": "list"}]})
 
 
 def audio_da_openai(voz, texto):
-    """Os bytes que a OpenAI de mentira fala para um texto: dizem com que voz ele foi pedido."""
     return ("mp3-da-openai|%s|%s" % (voz, texto)).encode("utf-8")
 
 
@@ -78,8 +70,6 @@ PASSADO_NA_FRASE = {"give": "gave"}
 
 
 def _cartao_de_mentira(mensagens, prompt=""):
-    """Um Cartão que o motor aceita, feito do pedido: a Palavra no verso e destacada na frente, o contexto, se veio, e as partes do verso que
-    o `prompt` do nível manda escrever (sem prompt, as do Iniciante); o alinhamento só se o prompt o pede."""
     pedido = mensagens[-1]["content"]
     texto_do_prompt = " ".join(prompt.split())
     partes = re.findall(r"(%s): \[" % "|".join(PARTES_DE_MENTIRA), texto_do_prompt) or list(PARTES_DE_MENTIRA)[:3] + ["Gist"]
@@ -109,18 +99,6 @@ def _palavra_do_pedido(mensagens):
 
 
 class OpenAIDeMentira(CorrecaoDeMentira):
-    """`OpenAIDeMentira("aceita")` escuta numa porta livre; `base` é o endereço que a Conexão usa no lugar da OpenAI.
-
-    A conferência da chave (`/v1/models`, `/v1/embeddings`) segue o `comportamento`. O texto dos Cartões
-    (`/v1/chat/completions`) volta um Cartão válido feito do pedido, com 1000 tokens de entrada e 200 de saída,
-    salvo para a Palavra que `recusar_o_chat_de` mandou recusar (`"*"`: todas). `chats` guarda (Authorization, corpo).
-    O plano do ChatGPT: um `Bearer acesso-…` (o do login de mentira) recebe a lista do plano em `/v1/models`, e `/v1/responses`
-    devolve o mesmo Cartão em stream de eventos; `respostas` guarda (Authorization, corpo), `recusa_das_respostas` = (status, código)
-    (ou uma função de quantos pedidos já chegaram, ou None) recusa antes do stream e `falha_no_stream` = código termina o stream
-    com `response.failed`. O juiz de imagem pelo plano (#156) é a `/v1/responses` das instruções do juiz: entra em `juizes`, e
-    `recusa_do_juiz_do_plano` (ou uma função, como a de cima) o recusa.
-    """
-
     def __init__(self, comportamento="aceita"):
         self.comportamento = comportamento
         self.pedidos = []
@@ -179,8 +157,6 @@ class OpenAIDeMentira(CorrecaoDeMentira):
         self._thread = threading.Thread(target=lambda: self._servidor.serve_forever(poll_interval=0.005), daemon=True)
 
     def recusar_o_chat_de(self, palavra, status, codigo, vezes=None):
-        """O texto da `palavra` (`"*"`: de todas) volta `status` com o erro `codigo` (só nos `vezes` primeiros pedidos, se dito);
-        `status` None volta a aceitar."""
         if status is None:
             self.recusas_do_chat.pop(palavra, None)
         else:
@@ -188,7 +164,6 @@ class OpenAIDeMentira(CorrecaoDeMentira):
         self.vezes_da_recusa_do_chat[palavra] = vezes
 
     def _fala(self, atendente, autorizacao, corpo):
-        """`POST /v1/audio/speech`: o MP3 (bytes, não JSON) do texto na voz pedida, ou a recusa de `recusa_da_fala`."""
         self.falas.append((autorizacao, corpo))
         if self.recusa_da_fala:
             status, codigo = self.recusa_da_fala
@@ -230,8 +205,6 @@ class OpenAIDeMentira(CorrecaoDeMentira):
         return 200, {"choices": [{"message": {"role": "assistant", "content": texto}}], "usage": {"prompt_tokens": 1000, "completion_tokens": 200}}
 
     def _respostas(self, atendente, autorizacao, corpo):
-        """`POST /v1/responses`: o Cartão em eventos (`response.output_text.delta` em pedaços e `response.completed` com o uso).
-        Com as instruções do juiz de imagem (#156), o texto do stream é o veredito em JSON."""
         self.respostas.append((autorizacao, corpo))
         eh_o_juiz = corpo["instructions"].startswith("You are an expert visual selector")
         recusa_do_texto, do_juiz = (r(len(self.respostas)) if callable(r) else r for r in (self.recusa_das_respostas, self.recusa_do_juiz_do_plano))
@@ -265,7 +238,6 @@ class OpenAIDeMentira(CorrecaoDeMentira):
             atendente.wfile.flush()
 
     def _veredito(self, autorizacao, cabecalho, textos, urls):
-        """O veredito do juiz: o do chat e o da Responses API mandam as mesmas partes (o texto de cada candidata e a foto dela, como URL de dados)."""
         modo = re.search(r"Mode: (\w+)", cabecalho).group(1)
         candidatas = [{"index": int(re.search(r"Candidate (\d+)", texto["text"]).group(1)), "title": re.search(r"title=(.*)", texto["text"]).group(1),
                        "kind": re.search(r"kind=(.*)", texto["text"]).group(1), "imagem": base64.b64decode(url.split(",", 1)[1])}
@@ -292,7 +264,6 @@ class OpenAIDeMentira(CorrecaoDeMentira):
 
 
 def veredito_do_juiz(melhor, notas):
-    """O que o juiz devolve: `notas` é a nota de cada candidata, na ordem; `melhor` é o índice da que ele escolhe."""
     return {"best_index": melhor, "best_score": notas[melhor], "verdict": "keep_real", "summary": "de mentira",
             "candidates": [{"index": indice, "score": nota, "reason": "de mentira"} for indice, nota in enumerate(notas)]}
 
@@ -302,8 +273,6 @@ def _juiz_que_gosta_da_primeira(modo, candidatas):
 
 
 class FirestoreDeMentira:
-    """Seam HTTP externo; o cofre/sync sob teste continuam reais."""
-
     def __init__(self):
         self.documentos = {}
         self.falha = 0

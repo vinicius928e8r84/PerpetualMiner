@@ -1,9 +1,3 @@
-"""O Ouvir dos Ajustes de envio (#174), visto de fora: `POST /voz/ouvir` no servidor real, com a voz do Google e a OpenAI de mentira
-na fronteira HTTP. O que o teste confere é a resposta, o que atravessa o HTTP e o que a Conexão deixa no log.
-
-    python3.9 complemento/test_ouvir_a_voz.py
-"""
-
 import base64
 import json
 import os
