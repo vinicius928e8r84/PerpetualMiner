@@ -6,6 +6,7 @@ const { fotografar, registrarEstado } = require('../evidencias-mineracao');
 
 const FRASE_RUSSA = 'Я улыбаюсь';
 const ERRO_DE_GRAVACAO = 'QUOTA_BYTES quota exceeded';
+const AVISO_DA_MINERACAO_AUTOMATICA = 'Mineração automática';
 
 async function prepararRussoNoLimite({ extensao, page, paginas }) {
   const agora = new Date();
@@ -27,8 +28,10 @@ test('uma legenda avaliada grava o diagnóstico uma vez só, na forma completa d
   await prepararRussoNoLimite({ extensao, page, paginas });
   await extensao.serviceWorker.evaluate(() => {
     globalThis.__gravacoesDoDiagnostico = [];
+    globalThis.__viuAMarca = false;
     chrome.storage.onChanged.addListener(mudancas => {
       if (mudancas.pm_auto_miner_last_event) globalThis.__gravacoesDoDiagnostico.push(mudancas.pm_auto_miner_last_event.newValue);
+      if (mudancas.pm_marca_do_teste) globalThis.__viuAMarca = true;
     });
   });
   await page.bringToFront();
@@ -36,7 +39,9 @@ test('uma legenda avaliada grava o diagnóstico uma vez só, na forma completa d
 
   await expect.poll(async () => (await extensao.frases()).map(frase => frase.texto)).toEqual([FRASE_RUSSA]);
   await expect(page.locator('perpetualminer-overlay .pm-contador')).toHaveText('3/3');
-  await page.waitForTimeout(500);
+  await expect(page.getByRole('status').getByText(AVISO_DA_MINERACAO_AUTOMATICA, { exact: true })).toBeVisible();
+  await extensao.gravarStorage({ pm_marca_do_teste: true });
+  await expect.poll(() => extensao.serviceWorker.evaluate(() => globalThis.__viuAMarca)).toBe(true);
   const gravacoes = await extensao.serviceWorker.evaluate(() => globalThis.__gravacoesDoDiagnostico);
   expect(gravacoes).toHaveLength(1);
   const [evento] = gravacoes;
