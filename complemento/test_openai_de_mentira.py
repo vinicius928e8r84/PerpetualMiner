@@ -98,6 +98,29 @@ def _palavra_do_pedido(mensagens):
     return alvo.group(1).strip() if alvo else pedido.split("Input Format:\n")[-1].split(" : ", 1)[0].strip()
 
 
+def _enviar(atendente, status, tipo, dados):
+    atendente.send_response(status)
+    atendente.send_header("Content-Type", tipo)
+    atendente.send_header("Content-Length", str(len(dados)))
+    atendente.end_headers()
+    atendente.wfile.write(dados)
+
+
+def _enviar_a_recusa(atendente, status, codigo, autorizacao):
+    dados = json.dumps({"error": {"code": codigo, "message": "recusado para %s" % autorizacao}}).encode("utf-8")
+    _enviar(atendente, status, "application/json", dados)
+
+
+class AtendenteDaOpenAI(BaseHTTPRequestHandler):
+    def log_message(self, *args):
+        pass
+
+    def _atender(self):
+        self.server.dono.atender(self)
+
+    do_GET = do_POST = _atender
+
+
 class OpenAIDeMentira(CorrecaoDeMentira):
     def __init__(self, comportamento="aceita"):
         self.comportamento = comportamento
@@ -116,45 +139,34 @@ class OpenAIDeMentira(CorrecaoDeMentira):
         self.juizes, self.triagens, self.imagens = [], [], []
         self.falas, self.recusa_da_fala = [], None
         self.antes_de_responder = lambda _metodo, _autorizacao: None
-        dono = self
-
-        class Atendente(BaseHTTPRequestHandler):
-            def log_message(self, *args):
-                pass
-
-            def _responder(self):
-                tamanho = int(self.headers.get("Content-Length") or 0)
-                lido = self.rfile.read(tamanho) if tamanho else b""
-                dono.pedidos.append((self.command, self.path, self.headers.get("Authorization")))
-                dono.antes_de_responder(self.command, self.headers.get('Authorization'))
-                modelos, embeddings = COMPORTAMENTOS[dono.comportamento]
-                if self.path == "/v1/responses":
-                    return dono._respostas(self, self.headers.get("Authorization"), json.loads(lido.decode("utf-8")))
-                if self.path == "/v1/models" and (self.headers.get("Authorization") or "").startswith("Bearer acesso-"):
-                    modelos = MODELOS_DO_PLANO if dono.modelos_do_plano is None else (200, {"models": [{"slug": slug, "visibility": "list"} for slug in dono.modelos_do_plano]})
-                elif self.path == "/v1/models" and dono.modelos_da_conta is not None and modelos[0] == 200:
-                    modelos = (200, {"object": "list", "data": [{"id": id_, "object": "model"} for id_ in dono.modelos_da_conta]})
-                if self.path == "/v1/audio/speech":
-                    return dono._fala(self, self.headers.get("Authorization"), json.loads(lido.decode("utf-8")))
-                if self.path == "/v1/chat/completions":
-                    status, corpo = dono._chat(self.headers.get("Authorization"), json.loads(lido.decode("utf-8")))
-                elif self.path == "/v1/images/generations":
-                    status, corpo = dono._imagem(self.headers.get("Authorization"), json.loads(lido.decode("utf-8")))
-                else:
-                    status, corpo = modelos if self.path == "/v1/models" else embeddings
-                dados = json.dumps(corpo).encode("utf-8")
-                self.send_response(status)
-                self.send_header("Content-Type", "application/json")
-                self.send_header("Content-Length", str(len(dados)))
-                self.end_headers()
-                self.wfile.write(dados)
-
-            do_GET = do_POST = _responder
-
-        self._servidor = ThreadingHTTPServer(("127.0.0.1", 0), Atendente)
+        self._servidor = ThreadingHTTPServer(("127.0.0.1", 0), AtendenteDaOpenAI)
+        self._servidor.dono = self
         self._servidor.daemon_threads = True
         self.base = "http://127.0.0.1:%d" % self._servidor.server_address[1]
         self._thread = threading.Thread(target=lambda: self._servidor.serve_forever(poll_interval=0.005), daemon=True)
+
+    def atender(self, atendente):
+        autorizacao = atendente.headers.get("Authorization")
+        tamanho = int(atendente.headers.get("Content-Length") or 0)
+        lido = atendente.rfile.read(tamanho) if tamanho else b""
+        self.pedidos.append((atendente.command, atendente.path, autorizacao))
+        self.antes_de_responder(atendente.command, autorizacao)
+        corpo = json.loads(lido.decode("utf-8")) if lido else None
+        if atendente.path in ROTAS_QUE_RESPONDEM_SOZINHAS:
+            return ROTAS_QUE_RESPONDEM_SOZINHAS[atendente.path](self, atendente, autorizacao, corpo)
+        status, dados = ROTAS_DE_JSON.get(atendente.path, OpenAIDeMentira._embeddings)(self, autorizacao, corpo)
+        _enviar(atendente, status, "application/json", json.dumps(dados).encode("utf-8"))
+
+    def _embeddings(self, _autorizacao, _corpo):
+        return COMPORTAMENTOS[self.comportamento][1]
+
+    def _modelos(self, autorizacao, _corpo):
+        modelos = COMPORTAMENTOS[self.comportamento][0]
+        if (autorizacao or "").startswith("Bearer acesso-"):
+            return MODELOS_DO_PLANO if self.modelos_do_plano is None else (200, {"models": [{"slug": slug, "visibility": "list"} for slug in self.modelos_do_plano]})
+        if self.modelos_da_conta is not None and modelos[0] == 200:
+            return 200, {"object": "list", "data": [{"id": id_, "object": "model"} for id_ in self.modelos_da_conta]}
+        return modelos
 
     def recusar_o_chat_de(self, palavra, status, codigo, vezes=None):
         if status is None:
@@ -167,14 +179,8 @@ class OpenAIDeMentira(CorrecaoDeMentira):
         self.falas.append((autorizacao, corpo))
         if self.recusa_da_fala:
             status, codigo = self.recusa_da_fala
-            dados, tipo = json.dumps({"error": {"code": codigo, "message": "recusado para %s" % autorizacao}}).encode("utf-8"), "application/json"
-        else:
-            status, dados, tipo = 200, audio_da_openai(corpo.get("voice"), corpo.get("input")), "audio/mpeg"
-        atendente.send_response(status)
-        atendente.send_header("Content-Type", tipo)
-        atendente.send_header("Content-Length", str(len(dados)))
-        atendente.end_headers()
-        atendente.wfile.write(dados)
+            return _enviar_a_recusa(atendente, status, codigo, autorizacao)
+        _enviar(atendente, 200, "audio/mpeg", audio_da_openai(corpo.get("voice"), corpo.get("input")))
 
     def _imagem(self, autorizacao, corpo):
         self.imagens.append((autorizacao, corpo))
@@ -190,52 +196,59 @@ class OpenAIDeMentira(CorrecaoDeMentira):
         if sistema.startswith("You are an expert visual selector"):
             return self._juiz(autorizacao, corpo)
         if sistema.startswith("You are a classifier"):
-            self.triagens.append((autorizacao, corpo["messages"][1]["content"]))
-            return 200, {"choices": [{"message": {"content": self.triagem}}], "usage": {"prompt_tokens": 80, "completion_tokens": 1}}
+            return self._triar(autorizacao, corpo)
         self.chats.append((autorizacao, corpo))
+        return self._recusa_do_texto(autorizacao, corpo) or self._cartao_do_chat(corpo, sistema)
+
+    def _triar(self, autorizacao, corpo):
+        self.triagens.append((autorizacao, corpo["messages"][1]["content"]))
+        return 200, {"choices": [{"message": {"content": self.triagem}}], "usage": {"prompt_tokens": 80, "completion_tokens": 1}}
+
+    def _recusa_do_texto(self, autorizacao, corpo):
         chave = next((c for c in (_palavra_do_pedido(corpo["messages"]), "*") if c in self.recusas_do_chat), None)
-        if chave is not None:
-            recusa, vezes = self.recusas_do_chat[chave], self.vezes_da_recusa_do_chat.get(chave)
-            if vezes == 1:
-                self.recusar_o_chat_de(chave, None, None)
-            elif vezes is not None:
-                self.vezes_da_recusa_do_chat[chave] = vezes - 1
-            return _erro(recusa[0], "Incorrect API key provided: %s" % (autorizacao or ""), "x", recusa[1])
+        if chave is None:
+            return None
+        recusa, vezes = self.recusas_do_chat[chave], self.vezes_da_recusa_do_chat.get(chave)
+        if vezes == 1:
+            self.recusar_o_chat_de(chave, None, None)
+        elif vezes is not None:
+            self.vezes_da_recusa_do_chat[chave] = vezes - 1
+        return _erro(recusa[0], "Incorrect API key provided: %s" % (autorizacao or ""), "x", recusa[1])
+
+    def _cartao_do_chat(self, corpo, sistema):
         texto = _cartao_de_mentira(corpo["messages"], sistema)
         return 200, {"choices": [{"message": {"role": "assistant", "content": texto}}], "usage": {"prompt_tokens": 1000, "completion_tokens": 200}}
 
     def _respostas(self, atendente, autorizacao, corpo):
         self.respostas.append((autorizacao, corpo))
         eh_o_juiz = corpo["instructions"].startswith("You are an expert visual selector")
-        recusa_do_texto, do_juiz = (r(len(self.respostas)) if callable(r) else r for r in (self.recusa_das_respostas, self.recusa_do_juiz_do_plano))
-        recusa = (do_juiz or self.recusas_do_chat.get("[juiz]")) if eh_o_juiz else recusa_do_texto
+        recusa = self._recusa_das_respostas(eh_o_juiz)
         if recusa:
-            status, codigo = recusa
-            dados = json.dumps({"error": {"code": codigo, "message": "recusado para %s" % autorizacao}}).encode("utf-8")
-            atendente.send_response(status)
-            atendente.send_header("Content-Type", "application/json")
-            atendente.send_header("Content-Length", str(len(dados)))
-            atendente.end_headers()
-            atendente.wfile.write(dados)
-            return
-        if eh_o_juiz:
-            partes = corpo["input"][0]["content"]
-            texto = json.dumps(self._veredito(autorizacao, partes[0]["text"], partes[1::2], [foto["image_url"] for foto in partes[2::2]]))
-        else:
-            texto = self._texto_do_plano(autorizacao, corpo, _cartao_de_mentira)
+            return _enviar_a_recusa(atendente, recusa[0], recusa[1], autorizacao)
+        texto = self._veredito_do_plano(autorizacao, corpo) if eh_o_juiz else self._texto_do_plano(autorizacao, corpo, _cartao_de_mentira)
+        atendente.send_response(200)
+        atendente.send_header("Content-Type", "text/event-stream")
+        atendente.end_headers()
+        for evento in self._eventos_do_stream(texto, autorizacao):
+            atendente.wfile.write(("event: %s\ndata: %s\n\n" % (evento["type"], json.dumps(evento))).encode("utf-8"))
+            atendente.wfile.flush()
+
+    def _recusa_das_respostas(self, eh_o_juiz):
+        quantos = len(self.respostas)
+        do_texto, do_juiz = (r(quantos) if callable(r) else r for r in (self.recusa_das_respostas, self.recusa_do_juiz_do_plano))
+        return (do_juiz or self.recusas_do_chat.get("[juiz]")) if eh_o_juiz else do_texto
+
+    def _veredito_do_plano(self, autorizacao, corpo):
+        partes = corpo["input"][0]["content"]
+        return json.dumps(self._veredito(autorizacao, partes[0]["text"], partes[1::2], [foto["image_url"] for foto in partes[2::2]]))
+
+    def _eventos_do_stream(self, texto, autorizacao):
         meio = len(texto) // 2
         eventos = [{"type": "response.created", "response": {"id": "resp_1", "status": "in_progress"}}]
         eventos += [{"type": "response.output_text.delta", "delta": pedaco} for pedaco in (texto[:meio], texto[meio:])]
         if self.falha_no_stream:
-            eventos.append({"type": "response.failed", "response": {"error": {"code": self.falha_no_stream, "message": "falhou para %s" % autorizacao}}})
-        else:
-            eventos.append({"type": "response.completed", "response": {"id": "resp_1", "status": "completed", "usage": {"input_tokens": 1000, "output_tokens": 200}}})
-        atendente.send_response(200)
-        atendente.send_header("Content-Type", "text/event-stream")
-        atendente.end_headers()
-        for evento in eventos:
-            atendente.wfile.write(("event: %s\ndata: %s\n\n" % (evento["type"], json.dumps(evento))).encode("utf-8"))
-            atendente.wfile.flush()
+            return eventos + [{"type": "response.failed", "response": {"error": {"code": self.falha_no_stream, "message": "falhou para %s" % autorizacao}}}]
+        return eventos + [{"type": "response.completed", "response": {"id": "resp_1", "status": "completed", "usage": {"input_tokens": 1000, "output_tokens": 200}}}]
 
     def _veredito(self, autorizacao, cabecalho, textos, urls):
         modo = re.search(r"Mode: (\w+)", cabecalho).group(1)
@@ -263,6 +276,17 @@ class OpenAIDeMentira(CorrecaoDeMentira):
         self._thread.join(timeout=5)
 
 
+ROTAS_QUE_RESPONDEM_SOZINHAS = {
+    "/v1/responses": OpenAIDeMentira._respostas,
+    "/v1/audio/speech": OpenAIDeMentira._fala,
+}
+ROTAS_DE_JSON = {
+    "/v1/models": OpenAIDeMentira._modelos,
+    "/v1/chat/completions": OpenAIDeMentira._chat,
+    "/v1/images/generations": OpenAIDeMentira._imagem,
+}
+
+
 def veredito_do_juiz(melhor, notas):
     return {"best_index": melhor, "best_score": notas[melhor], "verdict": "keep_real", "summary": "de mentira",
             "candidates": [{"index": indice, "score": nota, "reason": "de mentira"} for indice, nota in enumerate(notas)]}
@@ -272,54 +296,47 @@ def _juiz_que_gosta_da_primeira(modo, candidatas):
     return veredito_do_juiz(0, [90] + [10] * (len(candidatas) - 1))
 
 
+class AtendenteDoFirestore(BaseHTTPRequestHandler):
+    def log_message(self, *_args):
+        pass
+
+    def _atender(self):
+        self.server.dono.atender(self)
+
+    do_GET = do_PATCH = _atender
+
+
 class FirestoreDeMentira:
     def __init__(self):
         self.documentos = {}
         self.falha = 0
         self.recusar_escritas = False
         self.pedidos = []
-        dono = self
-
-        class Atendente(BaseHTTPRequestHandler):
-            def log_message(self, *_args):
-                pass
-
-            def atender(self):
-                caminho = unquote(urlsplit(self.path).path)
-                uid = caminho.split('/usuarios/')[-1].split('/')[0]
-                dono.pedidos.append((self.command, uid, self.headers.get('Authorization')))
-                status, dados = 200, {}
-                if dono.falha:
-                    status = dono.falha
-                elif self.command == 'GET':
-                    if uid in dono.documentos:
-                        dados = {'fields': dono.documentos[uid]}
-                    else:
-                        status = 404
-                elif self.command == 'PATCH':
-                    if dono.recusar_escritas:
-                        status = 503
-                    else:
-                        corpo = json.loads(self.rfile.read(int(self.headers['Content-Length'])))
-                        dono.documentos[uid] = corpo['fields']
-                        dados = {'fields': corpo['fields']}
-                else:
-                    status = 400
-                if status >= 400:
-                    dados = {'error': {'code': status, 'message': 'falha externa fictícia'}}
-                corpo = json.dumps(dados).encode('utf-8')
-                self.send_response(status)
-                self.send_header('Content-Type', 'application/json')
-                self.send_header('Content-Length', str(len(corpo)))
-                self.end_headers()
-                self.wfile.write(corpo)
-
-            do_GET = do_PATCH = atender
-
-        self._servidor = ThreadingHTTPServer(('127.0.0.1', 0), Atendente)
+        self._servidor = ThreadingHTTPServer(('127.0.0.1', 0), AtendenteDoFirestore)
+        self._servidor.dono = self
         self._servidor.daemon_threads = True
         self.base = 'http://127.0.0.1:%d/documents' % self._servidor.server_address[1]
         self._thread = threading.Thread(target=lambda: self._servidor.serve_forever(poll_interval=0.005), daemon=True)
+
+    def atender(self, atendente):
+        uid = unquote(urlsplit(atendente.path).path).split('/usuarios/')[-1].split('/')[0]
+        self.pedidos.append((atendente.command, uid, atendente.headers.get('Authorization')))
+        status, dados = (self.falha, {}) if self.falha else METODOS_DO_FIRESTORE[atendente.command](self, atendente, uid)
+        if status >= 400:
+            dados = {'error': {'code': status, 'message': 'falha externa fictícia'}}
+        _enviar(atendente, status, 'application/json', json.dumps(dados).encode('utf-8'))
+
+    def _ler(self, _atendente, uid):
+        if uid not in self.documentos:
+            return 404, {}
+        return 200, {'fields': self.documentos[uid]}
+
+    def _gravar(self, atendente, uid):
+        if self.recusar_escritas:
+            return 503, {}
+        campos = json.loads(atendente.rfile.read(int(atendente.headers['Content-Length'])))['fields']
+        self.documentos[uid] = campos
+        return 200, {'fields': campos}
 
     def __enter__(self):
         self._thread.start()
@@ -329,3 +346,9 @@ class FirestoreDeMentira:
         self._servidor.shutdown()
         self._servidor.server_close()
         self._thread.join(timeout=5)
+
+
+METODOS_DO_FIRESTORE = {
+    'GET': FirestoreDeMentira._ler,
+    'PATCH': FirestoreDeMentira._gravar,
+}

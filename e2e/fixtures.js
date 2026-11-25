@@ -59,6 +59,51 @@ async function esperarAbaDaInstalacao(context, id) {
   throw new Error('A instalação não abriu a aba da Boas-vindas');
 }
 
+const SO_O_SERVIDOR_DO_LOGIN_USA_HTTPS = '--ignore-certificate-errors';
+const SEM_O_PROXY_DO_AMBIENTE = '--no-proxy-server';
+
+function escreverAPermissaoDoAbridorNasPreferencias(perfil) {
+  const dada = { api: ['nativeMessaging'], explicit_host: [], manifest_permissions: [], scriptable_host: [] };
+  fs.mkdirSync(path.join(perfil, 'Default'));
+  fs.writeFileSync(path.join(perfil, 'Default', 'Preferences'), JSON.stringify({
+    extensions: { settings: { [ID_DA_EXTENSAO]: { granted_permissions: dada, active_permissions: dada } } },
+  }));
+}
+
+function darAPermissaoDoAbridor(perfil, pastaDaExtensao) {
+  if (process.platform === 'linux') {
+    escreverAPermissaoDoAbridorNasPreferencias(perfil);
+    return { pastaDaExtensao, copiaComAPermissao: null };
+  }
+  const copia = copiarComAPermissaoDoAbridor(pastaDaExtensao);
+  return { pastaDaExtensao: copia, copiaComAPermissao: copia };
+}
+
+const lancarOChromium = (perfil, pastaDaExtensao, portaDoLogin, regrasDaPorta8766) => chromium.launchPersistentContext(perfil, {
+  channel: 'chromium',
+  headless: !process.env.HEADED,
+  env: { ...process.env, FONTCONFIG_FILE: path.join(__dirname, 'fontconfig', 'fonts.conf') },
+  args: [
+    `--disable-extensions-except=${pastaDaExtensao}`,
+    `--load-extension=${pastaDaExtensao}`,
+    `--host-resolver-rules=MAP accounts.google.com 127.0.0.1:${portaDoLogin}, MAP auth.openai.com 127.0.0.1:${portaDoLogin}, ${regrasDaPorta8766}`,
+    SO_O_SERVIDOR_DO_LOGIN_USA_HTTPS,
+    SEM_O_PROXY_DO_AMBIENTE,
+  ],
+});
+
+async function rotearARedeFalsificada(context, { paginas, fakes, conexaoDoTeste }) {
+  const origensLocais = [paginas.origem, paginas.origemCruzada];
+  await context.route(url => /^https?:$/.test(url.protocol) && !origensLocais.includes(url.origin), route => route.abort('blockedbyclient'));
+  for (const fake of Object.values(fakes)) if (fake.padrao) await context.route(fake.padrao, fake.tratar);
+  if (conexaoDoTeste) await context.route(fakes.anki.padrao, conexaoReal.rotaComFalhasNaFrente(conexaoDoTeste, fakes.anki));
+}
+
+const apagarOPerfil = (perfil, copiaComAPermissao) => {
+  fs.rmSync(perfil, { recursive: true, force: true });
+  if (copiaComAPermissao) fs.rmSync(copiaComAPermissao, { recursive: true, force: true });
+};
+
 async function abrirPerfil({ fakes, paginas, servidorDoLogin, portaDaConexaoDeTeste, pastaDaExtensao, permissaoDoAbridor, conexaoDoTeste }) {
   servidorDoLogin.atender(fakes.google.responderLogin);
   servidorDoLogin.atenderChatGPT(fakes.chatgpt.responderAutorizacao);
@@ -66,49 +111,22 @@ async function abrirPerfil({ fakes, paginas, servidorDoLogin, portaDaConexaoDeTe
   const regrasDaPorta8766 = regrasQueTiramAPortaDoComputador(conexaoDoTeste ? conexaoDoTeste.porta : portaDaConexaoDeTeste.porta);
   const perfil = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-e2e-'));
   let context = null;
-  let copiaComAPermissao = null;
+  let extensao = { pastaDaExtensao, copiaComAPermissao: null };
   try {
     fakes.abridor.registrarNoPerfil(perfil);
-    if (permissaoDoAbridor && process.platform !== 'linux') {
-      copiaComAPermissao = copiarComAPermissaoDoAbridor(pastaDaExtensao);
-      pastaDaExtensao = copiaComAPermissao;
-    } else if (permissaoDoAbridor) {
-      const dada = { api: ['nativeMessaging'], explicit_host: [], manifest_permissions: [], scriptable_host: [] };
-      fs.mkdirSync(path.join(perfil, 'Default'));
-      fs.writeFileSync(path.join(perfil, 'Default', 'Preferences'), JSON.stringify({
-        extensions: { settings: { [ID_DA_EXTENSAO]: { granted_permissions: dada, active_permissions: dada } } },
-      }));
-    }
-    context = await chromium.launchPersistentContext(perfil, {
-      channel: 'chromium',
-      headless: !process.env.HEADED,
-      env: { ...process.env, FONTCONFIG_FILE: path.join(__dirname, 'fontconfig', 'fonts.conf') },
-      args: [
-        `--disable-extensions-except=${pastaDaExtensao}`,
-        `--load-extension=${pastaDaExtensao}`,
-        `--host-resolver-rules=MAP accounts.google.com 127.0.0.1:${servidorDoLogin.porta}, MAP auth.openai.com 127.0.0.1:${servidorDoLogin.porta}, ${regrasDaPorta8766}`,
-        '--ignore-certificate-errors',
-        '--no-proxy-server',
-      ],
-    });
-
-    const origensLocais = [paginas.origem, paginas.origemCruzada];
-    await context.route(url => /^https?:$/.test(url.protocol) && !origensLocais.includes(url.origin),
-      route => route.abort('blockedbyclient'));
-    for (const fake of Object.values(fakes)) if (fake.padrao) await context.route(fake.padrao, fake.tratar);
-    if (conexaoDoTeste) await context.route(fakes.anki.padrao, conexaoReal.rotaComFalhasNaFrente(conexaoDoTeste, fakes.anki));
+    if (permissaoDoAbridor) extensao = darAPermissaoDoAbridor(perfil, pastaDaExtensao);
+    context = await lancarOChromium(perfil, extensao.pastaDaExtensao, servidorDoLogin.porta, regrasDaPorta8766);
+    await rotearARedeFalsificada(context, { paginas, fakes, conexaoDoTeste });
   } catch (erro) {
     await context?.close().catch(() => {});
-    fs.rmSync(perfil, { recursive: true, force: true });
-    if (copiaComAPermissao) fs.rmSync(copiaComAPermissao, { recursive: true, force: true });
+    apagarOPerfil(perfil, extensao.copiaComAPermissao);
     throw erro;
   }
   return {
     context,
     fechar: async () => {
       await context.close();
-      fs.rmSync(perfil, { recursive: true, force: true });
-      if (copiaComAPermissao) fs.rmSync(copiaComAPermissao, { recursive: true, force: true });
+      apagarOPerfil(perfil, extensao.copiaComAPermissao);
     },
   };
 }
@@ -132,6 +150,27 @@ async function apagarPmBoasVindas(sw) {
   await sw.evaluate(() => chrome.storage.local.remove('pm_boas_vindas'));
 }
 
+const sessaoDiretoNoIndexedDB = (sw, valor) => sw.evaluate(valor => new Promise((resolve, reject) => {
+  const req = indexedDB.open('pm-sessao', 1);
+  req.onupgradeneeded = () => req.result.createObjectStore('sessao');
+  req.onerror = () => reject(req.error);
+  req.onsuccess = () => {
+    const db = req.result;
+    const tx = db.transaction('sessao', valor === null ? 'readonly' : 'readwrite');
+    const loja = tx.objectStore('sessao');
+    if (valor !== null) loja.put(true, 'migrada');
+    const pedido = valor === null ? loja.get('firebase') : loja.put(valor, 'firebase');
+    tx.oncomplete = () => { db.close(); resolve(pedido.result || null); };
+    tx.onerror = () => { db.close(); reject(tx.error); };
+  };
+}), valor);
+
+async function semearASessao(sw, gravarStorage, { uid = 'uid-teste', email = 'pessoa@teste.dev', displayName = 'Pessoa de Teste', expirada = false } = {}) {
+  await sessaoDiretoNoIndexedDB(sw, { uid, idToken: 'token-teste', refreshToken: 'refresh-teste',
+    expiresAt: expirada ? Date.now() - 60 * 1000 : Date.now() + 60 * 60 * 1000 });
+  await gravarStorage({ pm_user_info: { uid, email, displayName, photoURL: '' } });
+}
+
 async function prepararExtensao(context, { manterAbaDaInstalacao, lembreteDaConfiguracao, navegador }) {
   const sw = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker');
   const id = new URL(sw.url()).host;
@@ -144,37 +183,18 @@ async function prepararExtensao(context, { manterAbaDaInstalacao, lembreteDaConf
   const gravarStorage = valores => sw.evaluate(v => chrome.storage.local.set(v), valores);
   if (!lembreteDaConfiguracao) await apagarPmBoasVindas(sw);
 
-  const sessaoDiretoNoIndexedDB = valor => sw.evaluate(valor => new Promise((resolve, reject) => {
-    const req = indexedDB.open('pm-sessao', 1);
-    req.onupgradeneeded = () => req.result.createObjectStore('sessao');
-    req.onerror = () => reject(req.error);
-    req.onsuccess = () => {
-      const db = req.result;
-      const tx = db.transaction('sessao', valor === null ? 'readonly' : 'readwrite');
-      const loja = tx.objectStore('sessao');
-      if (valor !== null) loja.put(true, 'migrada');
-      const pedido = valor === null ? loja.get('firebase') : loja.put(valor, 'firebase');
-      tx.oncomplete = () => { db.close(); resolve(pedido.result || null); };
-      tx.onerror = () => { db.close(); reject(tx.error); };
-    };
-  }), valor);
-
   return {
     id,
     serviceWorker: sw,
     abaDaInstalacao: manterAbaDaInstalacao ? abaDaInstalacao : null,
     url: caminho => `chrome-extension://${id}/${caminho.replace(/^(painel)\.html/, '$1/$1.html')}`,
     lerStorage,
-    lerSessao: () => sessaoDiretoNoIndexedDB(null),
-    gravarSessao: sessaoDiretoNoIndexedDB,
+    lerSessao: () => sessaoDiretoNoIndexedDB(sw, null),
+    gravarSessao: valor => sessaoDiretoNoIndexedDB(sw, valor),
     gravarStorage,
     permissaoDoAbridor: () => sw.evaluate(() => chrome.permissions.contains({ permissions: ['nativeMessaging'] })),
     frases: async () => (await lerStorage({ frases: [] })).frases,
-    semearSessao: async ({ uid = 'uid-teste', email = 'pessoa@teste.dev', displayName = 'Pessoa de Teste', expirada = false } = {}) => {
-      await sessaoDiretoNoIndexedDB({ uid, idToken: 'token-teste', refreshToken: 'refresh-teste',
-        expiresAt: expirada ? Date.now() - 60 * 1000 : Date.now() + 60 * 60 * 1000 });
-      await gravarStorage({ pm_user_info: { uid, email, displayName, photoURL: '' } });
-    },
+    semearSessao: opcoes => semearASessao(sw, gravarStorage, opcoes),
   };
 }
 
