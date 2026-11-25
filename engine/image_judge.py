@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-if __package__:  # inside the Anki add-on the engine is the package `complemento.motor`
+if __package__:
     from . import cost_tracker, provedores
     from .image_utils import UnsupportedImageFormatError, supported_image_mime
 else:
@@ -142,10 +142,6 @@ class TheJudge:
 
 
 def rank_candidates(card: CardForTheJudge, judge: TheJudge, candidates: list[dict[str, Any]], mode: str) -> dict[str, Any]:
-    """`judge.juiz` asks the verdict: `juiz.julgar(model, system, content, label)` -> (the JSON text, the usage, whether the key paid it). In the
-    add-on it is the IA dos cartões' `JuizDaImagem` (the ChatGPT plan, or the key's `model`); the engine never sees who pays nor the secret.
-    `judge.label` is what the cost record says the call was for (the keyword by default; the add-on passes the card's id); only the key's verdict
-    has a cost record."""
     card_part = card.part(mode)
     photos = _PhotosForTheJudge(candidates)
     if not photos.valid_index_map:

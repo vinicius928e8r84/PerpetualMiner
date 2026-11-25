@@ -1,19 +1,7 @@
-"""
-image_pipeline.py - How the pipeline gets a card's picture: the real photo the judge likes, or an image generated from
-the card's prompt. The code runs inside the Anki add-on (`complemento/imagem_do_cartao.py`):
-standard library only, no output of its own. `build` (the `ImagePipeline` class) holds one run's settings and does one card
-at a time; `image_real_first.py` has the "real photo first" steps.
-
-Nothing that pays arrives as a secret: the key comes bound (`pela_chave`, a `provedores.PelaChave`, also `config["pela_chave"]` for the
-generated image) and the judge comes ready (`config["juiz_da_imagem"]`, whose `julgar` goes by the ChatGPT plan or the key).
-Optional keys of `config` are for the add-on: `openverse_base` (where the photo search goes; without it the real address) and
-`image_records_by_card` (the cost records name the card by its stem and keep no search text, because they stay on disk after the Frases are erased).
-"""
-
 from dataclasses import dataclass, field
 from pathlib import Path
 
-if __package__:  # inside the Anki add-on the engine is the package `complemento.motor`
+if __package__:
     from . import cost_tracker, generate_images, image_guard
     from .image_queries import CardToSearch, _build_card_google_queries, _english_query_variants_from_text, _visual_subject_for_card
     from .image_real_first import Card, GenerationPolicy, RealFirst
@@ -39,8 +27,6 @@ def _judge_limit(judge_cfg: dict, name: str, default: int) -> int:
 
 @dataclass
 class ImagePipeline:
-    """The pipeline for one run: `real_first(stem, prompt, dest)`, `generate_direct(stem, prompt, dest)` and `img_sources`
-    (`{stem: "real" | "gerada"}`, filled as the pictures are chosen). The card's text is read from `output_dir/{stem}.txt`."""
     config: dict
     output_dir: Path
     img_source: str
@@ -62,11 +48,9 @@ class ImagePipeline:
         self.guard_enabled = config.get("lang") != "ru"
 
     def real_first(self, stem: str, prompt: str, dest: Path, generation_policy: str = "normal") -> bool:
-        """A real photo the judge accepts, else (by the policy) a generated image; True when the card got a picture."""
         return RealFirst(self, Card(stem, prompt, dest), GenerationPolicy(generation_policy)).choose()
 
     def generate_direct(self, stem: str, prompt: str, dest: Path) -> str:
-        """Generated image only (no search): "skipped" (the guard says it is abstract), "ok" or "failed"."""
         card = Card(stem, prompt, dest)
         outcome = self._generate_if_wanted(card)
         final_source, result, attempted = DIRECT_OUTCOMES[outcome]
@@ -105,7 +89,6 @@ class ImagePipeline:
             return ""
 
     def search_queries(self, card: Card) -> list:
-        """The card's photo searches, or (when the card gives none) the variants of its generation prompt."""
         queries = _build_card_google_queries(
             CardToSearch(self.card_content(card), stem=card.stem, prompt=card.prompt),
             lang=self.config.get("lang", "en"),
@@ -133,12 +116,10 @@ class ImagePipeline:
         self.count_generated(card)
 
     def count_generated(self, card: Card) -> None:
-        """The generated image is paid: its cost record, and the card's picture counted as generated."""
         cost_tracker.record_image(self.log_dir, model=self.image_model, source="dalle", keyword=card.stem)
         self.img_sources[card.stem.lower()] = "gerada"
 
     def record_pipeline(self, card: Card, fields: dict) -> None:
-        """The card's `image_pipeline` cost record; by card, it keeps no search text."""
         if self.by_card:
             fields = {name: value for name, value in fields.items() if name not in QUERY_FIELDS}
         cost_tracker.record_image_pipeline(self.log_dir, keyword=card.stem, **fields)

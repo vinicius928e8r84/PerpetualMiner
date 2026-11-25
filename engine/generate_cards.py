@@ -1,21 +1,10 @@
-"""
-generate_cards.py - Generate Anki card content via local prompts and the `pedir` its caller gives (who pays and the cost record are the caller's).
-
-`escrever` writes one card per call, one keyword of a mining line (a request per keyword, never batched, prevents keyword hallucination):
-  - keywords[0] -> uses the original phrase from the input
-  - keywords[1..N] -> explicit instruction to invent a new sentence
-
-The model is asked through `pedir` (in the Anki add-on, the Conexão's IA dos cartões, `complemento/ia_dos_cartoes.py`), and progress goes to
-the `perpetualminer.motor` logger, never to stdout: the module runs inside the Anki add-on (`complemento/motor`).
-"""
-
 import logging
 import os
 import re
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Set
 
-if __package__:  # inside the Anki add-on the engine is the package `complemento.motor`
+if __package__:
     from . import provedores
     from .parser import CardJob
     from .prompt_loader import load_prompt
@@ -264,7 +253,6 @@ def _front_has_content_after_the_phrase(front: str) -> bool:
 
 
 def _front_keeps_the_phrase(card_text: str, phrase: str) -> bool:
-    """The Front of an original phrase has all its words, in order (the marks and the case may change)."""
     def words(text: str) -> List[str]:
         return re.findall(r"\w+(?:['’]\w+)*", text.replace("*", "").casefold())
 
@@ -317,7 +305,6 @@ def _prepare_card(response: str) -> str:
 
 
 def _write_card(dest: Path, card: str) -> None:
-    """Whole file or nothing: a half-written card must never look ready to a later retry."""
     provisorio = dest.with_name(dest.name + ".novo")
     provisorio.write_text("## Anki Card\n\n" + card, encoding="utf-8")
     os.replace(provisorio, dest)
@@ -435,17 +422,6 @@ def _card_of_the_keyword(job: CardJob, pedido: _PedidoDoCartao) -> Optional[str]
 
 
 def escrever(job: CardJob, config: dict, pedir: Pedir, nome: str) -> Optional[str]:
-    """Write one card's text, `<output_dir>/<nome>.txt`, asked through `pedir`; returns None when it is on disk, else the failure code.
-
-    `pedir(system_prompt, message, label)` asks the model for the card's text and returns it (or None); a refusal is an
-    `ErroDoProvedor`. Who pays it and its cost record are the caller's: the engine never sees a credential.
-
-    A card whose .txt is already there was paid for and is never asked again. `nome` (the Anki add-on's `<phraseId>-<n>`) is
-    what the file, the log and the request's label say, never the keyword or the phrase (what the person mined is not written
-    outside the Envio's own files); an error that is not the provider's is logged by its type alone, since its message may
-    quote the request. The failure codes: one of the provider layer, or `empty_response`, `invalid_card`, `keyword_mismatch`,
-    `generation_error`.
-    """
     dest = _card_path(config, nome)
     if _already_written(dest):
         return None

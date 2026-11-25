@@ -1,5 +1,3 @@
-"""A triagem de imagem (concreto ou abstrato) fala com a OpenAI por HTTP direto: o que atravessa a fronteira e o que ela decide."""
-
 import json
 import tempfile
 import unittest

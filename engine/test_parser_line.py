@@ -1,5 +1,3 @@
-"""Uma linha de mineração vira a mesma entrada lida sozinha ou dentro do arquivo (o complemento lê linha a linha)."""
-
 import tempfile
 import unittest
 from pathlib import Path

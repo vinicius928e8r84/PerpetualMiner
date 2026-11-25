@@ -1,9 +1,3 @@
-"""O juiz das fotos (`image_judge.py`), gravado com o código de antes da refatoração da Onda 3 do CodeScene.
-
-Cada cenário é um pedido ao juiz (o modo, as fotos candidatas, o que o juiz responde e o rótulo do custo) e o que sai dele: o
-veredito devolvido, o que o juiz recebeu, o registro de custo e o aviso no log. O resumo do Cartão que vai ao juiz tem a sua tabela.
-"""
-
 import json
 import logging
 import tempfile
