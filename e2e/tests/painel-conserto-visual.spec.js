@@ -12,7 +12,7 @@ test.beforeEach(({ fakes }) => {
 test.describe('com a permissão do abridor', () => {
   test.use({ permissaoDoAbridor: true });
 
-  async function enviarComAConexaoMuda(page, extensao, fakes, conserto, opcoes) {
+  async function enviarComAConexaoMuda({ page, extensao, fakes }, conserto, opcoes) {
     fakes.abridor.definirConserto(conserto, opcoes);
     await extensao.gravarStorage({ frases: INGLESAS, pm_anki_ja_conectou: true });
     fakes.anki.desligar();
@@ -24,21 +24,21 @@ test.describe('com a permissão do abridor', () => {
   }
 
   test.fixme('o abridor demora: “Conferindo a Conexão com o Anki…”', async ({ page, extensao, fakes }) => {
-    await enviarComAConexaoMuda(page, extensao, fakes, 'anki_travado', { atrasoMs: 60_000 });
+    await enviarComAConexaoMuda({ page, extensao, fakes }, 'anki_travado', { atrasoMs: 60_000 });
     await expect(faixa(page)).toHaveText('Conferindo a Conexão com o Anki…', { timeout: 6_000 });
 
     await expect(page).toHaveScreenshot('conserto-conferindo.png');
   });
 
   test.fixme('a Conexão sumiu do Anki: o único botão é Instalar de novo', async ({ page, extensao, fakes }) => {
-    await enviarComAConexaoMuda(page, extensao, fakes, 'complemento_sumiu');
+    await enviarComAConexaoMuda({ page, extensao, fakes }, 'complemento_sumiu');
     await expect(faixa(page)).toContainText('A Conexão com o Anki não está mais no Anki.');
 
     await expect(page).toHaveScreenshot('conserto-sumiu.png');
   });
 
   test.fixme('o conserto falhou: “Não deu para consertar…” com Baixar diagnóstico', async ({ page, extensao, fakes }) => {
-    await enviarComAConexaoMuda(page, extensao, fakes, 'anki_nao_fecha');
+    await enviarComAConexaoMuda({ page, extensao, fakes }, 'anki_nao_fecha');
     await expect(faixa(page)).toContainText('Não deu para consertar. Feche o Anki e abra de novo.');
 
     await expect(page).toHaveScreenshot('conserto-falhou.png');

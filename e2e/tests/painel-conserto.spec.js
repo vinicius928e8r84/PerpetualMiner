@@ -16,7 +16,7 @@ test.beforeEach(({ fakes }) => {
   fakes.anki.usarRelogio(() => AGORA);
 });
 
-async function prepararComAConexaoMuda(page, extensao, fakes, conserto, opcoes) {
+async function prepararComAConexaoMuda({ page, extensao, fakes }, conserto, opcoes) {
   fakes.abridor.definirConserto(conserto, opcoes);
   await extensao.gravarStorage({ frases: INGLESAS, pm_anki_ja_conectou: true });
   fakes.anki.desligar();
@@ -28,7 +28,7 @@ test.describe('com a permissão do abridor', () => {
   test.use({ permissaoDoAbridor: true });
 
   test('o Anki que a pessoa fechou continua fechado até ela pedir: o consertar o encontra fechado e só então o abrir o abre', async ({ page, extensao, fakes }) => {
-    await prepararComAConexaoMuda(page, extensao, fakes, 'anki_fechado');
+    await prepararComAConexaoMuda({ page, extensao, fakes }, 'anki_fechado');
     expect(acoesDoAbridor(fakes)).toEqual([]);
 
     await enviarAoAnki(page).click();
@@ -62,7 +62,7 @@ test.describe('com a permissão do abridor', () => {
   });
 
   test('o Anki que não respondeu: o abridor fecha à força e abre de novo, e a extensão conta “O Anki travou e foi reiniciado.”', async ({ page, extensao, fakes }) => {
-    await prepararComAConexaoMuda(page, extensao, fakes, 'anki_travado');
+    await prepararComAConexaoMuda({ page, extensao, fakes }, 'anki_travado');
 
     await enviarAoAnki(page).click();
 
@@ -78,7 +78,7 @@ test.describe('com a permissão do abridor', () => {
   });
 
   test('o consertar que demora (a espera de 30 s do abridor): a faixa diz que confere a Conexão com o Anki', async ({ page, extensao, fakes }) => {
-    await prepararComAConexaoMuda(page, extensao, fakes, 'anki_travado', { atrasoMs: 5_000 });
+    await prepararComAConexaoMuda({ page, extensao, fakes }, 'anki_travado', { atrasoMs: 5_000 });
 
     await enviarAoAnki(page).click();
 
@@ -92,7 +92,7 @@ test.describe('com a permissão do abridor', () => {
   });
 
   test('a Conexão desativada no Anki: o abridor liga e reinicia, e a extensão conta o que ele fez', async ({ page, extensao, fakes }) => {
-    await prepararComAConexaoMuda(page, extensao, fakes, 'complemento_desativado');
+    await prepararComAConexaoMuda({ page, extensao, fakes }, 'complemento_desativado');
 
     await enviarAoAnki(page).click();
 
@@ -111,7 +111,7 @@ test.describe('com a permissão do abridor', () => {
   ]) {
     test(`a Conexão que sumiu do Anki (${quando}): o único botão é Instalar de novo, que leva ao passo da primeira conexão`, async ({ page, extensao, fakes }) => {
       test.skip(SEM_ABRIDOR_IMPOSSIVEL && /não acha mais o abridor/.test(quando), 'no Windows o Chromium cai no abridor real do usuário quando a chave do fake some');
-      await prepararComAConexaoMuda(page, extensao, fakes, 'anki_fechado');
+      await prepararComAConexaoMuda({ page, extensao, fakes }, 'anki_fechado');
       preparar(fakes, 'complemento_sumiu');
 
       await enviarAoAnki(page).click();
@@ -133,7 +133,7 @@ test.describe('com a permissão do abridor', () => {
 
   for (const [conserto, motivo] of [['anki_nao_fecha', 'nao_fechou'], ['anki_nao_abre', 'nao_abriu'], ['meta_ilegivel', 'meta_ilegivel']]) {
     test(`o conserto que falhou (${motivo}): “Não deu para consertar. Feche o Anki e abra de novo.” com Baixar diagnóstico`, async ({ page, extensao, fakes }) => {
-      await prepararComAConexaoMuda(page, extensao, fakes, conserto);
+      await prepararComAConexaoMuda({ page, extensao, fakes }, conserto);
 
       await enviarAoAnki(page).click();
 
@@ -156,7 +156,7 @@ test.describe('com a permissão do abridor', () => {
   }
 
   test('o Anki que a pessoa fechou durante a espera do consertar não é reaberto: a faixa pede que ela o abra', async ({ page, extensao, fakes }) => {
-    await prepararComAConexaoMuda(page, extensao, fakes, 'anki_fechou_na_espera');
+    await prepararComAConexaoMuda({ page, extensao, fakes }, 'anki_fechou_na_espera');
 
     await enviarAoAnki(page).click();
 
@@ -168,7 +168,7 @@ test.describe('com a permissão do abridor', () => {
   });
 
   test('o Anki saudável com a Conexão fora (porta ocupada): o abridor não fecha nada e a faixa conta, com o motivo no diagnóstico', async ({ page, extensao, fakes }) => {
-    await prepararComAConexaoMuda(page, extensao, fakes, 'conexao_fora');
+    await prepararComAConexaoMuda({ page, extensao, fakes }, 'conexao_fora');
 
     await enviarAoAnki(page).click();
 
@@ -207,7 +207,7 @@ test.describe('com a permissão do abridor', () => {
 
 test.describe('sem a permissão do abridor', () => {
   test('nada é fechado nem aberto: a faixa pede que a pessoa abra o Anki, e o abridor não é chamado', async ({ page, extensao, fakes }) => {
-    await prepararComAConexaoMuda(page, extensao, fakes, 'anki_travado');
+    await prepararComAConexaoMuda({ page, extensao, fakes }, 'anki_travado');
 
     await enviarAoAnki(page).click();
 
