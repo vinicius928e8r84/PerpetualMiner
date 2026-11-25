@@ -1,8 +1,3 @@
-"""A montagem das peças da Conexão: cada peça nasce uma vez, no ambiente pedido, e a `Conexao` as recebe prontas.
-
-    python3.9 complemento/test_montagem_da_conexao.py
-"""
-
 import os
 import sys
 import tempfile

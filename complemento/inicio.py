@@ -32,7 +32,6 @@ def iniciar(
     """Prepara `user_files`, escreve o abridor e sobe a Conexão, com o adaptador da coleção que ela lê. Devolve a Conexão, ou None se ela não subiu.
 
     O `item_de_login` é o de “Abrir o Anki com o computador”; sem ele, o deste computador (None onde não há).
-    Os `servicos` (`ServicosDeFora`) são onde ficam os serviços de fora e as `esperas` (`Esperas`), quanto dura cada espera; sem eles, os de verdade (cada Conexão com as suas esperas: levam o evento que as corta).
     O `abridor` é o de “Abrir o Anki sozinho” (`abridor.py`); omitido, o deste computador, em `user_files/abridor`.
     `abridor=None` desativa a escrita e o registro (testes); um abridor injetado só usa os destinos dele.
     Ele é escrito agora e de novo a cada perfil que abre (`ao_abrir_o_perfil` recebe a função que o reescreve; no Anki, o gancho
@@ -60,7 +59,6 @@ def iniciar(
 
 
 def _subir(conexao, passagem):
-    """Sobe a Conexão: já, ou depois da passagem do Windows (a Conexão de hoje na porta). Devolve a Conexão, ou None se a porta não deixou."""
     if passagem is not None and passagem.pendente(conexao):
         conexao.iniciar_depois(lambda cancelado: passagem.fazer(conexao, cancelado))
     elif not conexao.iniciar():

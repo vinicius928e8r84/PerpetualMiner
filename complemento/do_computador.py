@@ -1,5 +1,3 @@
-"""O que o computador dá à Conexão quando quem a sobe não troca: o item de login, o abridor, a passagem e a atualização pelo AnkiWeb."""
-
 import os
 import sys
 

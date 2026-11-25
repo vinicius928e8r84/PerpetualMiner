@@ -1,5 +1,3 @@
-"""Monta as peças da Conexão: o que ela usa para atender as rotas e fazer o Envio. A `Conexao` (`servidor.py`) as recebe prontas."""
-
 import dataclasses
 import os
 import threading
@@ -24,7 +22,6 @@ from .teto_do_mes import TetoDoMes
 
 @dataclass(frozen=True)
 class Porta:
-    """Onde a Conexão ouve (`numero` 0: o sistema escolhe) e de que origens aceita pedido."""
 
     numero: int = PORTA
     origens_aceitas: tuple = ORIGENS_ACEITAS
@@ -32,7 +29,6 @@ class Porta:
 
 @dataclass(frozen=True)
 class Ambiente:
-    """Onde a Conexão mora: a pasta de dados, o log e a versão que ela diz ser."""
 
     dados: object
     logger: object
@@ -41,8 +37,6 @@ class Ambiente:
 
 @dataclass(frozen=True)
 class Fronteiras:
-    """O que a Conexão pede de fora dela e que o teste troca: a coleção do Anki, o item de login, a atualização pelo AnkiWeb, o motor de `engine/`,
-    o conversor de imagem, a lista de modelos da conta e o calendário (`hoje`). Sem uma delas, vale a do computador."""
 
     colecao: object = None
     item_de_login: object = None
@@ -55,7 +49,6 @@ class Fronteiras:
 
 @dataclass(frozen=True)
 class PecasDaConexao:
-    """As peças, uma por responsabilidade; `esperas` já leva o teto do mês, que a espera do teto confere."""
 
     ambiente: Ambiente
     servicos: ServicosDeFora
@@ -75,12 +68,10 @@ class PecasDaConexao:
     trabalhador: object
 
     def sem_trabalhador(self):
-        """As mesmas peças com a fila parada: os Envios entram e ficam `queued` (o que os testes do contrato usam)."""
         return dataclasses.replace(self, trabalhador=None)
 
 
 class _Montagem:
-    """Um passo por peça, sobre o que não muda de uma para outra: o ambiente, os serviços, as esperas e as fronteiras."""
 
     def __init__(self, ambiente, servicos, esperas, fronteiras):
         self.ambiente, self.servicos, self.esperas, self.fronteiras = ambiente, servicos, esperas, fronteiras
@@ -139,6 +130,4 @@ class _Montagem:
 
 
 def montar(ambiente, servicos, esperas, fronteiras=Fronteiras()):
-    """As peças da Conexão de `ambiente` (`Ambiente`), com os endereços de `servicos` (`ServicosDeFora`) e os tempos de `esperas` (`Esperas`).
-    O que `fronteiras` (`Fronteiras`) não traz é o do computador."""
     return _Montagem(ambiente, servicos, esperas, fronteiras).montar()

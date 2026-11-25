@@ -349,8 +349,7 @@ def ao_carregar(mw, pasta_do_complemento, *, porta=PORTA, ao_abrir_o_perfil=_ao_
     """O que o Anki faz ao importar o complemento: devolve a Conexão, ou None se ela não subiu.
 
     Depois de subir (ou não), põe o item “PerpetualMiner…” em Ferramentas e o botão Config (#175) pela fronteira `qt`
-    (`qt_do_anki.QtDoAnki`; omitida, a do Anki). O nome da pasta do complemento é o que o Anki chama de módulo dele.
-    Os `servicos` (`ServicosDeFora`) e as `esperas` (`Esperas`) chegam à Conexão como são; omitidos, os de verdade."""
+    (`qt_do_anki.QtDoAnki`; omitida, a do Anki). O nome da pasta do complemento é o que o Anki chama de módulo dele."""
     colecao = ColecaoDoAnki(mw)
     try:
         ao_sincronizar(colecao)
