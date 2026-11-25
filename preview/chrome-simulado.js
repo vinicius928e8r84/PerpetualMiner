@@ -89,6 +89,11 @@
     return Promise.resolve(valor);
   };
 
+  const apagarChaves = (chaves, callback) => {
+    for (const chave of chaves) delete dados[chave];
+    return talvezPromessa(undefined, callback);
+  };
+
   function criarArea() {
     return {
       get: (pedido, callback) => talvezPromessa(resolver(pedido), callback),
@@ -101,14 +106,8 @@
         ouvintesDeMudanca.forEach(ouvinte => setTimeout(() => ouvinte(mudancas, 'local'), 0));
         return talvezPromessa(undefined, callback);
       },
-      remove: (chaves, callback) => {
-        for (const chave of [].concat(chaves)) delete dados[chave];
-        return talvezPromessa(undefined, callback);
-      },
-      clear: callback => {
-        for (const chave of Object.keys(dados)) delete dados[chave];
-        return talvezPromessa(undefined, callback);
-      },
+      remove: (chaves, callback) => apagarChaves([].concat(chaves), callback),
+      clear: callback => apagarChaves(Object.keys(dados), callback),
     };
   }
 
@@ -127,11 +126,22 @@
     }
   }
 
+  const semPermissao = (_permissoes, callback) => talvezPromessa(false, callback);
+
+  const abrirAba = (id, ir) => ({ url } = {}, callback) => {
+    if (url) ir(url);
+    return talvezPromessa({ id }, callback);
+  };
+  const abrirEmOutraAba = abrirAba(2, url => window.open(url, '_blank', 'noopener'));
+  const irNaAbaAtual = abrirAba(1, url => { window.location.href = url; });
+
+  const ouvintesQueNaoFazemNada = () => ({ addListener: () => {}, removeListener: () => {} });
+
   window.chrome = {
     storage: {
       local: area,
       sync: area,
-      onChanged: { addListener: ouvinte => ouvintesDeMudanca.push(ouvinte), removeListener: () => {} },
+      onChanged: { ...ouvintesQueNaoFazemNada(), addListener: ouvinte => ouvintesDeMudanca.push(ouvinte) },
     },
     runtime: {
       id: 'preview',
@@ -139,24 +149,15 @@
       getManifest: () => ({ version: 'preview', manifest_version: 3 }),
       getURL: caminho => new URL(String(caminho).replace(/^\//, ''), document.baseURI).href,
       sendMessage: (mensagem, callback) => talvezPromessa(responderMensagem(mensagem), callback),
-      onMessage: { addListener: () => {}, removeListener: () => {} },
+      onMessage: ouvintesQueNaoFazemNada(),
     },
     tabs: {
       query: (_consulta, callback) => talvezPromessa([{ id: 1, url: 'https://exemplo.dev', active: true }], callback),
-      create: ({ url } = {}, callback) => {
-        if (url) window.open(url, '_blank', 'noopener');
-        return talvezPromessa({ id: 2 }, callback);
-      },
-      update: (_id, { url } = {}, callback) => {
-        if (url) window.location.href = url;
-        return talvezPromessa({ id: 1 }, callback);
-      },
+      create: abrirEmOutraAba,
+      update: (_id, info, callback) => irNaAbaAtual(info, callback),
     },
     windows: { update: (_id, _info, callback) => talvezPromessa(undefined, callback) },
-    permissions: {
-      contains: (_permissoes, callback) => talvezPromessa(false, callback),
-      request: (_permissoes, callback) => talvezPromessa(false, callback),
-    },
+    permissions: { contains: semPermissao, request: semPermissao },
     identity: {
       getRedirectURL: () => document.baseURI,
       launchWebAuthFlow: (_opcoes, callback) =>
