@@ -119,6 +119,8 @@
   const abrirEmOutraAba = abrirAba(2, url => window.open(url, '_blank', 'noopener'));
   const irNaAbaAtual = abrirAba(1, url => { window.location.href = url; });
 
+  const atualizarPeloId = metodo => (_id, info, callback) => metodo(info, callback);
+
   const ouvintesQueNaoFazemNada = () => ({ addListener: () => {}, removeListener: () => {} });
 
   window.chrome = {
@@ -138,9 +140,9 @@
     tabs: {
       query: metodoDoChrome(() => [{ id: 1, url: 'https://exemplo.dev', active: true }]),
       create: abrirEmOutraAba,
-      update: (_id, info, callback) => irNaAbaAtual(info, callback),
+      update: atualizarPeloId(irNaAbaAtual),
     },
-    windows: { update: (_id, info, callback) => semResposta(info, callback) },
+    windows: { update: atualizarPeloId(semResposta) },
     permissions: { contains: semPermissao, request: semPermissao },
     identity: {
       getRedirectURL: () => document.baseURI,
