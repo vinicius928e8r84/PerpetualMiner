@@ -76,31 +76,23 @@ def build_card_stem(keyword: str, phrase: str, hash_len: int = 8) -> str:
 
 
 def get_card_jobs(entry: MiningEntry) -> List[CardJob]:
-    jobs: List[CardJob] = []
-    for i, keyword in enumerate(entry.keywords):
-        if i == 0:
-            jobs.append(CardJob(
-                keyword=keyword,
-                phrase=entry.phrase,
-                is_generated=False,
-                entry=entry,
-                file_stem=entry.file_stem or build_card_stem(keyword, entry.phrase),
-            ))
-        else:
-            context_hint = f" Context: {entry.context_str}." if entry.has_context else ""
-            instruction = (
-                f"Write a new example sentence using the word or phrase '{keyword}'."
-                f"{context_hint}"
-                f" (Original sentence for reference: \"{entry.phrase}\")"
-            )
-            jobs.append(CardJob(
-                keyword=keyword,
-                phrase=instruction,
-                is_generated=True,
-                entry=entry,
-                file_stem=entry.file_stem or build_card_stem(keyword, entry.phrase),
-            ))
-    return jobs
+    return [_card_job(entry, position, keyword) for position, keyword in enumerate(entry.keywords)]
+
+
+def _card_job(entry: MiningEntry, position: int, keyword: str) -> CardJob:
+    file_stem = entry.file_stem or build_card_stem(keyword, entry.phrase)
+    if position == 0:
+        return CardJob(keyword=keyword, phrase=entry.phrase, is_generated=False, entry=entry, file_stem=file_stem)
+    return CardJob(keyword=keyword, phrase=_new_sentence_instruction(keyword, entry), is_generated=True, entry=entry, file_stem=file_stem)
+
+
+def _new_sentence_instruction(keyword: str, entry: MiningEntry) -> str:
+    context_hint = f" Context: {entry.context_str}." if entry.has_context else ""
+    return (
+        f"Write a new example sentence using the word or phrase '{keyword}'."
+        f"{context_hint}"
+        f" (Original sentence for reference: \"{entry.phrase}\")"
+    )
 
 
 def _split_context(line: str):
@@ -116,25 +108,36 @@ def _split_context(line: str):
     )
 
 
-def parse_mining_line(raw_line: str) -> Optional[MiningEntry]:
-    line = raw_line.strip()
-    if not line:
-        return None
-    line, context_source, context_title, context_detail = _split_context(line)
-    if ":" not in line:
-        return None
-    keywords_raw, phrase = line.split(":", 1)
-    phrase = phrase.strip()
-    keywords = [kw.strip() for kw in keywords_raw.split("|") if kw.strip()]
-    if not keywords or not phrase:
-        return None
+def _entry_with_context(keywords: List[str], phrase: str, context, file_stem: Optional[str] = None) -> MiningEntry:
+    context_source, context_title, context_detail = context
     return MiningEntry(
         keywords=keywords,
         phrase=phrase,
         context_source=context_source,
         context_title=context_title,
         context_detail=context_detail,
+        file_stem=file_stem,
     )
+
+
+def _split_keywords(line: str):
+    keywords_raw, separator, phrase = line.partition(":")
+    if not separator:
+        return None
+    keywords = [kw.strip() for kw in keywords_raw.split("|") if kw.strip()]
+    phrase = phrase.strip()
+    if not keywords or not phrase:
+        return None
+    return keywords, phrase
+
+
+def parse_mining_line(raw_line: str) -> Optional[MiningEntry]:
+    line, *context = _split_context(raw_line.strip())
+    parsed = _split_keywords(line)
+    if parsed is None:
+        return None
+    keywords, phrase = parsed
+    return _entry_with_context(keywords, phrase, context)
 
 
 def _split_target_word(line: str):
@@ -158,21 +161,14 @@ def parse_mining_line_ru(raw_line: str) -> Optional[MiningEntry]:
     line = raw_line.strip()
     if not line:
         return None
-    body, context_source, context_title, context_detail = _split_context(line)
+    body, *context = _split_context(line)
     target, body = _split_target_word(body)
     phrase = normalize_ru_phrase(body)
     if not phrase:
         return None
     words = phrase.split()
     keyword = target or (" ".join(words[:2]) if len(words) >= 2 else words[0])
-    return MiningEntry(
-        keywords=[keyword],
-        phrase=phrase,
-        context_source=context_source,
-        context_title=context_title,
-        context_detail=context_detail,
-        file_stem=stable_phrase_stem(phrase),
-    )
+    return _entry_with_context([keyword], phrase, context, file_stem=stable_phrase_stem(phrase))
 
 
 def parse_line(entrada: str, raw_line: str) -> Optional[MiningEntry]:
