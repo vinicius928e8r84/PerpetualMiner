@@ -82,7 +82,7 @@ class _Leitura:
 def uma_conexao(pasta):
     arquivo = os.path.join(pasta, "pareamento.json")
     semear(arquivo)
-    return pareamento.Pareamento(arquivo, logging.getLogger("teste"), na_tela=JanelaDeMentira(), sortear=lambda: "K7M4PX")
+    return pareamento.Pareamento(arquivo, logging.getLogger("teste"), pareamento.Fontes(sortear=lambda: "K7M4PX"), na_tela=JanelaDeMentira())
 
 
 class AGravacaoComUmaLeituraAberta(unittest.TestCase):

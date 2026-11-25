@@ -8,6 +8,7 @@ import secrets
 import threading
 import time
 from collections import OrderedDict, namedtuple
+from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from .chaves import gravar_so_do_dono
@@ -35,6 +36,13 @@ CABECALHO_DA_PROVA = "X-PerpetualMiner-Prova"
 Verificacao = namedtuple("Verificacao", "status erro segredo nonce")
 
 
+@dataclass(frozen=True)
+class Selo:
+    segredo: bytes
+    sessao: str
+    nonce: str
+
+
 def _hmac(segredo, texto):
     return base64.b64encode(hmac.new(segredo, texto.encode("utf-8"), hashlib.sha256).digest()).decode("ascii")
 
@@ -43,12 +51,12 @@ def _sha256(corpo):
     return hashlib.sha256(corpo).hexdigest()
 
 
-def assinatura_do_pedido(segredo, sessao, nonce, metodo, caminho, corpo):
-    return _hmac(segredo, "pm1\npedido\n%s\n%s\n%s\n%s\n%s" % (sessao, nonce, metodo, caminho, _sha256(corpo)))
+def assinatura_do_pedido(selo, metodo, caminho, corpo):
+    return _hmac(selo.segredo, "pm1\npedido\n%s\n%s\n%s\n%s\n%s" % (selo.sessao, selo.nonce, metodo, caminho, _sha256(corpo)))
 
 
-def prova_da_resposta(segredo, sessao, nonce, status, corpo):
-    return _hmac(segredo, "pm1\nresposta\n%s\n%s\n%d\n%s" % (sessao, nonce, status, _sha256(corpo)))
+def prova_da_resposta(selo, status, corpo):
+    return _hmac(selo.segredo, "pm1\nresposta\n%s\n%s\n%d\n%s" % (selo.sessao, selo.nonce, status, _sha256(corpo)))
 
 
 def prova_do_servidor(segredo, desafio, sessao):
@@ -63,6 +71,12 @@ def sortear_o_codigo():
     return "".join(secrets.choice(ALFABETO) for _ in range(TAMANHO_DO_CODIGO))
 
 
+@dataclass(frozen=True)
+class Fontes:
+    relogio: object = time.monotonic
+    sortear: object = sortear_o_codigo
+
+
 def _agora_iso():
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -73,6 +87,14 @@ def _forma_do_codigo(codigo):
 
 def _so_o_codigo(texto):
     return re.sub(r"[^A-Z0-9]", "", texto.upper())
+
+
+def _recusa(erro):
+    return Verificacao(401, erro, None, None)
+
+
+def _assinaturas_iguais(esperada, recebida):
+    return hmac.compare_digest(esperada.encode("ascii"), recebida.encode("utf-8", "replace"))
 
 
 def _linha_valida(linha):
@@ -88,12 +110,12 @@ def _linha_valida(linha):
 
 
 class Pareamento:
-    def __init__(self, arquivo, logger, relogio=time.monotonic, na_tela=None, sortear=sortear_o_codigo):
+    def __init__(self, arquivo, logger, fontes=Fontes(), na_tela=None):
         self._arquivo = arquivo
         self._logger = logger
-        self._relogio = relogio
+        self._relogio = fontes.relogio
         self.na_tela = na_tela
-        self.sortear = sortear
+        self.sortear = fontes.sortear
         self.sessao = secrets.token_hex(16)
         self._tranca = threading.RLock()
         self._tranca_do_arquivo = threading.RLock()
@@ -293,28 +315,39 @@ class Pareamento:
             return 401, {"error": "pairing_revoked", "prova": prova_da_revogacao(revogado, desafio)}
         return 200, {"sessao": self.sessao, "prova": prova_do_servidor(segredo, desafio, self.sessao)}
 
-    def verificar(self, metodo, caminho, corpo, cabecalhos):
+    def _segredo_do_pedido(self, cabecalhos):
         cliente = cabecalhos.get(CABECALHO_DO_CLIENTE)
-        assinatura = cabecalhos.get(CABECALHO_DA_ASSINATURA)
-        nonce = cabecalhos.get(CABECALHO_DO_NONCE)
-        sessao = cabecalhos.get(CABECALHO_DA_SESSAO)
-        segredo = self._segredo_de(cliente) if cliente and assinatura else None
-        if segredo is None:
-            return Verificacao(401, "pairing_required", None, None)
-        if not isinstance(sessao, str) or not hmac.compare_digest(sessao.encode("utf-8"), self.sessao.encode("ascii")):
-            return Verificacao(401, "session_expired", None, None)
-        if not nonce or not NONCE.match(nonce):
-            return Verificacao(401, "pairing_invalid", None, None)
-        esperada = assinatura_do_pedido(segredo, self.sessao, nonce, metodo, caminho, corpo)
-        if not hmac.compare_digest(esperada.encode("ascii"), assinatura.encode("utf-8", "replace")):
-            return Verificacao(401, "pairing_invalid", None, None)
+        if not cliente or not cabecalhos.get(CABECALHO_DA_ASSINATURA):
+            return None
+        return self._segredo_de(cliente)
+
+    def _sessao_atual(self, sessao):
+        return isinstance(sessao, str) and hmac.compare_digest(sessao.encode("utf-8"), self.sessao.encode("ascii"))
+
+    def _lembrar_o_nonce(self, cliente, nonce):
         with self._tranca:
             marca = (cliente, nonce)
             if marca in self._nonces:
-                return Verificacao(401, "pairing_invalid", None, None)
+                return False
             self._nonces[marca] = True
             while len(self._nonces) > NONCES_LEMBRADOS:
                 self._nonces.popitem(last=False)
+        return True
+
+    def verificar(self, metodo, caminho, corpo, cabecalhos):
+        segredo = self._segredo_do_pedido(cabecalhos)
+        nonce = cabecalhos.get(CABECALHO_DO_NONCE)
+        if segredo is None:
+            return _recusa("pairing_required")
+        if not self._sessao_atual(cabecalhos.get(CABECALHO_DA_SESSAO)):
+            return _recusa("session_expired")
+        if not nonce or not NONCE.match(nonce):
+            return _recusa("pairing_invalid")
+        esperada = assinatura_do_pedido(Selo(segredo, self.sessao, nonce), metodo, caminho, corpo)
+        if not _assinaturas_iguais(esperada, cabecalhos.get(CABECALHO_DA_ASSINATURA)):
+            return _recusa("pairing_invalid")
+        if not self._lembrar_o_nonce(cabecalhos.get(CABECALHO_DO_CLIENTE), nonce):
+            return _recusa("pairing_invalid")
         return Verificacao(200, None, segredo, nonce)
 
     def parar(self):
