@@ -1,6 +1,6 @@
 """O Envio dentro da Conexão (#142): a fila, o estado de cada Cartão e o trabalho que os faz (a thread: `trabalhador.py`).
 
-Desenho: `docs/design/envio-no-complemento.md`. Estados (a máquina e a tabela: `estado_do_envio.py`; o portão: `Fila.mudar`, em `fila_do_envio.py`): `queued` →
+Estados (a máquina e a tabela: `estado_do_envio.py`; o portão: `Fila.mudar`, em `fila_do_envio.py`): `queued` →
 `running` (`generate_cards`, `wait_anki` ou `send_to_anki`) ⇄ esperando → `completed` | `partial` | `failed`, e apagado; uma Frase está no Anki quando
 todos os Cartões dela estão (`settle`). O estado também é **por Cartão** (`cards`: `pending` → `text` → `added` | `duplicate`,
 ou `failed` com o `error`; `added` leva o `guid` da nota): a retomada não refaz nada pronto. Um Cartão é (`phraseId`, posição da Palavra), `<phraseId>-<n>`.

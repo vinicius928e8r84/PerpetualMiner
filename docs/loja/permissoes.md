@@ -1,0 +1,24 @@
+# Justificativas de permissão da Chrome Web Store
+
+## Justificativa de cada permissão
+
+Cole nos campos correspondentes da aba Práticas de privacidade (a loja pede uma justificativa por permissão e recusa o item se ela não bater com o manifest).
+
+| Permissão | Justificativa |
+|---|---|
+| `storage` | Guarda no navegador (`storage.local`) as frases mineradas, as configurações, os atalhos, a chave do Gemini informada pela pessoa, os 4 últimos caracteres da chave da OpenAI (a chave inteira fica na Conexão com o Anki do computador e, com conta Google, numa cópia em texto na conta, em `usuarios/{uid}/segredos/openai`) e a sessão da conta (no IndexedDB). Usa também o `storage.sync` para as marcas de exclusão de frases (só o identificador da frase e a data), que o próprio navegador sincroniza entre os computadores da pessoa. |
+| `unlimitedStorage` | O histórico de frases e os caches de vocabulário crescem com o uso contínuo e passam do limite padrão de 10 MB do armazenamento local. |
+| `alarms` | Mantém a mineração automática e seus contadores atualizados na virada do dia, inclusive nas páginas já abertas. |
+| `contextMenus` | Cria o item "Minerar com PerpetualMiner" no menu de clique direito sobre texto selecionado. |
+| `identity` | Login opcional com a conta Google (`launchWebAuthFlow`) para sincronizar as frases entre computadores. |
+| `tabs` | Encontra e foca a aba do painel da própria extensão em vez de abrir outra, lê o título da aba para nomear a fonte da frase minerada pelo menu de contexto e avisa as abas abertas quando o estado da mineração automática muda. |
+| `activeTab` | Acesso temporário à aba atual quando a pessoa clica no ícone da extensão ou no item do menu de contexto. (A extensão não declara `commands`; o atalho Alt+S é tratado pelo script de conteúdo na própria página.) |
+| Scripts de conteúdo em todos os sites (`<all_urls>`, todos os frames) | O overlay que lê a legenda do player e marca o trecho minerado precisa rodar no site do vídeo, que pode ser qualquer um (YouTube, Netflix, players de terceiros dentro de iframes). O script lê a legenda e o texto que a pessoa seleciona: ao acionar o atalho ou o menu, e, só se a pessoa ligar a Mineração automática (desligada por padrão), a cada ~0,7 s enquanto houver um player com legenda, guardando as linhas até o limite diário. O que é minerado fica no navegador e, se a pessoa entrou com a conta, vai também ao Firestore dela; nada da página é enviado a mais ninguém. |
+| `nativeMessaging` (opcional) | Pedida só quando a pessoa aperta “Permitir abrir o Anki” na primeira conexão com o Anki, nunca na instalação. Deixa a extensão chamar o abridor, um script pequeno que a Conexão com o Anki (o complemento do Anki da própria pessoa) deixa no computador e registra como host: ele só confere se o Anki está instalado e abre o Anki quando a pessoa pede um Envio com o Anki fechado. Nada fica rodando em segundo plano, e o host só aceita a origem desta extensão. |
+| `http://127.0.0.1:8766/*`, `http://localhost:8766/*` | Conversa com a Conexão com o Anki, o programa local que envia os cartões ao Anki instalado no mesmo computador. É opcional; a conversa não sai da máquina. |
+| `https://generativelanguage.googleapis.com/*` | "Minerar de uma foto": envia a foto escolhida ao Gemini com a chave de API da própria pessoa. |
+| `https://firestore.googleapis.com/*`, `https://securetoken.googleapis.com/*`, `https://identitytoolkit.googleapis.com/*`, `https://www.googleapis.com/*` | Login com Google via Firebase e sincronização das frases da conta (Firestore), inclusive as mineradas automaticamente; `www.googleapis.com` devolve nome, e-mail e foto do perfil. |
+
+**Campo "Host permission use"** (cole este texto; os hosts entre crases no bloco abaixo são a lista de referência, e `testes/test_empacotar.js` falha se diferirem dos `host_permissions` do `manifest.json` ou se faltar a linha de `nativeMessaging`):
+
+> `http://127.0.0.1:8766/*` e `http://localhost:8766/*`: conversa com a Conexão com o Anki, programa local e opcional do próprio usuário que envia os cartões ao Anki do mesmo computador; nada sai da máquina. `https://generativelanguage.googleapis.com/*`: "Minerar de uma foto" envia a foto escolhida ao Gemini com a chave de API da própria pessoa. `https://firestore.googleapis.com/*`, `https://securetoken.googleapis.com/*`, `https://identitytoolkit.googleapis.com/*` e `https://www.googleapis.com/*`: login opcional com Google via Firebase e sincronização das frases da conta no Firestore; `www.googleapis.com` devolve nome, e-mail e foto do perfil. Scripts de conteúdo em todos os sites (`<all_urls>`, todos os frames): rodam onde o vídeo estiver, para ler só a linha de legenda do player e o texto que a pessoa seleciona; a Mineração automática vem desligada e só age se a pessoa a ligar. Esses scripts não fazem pedidos de rede a outros hosts.

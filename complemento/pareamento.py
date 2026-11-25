@@ -2,7 +2,7 @@
 
 Um segredo por navegador. Ele nasce aqui, quando a pessoa digita no painel o código que só o Anki dela mostrou, chega à
 extensão uma única vez (a resposta do `concluir`) e nunca mais trafega: cada pedido vai assinado com HMAC-SHA256 e cada
-resposta volta assinada (`desenho em docs/design/pareamento-da-conexao.md`). Só a biblioteca padrão.
+resposta volta assinada. Só a biblioteca padrão.
 
     segredo S          `user_files/pareamento.json`, até 5 navegadores, só do dono (0600), gravado de uma vez
     revogados          o Desconectar navegadores guarda ali (até 20) os segredos que revogou: eles não assinam mais nada, só provam ao `conferir` que

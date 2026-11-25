@@ -1,6 +1,6 @@
 """O modelo dos cartões (#157): qual modelo escreve o texto de cada Cartão, a lista que a conta oferece e a troca antes da saída.
 
-O desenho está em `docs/design/modelo-dos-cartoes.md`. A escolha da pessoa (`automatico` ou um modelo da lista) fica em
+A escolha da pessoa (`automatico` ou um modelo da lista) fica em
 `user_files/modelo-dos-cartoes.json`, junto com quem pagava quando ela foi feita (`paga`) e o que a Conexão trocou sozinha (`trocou`, a linha verde); nada ali é segredo.
 O Automático não fixa modelo nenhum no código: com o login é o primeiro da lista do plano, e com a chave é o do motor (`engine/config.json`),
 conferido contra a mesma lista de saída (se o do motor já saiu, é o primeiro que a conta da chave oferece).

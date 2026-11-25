@@ -2,7 +2,7 @@
 
 Fonte de cada valor: a doc oficial para apps abertos, `https://developers.openai.com/siwc/llms-full.txt` (lida em 2026-10-26;
 as páginas S3 a S8 da pesquisa #92), e o ensaio #121, em que o dono entrou de verdade por este caminho com o retorno na 8766.
-O que só o ensaio do dono confirma está em `docs/design/login-do-chatgpt.md` (§ 6). Só o código muda isto: nada no ambiente,
+Nada no ambiente,
 na configuração ou num pedido desvia o login ou os tokens para outro lugar (a Conexão recebe as bases de `inicio.iniciar`).
 """
 

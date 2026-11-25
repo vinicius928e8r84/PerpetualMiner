@@ -3,7 +3,6 @@
 O login é uma de três coisas guardadas (sem login, conectada, acabou) e o pagador de cada Cartão sai dele e da escolha da pessoa
 (`quem_paga`): do `parado` só se sai por escolha, entrando de novo ou saindo do login para usar a chave. Visto de fora, com o
 servidor real da Conexão, o servidor de login de mentira e a OpenAI de mentira, como em `test_plano_do_chatgpt.py`.
-O desenho: `docs/design/login-do-chatgpt.md` § 2.
 
     python3.9 complemento/test_quem_paga.py
 """

@@ -1,6 +1,6 @@
 """O modelo dos cartões (#157), visto de fora: o servidor real da Conexão com a thread do Envio ligada, a OpenAI de mentira na
 fronteira HTTP e o relógio que o teste dá à Conexão. O que o teste confere é o modelo que a OpenAI recebe em cada Cartão, o que a
-extensão lê (`POST /ia/modelo/estado`) e o que fica guardado. O desenho: `docs/design/modelo-dos-cartoes.md`.
+extensão lê (`POST /ia/modelo/estado`) e o que fica guardado.
 
     python3.9 complemento/test_modelo_dos_cartoes.py
 """

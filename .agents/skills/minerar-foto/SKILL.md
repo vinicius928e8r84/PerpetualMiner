@@ -5,9 +5,9 @@ description: "Use when changing or reviewing Minerar de uma foto (`bookreader/bo
 
 # Minerar de uma foto
 
-Notes from the old `CLAUDE.md` § Architecture. Cross-surface rules: `docs/arquitetura.md`; files: `docs/arquivos/`.
+Notes from the old `CLAUDE.md` § Architecture. Decisions: `docs/adr/`; files: `docs/arquivos/`.
 
-### Minerar de uma foto (`bookreader/`, docs/design/foto/, variant C)
+### Minerar de uma foto (`bookreader/`, variant C, `docs/adr/0007-as-telas-do-redesign.md`)
 
 Two columns under a top bar (Veio mark, FOT-01 name, the **Livro** field and “Voltar ao painel”). Left, the photo
 queue: the drop area (the whole page takes a drop; “Escolher” opens the picker), the progress (FOT-20, counting

@@ -74,21 +74,21 @@
     "categoria": "status",
     "hoje": "(não existe)",
     "marca": "novo",
-    "nota": "Dentro do passo Ter o Anki ([ONB-18](README.md)), só no Mac, depois do link Baixar o Anki e acima da frase “Arraste o Anki para a pasta Aplicativos e abra-o de lá.”: dois quadros alternados — o ícone do Anki ao lado da pasta Aplicativos e o ícone já dentro dela. Os nomes são os que o Mac mostra na janela do instalador. O desenho é só imagem; a frase do ONB-18 é o que o leitor de tela lê. Com movimento reduzido, ficam parados, lado a lado."
+    "nota": "Dentro do passo Ter o Anki (ONB-18), só no Mac, depois do link Baixar o Anki e acima da frase “Arraste o Anki para a pasta Aplicativos e abra-o de lá.”: dois quadros alternados — o ícone do Anki ao lado da pasta Aplicativos e o ícone já dentro dela. Os nomes são os que o Mac mostra na janela do instalador. O desenho é só imagem; a frase do ONB-18 é o que o leitor de tela lê. Com movimento reduzido, ficam parados, lado a lado."
   },
   "CFG-46": {
     "estado": "Login do ChatGPT que acabou",
     "categoria": "erro",
     "hoje": "(sem aviso)",
     "marca": "novo",
-    "nota": "A primeira, na faixa “Conta do ChatGPT:” do card da IA ([CFG-35](README.md)), com Usar a chave; Continuar com o ChatGPT entra de novo. A segunda, o motivo no cartão e no resumo do Envio que parou por isso, com o botão que leva ao card."
+    "nota": "A primeira, na faixa “Conta do ChatGPT:” do card da IA (CFG-35), com Usar a chave; Continuar com o ChatGPT entra de novo. A segunda, o motivo no cartão e no resumo do Envio que parou por isso, com o botão que leva ao card."
   },
   "CFG-45": {
     "estado": "IA dos cartões: o modelo, a troca de quem paga",
     "categoria": "status",
     "hoje": "(não existe)",
     "marca": "novo",
-    "nota": "A linha verde do Avançado ([CFG-44](README.md)), no lugar de “saiu do ar”, quando a escolha caiu porque o login do ChatGPT acabou ou entrou e a conta nova não tem o modelo."
+    "nota": "A linha verde do Avançado (CFG-44), no lugar de “saiu do ar”, quando a escolha caiu porque o login do ChatGPT acabou ou entrou e a conta nova não tem o modelo."
   },
   "ENV-22": {
     "estado": "Esperando o Anki há mais de 5 min",
@@ -102,13 +102,13 @@
     "categoria": "status",
     "hoje": "Na fila · (sem motivo)",
     "marca": "novo",
-    "nota": "No cartão do Envio. “Enviando o pedido” no lugar da etapa enquanto a Conexão não respondeu ao pedido de criar (antes dizia “Na fila” sem ninguém ter recebido o Envio), sem “etapa 1 de 7”. A segunda frase é o motivo do Envio que parou porque o Apagar tudo de outro navegador apagou as Frases dele na Conexão: a ação é Esquecer ([ENV-23](README.md)), nunca Tentar de novo."
+    "nota": "No cartão do Envio. “Enviando o pedido” no lugar da etapa enquanto a Conexão não respondeu ao pedido de criar (antes dizia “Na fila” sem ninguém ter recebido o Envio), sem “etapa 1 de 7”. A segunda frase é o motivo do Envio que parou porque o Apagar tudo de outro navegador apagou as Frases dele na Conexão: a ação é Esquecer (ENV-23), nunca Tentar de novo."
   },
   "BRG-52": {
     "estado": "Conectar este navegador ao Anki",
     "categoria": "status",
     "hoje": "(não existe)",
     "marca": "novo",
-    "nota": "No alto do Painel, em qualquer área, com a Conexão ligada e este navegador ainda sem pareamento (#192, opção A do dono, 09/11): o aviso com Conectar; o Anki abre um diálogo com o código (ANK-05, `docs/design/dentro-do-anki.md`), e o card troca para o campo e Confirmar. “Resta 1 tentativa” no singular. O código errado não limpa o campo; o código que venceu, ou que gastou as 5 tentativas, volta ao Conectar (“Peça outro”). “Algo na porta do Anki não se confirmou” serve também quando o Anki não consegue abrir o diálogo, e o mesmo texto, com Tentar de novo ([BRG-50](README.md)), é a porta que respondeu a saúde sem provar ter o segredo deste navegador (impostor, ou a Conexão de outro usuário do computador). A Conexão antiga, sem o pareamento, cai em BRG-50."
+    "nota": "No alto do Painel, em qualquer área, com a Conexão ligada e este navegador ainda sem pareamento (#192, opção A do dono, 09/11): o aviso com Conectar; o Anki abre um diálogo com o código (ANK-05), e o card troca para o campo e Confirmar. “Resta 1 tentativa” no singular. O código errado não limpa o campo; o código que venceu, ou que gastou as 5 tentativas, volta ao Conectar (“Peça outro”). “Algo na porta do Anki não se confirmou” serve também quando o Anki não consegue abrir o diálogo, e o mesmo texto, com Tentar de novo (BRG-50), é a porta que respondeu a saúde sem provar ter o segredo deste navegador (impostor, ou a Conexão de outro usuário do computador). A Conexão antiga, sem o pareamento, cai em BRG-50."
   }
 }

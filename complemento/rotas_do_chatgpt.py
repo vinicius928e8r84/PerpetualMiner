@@ -1,6 +1,6 @@
 """As rotas de Entrar com o ChatGPT (#155): o estado, entrar e sair, que a extensão pede (POST com a origem dela, listadas em
 `servidor.ROTAS`), e o retorno do login, que o navegador pede (`GET /auth/callback`, em `servidor.PAGINAS`). Nenhuma devolve
-um token; o retorno responde sempre a mesma página. O desenho: `docs/design/login-do-chatgpt.md`."""
+um token; o retorno responde sempre a mesma página."""
 
 PAGINA_DO_RETORNO = (
     "<!doctype html><html lang=\"pt-BR\"><meta charset=\"utf-8\"><title>PerpetualMiner</title>"
