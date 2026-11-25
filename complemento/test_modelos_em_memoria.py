@@ -1,7 +1,3 @@
-"""Os modelos de Cartão do adaptador da coleção em memória (#166, a troca da frente): o que `test_colecao_em_memoria.ColecaoEmMemoria` guarda em `_cartoes_dos_tipos`
-(`{ nome, frente, verso, css }` dos tipos que a Conexão criou) lido e reescrito como `no_anki.ColecaoDoAnki` faz com o `models` do Anki. Não é teste: fica fora do
-`.ankiaddon` pelo nome."""
-
 import sys
 import os
 
@@ -52,8 +48,6 @@ class ModelosEmMemoria:
         return mudou
 
     def gravar_frase_escrita(self, guid, texto):
-        """A frase da frente Criação (#168) no campo “Frase escrita” da nota de `guid`, como `no_anki.ColecaoDoAnki.gravar_frase_escrita`: só numa nota de um
-        tipo da Conexão que tem o campo, e o texto vai como HTML. Devolve se gravou."""
         self._exigir_gravavel()
         nota = self._notas.get(guid)
         campos = self._campos_que_o_tipo_tem(nota, ("frase_escrita",))
@@ -79,7 +73,6 @@ class ModelosEmMemoria:
                     cartao["campos"] = [(nome, valores.get(nome, antigo)) for nome, antigo in cartao["campos"]]
 
     def frases_a_corrigir(self, lang, limite):
-        """As notas do tipo do idioma com uma “Frase escrita” que a IA ainda não leu (#169), como `no_anki.ColecaoDoAnki.frases_a_corrigir`."""
         self._exigir_gravavel()
         idioma = estilos.idioma(lang)
         campos = idioma["campos"]
@@ -94,7 +87,6 @@ class ModelosEmMemoria:
         return achadas
 
     def gravar_correcao(self, guid, escrita, correcao):
-        """A correção da IA (#169) nos campos “Escrito antes” e “Correção” da nota de `guid`, como `no_anki.ColecaoDoAnki.gravar_correcao`. Devolve se gravou."""
         self._exigir_gravavel()
         nota = self._notas.get(guid)
         campos = self._campos_que_o_tipo_tem(nota, ("escrito_antes", "correcao"))

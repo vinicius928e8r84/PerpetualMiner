@@ -494,7 +494,6 @@ test('Baixar a Conexão com o Anki entrega o arquivo que vai dentro do pacote da
   expect(arquivo.suggestedFilename()).toBe('perpetualminer.ankiaddon');
   const baixado = fs.readFileSync(await arquivo.path());
   expect(baixado.equals(fs.readFileSync(require('path').join(__dirname, '..', '..', 'conexao', 'perpetualminer.ankiaddon')))).toBe(true);
-  // É um zip: o Anki instala o `.ankiaddon` pelo `manifest.json` dentro dele.
   expect(baixado.subarray(0, 2).toString()).toBe('PK');
   expect(baixado.includes(Buffer.from('manifest.json'))).toBe(true);
   expect((await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false).toBe(false);

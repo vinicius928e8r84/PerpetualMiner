@@ -1,11 +1,3 @@
-"""A Conexão com o Anki vista de fora: o servidor real, sem Anki e sem Qt, contra os exemplos do contrato e a rota de saúde.
-
-Roda no Python 3.9 (o do Anki do Mac) e no 3.13:
-    python3.9 complemento/test_servidor.py
-
-O harness é `test_harness.py`; cada rota em cada estado do Anki é `test_servidor_estados.py` e a repetição das que mudam é `test_servidor_repeticao.py`.
-"""
-
 import json
 import os
 import sys
@@ -23,7 +15,6 @@ from test_harness import tearDownModule
 
 
 def grava_onde_a_pasta_e_so_de_leitura():
-    """Quem é root, ou o Windows, grava mesmo numa pasta só de leitura."""
     return os.name == "nt" or os.geteuid() == 0
 
 

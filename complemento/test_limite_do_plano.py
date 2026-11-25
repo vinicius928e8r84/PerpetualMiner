@@ -1,10 +1,3 @@
-"""O limite do plano do ChatGPT no Envio (#158), visto de fora: o plano recusa por limite de uso, o Envio espera sem falhar (o estado diz
-`waiting: plan_limit`), volta sozinho quando o plano libera, e a pessoa pode pedir Tentar de novo agora ou Usar a minha chave (o que falta
-vai pela chave). Nada disso refaz um Cartão que já está no Anki.
-
-    python3.9 complemento/test_limite_do_plano.py
-"""
-
 import json
 import os
 import sys
@@ -25,8 +18,6 @@ ESPERANDO_O_PLANO = {"reason": "plan_limit"}
 
 
 class PlanoNoLimite:
-    """O plano do ChatGPT de mentira: responde o primeiro pedido de texto e, depois dele, recusa por limite de uso até `liberar()`."""
-
     def __init__(self, conexao, aceitos=1):
         self.conexao, self.aceitos, self.livre = conexao, aceitos, False
         conexao.openai.recusa_das_respostas = lambda pedidos: None if self.livre or pedidos <= self.aceitos else LIMITE
@@ -43,8 +34,6 @@ def em_espera(estado):
 
 
 class EnvioNoLimite(EnvioNoTeste):
-    """Uma Conexão com o login do ChatGPT feito e a espera do plano curta: os testes não esperam os minutos de verdade."""
-
     def __init__(self, pasta, espera_do_plano=0.02, **argumentos):
         argumentos.setdefault("chatgpt", "conectada")
         super().__init__(pasta, espera_do_plano=espera_do_plano, **argumentos)

@@ -5,7 +5,7 @@ const { assinaturaDoPedido, provaDaResposta, provaDoServidor, provaDaRevogacao, 
 
 const TENTATIVAS = 5;
 const VALIDADE_MS = 5 * 60 * 1000;
-const ESGOTADOS_PARA_BLOQUEAR = 3;   // como complemento/pareamento.py: três códigos que gastaram as tentativas bloqueiam o seguinte
+const ESGOTADOS_PARA_BLOQUEAR = 3;
 const BLOQUEIO_MS = 15 * 60 * 1000;
 const ALFABETO = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const CLIENTE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;

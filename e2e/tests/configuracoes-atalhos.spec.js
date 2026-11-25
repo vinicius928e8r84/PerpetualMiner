@@ -24,8 +24,6 @@ const restaurar = page => cardDeAtalhos(page).getByRole('button', { name: 'Resta
 
 const TITULO_DA_AREA = { frases: 'Frases mineradas' };
 
-// O endereço muda antes de o painel reagir a ele (o hashchange vem depois, e uma tecla pode passar na frente):
-// só com o título da área na tela a gravação já foi cancelada.
 async function irParaArea(page, area) {
   await page.locator(`a.shell-item[data-area="${area}"]`).click();
   await expect(page).toHaveURL(new RegExp(`#${area}$`));
@@ -36,7 +34,6 @@ async function atalhosGravados(extensao) {
   return extensao.lerStorage(['pm_atalho', 'pm_atalho_legenda']);
 }
 
-/** Aperta um botão do mouse pelo protocolo do Chromium: o Playwright só tem esquerdo, direito e do meio. */
 async function apertarBotaoDoMouse(page, botao, { alt = false } = {}) {
   const cdp = await page.context().newCDPSession(page);
   const BOTOES = { back: 8, forward: 16 };
@@ -306,8 +303,6 @@ test('o leitor de tela ouve a gravação, o aviso de repetido e o nome da ação
   await abrirAtalhos(page, extensao);
 
   await expect(gravar(page, 'Minerar legenda')).toHaveAccessibleDescription('Minerar legenda');
-  // A região que anuncia já está na linha antes de gravar, vazia: o leitor de
-  // tela só lê o que muda numa região que já existe.
   await expect(linha(page, 'Minerar seleção').getByRole('status')).toHaveText('');
   await gravar(page, 'Minerar seleção').click();
   await expect(linha(page, 'Minerar seleção').getByRole('status')).toHaveText('Pressione as teclas ou um botão extra do mouse…');

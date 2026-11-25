@@ -1,8 +1,3 @@
-"""O “Abrir no Anki” (#173) como qualquer adaptador de coleção o cumpre: abrir o navegador do Anki na nota de um `guid`. Uma parte do contrato da prévia
-(`test_contrato_da_previa.ContratoDaPrevia`, de onde vêm `adaptador` e `adaptador_fechado`), que o adaptador em memória e o do Anki herdam. Em
-`navegador_aberto` cada um diz em que notas (pelo `guid`) o navegador foi aberto: o em memória as guarda, o do Anki lê o `aqt` de mentira (`test_no_anki`).
-"""
-
 import os
 import sys
 
@@ -15,7 +10,6 @@ from complemento.nota_a_gravar import NotaAGravar
 
 class ContratoDoNavegador:
     def navegador_aberto(self, colecao):
-        """Os `guid` das notas em que o navegador do Anki foi aberto, na ordem."""
         return list(colecao.navegador_aberto)
 
     def test_abrir_no_anki_abre_o_navegador_na_nota_do_guid(self):

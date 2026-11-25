@@ -1,12 +1,3 @@
-"""O log da Conexão não fica aberto entre um registro e outro (#501).
-
-No Windows um arquivo aberto em `user_files` impede o `backupUserFiles` do Anki (que renomeia a pasta): o diálogo “Atualizar Extensões” do
-próprio Anki falha calado, `PermissionError: [WinError 5]`. Aqui o `backupUserFiles` é o do Anki 2.1.50 (`os.rename` da pasta), com a
-regra do Windows posta à mão: renomear uma pasta com um arquivo aberto dentro levanta `PermissionError`.
-
-    python3.9 complemento/test_registro_solto.py
-"""
-
 import logging
 import os
 import sys
@@ -20,7 +11,6 @@ from complemento import registro
 
 
 def arquivos_abertos_em(pasta):
-    """Os arquivos que este processo mantém abertos dentro de `pasta` (Linux: /proc/self/fd; o que o Windows trancaria)."""
     raiz = os.path.realpath(pasta) + os.sep
     achados = []
     for fd in os.listdir("/proc/self/fd"):
@@ -44,7 +34,6 @@ class RegistroSoltoTest(unittest.TestCase):
         self.addCleanup(lambda: [self.logger.removeHandler(h) or h.close() for h in list(self.logger.handlers)])
 
     def backup_user_files_do_anki_2150_no_windows(self):
-        """`aqt.addons.AddonManager.backupUserFiles`: renomeia `user_files` para `files_backup`; o Windows recusa com um arquivo aberto dentro."""
         origem = os.path.join(self.addon, "user_files")
         destino = os.path.join(self.addon, "files_backup")
         if arquivos_abertos_em(origem):

@@ -53,8 +53,6 @@ test('com a conta conectada, "Apagar tudo" no painel apaga todas as frases da nu
   expect(fakes.google.apagadasDe('uid-tudo').sort()).toEqual(mineradas.map(m => String(m.frase.id)).sort());
 });
 
-// A máscara do tombstone vai na URL (`updateMask.fieldPaths`, 46 bytes por frase) e o Firestore recusa a URL acima de
-// 16 KB: com mais de ~350 frases o tombstone não era gravado, e o "Apagar tudo" parava nele sem apagar nada da nuvem.
 const MUITAS = 400;
 const muitasFrases = () => Array.from({ length: MUITAS }, (_, i) => ({
   id: 1_700_000_000_000 + i, texto: `The lighthouse keeper counted wave number ${i + 1}.`,
@@ -116,8 +114,6 @@ test('com a conta conectada e a Conexão sem responder, apagar a seleção intei
   expect(await extensao.frases()).toEqual([]);
 });
 
-// O `chrome.storage.sync` aceita 512 itens, e cada frase apagada é um (`pm_del_{id}`): uma gravação que passava disso
-// era recusada inteira, em silêncio, e nenhum tombstone ficava. Agora ficam os das frases mais novas que cabem.
 test('apagar 520 frases de uma vez deixa no sync do Chrome o tombstone das 500 mais novas', async ({ page, extensao }) => {
   const frases = Array.from({ length: 520 }, (_, i) => ({
     id: 1_700_000_000_000 + i, texto: `The lighthouse keeper counted wave number ${i + 1}.`,

@@ -1,10 +1,3 @@
-"""O Intermediário e o Avançado do russo (#163), vistos de fora: o servidor real com a thread de trabalho ligada, a coleção em memória e a
-OpenAI, a voz e o Openverse de mentira. O teste confere o que fica guardado na coleção: os campos da nota (a morfologia, a raiz, a Palavra que o
-Cartão escolheu) e o que a OpenAI e a voz receberam.
-
-    python3.9 complemento/test_envio_russo.py
-"""
-
 import json
 import re
 import sys
@@ -28,7 +21,6 @@ CAMPOS_DO_RUSSO_COM_MORFOLOGIA = sorted([
 
 
 def enviar_o_russo(nivel, frase=FRASE_RUSSA, id_=ID):
-    """O Envio inteiro do russo no `nivel`: o estado, a nota gravada e o prompt de sistema que a OpenAI recebeu."""
     colecao = ColecaoEmMemoria(SO_O_DEFAULT)
     corpo = dict(pedido(id_, frase, lang="ru", baralho="PerpetualMiner::Russo"), **({"nivel": nivel} if nivel else {}))
     with tempfile.TemporaryDirectory() as pasta, EnvioNoTeste(pasta, colecao=colecao) as conexao:
@@ -93,8 +85,6 @@ class OIntermediarioEOAvancadoDoRusso(unittest.TestCase):
 
 
 class APalavraDoRusso(unittest.TestCase):
-    """A Palavra é gravada nos três níveis (a frente Criação e o tipo que a pessoa já tem a usam), mas o verso do tipo novo a mostra uma vez só."""
-
     def test_a_criacao_do_russo_mostra_a_palavra_nos_tres_niveis(self):
         self.assertIn("{{Palavra}}", tipo_de_nota.definicao("ru", frente="criacao")["modelos"][0]["frente"])
         for nivel in (None, "intermediario", "avancado"):
@@ -111,8 +101,6 @@ class APalavraDoRusso(unittest.TestCase):
 
 
 class UmTipoDeNotaDoRussoDeAntesDoSignificadoSimples(unittest.TestCase):
-    """O tipo "PerpetualMiner Russo" das Conexões anteriores não tem o campo "Significado simples", e a Conexão nunca muda um tipo que já existe."""
-
     def enviar(self, nivel):
         antigo = tipo_de_nota.definicao("ru")
         colecao = ColecaoEmMemoria(SO_O_DEFAULT)

@@ -1,5 +1,3 @@
-"""A conferência de commit verde do `empacotar.py` (`scripts/ci/commit-verde.js`)."""
-
 import io
 import os
 import shutil
@@ -15,8 +13,6 @@ from complemento import empacotar
 
 
 class ConferenciaDoCommitVerde(unittest.TestCase):
-    """O `.ankiaddon` só deve sair de um commit que a suíte completa da main marcou com a tag `verde/*`."""
-
     def _repositorio(self):
         pasta = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, pasta, True)

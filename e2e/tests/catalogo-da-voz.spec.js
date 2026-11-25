@@ -109,15 +109,11 @@ test('no painel, a frase em cirílico sai marcada como russa e a inglesa não', 
 
 test('o menu de contexto mostra MIN-08, lido do catálogo', async ({ extensao }) => {
   // Exceção de teste: chrome-nativo (docs/testes.md).
-  // O Chromium não abre o menu de contexto nativo para o Playwright, então o teste
-  // olha o título que a extensão entrega ao Chrome ao registrar o item.
   const titulos = await extensao.serviceWorker.evaluate(async () => {
     const registrados = [];
     const original = chrome.contextMenus.create;
     chrome.contextMenus.create = props => { registrados.push(props); };
     try { await registrarMenuDeContexto(); } finally { chrome.contextMenus.create = original; }
-    // O registro da instalação (onInstalled) pode cair dentro desta janela e
-    // criar o mesmo item de novo: conta cada item pelo id, uma vez só.
     return [...new Map(registrados.map(item => [item.id, item.title])).values()];
   });
 
@@ -126,8 +122,6 @@ test('o menu de contexto mostra MIN-08, lido do catálogo', async ({ extensao })
 
 test('o mesmo texto minerado pelo menu, pelo popup e pela foto grava o mesmo idioma', async ({ page, extensao, fakes }) => {
   // Exceção de teste: chrome-nativo (docs/testes.md).
-  // 1. Menu de contexto, no service worker. O Playwright não abre o menu nativo,
-  //    então o teste entrega ao handler o mesmo `info` que o Chrome entregaria.
   await extensao.serviceWorker.evaluate(frase => minerarSelecaoDoMenu(
     { menuItemId: 'minerar-perpetualminer', selectionText: frase, pageUrl: 'https://exemplo.dev/artigo' },
     { title: 'Artigo de exemplo', url: 'https://exemplo.dev/artigo' },

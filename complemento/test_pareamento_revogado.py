@@ -1,9 +1,3 @@
-"""O navegador que a pessoa desconectou no Anki (#192): a Conexão guarda o segredo revogado (até 20) só para provar, no `conferir`, que foi ela que o
-desconectou (`401 pairing_revoked` com a prova da revogação). O segredo revogado não assina pedido nenhum. Servidor real por HTTP, como `test_pareamento.py`.
-
-    python3.9 complemento/test_pareamento_revogado.py
-"""
-
 import base64
 import json
 import os

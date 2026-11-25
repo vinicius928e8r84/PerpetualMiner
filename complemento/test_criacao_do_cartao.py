@@ -1,9 +1,3 @@
-"""A frente Criação (#168) vista de fora: o Cartão que o Anki desenha (a coleção em memória e o renderizador de mentira) e o catálogo da Voz. O que o
-script do modelo faz na página é provado por `complemento/test_modelo_da_criacao.js`; o gancho que grava a frase, por `test_contrato_da_criacao.py` (nos dois adaptadores).
-
-    python3.9 complemento/test_criacao_do_cartao.py
-"""
-
 import json
 import os
 import re
@@ -66,7 +60,7 @@ class FrenteCriacao(unittest.TestCase):
             codigo = [linha for linha in arquivo.read().splitlines() if not linha.lstrip().startswith("//")]
         for lado in (modelo["frente"], modelo["verso"]):
             self.assertIn("\n".join(codigo), lado)
-            self.assertNotIn("{{", "\n".join(codigo))  # o Anki leria como campo
+            self.assertNotIn("{{", "\n".join(codigo))
 
     def test_o_estilo_da_criacao_so_entra_no_tipo_de_nota_com_essa_frente(self):
         self.assertIn("#perpetualminer-escrita", tipo_de_nota.definicao("en", frente="criacao")["css"])

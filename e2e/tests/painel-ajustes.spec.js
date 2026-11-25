@@ -14,7 +14,6 @@ const formulario = (page, idioma) => page.getByRole('form', { name: idioma ? `Aj
 const baralho = (page, idioma) => formulario(page, idioma).getByRole('textbox', { name: 'Baralho' });
 const escolhaDeBaralho = (page, idioma) => formulario(page, idioma).getByRole('combobox', { name: 'Baralho' });
 const imagens = (page, opcao, idioma) => formulario(page, idioma).getByRole('radio', { name: opcao });
-// O radio do controle segmentado é invisível: a pessoa clica no rótulo.
 const escolherImagens = (page, opcao, idioma) => formulario(page, idioma).locator('label', { hasText: opcao }).click();
 const salvar = (page, idioma) => formulario(page, idioma).getByRole('button', { name: 'Salvar ajustes' });
 const situacao = (page, idioma) => formulario(page, idioma).getByRole('status');

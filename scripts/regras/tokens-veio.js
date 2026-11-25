@@ -17,7 +17,6 @@ function seAplica(arquivo) {
   return ehJsDaExtensao(arquivo);
 }
 
-// As 148 cores com nome do CSS (CSS Color 4); `transparent` e `currentColor` não são cor literal.
 const CORES_COM_NOME = `
   aliceblue antiquewhite aqua aquamarine azure beige bisque black blanchedalmond blue blueviolet brown
   burlywood cadetblue chartreuse chocolate coral cornflowerblue cornsilk crimson cyan darkblue darkcyan

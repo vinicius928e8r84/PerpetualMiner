@@ -145,7 +145,7 @@ test('as Frases do Envio foram apagadas na Conexão por outro navegador: o cart�
   await expect(ingles(page)).toContainText('Não concluído', { timeout: 10_000 });
   await expect(ingles(page)).toContainText('As frases deste Envio foram apagadas da Conexão com o Anki.');
   await expect(ingles(page).getByRole('button', { name: 'Tentar de novo' })).toHaveCount(0);
-  await page.waitForTimeout(4_500);   // duas voltas do acompanhamento
+  await page.waitForTimeout(4_500);
   await expect(resumo(page)).toBeHidden();
   await expect(progresso(page)).toBeVisible();
 

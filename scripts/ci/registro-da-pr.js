@@ -8,7 +8,6 @@ const SECAO_DA_PROVA = 'Prova real';
 const FRASE = 'PROVADO 100% REAL';
 const LACUNA_DA_PROVA = /\bnao[\s-]+cobert[oa]s?\b|\bbloquead[oa]s?\b/;
 const VEREDITO_LIMPO = 'CLEAN';
-// Num repositório público qualquer pessoa comenta: só vale o registro de quem pode escrever no repositório.
 const QUEM_REGISTRA = ['OWNER', 'MEMBER', 'COLLABORATOR'];
 const MODELO = '.github/PULL_REQUEST_TEMPLATE.md';
 const { ehAncestral, soMergesLimposDaMain } = require('./so-merge-da-main.js');
@@ -336,7 +335,6 @@ async function main(env) {
   }
   const { ok, mensagem } = conferir({ ...lido, head });
   console.log(mensagem);
-  // Um comentário não dispara o workflow: quem publica o registro do /code-review roda o check de novo.
   if (!ok && env.GITHUB_RUN_ID) console.log(`  Publicou o registro do /code-review? Rode de novo: gh run rerun ${env.GITHUB_RUN_ID} --failed -R ${env.GITHUB_REPOSITORY}`);
   return ok ? 0 : 1;
 }

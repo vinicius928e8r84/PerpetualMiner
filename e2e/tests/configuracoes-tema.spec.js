@@ -29,10 +29,6 @@ async function abrirConfiguracoes(page, extensao, endereco = '#configuracoes') {
   await expect(page.getByRole('navigation', { name: 'Navegação do painel' })).toBeVisible();
 }
 
-/**
- * O contraste entre duas cores, pela fórmula da WCAG. Aceita `rgb(...)` e o
- * `color(srgb r g b)` (de 0 a 1) que o Chromium devolve para um `color-mix`.
- */
 function contraste(corA, corB) {
   const luminancia = cor => {
     const escala = cor.startsWith('color(srgb') ? 1 : 255;

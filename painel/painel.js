@@ -25,8 +25,6 @@ const ICONES_DE_FONTE = {
   web: 'web', selecao: 'web', pdf: 'pdf', livro: 'livro', manual: 'manual', importado: 'manual',
 };
 
-// O login com o Google. A nuvem (Firestore REST, sem nenhum SDK: evita violações de CSP
-// em extensões MV3) é de lib/sincronizacao.js.
 const GOOGLE_USERINFO   = 'https://www.googleapis.com/oauth2/v1/userinfo?alt=json';
 const FIREBASE_API_KEY  = Sincronizacao.CHAVE_DA_API;
 const FB_SIGNIN_URL     = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=${FIREBASE_API_KEY}`;
@@ -93,7 +91,6 @@ async function loginGoogle() {
   try {
     const redirectUri = chrome.identity.getRedirectURL();
 
-    // Nonce: enviamos o hash SHA-256 para o Google; guardamos o valor bruto para o Firebase
     const rawNonce    = Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join('');
     const hashBuf     = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(rawNonce));
     const hashedNonce = Array.from(new Uint8Array(hashBuf), b => b.toString(16).padStart(2, '0')).join('');
@@ -103,7 +100,7 @@ async function loginGoogle() {
     authUrl.searchParams.set('response_type', 'token id_token');
     authUrl.searchParams.set('redirect_uri', redirectUri);
     authUrl.searchParams.set('scope', 'openid email profile');
-    authUrl.searchParams.set('nonce', hashedNonce);              // obrigatório para id_token
+    authUrl.searchParams.set('nonce', hashedNonce);
     authUrl.searchParams.set('prompt', 'select_account');
 
     const responseUrl = await new Promise((resolve, reject) => {
@@ -176,7 +173,6 @@ async function loginGoogle() {
   }
 }
 
-// O Chrome responde assim quando a pessoa fecha a janela de login sem escolher conta.
 function loginFoiCancelado(err) {
   return /did not approve|cancel/i.test(err?.message || '');
 }

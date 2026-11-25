@@ -1,9 +1,3 @@
-"""O que a Conexão prepara na coleção ao carregar e a cada perfil que abre (#161): o tipo de nota de cada idioma e, numa instalação nova,
-os Baralhos. Visto de fora: o `inicio.iniciar` real com a coleção em memória e o gancho de perfil que o Anki dá.
-
-    python3.9 complemento/test_inicio_preparo.py
-"""
-
 import json
 import os
 import sys
@@ -26,7 +20,6 @@ def setUpModule():
 
 
 def iniciar(raiz, colecao, perfil="Usuário 1"):
-    """A Conexão carregada no Anki com `colecao`; devolve (a Conexão, os ganchos de perfil que ela registrou)."""
     ganchos = []
     conexao = inicio.iniciar(os.path.join(raiz, "complemento"), lambda: perfil, porta=0, colecao=colecao, abridor=None, ao_abrir_o_perfil=ganchos.append)
     return conexao, ganchos

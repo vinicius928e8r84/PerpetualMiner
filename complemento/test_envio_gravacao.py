@@ -1,8 +1,3 @@
-"""A gravação dos arquivos do Envio (`gravacao_de_json.gravar_json`) com várias threads no mesmo arquivo.
-
-    python3.9 complemento/test_envio_gravacao.py
-"""
-
 import json
 import os
 import sys

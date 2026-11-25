@@ -205,8 +205,6 @@
   outline-offset: 2px;
 }
 
-/* Transição em 0s, não 1 ms: a propriedade padrão da transição é `all`, e 1 ms faria todo elemento
-   transicionar toda mudança (a coluna do shell ao estreitar a janela), com um quadro no valor antigo. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
