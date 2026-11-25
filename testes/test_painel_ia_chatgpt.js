@@ -10,12 +10,18 @@ const { textoDaVoz } = raiz;
 
 const seguidores = [];
 const pedidos = [];
-const releituras = [];
-const campos = [];
 const avisos = [];
-const fila = { estado: [], sair: [] };
-const ROTAS = { '/ia/chatgpt/estado': 'estado', '/ia/chatgpt/sair': 'sair' };
-const LOGIN = { conectada: { status: 200, dados: { conectada: true } }, nenhum: { status: 200, dados: { conectada: false } }, acabou: { status: 200, dados: { conectada: false, acabou: 'chatgpt_signed_out' } } };
+const campos = [];
+const fila = { estado: [], sair: [], entrar: [] };
+const ROTAS = { '/ia/chatgpt/estado': 'estado', '/ia/chatgpt/sair': 'sair', '/ia/chatgpt/entrar': 'entrar' };
+const LOGIN = {
+  conectada: { status: 200, dados: { conectada: true } },
+  nenhum: { status: 200, dados: { conectada: false } },
+  acabou: { status: 200, dados: { conectada: false, acabou: 'chatgpt_signed_out' } },
+  entrando: { status: 200, dados: { conectada: false, entrando: true } },
+  semPlano: { status: 200, dados: { conectada: false, falha: 'chatgpt_not_eligible' } },
+};
+const mundo = { temChave: true };
 
 raiz.ConexaoAnki = {
   SITUACAO: { CONECTANDO: 'conectando', LIGADA: 'ligada', DESLIGADA: 'desligada' },
@@ -23,8 +29,8 @@ raiz.ConexaoAnki = {
   situacao: () => 'ligada',
 };
 raiz.Veio = { ...raiz.Veio, mostrarToastDeSucesso: texto => avisos.push(texto) };
-raiz.ModeloDosCartoes = { reler: () => releituras.push('reler') };
-raiz.CartaoDaIA = { temChave: () => true, baixarConexao: () => {} };
+raiz.ModeloDosCartoes = { reler: () => {} };
+raiz.CartaoDaIA = { temChave: () => mundo.temChave, baixarConexao: () => {} };
 raiz.ConversaComOAnki = {
   ...raiz.ConversaComOAnki,
   pedir: async pedido => {
@@ -39,127 +45,130 @@ globalThis.addEventListener = () => {};
 globalThis.window = { addEventListener() {}, open() {} };
 
 const lugar = { prefixo: 'cfg' };
-const campo = noComId(documento, 'cfg-ia-campo');
-campo.focus = () => campos.push('foco');
+noComId(documento, 'cfg-ia-campo').focus = () => campos.push('foco');
 
 require('../painel/painel-ia-chatgpt.js');
 documento.disparar('DOMContentLoaded');
 const coluna = raiz.ColunaDoChatGPT.coluna(lugar);
 documento.body.append(coluna);
 
-const botoes = () => coluna.querySelectorAll('button').map(botao => botao.textContent);
-const botao = rotulo => coluna.querySelectorAll('button').find(b => b.textContent === rotulo)
-  || raiz.ColunaDoChatGPT.faixa(lugar).querySelectorAll('button').find(b => b.textContent === rotulo);
-const faixa = () => raiz.ColunaDoChatGPT.faixa(lugar).textContent;
-const toasts = () => avisos.slice();
+const faixa = () => raiz.ColunaDoChatGPT.faixa(lugar);
+const botoes = no => no.querySelectorAll('button');
+const botao = rotulo => [...botoes(coluna), ...botoes(faixa())].find(b => b.textContent === rotulo);
+const tela = () => ({
+  coluna: coluna.childNodes.map(no => [no.localName, no.className, no.textContent, botoes(no).map(b => [b.textContent, b.getAttribute('aria-disabled')])]),
+  faixa: faixa().textContent,
+});
 const feitos = () => pedidos.splice(0);
+const sair = () => textoDaVoz('CFG-35.chatgptSair');
 
-async function entrarNaTelaCom(login) {
+async function lerComoLogin(login) {
   fila.estado.push(LOGIN[login]);
   seguidores[0]('ligada');
   await esperar();
   assert.deepStrictEqual(feitos(), ['estado']);
 }
 
-async function sairDe(resposta, depois = LOGIN.nenhum) {
-  fila.sair.push(resposta);
-  fila.estado.push(depois);
-  botao(textoDaVoz('CFG-35.chatgptSair')).disparar('click');
+async function clicar(rotulo, resposta, depois) {
+  const avisosAntes = avisos.length;
+  if (resposta) fila.sair.push(resposta);
+  if (resposta && depois) fila.estado.push(LOGIN[depois]);
+  botao(rotulo).disparar('click');
   await esperar();
   await esperar();
+  return { pedidos: feitos(), avisos: avisos.slice(avisosAntes), ...tela() };
 }
 
-async function sairComARevogacaoMostraOAvisoEOEstadoNovo() {
-  await entrarNaTelaCom('conectada');
-  assert.ok(botoes().includes(textoDaVoz('CFG-35.chatgptSair')));
-  await sairDe({ status: 200, dados: { ok: true, revogada: true } });
-  assert.deepStrictEqual(feitos(), ['sair', 'estado']);
-  assert.deepStrictEqual(toasts(), [textoDaVoz('CFG-35.chatgptSaiu')]);
-  assert.strictEqual(faixa(), '');
-  assert.deepStrictEqual(botoes(), [textoDaVoz('CFG-35.chatgptBotao')]);
+const OK = revogada => ({ status: 200, dados: { ok: true, revogada } });
+const SAIDAS = [
+  ['com revogação', OK(true), 'nenhum'],
+  ['sem revogação', OK(false), 'conectada'],
+  ['ok falso', { status: 200, dados: { ok: false } }],
+  ['sem corpo', { status: 200, dados: null }],
+  ['erro do servidor', { status: 500, dados: { error: 'internal_error' } }],
+  ['Conexão antiga', { status: 404, dados: null }],
+  ['sem resposta', { status: null, dados: null }],
+];
+
+async function recomecar() {
+  await lerComoLogin('conectada');
+  await clicar(sair(), OK(true), 'nenhum');
 }
 
-async function sairSemRevogacaoDizQueOChatGPTNaoConfirmou() {
-  await entrarNaTelaCom('conectada');
-  await sairDe({ status: 200, dados: { ok: true, revogada: false } }, LOGIN.conectada);
-  assert.deepStrictEqual(feitos(), ['sair', 'estado']);
-  assert.deepStrictEqual(toasts(), [textoDaVoz('CFG-35.chatgptSaiu')], 'o aviso da saída anterior segue na tela, o novo não aparece');
-  assert.ok(faixa().includes(textoDaVoz('CFG-35.erroChatgptSemRevogar')), faixa());
-  assert.ok(faixa().includes('revogada: false'), faixa());
-  assert.ok(botoes().includes(textoDaVoz('CFG-35.chatgptSair')));
-}
-
-async function cadaRespostaQueNaoDizOkViraAFaixaDoPedido() {
-  const casos = [
-    ['ok falso', { status: 200, dados: { ok: false } }, 'CFG-35.erroChatgptFalhou', 'HTTP 200'],
-    ['sem corpo', { status: 200, dados: null }, 'CFG-35.erroChatgptFalhou', 'HTTP 200'],
-    ['erro do servidor', { status: 500, dados: { error: 'internal_error' } }, 'CFG-35.erroChatgptFalhou', 'HTTP 500 · internal_error'],
-    ['Conexão antiga', { status: 404, dados: null }, 'CFG-35.erroChatgptAntiga', 'HTTP 404'],
-    ['sem resposta', { status: null, dados: null }, 'CFG-35.erroChatgptSemConexao', 'sem resposta'],
-  ];
-  for (const [nome, resposta, voz, detalhe] of casos) {
-    await entrarNaTelaCom('conectada');
-    fila.sair.push(resposta);
-    botao(textoDaVoz('CFG-35.chatgptSair')).disparar('click');
-    await esperar();
-    assert.deepStrictEqual(feitos(), ['sair'], nome);
-    assert.ok(faixa().includes(textoDaVoz(voz)), `${nome}: ${faixa()}`);
-    assert.ok(faixa().includes(detalhe), `${nome}: ${faixa()}`);
-    assert.ok(botoes().includes(textoDaVoz('CFG-35.chatgptSair')), nome);
+async function cadaDesfechoDoSair() {
+  const vistos = {};
+  await recomecar();
+  for (const [nome, resposta, depois] of SAIDAS) {
+    await lerComoLogin('conectada');
+    vistos[nome] = await clicar(sair(), resposta, depois);
   }
+  return vistos;
+}
+
+async function cadaEstadoDaColuna() {
+  const vistos = {};
+  await recomecar();
+  for (const [nome, login, temChave] of [['plano com chave', 'conectada', true], ['plano sem chave', 'conectada', false], ['sem login', 'nenhum', true], ['esperando', 'entrando', true]]) {
+    mundo.temChave = temChave;
+    await lerComoLogin(login);
+    vistos[nome] = tela();
+  }
+  vistos.cancelado = (await clicar(textoDaVoz('CFG-35.chaveCancelar'))).coluna;
+  for (const login of ['acabou', 'semPlano']) {
+    await lerComoLogin(login);
+    vistos[login] = tela();
+  }
+  mundo.temChave = true;
+  return vistos;
+}
+
+async function cadaEntradaQueNaoAbre() {
+  const vistos = {};
+  await recomecar();
+  await lerComoLogin('nenhum');
+  for (const [nome, resposta] of [['sem conexão', { status: null, dados: null }], ['sem endereço', { status: 200, dados: { url: 'https://evil.exemplo/' } }]]) {
+    fila.entrar.push(resposta);
+    vistos[nome] = await clicar(textoDaVoz('CFG-35.chatgptBotao'));
+  }
+  return vistos;
+}
+
+async function usarAChave() {
+  const vistos = {};
+  await recomecar();
+  for (const [nome, login, resposta] of [['com o login acabado', 'acabou', OK(true)], ['sem login acabado', 'semPlano']]) {
+    campos.length = 0;
+    await lerComoLogin(login);
+    vistos[nome] = { ...(await clicar(textoDaVoz('CFG-35.erroChatgptUsarChave'), resposta, 'nenhum')), campos: campos.slice() };
+  }
+  return vistos;
 }
 
 async function doisCliquesSeguidosPedemUmaSaidaSo() {
-  await entrarNaTelaCom('conectada');
-  fila.sair.push({ status: 200, dados: { ok: true, revogada: true } });
+  await recomecar();
+  await lerComoLogin('conectada');
+  fila.sair.push(OK(true));
   fila.estado.push(LOGIN.nenhum);
-  const sair = botao(textoDaVoz('CFG-35.chatgptSair'));
-  sair.disparar('click');
-  sair.disparar('click');
+  const botaoDeSair = botao(sair());
+  botaoDeSair.disparar('click');
+  botaoDeSair.disparar('click');
   await esperar();
   await esperar();
-  assert.deepStrictEqual(feitos(), ['sair', 'estado']);
+  return feitos();
 }
 
-async function usarAChaveDoLoginQueAcabouSaiSemAvisarOCampoRecebeOFoco() {
-  const toastsAntes = toasts().length;
-  await entrarNaTelaCom('acabou');
-  assert.ok(faixa().includes(textoDaVoz('CFG-46.acabou')), faixa());
-  fila.sair.push({ status: 200, dados: { ok: true, revogada: true } });
-  fila.estado.push(LOGIN.nenhum);
-  botao(textoDaVoz('CFG-35.erroChatgptUsarChave')).disparar('click');
-  await esperar();
-  await esperar();
-  assert.deepStrictEqual(feitos(), ['sair', 'estado']);
-  assert.strictEqual(toasts().length, toastsAntes, 'sair calado não avisa');
-  assert.deepStrictEqual(campos, ['foco']);
-  assert.strictEqual(faixa(), '');
-}
-
-async function usarAChaveSemLoginAcabadoSoLevaOFoco() {
-  campos.length = 0;
-  await entrarNaTelaCom('conectada');
-  fila.estado.push({ status: 200, dados: { conectada: false, falha: 'chatgpt_not_eligible' } });
-  seguidores[0]('ligada');
-  await esperar();
-  feitos();
-  assert.ok(faixa().includes(textoDaVoz('CFG-35.erroChatgptNaoServe')), faixa());
-  botao(textoDaVoz('CFG-35.erroChatgptUsarChave')).disparar('click');
-  await esperar();
-  assert.deepStrictEqual([feitos(), campos], [[], ['foco']]);
-}
+const CASOS = { cadaDesfechoDoSair, cadaEstadoDaColuna, cadaEntradaQueNaoAbre, usarAChave, doisCliquesSeguidosPedemUmaSaidaSo };
 
 async function main() {
-  for (const caso of [
-    sairComARevogacaoMostraOAvisoEOEstadoNovo,
-    sairSemRevogacaoDizQueOChatGPTNaoConfirmou,
-    cadaRespostaQueNaoDizOkViraAFaixaDoPedido,
-    doisCliquesSeguidosPedemUmaSaidaSo,
-    usarAChaveDoLoginQueAcabouSaiSemAvisarOCampoRecebeOFoco,
-    usarAChaveSemLoginAcabadoSoLevaOFoco,
-  ]) {
-    await caso();
+  const vistos = {};
+  for (const [nome, caso] of Object.entries(CASOS)) vistos[nome] = await caso();
+  if (process.env.GRAVAR_O_ESPERADO === '1') {
+    console.log(`'use strict';\n\nmodule.exports = {\n${Object.entries(vistos).map(([nome, valor]) => `  ${nome}: ${JSON.stringify(valor)},`).join('\n')}\n};`);
+    return;
   }
+  const esperado = require('./painel_ia_chatgpt_esperado.js');
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(vistos)), esperado);
+  console.log('painel ia chatgpt tests passed');
 }
 
 main().catch(erro => { console.error(erro); process.exit(1); });
