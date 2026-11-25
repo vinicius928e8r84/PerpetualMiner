@@ -7,7 +7,7 @@ from unittest import mock
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import openai_api, rotas_da_chave
-from complemento.chaves import Cofre, LegadoNaoVinculado, OutraContaNaoEnviada
+from complemento.chaves import Cofre, LegadoNaoVinculado, OutraContaNaoEnviada, Posse
 from complemento.nuvem_da_chave import NuvemDaChave, NuvemIndisponivel
 
 CHAVE = 'sk-proj-ChaveDeTeste0123456789-abcd'
@@ -183,14 +183,14 @@ class VincularOLegado(Caracterizacao):
     def test_o_cofre_vincula_ou_recusa_o_legado_do_corpo(self):
         self.conferir_casos([
             ('vinculado', legado(), {'vincular_legado': True}, None, (200, {'ok': True}),
-             [mock.call.vincular_legado('openai', CHAVE, 'uid-a', 1700000000000, 1)], []),
+             [mock.call.vincular_legado('openai', Posse(CHAVE, 'uid-a', 1700000000000), 1)], []),
             ('sem versão, chave e conta vazias, hora 0', legado(versao=..., chave='', conta='', em=0), {'vincular_legado': True}, None,
-             (200, {'ok': True}), [mock.call.vincular_legado('openai', '', '', 0, 0)], []),
+             (200, {'ok': True}), [mock.call.vincular_legado('openai', Posse('', '', 0), 0)], []),
             ('conta de 128 caracteres e a maior hora do JS', legado(conta='c' * 128, em=MAIOR_INTEIRO_DO_JS),
              {'vincular_legado': True}, None, (200, {'ok': True}),
-             [mock.call.vincular_legado('openai', CHAVE, 'c' * 128, MAIOR_INTEIRO_DO_JS, 1)], []),
+             [mock.call.vincular_legado('openai', Posse(CHAVE, 'c' * 128, MAIOR_INTEIRO_DO_JS), 1)], []),
             ('o cofre recusa', legado(), {'vincular_legado': False}, None, (409, {'error': 'legacy_key_mismatch'}),
-             [mock.call.vincular_legado('openai', CHAVE, 'uid-a', 1700000000000, 1)], []),
+             [mock.call.vincular_legado('openai', Posse(CHAVE, 'uid-a', 1700000000000), 1)], []),
         ])
 
 

@@ -7,7 +7,7 @@ const vm = require('vm');
 const { DocumentoFalso, Fotografo, montarAPagina, IDS_DA_PAGINA } = require('./baralhos_pagina_falsa.js');
 
 const RAIZ = path.resolve(__dirname, '..');
-const ARQUIVOS_DO_PAINEL = ['painel/painel-anki-baralhos.js'];
+const ARQUIVOS_DO_PAINEL = ['painel/painel-anki-vocabulario.js', 'painel/painel-anki-baralhos.js'];
 const SITUACAO = Object.freeze({ CONECTANDO: 'conectando', LIGADA: 'ligada', DESLIGADA: 'desligada' });
 const MINUTO = 60 * 1000;
 const COMECO = Date.UTC(2026, 10, 21, 12, 0, 0);
