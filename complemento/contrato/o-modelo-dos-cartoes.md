@@ -2,8 +2,7 @@
 
 POST com a origem da extensão; o contexto é `modelo` (um cenário de `modelos`, em `exemplos-do-modelo.json`: o dia de hoje, a escolha de antes,
 o que a OpenAI lista para a chave e para o plano e as datas de saída que valem sobre a lista nossa, `complemento/modelos_da_ia.json`);
-quem paga vem dos contextos de sempre (`chatgpt`, `chaveNaConexao`, `openai`). Nenhuma resposta leva a chave nem um token
-(`docs/design/modelo-dos-cartoes.md`).
+quem paga vem dos contextos de sempre (`chatgpt`, `chaveNaConexao`, `openai`). Nenhuma resposta leva a chave nem um token.
 
 | Rota | Corpo | Resposta |
 |---|---|---|

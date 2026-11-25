@@ -1,7 +1,7 @@
 """Entrar com o ChatGPT (#155): a tentativa de login, o retorno, os tokens e a renovação, só com a biblioteca padrão.
 
-O desenho (dono de cada dado, estados, transições e limites) está em `docs/design/login-do-chatgpt.md`; os endereços e os
-valores do protocolo, em `chatgpt_oficial.py`. Os tokens moram só em `user_files/chaves/chatgpt.json` (0600, gravado de uma
+Os endereços e os
+valores do protocolo estão em `chatgpt_oficial.py`. Os tokens moram só em `user_files/chaves/chatgpt.json` (0600, gravado de uma
 vez); nada daqui os devolve, nem os escreve no log: o log diz o que aconteceu e, no máximo, o status HTTP. A tentativa de login
 (`state`, verificador do PKCE e `nonce`) fica na memória, uma por vez, e vale uma vez só. Toda leitura e escrita do arquivo,
 a troca do código, a renovação e o Sair passam pela mesma tranca: o `refresh_token` roda a cada renovação.

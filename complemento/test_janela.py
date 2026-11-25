@@ -357,21 +357,7 @@ class OItemNoMenuDoAnki(unittest.TestCase):
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-def tabela_da_pagina():
-    """Os textos de `docs/design/dentro-do-anki.md`: `ANK-02.progresso` → o modelo da linha da tabela."""
-    with open(os.path.join(RAIZ, "docs", "design", "dentro-do-anki.md"), encoding="utf-8") as arquivo:
-        linhas = [linha for linha in arquivo.read().split("\n") if linha.startswith("| ANK-")]
-    celulas = [[c.strip().replace("\\|", "|") for c in re.split(r"(?<!\\)\|", linha)[1:-1]] for linha in linhas]
-    return {id_: modelo for id_, modelo, *_ in celulas}
-
-
 class ACopiaDaJanelaEADaVoz(unittest.TestCase):
-    def test_cada_texto_da_janela_e_o_da_pagina_de_desenho_por_id(self):
-        tabela = tabela_da_pagina()
-        meus = {id_: modelo for id_, modelo in texto_da_janela.TEXTOS.items() if id_.startswith("ANK-")}
-        self.assertTrue(meus)
-        self.assertEqual(tabela, meus)
-
     def test_nenhum_texto_da_janela_chama_o_menu_do_anki_de_complementos(self):
         # #237: o Anki em pt-BR chama o menu de Extensões; o mesmo critério do teste do catálogo da extensão.
         com_complementos = {id_: modelo for id_, modelo in texto_da_janela.TEXTOS.items() if re.search(r"complemento", modelo, re.I)}

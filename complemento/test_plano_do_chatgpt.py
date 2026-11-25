@@ -1,6 +1,6 @@
 """O Cartão de texto pelo plano do ChatGPT (#155), visto de fora: com o login feito (o teste faz o papel do navegador, como em
 `test_login_do_chatgpt.py`), o Envio pede o texto pela Responses API, renova o token, para quando o login acaba ou o plano chega ao
-limite, e nenhum token, código ou verificador sai do arquivo do login. O desenho: `docs/design/login-do-chatgpt.md`.
+limite, e nenhum token, código ou verificador sai do arquivo do login.
 
     python3.9 complemento/test_plano_do_chatgpt.py
 """

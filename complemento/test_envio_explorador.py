@@ -4,8 +4,7 @@
 trabalho (`envio.Trabalho.fazer`) roda de verdade, e em cada fronteira dele (cada leitura e cada gravação do estado, o pedido
 da linha, o texto gravado e o momento logo depois dele) o explorador escolhe: seguir, atender o Apagar tudo inteiro,
 matar a Conexão, ou os dois (o Apagar tudo, depois a morte em qualquer fronteira adiante). Depois sobe outra Conexão na mesma
-pasta, deixa a fila terminar e confere o que o desenho promete (`docs/design/envio-no-complemento.md`,
-`docs/design/envio-apagar-tudo.md`):
+pasta, deixa a fila terminar e confere o que o Envio promete:
 
 - depois do Apagar tudo respondido, nem a Palavra nem a Frase ficam em `user_files`, mesmo com a morte no meio;
 - depois dele, no máximo o pedido à OpenAI e a nota que já iam a caminho (um Cartão: a linha já tinha sido lida e o pedido

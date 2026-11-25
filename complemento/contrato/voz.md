@@ -1,6 +1,6 @@
 # A voz e o sotaque do áudio (#174)
 
-Exemplos: `exemplos-da-voz.json`. A voz padrão do Cartão é a do Google; a reserva é uma **lista** de provedores, aberta a outros, que a Conexão tenta na ordem quando o Google falha (`docs/design/audio-do-cartao.md`).
+Exemplos: `exemplos-da-voz.json`. A voz padrão do Cartão é a do Google; a reserva é uma **lista** de provedores, aberta a outros, que a Conexão tenta na ordem quando o Google falha.
 
 ## No pedido do Envio
 

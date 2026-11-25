@@ -5,7 +5,7 @@ description: "Use when changing or reviewing the Configurações area of the pan
 
 # Configurações
 
-Notes from the old `CLAUDE.md` § Architecture. Cross-surface rules: `docs/arquitetura.md`; files: `docs/arquivos/`.
+Notes from the old `CLAUDE.md` § Architecture. Decisions: `docs/adr/`; files: `docs/arquivos/`.
 
 ### IA dos cartões (`painel-ia.js`, `lib/chave-da-openai.js`)
 
@@ -34,9 +34,9 @@ The client sends the revision it observed; only accepted owner mutations increme
 
 `POST /ia/openai/sincronizar` uses captured UID/token transiently; the add-on talks to Firestore. Empty value is deletion, replicated only to the authenticated operation's account. There are no per-UID deletion marks (J1). A key bound to a different signed-in account has no Apagar chave button. Signed out, even a linked key can be deleted only from this computer (`conta: ''`); the cloud is untouched and login can bring its key back. The note distinguishes linked from never-linked keys. A fresh owner read/CAS refuses a foreign owner with a current account, including partial Apagar tudo, without creating that account's tombstone. That refusal has its own CFG-35 copy and Trocar chave action, never futile retry. The wipe modal names the protected key instead of promising deletion. For an eligible owner, explicit Apagar chave and Apagar tudo clear divergent legacy and all old `conta:<uid>` secrets too, with no replacement queue (F4). Legacy UID/time migration requires exact proof of the key already stored; an unbound legacy secret cannot be exported to the first requesting account. Unavailable Conexão prevents a claim of completed save/wipe. Persistent failures/retry/partial wipe are retained. With no pending change or deletion (including a replicated key), unavailable optional Conexão is not a key sync failure; connected, it still receives cloud arrival. Phrase outcomes are separate from key sync; CFG-41 is neutral failure-to-check copy and CFG-04/08 still classify authentication failures.
 
-Tests: `e2e/tests/chave-autoridade.spec.js`, `configuracoes-ia.spec.js` (including content-script isolated-world CDP), real HTTP owner tests in `complemento/test_chave_da_openai.py` and shared `complemento/contrato/exemplos.json`. Old generation/vault-only Node tests were removed; phrase tests remain in `testes/test_sync.js`. Native wipe/fault setup must await preceding Save completion, not only a click. Visual references remain `test.fixme`, pending owner approval. Full invariants/limitations/P6: `docs/seguranca/chave-da-openai.md`.
+Tests: `e2e/tests/chave-autoridade.spec.js`, `configuracoes-ia.spec.js` (including content-script isolated-world CDP), real HTTP owner tests in `complemento/test_chave_da_openai.py` and shared `complemento/contrato/exemplos.json`. Old generation/vault-only Node tests were removed; phrase tests remain in `testes/test_sync.js`. Native wipe/fault setup must await preceding Save completion, not only a click. Visual references remain `test.fixme`, pending owner approval. Why and the accepted limits: `docs/adr/0012-a-chave-da-openai-tem-um-dono-so.md`.
 
-**Conta do ChatGPT (#155, `painel-ia-chatgpt.js`, design: `docs/design/login-do-chatgpt.md`).** The column asks the Conexão
+**Conta do ChatGPT (#155, `painel-ia-chatgpt.js`, decision: `docs/adr/0013-quem-paga-a-ia-dos-cartoes.md`).** The column asks the Conexão
 (`PedidoAoAnki.estadoDoChatGPT/entrarComOChatGPT/sairDoChatGPT`) and stores nothing in the browser: the tokens live only in the
 Conexão's `user_files/chaves/chatgpt.json`. The button gets the authorize URL (opened with `chrome.tabs.create`, only if it starts
 with `https://auth.openai.com/api/accounts/authorize?`), then “Esperando o ChatGPT…” (Cancelar stops waiting) re-reads the state every
@@ -47,9 +47,9 @@ place (`ColunaDoChatGPT.coluna/faixa(lugar)`), so a key being typed is not lost.
 (auth.openai.com is mapped to the local fake server: the extension's tab escapes `context.route` on its first navigation), the
 fixme reference in `configuracoes-chatgpt-visual.spec.js`, and `complemento/test_login_do_chatgpt.py`, `test_plano_do_chatgpt.py`.
 
-**The rest of the plan (#156, design: `docs/design/imagem-pelo-plano.md`).** The first time the column reads the login as connected, a Veio modal (CFG-35.planoTitulo…planoEntendi, built in `painel-ia-chatgpt.js` on `Veio.abrirModal`) says the plan is in use; Entendi, Esc and a click outside store `pm_plano_do_chatgpt_avisado: true` in `chrome.storage.local` (this computer only) and it never returns. Connected with no stored key (`CartaoDaIA.temChave()`), the column adds CFG-35.semChave (photo or no generated image). The strip for `chatgpt_not_eligible` (the second `invalid_grant` in a row, or the Envio's code) says the plan does not serve a free or Go account, with Usar a chave (focus on the key field). Tests: `configuracoes-chatgpt-plano.spec.js`, fixme references in `configuracoes-chatgpt-visual.spec.js`.
+**The rest of the plan (#156, decision: `docs/adr/0013-quem-paga-a-ia-dos-cartoes.md`).** The first time the column reads the login as connected, a Veio modal (CFG-35.planoTitulo…planoEntendi, built in `painel-ia-chatgpt.js` on `Veio.abrirModal`) says the plan is in use; Entendi, Esc and a click outside store `pm_plano_do_chatgpt_avisado: true` in `chrome.storage.local` (this computer only) and it never returns. Connected with no stored key (`CartaoDaIA.temChave()`), the column adds CFG-35.semChave (photo or no generated image). The strip for `chatgpt_not_eligible` (the second `invalid_grant` in a row, or the Envio's code) says the plan does not serve a free or Go account, with Usar a chave (focus on the key field). Tests: `configuracoes-chatgpt-plano.spec.js`, fixme references in `configuracoes-chatgpt-visual.spec.js`.
 
-**Modelo dos cartões (#157, `painel-ia-modelo.js` + `painel-ia-modelo.css`, design: `docs/design/modelo-dos-cartoes.md`).** The card's Avançado
+**Modelo dos cartões (#157, `painel-ia-modelo.js` + `painel-ia-modelo.css`, decision: `docs/adr/0013-quem-paga-a-ia-dos-cartoes.md`).** The card's Avançado
 (`details.ia-avancado`, CFG-44; the label is BRG-32.titulo) is a select of the account's models, Automático by default, over
 `PedidoAoAnki.estadoDoModelo/escolherOModelo`; nothing is stored in the browser. Without key and login, or with the Conexão off or
 old (404), there is no Avançado (nothing is claimed). Below the select: “Pago pela sua chave”, or the plan line of the ChatGPT column
@@ -152,5 +152,5 @@ The panel retains phrase and key outcomes separately: phrase failure/partial/loa
 A sync problem shows **only** in the card and the chip — never a toast or a strip in another area. The one exception is
 the spec's own PAI-15: when a delete reaches this computer but not the cloud, Frases also shows the persistent aviso
 saying those phrases may come back, with “Tentar de novo”; the card and the chip still say the computer is out of sync. `painel.js` maps the cloud module's failure `motivo` to the account's situation through
-`situacaoDoErro` (see “Firebase / Firestore Sync” in `docs/arquitetura.md`), and the raw message goes to the card's collapsed “Detalhes”. Closing Google's login window is not an
+`situacaoDoErro` (see `docs/adr/0002-so-frases-sobem-para-a-nuvem.md`), and the raw message goes to the card's collapsed “Detalhes”. Closing Google's login window is not an
 error and shows nothing; a login that fails shows CFG-07 in the card with “Tentar de novo”.

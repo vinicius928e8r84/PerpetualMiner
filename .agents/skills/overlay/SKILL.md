@@ -5,9 +5,9 @@ description: "Use when changing or reviewing the in-page overlay and what drives
 
 # Overlay
 
-Notes from the old `CLAUDE.md` § Architecture. Cross-surface rules: `docs/arquitetura.md`; files: `docs/arquivos/`.
+Notes from the old `CLAUDE.md` § Architecture. Decisions: `docs/adr/`; files: `docs/arquivos/`.
 
-### Overlay (`overlay/overlay.js`, `overlay/overlay.css`, docs/design/overlay/, M1)
+### Overlay (`overlay/overlay.js`, `overlay/overlay.css`, M1, `docs/adr/0007-as-telas-do-redesign.md`)
 
 The overlay is one component in Shadow DOM. The only node it adds to the site's DOM is the host,
 `<perpetualminer-overlay>` (its position rules are inline and `!important`, so the site's CSS cannot hide or
@@ -76,7 +76,7 @@ take trusted events.
   with a video and no caption on screen it says MIN-04. The keyboard selection shortcut with nothing selected says
   MIN-10 on a page without a video, and nothing on a page with one; a mouse selection shortcut with nothing
   selected leaves the button to do what it always did (back, forward), so it says nothing. “Without a video” means no frame of the tab has one:
-  a frame without a video asks the others first (`HA_VIDEO_EM_OUTRO_FRAME`, see Cross-Frame Communication in `docs/arquitetura.md`), so
+  a frame without a video asks the others first (`HA_VIDEO_EM_OUTRO_FRAME`, see `content.js`), so
   a player in a cross-origin iframe never gets a false MIN-10 from the top frame.
 - **Typing is the person's:** neither shortcut fires while typing in an `input`, `textarea`, `select` or
   `contenteditable` (`Atalhos.digitandoNumCampo`, through the event's composed path; inside a *closed* shadow

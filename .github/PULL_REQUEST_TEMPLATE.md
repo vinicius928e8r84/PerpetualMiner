@@ -82,7 +82,7 @@ O check "Registro da PR" (.github/workflows/registro-da-pr.yml, scripts/ci/regis
    Política: sem mudança: <motivo>
 
    Nas outras PRs basta "Política: sem mudança" (ou com o motivo). A PR da política não precisa estar mesclada, mas a
-   política tem de estar no ar antes de a versão ir para a loja ou para o AnkiWeb (docs/publicar-chrome-web-store.md).
+   política tem de estar no ar antes de a versão ir para a loja ou para o AnkiWeb (issue #808).
 
 6. Uma PR que muda um arquivo que o usuário vê (a lista é a de .agents/skills/verify-perpetualminer/scripts/mapa-de-features.sh)
    atualiza .agents/skills/verify-perpetualminer/features/ ou diz no corpo, quando o mapa não muda:

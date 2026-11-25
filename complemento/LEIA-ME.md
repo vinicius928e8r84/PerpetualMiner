@@ -11,21 +11,21 @@ Ela sobe em `127.0.0.1:8766`, numa thread, e responde a saúde
 | `__init__.py` | O que o Anki importa. Fora do Anki (nos testes) não há `aqt`; nada acontece |
 | `no_anki.py` | A ligação com o `mw` do Anki: `perfil_aberto` (só com a coleção aberta; selecionado na janela de perfis é `null`), `ColecaoDoAnki` (o adaptador da coleção: lê e grava na thread principal, só no perfil marcado, que abre pelas funções de perfil do Anki) e `ao_carregar` |
 | `perfil.py`, `rotas_do_perfil.py` | O perfil fixo (#149): `user_files/perfil.json` guarda o da primeira conexão; os adaptadores só gravam nele (`OutroPerfil`, `PerfilSumiu`: o Envio espera); as rotas o listam, escolhem e abrem |
-| `tipo_proprio.py`, `tipo_do_envio.py` | Usar um tipo que já tenho (#165): `POST /anki/note-types` lista os tipos da pessoa; `tipoProprio` `{ nome, mapa }` na prévia e no `POST /jobs` grava só notas nesse tipo. `docs/design/tipo-proprio.md` |
-| `rotas_da_frente.py` | A frente do Cartão (#166): `POST /anki/card-front` `{ lang, frente }` reescreve o modelo de Cartão do tipo de nota do idioma (`tipo_de_nota.trocar_a_frente`); nenhuma nota, nenhuma IA. `docs/design/frentes-do-cartao.md` |
+| `tipo_proprio.py`, `tipo_do_envio.py` | Usar um tipo que já tenho (#165): `POST /anki/note-types` lista os tipos da pessoa; `tipoProprio` `{ nome, mapa }` na prévia e no `POST /jobs` grava só notas nesse tipo. |
+| `rotas_da_frente.py` | A frente do Cartão (#166): `POST /anki/card-front` `{ lang, frente }` reescreve o modelo de Cartão do tipo de nota do idioma (`tipo_de_nota.trocar_a_frente`); nenhuma nota, nenhuma IA. |
 | `inicio.py` | Ao carregar: prepara `user_files`, o log e sobe a Conexão. Nunca levanta erro |
 | `servidor.py` | O servidor HTTP e as rotas (`ROTAS`); `_pedido_aceito` é o porteiro: só a extensão pareada é atendida |
-| `pareamento.py`, `rotas_do_pareamento.py` | O pareamento com cada navegador (#192): o código (5 min, 5 tentativas), o segredo em `user_files/pareamento.json` (0600, até 5), a prova da Conexão e a assinatura de cada pedido; as três rotas dele. `docs/design/pareamento-da-conexao.md`, `contrato/o-pareamento.md` |
+| `pareamento.py`, `rotas_do_pareamento.py` | O pareamento com cada navegador (#192): o código (5 min, 5 tentativas), o segredo em `user_files/pareamento.json` (0600, até 5), a prova da Conexão e a assinatura de cada pedido; as três rotas dele. `contrato/o-pareamento.md`; a decisão: `docs/adr/0011-pareamento-com-codigo-no-anki-e-hmac.md` |
 | `rotas_do_item_de_login.py`, `colecao_vazia.py` | As rotas de “Abrir o Anki com o computador” e a coleção de uma Conexão sem adaptador, fora do `servidor.py` |
 | `rotas_da_chave.py`, `rotas_do_envio.py` | As rotas da chave (`/ia/openai/…`, `/ia/estado`) e do Envio (`/jobs/…`, `/analytics/jobs`) em `servidor.ROTAS` |
 | `tipo_de_nota.py` | O tipo de nota próprio de cada idioma (#161): nome, campos (**todos** desde o nascimento: mudar campos depois força uma sincronização completa no Anki), modelo e CSS, montados do `estilos.json`; `preparar(colecao)` cria os tipos e, numa instalação nova, os Baralhos `PerpetualMiner::Inglês` e `PerpetualMiner::Russo` (quem já tem Baralho fica com o seu). Só cria: nada que já existe é tocado |
 | `baralhos.py` | O que se lê da coleção: a lista de Baralhos, os números de cada um e o vocabulário, só pelo lado de leitura de um adaptador da coleção (o contrato do adaptador, de leitura e gravação, está no topo) |
 | `pedido_do_envio.py` | O pedido de `POST /jobs` (o que vale, a impressão do corpo) e o id do Envio; `envio.py` os reexporta |
-| `envio.py` | O Envio (#142): a fila, o estado de cada Cartão e o trabalho que gera o texto e grava cada nota pelo adaptador (thread principal do Anki), esperando o Anki; o criar idempotente pelo `jobId`, a retomada sem refazer o pronto e o `guid` fixo por Cartão (#173). `docs/design/envio-no-complemento.md`. `motor_do_envio.py`: o motor de cada pedido; `limite_do_plano.py`: o limite do plano (#158); `estado_do_envio.py`: a máquina |
+| `envio.py` | O Envio (#142): a fila, o estado de cada Cartão e o trabalho que gera o texto e grava cada nota pelo adaptador (thread principal do Anki), esperando o Anki; o criar idempotente pelo `jobId`, a retomada sem refazer o pronto e o `guid` fixo por Cartão (#173). `motor_do_envio.py`: o motor de cada pedido; `limite_do_plano.py`: o limite do plano (#158); `estado_do_envio.py`: a máquina |
 | `trabalhador.py` | A thread de trabalho do Envio: tira um Envio da fila de cada vez e o faz (`envio.Trabalho`); depois de subir, espera até 60 s o primeiro pedido de Envio antes de retomar o que ficou parado |
-| `imagem_do_cartao.py` | A imagem do Cartão (#144): foto do Openverse ou gerada; se falha, o Cartão vai sem. `imagem_qt.py`: o Qt do Anki. `docs/design/imagem-do-cartao.md` |
-| `voz.py` | A voz do Cartão (#143): o áudio pedido ao Google Tradutor como o gTTS 2.5 faz, só com a biblioteca padrão; `audio_do_cartao.py` o liga ao Envio. Página: `docs/design/audio-do-cartao.md` |
-| `janela.py`, `qt_do_anki.py`, `texto_da_janela.py` | A janela “PerpetualMiner…” em Ferramentas, o Config, os avisos do Envio (#175), o diálogo do código e o Desconectar navegadores (#192): `docs/design/dentro-do-anki.md` |
+| `imagem_do_cartao.py` | A imagem do Cartão (#144): foto do Openverse ou gerada; se falha, o Cartão vai sem. `imagem_qt.py`: o Qt do Anki. |
+| `voz.py` | A voz do Cartão (#143): o áudio pedido ao Google Tradutor como o gTTS 2.5 faz, só com a biblioteca padrão; `audio_do_cartao.py` o liga ao Envio. |
+| `janela.py`, `qt_do_anki.py`, `texto_da_janela.py` | A janela “PerpetualMiner…” em Ferramentas, o Config, os avisos do Envio (#175), o diálogo do código e o Desconectar navegadores (#192) |
 | `diagnostico.py` | O diagnóstico de um Envio (`/jobs/debug-bundle`) |
 | `custos.py` | Os custos de cada Envio (`user_files/custos/<jobId>/costs.jsonl`, do `cost_tracker` do motor) nas linhas que a aba Custos lê |
 | `retencao_dos_envios.py` | Retenção (#243): Envio terminado há 30 dias perde fila e estado; custos ficam |
@@ -34,13 +34,13 @@ Ela sobe em `127.0.0.1:8766`, numa thread, e responde a saúde
 | `normalizacao.py` | A lógica pura do vocabulário e dos números (na biblioteca padrão) |
 | `chaves.py` | O cofre das chaves: `user_files/chaves/openai.json`, só do dono (0600), gravado de uma vez; a chave inteira só sai daqui para o pedido que a gasta |
 | `login_do_chatgpt.py`, `rotas_do_chatgpt.py`, `paginas_do_navegador.py`, `chatgpt_oficial.py` | O login do ChatGPT (#155): tokens só em `chaves/chatgpt.json` (0600), PKCE |
-| `teto_do_mes.py`, `rotas_do_teto.py` | O teto do mês (#160): US$ 10 por padrão, em `user_files/teto-do-mes.json`; o Envio pausa antes do próximo Cartão no teto. `docs/design/teto-do-mes.md` |
-| `modelo_dos_cartoes.py`, `rotas_do_modelo.py`, `modelos_da_ia.json` | O modelo dos cartões (#157): a escolha em `user_files/modelo-dos-cartoes.json`, a lista da conta e a troca antes da saída; `modelos_da_ia.json` (a lista nossa) traz o dia de cada saída. `docs/design/modelo-dos-cartoes.md` |
+| `teto_do_mes.py`, `rotas_do_teto.py` | O teto do mês (#160): US$ 10 por padrão, em `user_files/teto-do-mes.json`; o Envio pausa antes do próximo Cartão no teto. |
+| `modelo_dos_cartoes.py`, `rotas_do_modelo.py`, `modelos_da_ia.json` | O modelo dos cartões (#157): a escolha em `user_files/modelo-dos-cartoes.json`, a lista da conta e a troca antes da saída; `modelos_da_ia.json` (a lista nossa) traz o dia de cada saída. |
 | `openai_api.py` | Conferir uma chave da OpenAI (`GET /v1/models` e um `POST /v1/embeddings` de uma palavra, só com a biblioteca padrão): recusada, sem crédito, organização não verificada ou a OpenAI fora do ar. Nunca copia o que a OpenAI diz ao recusar para o log nem para a resposta |
 | `item_de_login.py` | O item de login de “Abrir o Anki com o computador”: um LaunchAgent no Mac, um atalho na pasta Inicializar no Windows (o `.lnk` escrito byte a byte). Ligar escreve, desligar apaga; desligado por padrão |
 | `abridor.py` | O abridor de “Abrir o Anki sozinho” (#147): ao carregar, a cada perfil que abre e quando se escolhe outro, escreve em `user_files/abridor` o script com o caminho do Anki e o perfil marcado (`.sh` no Mac; no Windows, um `.bat` que chama com o PowerShell do Windows o `.ps1` ao lado) e o registra como host de Native Messaging `com.perpetualminer.abridor`, só para a origem da extensão: no Mac, o manifesto na pasta de hosts do Chrome; no Windows, o valor padrão de `HKCU\Software\Google\Chrome\NativeMessagingHosts\com.perpetualminer.abridor` (onde o Opera GX 136 o achou). O script responde `conferir` (o Anki está lá?), `abrir` (abre o Anki com `-p "<perfil>"`) e `consertar` (#152), pelos exemplos de `contrato/`. Escrever falhou: vai ao log, a Conexão sobe assim mesmo |
-| `conserto_do_anki.py`, `…_windows.py` | `consertar` do abridor (#152): fecha o Anki parado e reabre, ou liga a Conexão no `meta.json`; só o Anki anotado pelo complemento. Ensaio: `docs/design/ensaio-do-conserto.md` |
-| `passagem.py`, `passagem_das_copias.py`, `passagem_do_windows.py` | A passagem do Windows do dono (#178): ao carregar no Windows, `inicio.py` acha a Conexão de hoje na porta (`GET /health` com `bridge`), espera o Envio de agora, copia (sem mover) a chave, os custos, os prompts editados e o perfil, passa a fila, apaga o início automático e encerra o processo; só então a Conexão sobe. Sai numa versão seguinte. `passagem_do_windows.py` é o único que toca o sistema (executor injetado). `docs/design/passagem-do-windows.md` |
+| `conserto_do_anki.py`, `…_windows.py` | `consertar` do abridor (#152): fecha o Anki parado e reabre, ou liga a Conexão no `meta.json`; só o Anki anotado pelo complemento. |
+| `passagem.py`, `passagem_das_copias.py`, `passagem_do_windows.py` | A passagem do Windows do dono (#178): ao carregar no Windows, `inicio.py` acha a Conexão de hoje na porta (`GET /health` com `bridge`), espera o Envio de agora, copia (sem mover) a chave, os custos, os prompts editados e o perfil, passa a fila, apaga o início automático e encerra o processo; só então a Conexão sobe. Sai numa versão seguinte. `passagem_do_windows.py` é o único que toca o sistema (executor injetado). |
 | `registro.py` | O logger do complemento: todo erro vai para `user_files/logs/complemento.log` |
 | `pasta_de_dados.py` | `user_files/{fila,estado,custos,logs,chaves,prompts}`, que o Anki preserva nas atualizações (`envio.py`); `prompts` é do dono: um arquivo com o nome de um prompt vale no lugar do padrão (`motor_do_envio.prompt_do_dono`) |
 | `configuracao.py` | Versão, porta e o ID da extensão |
@@ -101,7 +101,7 @@ git push origin main
 
 Mudou um byte do pacote? Sobe a `VERSAO` (o número depois do maior do `versoes.json`) e o troca nos exemplos de `contrato/`,
 registra o hash, refaz o arquivo, roda os testes e faz o commit `Conexão X.Y.Z: versão dada no merge`; senão, não faz nada.
-`test_pacote.py` os cobra aí e no lançamento (`docs/lancamento-da-conexao.md`).
+`test_pacote.py` os cobra aí e no lançamento. Reprovou o `Lançamento`: falta dar a versão, rode `python3 complemento/versao_no_merge.py` na main.
 
 ## Ensaio do dono, no Mac
 
@@ -137,5 +137,4 @@ registra o hash, refaz o arquivo, roda os testes e faz o commit `Conexão X.Y.Z:
 
 O `package` do manifesto é o código da página no AnkiWeb (1108882947; passos do dono em [`docs/ankiweb/LEIA-ME.md`](../docs/ankiweb/LEIA-ME.md)).
 
-Os ensaios do item de login (“Abrir o Anki com o computador”, risco 5) e do abridor (“Abrir o Anki sozinho”, riscos 1 e 2 do #138) estão em
-[`docs/design/ensaios-do-dono-da-conexao.md`](../docs/design/ensaios-do-dono-da-conexao.md).
+Os ensaios do item de login (“Abrir o Anki com o computador”, risco 5) e do abridor (“Abrir o Anki sozinho”, riscos 1 e 2 do #138) que faltam estão na issue #806.

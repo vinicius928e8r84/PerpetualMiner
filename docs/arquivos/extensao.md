@@ -1,8 +1,8 @@
 # Arquivos da extensão
 
-O papel de cada arquivo da raiz, de `lib/` e de `veio/`, com os testes de Node e os arquivos que andam com eles. Lido sob demanda, não em toda sessão.
+O papel de cada arquivo da raiz, de `lib/` e de `veio/`, em uma frase. Lido sob demanda, não em toda sessão.
 
-A regra `indice-de-arquivos` (`scripts/regras/indice-de-arquivos.js`) exige uma linha, aqui ou em [testes-e-ferramentas.md](testes-e-ferramentas.md), para cada arquivo novo da raiz, de `lib/`, de `veio/` e do topo de `scripts/`, e acusa a linha que cita um arquivo que não existe mais. Estas duas tabelas usam `merge=union` no `.gitattributes` (duas inserções no mesmo ponto não conflitam); por isso a mesma regra acusa duas linhas com a mesma primeira coluna no mesmo arquivo, a duplicata que o `union` deixaria passar.
+A regra `indice-de-arquivos` exige uma linha, aqui ou em [testes-e-ferramentas.md](testes-e-ferramentas.md), para cada arquivo novo da raiz, de `lib/`, de `veio/` e do topo de `scripts/`, e acusa a linha que cita um arquivo que não existe mais. Estas duas tabelas usam `merge=union` no `.gitattributes`; por isso a mesma regra acusa duas linhas com a mesma primeira coluna.
 
 | File | Role |
 |------|------|
@@ -15,7 +15,7 @@ A regra `indice-de-arquivos` (`scripts/regras/indice-de-arquivos.js`) exige uma 
 | `lib/ranking.js` | Group ranking of the level quiz (#172); rules: `docs/seguranca/ranking-do-grupo.md` |
 | `lib/atalhos.js` | `PerpetualMiner.Atalhos` — the recorded shortcuts in one place: where they are stored, the defaults, the PT-BR label, “same shortcut” and event matching, and `digitandoNumCampo` (the key belongs to a text field). Loaded by the content script, the panel and the popup |
 | `docs/seguranca/chave-da-openai.md` | Threat model for the account's OpenAI key and the owner-pending Firestore rules |
-| `lib/chave-legada.js` | `PerpetualMiner.ChaveLegada` — the old `pm-segredos` IndexedDB store of the OpenAI key (open, read what is there, clear it) and the old `pm_chave_openai` marks; `lib/chave-da-openai.js` decides whether the old key is carried to the Conexão. Temporary: delete this module, its `<script>` in `painel/painel.html` and the migration in `limparLegado` after 2027-03-01 |
+| `lib/chave-legada.js` | The old `pm-segredos` store of the OpenAI key (open, read, clear) and the old `pm_chave_openai` marks. Temporary: delete it, its `<script>` in `painel/painel.html` and the migration in `limparLegado` after 2027-03-01. |
 | `lib/chave-da-openai.js` | `PerpetualMiner.ChaveDaOpenAI` — transient save/delete/sync requests to the sole owner in the Conexão; `pm_chave_openai` caches only mask/UID/revision/unsent flag. No secret vault or per-UID pending work; exact-proof legacy migration clears the old store. See the module header and `docs/seguranca/chave-da-openai.md` |
 | `complemento/nuvem_da_chave.py` | Stdlib Firestore adapter used by the Conexão's owner, with a transient bearer credential, fixed project URL and sanitized failures; no key-reading endpoint for the extension |
 | `e2e/tests/chave-autoridade.spec.js` | Native Chromium owner regressions of the key (lost reply, late acceptance, same-suffix change, legacy UID, wipe); only external boundaries are faked |
@@ -32,7 +32,7 @@ A regra `indice-de-arquivos` (`scripts/regras/indice-de-arquivos.js`) exige uma 
 | `lib/conexao-na-tela.js` | `PerpetualMiner.ConexaoNaTela` — the shared presentation of the Conexão in the F1 strip, the ONB-16 card and step 4 of the Boas-vindas. See the module's doc comments for its API and caller responsibilities |
 | `lib/configuracao.js` | `PerpetualMiner.Configuracao` — the first-run setup in one place: the 9 steps of the Boas-vindas, when each is done, “agora não”, `pm_boas_vindas`, and the “Configuração pela metade” reminder (ONB-14, ONB-15). Loaded by the panel and popup. See “Configuração pela metade” in the `boas-vindas` skill |
 | `lib/ajustes-de-envio.js` | `PerpetualMiner.AjustesDeEnvio` — the Ajustes de envio in one place: the Baralho padrão of each language, the stored shape of `ankiBridgePresets`, the per-language save that refuses a stale version, and `acompanhar`. Loaded by the panel and the service worker: one default deck everywhere |
-| `lib/txt-de-frases.js` | `PerpetualMiner.TxtDeFrases` — the format of the Frases `.txt`: `ler` (one line to a Frase: the `[Contexto: …]`, the Palavras before ` : `), `escrever` and `escreverParaOAnki` (a Frase to one line). Pure, no screen |
+| `lib/txt-de-frases.js` | The format of the Frases `.txt` (`[Contexto: …]`, the Palavras before ` : `): read a line, write a line. Pure, no screen. |
 | `lib/mineracao.js` | `PerpetualMiner.Mineracao` and `PerpetualMiner.minerarFraseManual` — shared mining requests and selection context. See the module's doc comments for the API, confirmation and title-compatibility contracts |
 | `lib/mineracao-do-dia.js` | `PerpetualMiner.MineracaoDoDia` — shared automatic-mining day rules and storage/message channel names. See the module's doc comments for normalization and the day-query API |
 | `lib/historico.js` | `PerpetualMiner.Historico` — the one owner of the `frases` writes: each operation (`acrescentar`, `editar`, `editarVarias`, `marcarEnviadas`, `marcarExportadas`, `apagar`) takes the `pm-historico` Web Lock (shared by the service worker and the pages), rereads `frases`, changes only what was asked, writes. `Historico.criar({ armazenamento })` is the service worker's (callback storage); the rest use `chrome.storage.local`. Writers move to it (`gravacao-de-frases`); `testes/test_historico.js` interleaves a photo save with a panel edit; `e2e/tests/historico-trancado.spec.js` proves the lock in Chromium. Also `PerpetualMiner.ListasPendentes`, sync lists kept until the cloud confirms (`pm_deleted_ids`, `pm_tombstone_pendente`, `pm_del_`). Loaded before `lib/sincronizacao.js` |
@@ -48,3 +48,44 @@ A regra `indice-de-arquivos` (`scripts/regras/indice-de-arquivos.js`) exige uma 
 | `lib/mineracao-automatica.js` | `PerpetualMiner.MineracaoAutomatica` — the automatic mining seen from a page: `lerEstado()` / `salvarAjustes(mudanca)` and `ligarCampoDoLimite(campo, …)`, the 1–100 daily-limit field. Shared by the popup's tiles and step 6 of the Boas-vindas |
 | `lib/arquivos-da-extensao.js` | `PerpetualMiner.arquivosDaExtensao(lerTexto)` — the files the extension uses at run time, found from `manifest.json` (service worker and its `importScripts`, content scripts, icons, pages and what they load). Read by `lib/auto-recarregar.js` and by `scripts/empacotar-extensao.mjs`, so the two never disagree |
 | `lib/auto-recarregar.js` | `PerpetualMiner.AutoRecarregar.iniciar()` — called at the top of `background.js`; reloads an unpacked (`development`) extension when its files change. See “Testing on devices and the Chrome Web Store” in `docs/testes.md` |
+| `manifest.json` | Permissions and content script registration. |
+| `content.js` | Injected into all pages; mines captions and selections and drives the overlay (skill `overlay`). |
+| `overlay/overlay.js` + `overlay/overlay.css` | The in-page overlay: the floating button and the feedback pill in a Shadow DOM (skill `overlay`). |
+| `background.js` | The service worker: saves Frases, the context menu, the toolbar badge, the day rollover. |
+| `lib/sincronizacao.js` | Cloud sync of the Histórico. |
+| `popup/popup.html/js/css` | The popup (skill `popup`). |
+| `lib/ranking.js` | The group ranking of the level quiz. |
+| `lib/atalhos.js` | The recorded shortcuts: storage, defaults and event matching. |
+| `lib/chave-da-openai.js` | The extension's side of the OpenAI key: requests to the Conexão and the cached summary (skill `configuracoes`). |
+| `conexao/perpetualminer.ankiaddon` | The Conexão com o Anki as the file the person downloads, built at the merge by `complemento/versao_no_merge.py`. |
+| `bookreader/bookreader.html/js/css` | Minerar de uma foto (skill `minerar-foto`). |
+| `bookreader/leitura-do-gemini.js` | The request that reads the marked passages of a photo with Gemini. |
+| `bookreader/abrir-o-painel.js` | Opens or focuses the Painel from Minerar de uma foto. |
+| `veio/tokens.css`, `veio/tema.js`, `veio/componentes.css`, `veio/componentes.js` | The shared Veio identity: tokens, the chosen theme and the base components (`veio/README.md`, skill `veio-componentes`); `veio/` also holds the fonts and icons. |
+| `lib/voz/catalogo.js`, `lib/voz/catalogo-nivel.js` | The Voice catalog as data, the source of every screen text. |
+| `lib/voz/texto.js` | `textoDaVoz(id, valores)`: a catalog text by ID, with its templates filled. |
+| `lib/idioma.js` | The one language detector and the Idioma helpers. |
+| `lib/contexto.js` | The Contexto as the screen says it: the Fonte's name, the day and how long ago. |
+| `lib/contexto-do-site.js` | The Contexto of a mined caption, one rule per player; any other site is `web`. |
+| `lib/legenda-da-pagina.js` | The caption on screen of the active video: a site-to-reader table, the selector reader and the visual reader. |
+| `lib/conexao-anki.js` | The shared owner of `/health` and the connection state across Painel and popup. |
+| `lib/conexao-na-tela.js` | The shared presentation of the Conexão in the first-connection strip, card and step. |
+| `lib/configuracao.js` | The first-run setup: the steps of Boas-vindas and the "Configuração pela metade" reminder. |
+| `lib/ajustes-de-envio.js` | The Ajustes de envio of each Idioma: defaults, stored shape and the save that refuses a stale version. |
+| `lib/mineracao.js` | Shared mining requests and selection context. |
+| `lib/mineracao-do-dia.js` | The day rules and channel names of the Mineração automática. |
+| `lib/historico.js` | The one owner of the writes of `frases`, under the `pm-historico` Web Lock. |
+| `lib/apagar-frases-pendente.js`, `lib/envio-gravado.js` | A pending Apagar tudo that resends itself; the writer of `pm_envio`. |
+| `lib/pedido-ao-anki.js` | The only way the extension asks the Conexão com o Anki: one builder per request. |
+| `lib/pareamento.js` | This browser's Pareamento with the Conexão: the credential, the proof and the signatures. |
+| `lib/abridor.js` | The Conexão's opener seen from the extension (Native Messaging). |
+| `lib/abrir-o-anki.js` | Opening the Anki on the person's click, and the opener's own repair. |
+| `abridor/ponte.html` | The empty page the Painel keeps in a hidden frame for `lib/abridor.js`. |
+| `lib/vocabulario-da-mineracao.js` | The last Vocabulário reading the Mineração automática uses; it has no expiry. |
+| `lib/palavra-automatica.js` | The choice of the Termo for the Mineração automática and for saving a Frase, as a pure function. |
+| `lib/mineracao-automatica-decisao.js` | The Mineração automática's decision, through ports. |
+| `lib/mineracao-automatica.js` | The Mineração automática seen from a page: state, save and the daily-limit field. |
+| `lib/arquivos-da-extensao.js` | The files the extension uses at run time, found from `manifest.json`. |
+| `lib/ankiweb.js` | The code of the Conexão's AnkiWeb page and its download link. |
+| `lib/quiz-de-nivel.js`, `lib/festa-do-quiz.js`, `lib/som-do-quiz.js` | The level quiz of Boas-vindas, its celebration and its sound. |
+| `lib/auto-recarregar.js` | Reloads an unpacked extension when its files change. |

@@ -5,7 +5,7 @@ perde nada: o estado do Envio segue `running` e diz `waiting: { reason: "plan_li
 novo a cada `espera_do_plano` s (um pedido só). Quem conduz a espera é a porta presa ao Envio (`ia_do_envio.py`); aqui fica o lado do Envio
 dela (`EsperaDoEnvio`) e a rota do Usar a minha chave. Quem acorda a espera antes: **Tentar de novo** (`POST /jobs/retry`), que só pede já;
 **Usar a minha chave** (`POST /jobs/usar-a-chave`), que marca o Envio `usingKey` e faz o que falta pela chave; e o Apagar tudo ou
-parar a Conexão, que a encerram. Um Cartão já no Anki, ou com o texto pago, nunca é pedido de novo. Desenho: `docs/design/login-do-chatgpt.md`.
+parar a Conexão, que a encerram. Um Cartão já no Anki, ou com o texto pago, nunca é pedido de novo.
 """
 
 from .estado_do_envio import APAGADO, FIM, situacao
