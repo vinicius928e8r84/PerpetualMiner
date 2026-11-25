@@ -6,7 +6,7 @@ const { semearComoNoPrototipo, abrirConfiguracoes } = require('../apoio-das-conf
 async function recusarOApagarTudo({ page, extensao, fakes }, { largura, altura }) {
   await semearComoNoPrototipo(extensao, fakes);
   fakes.anki.desligar();
-  await abrirConfiguracoes(page, extensao, '#configuracoes/perigo', largura, altura);
+  await abrirConfiguracoes(page, extensao, '#configuracoes/perigo', { largura, altura });
   await page.locator('#cfg-perigo').getByRole('button', { name: /^Apagar todas as/ }).click();
   await page.getByRole('dialog').getByRole('button', { name: /^Apagar .* frases$/ }).click();
   await expect(page.locator('#cfg-perigo').getByRole('alert')).toContainText('Não deu para apagar agora');
