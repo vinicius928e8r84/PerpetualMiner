@@ -35,21 +35,25 @@ function leitoresDosFakes(raiz) {
   return leitoresPorRaiz.get(raiz);
 }
 
-function fimDoCorpo(codigo, de) {
-  const comeco = codigo.slice(de).search(/\S/);
-  if (comeco < 0) return codigo.length;
-  const primeiro = de + comeco;
-  if (codigo[primeiro] === '{') {
-    const fim = fechamento(codigo, primeiro);
-    return fim < 0 ? codigo.length : fim + 1;
-  }
+const eFimDeInstrucao = (c, fundura) => (c === '\n' || c === ';') && fundura <= 0;
+
+function fimDoCorpoEmExpressao(codigo, primeiro) {
   let fundura = 0;
   for (let i = primeiro; i < codigo.length; i++) {
     if ('([{'.includes(codigo[i])) fundura++;
     else if (')]}'.includes(codigo[i])) fundura--;
-    else if ((codigo[i] === '\n' || codigo[i] === ';') && fundura <= 0) return i;
+    else if (eFimDeInstrucao(codigo[i], fundura)) return i;
   }
   return codigo.length;
+}
+
+function fimDoCorpo(codigo, de) {
+  const comeco = codigo.slice(de).search(/\S/);
+  if (comeco < 0) return codigo.length;
+  const primeiro = de + comeco;
+  if (codigo[primeiro] !== '{') return fimDoCorpoEmExpressao(codigo, primeiro);
+  const fim = fechamento(codigo, primeiro);
+  return fim < 0 ? codigo.length : fim + 1;
 }
 
 function funcoes(codigo) {
@@ -100,53 +104,60 @@ function conferenciasDe(corpo) {
   return lista;
 }
 
+const abreCorpoDeBloco = (corpo, i) => corpo[i] === '{' && /(?:\)|=>|\belse|\btry|\bdo)\s*$/.test(corpo.slice(Math.max(0, i - 8), i));
+
+const comecaInstrucaoDepois = (corpo, i, fundura) => (corpo[i] === ';' ? fundura === 0 : abreCorpoDeBloco(corpo, i));
+
 function inicioDaInstrucao(corpo, p) {
   let fundura = 0;
   for (let i = p - 1; i >= 0; i--) {
-    const c = corpo[i];
-    if (')]}'.includes(c)) fundura++;
-    else if ('([{'.includes(c)) {
-      if (fundura > 0) { fundura--; continue; }
-      if (c === '{' && /(?:\)|=>|\belse|\btry|\bdo)\s*$/.test(corpo.slice(Math.max(0, i - 8), i))) return i + 1;
-    } else if (c === ';' && fundura === 0) return i + 1;
+    if (')]}'.includes(corpo[i])) fundura++;
+    else if ('([{'.includes(corpo[i]) && fundura > 0) fundura--;
+    else if (comecaInstrucaoDepois(corpo, i, fundura)) return i + 1;
   }
   return 0;
 }
 
 const ATRIBUICAO = /^\s*(?:(const|let|var)\s+)?(\{[^}]*\}|\[[^\]]*\]|[A-Za-z_$][\w$]*)\s*=(?!=)([^]*)$/;
 
+const eNomeSoltoSemDeclaracao = a => a[1] === undefined && !/^[A-Za-z_$][\w$]*$/.test(a[2]);
+
+function* atribuicoesAte(corpo, p, ate) {
+  let deslocamento = p;
+  for (const parte of corpo.slice(p).split(';')) {
+    const comeco = deslocamento;
+    deslocamento += parte.length + 1;
+    if (comeco >= ate) return;
+    const a = ATRIBUICAO.exec(parte);
+    if (a && !eNomeSoltoSemDeclaracao(a)) yield a;
+  }
+}
+
+function propagarNomesVivos(nomes, atribuicao) {
+  if (identificadores(atribuicao[3]).some(nome => nomes.has(nome))) identificadores(atribuicao[2]).forEach(nome => nomes.add(nome));
+  else if (!atribuicao[1]) nomes.delete(atribuicao[2]);
+}
+
 function nomesVivos(corpo, p, ate) {
   const inicio = inicioDaInstrucao(corpo, p);
   const m = ATRIBUICAO.exec(corpo.slice(inicio, p));
   if (!m) return new Set();
   const nomes = new Set(identificadores(m[2]));
-  let deslocamento = p;
-  for (const parte of corpo.slice(p).split(';')) {
-    const comeco = deslocamento;
-    deslocamento += parte.length + 1;
-    if (comeco >= ate) break;
-    const a = ATRIBUICAO.exec(parte);
-    if (!a || a[1] === undefined && !/^[A-Za-z_$][\w$]*$/.test(a[2])) continue;
-    if (identificadores(a[3]).some(nome => nomes.has(nome))) identificadores(a[2]).forEach(nome => nomes.add(nome));
-    else if (!a[1]) nomes.delete(a[2]);
-  }
+  for (const atribuicao of atribuicoesAte(corpo, p, ate)) propagarNomesVivos(nomes, atribuicao);
   return nomes;
+}
+
+function returnDevolveALeitura(corpo, p, posicao, retorno) {
+  if (posicao > p) return identificadores(retorno[1]).some(nome => nomesVivos(corpo, p, posicao).has(nome));
+  return posicao < p && p < posicao + retorno[0].length;
 }
 
 function leituraDevolvida(corpo, p, poll) {
   const funcao = corpo.slice(poll.de, poll.fim);
-  const relativo = p - poll.de;
   const seta = funcao.search(/=>/);
-  if (seta < 0 || relativo < seta) return false;
-  const depois = funcao.slice(seta + 2);
-  if (!/^\s*\{/.test(depois)) return true;
-  for (const r of funcao.matchAll(/\breturn\b([^;}]*)/g)) {
-    const posicaoDoReturn = poll.de + r.index;
-    if (posicaoDoReturn > p) {
-      if (identificadores(r[1]).some(nome => nomesVivos(corpo, p, posicaoDoReturn).has(nome))) return true;
-    } else if (posicaoDoReturn < p && p < posicaoDoReturn + r[0].length) return true;
-  }
-  return false;
+  if (seta < 0 || p - poll.de < seta) return false;
+  if (!/^\s*\{/.test(funcao.slice(seta + 2))) return true;
+  return [...funcao.matchAll(/\breturn\b([^;}]*)/g)].some(r => returnDevolveALeitura(corpo, p, poll.de + r.index, r));
 }
 
 function leituraConferida(corpo, p, conferencias) {
@@ -157,46 +168,71 @@ function leituraConferida(corpo, p, conferencias) {
   return conferencias.some(c => c.de > p && !c.poll && identificadores(corpo.slice(c.de, c.fim)).some(nome => nomesVivos(corpo, p, c.de).has(nome)));
 }
 
-function anotado(comentarios, linhas, primeira, ultima) {
-  for (let linha = primeira; linha <= ultima; linha++) if (MARCA.test(comentarios.get(linha) || '')) return true;
-  for (let linha = primeira - 1, vistas = 0; linha >= 1 && vistas < 12; linha--, vistas++) {
-    if (MARCA.test(comentarios.get(linha) || '')) return true;
-    const instrucao = (linhas[linha - 1] || '').trim();
-    if (instrucao !== '' && /[;{}]$/.test(instrucao)) break;
+const temMarca = (comentarios, linha) => MARCA.test(comentarios.get(linha) || '');
+
+const fechaInstrucao = (linhas, linha) => /[;{}]$/.test((linhas[linha - 1] || '').trim());
+
+function marcaNasLinhasDoTeste(comentarios, primeira, ultima) {
+  for (let linha = primeira; linha <= ultima; linha++) if (temMarca(comentarios, linha)) return true;
+  return false;
+}
+
+function marcaAcimaDoTeste(comentarios, linhas, primeira) {
+  for (let linha = primeira - 1; linha >= 1 && primeira - linha <= 12; linha--) {
+    if (temMarca(comentarios, linha)) return true;
+    if (fechaInstrucao(linhas, linha)) return false;
   }
   return false;
 }
 
-function verificar(arquivo, fonte, raiz = process.cwd()) {
+const anotado = (comentarios, linhas, primeira, ultima) => marcaNasLinhasDoTeste(comentarios, primeira, ultima) || marcaAcimaDoTeste(comentarios, linhas, primeira);
+
+function contextoDoArquivo(arquivo, fonte, raiz) {
   const codigo = semComentariosJs(fonte);
-  const linhas = codigo.split('\n');
-  const comentarios = comentariosPorLinha(arquivo, fonte);
   const doFake = [...leitoresDosFakes(raiz)];
-  const LEITURA = new RegExp(doFake.length ? `${LEITURA_FIXA.source}|\\.(?:${doFake.join('|')})\\b` : LEITURA_FIXA.source, 'g');
+  const leitura = new RegExp(doFake.length ? `${LEITURA_FIXA.source}|\\.(?:${doFake.join('|')})\\b` : LEITURA_FIXA.source, 'g');
   const defs = funcoes(codigo);
-  const quemAge = quemFaz(defs, ACAO);
-  const quemLe = quemFaz(defs, LEITURA);
-  const achados = [];
-  for (const m of codigo.matchAll(/\btest(?:\.only)?\s*\(\s*(['"`])/g)) {
-    const abre = codigo.indexOf('(', m.index);
-    const fecha = fechamento(codigo, abre);
-    if (fecha < 0) continue;
-    const corpo = codigo.slice(abre + 1, fecha);
-    const acoes = posicoes(corpo, ACAO, quemAge);
-    if (acoes.length === 0) continue;
-    const conferencias = conferenciasDe(corpo);
-    const efetiva = p => (/^estadoFinalInalterado\s*\(/.test(corpo.slice(p)) ? fechamento(corpo, corpo.indexOf('(', p)) : p);
-    const leituras = posicoes(corpo, LEITURA, quemLe).filter(p => efetiva(p) > acoes[acoes.length - 1]);
-    if (leituras.some(p => leituraConferida(corpo, p, conferencias))) continue;
-    const primeira = linhaDe(codigo, m.index);
-    if (anotado(comentarios, linhas, primeira, linhaDe(codigo, fecha))) continue;
-    const titulo = /^\s*(['"`])((?:(?!\1).)*)\1/.exec(codigo.slice(abre + 1, abre + 200).replace(/^\s+/, ''));
-    achados.push({
-      linha: primeira,
-      detalhe: `o teste age (${acoes.length} ação(ões)) e depois da última não lê e compara o que ficou guardado${titulo ? `: “${titulo[2].slice(0, 70)}”` : ''}`,
-    });
-  }
-  return achados;
+  return {
+    codigo,
+    leitura,
+    linhas: codigo.split('\n'),
+    comentarios: comentariosPorLinha(arquivo, fonte),
+    quemAge: quemFaz(defs, ACAO),
+    quemLe: quemFaz(defs, leitura),
+  };
+}
+
+function oTesteConfereOEstado(corpo, acoes, contexto) {
+  const conferencias = conferenciasDe(corpo);
+  const efetiva = p => (/^estadoFinalInalterado\s*\(/.test(corpo.slice(p)) ? fechamento(corpo, corpo.indexOf('(', p)) : p);
+  const leituras = posicoes(corpo, contexto.leitura, contexto.quemLe).filter(p => efetiva(p) > acoes[acoes.length - 1]);
+  return leituras.some(p => leituraConferida(corpo, p, conferencias));
+}
+
+const tituloDoTeste = (codigo, abre) => /^\s*(['"`])((?:(?!\1).)*)\1/.exec(codigo.slice(abre + 1, abre + 200).replace(/^\s+/, ''));
+
+function achadoDoTeste(inicio, contexto) {
+  const { codigo } = contexto;
+  const abre = codigo.indexOf('(', inicio);
+  const fecha = fechamento(codigo, abre);
+  if (fecha < 0) return null;
+  const corpo = codigo.slice(abre + 1, fecha);
+  const acoes = posicoes(corpo, ACAO, contexto.quemAge);
+  if (acoes.length === 0 || oTesteConfereOEstado(corpo, acoes, contexto)) return null;
+  const primeira = linhaDe(codigo, inicio);
+  if (anotado(contexto.comentarios, contexto.linhas, primeira, linhaDe(codigo, fecha))) return null;
+  const titulo = tituloDoTeste(codigo, abre);
+  return {
+    linha: primeira,
+    detalhe: `o teste age (${acoes.length} ação(ões)) e depois da última não lê e compara o que ficou guardado${titulo ? `: “${titulo[2].slice(0, 70)}”` : ''}`,
+  };
+}
+
+function verificar(arquivo, fonte, raiz = process.cwd()) {
+  const contexto = contextoDoArquivo(arquivo, fonte, raiz);
+  return [...contexto.codigo.matchAll(/\btest(?:\.only)?\s*\(\s*(['"`])/g)]
+    .map(m => achadoDoTeste(m.index, contexto))
+    .filter(Boolean);
 }
 
 module.exports = { id, conserto, seAplica, verificar };

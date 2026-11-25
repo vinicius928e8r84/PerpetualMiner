@@ -1,0 +1,200 @@
+     <div class="anki-faixa-conectando" hidden id="anki-conectando" role="status">
+      <span aria-hidden="true" class="anki-ponto">
+      <span data-voz="BRG-02">
+     <section aria-labelledby="anki-primeira-vez-titulo" class="anki-primeira-vez" hidden id="anki-primeira-vez">
+      <div class="apv-topo">
+       <h2 class="apv-titulo" id="anki-primeira-vez-titulo">
+       <p class="apv-apoio" data-voz="ONB-16.apoio" id="apv-apoio">
+      <div id="apv-passos">
+      <div class="apv-rodape" id="apv-rodape">
+       <p class="apv-confere">
+        <span aria-hidden="true" class="anki-ponto">
+        <span id="apv-confere">
+       <div class="apv-quadros">
+        <div class="apv-quadro">
+         <h3 data-voz="ONB-16.continuaTitulo">
+         <p data-voz="ONB-16.continua">
+        <div class="apv-quadro">
+         <h3 data-voz="ONB-16.indisponivelTitulo">
+         <p data-voz="ONB-16.indisponivel">
+     <div class="shell-abas veio-segmentado" data-voz-aria="SHL-03.rotulo" role="radiogroup">
+      <label class="veio-segmentado__opcao">
+       <input name="aba-anki" type="radio" value="custos">
+       <span data-voz="SHL-03.custos">
+      <label class="veio-segmentado__opcao">
+       <input name="aba-anki" type="radio" value="baralhos">
+       <span data-voz="SHL-03.baralhos">
+      <label class="veio-segmentado__opcao">
+       <input name="aba-anki" type="radio" value="vocabulario">
+       <span data-voz="SHL-03.vocabulario">
+      <label class="veio-segmentado__opcao">
+       <input name="aba-anki" type="radio" value="ajustes">
+       <span data-voz="SHL-03.ajustes">
+     <div class="shell-aba" data-aba="custos">
+      <div class="anki-custos" id="anki-custos">
+       <div class="anki-antigo" hidden id="anki-custos-antigo">
+       <div class="anki-barra">
+        <div class="veio-segmentado" data-voz-aria="BRG-28.periodo" role="radiogroup">
+         <label class="veio-segmentado__opcao">
+          <input name="periodo-custos" type="radio" value="hoje">
+          <span data-voz="BRG-28.hoje">
+         <label class="veio-segmentado__opcao">
+          <input checked name="periodo-custos" type="radio" value="mes">
+          <span data-voz="BRG-28.mes">
+         <label class="veio-segmentado__opcao">
+          <input name="periodo-custos" type="radio" value="tudo">
+          <span data-voz="BRG-28.tudo">
+        <div class="anki-datas">
+         <label class="anki-data">
+          <span data-voz="BRG-28.de">
+          <input id="anki-custos-de" type="date">
+         <label class="anki-data">
+          <span data-voz="BRG-28.ate">
+          <input id="anki-custos-ate" type="date">
+       <div class="anki-azulejos" data-voz-aria="BRG-28.idiomas" hidden id="anki-custos-azulejos" role="group">
+       <div id="anki-custos-corpo">
+       <details class="anki-avancado" hidden id="anki-custos-avancado">
+        <summary>
+         <span data-voz="BRG-32.titulo">
+         <small>
+          "·"
+          <span data-voz="BRG-32.resumo">
+        <div class="anki-avancado__corpo">
+         <dl class="anki-numeros" id="anki-custos-avancado-numeros">
+         <div class="anki-avancado__chaves">
+          <label class="veio-toggle">
+           <input id="anki-quatro-casas" type="checkbox">
+           <span class="veio-toggle__trilho">
+           <span data-voz="BRG-32.quatroCasas">
+          <label class="veio-toggle">
+           <input id="anki-ids-dos-envios" type="checkbox">
+           <span class="veio-toggle__trilho">
+           <span data-voz="BRG-32.ids">
+         <div class="anki-diagnostico">
+          <h3 data-voz="BRG-32.diagnostico">
+          <p class="anki-apoio" data-voz="BRG-32.diagnosticoTexto">
+          <table class="anki-tabela">
+           <tbody id="anki-custos-diagnostico">
+          <p class="anki-motivo" hidden id="anki-diagnostico-falha" role="alert">
+     <div class="shell-aba" data-aba="baralhos" hidden>
+      <div class="anki-baralhos" id="anki-baralhos">
+       <div class="anki-topo" id="anki-baralhos-topo">
+       <div class="anki-azulejos" data-voz-aria="BRG-34.idiomas" hidden id="anki-baralhos-azulejos" role="group">
+       <div class="anki-corpo" id="anki-baralhos-corpo">
+     <div class="shell-aba" data-aba="vocabulario" hidden>
+      <div class="anki-vocabulario" id="anki-vocabulario">
+       <div class="anki-topo" id="anki-vocabulario-topo">
+       <div class="anki-azulejos" data-voz-aria="BRG-35.idiomas" hidden id="anki-vocabulario-azulejos" role="group">
+       <div class="anki-filtros" hidden id="anki-vocabulario-filtros">
+        <span class="veio-select">
+         <select class="veio-campo" data-voz-aria="BRG-35.tipo" id="anki-vocabulario-tipo">
+        <span class="veio-select">
+         <select class="veio-campo" data-voz-aria="BRG-35.status" id="anki-vocabulario-status">
+        <label class="anki-busca veio-busca">
+         <span class="veio-busca__lupa">
+          <span data-icone="busca">
+         <input autocomplete="off" class="veio-campo" data-voz-aria="BRG-35.buscar" id="anki-vocabulario-busca" type="search">
+         <button class="veio-botao-icone veio-busca__limpar" data-voz-aria="BRG-35.limparBusca" data-voz-title="BRG-35.limparBusca" hidden id="anki-vocabulario-limpar">
+          <span data-icone="fechar">
+       <p class="anki-apoio anki-resumo" hidden id="anki-vocabulario-resumo" role="status">
+       <div class="anki-corpo" id="anki-vocabulario-corpo">
+     <div class="shell-aba" data-aba="ajustes" hidden>
+      <p class="anki-nota" data-voz="BRG-33.ajustes" hidden id="anki-ajustes-nota">
+      <div class="ajustes" id="ajustes">
+       <div class="ajustes-aviso" id="ajustes-aviso">
+       <div class="ajustes-cards shell-cards" data-voz-aria="BRG-07.idiomas" id="ajustes-cards" role="group">
+    <section aria-labelledby="titulo-configuracoes" class="shell-area" data-area="configuracoes" hidden>
+     <header class="shell-cabecalho">
+      <h1 data-voz="SHL-02.configuracoes" id="titulo-configuracoes">
+     <div class="shell-cards">
+      <section aria-labelledby="cfg-conta-titulo" class="cfg-card shell-card" id="cfg-conta">
+       <div class="cfg-cabeca">
+        <span class="cfg-icone">
+         <span data-icone="conta">
+        <div class="cfg-titulos">
+         <h2 class="shell-card__titulo">
+          <button aria-controls="cfg-conta-corpo" aria-expanded="false" class="cfg-alternar" data-voz="SHL-04.conta" id="cfg-conta-titulo">
+         <p class="cfg-descricao" data-voz="CFG-25">
+        <span class="cfg-resumo" id="cfg-conta-resumo">
+        <span class="cfg-chevron">
+         <span data-icone="abrir">
+       <div class="cfg-corpo" hidden id="cfg-conta-corpo">
+      <section aria-labelledby="cfg-atalhos-titulo" class="cfg-card shell-card" id="cfg-atalhos">
+       <div class="cfg-cabeca">
+        <span class="cfg-icone">
+         <span data-icone="teclado">
+        <div class="cfg-titulos">
+         <h2 class="shell-card__titulo">
+          <button aria-controls="cfg-atalhos-corpo" aria-expanded="false" class="cfg-alternar" data-voz="SHL-04.atalhos" id="cfg-atalhos-titulo">
+         <p class="cfg-descricao" data-voz="CFG-33">
+        <span class="cfg-resumo" id="cfg-atalhos-resumo">
+        <span class="cfg-chevron">
+         <span data-icone="abrir">
+       <div class="cfg-corpo" hidden id="cfg-atalhos-corpo">
+      <section aria-labelledby="cfg-ia-titulo" class="cfg-card shell-card" id="cfg-ia">
+       <div class="cfg-cabeca">
+        <span class="cfg-icone">
+         <span data-icone="ia">
+        <div class="cfg-titulos">
+         <h2 class="shell-card__titulo">
+          <button aria-controls="cfg-ia-corpo" aria-expanded="false" class="cfg-alternar" data-voz="CFG-35.titulo" id="cfg-ia-titulo">
+         <p class="cfg-descricao" data-voz="CFG-35.descricao">
+        <span class="cfg-resumo" id="cfg-ia-resumo">
+        <span class="cfg-chevron">
+         <span data-icone="abrir">
+       <div class="cfg-corpo" hidden id="cfg-ia-corpo">
+      <section aria-labelledby="cfg-chave-titulo" class="cfg-card shell-card" id="cfg-chave">
+       <div class="cfg-cabeca">
+        <span class="cfg-icone">
+         <span data-icone="chave">
+        <div class="cfg-titulos">
+         <h2 class="shell-card__titulo">
+          <button aria-controls="cfg-chave-corpo" aria-expanded="false" class="cfg-alternar" data-voz="CFG-15.titulo" id="cfg-chave-titulo">
+         <p class="cfg-descricao" data-voz="CFG-15.descricao">
+        <span class="cfg-resumo" id="cfg-chave-resumo">
+        <span class="cfg-chevron">
+         <span data-icone="abrir">
+       <div class="cfg-corpo" hidden id="cfg-chave-corpo">
+      <section aria-labelledby="cfg-anki-titulo" class="cfg-card shell-card" id="cfg-anki">
+       <div class="cfg-cabeca">
+        <span class="cfg-icone">
+         <span data-icone="anki">
+        <div class="cfg-titulos">
+         <h2 class="shell-card__titulo">
+          <button aria-controls="cfg-anki-corpo" aria-expanded="false" class="cfg-alternar" data-voz="SHL-04.anki" id="cfg-anki-titulo">
+         <p class="cfg-descricao" data-voz="CFG-40">
+        <span class="cfg-resumo" id="cfg-anki-resumo">
+        <span class="cfg-chevron">
+         <span data-icone="abrir">
+       <div class="cfg-corpo" hidden id="cfg-anki-corpo">
+      <section aria-labelledby="cfg-aparencia-titulo" class="cfg-card shell-card" id="cfg-aparencia">
+       <div class="cfg-cabeca">
+        <span class="cfg-icone">
+         <span data-icone="tema">
+        <div class="cfg-titulos">
+         <h2 class="shell-card__titulo">
+          <button aria-controls="cfg-aparencia-corpo" aria-expanded="false" class="cfg-alternar" data-voz="CFG-29.titulo" id="cfg-aparencia-titulo">
+         <p class="cfg-descricao" data-voz="CFG-29.descricao">
+        <span class="cfg-resumo" id="cfg-aparencia-resumo">
+        <span class="cfg-chevron">
+         <span data-icone="abrir">
+       <div class="cfg-corpo" hidden id="cfg-aparencia-corpo">
+        <div class="veio-segmentado" data-voz-aria="CFG-30.rotulo" id="cfg-tema" role="radiogroup">
+         <label class="veio-segmentado__opcao">
+          <input name="tema" type="radio" value="escuro">
+          <span data-voz="CFG-30.escuro">
+         <label class="veio-segmentado__opcao">
+          <input name="tema" type="radio" value="claro">
+          <span data-voz="CFG-30.claro">
+      <section aria-labelledby="cfg-perigo-titulo" class="cfg-card shell-card shell-card--perigo" id="cfg-perigo">
+       <div class="cfg-cabeca">
+        <span class="cfg-icone">
+         <span data-icone="perigo">
+        <div class="cfg-titulos">
+         <h2 class="shell-card__titulo">
+          <button aria-controls="cfg-perigo-corpo" aria-expanded="false" class="cfg-alternar" data-voz="SHL-04.perigo" id="cfg-perigo-titulo">
+         <p class="cfg-descricao" id="cfg-perigo-descricao">
+        <span class="cfg-resumo" id="cfg-perigo-resumo">
+        <span class="cfg-chevron">
+         <span data-icone="abrir">
+       <div class="cfg-corpo" hidden id="cfg-perigo-corpo">

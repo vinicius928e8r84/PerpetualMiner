@@ -3,7 +3,7 @@
 const { test, expect } = require('../fixtures');
 const { semearComoNoPrototipo, abrirConfiguracoes } = require('../apoio-das-configuracoes');
 
-async function recusarOApagarTudo(page, extensao, fakes, largura, altura) {
+async function recusarOApagarTudo({ page, extensao, fakes }, { largura, altura }) {
   await semearComoNoPrototipo(extensao, fakes);
   fakes.anki.desligar();
   await abrirConfiguracoes(page, extensao, '#configuracoes/perigo', largura, altura);
@@ -13,13 +13,13 @@ async function recusarOApagarTudo(page, extensao, fakes, largura, altura) {
 }
 
 test('Apagar tudo recusado: a Conexão não responde', async ({ page, extensao, fakes }) => {
-  await recusarOApagarTudo(page, extensao, fakes, 1280, 800);
+  await recusarOApagarTudo({ page, extensao, fakes }, { largura: 1280, altura: 800 });
 
   await expect(page).toHaveScreenshot('apagar-tudo-recusado-conexao-fora.png', { animations: 'disabled' });
 });
 
 test('Apagar tudo recusado na janela estreita', async ({ page, extensao, fakes }) => {
-  await recusarOApagarTudo(page, extensao, fakes, 390, 844);
+  await recusarOApagarTudo({ page, extensao, fakes }, { largura: 390, altura: 844 });
 
   await expect(page).toHaveScreenshot('apagar-tudo-recusado-conexao-fora-estreita.png', { animations: 'disabled' });
 });

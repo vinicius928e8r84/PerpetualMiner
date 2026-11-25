@@ -248,22 +248,22 @@
         <div class="shell-aba" data-aba="baralhos" hidden>
           <div class="anki-baralhos" id="anki-baralhos">
             <div class="anki-topo" id="anki-baralhos-topo"></div>
-            <div class="anki-azulejos" id="anki-baralhos-azulejos" role="group" data-voz-aria="BRG-34.idiomas" hidden></div>
-            <div class="anki-corpo" id="anki-baralhos-corpo"></div>
-          </div>
-        </div>
-        <div class="shell-aba" data-aba="vocabulario" hidden>
-          <div class="anki-vocabulario" id="anki-vocabulario">
-            <div class="anki-topo" id="anki-vocabulario-topo"></div>
-            <div class="anki-azulejos" id="anki-vocabulario-azulejos" role="group" data-voz-aria="BRG-35.idiomas" hidden></div>
-            <div class="anki-filtros" id="anki-vocabulario-filtros" hidden>
-              <span class="veio-select"><select class="veio-campo" id="anki-vocabulario-tipo" data-voz-aria="BRG-35.tipo"></select></span>
-              <span class="veio-select"><select class="veio-campo" id="anki-vocabulario-status" data-voz-aria="BRG-35.status"></select></span>
-              <label class="veio-busca anki-busca">
-                <span class="veio-busca__lupa"><span data-icone="busca"></span></span>
-                <input class="veio-campo" id="anki-vocabulario-busca" type="search" autocomplete="off" data-voz-aria="BRG-35.buscar">
-                <button class="veio-botao-icone veio-busca__limpar" id="anki-vocabulario-limpar"
-                        data-voz-aria="BRG-35.limparBusca" data-voz-title="BRG-35.limparBusca" hidden><span data-icone="fechar"></span></button>
+<div class="anki-azulejos" id="anki-baralhos-azulejos" role="group" data-voz-aria="BRG-34.idiomas" hidden></div>
+<div class="anki-corpo" id="anki-baralhos-corpo"></div>
+</div>
+</div>
+<div class="shell-aba" data-aba="vocabulario" hidden>
+<div class="anki-vocabulario" id="anki-vocabulario">
+<div class="anki-topo" id="anki-vocabulario-topo"></div>
+<div class="anki-azulejos" id="anki-vocabulario-azulejos" role="group" data-voz-aria="BRG-35.idiomas" hidden></div>
+<div class="anki-filtros" id="anki-vocabulario-filtros" hidden>
+<span class="veio-select"><select class="veio-campo" id="anki-vocabulario-tipo" data-voz-aria="BRG-35.tipo"></select></span>
+<span class="veio-select"><select class="veio-campo" id="anki-vocabulario-status" data-voz-aria="BRG-35.status"></select></span>
+<label class="veio-busca anki-busca">
+<span class="veio-busca__lupa"><span data-icone="busca"></span></span>
+<input class="veio-campo" id="anki-vocabulario-busca" type="search" autocomplete="off" data-voz-aria="BRG-35.buscar">
+<button class="veio-botao-icone veio-busca__limpar" id="anki-vocabulario-limpar"
+data-voz-aria="BRG-35.limparBusca" data-voz-title="BRG-35.limparBusca" hidden><span data-icone="fechar"></span></button>
               </label>
             </div>
             <p class="anki-apoio anki-resumo" id="anki-vocabulario-resumo" role="status" hidden></p>
@@ -418,6 +418,7 @@
 <script src="/lib/abridor.js"></script>
 <script src="/lib/abrir-o-anki.js"></script>
 <script src="/lib/historico.js"></script>
+<script src="/lib/nuvem-do-firestore.js"></script>
 <script src="/lib/sincronizacao.js"></script>
 <script src="esqueleto-modais.js"></script>
 <script src="painel-shell.js"></script>
@@ -459,12 +460,15 @@
 <script src="painel-anki-primeira-conexao.js"></script>
 <script src="painel-anki-plano.js"></script>
 <script src="painel-anki-continuar.js"></script>
+<script src="painel-anki-envios.js"></script>
 <script src="painel-anki.js"></script>
+<script src="painel-anki-vocabulario.js"></script>
 <script src="painel-anki-baralhos.js"></script>
 <script src="painel-anki-previa.js"></script>
 <script src="painel-anki-tipo-proprio.js"></script>
 <script src="painel-anki-estilo.js"></script>
 <script src="painel-ajustes.js"></script>
+<script src="painel-minerar-frases.js"></script>
 <script src="painel.js"></script>
 </body>
 </html>
