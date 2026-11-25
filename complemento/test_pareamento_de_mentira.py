@@ -133,7 +133,7 @@ def travar_o_item_de_login_do_computador():
     item injeta o seu. Assim como o abridor (`abridor=None`), nada aqui toca o registro real da máquina."""
     from unittest.mock import patch
 
-    remendo = patch("complemento.inicio.itens_de_login.deste_computador", return_value=None)
+    remendo = patch("complemento.item_de_login.deste_computador", return_value=None)
     remendo.start()
     unittest.addModuleCleanup(remendo.stop)
 

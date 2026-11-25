@@ -199,7 +199,7 @@ def ler_pelo_http(porta, caminho, corpo):
 
 class SemRegistroReal:
     def setUp(self):
-        remendo = patch("complemento.inicio.abridores.deste_computador", side_effect=AssertionError("host real proibido"))
+        remendo = patch("complemento.abridor.deste_computador", side_effect=AssertionError("host real proibido"))
         fabrica = remendo.start()
         self.addCleanup(remendo.stop)
         self.addCleanup(fabrica.assert_not_called)
@@ -240,7 +240,7 @@ class BaralhosLidosDoAnki(SemRegistroReal, unittest.TestCase):
 class PerfilQueOAnkiTemAberto(SemRegistroReal, unittest.TestCase):
     def test_o_adaptador_sem_abridor_nao_aciona_a_fabrica_de_registro_real(self):
         with tempfile.TemporaryDirectory() as pasta, patch(
-            "complemento.inicio.abridores.deste_computador", side_effect=AssertionError("host real proibido")
+            "complemento.abridor.deste_computador", side_effect=AssertionError("host real proibido")
         ) as fabrica:
             conexao = ao_carregar_pareado(AnkiDeMentira(), pasta, porta=0, abridor=None)
             try:
