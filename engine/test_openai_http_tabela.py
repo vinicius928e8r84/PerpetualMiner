@@ -83,11 +83,24 @@ def chamada_ou_recusa(chamada):
         return ["erro", type(erro).__name__]
 
 
+def chamar(funcao, argumentos, opcoes):
+    """Os cenários foram gravados com `completar(base, chave, modelo, mensagens, ...)` e `responder(base, token, modelo, instrucoes, mensagem, ...)`;
+    aqui viram a credencial, a pergunta e a paciência de hoje, sem mexer no que se gravou."""
+    if funcao in ("completar", "responder"):
+        opcoes = dict(opcoes)
+        paciencia = openai_http.Paciencia(opcoes.pop("tempo", openai_http.TEMPO_PADRAO), opcoes.pop("repeticoes", 0))
+        base, segredo, modelo, *pergunta = argumentos
+        credencial = {"base": base, "segredo": segredo, "modelo": modelo}
+        classe = openai_http.PerguntaDoChat if funcao == "completar" else openai_http.PerguntaDaResponses
+        return getattr(openai_http, funcao)(credencial, classe(*pergunta, **opcoes), paciencia)
+    return getattr(openai_http, funcao)(*argumentos, **opcoes)
+
+
 def rodar(cenario):
     funcao, argumentos, opcoes, respostas = cenario
     rede = RedeDeMentira(respostas)
     with mock.patch.object(openai_http.urllib.request, "urlopen", rede.urlopen), mock.patch.object(openai_http.time, "sleep", rede.esperas.append):
-        devolvido = chamada_ou_recusa(lambda: getattr(openai_http, funcao)(*argumentos, **opcoes))
+        devolvido = chamada_ou_recusa(lambda: chamar(funcao, argumentos, opcoes))
     return json.loads(json.dumps({"devolvido": devolvido, "pedidos": repetidos_juntos(rede.pedidos), "esperas": rede.esperas, "tls": all(rede.tls)}))
 
 

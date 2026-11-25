@@ -18,6 +18,7 @@ from .motor import PASTA as PASTA_DO_MOTOR
 Antiga = namedtuple("Antiga", "pid raiz motor jobs_root fila")
 
 _FORMA_DA_CHAVE = re.compile(r"^[A-Za-z0-9._\-]{8,256}$")
+_ENTRE_ASPAS = re.compile(r"(['\"])(.*)\1", re.DOTALL)
 _EXEMPLO_DO_ENV = "your-openai-api-key-here"
 _MARCAS_DO_CUSTO = ("[image_judge]", "[image_guard]")
 _NAMESPACE = uuid.UUID("4f0f3a9e-6d0a-4c43-9e53-8c0d6a1b7f10")
@@ -44,22 +45,37 @@ def perfil_de_hoje(antiga):
     return nome.strip() if isinstance(nome, str) and nome.strip() else None
 
 
-def _chave_do_env(antiga):
+def _linhas_do_env(antiga):
     try:
         with open(os.path.join(antiga.motor, ".env"), encoding="utf-8") as arquivo:
-            linhas = arquivo.read().splitlines()
+            return arquivo.read().splitlines()
     except OSError:
-        return None
-    for linha in linhas:
-        linha = linha.strip()
-        if linha.startswith("export "):
-            linha = linha[len("export "):].strip()
-        nome, _, valor = linha.partition("=")
-        if nome.strip() == "OPENAI_API_KEY":
-            valor = valor.strip()
-            if len(valor) >= 2 and valor[0] == valor[-1] and valor[0] in "'\"":
-                valor = valor[1:-1]
-            return valor if _FORMA_DA_CHAVE.match(valor) and valor != _EXEMPLO_DO_ENV else None
+        return []
+
+
+def _atribuicao_do_env(linha):
+    linha = linha.strip()
+    if linha.startswith("export "):
+        linha = linha[len("export "):].strip()
+    nome, _, valor = linha.partition("=")
+    return nome.strip(), valor.strip()
+
+
+def _sem_aspas(valor):
+    entre_aspas = _ENTRE_ASPAS.fullmatch(valor)
+    return entre_aspas.group(2) if entre_aspas else valor
+
+
+def _e_chave_de_verdade(valor):
+    return bool(_FORMA_DA_CHAVE.match(valor)) and valor != _EXEMPLO_DO_ENV
+
+
+def _chave_do_env(antiga):
+    for linha in _linhas_do_env(antiga):
+        nome, valor = _atribuicao_do_env(linha)
+        if nome == "OPENAI_API_KEY":
+            valor = _sem_aspas(valor)
+            return valor if _e_chave_de_verdade(valor) else None
     return None
 
 
@@ -88,25 +104,38 @@ def _custo_sem_a_palavra(linha):
     return json.dumps(registro, ensure_ascii=False)
 
 
+def _pastas_dos_envios(antiga):
+    return sorted(os.listdir(antiga.jobs_root)) if os.path.isdir(antiga.jobs_root) else []
+
+
+def _custos_sem_a_palavra(origem):
+    try:
+        with open(origem, encoding="utf-8") as arquivo:
+            return [limpa for limpa in (_custo_sem_a_palavra(linha) for linha in arquivo if linha.strip()) if limpa]
+    except OSError:
+        return None
+
+
+def _gravar_os_custos(destino, linhas):
+    os.makedirs(os.path.dirname(destino), exist_ok=True)
+    with open(destino + ".novo", "w", encoding="utf-8") as arquivo:
+        arquivo.write("".join(linha + "\n" for linha in linhas))
+    os.replace(destino + ".novo", destino)
+
+
 def copiar_os_custos(antiga, fila):
     """O histórico de custos de cada Envio de hoje (`<Envio>/log/costs.jsonl`) para `custos/<Envio>/costs.jsonl`, sem a Palavra.
     Devolve quantos Envios ganharam o histórico."""
     copiados = 0
-    for pasta in sorted(os.listdir(antiga.jobs_root)) if os.path.isdir(antiga.jobs_root) else []:
+    for pasta in _pastas_dos_envios(antiga):
         origem = os.path.join(antiga.jobs_root, pasta, "log", "costs.jsonl")
-        destino_pasta = fila.pasta_dos_custos(id_novo(pasta))
-        destino = os.path.join(destino_pasta, "costs.jsonl")
+        destino = os.path.join(fila.pasta_dos_custos(id_novo(pasta)), "costs.jsonl")
         if not os.path.isfile(origem) or os.path.exists(destino):
             continue
-        try:
-            with open(origem, encoding="utf-8") as arquivo:
-                linhas = [limpa for limpa in (_custo_sem_a_palavra(linha) for linha in arquivo if linha.strip()) if limpa]
-        except OSError:
+        linhas = _custos_sem_a_palavra(origem)
+        if linhas is None:
             continue
-        os.makedirs(destino_pasta, exist_ok=True)
-        with open(destino + ".novo", "w", encoding="utf-8") as arquivo:
-            arquivo.write("".join(linha + "\n" for linha in linhas))
-        os.replace(destino + ".novo", destino)
+        _gravar_os_custos(destino, linhas)
         copiados += 1
     return copiados
 
@@ -119,6 +148,14 @@ def _texto_do_prompt(caminho):
         return None
 
 
+def _prompt_com_texto(nome, texto):
+    return nome.endswith(".txt") and bool(texto)
+
+
+def _e_o_prompt_padrao(nome, texto):
+    return texto == _texto_do_prompt(os.path.join(PASTA_DO_MOTOR, "prompts", nome))
+
+
 def copiar_os_prompts_editados(antiga, pasta_dos_prompts):
     """Só os prompts de hoje (`<motor>/prompts/*.txt`) que diferem dos padrões que o complemento traz, para a pasta de prompts da pasta
     de dados, com o mesmo nome (lá o arquivo do dono vale no lugar do padrão). O que já está lá não é tocado. Devolve os nomes copiados."""
@@ -127,9 +164,9 @@ def copiar_os_prompts_editados(antiga, pasta_dos_prompts):
     for nome in sorted(os.listdir(de_hoje)) if os.path.isdir(de_hoje) else []:
         destino = os.path.join(pasta_dos_prompts, nome)
         texto = _texto_do_prompt(os.path.join(de_hoje, nome))
-        if not nome.endswith(".txt") or not texto or os.path.exists(destino):
+        if not _prompt_com_texto(nome, texto) or os.path.exists(destino):
             continue
-        if texto == _texto_do_prompt(os.path.join(PASTA_DO_MOTOR, "prompts", nome)):
+        if _e_o_prompt_padrao(nome, texto):
             continue
         os.makedirs(pasta_dos_prompts, exist_ok=True)
         shutil.copyfile(os.path.join(de_hoje, nome), destino + ".novo")
@@ -138,14 +175,23 @@ def copiar_os_prompts_editados(antiga, pasta_dos_prompts):
     return copiados
 
 
+def _status_na_fila(antiga):
+    itens = (_ler_json(antiga.fila, {}) or {}).get("jobs", [])
+    return {item.get("jobId"): item.get("status") for item in itens if isinstance(item, dict)}
+
+
+def _pedido_e_estado_guardados(pedido, estado):
+    return isinstance(pedido, dict) and isinstance(estado, dict)
+
+
 def _envios_de_hoje(antiga):
     """(id, pedido, estado, status na fila) de cada Envio de hoje, do mais antigo ao mais novo."""
-    status_na_fila = {item.get("jobId"): item.get("status") for item in (_ler_json(antiga.fila, {}) or {}).get("jobs", []) if isinstance(item, dict)}
+    status_na_fila = _status_na_fila(antiga)
     envios = []
-    for pasta in sorted(os.listdir(antiga.jobs_root)) if os.path.isdir(antiga.jobs_root) else []:
+    for pasta in _pastas_dos_envios(antiga):
         pedido = _ler_json(os.path.join(antiga.jobs_root, pasta, "job.json"), None)
         estado = _ler_json(os.path.join(antiga.jobs_root, pasta, "state.json"), None)
-        if isinstance(pedido, dict) and isinstance(estado, dict) and not pedido.get("wiped"):
+        if _pedido_e_estado_guardados(pedido, estado) and not pedido.get("wiped"):
             envios.append((pasta, pedido, estado, status_na_fila.get(pasta) or estado.get("status")))
     return sorted(envios, key=lambda envio_: str(envio_[1].get("createdAt") or ""))
 
@@ -153,24 +199,39 @@ def _envios_de_hoje(antiga):
 _frases = envio.ids_unicos
 
 
-def _historico(id_, pedido, estado, status):
-    """Um Envio que terminou, só para a aba Custos: sem as Frases (as linhas ficam em hoje), como um Envio de depois do Apagar tudo."""
-    certas, erradas = _frases(estado.get("successfulPhraseIds")), _frases(estado.get("failedPhraseIds"))
+def _cartoes_do_historico(certas, erradas):
     cartoes = {envio.id_do_cartao(frase, 0): {"phraseId": frase, "status": envio.ADICIONADO, "error": None} for frase in certas}
     cartoes.update({envio.id_do_cartao(frase, 0): {"phraseId": frase, "status": envio.FALHOU, "error": envio.estado_do_envio.CARTOES_FALHARAM} for frase in erradas})
-    criado = str(pedido.get("createdAt") or estado.get("updatedAt") or "")
-    novo = {
+    return cartoes
+
+
+def _entradas_do_historico(pedido, certas):
+    frases = _frases(entrada.get("phraseId") for entrada in pedido.get("entries", []) if isinstance(entrada, dict))
+    return [{"phraseId": frase, "noAnki": {envio.id_do_cartao(frase, 0): envio.ADICIONADO}} if frase in certas else {"phraseId": frase}
+            for frase in frases]
+
+
+def _pedido_do_historico(id_, pedido, entradas, criado):
+    return {
         "jobId": id_, "lang": pedido.get("lang"), "deckName": str(pedido.get("deckName") or ""), "imageSource": str(pedido.get("imageSource") or "1"),
-        "tts": {}, "createdAt": criado, "wiped": True,
-        "entries": [{"phraseId": frase, "noAnki": {envio.id_do_cartao(frase, 0): envio.ADICIONADO}} if frase in certas else {"phraseId": frase}
-                    for frase in _frases(entrada.get("phraseId") for entrada in pedido.get("entries", []) if isinstance(entrada, dict))],
+        "tts": {}, "createdAt": criado, "wiped": True, "entries": entradas,
     }
-    final = {
+
+
+def _estado_do_historico(id_, status, estado, criado):
+    certas, erradas = _frases(estado.get("successfulPhraseIds")), _frases(estado.get("failedPhraseIds"))
+    return {
         "jobId": id_, "status": status, "stage": status, "completedStages": [], "progress": {}, "successfulPhraseIds": certas,
         "failedPhraseIds": erradas, "duplicatePhraseIds": [], "lastError": None if status == envio.COMPLETED else envio.estado_do_envio.CARTOES_FALHARAM,
-        "updatedAt": str(estado.get("updatedAt") or criado), "cards": cartoes, "wiped": True,
+        "updatedAt": str(estado.get("updatedAt") or criado), "cards": _cartoes_do_historico(certas, erradas), "wiped": True,
     }
-    return novo, final
+
+
+def _historico(id_, pedido, estado, status):
+    """Um Envio que terminou, só para a aba Custos: sem as Frases (as linhas ficam em hoje), como um Envio de depois do Apagar tudo."""
+    criado = str(pedido.get("createdAt") or estado.get("updatedAt") or "")
+    certas = _frases(estado.get("successfulPhraseIds"))
+    return _pedido_do_historico(id_, pedido, _entradas_do_historico(pedido, certas), criado), _estado_do_historico(id_, status, estado, criado)
 
 
 def _gravar_no_historico(fila, pedido, estado):
@@ -183,28 +244,45 @@ def _gravar_no_historico(fila, pedido, estado):
     return True
 
 
-def passar_a_fila(antiga, fila):
-    """Os Envios de hoje para esta fila. Os que terminaram entram como histórico (só para a aba Custos); os que ainda têm Frases a
-    enviar (`queued` ou `running`, menos as que já chegaram ao Anki) entram na fila como `queued`, com a linha de cada Frase: um
-    Cartão pronto não é refeito. Devolve `{"historico": n, "fila": n, "recusados": [ids]}`."""
-    historico, passados, recusados = 0, 0, []
-    envios = _envios_de_hoje(antiga)
+def _passar_ao_historico(envios, fila):
+    historico = 0
     for id_, pedido, estado, status in envios:
         if status in envio.FIM:
             historico += _gravar_no_historico(fila, *_historico(id_novo(id_), pedido, estado, status))
+    return historico
+
+
+def _entradas_que_faltam(pedido, estado):
+    prontas = set(_frases(estado.get("successfulPhraseIds")))
+    return [entrada for entrada in pedido.get("entries", []) if isinstance(entrada, dict) and entrada.get("phraseId") not in prontas]
+
+
+def _pedido_para_a_fila(id_, pedido, faltam):
+    return {
+        "jobId": id_novo(id_), "lang": pedido.get("lang"), "deckName": pedido.get("deckName"), "imageSource": pedido.get("imageSource"),
+        "tts": pedido.get("tts"), "entries": faltam,
+    }
+
+
+def _passar_os_que_faltam(envios, fila):
+    passados, recusados = 0, []
     for id_, pedido, estado, status in envios:
-        if status in envio.FIM:
-            continue
-        prontas = set(_frases(estado.get("successfulPhraseIds")))
-        faltam = [entrada for entrada in pedido.get("entries", []) if isinstance(entrada, dict) and entrada.get("phraseId") not in prontas]
+        faltam = [] if status in envio.FIM else _entradas_que_faltam(pedido, estado)
         if not faltam:
             continue
-        resposta, _ = fila.criar({
-            "jobId": id_novo(id_), "lang": pedido.get("lang"), "deckName": pedido.get("deckName"), "imageSource": pedido.get("imageSource"),
-            "tts": pedido.get("tts"), "entries": faltam,
-        })
+        resposta, _ = fila.criar(_pedido_para_a_fila(id_, pedido, faltam))
         if resposta == 201:
             passados += 1
         else:
             recusados.append(id_)
+    return passados, recusados
+
+
+def passar_a_fila(antiga, fila):
+    """Os Envios de hoje para esta fila. Os que terminaram entram como histórico (só para a aba Custos); os que ainda têm Frases a
+    enviar (`queued` ou `running`, menos as que já chegaram ao Anki) entram na fila como `queued`, com a linha de cada Frase: um
+    Cartão pronto não é refeito. Devolve `{"historico": n, "fila": n, "recusados": [ids]}`."""
+    envios = _envios_de_hoje(antiga)
+    historico = _passar_ao_historico(envios, fila)
+    passados, recusados = _passar_os_que_faltam(envios, fila)
     return {"historico": historico, "fila": passados, "recusados": recusados}

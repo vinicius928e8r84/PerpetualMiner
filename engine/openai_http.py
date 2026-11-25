@@ -21,12 +21,16 @@ import ssl
 import time
 import urllib.error
 import urllib.request
+from collections import namedtuple
 
 OPENAI_BASE = "https://api.openai.com"
 TEMPO_PADRAO = 120
 TEMPO_DA_IMAGEM = 240
 REPETICOES_DA_IMAGEM = 2
 ESPERA_ENTRE_TENTATIVAS = 0.5
+
+Paciencia = namedtuple("Paciencia", "tempo repeticoes")
+PACIENCIA_DO_TEXTO = Paciencia(TEMPO_PADRAO, 0)
 
 RECUSADA = "openai_key_rejected"
 SEM_CREDITO = "openai_no_credit"
@@ -206,21 +210,28 @@ def _com_repeticoes(enviar, repeticoes):
         espera *= 2
 
 
-def _corpo_da_responses(modelo, instrucoes, mensagem, formato_json):
-    corpo = {"model": modelo, "instructions": instrucoes, "input": [{"role": "user", "content": mensagem}], "store": False, "stream": True}
-    if formato_json:
-        corpo["text"] = {"format": {"type": "json_object"}}
-    return corpo
+class PerguntaDaResponses(namedtuple("PerguntaDaResponses", "instrucoes mensagem formato_json", defaults=(False,))):
+    """What the ChatGPT plan is asked: the system prompt as `instructions`, the user's message and whether the answer is a JSON object."""
+
+    def corpo(self, modelo):
+        corpo = {"model": modelo, "instructions": self.instrucoes, "input": [{"role": "user", "content": self.mensagem}], "store": False, "stream": True}
+        if self.formato_json:
+            corpo["text"] = {"format": {"type": "json_object"}}
+        return corpo
 
 
-def responder(base, token, modelo, instrucoes, mensagem, tempo=TEMPO_PADRAO, formato_json=False, repeticoes=0):
-    """POST /v1/responses with the ChatGPT plan's access token: no `temperature`, the system prompt as `instructions`,
-    `store: false` and `stream: true` (the SIWC "Preview limitations"). `mensagem` is a text, or the parts of the user's message
-    (`input_text` and `input_image`, the image judge); `formato_json` asks for a JSON object by `text.format`. Returns (text, usage)
-    only after `response.completed`; anything else is `ErroDaOpenAI` with a code, never what the plan wrote. A passing refusal
-    (`passageira`) is asked again `repeticoes` times."""
-    pedido = _Pedido(base + "/v1/responses", token, _corpo_da_responses(modelo, instrucoes, mensagem, formato_json), tempo)
-    return _com_repeticoes(pedido.stream, repeticoes)
+def _base_de(cred):
+    return cred.get("base") or OPENAI_BASE
+
+
+def responder(cred, pergunta, paciencia=PACIENCIA_DO_TEXTO):
+    """POST /v1/responses with the ChatGPT plan's access token (`cred["segredo"]`): no `temperature`, the system prompt as `instructions`,
+    `store: false` and `stream: true` (the SIWC "Preview limitations"). The `pergunta`'s message is a text, or the parts of the user's
+    message (`input_text` and `input_image`, the image judge); its `formato_json` asks for a JSON object by `text.format`. Returns
+    (text, usage) only after `response.completed`; anything else is `ErroDaOpenAI` with a code, never what the plan wrote. A passing
+    refusal (`passageira`) is asked again `paciencia.repeticoes` times."""
+    pedido = _Pedido(_base_de(cred) + "/v1/responses", cred["segredo"], pergunta.corpo(cred["modelo"]), paciencia.tempo)
+    return _com_repeticoes(pedido.stream, paciencia.repeticoes)
 
 
 def passageira(codigo, status):
@@ -228,15 +239,18 @@ def passageira(codigo, status):
     return codigo == FORA_DO_AR or codigo == LIMITE_DE_USO or status in (408, 409)
 
 
-def _opcoes_do_chat(temperatura, formato_json, max_tokens):
-    opcoes = {}
-    if temperatura is not None:
-        opcoes["temperature"] = temperatura
-    if formato_json:
-        opcoes["response_format"] = {"type": "json_object"}
-    if max_tokens is not None:
-        opcoes["max_tokens"] = max_tokens
-    return opcoes
+class PerguntaDoChat(namedtuple("PerguntaDoChat", "mensagens temperatura formato_json max_tokens", defaults=(None, False, None))):
+    """What the key is asked: the chat's messages, and how the text must come (a `temperatura`, a JSON object, a `max_tokens`)."""
+
+    def corpo(self, modelo):
+        corpo = {"model": modelo, "messages": self.mensagens}
+        if self.temperatura is not None:
+            corpo["temperature"] = self.temperatura
+        if self.formato_json:
+            corpo["response_format"] = {"type": "json_object"}
+        if self.max_tokens is not None:
+            corpo["max_tokens"] = self.max_tokens
+        return corpo
 
 
 def _texto_da_primeira_escolha(dados):
@@ -244,11 +258,10 @@ def _texto_da_primeira_escolha(dados):
     return ((escolha.get("message") or {}).get("content") or "").strip()
 
 
-def completar(base, chave, modelo, mensagens, temperatura=None, tempo=TEMPO_PADRAO, formato_json=False, max_tokens=None, repeticoes=0):
+def completar(cred, pergunta, paciencia=PACIENCIA_DO_TEXTO):
     """POST /v1/chat/completions. Returns (text, usage): the first choice's text ('' if none) and the `usage` dict."""
-    corpo = {"model": modelo, "messages": mensagens}
-    corpo.update(_opcoes_do_chat(temperatura, formato_json, max_tokens))
-    dados = _com_repeticoes(_Pedido(base + "/v1/chat/completions", chave, corpo, tempo).resposta, repeticoes)
+    pedido = _Pedido(_base_de(cred) + "/v1/chat/completions", cred["segredo"], pergunta.corpo(cred["modelo"]), paciencia.tempo)
+    dados = _com_repeticoes(pedido.resposta, paciencia.repeticoes)
     return _texto_da_primeira_escolha(dados), dados.get("usage") or {}
 
 
@@ -266,19 +279,26 @@ def _uso(bruto, entrada, saida):
     return {"entrada": bruto.get(entrada) or 0, "saida": bruto.get(saida) or 0} if bruto else {}
 
 
+def _texto_do_plano(cred, pergunta, paciencia):
+    resposta, bruto = responder(cred, pergunta, paciencia)
+    return resposta, {"entrada": bruto.get("input_tokens") or 0, "saida": bruto.get("output_tokens") or 0}
+
+
+def _texto_da_chave(cred, pergunta, paciencia):
+    resposta, bruto = completar(cred, pergunta, paciencia)
+    return resposta, _uso(bruto, "prompt_tokens", "completion_tokens")
+
+
 def texto(cred, sistema, mensagem, json=False, temperatura=None, max_tokens=None, tempo=None, repeticoes=0):
     """The provider layer's `texto` for OpenAI: the key's chat completions, or the ChatGPT plan's Responses API when `cred["via"]` is `plano`
     (no `temperature` or `max_tokens` there; a list `mensagem` is converted to the Responses API's parts). Returns (text, {entrada, saida}):
     `{}` when the answer had no usage and the key is the one paying."""
-    base, tempo = cred.get("base") or OPENAI_BASE, tempo or TEMPO_PADRAO
+    paciencia = Paciencia(tempo or TEMPO_PADRAO, repeticoes)
     if cred.get("via") == "plano":
         partes = _partes_da_responses(mensagem) if isinstance(mensagem, list) else mensagem
-        resposta, bruto = responder(base, cred["segredo"], cred["modelo"], sistema, partes, tempo, formato_json=json, repeticoes=repeticoes)
-        return resposta, {"entrada": bruto.get("input_tokens") or 0, "saida": bruto.get("output_tokens") or 0}
-    resposta, bruto = completar(
-        base, cred["segredo"], cred["modelo"], [{"role": "system", "content": sistema}, {"role": "user", "content": mensagem}],
-        temperatura=temperatura, tempo=tempo, formato_json=json, max_tokens=max_tokens, repeticoes=repeticoes)
-    return resposta, _uso(bruto, "prompt_tokens", "completion_tokens")
+        return _texto_do_plano(cred, PerguntaDaResponses(sistema, partes, json), paciencia)
+    mensagens = [{"role": "system", "content": sistema}, {"role": "user", "content": mensagem}]
+    return _texto_da_chave(cred, PerguntaDoChat(mensagens, temperatura, json, max_tokens), paciencia)
 
 
 def imagem(cred, prompt, tamanho):
