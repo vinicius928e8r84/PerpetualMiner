@@ -30,6 +30,19 @@ def _ler_a_resposta(pedido):
     return json.loads(bruto)
 
 
+def _hora_da_chave(chave, em):
+    return em or (1 if chave else 0)
+
+
+def _chave_do_documento(campos):
+    apagada = campos.get('apagada', {}).get('booleanValue')
+    chave = '' if apagada else campos.get('chave', {}).get('stringValue', '')
+    em = int(campos.get('em', {}).get('integerValue', 0))
+    if not _chave_que_a_nuvem_guarda(chave) or em < 0:
+        raise ValueError()
+    return {'chave': chave, 'em': _hora_da_chave(chave, em)}
+
+
 class NuvemDaChave:
     def __init__(self, base, uid, token):
         self._url = '%s/usuarios/%s/segredos/openai' % (base.rstrip('/'), quote(uid, safe=''))
@@ -58,12 +71,7 @@ class NuvemDaChave:
         if dados is None:
             return None
         try:
-            campos = dados['fields']
-            chave = '' if campos.get('apagada', {}).get('booleanValue') else campos.get('chave', {}).get('stringValue', '')
-            em = int(campos.get('em', {}).get('integerValue', 0))
-            if not _chave_que_a_nuvem_guarda(chave) or em < 0:
-                raise ValueError()
-            return {'chave': chave, 'em': em or (1 if chave else 0)}
+            return _chave_do_documento(dados['fields'])
         except (KeyError, TypeError, ValueError, AttributeError):
             raise NuvemIndisponivel(502) from None
 
