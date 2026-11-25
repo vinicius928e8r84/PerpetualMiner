@@ -10,37 +10,18 @@
     return data.toLocaleDateString('pt-BR');
   };
 
+  const fraseDeExemplo = ([id, texto, contexto, streaming, idioma, deslocamento, extras]) => (
+    { id, texto, contexto, streaming, idioma, data: dia(deslocamento), ...extras }
+  );
+
   const FRASES = [
-    {
-      id: 1001, texto: "I'm not saying it's your fault, I'm saying it's your responsibility.",
-      contexto: 'The Bear · T2 · E7', streaming: 'netflix', idioma: 'Inglês', data: dia(0),
-      keywords: ['responsibility'], autoKeyword: 'responsibility',
-    },
-    {
-      id: 1002, texto: 'Мы с тобой одной крови — ты и я.',
-      contexto: 'Маугли · cap. 3', streaming: 'livro', idioma: 'Russo', data: dia(0),
-      keywords: ['крови'], autoKeyword: 'крови',
-    },
-    {
-      id: 1003, texto: 'The devil is in the details.',
-      contexto: 'The Atlantic', streaming: 'web', idioma: 'Inglês', data: dia(1),
-      status: 'exported', keywords: ['details'],
-    },
-    {
-      id: 1004, texto: 'Не всё то золото, что блестит.',
-      contexto: 'Редакция · canal', streaming: 'youtube', idioma: 'Russo', data: dia(1),
-      status: 'exported', keywords: ['золото'],
-    },
-    {
-      id: 1005, texto: 'All that glitters is not gold.',
-      contexto: 'Shakespeare · O Mercador de Veneza', streaming: 'livro', idioma: 'Inglês', data: dia(2),
-      keywords: ['glitters'],
-    },
-    {
-      id: 1006, texto: 'Тихая гавань проснулась раньше чаек.',
-      contexto: 'Página fotografada · p. 42', streaming: 'manual', idioma: 'Russo', data: dia(3),
-    },
-  ];
+    [1001, "I'm not saying it's your fault, I'm saying it's your responsibility.", 'The Bear · T2 · E7', 'netflix', 'Inglês', 0, { keywords: ['responsibility'], autoKeyword: 'responsibility' }],
+    [1002, 'Мы с тобой одной крови — ты и я.', 'Маугли · cap. 3', 'livro', 'Russo', 0, { keywords: ['крови'], autoKeyword: 'крови' }],
+    [1003, 'The devil is in the details.', 'The Atlantic', 'web', 'Inglês', 1, { status: 'exported', keywords: ['details'] }],
+    [1004, 'Не всё то золото, что блестит.', 'Редакция · canal', 'youtube', 'Russo', 1, { status: 'exported', keywords: ['золото'] }],
+    [1005, 'All that glitters is not gold.', 'Shakespeare · O Mercador de Veneza', 'livro', 'Inglês', 2, { keywords: ['glitters'] }],
+    [1006, 'Тихая гавань проснулась раньше чаек.', 'Página fotografada · p. 42', 'manual', 'Russo', 3],
+  ].map(fraseDeExemplo);
 
   const ESTADO_AUTO_MINER = {
     settings: { en: { enabled: true, dailyLimit: 20 }, ru: { enabled: false, dailyLimit: 15 } },
@@ -89,26 +70,27 @@
     return Promise.resolve(valor);
   };
 
+  const metodoDoChrome = resposta => (entrada, callback) => talvezPromessa(resposta(entrada), callback);
+
+  const apagarDosDados = chaves => {
+    for (const chave of chaves) delete dados[chave];
+  };
+
+  function gravarNosDados(valores) {
+    const mudancas = {};
+    for (const [chave, valor] of Object.entries(valores)) {
+      mudancas[chave] = { oldValue: copiar(dados[chave]), newValue: copiar(valor) };
+      dados[chave] = copiar(valor);
+    }
+    ouvintesDeMudanca.forEach(ouvinte => setTimeout(() => ouvinte(mudancas, 'local'), 0));
+  }
+
   function criarArea() {
     return {
-      get: (pedido, callback) => talvezPromessa(resolver(pedido), callback),
-      set: (valores, callback) => {
-        const mudancas = {};
-        for (const [chave, valor] of Object.entries(valores)) {
-          mudancas[chave] = { oldValue: copiar(dados[chave]), newValue: copiar(valor) };
-          dados[chave] = copiar(valor);
-        }
-        ouvintesDeMudanca.forEach(ouvinte => setTimeout(() => ouvinte(mudancas, 'local'), 0));
-        return talvezPromessa(undefined, callback);
-      },
-      remove: (chaves, callback) => {
-        for (const chave of [].concat(chaves)) delete dados[chave];
-        return talvezPromessa(undefined, callback);
-      },
-      clear: callback => {
-        for (const chave of Object.keys(dados)) delete dados[chave];
-        return talvezPromessa(undefined, callback);
-      },
+      get: metodoDoChrome(resolver),
+      set: metodoDoChrome(gravarNosDados),
+      remove: metodoDoChrome(chaves => apagarDosDados([].concat(chaves))),
+      clear: callback => talvezPromessa(apagarDosDados(Object.keys(dados)), callback),
     };
   }
 
@@ -127,42 +109,48 @@
     }
   }
 
+  const semPermissao = metodoDoChrome(() => false);
+  const semResposta = metodoDoChrome(() => undefined);
+
+  const abrirAba = (id, ir) => metodoDoChrome(({ url } = {}) => {
+    if (url) ir(url);
+    return { id };
+  });
+  const abrirEmOutraAba = abrirAba(2, url => window.open(url, '_blank', 'noopener'));
+  const irNaAbaAtual = abrirAba(1, url => { window.location.href = url; });
+
+  const atualizarPeloId = metodo => (_id, info, callback) => metodo(info, callback);
+
+  const semEfeito = () => {};
+
+  const ouvintesQueNaoFazemNada = () => ({ addListener: semEfeito, removeListener: semEfeito });
+
   window.chrome = {
     storage: {
       local: area,
       sync: area,
-      onChanged: { addListener: ouvinte => ouvintesDeMudanca.push(ouvinte), removeListener: () => {} },
+      onChanged: { ...ouvintesQueNaoFazemNada(), addListener: ouvinte => ouvintesDeMudanca.push(ouvinte) },
     },
     runtime: {
       id: 'preview',
       lastError: undefined,
       getManifest: () => ({ version: 'preview', manifest_version: 3 }),
       getURL: caminho => new URL(String(caminho).replace(/^\//, ''), document.baseURI).href,
-      sendMessage: (mensagem, callback) => talvezPromessa(responderMensagem(mensagem), callback),
-      onMessage: { addListener: () => {}, removeListener: () => {} },
+      sendMessage: metodoDoChrome(responderMensagem),
+      onMessage: ouvintesQueNaoFazemNada(),
     },
     tabs: {
-      query: (_consulta, callback) => talvezPromessa([{ id: 1, url: 'https://exemplo.dev', active: true }], callback),
-      create: ({ url } = {}, callback) => {
-        if (url) window.open(url, '_blank', 'noopener');
-        return talvezPromessa({ id: 2 }, callback);
-      },
-      update: (_id, { url } = {}, callback) => {
-        if (url) window.location.href = url;
-        return talvezPromessa({ id: 1 }, callback);
-      },
+      query: metodoDoChrome(() => [{ id: 1, url: 'https://exemplo.dev', active: true }]),
+      create: abrirEmOutraAba,
+      update: atualizarPeloId(irNaAbaAtual),
     },
-    windows: { update: (_id, _info, callback) => talvezPromessa(undefined, callback) },
-    permissions: {
-      contains: (_permissoes, callback) => talvezPromessa(false, callback),
-      request: (_permissoes, callback) => talvezPromessa(false, callback),
-    },
+    windows: { update: atualizarPeloId(semResposta) },
+    permissions: { contains: semPermissao, request: semPermissao },
     identity: {
       getRedirectURL: () => document.baseURI,
-      launchWebAuthFlow: (_opcoes, callback) =>
-        talvezPromessa(undefined, callback) && undefined,
+      launchWebAuthFlow: (opcoes, callback) => { semResposta(opcoes, callback); },
     },
-    action: { setBadgeText: () => {}, setBadgeBackgroundColor: () => {}, setIcon: () => {} },
+    action: { setBadgeText: semEfeito, setBadgeBackgroundColor: semEfeito, setIcon: semEfeito },
   };
 
   document.addEventListener('DOMContentLoaded', () => {

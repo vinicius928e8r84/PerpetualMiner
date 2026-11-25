@@ -7,4 +7,6 @@ const VARIANTES_DO_O1 = [
   { nome: 'Apagar tudo', botao: 'Apagar 1 frase', secao: '#cfg-perigo', foto: 'tudo', frasesAoFim: 0, abrirPerigo: true },
 ];
 
-module.exports = { chaveNaNuvem, VARIANTES_DO_O1 };
+const DA_CONTA_B = { versao: 42, conta: 'B', em: 101, naoEnviada: false };
+
+module.exports = { chaveNaNuvem, VARIANTES_DO_O1, DA_CONTA_B };

@@ -44,7 +44,7 @@ function carregarOBackground(storage, aoAnki) {
   vm.createContext(contexto);
   vm.runInContext(fs.readFileSync('background.js', 'utf8'), contexto, { filename: 'background.js' });
   contexto.PerpetualMiner.PareamentoComOAnki = {
-    pedirAssinado: async (endereco, pedido, opcoes, enviar) => enviar(endereco, pedido, JSON.stringify(pedido.corpo), opcoes),
+    pedirAssinado: async (endereco, pedido, opcoes, enviar) => enviar(endereco, { ...pedido, corpoEmTexto: JSON.stringify(pedido.corpo) }, opcoes),
   };
   return { contexto, pedidos };
 }

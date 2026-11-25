@@ -257,7 +257,7 @@ test('enquanto a Conexão confere, o campo guarda o que foi colado e o botão n�
   let liberar;
   fakes.anki.responder('POST', '/ia/openai/chave', req => new Promise(resolver => {
     liberar = () => {
-      fakes.anki.guardarChaveNaConexao('9f3a', req.postDataJSON().versao);
+      fakes.anki.guardarChaveDoPedido('9f3a', req);
       resolver({ status: 200, json: { ok: true, ultimos4: '9f3a' } });
     };
   }));

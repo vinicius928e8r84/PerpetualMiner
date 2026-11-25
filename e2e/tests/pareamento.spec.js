@@ -207,7 +207,7 @@ test.describe('depois de pareado', () => {
 
   test('Desconectar navegadores no Anki: a Conexão prova que desconectou, o Painel volta a pedir para conectar, o código pareia de novo e a chave fica', async ({ page, extensao, fakes, conexaoDoTeste }) => {
     test.skip(Boolean(conexaoDoTeste), 'a chave da Conexão real tem o próprio caminho (chave-autoridade.spec.js); o desconectar real é provado em complemento/test_pareamento_revogado.py');
-    fakes.anki.guardarChaveNaConexao('9f3a', 3, 'uid-teste', 100, false);
+    fakes.anki.guardarChaveNaConexao('9f3a', { versao: 3, conta: 'uid-teste', em: 100, naoEnviada: false });
     await abrirPainel(page, extensao, '#anki/custos');
     await expect(ponto(page)).toHaveAttribute('data-estado', 'ligada');
     await expect(faixa(page)).toHaveCount(0);

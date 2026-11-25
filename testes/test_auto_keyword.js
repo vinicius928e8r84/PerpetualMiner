@@ -155,7 +155,7 @@ async function baralhoGravadoQueNaoRespondeNaoViraVocabularioVazio() {
   const storage = { ankiBridgePresets: { en: { deckName: 'CIMV' } } };
   const context = loadBackground(storage);
   context.PerpetualMiner.PareamentoComOAnki = {
-    pedirAssinado: async (endereco, pedido, opcoes, enviar) => enviar(endereco, pedido, JSON.stringify(pedido.corpo), opcoes),
+    pedirAssinado: async (endereco, pedido, opcoes, enviar) => enviar(endereco, { ...pedido, corpoEmTexto: JSON.stringify(pedido.corpo) }, opcoes),
   };
   context.AbortSignal = AbortSignal;
   context.fetch = async (_url, opcoes) => {

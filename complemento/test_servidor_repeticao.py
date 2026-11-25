@@ -90,23 +90,34 @@ class RepeticaoDeCadaRotaQueMuda(unittest.TestCase):
                 exemplo["nome"] + ": reconfirmar na base atual mudou o que a Conexão guarda (a revisão avança a cada reconfirmação, v1→2→3→4)",
             )
 
+    def exemplos_das_rotas_que_cobram_a_base(self, rotas, matriz, exemplos):
+        return [(rota, exemplo) for rota in sorted(rotas) if matriz[rota].get("versao") for exemplo in self.exemplos_de_sucesso(rota, exemplos)]
+
+    @contextlib.contextmanager
+    def conexao_depois_do_primeiro_pedido(self, exemplo):
+        with tempfile.TemporaryDirectory() as pasta, conexao_do_exemplo(pasta, exemplo) as conexao:
+            self.pedir_o_exemplo(conexao, exemplo)
+            yield conexao
+
+    def adiantar_a_revisao_do_dono(self, conexao):
+        cofre = conexao.conexao.cofre
+        for chave in self.CHAVES_NOVAS:
+            atual = cofre.documento("openai")
+            self.assertTrue(cofre.guardar("openai", chave, versao=atual.get("versao", 0), conta=atual.get("conta", "")))
+
+    def conferir_a_base_velha_do_exemplo(self, rota, exemplo):
+        with self.conexao_depois_do_primeiro_pedido(exemplo) as conexao:
+            self.adiantar_a_revisao_do_dono(conexao)
+            guardado = estado_guardado(conexao)
+            status, corpo = self.pedir_o_exemplo(conexao, exemplo)
+            self.assertEqual(
+                (status, guardado), (409, estado_guardado(conexao)),
+                "%s: a base velha de %s %s tem que dar 409 sem mudar o que está guardado: respondeu %s %s" % ((exemplo["nome"],) + rota + (status, corpo)),
+            )
+
     def conferir_a_base_velha(self, rotas, matriz, exemplos):
-        for rota in sorted(rotas):
-            if not matriz[rota].get("versao"):
-                continue
-            for exemplo in self.exemplos_de_sucesso(rota, exemplos):
-                with tempfile.TemporaryDirectory() as pasta, conexao_do_exemplo(pasta, exemplo) as conexao:
-                    self.pedir_o_exemplo(conexao, exemplo)
-                    cofre = conexao.conexao.cofre
-                    for chave in self.CHAVES_NOVAS:
-                        atual = cofre.documento("openai")
-                        self.assertTrue(cofre.guardar("openai", chave, versao=atual.get("versao", 0), conta=atual.get("conta", "")))
-                    guardado = estado_guardado(conexao)
-                    status, corpo = self.pedir_o_exemplo(conexao, exemplo)
-                    self.assertEqual(
-                        (status, guardado), (409, estado_guardado(conexao)),
-                        "%s: a base velha de %s %s tem que dar 409 sem mudar o que está guardado: respondeu %s %s" % ((exemplo["nome"],) + rota + (status, corpo)),
-                    )
+        for rota, exemplo in self.exemplos_das_rotas_que_cobram_a_base(rotas, matriz, exemplos):
+            self.conferir_a_base_velha_do_exemplo(rota, exemplo)
 
     def conferir_tudo(self, rotas, matriz, exemplos):
         self.conferir_que_toda_rota_que_muda_diz(rotas, matriz, exemplos)
