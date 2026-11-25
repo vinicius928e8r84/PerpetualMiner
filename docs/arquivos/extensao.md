@@ -10,6 +10,7 @@ A regra `indice-de-arquivos` exige uma linha, aqui ou em [testes-e-ferramentas.m
 | `content.js` | Injected into all pages; mines captions and selections and drives the overlay (skill `overlay`). |
 | `overlay/overlay.js` + `overlay/overlay.css` | The in-page overlay: the floating button and the feedback pill in a Shadow DOM (skill `overlay`). |
 | `background.js` | The service worker: saves Frases, the context menu, the toolbar badge, the day rollover. |
+| `lib/nuvem-do-firestore.js` | The conversation with Firestore: the field codec, the cloud errors and the HTTP calls. Loaded before `lib/sincronizacao.js`. |
 | `lib/sincronizacao.js` | Cloud sync of the Histórico. |
 | `popup/popup.html/js/css` | The popup (skill `popup`). |
 | `lib/ranking.js` | The group ranking of the level quiz. |
@@ -18,6 +19,7 @@ A regra `indice-de-arquivos` exige uma linha, aqui ou em [testes-e-ferramentas.m
 | `lib/chave-da-openai.js` | The extension's side of the OpenAI key: requests to the Conexão and the cached summary (skill `configuracoes`). |
 | `conexao/perpetualminer.ankiaddon` | The Conexão com o Anki as the file the person downloads, built at the merge by `complemento/versao_no_merge.py`. |
 | `bookreader/bookreader.html/js/css` | Minerar de uma foto (skill `minerar-foto`). |
+| `bookreader/coluna-da-foto.js` | The column states and the list of read phrases of Minerar de uma foto. |
 | `bookreader/leitura-do-gemini.js` | The request that reads the marked passages of a photo with Gemini. |
 | `bookreader/abrir-o-painel.js` | Opens or focuses the Painel from Minerar de uma foto. |
 | `veio/tokens.css`, `veio/tema.js`, `veio/componentes.css`, `veio/componentes.js` | The shared Veio identity: tokens, the chosen theme and the base components (`veio/README.md`, skill `veio-componentes`); `veio/` also holds the fonts and icons. |

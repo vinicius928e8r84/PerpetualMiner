@@ -103,20 +103,34 @@ class _Atendente(BaseHTTPRequestHandler):
         if self.command != "HEAD":
             self.wfile.write(corpo)
 
-    def _pedido_aceito(self, caminho, corpo):
+    def _rota_e_aberta(self, caminho):
+        return (self.command, caminho) in ROTAS_ABERTAS
+
+    def _origem_e_aceita(self, aberta):
         origem = self.headers.get("Origin")
-        aberta = (self.command, caminho) in ROTAS_ABERTAS
-        if (origem is None and not aberta) or (origem is not None and origem not in self.conexao.origens_aceitas):
-            return 403, "origin_not_allowed"
-        if corpo is None:
-            return 400, "invalid_json"
-        if aberta or self.command == "OPTIONS" or (self.command, caminho) in ROTAS_SEM_ASSINATURA:
-            return None
+        if origem is None:
+            return aberta
+        return origem in self.conexao.origens_aceitas
+
+    def _dispensa_a_assinatura(self, caminho):
+        return self.command == "OPTIONS" or (self.command, caminho) in ROTAS_SEM_ASSINATURA
+
+    def _assinatura_vale(self, caminho, corpo):
         verificacao = self.conexao.pareamento.verificar(self.command, caminho, corpo, self.headers)
         if verificacao.status != 200:
             return verificacao.status, verificacao.erro
         self._assinado = verificacao
         return None
+
+    def _pedido_aceito(self, caminho, corpo):
+        aberta = self._rota_e_aberta(caminho)
+        if not self._origem_e_aceita(aberta):
+            return 403, "origin_not_allowed"
+        if corpo is None:
+            return 400, "invalid_json"
+        if aberta or self._dispensa_a_assinatura(caminho):
+            return None
+        return self._assinatura_vale(caminho, corpo)
 
     def _ler_o_corpo(self, limite):
         try:
