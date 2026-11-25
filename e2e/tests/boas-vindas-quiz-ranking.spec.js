@@ -4,12 +4,14 @@ const { test, expect } = require('../fixtures');
 const { estadoFinalEm } = require('../estado-final');
 const { abrirOQuiz, responderAParte1, percorrer, quiz } = require('../apoio-do-quiz');
 
-const outra = (uid, nome, nivel, nota, melhorSequencia) => ({
-  uid, idioma: 'en', nome, foto: '', nivel, melhorSequencia, nota, acertos: 1, perguntas: 3, grupos: [], topou: true, em: 1,
-});
-const OUTRAS = [outra('ana', 'Ana Souza', 'iniciante', 33, 1), outra('bia', 'Bia Lima', 'intermediario', 1100, 4), outra('caio', 'Caio Reis', 'avancado', 2100, 6)];
+const outra = dados => ({ idioma: 'en', foto: '', acertos: 1, perguntas: 3, grupos: [], topou: true, em: 1, ...dados });
+const OUTRAS = [
+  outra({ uid: 'ana', nome: 'Ana Souza', nivel: 'iniciante', nota: 33, melhorSequencia: 1 }),
+  outra({ uid: 'bia', nome: 'Bia Lima', nivel: 'intermediario', nota: 1100, melhorSequencia: 4 }),
+  outra({ uid: 'caio', nome: 'Caio Reis', nivel: 'avancado', nota: 2100, melhorSequencia: 6 }),
+];
 
-async function ateOResultado(page, extensao, fakes, relogioParado, { conta = true } = {}) {
+async function ateOResultado({ page, extensao, fakes, relogioParado }, { conta = true } = {}) {
   if (conta) await extensao.semearSessao();
   const relogio = await abrirOQuiz(page, extensao, relogioParado);
   await responderAParte1(page, 'Inglês', 'iniciante');
@@ -22,7 +24,7 @@ const registrosDe = (fakes, idioma = 'en') => fakes.google.rankingDe(idioma);
 test.describe('o ranking do grupo', () => {
   test('quem não marca a caixa vê o X% e a lista de quem topou, e nada dela vai para a coleção', async ({ page, extensao, fakes, relogioParado }) => {
     fakes.google.gravarNoRanking(OUTRAS);
-    const ranking = await ateOResultado(page, extensao, fakes, relogioParado);
+    const ranking = await ateOResultado({ page, extensao, fakes, relogioParado });
 
     await expect(ranking.getByRole('heading', { name: 'Ranking do grupo' })).toBeVisible();
     await expect(ranking).toContainText('Você foi melhor que 33% de quem fez o quiz');
@@ -36,7 +38,7 @@ test.describe('o ranking do grupo', () => {
 
   test('marcar a caixa grava o nome, a foto, o nível e a melhor sequência dela, com o que os recortes de depois pedem', async ({ page, extensao, fakes, relogioParado }) => {
     fakes.google.gravarNoRanking(OUTRAS);
-    const ranking = await ateOResultado(page, extensao, fakes, relogioParado);
+    const ranking = await ateOResultado({ page, extensao, fakes, relogioParado });
 
     await ranking.getByRole('checkbox', { name: 'Aparecer no ranking do grupo' }).check();
 
@@ -50,7 +52,7 @@ test.describe('o ranking do grupo', () => {
 
   test('desmarcar a caixa apaga o registro dela, e a lista volta a ser só de quem ficou', async ({ page, extensao, fakes, relogioParado }) => {
     fakes.google.gravarNoRanking(OUTRAS);
-    const ranking = await ateOResultado(page, extensao, fakes, relogioParado);
+    const ranking = await ateOResultado({ page, extensao, fakes, relogioParado });
     const caixa = ranking.getByRole('checkbox', { name: 'Aparecer no ranking do grupo' });
     await caixa.check();
     await expect(ranking.getByRole('listitem')).toHaveCount(4);
@@ -63,7 +65,7 @@ test.describe('o ranking do grupo', () => {
   });
 
   test('sem ninguém mais no ranking, a pessoa é a primeira e não há porcentagem', async ({ page, extensao, fakes, relogioParado }) => {
-    const ranking = await ateOResultado(page, extensao, fakes, relogioParado);
+    const ranking = await ateOResultado({ page, extensao, fakes, relogioParado });
 
     await expect(ranking).toContainText('Você é a primeira pessoa a fazer o quiz.');
     await expect(ranking).not.toContainText('Você foi melhor que');
@@ -72,15 +74,15 @@ test.describe('o ranking do grupo', () => {
   });
 
   test('o ranking de um idioma não mistura quem topou no outro', async ({ page, extensao, fakes, relogioParado }) => {
-    fakes.google.gravarNoRanking([...OUTRAS, { ...outra('dani', 'Dani Russa', 'avancado', 2100, 5), idioma: 'ru' }]);
-    const ranking = await ateOResultado(page, extensao, fakes, relogioParado);
+    fakes.google.gravarNoRanking([...OUTRAS, outra({ uid: 'dani', nome: 'Dani Russa', nivel: 'avancado', nota: 2100, melhorSequencia: 5, idioma: 'ru' })]);
+    const ranking = await ateOResultado({ page, extensao, fakes, relogioParado });
 
     await expect(ranking.getByRole('listitem')).toHaveCount(3);
     await expect(ranking).not.toContainText('Dani Russa');
   });
 
   test('sem conta Google só há o aviso, e nada é pedido ao Firestore', async ({ page, extensao, fakes, relogioParado }) => {
-    const ranking = await ateOResultado(page, extensao, fakes, relogioParado, { conta: false });
+    const ranking = await ateOResultado({ page, extensao, fakes, relogioParado }, { conta: false });
 
     await expect(ranking).toContainText('Entre com a conta Google, em Conta & sync, para ver o ranking do grupo.');
     await expect(ranking.getByRole('checkbox')).toHaveCount(0);
@@ -91,7 +93,7 @@ test.describe('o ranking do grupo', () => {
   test('se as regras recusam a leitura, o ranking diz que não carregou e deixa tentar de novo', async ({ page, extensao, fakes, relogioParado }) => {
     fakes.google.gravarNoRanking(OUTRAS);
     fakes.google.recusarAcesso();
-    const ranking = await ateOResultado(page, extensao, fakes, relogioParado);
+    const ranking = await ateOResultado({ page, extensao, fakes, relogioParado });
 
     await expect(ranking).toContainText('Não deu para carregar o ranking.');
     await expect(ranking.getByRole('checkbox')).toHaveCount(0);
@@ -103,7 +105,7 @@ test.describe('o ranking do grupo', () => {
   });
 
   test('se a nuvem recusa o registro, a caixa volta a desmarcada e nada fica gravado', async ({ page, extensao, fakes, relogioParado }) => {
-    const ranking = await ateOResultado(page, extensao, fakes, relogioParado);
+    const ranking = await ateOResultado({ page, extensao, fakes, relogioParado });
     fakes.google.autenticarComo('outra-conta');
 
     await ranking.getByRole('checkbox', { name: 'Aparecer no ranking do grupo' }).click();
@@ -115,7 +117,7 @@ test.describe('o ranking do grupo', () => {
 
   test('Chamar um amigo copia o convite', async ({ page, extensao, fakes, relogioParado }) => {
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
-    const ranking = await ateOResultado(page, extensao, fakes, relogioParado);
+    const ranking = await ateOResultado({ page, extensao, fakes, relogioParado });
 
     await ranking.getByRole('button', { name: 'Chamar um amigo' }).click();
 

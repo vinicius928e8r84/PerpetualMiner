@@ -33,11 +33,10 @@ function estadoInicial() {
 function criarFakeGoogle() {
   const estado = estadoInicial();
   const tratarPedido = route => tratar(estado, route);
+  const marcar = campo => (valor = true) => { estado[campo] = valor; };
+  const ligar = (campo, valor) => () => { estado[campo] = valor; };
 
-  function responderLogin(url, req, res) {
-    const responder = RESPOSTAS_DO_LOGIN.get(estado.modoDoLogin) || voltarParaAExtensaoComOsTokens;
-    responder(url, req, res);
-  }
+  const responderLogin = (url, req, res) => respostaDoLogin(estado.modoDoLogin)(url, req, res);
 
   return {
     padrao: /^https:\/\/(firestore|securetoken|identitytoolkit|www)\.googleapis\.com\//,
@@ -47,16 +46,16 @@ function criarFakeGoogle() {
     /** @estado-guardado Frases do usuário no Firestore, já convertidas de campos para objetos. */
     frasesDe: uid => objetosComOPrefixo(estado.documentos, `usuarios/${uid}/frases/`),
     /** @estado-guardado Ids com tombstone no Firestore do usuário (`usuarios/{uid}/meta/deleted`). */
-    apagadasDe: uid => Object.keys(estado.documentos.get(`usuarios/${uid}/meta/deleted`)?.ids?.mapValue?.fields || {}),
+    apagadasDe: uid => idsApagadosDe(estado.documentos, uid),
     /** @estado-guardado */
     chaveDaOpenAIDe: uid => objetoDoDocumento(estado.documentos, `usuarios/${uid}/segredos/openai`),
     gravarChaveDaOpenAI: (uid, documento) => { estado.documentos.set(`usuarios/${uid}/segredos/openai`, objetoParaCampos(documento)); },
-    recusarEscritas: (valor = true) => { estado.recusarEscritas = valor; },
-    segurarLeituras: () => { estado.leituraDasFrases = 'segurar'; },
-    recusarLeituras: () => { estado.leituraDasFrases = 'recusar'; },
-    ficarForaDoAr: (valor = true) => { estado.foraDoAr = valor; },
-    recusarAcesso: (valor = true) => { estado.acessoRecusado = valor; },
-    expirarSessao: (valor = true) => { estado.sessaoExpirada = valor; },
+    recusarEscritas: marcar('recusarEscritas'),
+    segurarLeituras: ligar('leituraDasFrases', 'segurar'),
+    recusarLeituras: ligar('leituraDasFrases', 'recusar'),
+    ficarForaDoAr: marcar('foraDoAr'),
+    recusarAcesso: marcar('acessoRecusado'),
+    expirarSessao: marcar('sessaoExpirada'),
     gravarFrases: (uid, frases) => gravarObjetos(estado.documentos, frases, frase => `usuarios/${uid}/frases/${frase.id}`),
     /** @estado-guardado O ranking do grupo no idioma (`ranking/{idioma}_{uid}`), já convertido em objetos: só quem topou está lá. */
     rankingDe: idioma => objetosComOPrefixo(estado.documentos, `ranking/${idioma}_`),
@@ -317,6 +316,8 @@ const RESPOSTAS_DO_LOGIN = new Map([
   ['janela', deixarAJanelaDeLoginEsperando],
 ]);
 
+const respostaDoLogin = modo => RESPOSTAS_DO_LOGIN.get(modo) || voltarParaAExtensaoComOsTokens;
+
 function rotaDoPedidoDaConexao({ metodo, uid, token, fields }, aoResponder) {
   const url = `${URL_DOS_DOCUMENTOS}/usuarios/${encodeURIComponent(uid)}/segredos/openai`;
   const request = () => ({ url: () => url, method: () => metodo, headers: () => ({ authorization: `Bearer ${token}` }), postDataJSON: () => ({ fields }) });
@@ -333,6 +334,11 @@ function objetosComOPrefixo(documentos, prefixo) {
   return [...documentos]
     .filter(([doc]) => doc.startsWith(prefixo))
     .map(([, fields]) => camposParaObjeto(fields));
+}
+
+function idsApagadosDe(documentos, uid) {
+  const tombstone = documentos.get(`usuarios/${uid}/meta/deleted`);
+  return Object.keys(tombstone?.ids?.mapValue?.fields || {});
 }
 
 function objetoDoDocumento(documentos, caminho) {
@@ -352,17 +358,28 @@ function nomeDoCaminho(caminho) {
   return `${RAIZ_DOS_DOCUMENTOS}/${caminho}`;
 }
 
+const SEGMENTO_SIMPLES = /^[A-Za-z_][A-Za-z_0-9]*/;
+const SEGMENTO_ENTRE_CRASES = /^`((?:[^`\\]|\\.)+)`/;
+
+const caminhoInvalido = caminho => new Error(`Invalid property path "${caminho}".`);
+
+function primeiroSegmento(resto, caminho) {
+  const simples = resto.match(SEGMENTO_SIMPLES);
+  if (simples) return { nome: simples[0], tamanho: simples[0].length };
+  const citado = resto.match(SEGMENTO_ENTRE_CRASES);
+  if (citado) return { nome: citado[1].replace(/\\(.)/g, '$1'), tamanho: citado[0].length };
+  throw caminhoInvalido(caminho);
+}
+
 function segmentosDoCaminhoDeCampo(caminho) {
   const segmentos = [];
   let resto = caminho;
   while (true) {
-    const simples = resto.match(/^[A-Za-z_][A-Za-z_0-9]*/);
-    const citado = resto.match(/^`((?:[^`\\]|\\.)+)`/);
-    if (!simples && !citado) throw new Error(`Invalid property path "${caminho}".`);
-    segmentos.push(simples ? simples[0] : citado[1].replace(/\\(.)/g, '$1'));
-    resto = resto.slice((simples || citado)[0].length);
+    const { nome, tamanho } = primeiroSegmento(resto, caminho);
+    segmentos.push(nome);
+    resto = resto.slice(tamanho);
     if (resto === '') return segmentos;
-    if (resto[0] !== '.') throw new Error(`Invalid property path "${caminho}".`);
+    if (resto[0] !== '.') throw caminhoInvalido(caminho);
     resto = resto.slice(1);
   }
 }
@@ -384,14 +401,19 @@ function gravarCampo(fields, [primeiro, ...resto], valor) {
   gravarCampo(fields[primeiro].mapValue.fields, resto, valor);
 }
 
+const ESCRITORES_DO_VALOR = [
+  [valor => typeof valor === 'string', valor => ({ stringValue: valor })],
+  [valor => typeof valor === 'number', valor => ({ integerValue: String(valor) })],
+  [valor => typeof valor === 'boolean', valor => ({ booleanValue: valor })],
+  [Array.isArray, valor => ({ arrayValue: { values: valor.map(v => ({ stringValue: String(v) })) } })],
+  [valor => valor && typeof valor === 'object', valor => ({ mapValue: { fields: objetoParaCampos(valor) } })],
+];
+
 function objetoParaCampos(obj) {
   const fields = {};
   for (const [chave, valor] of Object.entries(obj)) {
-    if (typeof valor === 'string') fields[chave] = { stringValue: valor };
-    else if (typeof valor === 'number') fields[chave] = { integerValue: String(valor) };
-    else if (typeof valor === 'boolean') fields[chave] = { booleanValue: valor };
-    else if (Array.isArray(valor)) fields[chave] = { arrayValue: { values: valor.map(v => ({ stringValue: String(v) })) } };
-    else if (valor && typeof valor === 'object') fields[chave] = { mapValue: { fields: objetoParaCampos(valor) } };
+    const escritor = ESCRITORES_DO_VALOR.find(([ehDoTipo]) => ehDoTipo(valor));
+    if (escritor) fields[chave] = escritor[1](valor);
   }
   return fields;
 }
