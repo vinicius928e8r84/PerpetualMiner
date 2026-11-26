@@ -78,13 +78,16 @@ class Abridor:
         self.sistema.escrever(self, perfil)
 
 
+DoComplemento = namedtuple("DoComplemento", "pasta porta", defaults=(None, PORTA))
+
+
 class Computador(namedtuple("Computador", "plataforma ambiente executavel existe", defaults=(os.path.exists,))):
     pass
 
 
-def deste_computador(*, computador, pasta, complemento=None, registro=None, porta=PORTA):
+def deste_computador(*, computador, pasta, complemento=DoComplemento(), registro=None):
     plataforma, ambiente, executavel, existe = computador
-    conserto = conserto_do_anki.Conserto(executavel=executavel, complemento=complemento, conexao=conserto_do_anki.ConexaoEsperada(porta=porta))
+    conserto = conserto_do_anki.Conserto(executavel=executavel, complemento=complemento.pasta, conexao=conserto_do_anki.ConexaoEsperada(porta=complemento.porta))
     if plataforma == "darwin":
         casa = ambiente.get("HOME") or os.path.expanduser("~")
         hosts = posixpath.join(casa, "Library", "Application Support", "Google", "Chrome", "NativeMessagingHosts")

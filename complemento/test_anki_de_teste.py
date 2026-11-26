@@ -88,7 +88,7 @@ class OAnkiDeTesteAoIniciar(unittest.TestCase):
         with patch.dict(os.environ, {PORTA_DO_TESTE: str(porta)}), patch("complemento.abridor.deste_computador", return_value=None) as deste:
             conexao = inicio.iniciar(pasta, lambda: None, inicio.Arredores(abridor=inicio.ABRIDOR_DESTE_COMPUTADOR, pasta_base_do_anki=base))
         try:
-            self.assertEqual(deste.call_args.kwargs["porta"], porta)
+            self.assertEqual(deste.call_args.kwargs["complemento"].porta, porta)
         finally:
             conexao.parar()
 

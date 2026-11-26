@@ -19,7 +19,7 @@ def abridor(escolhido, pasta_do_complemento, dados, porta):
         return escolhido
     return abridores.deste_computador(
         computador=abridores.Computador(sys.platform, os.environ, sys.executable), pasta=os.path.join(dados.raiz, "abridor"),
-        complemento=pasta_do_complemento, porta=porta,
+        complemento=abridores.DoComplemento(pasta_do_complemento, porta),
     )
 
 

@@ -342,7 +342,7 @@ class DesteComputador(unittest.TestCase):
     def test_o_conserto_olha_a_porta_dada_e_so_na_falta_dela_a_8766(self):
         computador = abridor.Computador(plataforma="darwin", ambiente={"HOME": "/Users/maria"}, executavel="/Applications/Anki.app/Contents/MacOS/anki")
         sem_porta = abridor.deste_computador(computador=computador, pasta="/x")
-        com_porta = abridor.deste_computador(computador=computador, pasta="/x", porta=9123)
+        com_porta = abridor.deste_computador(computador=computador, pasta="/x", complemento=abridor.DoComplemento("/c", 9123))
         self.assertEqual((sem_porta.conserto.conexao.porta, com_porta.conserto.conexao.porta), (8766, 9123))
         self.assertIn("PORTA=9123", conserto_do_anki.variaveis_do_mac(com_porta.conserto, "/x").splitlines())
 
