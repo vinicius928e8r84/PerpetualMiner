@@ -46,7 +46,7 @@ test.describe('a regra dos dois portões, em cada caminho', () => {
     expect(tipos).toEqual([LEGENDA, ESCUTA, LEGENDA, VERSO, ESCUTA, VERSO]);
     await expect(quiz(page, 'Inglês').getByRole('radio', { name: 'Avançado' })).toBeChecked();
     await expect(quiz(page, 'Inglês').locator('.quiz__resumo')).toHaveText('4 de 6 certas · melhor sequência: 2 · escuta: 0 de 2');
-    await expect(quiz(page, 'Inglês')).toContainText('A escuta aparece aqui, mas não muda o estilo.');
+    await expect(quiz(page, 'Inglês')).toContainText('A escuta aparece aqui, mas não muda o nível.');
     await usarOEstilo(page, 'Inglês');
     await estadoFinal(extensao, { [CHAVE]: { en: { nivel: 'avancado', versao: 1 } } });
   });

@@ -175,7 +175,7 @@ for (const { nome, botao, secao, foto, frasesAoFim, abrirPerigo } of VARIANTES_D
   fakes.google.gravarChaveDaOpenAI('B', { chave: NOVA, em: 101 });
   await abrir(page, extensao);
   await expect(page.locator('#shell-chip')).toContainText('Sincronizado agora');
-  await page.getByRole('button', { name: 'Conta & sync', exact: true }).click();
+  await page.getByRole('button', { name: /^Conta e sincronização$/ }).click();
   await page.locator('#cfg-conta').getByRole('button', { name: 'Sair da conta' }).click();
   await expect(page.locator('#shell-chip')).toContainText('Sem conta');
   const syncs = fakes.anki.requisicoes.filter(p => p.caminho === '/ia/openai/sincronizar').length;

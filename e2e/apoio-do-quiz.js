@@ -99,7 +99,7 @@ const VERSO = 'Este verso explica qual palavra?';
 const ESCUTA = 'Ouça e escolha o que foi dito';
 
 async function usarOEstilo(page, idioma) {
-  await quiz(page, idioma).getByRole('button', { name: 'Usar este estilo' }).click();
+  await quiz(page, idioma).getByRole('button', { name: 'Usar este nível' }).click();
   await expect(quiz(page, idioma)).toHaveCount(0);
 }
 

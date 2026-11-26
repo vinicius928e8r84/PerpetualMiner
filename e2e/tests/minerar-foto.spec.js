@@ -105,7 +105,7 @@ test('lendo a primeira foto, a coluna das frases diz que está lendo, e as fotos
 
   await lerUmaFoto(page, 'a.png');
   await expect(page.getByText('Lendo a foto…')).toBeVisible();
-  await expect(page.getByText('Procurando os trechos marcados')).toBeVisible();
+  await expect(page.getByText('Procurando as Marcações')).toBeVisible();
 
   await enviarFotos(page, foto('b.png'));
   await expect(fotoNaFila(page, 'b.png')).toContainText('Na fila');

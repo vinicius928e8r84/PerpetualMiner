@@ -111,7 +111,7 @@ test('sem a chave na Conexão, Ouvir a voz de reserva diz que falta a chave e na
 
   await ouvir(page, 'Voz de reserva').click();
 
-  await expect(avancado(page)).toContainText('A voz da OpenAI usa a chave. Ponha-a no card da IA dos cartões.');
+  await expect(avancado(page)).toContainText('A voz da OpenAI usa a chave. Ponha-a na IA dos cartões.');
   expect(await tocados(page)).toEqual([]);
   await estadoFinal(extensao, { [CHAVE]: null });
 });

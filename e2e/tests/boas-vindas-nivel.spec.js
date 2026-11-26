@@ -16,7 +16,7 @@ const itemDaLista = (page, nome) => lista(page).getByRole('button', { name: new 
 const card = page => page.locator('.bv-card');
 const botaoDoCard = (page, nome) => card(page).getByRole('button', { name: nome, exact: true });
 const grupo = (page, idioma) => card(page).getByRole('group', { name: idioma });
-const estilo = (page, idioma) => grupo(page, idioma).getByRole('radiogroup', { name: 'Estilo do cartão' });
+const estilo = (page, idioma) => grupo(page, idioma).getByRole('radiogroup', { name: 'Nível' });
 const nivel = (page, idioma, nome) => estilo(page, idioma).getByRole('radio', { name: nome });
 const escolher = (page, idioma, nome) => estilo(page, idioma).locator('label', { hasText: nome }).click();
 const previa = (page, idioma) => grupo(page, idioma).locator('.previa');

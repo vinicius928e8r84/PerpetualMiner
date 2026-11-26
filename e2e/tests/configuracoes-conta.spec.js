@@ -34,7 +34,7 @@ async function esperarChipSemConta(page) {
 }
 
 async function abrirConta(page) {
-  const cabeca = cabecaDoCard(page, 'Conta & sync');
+  const cabeca = cabecaDoCard(page, 'Conta e sincronização');
   if (await cabeca.getAttribute('aria-expanded') !== 'true') await cabeca.click();
   await expect(cabeca).toHaveAttribute('aria-expanded', 'true');
 }
@@ -55,7 +55,7 @@ async function detalhesDoCard(page) {
   return detalhes.locator('pre');
 }
 
-// Exceção de teste: sem-estado-guardado — a sessão foi semeada; abrir o card Conta & sync não grava nada.
+// Exceção de teste: sem-estado-guardado — a sessão foi semeada; abrir o card não grava nada.
 test('Sincronizado (CFG-02): nome, ponto verde, Sair da conta e a nota; o chip e o resumo dizem o mesmo', async ({ page, extensao }) => {
   await extensao.semearSessao({ displayName: 'Ana Souza' });
   await abrirPainel(page, extensao);

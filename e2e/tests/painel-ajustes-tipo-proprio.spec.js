@@ -16,7 +16,7 @@ test('mapear o tipo que a pessoa já tem: a prévia aparece, Continuar liga e Sa
   await expect(campo(page, 'Frase')).toHaveValue('Pergunta');
   await expect(campo(page, 'Resposta')).toHaveValue('Resposta');
   await campo(page, 'Áudio da frase').selectOption('Som');
-  await campo(page, 'Palavra').selectOption('Resposta');
+  await campo(page, 'Termo').selectOption('Resposta');
   await expect(continuar(page)).toBeEnabled();
   await expect(page.getByRole('region', { name: 'Prévia do cartão' }).last()).toHaveAttribute('data-estado', 'pronta');
   expect(pedidosDaPrevia(fakes).at(-1)).toEqual({

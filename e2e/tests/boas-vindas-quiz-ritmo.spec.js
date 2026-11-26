@@ -64,7 +64,7 @@ test.describe('o ritmo e a sequência', () => {
     await partida.relogio.avancar(PAUSA_DA_RESPOSTA_MS);
 
     await expect(quiz(page, 'Inglês').locator('.quiz__resumo')).toHaveText('2 de 3 certas · melhor sequência: 2 · escuta: 1 de 1');
-    // Exceção de teste: sem-estado-guardado — a sequência é só o que aparece na tela; nada é guardado até Usar este estilo.
+    // Exceção de teste: sem-estado-guardado — a sequência é só o que aparece na tela; nada é guardado até Usar este nível.
     expect((await extensao.lerStorage(CHAVE))[CHAVE]).toBeUndefined();
   });
 
@@ -89,7 +89,7 @@ test.describe('o resultado', () => {
     await chegarAoNivelSugerido({ page, extensao, fakes, relogioParado }, CINCO_CERTAS_E_UMA_ERRADA);
 
     await expect(quiz(page, 'Inglês')).toContainText('Prefere outro nível? Troque aqui.');
-    await expect(quiz(page, 'Inglês')).toContainText('Dá para trocar depois em Ajustes de envio › Estilo do cartão.');
+    await expect(quiz(page, 'Inglês')).toContainText('Dá para trocar depois em Ajustes de envio › Nível.');
     await expect(quiz(page, 'Inglês').locator('.previa')).toContainText('Exemplo do Intermediário em inglês, como o Anki mostra.');
     await expect(quiz(page, 'Inglês').locator('.previa').frameLocator('iframe').locator('body')).toContainText('Desistir de fazer algo, parar de tentar.');
     await quiz(page, 'Inglês').locator('label', { hasText: 'Avançado' }).click();
@@ -109,7 +109,7 @@ test.describe('o resultado', () => {
 
     await usarOEstilo(page, 'Inglês');
 
-    await expect(grupo(page, 'Inglês').getByRole('radiogroup', { name: 'Estilo do cartão' }).getByRole('radio', { name: 'Avançado' })).toBeChecked();
+    await expect(grupo(page, 'Inglês').getByRole('radiogroup', { name: 'Nível' }).getByRole('radio', { name: 'Avançado' })).toBeChecked();
     await expect(grupo(page, 'Inglês').getByRole('button', { name: 'Não sei meu nível, quero descobrir' })).toBeVisible();
     await expect(page.getByRole('navigation', { name: 'Passos da configuração' }).getByRole('button', { name: /^Escolher o nível do cartão/ })).toHaveAccessibleName(/feito$/);
     await estadoFinal(extensao, { [CHAVE]: { en: { nivel: 'avancado', versao: 1 } } });
@@ -117,7 +117,7 @@ test.describe('o resultado', () => {
 
   test('sair do quiz devolve o controle do nível sem guardar nada', async ({ page, extensao, relogioParado }) => {
     await abrirOQuiz(page, extensao, relogioParado);
-    await expect(grupo(page, 'Inglês').getByRole('radiogroup', { name: 'Estilo do cartão' })).toHaveCount(0);
+    await expect(grupo(page, 'Inglês').getByRole('radiogroup', { name: 'Nível' })).toHaveCount(0);
     await responderAParte1(page, 'Inglês', 'iniciante');
 
     await quiz(page, 'Inglês').getByRole('button', { name: 'Sair do quiz' }).click();

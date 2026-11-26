@@ -102,7 +102,7 @@ test.describe('a festa do acerto', () => {
   });
 
   test('errar mostra a certa marcada, sem pulo, sem confete e sem pontos', async ({ page, extensao, fakes, relogioParado }) => {
-    // Exceção de teste: sem-estado-guardado — a festa é só o que aparece na tela; nada é guardado até Usar este estilo.
+    // Exceção de teste: sem-estado-guardado — a festa é só o que aparece na tela; nada é guardado até Usar este nível.
     await naParte2({ page, extensao, fakes, relogioParado });
 
     await quiz(page, 'Inglês').locator('.quiz__opcao').nth(0).click();
@@ -163,7 +163,7 @@ test.describe('menos movimento', () => {
   test.use({ reducedMotion: 'reduce' });
 
   test('a certa só muda de cor: não pula, não solta confete nem mostra “+10”', async ({ page, extensao, fakes, relogioParado }) => {
-    // Exceção de teste: sem-estado-guardado — a festa é só o que aparece na tela; nada é guardado até Usar este estilo.
+    // Exceção de teste: sem-estado-guardado — a festa é só o que aparece na tela; nada é guardado até Usar este nível.
     await naParte2({ page, extensao, fakes, relogioParado });
 
     await quiz(page, 'Inglês').locator('.quiz__opcao').nth(1).click();

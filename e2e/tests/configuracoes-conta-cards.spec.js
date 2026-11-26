@@ -26,7 +26,7 @@ const conta = page => card(page, 'conta');
 const chip = page => page.locator('#shell-chip');
 
 async function abrirConta(page) {
-  const cabeca = cabecaDoCard(page, 'Conta & sync');
+  const cabeca = cabecaDoCard(page, 'Conta e sincronização');
   if (await cabeca.getAttribute('aria-expanded') !== 'true') await cabeca.click();
   await expect(cabeca).toHaveAttribute('aria-expanded', 'true');
 }
@@ -36,7 +36,7 @@ test('#configuracoes mostra os 7 cards fechados em linha, na ordem, com o resumo
 
   const cabecas = page.locator('.shell-cards').getByRole('button', { expanded: false });
   await expect(cabecas).toHaveCount(7);
-  for (const [i, nome] of ['Conta & sync', 'Atalhos', 'IA dos cartões', 'Chave do Gemini', 'Conexão com o Anki', 'Aparência', 'Zona de perigo'].entries()) {
+  for (const [i, nome] of ['Conta e sincronização', 'Atalhos', 'IA dos cartões', 'Chave do Gemini', 'Conexão com o Anki', 'Aparência', 'Zona de perigo'].entries()) {
     await expect(cabecas.nth(i)).toHaveAccessibleName(nome);
   }
   await expect(resumo(page, 'conta')).toHaveText('Sem conta · só neste computador');
@@ -50,17 +50,17 @@ test('clicar na linha abre o card no lugar, e vários ficam abertos ao mesmo tem
   await expect(descricao).toBeHidden();
 
   await resumo(page, 'conta').click();
-  await expect(cabecaDoCard(page, 'Conta & sync')).toHaveAttribute('aria-expanded', 'true');
+  await expect(cabecaDoCard(page, 'Conta e sincronização')).toHaveAttribute('aria-expanded', 'true');
   await expect(descricao).toBeVisible();
   await expect(resumo(page, 'conta')).toBeHidden();
   await expect(conta(page).getByRole('button', { name: 'Entrar com Google' })).toBeVisible();
 
   await cabecaDoCard(page, 'Zona de perigo').click();
   await expect(cabecaDoCard(page, 'Zona de perigo')).toHaveAttribute('aria-expanded', 'true');
-  await expect(cabecaDoCard(page, 'Conta & sync')).toHaveAttribute('aria-expanded', 'true');
+  await expect(cabecaDoCard(page, 'Conta e sincronização')).toHaveAttribute('aria-expanded', 'true');
 
-  await cabecaDoCard(page, 'Conta & sync').click();
-  await expect(cabecaDoCard(page, 'Conta & sync')).toHaveAttribute('aria-expanded', 'false');
+  await cabecaDoCard(page, 'Conta e sincronização').click();
+  await expect(cabecaDoCard(page, 'Conta e sincronização')).toHaveAttribute('aria-expanded', 'false');
   await expect(descricao).toBeHidden();
   await expect(resumo(page, 'conta')).toBeVisible();
 });
@@ -69,20 +69,20 @@ test('#configuracoes/conta abre o card, rola até ele e pisca a borda', async ({
   await page.setViewportSize({ width: 1280, height: 400 });
   await abrirPainel(page, extensao, '#configuracoes/perigo');
   await expect(cabecaDoCard(page, 'Zona de perigo')).toHaveAttribute('aria-expanded', 'true');
-  await expect(cabecaDoCard(page, 'Conta & sync')).toHaveAttribute('aria-expanded', 'false');
+  await expect(cabecaDoCard(page, 'Conta e sincronização')).toHaveAttribute('aria-expanded', 'false');
 
   await page.evaluate(() => { location.hash = '#configuracoes/conta'; });
-  await expect(cabecaDoCard(page, 'Conta & sync')).toHaveAttribute('aria-expanded', 'true');
+  await expect(cabecaDoCard(page, 'Conta e sincronização')).toHaveAttribute('aria-expanded', 'true');
   await expect(conta(page)).toBeInViewport();
   expect(await conta(page).evaluate(el => getComputedStyle(el).animationName)).toBe('shell-destaque');
 });
 
-// Exceção de teste: sem-estado-guardado — o chip só leva ao card Conta & sync; nada é gravado.
-test('o chip de conta leva ao card Conta & sync aberto', async ({ page, extensao }) => {
+// Exceção de teste: sem-estado-guardado — o chip só leva ao card Conta e sincronização; nada é gravado.
+test('o chip de conta leva ao card Conta e sincronização aberto', async ({ page, extensao }) => {
   await abrirPainel(page, extensao, '#frases');
   await chip(page).click();
   await expect(page).toHaveURL(/#configuracoes\/conta$/);
-  await expect(cabecaDoCard(page, 'Conta & sync')).toHaveAttribute('aria-expanded', 'true');
+  await expect(cabecaDoCard(page, 'Conta e sincronização')).toHaveAttribute('aria-expanded', 'true');
   await expect(conta(page).getByRole('button', { name: 'Entrar com Google' })).toBeVisible();
 });
 
@@ -161,14 +161,14 @@ test('abaixo de ~560 px de conteúdo, o resumo da linha fechada some e o conteú
 
   await page.setViewportSize({ width: 700, height: 800 });
   await expect.poll(recuo).toBe(16);
-  await cabecaDoCard(page, 'Conta & sync').click();
+  await cabecaDoCard(page, 'Conta e sincronização').click();
   await expect(resumo(page, 'conta')).toBeHidden();
 });
 
 // Exceção de teste: sem-estado-guardado — abrir e fechar o card pelo teclado não grava nada.
 test('a linha do card abre e fecha pelo teclado, com o foco visível', async ({ page, extensao }) => {
   await abrirPainel(page, extensao);
-  const cabeca = cabecaDoCard(page, 'Conta & sync');
+  const cabeca = cabecaDoCard(page, 'Conta e sincronização');
   await cabeca.focus();
   expect(await cabeca.evaluate(el => getComputedStyle(el).outlineStyle)).toBe('solid');
 
