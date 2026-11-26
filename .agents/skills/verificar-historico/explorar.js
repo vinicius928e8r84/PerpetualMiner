@@ -117,7 +117,7 @@ function contexto(mundo, locks, extra = {}) {
       storage: { local, sync: armazenamento(mundo, {}), onChanged: evento },
       tabs: { query: (_p, f) => f?.([]), sendMessage() {}, onRemoved: evento, onUpdated: evento },
       action: { setBadgeText() {}, setBadgeBackgroundColor() {}, setBadgeTextColor() {}, setTitle() {} },
-      alarms: { create() {}, clear() {}, onAlarm: evento },
+      alarms: { get: async () => null, create() {}, clear() {}, onAlarm: evento },
     },
     ...extra,
   };
