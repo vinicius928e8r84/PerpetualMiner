@@ -4,6 +4,7 @@ const assert = require('assert');
 const fs = require('fs');
 const test = require('node:test');
 const vm = require('vm');
+const { chromeDoServiceWorker } = require('./chrome-do-service-worker');
 
 const ID_DA_EXTENSAO = 'extensao-do-perpetualminer';
 const DO_PAINEL = { id: ID_DA_EXTENSAO };
@@ -37,17 +38,11 @@ function armazenamentoDeMentira(armazenamento) {
 }
 
 function chromeDeMentira(armazenamento, ouvintes) {
-  return {
-    contextMenus: { create() {}, onClicked: { addListener: funcao => { ouvintes.menu = funcao; } } },
-    runtime: {
-      id: ID_DA_EXTENSAO,
-      onInstalled: { addListener() {} },
-      onMessage: { addListener: funcao => { ouvintes.mensagem = funcao; } },
-      lastError: null,
-    },
+  return chromeDoServiceWorker({
+    contextMenus: { onClicked: { addListener: funcao => { ouvintes.menu = funcao; } } },
+    runtime: { id: ID_DA_EXTENSAO, onMessage: { addListener: funcao => { ouvintes.mensagem = funcao; } } },
     storage: { local: armazenamentoDeMentira(armazenamento) },
-    tabs: { query: (_filtro, devolver) => devolver([]) },
-  };
+  });
 }
 
 function carregarOBackground(chrome) {

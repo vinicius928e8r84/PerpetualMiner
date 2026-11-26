@@ -89,14 +89,13 @@ async function acordarDeNovoNaoEmpurraOAlarmeQueJaExiste() {
 async function ligarOuveOAlarmeEAMudancaDaMarca() {
   const { chrome, armazenamento, alarmes, pedidos } = montar({ gravado: MARCA });
   const ouvintes = [];
-  chrome.alarms.onAlarm = 'onAlarm';
-  chrome.storage.onChanged = 'onChanged';
-  const ouvirChrome = (evento, ouvinte) => ouvintes.push([evento, ouvinte]);
+  chrome.alarms.onAlarm = { addListener: ouvinte => ouvintes.push(['onAlarm', ouvinte]) };
+  chrome.storage.onChanged = { addListener: ouvinte => ouvintes.push(['onChanged', ouvinte]) };
   globalThis.PerpetualMiner.PareamentoComOAnki = { pedirAssinado: async (endereco, pedido) => {
     pedidos.push(`${pedido.metodo} ${endereco}${pedido.caminho}`);
     return { status: 200, texto: '{"ok":true}' };
   } };
-  ApagarFrasesPendente.ligar({ chrome, ouvirChrome });
+  ApagarFrasesPendente.ligar({ chrome });
   const aguardar = () => new Promise(r => setImmediate(r));
   const ouvinte = evento => async (...args) => { ouvintes.find(([nome]) => nome === evento)[1](...args); await aguardar(); };
   await aguardar();
@@ -118,7 +117,9 @@ async function ligarOuveOAlarmeEAMudancaDaMarca() {
   assert.strictEqual(alarmes.has(ApagarFrasesPendente.ALARME), false, 'sem marca, o alarme sai');
 
   const semAlarmes = { storage: chrome.storage };
-  ApagarFrasesPendente.ligar({ chrome: semAlarmes, ouvirChrome: () => assert.fail('sem `alarms` nada é ligado'), endereco: ENDERECO });
+  const ouvidos = ouvintes.length;
+  ApagarFrasesPendente.ligar({ chrome: semAlarmes, endereco: ENDERECO });
+  assert.strictEqual(ouvintes.length, ouvidos, 'sem `alarms` nada é ligado');
 }
 
 const CASOS = [

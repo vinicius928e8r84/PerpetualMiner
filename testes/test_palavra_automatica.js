@@ -3,14 +3,13 @@
 const assert = require('assert');
 const fs = require('fs');
 const vm = require('vm');
+const { chromeDoServiceWorker } = require('./chrome-do-service-worker');
 
 function carregarBackground(storage) {
   const context = {
     console, navigator: globalThis.navigator, fetch: async () => ({ ok: false }),
     setTimeout, clearTimeout, Date,
-    chrome: {
-      contextMenus: { create() {}, onClicked: { addListener() {} } },
-      runtime: { onInstalled: { addListener() {} }, onMessage: { addListener() {} }, lastError: null },
+    chrome: chromeDoServiceWorker({
       storage: { local: {
         get(defaults, callback) {
           const result = {};
@@ -21,8 +20,7 @@ function carregarBackground(storage) {
         },
         set(values, callback) { Object.assign(storage, values || {}); if (callback) callback(); },
       } },
-      tabs: { query(_query, callback) { callback([]); } },
-    },
+    }),
   };
   context.importScripts = (...arquivos) => {
     for (const arquivo of arquivos) vm.runInContext(fs.readFileSync(arquivo, 'utf8'), context, { filename: arquivo });

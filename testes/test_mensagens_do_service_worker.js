@@ -4,6 +4,7 @@ const assert = require('assert');
 const fs = require('fs');
 const test = require('node:test');
 const vm = require('vm');
+const { chromeDoServiceWorker } = require('./chrome-do-service-worker');
 
 const ID_DA_EXTENSAO = 'extensao-do-perpetualminer';
 const DE_UMA_ABA = { id: ID_DA_EXTENSAO, tab: { id: 7 } };
@@ -22,14 +23,8 @@ function abrirOServiceWorker({ armazenamento = {}, aoMandarParaAAba = async () =
     setTimeout,
     clearTimeout,
     Date,
-    chrome: {
-      contextMenus: { create() {}, onClicked: { addListener() {} } },
-      runtime: {
-        id: ID_DA_EXTENSAO,
-        onInstalled: { addListener() {} },
-        onMessage: { addListener: funcao => { ouvinte = funcao; } },
-        lastError: null,
-      },
+    chrome: chromeDoServiceWorker({
+      runtime: { id: ID_DA_EXTENSAO, onMessage: { addListener: funcao => { ouvinte = funcao; } } },
       storage: {
         local: {
           get(padroes, devolver) {
@@ -52,7 +47,7 @@ function abrirOServiceWorker({ armazenamento = {}, aoMandarParaAAba = async () =
           return aoMandarParaAAba(idDaAba, mensagem, opcoes);
         },
       },
-    },
+    }),
   };
   contexto.importScripts = (...arquivos) => {
     for (const arquivo of arquivos) vm.runInContext(fs.readFileSync(arquivo, 'utf8'), contexto, { filename: arquivo });

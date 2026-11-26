@@ -4,6 +4,7 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
+const { chromeDoServiceWorker } = require('./chrome-do-service-worker');
 
 process.chdir(path.join(__dirname, '..'));
 
@@ -43,15 +44,12 @@ function serviceWorker(area) {
     setTimeout,
     clearTimeout,
     Date,
-    chrome: {
-      contextMenus: { create() {}, onClicked: { addListener() {} } },
-      runtime: { onInstalled: { addListener() {} }, onMessage: { addListener() {} }, lastError: null },
+    chrome: chromeDoServiceWorker({
       storage: { local: {
         get: (pedido, devolver) => { area.get(pedido).then(devolver); },
         set: (valores, pronto) => { area.set(valores).then(() => pronto?.()); },
       } },
-      tabs: { query: (_pedido, devolver) => devolver([]) },
-    },
+    }),
   };
   contexto.importScripts = (...arquivos) => arquivos.forEach(arquivo =>
     vm.runInContext(fs.readFileSync(arquivo, 'utf8'), contexto, { filename: arquivo }));

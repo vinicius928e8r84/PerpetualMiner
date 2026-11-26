@@ -292,19 +292,7 @@ function badgeDaMineracaoAutomatica(state) {
   };
 }
 
-function metodoDoChrome(alvo, nome) {
-  if (!alvo || typeof alvo[nome] !== 'function') return null;
-  return alvo[nome].bind(alvo);
-}
-
-function ouvirChrome(alvo, ouvinte) {
-  if (!alvo || typeof alvo.addListener !== 'function') return;
-  alvo.addListener(ouvinte);
-}
-
 async function atualizarBadgeDaToolbar() {
-  if (!metodoDoChrome(chrome.action, 'setBadgeText')) return;
-
   const badge = badgeDaMineracaoAutomatica(await getAutoMinerState());
 
   await chrome.action.setBadgeText({ text: badge ? badge.texto : '' });
@@ -316,39 +304,34 @@ async function atualizarBadgeDaToolbar() {
 }
 
 async function agendarViradaDoDia() {
-  const lerAlarme = metodoDoChrome(chrome.alarms, 'get');
-  const criarAlarme = metodoDoChrome(chrome.alarms, 'create');
-  if (!lerAlarme || !criarAlarme) return;
-  if (await lerAlarme(ALARME_VIRADA_DO_DIA)) return;
+  if (await chrome.alarms.get(ALARME_VIRADA_DO_DIA)) return;
 
   const proximaMeiaNoite = new Date();
   proximaMeiaNoite.setHours(24, 0, 5, 0);
-  await criarAlarme(ALARME_VIRADA_DO_DIA, { when: proximaMeiaNoite.getTime() });
+  await chrome.alarms.create(ALARME_VIRADA_DO_DIA, { when: proximaMeiaNoite.getTime() });
 }
 
-ouvirChrome(chrome.alarms && chrome.alarms.onAlarm, alarme => {
+chrome.alarms.onAlarm.addListener(alarme => {
   if (alarme.name !== ALARME_VIRADA_DO_DIA) return;
   agendarViradaDoDia();
   atualizarBadgeDaToolbar();
   getAutoMinerState().then(publicarEstadoDaAutomatica);
 });
 
-ouvirChrome(chrome.runtime.onStartup, () => {});
+chrome.runtime.onStartup.addListener(() => {});
 
-ouvirChrome(chrome.storage.onChanged, (changes, area) => {
+chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
   if (AUTO_MINER_SETTINGS_KEY in changes || AUTO_MINER_DAILY_KEY in changes) atualizarBadgeDaToolbar();
 });
 
 agendarViradaDoDia();
 atualizarBadgeDaToolbar();
-PerpetualMiner.ApagarFrasesPendente.ligar({ chrome, ouvirChrome });
+PerpetualMiner.ApagarFrasesPendente.ligar({ chrome });
 
 function publicarEstadoDaAutomatica(state) {
   chrome.storage.local.set({ [MineracaoDoDia.CHAVES.estadoPublicado]: { settings: state.settings, daily: state.daily, updatedAt: Date.now() } });
-  const listarAbas = metodoDoChrome(chrome.tabs, 'query');
-  if (!listarAbas) return;
-  listarAbas({}, tabs => {
+  chrome.tabs.query({}, tabs => {
     for (const tab of tabs || []) {
       if (!tab.id) continue;
       try {

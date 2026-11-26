@@ -3,6 +3,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const vm = require('vm');
+const { chromeDoServiceWorker } = require('./chrome-do-service-worker');
 
 const CHAVE = 'pm_auto_keyword_vocab_en';
 const BARALHO = 'PerpetualMiner::Inglês';
@@ -22,9 +23,7 @@ function carregarOBackground(storage, aoAnki) {
     setTimeout,
     clearTimeout,
     Date,
-    chrome: {
-      contextMenus: { create() {}, onClicked: { addListener() {} } },
-      runtime: { onInstalled: { addListener() {} }, onMessage: { addListener() {} }, lastError: null },
+    chrome: chromeDoServiceWorker({
       storage: {
         local: {
           get(padroes, responder) {
@@ -38,8 +37,7 @@ function carregarOBackground(storage, aoAnki) {
           },
         },
       },
-      tabs: { query(_consulta, responder) { responder([]); } },
-    },
+    }),
   };
   vm.createContext(contexto);
   vm.runInContext(fs.readFileSync('background.js', 'utf8'), contexto, { filename: 'background.js' });

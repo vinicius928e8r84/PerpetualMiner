@@ -3,6 +3,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const vm = require('vm');
+const { chromeDoServiceWorker } = require('./chrome-do-service-worker');
 
 function loadBackground(storage = {}) {
   const source = fs.readFileSync('background.js', 'utf8');
@@ -15,16 +16,7 @@ function loadBackground(storage = {}) {
     setTimeout,
     clearTimeout,
     Date,
-    chrome: {
-      contextMenus: {
-        create() {},
-        onClicked: { addListener() {} },
-      },
-      runtime: {
-        onInstalled: { addListener() {} },
-        onMessage: { addListener() {} },
-        lastError: null,
-      },
+    chrome: chromeDoServiceWorker({
       storage: {
         local: {
           get(defaults, callback) {
@@ -40,10 +32,7 @@ function loadBackground(storage = {}) {
           },
         },
       },
-      tabs: {
-        query(_query, callback) { callback([]); },
-      },
-    },
+    }),
     __storage: storage,
   };
   context.importScripts = (...arquivos) => {
