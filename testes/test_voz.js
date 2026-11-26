@@ -54,6 +54,29 @@ const aponta = (problemas, nome) => problemas.some(p => p.startsWith(`${nome}:`)
 const comONomeMinusculo = Object.entries(retratoDoCatalogo(CATALOGO_DA_VOZ)).filter(([, texto]) => /conexão com o Anki/.test(texto)).map(([nome]) => nome);
 assert.deepStrictEqual(comONomeMinusculo, [], 'o nome é “Conexão com o Anki”, com C maiúsculo, em todo texto da Voz');
 
+const textoDe = retratoDoCatalogo(CATALOGO_DA_VOZ);
+const textoDeTela = (...nomes) => nomes.map(nome => textoDe[nome]).join('\n');
+assert.strictEqual(textoDe['PAI-27.remover'], 'Remover o termo');
+assert.strictEqual(textoDe['PAI-27.outroGrupo'], 'Adicionar outro termo');
+assert.doesNotMatch(textoDeTela('ONB-23.testeSemPalavra', 'ONB-23.motivoSemPalavra'), /Palavra/, 'ONB-23: o que o Cartão ensina é o Termo');
+assert.match(textoDeTela('ONB-23.testeSemPalavra'), /o Termo marcado/);
+assert.match(textoDeTela('ONB-23.motivoSemPalavra'), /Falta marcar o Termo/);
+assert.strictEqual(textoDe['BRG-45.palavra'], 'Termo');
+assert.strictEqual(textoDe['BRG-45.audioDaPalavra'], 'Áudio do termo');
+assert.strictEqual(textoDe['BRG-21.soPalavras'], 'Só palavras', 'BRG-21: a palavra solta continua palavra');
+assert.strictEqual(textoDe['BRG-42.titulo'], 'Nível');
+assert.strictEqual(textoDe['ONB-22.usar'], 'Usar este nível');
+assert.strictEqual(textoDe['ONB-22.depois'], 'Dá para trocar depois em Ajustes de envio › Nível.');
+assert.strictEqual(textoDe['ONB-22.escutaNota'], 'A escuta aparece aqui, mas não muda o nível.');
+assert.strictEqual(textoDe['SHL-04.conta'], 'Conta e sincronização');
+assert.strictEqual(textoDe['ONB-24.semConta'], 'Entre com a conta Google, em Conta e sincronização, para ver o ranking do grupo.');
+assert.doesNotMatch(textoDe['BRG-07.ouvirSemChave'], /card/i, 'BRG-07: o bloco de tela não é card');
+assert.strictEqual(textoDe['BRG-07.nivelVazio'], 'Tem um sub-baralho vazio. Exemplo: Inglês::Mineradas');
+assert.doesNotMatch(textoDeTela('FOT-01.subtitulo', 'FOT-06.detalhe', 'ONB-11.corpo'), /trechos? marcados?/, 'o texto marcado no livro é Marcação');
+assert.match(textoDeTela('FOT-01.subtitulo'), /Marcações/);
+assert.match(textoDeTela('FOT-06.detalhe'), /Marcações/);
+assert.match(textoDeTela('ONB-11.corpo'), /Marcações/);
+
 assert(aponta(conferir(comMudanca(c => { c['POP-04'] = 'Min'; })), 'POP-04'), 'POP-04 cortado devia ficar vermelho');
 assert(aponta(conferir(comMudanca(c => { delete c['FOT-11'].causaChave; })), 'FOT-11.causaChave'), 'parte apagada devia ficar vermelha');
 assert(aponta(conferir(comMudanca(c => { c['FOT-11'].causaRede = 'TEXTO DIFERENTE NO CATALOGO'; })), 'FOT-11.causaRede'), 'texto trocado sem regravar o retrato devia ficar vermelho');

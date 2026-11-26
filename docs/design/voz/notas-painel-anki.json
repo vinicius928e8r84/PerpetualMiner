@@ -27,7 +27,7 @@
     "estado": "Presets EN/RU",
     "categoria": "status",
     "hoje": "Presets · Salvar presets · Presets do Anki Bridge salvos.",
-    "nota": "“Presets” sai (V6). Um card por idioma (protótipo `prototipo-ajustes-envio.html`, variante A). O Baralho é uma escolha entre os do Anki (`::` vira ›); sem a lista, um campo de texto que recusa nível vazio. A aba desatualizada (#35) é um aviso persistente com “Ver os novos”. O sotaque se escolhe pelo nome do lugar, com Ouvir ao lado."
+    "nota": "“Presets” sai (V6). Um card por idioma (protótipo `prototipo-ajustes-envio.html`, variante A). O Baralho é uma escolha entre os do Anki (`::` vira ›); sem a lista, um campo de texto que recusa sub-baralho vazio. A aba desatualizada (#35) é um aviso persistente com “Ver os novos”. O sotaque se escolhe pelo nome do lugar, com Ouvir ao lado."
   },
   "BRG-08": {
     "estado": "Métricas de custo",
