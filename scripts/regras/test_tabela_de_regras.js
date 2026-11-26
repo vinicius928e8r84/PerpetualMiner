@@ -42,6 +42,12 @@ for (const quem of ['catalogo-da-voz.spec.js', 'texto-literal.spec.js', 'Registr
   total++;
 }
 
+for (const prova of ['test_regras.js', 'test_texto_fora_da_voz.js', 'test_e2e_prazo_maior.js']) {
+  assert.ok(ajuda.stdout.includes(prova), `o --help não aponta para ${prova}`);
+  assert.ok(fs.existsSync(path.join(__dirname, prova)), `${prova} não existe`);
+  total += 2;
+}
+
 const agentes = fs.readFileSync(path.join(RAIZ, 'AGENTS.md'), 'utf8');
 assert.ok(!/^\| What it guards/m.test(agentes) && !agentes.includes('Rules and what enforces them'), 'o AGENTS.md não tem mais a tabela de regras');
 assert.match(agentes, /node scripts\/regras\/verificar\.js --help/, 'o AGENTS.md aponta para o --help');

@@ -17,6 +17,8 @@ const ehConfig = arquivo => /(?:^|\/)playwright\.config\.js$/.test(arquivo);
 
 const PADROES_DO_PLAYWRIGHT = { retries: 0, timeout: 30000, 'expect.timeout': 5000 };
 
+const UNIDADES = { retries: '', timeout: ' ms', 'expect.timeout': ' ms' };
+
 const OCORRENCIA = /\b(?:test(?:\s*\.\s*info\s*\(\s*\))?|testInfo)\s*\.\s*(setTimeout|slow)\s*\(|\btimeout:/g;
 const NUMEROS = /\d[\d_]*(?:\.\d+)?/g;
 const SO_CONTA = /^[\d_.\s*]+$/;
@@ -77,32 +79,46 @@ const maiorPrimeiro = (a, b) => Number(b.valor > a.valor) - Number(b.valor < a.v
 
 const comValor = lista => lista.filter(ocorrencia => ocorrencia.valor !== null).sort(maiorPrimeiro);
 
+const chaveDe = ocorrencia => `${ocorrencia.nome}${ocorrencia.valor}`;
+
 function semOsIguais(agora, antes) {
   const tetos = [...antes];
   const novos = [];
   for (const ocorrencia of agora) {
-    const igual = tetos.findIndex(teto => teto.valor === ocorrencia.valor);
+    const igual = tetos.findIndex(teto => chaveDe(teto) === chaveDe(ocorrencia));
     if (igual >= 0) tetos.splice(igual, 1);
     else novos.push(ocorrencia);
   }
   return { novos, tetos };
 }
 
-function prazosQueSubiram(agora, antes) {
-  const { novos, tetos } = semOsIguais(comValor(agora), comValor(antes));
-  return novos.filter((ocorrencia, i) => i < tetos.length && ocorrencia.valor > tetos[i].valor);
+function prazosQueSubiram(novos, tetos) {
+  const tetosComValor = comValor(tetos);
+  return comValor(novos).filter((ocorrencia, i) => i < tetosComValor.length && ocorrencia.valor > tetosComValor[i].valor);
 }
 
-const legivel = valor => (valor === Infinity ? 'um valor calculado' : `${valor} ms`);
+const legivel = (valor, unidade = ' ms') => (valor === Infinity ? 'um valor calculado' : `${valor}${unidade}`);
+
+const noLugarDe = (ocorrencia, detalhe, codigo) => ({ linha: linhaDe(codigo, ocorrencia.indice), detalhe });
+
+function vagasQueNaoPagamSubida(subiram, tetos, codigo) {
+  const sobras = tetos.length - subiram.length;
+  if (!subiram.length || sobras <= 0) return [];
+  const detalhe = 'um prazo que a base tinha saiu, mas a vaga dele não paga a subida de outro: a subida sempre reprova';
+  return Array.from({ length: sobras }, () => noLugarDe(subiram[0], detalhe, codigo));
+}
 
 function achadosDoTeste(fonte, daBase) {
   const codigo = semComentariosJs(fonte);
   const agora = ocorrencias(codigo);
   const antes = daBase === null ? [] : ocorrencias(semComentariosJs(daBase));
-  const presentes = agora.map(ocorrencia => ({ linha: linhaDe(codigo, ocorrencia.indice), detalhe: `${ocorrencia.nome} é um prazo a mais no teste: mais tempo não conserta um flake` }));
-  const subiram = prazosQueSubiram(agora, antes)
-    .map(ocorrencia => ({ linha: linhaDe(codigo, ocorrencia.indice), detalhe: `${ocorrencia.nome} subiu para ${legivel(ocorrencia.valor)}: o prazo de hoje não pode crescer` }));
-  return [...presentes, ...subiram].sort((a, b) => a.linha - b.linha);
+  const { novos, tetos } = semOsIguais(agora, antes);
+  const subiram = prazosQueSubiram(novos, tetos);
+  return [
+    ...agora.map(ocorrencia => noLugarDe(ocorrencia, `${ocorrencia.nome} é um prazo a mais no teste: mais tempo não conserta um flake`, codigo)),
+    ...subiram.map(ocorrencia => noLugarDe(ocorrencia, `${ocorrencia.nome} subiu para ${legivel(ocorrencia.valor)}: o prazo de hoje não pode crescer`, codigo)),
+    ...vagasQueNaoPagamSubida(subiram, tetos, codigo),
+  ].sort((a, b) => a.linha - b.linha);
 }
 
 function lerAjuste(codigo, padrao, deslocamento = 0) {
@@ -127,7 +143,7 @@ function subidaDoAjuste(nome, agora, antes) {
   const novo = agora[nome];
   const teto = antes[nome] ? antes[nome].valor : PADROES_DO_PLAYWRIGHT[nome];
   if (!novo || novo.valor <= teto) return [];
-  return [{ linha: linhaDe(agora.codigo, novo.indice), detalhe: `${nome} subiu de ${legivel(teto)} para ${legivel(novo.valor)}: o valor de hoje fica, só não sobe` }];
+  return [{ linha: linhaDe(agora.codigo, novo.indice), detalhe: `${nome} subiu de ${legivel(teto, UNIDADES[nome])} para ${legivel(novo.valor, UNIDADES[nome])}: o valor de hoje fica, só não sobe` }];
 }
 
 function achadosDoConfig(fonte, daBase) {

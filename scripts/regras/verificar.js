@@ -62,7 +62,8 @@ Uma ocorrência que precisa ficar leva, num comentário na própria linha:
   exceção <regra> até AAAA-MM-DD, aprovada por <pessoa>: <motivo>
 Uma exceção vencida, mal escrita ou numa linha que a regra não acusa também falha.
 
-Prova de cada regra com os erros reais que ela pega: node scripts/regras/test_regras.js
+Provas das regras, com os erros reais que cada uma pega: node scripts/regras/test_regras.js e os test_*.js ao lado dele
+(as regras com prova própria, como texto-fora-da-voz e e2e-prazo-maior, têm o seu: test_texto_fora_da_voz.js, test_e2e_prazo_maior.js)
 
 ${textoDaAjuda(REGRAS)}`;
 
