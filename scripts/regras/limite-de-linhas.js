@@ -6,6 +6,8 @@ const path = require('path');
 
 const id = 'limite-de-linhas';
 
+const guarda = 'um arquivo de código não passa do teto de linhas';
+
 const LIMITE = 1000;
 
 const conserto = `Divida o arquivo por responsabilidade em módulos menores (no máximo ${LIMITE} linhas cada) e leve o código novo para um módulo novo, não para ele. `
@@ -65,4 +67,4 @@ function mensagem({ arquivo, tem, pode }) {
   return [`✗ ${id} — ${arquivo}: ${linhas} linhas; o teto é ${LIMITE} (${tem} acima). ${naLista}`, `  Conserto: ${conserto}`].join('\n');
 }
 
-module.exports = { id, LIMITE, conserto, seAplica, verificar, mensagem, contarLinhas, folgaPresaAoArquivo: true };
+module.exports = { id, guarda, LIMITE, conserto, seAplica, verificar, mensagem, contarLinhas, folgaPresaAoArquivo: true };

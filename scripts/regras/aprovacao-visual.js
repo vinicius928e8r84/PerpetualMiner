@@ -5,6 +5,8 @@ const path = require('path');
 
 const id = 'aprovacao-visual';
 
+const guarda = 'uma referência visual (PNG) fora de um `test.fixme` tem a aprovação do dono em e2e/aprovados-visuais/<spec>.json';
+
 const LIVRO = 'e2e/aprovados-visuais';
 
 const conserto = `Depois que o dono aprovar a tela, acrescente a entrada em ${LIVRO}/<spec>.json (\`"<nome>.png": { "data": `
@@ -54,4 +56,4 @@ function verificar(arquivo, fonte, raiz) {
   return achados;
 }
 
-module.exports = { id, conserto, seAplica, verificar };
+module.exports = { id, guarda, conserto, seAplica, verificar };

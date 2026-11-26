@@ -2,6 +2,8 @@
 
 const id = 'sem-codescene-no-repositorio';
 
+const guarda = 'nenhuma diretiva do CodeScene no código nem configuração do CodeScene no repositório (.codescene/, code-health-rules.json); um caso aprovado pelo dono usa a exceção na linha';
+
 const conserto = 'Tire a diretiva do CodeScene e a configuração dele do repositório: a nota do Code Health sobe refatorando de verdade, não calando o medidor '
   + 'nem trocando as regras dele. Um caso que o dono aprovou leva, na própria linha: `exceção sem-codescene-no-repositorio até AAAA-MM-DD, '
   + 'aprovada por <pessoa>: <motivo>`.';
@@ -23,4 +25,4 @@ function verificar(arquivo, fonte) {
   return achados;
 }
 
-module.exports = { id, conserto, seAplica, verificar };
+module.exports = { id, guarda, conserto, seAplica, verificar };

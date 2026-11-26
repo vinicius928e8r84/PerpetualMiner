@@ -6,6 +6,8 @@ const { ehJsDaExtensao, fechamento, linhaDe, semComentariosJs } = require('./com
 
 const id = 'contrato-fechado';
 
+const guarda = 'o contrato da Conexão tem todo pedido e toda resposta: nenhum `fetch` vai direto à Conexão';
+
 const conserto = 'Peça pela `PerpetualMiner.ConversaComOAnki.pedir(PedidoAoAnki.<construtor>(…))` (lib/pedido-ao-anki.js: '
   + '`saude`, `baralhos`, `estatisticas`, `vocabulario`); uma rota nova ganha o construtor e os exemplos dela em '
   + 'complemento/contrato/exemplos.json (o caso feliz, cada erro, cada corpo que a extensão monta) antes de a extensão pedi-la. '
@@ -75,4 +77,4 @@ function verificar(arquivo, fonte, raiz = process.cwd()) {
   return achados;
 }
 
-module.exports = { id, conserto, seAplica, verificar };
+module.exports = { id, guarda, conserto, seAplica, verificar };

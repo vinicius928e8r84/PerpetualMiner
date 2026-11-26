@@ -4,6 +4,8 @@ const { ehJsDaExtensao, linhaDe, semComentariosJs } = require('./comum');
 
 const id = 'html-cru';
 
+const guarda = 'o texto da página e da Frase entra como texto, nunca como HTML';
+
 const conserto = 'Monte o DOM com nós (`Veio.criar`, `Veio.elemento` e os componentes de veio/componentes.js) e ponha o texto com '
   + '`textContent` ou `Veio.escreverFrase`: o texto da página ou da Frase nunca entra como HTML.';
 
@@ -16,4 +18,4 @@ function verificar(arquivo, fonte) {
   return [...codigo.matchAll(HTML_CRU)].map(m => ({ linha: linhaDe(codigo, m.index), detalhe: `HTML montado como texto: ${m[1] || m[2] || `document.${m[3]}`}` }));
 }
 
-module.exports = { id, conserto, seAplica, verificar };
+module.exports = { id, guarda, conserto, seAplica, verificar };

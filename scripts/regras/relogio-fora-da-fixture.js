@@ -4,6 +4,8 @@ const { linhaDe, semComentariosJs } = require('./comum');
 
 const id = 'relogio-fora-da-fixture';
 
+const guarda = 'o relógio do teste de e2e é montado só pela fixture `relogioParado`';
+
 const DONO = 'e2e/relogio-parado.js';
 
 const PROVA = 'e2e/tests/relogio-parado.spec.js';
@@ -74,4 +76,4 @@ function verificar(arquivo, fonte) {
     .sort((a, b) => a.linha - b.linha);
 }
 
-module.exports = { id, conserto, seAplica, verificar, DONO, PROVA };
+module.exports = { id, guarda, conserto, seAplica, verificar, DONO, PROVA };

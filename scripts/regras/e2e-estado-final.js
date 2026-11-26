@@ -6,6 +6,8 @@ const { comentariosPorLinha, fechamento, linhaDe, semComentariosJs } = require('
 
 const id = 'e2e-estado-final';
 
+const guarda = 'o teste de e2e que age lê o que ficou guardado depois de agir e o compara';
+
 const conserto = 'Depois de agir, confira o que ficou guardado, com um valor concreto: '
   + '`await estadoFinal(extensao, { pm_anki_baralhos: { nomes: … } })` (e2e/estado-final.js), '
   + '`expect(await extensao.frases()).toHaveLength(…)` ou o que o fake guardou, por um leitor marcado `@estado-guardado` em e2e/fakes/ '
@@ -235,4 +237,4 @@ function verificar(arquivo, fonte, raiz = process.cwd()) {
     .filter(Boolean);
 }
 
-module.exports = { id, conserto, seAplica, verificar };
+module.exports = { id, guarda, conserto, seAplica, verificar };

@@ -6,6 +6,8 @@ const { PASTAS_DA_EXTENSAO } = require('../arquivos-do-pacote');
 
 const id = 'indice-de-arquivos';
 
+const guarda = 'um arquivo da raiz, de lib/, veio/ ou scripts/ tem a sua linha em docs/arquivos/';
+
 const conserto = 'Acrescente uma linha (ou cite o arquivo numa linha que já o explica) numa tabela de '
   + '`docs/arquivos/*.md`, com o caminho entre crases; uma linha cujo arquivo foi removido ou renomeado sai ou segue o novo nome.';
 
@@ -77,4 +79,4 @@ function achadosDoArquivo(arquivo, raiz) {
 
 const verificar = (arquivo, fonte, raiz) => (ehDoIndice(arquivo) ? achadosDoIndice(fonte, raiz) : achadosDoArquivo(arquivo, raiz));
 
-module.exports = { id, conserto, seAplica, verificar };
+module.exports = { id, guarda, conserto, seAplica, verificar };

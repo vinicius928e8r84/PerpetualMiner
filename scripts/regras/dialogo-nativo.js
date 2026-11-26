@@ -4,6 +4,8 @@ const { ehJsDaExtensao, linhaDe, semComentariosJs } = require('./comum');
 
 const id = 'dialogo-nativo';
 
+const guarda = 'nada de `confirm()`, `alert()` ou `prompt()` nativos: use os componentes do Veio';
+
 const conserto = 'Use os componentes de veio/componentes.js: `Veio.abrirConfirmacao` para confirmar (o perigo abre o modal e '
   + 'confirma dentro dele), `Veio.montarAviso` para um erro que pede ação e `Veio.mostrarToastDeSucesso` para o sucesso; '
   + 'o `confirm()`, o `alert()` e o `prompt()` do navegador não entram.';
@@ -17,4 +19,4 @@ function verificar(arquivo, fonte) {
   return [...codigo.matchAll(DIALOGO_NATIVO)].map(m => ({ linha: linhaDe(codigo, m.index), detalhe: `diálogo nativo do navegador: ${m[1]}()` }));
 }
 
-module.exports = { id, conserto, seAplica, verificar };
+module.exports = { id, guarda, conserto, seAplica, verificar };

@@ -6,6 +6,8 @@ const { arquivoCriado } = require('./apoio-linhas-novas');
 
 const id = 'sem-binario-novo';
 
+const guarda = 'nenhum binário novo fora das pastas que já os guardam (só o arquivo que a mudança cria; as pastas aceitas são `PERMITIDOS` na regra)';
+
 const conserto = 'Não suba o binário. O que se gera (pacote, build, banco, cache, log) fica fora do repositório (.gitignore) e nasce de um script; '
   + 'uma dependência entra por package.json ou requirements.txt, não por um arquivo compilado. Uma imagem ou fonte do produto só entra '
   + 'nas pastas de PERMITIDOS em scripts/regras/sem-binario-novo.js, e uma referência visual ainda precisa da aprovação do dono '
@@ -73,4 +75,4 @@ function verificar(arquivo, fonte, raiz, base) {
   return motivo ? [{ linha: 1, detalhe: `arquivo novo que não deve entrar no repositório: ${motivo}` }] : [];
 }
 
-module.exports = { id, conserto, seAplica, verificar, PERMITIDOS };
+module.exports = { id, guarda, conserto, seAplica, verificar, PERMITIDOS };

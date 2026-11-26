@@ -6,6 +6,8 @@ const { arquivoDaLinhaDeBase: ARQUIVO_DO_SEM_COMENTARIO } = require('./sem-comen
 
 const id = 'linha-de-base-no-merge';
 
+const guarda = 'a linha de base desce no merge, não na PR: ela não edita à mão linha-de-base.json, linha-de-base-sem-comentario.json nem scripts/ganchos/linha-de-base-de-tamanho.json';
+
 const ARQUIVO_DAS_REGRAS = 'scripts/regras/linha-de-base.json';
 const ARQUIVO_DE_TAMANHO = 'scripts/ganchos/linha-de-base-de-tamanho.json';
 const ARQUIVOS = [ARQUIVO_DAS_REGRAS, ARQUIVO_DE_TAMANHO, ARQUIVO_DO_SEM_COMENTARIO];
@@ -102,4 +104,4 @@ function verificar(arquivo, fonte, raiz, base) {
   return achadas.map(achada => ({ linha: linhaDoCaminho(fonte, achada.caminho), detalhe: `a linha de base desce no merge, e esta PR a mexe à mão: ${descricaoDaDiferenca(achada)}` }));
 }
 
-module.exports = { id, conserto, seAplica, verificar, ARQUIVOS, ASSUNTO };
+module.exports = { id, guarda, conserto, seAplica, verificar, ARQUIVOS, ASSUNTO };
