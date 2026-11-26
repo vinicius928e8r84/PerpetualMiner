@@ -114,34 +114,72 @@ def _load(log_dir: str | Path) -> list[dict]:
     return records
 
 
+class _Contribution(NamedTuple):
+    cost: float
+    model: Optional[str] = None
+    n_cards: int = 0
+    n_images_dalle: int = 0
+    n_images_google: int = 0
+
+
+def _read_tokens(r: dict) -> _Contribution:
+    return _Contribution(r.get("cost_usd", 0.0), model=r["model"])
+
+
+def _read_image(r: dict) -> _Contribution:
+    cost = r.get("cost_usd", 0.0)
+    if r.get("source") == "google":
+        return _Contribution(cost, n_images_google=1)
+    return _Contribution(cost, model=r["model"], n_images_dalle=1)
+
+
+def _read_session(r: dict) -> _Contribution:
+    return _Contribution(r.get("cost_usd", 0.0), n_cards=r.get("n_cards", 0))
+
+
+def _read_other(r: dict) -> _Contribution:
+    return _Contribution(r.get("cost_usd", 0.0))
+
+
+_READERS = {"tokens": _read_tokens, "image": _read_image, "session": _read_session}
+
+
+def _read_record(r: dict) -> _Contribution:
+    return _READERS.get(r["type"], _read_other)(r)
+
+
+class _Period:
+    def __init__(self) -> None:
+        self.total = 0.0
+        self.by_model: dict[str, float] = {}
+        self.n_cards = 0
+        self.n_images_dalle = 0
+        self.n_images_google = 0
+
+    def add(self, read: _Contribution) -> None:
+        self.total += read.cost
+        if read.model is not None:
+            self.by_model[read.model] = self.by_model.get(read.model, 0.0) + read.cost
+        self.n_cards += read.n_cards
+        self.n_images_dalle += read.n_images_dalle
+        self.n_images_google += read.n_images_google
+
+    def summary(self) -> dict:
+        return {
+            "total_usd": round(self.total, 4),
+            "by_model": {k: round(v, 4) for k, v in self.by_model.items()},
+            "n_cards": self.n_cards,
+            "n_images_dalle": self.n_images_dalle,
+            "n_images_google": self.n_images_google,
+        }
+
+
 def _sum_period(records: list[dict], since: date) -> dict:
-    total = 0.0
-    by_model: dict[str, float] = {}
-    n_cards = 0
-    n_images_dalle = 0
-    n_images_google = 0
+    period = _Period()
     for r in records:
-        if date.fromisoformat(r["date"]) < since:
-            continue
-        cost = r.get("cost_usd", 0.0)
-        total += cost
-        if r["type"] == "tokens":
-            by_model[r["model"]] = by_model.get(r["model"], 0.0) + cost
-        elif r["type"] == "image":
-            if r.get("source") == "google":
-                n_images_google += 1
-            else:
-                n_images_dalle += 1
-                by_model[r["model"]] = by_model.get(r["model"], 0.0) + cost
-        elif r["type"] == "session":
-            n_cards += r.get("n_cards", 0)
-    return {
-        "total_usd": round(total, 4),
-        "by_model": {k: round(v, 4) for k, v in by_model.items()},
-        "n_cards": n_cards,
-        "n_images_dalle": n_images_dalle,
-        "n_images_google": n_images_google,
-    }
+        if date.fromisoformat(r["date"]) >= since:
+            period.add(_read_record(r))
+    return period.summary()
 
 
 def summary(log_dir: str | Path) -> dict:

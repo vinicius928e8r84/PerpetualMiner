@@ -34,25 +34,28 @@
   const entrando = () => Boolean(estado.login?.entrando) && !estado.cancelado;
   const quemPaga = login => (login?.conectada ? 'plano' : login?.acabou ? 'parado' : 'chave');
 
+  function abrirOAvisoDoPlano() {
+    const titulo = elemento('h2', 'veio-modal__titulo', textoDaVoz('CFG-35.planoTitulo'));
+    const corpo = elemento('p', 'veio-modal__corpo', textoDaVoz('CFG-35.planoCorpo'));
+    titulo.id = 'ia-plano-titulo';
+    corpo.id = 'ia-plano-corpo';
+    const entendi = botao('primario', textoDaVoz('CFG-35.planoEntendi'), () => modal.fechar());
+    entendi.dataset.focoSeguro = '';
+    const dialogo = elemento('div', 'veio-modal', titulo, corpo, elemento('div', 'veio-modal__acoes', entendi));
+    dialogo.setAttribute('role', 'dialog');
+    dialogo.setAttribute('aria-labelledby', titulo.id);
+    dialogo.setAttribute('aria-describedby', corpo.id);
+    const scrim = elemento('div', 'veio-scrim', dialogo);
+    scrim.hidden = true;
+    document.body.append(scrim);
+    const modal = raiz.Veio.abrirModal(scrim, { aoFechar: () => { scrim.remove(); chrome.storage.local.set({ [AVISADO]: true }); } });
+  }
+
   function avisarDoPlano() {
     if (avisando) return;
     avisando = true;
     chrome.storage.local.get({ [AVISADO]: false }, dados => {
-      if (dados[AVISADO]) return;
-      const titulo = elemento('h2', 'veio-modal__titulo', textoDaVoz('CFG-35.planoTitulo'));
-      const corpo = elemento('p', 'veio-modal__corpo', textoDaVoz('CFG-35.planoCorpo'));
-      titulo.id = 'ia-plano-titulo';
-      corpo.id = 'ia-plano-corpo';
-      const entendi = botao('primario', textoDaVoz('CFG-35.planoEntendi'), () => modal.fechar());
-      entendi.dataset.focoSeguro = '';
-      const dialogo = elemento('div', 'veio-modal', titulo, corpo, elemento('div', 'veio-modal__acoes', entendi));
-      dialogo.setAttribute('role', 'dialog');
-      dialogo.setAttribute('aria-labelledby', titulo.id);
-      dialogo.setAttribute('aria-describedby', corpo.id);
-      const scrim = elemento('div', 'veio-scrim', dialogo);
-      scrim.hidden = true;
-      document.body.append(scrim);
-      const modal = raiz.Veio.abrirModal(scrim, { aoFechar: () => { scrim.remove(); chrome.storage.local.set({ [AVISADO]: true }); } });
+      if (!dados[AVISADO]) abrirOAvisoDoPlano();
     });
   }
 
@@ -73,6 +76,13 @@
     desenharTudo();
   }
 
+  const saiu = ({ status, dados }) => status === 200 && dados?.ok === true;
+
+  function anotarASaida({ revogada }, calado) {
+    if (revogada !== true) estado.erro = { motivo: 'sem_revogar', detalhes: 'revogada: false' };
+    else if (!calado) mostrarToastDeSucesso(textoDaVoz('CFG-35.chatgptSaiu'));
+  }
+
   async function sair({ calado = false } = {}) {
     if (estado.pedindo) return;
     estado.pedindo = true;
@@ -80,13 +90,12 @@
     desenharTudo();
     const resposta = await pedir(raiz.PedidoAoAnki.sairDoChatGPT());
     estado.pedindo = false;
-    if (resposta.status === 200 && resposta.dados?.ok === true) {
-      if (resposta.dados.revogada === true) { if (!calado) mostrarToastDeSucesso(textoDaVoz('CFG-35.chatgptSaiu')); }
-      else estado.erro = { motivo: 'sem_revogar', detalhes: 'revogada: false' };
-      return ler();
+    if (!saiu(resposta)) {
+      estado.erro = doPedido(resposta);
+      return desenharTudo();
     }
-    estado.erro = doPedido(resposta);
-    desenharTudo();
+    anotarASaida(resposta.dados, calado);
+    return ler();
   }
 
   function erroDeAgora() {
@@ -129,32 +138,58 @@
     for (const lugar of lugares.keys()) desenhar(lugar);
   }
 
-  function desenhar(lugar) {
-    const { coluna: no, faixa: daFaixa } = lugares.get(lugar);
+  const ESTADO_DA_COLUNA = Object.freeze({ NO_PLANO: 'no_plano', ENTRANDO: 'entrando', SEM_PLANO: 'sem_plano' });
+
+  function estadoDaColuna() {
+    if (estado.login?.conectada) return ESTADO_DA_COLUNA.NO_PLANO;
+    return entrando() ? ESTADO_DA_COLUNA.ENTRANDO : ESTADO_DA_COLUNA.SEM_PLANO;
+  }
+
+  function pecasNoPlano() {
+    const pecas = [linhaDoPlano(), elemento('div', 'cfg-acoes', botao('contorno', textoDaVoz('CFG-35.chatgptSair'), sair))];
+    return raiz.CartaoDaIA.temChave() ? pecas : [...pecas, elemento('p', 'cfg-nota', textoDaVoz('CFG-35.semChave'))];
+  }
+
+  function cancelarAEspera() {
+    estado.cancelado = true;
+    clearTimeout(releitura);
+    desenharTudo();
+  }
+
+  function pecasEntrando() {
+    const esperando = botao('secundario', textoDaVoz('CFG-35.chatgptEsperando'), entrar);
+    esperando.setAttribute('aria-disabled', 'true');
+    const cancelar = botao('fantasma', textoDaVoz('CFG-35.chaveCancelar'), cancelarAEspera);
+    return [elemento('div', 'cfg-acoes', esperando, cancelar), elemento('p', 'cfg-nota', textoDaVoz('CFG-35.chatgptEsperandoNota'))];
+  }
+
+  function pecasSemPlano() {
+    const continuar = botao('secundario', textoDaVoz('CFG-35.chatgptBotao'), entrar);
+    if (estado.pedindo) continuar.setAttribute('aria-disabled', 'true');
+    return [elemento('div', 'cfg-acoes', continuar)];
+  }
+
+  const PECAS_DO_ESTADO = {
+    [ESTADO_DA_COLUNA.NO_PLANO]: pecasNoPlano,
+    [ESTADO_DA_COLUNA.ENTRANDO]: pecasEntrando,
+    [ESTADO_DA_COLUNA.SEM_PLANO]: pecasSemPlano,
+  };
+
+  function tituloDaColuna(lugar) {
     const titulo = elemento('h3', 'ia-coluna__titulo', textoDaVoz('CFG-35.chatgptTitulo'),
       elemento('span', 'veio-selo', textoDaVoz('CFG-35.chatgptSelo')));
     titulo.id = `${lugar.prefixo}-ia-chatgpt-titulo`;
-    const partes = [titulo, elemento('p', 'cfg-nota', textoDaVoz('CFG-35.chatgptCorpo'))];
-    const { login } = estado;
-    if (login?.conectada) {
-      partes.push(linhaDoPlano(), elemento('div', 'cfg-acoes', botao('contorno', textoDaVoz('CFG-35.chatgptSair'), sair)));
-      if (!raiz.CartaoDaIA.temChave()) partes.push(elemento('p', 'cfg-nota', textoDaVoz('CFG-35.semChave')));
-    } else if (entrando()) {
-      const esperando = botao('secundario', textoDaVoz('CFG-35.chatgptEsperando'), entrar);
-      esperando.setAttribute('aria-disabled', 'true');
-      const cancelar = botao('fantasma', textoDaVoz('CFG-35.chaveCancelar'), () => {
-        estado.cancelado = true;
-        clearTimeout(releitura);
-        desenharTudo();
-      });
-      partes.push(elemento('div', 'cfg-acoes', esperando, cancelar), elemento('p', 'cfg-nota', textoDaVoz('CFG-35.chatgptEsperandoNota')));
-    } else {
-      const continuar = botao('secundario', textoDaVoz('CFG-35.chatgptBotao'), entrar);
-      if (estado.pedindo) continuar.setAttribute('aria-disabled', 'true');
-      partes.push(elemento('div', 'cfg-acoes', continuar));
-    }
-    partes.push(elemento('p', 'cfg-nota', textoDaVoz('CFG-35.chatgptNota')));
-    no.replaceChildren(...partes);
+    return titulo;
+  }
+
+  function desenhar(lugar) {
+    const { coluna: no, faixa: daFaixa } = lugares.get(lugar);
+    no.replaceChildren(
+      tituloDaColuna(lugar),
+      elemento('p', 'cfg-nota', textoDaVoz('CFG-35.chatgptCorpo')),
+      ...PECAS_DO_ESTADO[estadoDaColuna()](),
+      elemento('p', 'cfg-nota', textoDaVoz('CFG-35.chatgptNota')),
+    );
     const erro = erroDeAgora();
     daFaixa.replaceChildren(...(erro ? [faixaDoErro(lugar, erro)] : []));
   }
