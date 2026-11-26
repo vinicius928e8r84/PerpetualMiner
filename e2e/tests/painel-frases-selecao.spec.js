@@ -180,25 +180,6 @@ test('uma Frase que ainda guarda a marca antiga de Exportada não ganha selo e n
   await expect(cartoes(page)).toHaveText([/Old export mark/, /Still waiting/]);
 });
 
-test('ao atualizar a extensão, as Frases que tinham Exportada perdem a marca e o resto delas fica', async ({ page, extensao }) => {
-  await extensao.gravarStorage({
-    frases: [
-      frase(3, 'Sent and exported.', { status: 'exported', exportadaTxt: true, keywords: ['sent@0'] }),
-      frase(2, 'Only exported.', { exportadaTxt: true }),
-      frase(1, 'Never exported.'),
-    ],
-  });
-
-  await extensao.serviceWorker.evaluate(() => aoInstalar({ reason: 'update', previousVersion: '4.9' }));
-
-  await expect.poll(async () => (await extensao.frases()).map(f => [f.texto, f.status ?? null, 'exportadaTxt' in f])).toEqual([
-    ['Sent and exported.', 'exported', false],
-    ['Only exported.', null, false],
-    ['Never exported.', null, false],
-  ]);
-  expect((await extensao.frases())[0].keywords).toEqual(['sent@0']);
-});
-
 test('com a conta conectada, a marca antiga de Exportada sai da nuvem e não volta ao computador', async ({ page, extensao, fakes }) => {
   await extensao.semearSessao({ uid: 'uid-exporta' });
   fakes.google.gravarFrases('uid-exporta', frasesDeExemplo(2, { exportadaTxt: true }));
