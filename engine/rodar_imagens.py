@@ -1,5 +1,4 @@
 import image_pipeline
-from image_queries import _build_card_google_queries  # noqa: F401
 
 
 MADE, SKIPPED, NONE = "made", "skipped", "none"

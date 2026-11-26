@@ -16,6 +16,12 @@ assert.deepStrictEqual(JSON.parse(JSON.stringify(comOutrosNiveis.PerpetualMiner.
   [{ nivel: 'basico', cheia: true }, { nivel: 'fluente', cheia: true }]);
 assert.deepStrictEqual(FestaDoQuiz.portas(QuizDeNivel.NIVEIS.INTERMEDIARIO).map(p => p.cheia), [true, true, false]);
 
+const festaAntes = { PerpetualMiner: {} };
+vm.runInNewContext(fs.readFileSync('./lib/festa-do-quiz.js', 'utf8'), festaAntes);
+festaAntes.PerpetualMiner.QuizDeNivel = { NIVEIS: { A: 'basico', B: 'fluente' } };
+assert.deepStrictEqual(JSON.parse(JSON.stringify(festaAntes.PerpetualMiner.FestaDoQuiz.portas('basico'))),
+  [{ nivel: 'basico', cheia: true }, { nivel: 'fluente', cheia: false }], 'a festa carregada antes do quiz de nível lê os níveis quando é usada');
+
 const acertos = [1, 2, 3, 4, 5, 6, 7, 8, 9, 20].map(FestaDoQuiz.doAcerto);
 
 assert.deepStrictEqual(acertos.slice(0, 3).map(a => a.pontos), [10, 20, 30]);

@@ -53,12 +53,6 @@ FINAIS_DO_INGLES = (
 )
 
 
-def _apply_normalize_ru(normalize_ru: NormalizeRu | None, text: str) -> str:
-    if normalize_ru is None:
-        raise RuntimeError("normalize_ru_unavailable")
-    return str(normalize_ru(text))
-
-
 def strip_anki_field(value: str) -> str:
     text = re.sub(r"<br\s*/?>", "\n", value or "", flags=re.IGNORECASE)
     text = re.sub(r"<[^>]+>", " ", text)
@@ -336,14 +330,20 @@ def catalog_stats_from_cards(cards: list[dict[str, Any]], lang: str, normalize_r
     return catalogo.contagem().como_json()
 
 
+def _identidade_do_russo_sem_normalizador(text: str) -> str:
+    return re.sub(r"\s+", " ", text.replace("ё", "е").replace("Ё", "Е")).strip().casefold()
+
+
 def normalize_term_identity(value: str, lang: str, normalize_ru: NormalizeRu | None = None) -> str:
     text = strip_anki_field(value)
-    if lang == "ru":
-        try:
-            return _apply_normalize_ru(normalize_ru, text).casefold()
-        except Exception:  # noqa: BLE001
-            return re.sub(r"\s+", " ", text.replace("ё", "е").replace("Ё", "Е")).strip().casefold()
-    return text.casefold()
+    if lang != "ru":
+        return text.casefold()
+    if normalize_ru is None:
+        return _identidade_do_russo_sem_normalizador(text)
+    try:
+        return str(normalize_ru(text)).casefold()
+    except Exception:  # noqa: BLE001
+        return _identidade_do_russo_sem_normalizador(text)
 
 
 def card_bucket_from_values(card_type: int, interval: int) -> str:
