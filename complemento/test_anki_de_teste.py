@@ -82,6 +82,16 @@ class OAnkiDeTesteAoIniciar(unittest.TestCase):
         finally:
             conexao.parar()
 
+    def test_o_abridor_do_anki_de_teste_conserta_so_o_que_ouve_a_porta_dele(self):
+        pasta, base = pasta_de_anki_de_teste(self)
+        porta = porta_livre()
+        with patch.dict(os.environ, {PORTA_DO_TESTE: str(porta)}), patch("complemento.abridor.deste_computador", return_value=None) as deste:
+            conexao = inicio.iniciar(pasta, lambda: None, inicio.Arredores(abridor=inicio.ABRIDOR_DESTE_COMPUTADOR, pasta_base_do_anki=base))
+        try:
+            self.assertEqual(deste.call_args.kwargs["porta"], porta)
+        finally:
+            conexao.parar()
+
     def test_o_anki_de_teste_sem_porta_boa_nao_sobe_a_conexao_e_o_log_diz_por_que(self):
         pasta, base = pasta_de_anki_de_teste(self)
         with patch.dict(os.environ, {PORTA_DO_TESTE: str(configuracao.PORTA)}), patch("socket.socket.bind", side_effect=AssertionError("não pode abrir porta")):

@@ -33,7 +33,7 @@ while [ $# -gt 0 ]; do [ "$1" = -File ] && { sed 's/$/\\r/' "$(wslpath -u "$2")"
 exit 9
 `);
 
-const env = { ...process.env, PATH: `${bin}:${process.env.PATH}`, PM_MAC_SSH: 'mac-de-teste', PM_MAC_TMP: mac, PM_PC_SSH: 'pc-de-teste', PM_PC_POWERSHELL: path.join(bin, 'powershell.exe'), PM_VERIFY_ROOT: verificacao };
+const env = { ...process.env, PATH: `${bin}:${process.env.PATH}`, PM_MAC_SSH: 'mac-de-teste', PM_MAC_TMP: mac, PM_PC_SSH: 'pc-de-teste', PM_PC_POWERSHELL: path.join(bin, 'powershell.exe'), PM_VERIFY_ROOT: verificacao, PM_MAC_TRAVA: path.join(pasta, 'mac.lock') };
 const rodar = (script, args, entrada) => spawnSync('bash', [path.join(SCRIPTS, script), ...args], { env, encoding: 'utf8', input: entrada ?? '' });
 const vivos = marca => spawnSync('pgrep', ['-f', marca], { encoding: 'utf8' }).stdout.trim();
 const restos = () => fs.readdirSync(mac);
@@ -73,6 +73,18 @@ try {
   assert.equal(r.status, 0, r.stdout + r.stderr);
   assert.ok(!/ -- -1\b/.test(fs.existsSync(kills) ? fs.readFileSync(kills, 'utf8') : ''), 'a .grupo that says 1 never becomes kill -- -1, a signal to every process of the user');
   assert.deepEqual(restos(), []);
+
+  const ordem = path.join(pasta, 'ordem.log');
+  const no = (id, comando) => `bash ${JSON.stringify(path.join(SCRIPTS, 'no-mac.sh'))} ${id} -- sh -c ${JSON.stringify(comando)}`;
+  r = spawnSync('bash', ['-c', `${no('t1', `echo A-comeca >> ${ordem}; sleep 3; echo A-acaba >> ${ordem}`)} & until [ -s ${ordem} ]; do sleep 0.1; done; ${no('t2', `echo B-comeca >> ${ordem}`)}; wait`],
+    { env, encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.deepEqual(fs.readFileSync(ordem, 'utf8').trim().split('\n'), ['A-comeca', 'A-acaba', 'B-comeca'], 'the second run waits for the Mac lock until the first one is done and cleaned up, with no limit');
+  assert.equal(r.stderr.match(/esperando a vez do Mac/g).length, 1, 'only the one that waits says so');
+  assert.deepEqual(restos(), []);
+  r = spawnSync('bash', [path.join(SCRIPTS, 'no-mac.sh'), 't3', '--', 'true'], { env: { ...env, PM_MAC_TRAVA: path.join(pasta, 'sem', 'pasta', 'mac.lock') }, encoding: 'utf8' });
+  assert.equal(r.status, 0, 'the lock folder is made when it is missing');
+  assert.ok(fs.existsSync(path.join(pasta, 'sem', 'pasta', 'mac.lock')));
 
   r = rodar('no-pc.sh', ['p1', '-'], 'Write-Output "olá"\n');
   assert.equal(r.status, 0, r.stdout + r.stderr);

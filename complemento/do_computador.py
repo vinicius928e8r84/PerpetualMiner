@@ -14,12 +14,12 @@ def item_de_login(item):
     return itens_de_login.deste_computador(plataforma=sys.platform, ambiente=os.environ, executavel=sys.executable)
 
 
-def abridor(escolhido, pasta_do_complemento, dados):
+def abridor(escolhido, pasta_do_complemento, dados, porta):
     if escolhido is not ABRIDOR_DESTE_COMPUTADOR:
         return escolhido
     return abridores.deste_computador(
         computador=abridores.Computador(sys.platform, os.environ, sys.executable), pasta=os.path.join(dados.raiz, "abridor"),
-        complemento=pasta_do_complemento,
+        complemento=pasta_do_complemento, porta=porta,
     )
 
 

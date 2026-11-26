@@ -41,7 +41,7 @@ def iniciar(pasta_do_complemento, perfil_aberto, arredores=Arredores()):
         logger = registro.criar(dados.logs)
         arredores = dataclasses.replace(arredores, porta=anki_de_teste.porta_da_conexao(os.environ, arredores.pasta_base_do_anki, arredores.porta))
         conexao = _montar_a_conexao(dados, Ambiente(dados, logger, VERSAO), perfil_aberto, arredores)
-        _cuidar_do_perfil(conexao, do_computador.abridor(arredores.abridor, pasta_do_complemento, dados), arredores.ao_abrir_o_perfil, logger)
+        _cuidar_do_perfil(conexao, do_computador.abridor(arredores.abridor, pasta_do_complemento, dados, arredores.porta), arredores.ao_abrir_o_perfil, logger)
         return _subir(conexao, do_computador.passagem(arredores.passagem, arredores.porta))
     except Exception:
         logger.exception("O complemento não conseguiu iniciar")

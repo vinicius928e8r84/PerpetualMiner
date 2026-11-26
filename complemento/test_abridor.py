@@ -11,7 +11,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from complemento import abridor, configuracao
+from complemento import abridor, configuracao, conserto_do_anki
 
 CONTRATO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "contrato", "exemplos.json")
 with open(CONTRATO, encoding="utf-8") as _arquivo:
@@ -338,6 +338,13 @@ class DesteComputador(unittest.TestCase):
         self.assertEqual(este.sistema.onde_registrar, {
             "Chrome": "/Users/maria/Library/Application Support/Google/Chrome/NativeMessagingHosts",
         })
+
+    def test_o_conserto_olha_a_porta_dada_e_so_na_falta_dela_a_8766(self):
+        computador = abridor.Computador(plataforma="darwin", ambiente={"HOME": "/Users/maria"}, executavel="/Applications/Anki.app/Contents/MacOS/anki")
+        sem_porta = abridor.deste_computador(computador=computador, pasta="/x")
+        com_porta = abridor.deste_computador(computador=computador, pasta="/x", porta=9123)
+        self.assertEqual((sem_porta.conserto.conexao.porta, com_porta.conserto.conexao.porta), (8766, 9123))
+        self.assertIn("PORTA=9123", conserto_do_anki.variaveis_do_mac(com_porta.conserto, "/x").splitlines())
 
     def test_no_mac_com_o_abridor_novo_do_anki_acha_o_aplicativo_dele(self):
         este = abridor.deste_computador(

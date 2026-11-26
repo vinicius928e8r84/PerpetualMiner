@@ -1,11 +1,3 @@
-"""O Anki de teste das provas (#896): o único Anki que aceita outra porta.
-
-A prova da frota abre um Anki só dela, com uma pasta de dados descartável, e dá a ele uma porta livre. O Anki é de teste quando a
-pasta de dados dele tem o arquivo `MARCA`, que só a prova escreve; a porta vem de `VARIAVEL_DA_PORTA`. Sem a marca a variável não
-vale nada: o Anki do dono, mesmo com a variável esquecida no ambiente, fica na porta dos arredores (a 8766). Anki de teste sem uma
-porta boa não sobe a Conexão: nunca cai na 8766.
-"""
-
 import os
 
 from .configuracao import PORTA

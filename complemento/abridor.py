@@ -8,7 +8,7 @@ import tempfile
 from collections import namedtuple
 
 from . import conserto_do_anki
-from .configuracao import ORIGENS_ACEITAS
+from .configuracao import ORIGENS_ACEITAS, PORTA
 from .item_de_login import AnkiNaoEncontrado, aplicativo_do_anki_no_mac, programa_do_anki_no_windows
 
 NOME_DO_HOST = "com.perpetualminer.abridor"
@@ -82,9 +82,9 @@ class Computador(namedtuple("Computador", "plataforma ambiente executavel existe
     pass
 
 
-def deste_computador(*, computador, pasta, complemento=None, registro=None):
+def deste_computador(*, computador, pasta, complemento=None, registro=None, porta=PORTA):
     plataforma, ambiente, executavel, existe = computador
-    conserto = conserto_do_anki.Conserto(executavel=executavel, complemento=complemento)
+    conserto = conserto_do_anki.Conserto(executavel=executavel, complemento=complemento, conexao=conserto_do_anki.ConexaoEsperada(porta=porta))
     if plataforma == "darwin":
         casa = ambiente.get("HOME") or os.path.expanduser("~")
         hosts = posixpath.join(casa, "Library", "Application Support", "Google", "Chrome", "NativeMessagingHosts")
