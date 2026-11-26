@@ -2,6 +2,8 @@
 
 const id = 'glossario-so-linguagem';
 
+const guarda = 'glossary.md só tem linguagem do domínio: sem crases, sem linha `_Nome no código_`, definição de até duas frases';
+
 const conserto = 'O glossary.md fala só de linguagem: tire a crase (escreva o nome entre aspas, ou sem marca), apague a linha '
   + '`_Nome no código_` (o nome antigo vira issue de renomeação, e o nome novo segue o glossário: docs/adr/0001) e deixe '
   + 'cada definição com no máximo duas frases, sobre o que a coisa é.';
@@ -45,4 +47,4 @@ function verificar(arquivo, fonte) {
   return linhas.flatMap((texto, i) => achadosDeLinha(texto, i, linhas));
 }
 
-module.exports = { id, conserto, seAplica, verificar };
+module.exports = { id, guarda, conserto, seAplica, verificar };

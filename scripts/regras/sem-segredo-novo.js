@@ -4,6 +4,8 @@ const { arquivoCriado, linhasNovas } = require('./apoio-linhas-novas');
 
 const id = 'sem-segredo-novo';
 
+const guarda = 'nenhum segredo, chave ou arquivo de sessão nas linhas que a mudança acrescenta (chaves privadas, tokens de nuvem e de API, JWT, URL com senha, literal em campo de nome secreto; `.env`, `.pem` ou `id_rsa` novos pelo nome; o valor nunca é impresso)';
+
 const conserto = 'Tire o segredo do arquivo e leia-o do ambiente, do cofre da Conexão ou de uma pasta fora do repositório; num teste, use um valor '
   + 'que se denuncie como falso (`sk-proj-chave-de-teste-0000`) e que não tenha o tamanho de uma chave de verdade. Este repositório é público: '
   + 'se o segredo já foi para uma branch, considere-o vazado, revogue-o e troque a chave, porque apagar o commit depois não o recupera. '
@@ -86,4 +88,4 @@ function verificar(arquivo, fonte, raiz, base) {
   return [...achadoDoNome(arquivo, raiz, base), ...achadosDasLinhas(fonte, linhasNovas(arquivo, raiz, base))];
 }
 
-module.exports = { id, conserto, seAplica, verificar, segredoNaLinha };
+module.exports = { id, guarda, conserto, seAplica, verificar, segredoNaLinha };

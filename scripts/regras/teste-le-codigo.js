@@ -2,6 +2,8 @@
 
 const id = 'teste-le-codigo';
 
+const guarda = 'um teste de Python exercita a rota ou a função, não lê o texto do código';
+
 const conserto = 'Exercite a rota ou a função, não o texto dela: a rota por HTTP '
   + '(complemento/test_servidor.py) ou a função com fakes nas fronteiras '
   + '(complemento/test_envio.py é o modelo). Não leia um .py com read_text/open/inspect.getsource/ast.get_source_segment.';
@@ -88,4 +90,4 @@ function verificar(arquivo, fonte) {
   return achados;
 }
 
-module.exports = { id, conserto, seAplica, verificar };
+module.exports = { id, guarda, conserto, seAplica, verificar };

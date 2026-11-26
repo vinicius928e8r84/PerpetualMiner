@@ -31,39 +31,13 @@ Add or update focused tests when touching the Envio, the opener, the Anki repair
 
 The Conexão keeps its data in the add-on's `user_files` (`complemento/pasta_de_dados.py`), which the Anki preserves across updates. Do not commit secrets, API keys, browser profile data, or generated job artifacts.
 
-## Rules and what enforces them
+## Checks
 
-`node scripts/regras/verificar.js` checks what a script can see, the same in CI; how its baseline and line exceptions work: `--help`.
-
-| What it guards | Enforced by |
-|---|---|
-| UI copy comes from the Voice catalog by ID | `e2e/tests/catalogo-da-voz.spec.js` |
-| Colors, font sizes, radii and durations are Veio tokens | `tokens-veio` |
-| No native `confirm()`/`alert()`/`prompt()`; the Veio components instead | `dialogo-nativo` |
-| Page and phrase text goes in as text, never HTML | `html-cru`; `e2e/tests/texto-literal.spec.js` |
-| Language through `IDIOMAS` and `detectarIdioma` | `idioma-solto` |
-| Every write of `frases` goes through `lib/historico.js` | `gravacao-de-frases` |
-| e2e tests check the screen and what was stored | `e2e-funcao-interna` (unnamed exceptions; direct internals only); `e2e-estado-final` (a test that acts reads what was stored after acting and compares it); `relogio-fora-da-fixture` (the test clock is set up only by the `relogioParado` fixture) |
-| Python tests exercise the route or the function | `teste-le-codigo` |
-| A published add-on version keeps its hash | `versoes-publicadas` (a `VERSAO` already in `complemento/versoes.json` on the base keeps its hash; a PR does not touch `VERSAO`, `versoes.json` or the `.ankiaddon`: the version is given at the merge by `complemento/versao_no_merge.py`) |
-| Every test runs in CI | `testes-no-portao` |
-| The contract has every request and answer | `contrato-fechado` (a `fetch` straight to the Conexão); `testes/test_contrato_fechado.js` and the `tearDownModule` of `complemento/test_harness.py` (an example for each request the extension builds and each status the server answers) |
-| Visual references only with the owner's approval | `aprovacao-visual` (a reference PNG outside a `test.fixme` needs its entry in `e2e/aprovados-visuais/<spec>.json`) |
-| Glossary (`glossary.md`) | `glossario-so-linguagem` (no backtick, no `_Nome no código_` line, a definition of at most two sentences) |
-| New files | `indice-de-arquivos` (a root, `lib/`, `veio/` or `scripts/` file needs its row in `docs/arquivos/`); `testes/test_empacotar.js` |
-| The PR body links its issue (`Closes`/`Refs`, `Prova que falta:`) | the `Registro da PR` check (`scripts/ci/registro-da-pr.js`; format in `.github/PULL_REQUEST_TEMPLATE.md`); a PR that touches a sensitive path (`.github/`, `scripts/regras/`, `scripts/ci/`, `scripts/ganchos/`, `AGENTS.md`, `CLAUDE.md`, `.claude/`, `.agents/`) counts as ALTA, whatever the body says (`scripts/ci/caminhos-sensiveis.js`) |
-| The baseline goes down at the merge, not in the PR | `linha-de-base-no-merge` (a PR that edits `scripts/regras/linha-de-base.json`, `scripts/regras/linha-de-base-sem-comentario.json` or `scripts/ganchos/linha-de-base-de-tamanho.json` by hand); the `Linha de base refeita` job (`scripts/ci/linha-de-base-refeita.js`: a `Linha de base: desce no merge` commit is redone from its parent by `scripts/regras/baixar-no-merge.js` and compared) |
-| No secret, key or session file in the lines a change adds | `sem-segredo-novo` (private keys, cloud and API tokens, JWT, URL with password, a literal in a secret-named field; a new `.env`, `.pem` or `id_rsa` by name; the value is never printed) |
-| No new binary outside the folders that already hold them | `sem-binario-novo` (only a file created by the change; the allowed folders are `PERMITIDOS` in the rule) |
-| No debug code in the lines a change adds | `sem-depuracao-nova` (`debugger`, `.only`, `breakpoint()`, pdb everywhere; `console.log` and debug `print` outside `scripts/`, tests and `e2e/`) |
-| No CodeScene directive in code, no CodeScene configuration in the repository | `sem-codescene-no-repositorio` (the `@codescene` directive in any code file; any file in `.codescene/` or a `code-health-rules.json`; a case the owner approved uses the line exception) |
-| No new lint finding in the lines a change adds | `scripts/ci/lint-do-que-mudou.js` (ESLint with `scripts/regras/eslint.config.mjs`, ruff `F,E9`) |
-| No new high or critical vulnerability from a dependency the change brings | `scripts/ci/auditoria-de-dependencias.js` (npm audit on a changed `package-lock.json`; pip-audit on a changed `requirements.txt`) |
-| No code comment | `sem-comentario` (the ratchet over prose comments, Python docstrings and the `docs/design` HTML prototypes: each file has a ceiling in `scripts/regras/linha-de-base-sem-comentario.json` (generated, marked `@generated`) that only goes down, and a file that reaches zero may not have a comment again; it goes down at the merge, like the baseline) |
+`node scripts/regras/verificar.js` checks what a script can see, the same in CI. `node scripts/regras/verificar.js --help` lists every rule with what it guards, the checks outside `scripts/regras/` (the `Registro da PR`, the lint and dependency audit, the spec and contract tests), and how the baseline and the line exceptions work.
 
 A PR that changes a user-facing file (`popup/`, `painel/`, `manifest.json`, `complemento/servidor.py`, …) also needs `.agents/skills/verify-perpetualminer/features/` updated or "feature map unchanged" in its body: the `Mapa de features` step of `.github/workflows/regras.yml` (PRs only).
 
-When the same correction comes up twice, enforce it at the highest level that works: the code itself, then a lint rule, then a check in `scripts/regras/` (with its row here); `CODING_STANDARDS.md` only when no script can see it. Whatever a check enforces leaves `CODING_STANDARDS.md`.
+When the same correction comes up twice, enforce it at the highest level that works: the code itself, then a lint rule, then a check in `scripts/regras/` (with its `guarda`, the line `--help` shows); `CODING_STANDARDS.md` only when no script can see it. Whatever a check enforces leaves `CODING_STANDARDS.md`.
 
 ## Agent skills
 

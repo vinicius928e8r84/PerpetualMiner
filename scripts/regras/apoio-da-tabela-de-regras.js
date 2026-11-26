@@ -1,56 +1,33 @@
 'use strict';
 
-const SECAO = '## Rules and what enforces them';
-const REGRA = /`([a-z0-9]+(?:-[a-z0-9]+)+)`/g;
+const FORA_DAS_REGRAS = [
+  { quem: 'e2e/tests/catalogo-da-voz.spec.js', guarda: 'o texto da interface vem do catálogo da Voz, por ID' },
+  { quem: 'e2e/tests/texto-literal.spec.js', guarda: 'o texto da página e da Frase entra como texto, nunca como HTML' },
+  { quem: 'testes/test_contrato_fechado.js e o tearDownModule de complemento/test_harness.py', guarda: 'o contrato tem um exemplo para cada pedido que a extensão monta e cada status que o servidor responde' },
+  { quem: 'testes/test_empacotar.js', guarda: 'o pacote da extensão leva só os arquivos da extensão, e o manifest passa nas exigências da loja' },
+  { quem: 'Registro da PR (scripts/ci/registro-da-pr.js)', guarda: 'o corpo da PR liga a issue (Closes/Refs, "Prova que falta:"); o formato está em .github/PULL_REQUEST_TEMPLATE.md; a PR que toca .github/, scripts/regras/, scripts/ci/, scripts/ganchos/, AGENTS.md, CLAUDE.md, .claude/ ou .agents/ conta ALTA, diga o que disser o corpo (scripts/ci/caminhos-sensiveis.js)' },
+  { quem: 'Linha de base refeita (scripts/ci/linha-de-base-refeita.js)', guarda: 'o commit "Linha de base: desce no merge" é refeito a partir do pai por baixar-no-merge.js e comparado' },
+  { quem: 'scripts/ci/lint-do-que-mudou.js', guarda: 'nenhum achado novo do ESLint (scripts/regras/eslint.config.mjs) nem do ruff F,E9 nas linhas que a mudança acrescenta' },
+  { quem: 'scripts/ci/auditoria-de-dependencias.js', guarda: 'nenhuma vulnerabilidade alta ou crítica nova numa dependência que a mudança traz (npm audit no package-lock.json, pip-audit no requirements.txt)' },
+];
 
-function secaoDaTabela(texto) {
-  const inicio = texto.indexOf(SECAO);
-  if (inicio < 0) throw new Error(`falta a seção "${SECAO.slice(3)}"`);
-  const resto = texto.slice(inicio + SECAO.length);
-  const fim = resto.search(/^## /m);
-  return fim < 0 ? resto : resto.slice(0, fim);
+const ehTextoDeUmaLinha = guarda => typeof guarda === 'string' && guarda.trim() !== '' && !guarda.includes('\n');
+
+const regrasSemGuarda = regras => regras.filter(regra => !ehTextoDeUmaLinha(regra.guarda)).map(regra => regra.id);
+
+function linhasDaAjuda(regras) {
+  const largura = Math.max(...regras.map(regra => regra.id.length));
+  return regras.map(regra => `  ${regra.id.padEnd(largura)}  ${regra.guarda}`);
 }
 
-const regrasDaLinha = linha => [...linha.matchAll(REGRA)].map(achado => achado[1]);
-
-function regrasDaTabela(texto) {
-  const linhasDaTabela = secaoDaTabela(texto).split('\n').filter(linha => linha.startsWith('|'));
-  return [...new Set(linhasDaTabela.flatMap(regrasDaLinha))];
-}
-
-const achado = (regra, detalhe) => ({ regra, detalhe });
-
-const SEM_CITAR = 'existe em scripts/regras/ e a tabela não a cita; ponha a linha na tabela do AGENTS.md ou, com a aprovação do dono, na lista do teste';
-const SO_NA_TABELA = 'a tabela cita e não existe em scripts/regras/';
-const JA_NA_TABELA = 'já consta na tabela; tire-a da lista de exceções do teste';
-const EXCECAO_SUMIDA = 'a exceção é de uma regra que não existe mais em scripts/regras/; tire-a da lista';
-
-function regrasSemLinha(ids, naTabela, semLinha) {
-  return ids.filter(id => !naTabela.has(id) && !semLinha.includes(id)).map(id => achado(id, SEM_CITAR));
-}
-
-function regrasSoNaTabela(ids, naTabela) {
-  return [...naTabela].filter(regra => !ids.includes(regra)).map(regra => achado(regra, SO_NA_TABELA));
-}
-
-const detalheDaExcecaoInutil = (regra, naTabela, ids) => {
-  if (naTabela.has(regra)) return JA_NA_TABELA;
-  return ids.includes(regra) ? null : EXCECAO_SUMIDA;
-};
-
-function excecoesInuteis(ids, naTabela, semLinha) {
-  return semLinha
-    .map(regra => achado(regra, detalheDaExcecaoInutil(regra, naTabela, ids)))
-    .filter(excecao => excecao.detalhe !== null);
-}
-
-function divergencias(texto, ids, semLinha) {
-  const naTabela = new Set(regrasDaTabela(texto));
+function textoDaAjuda(regras) {
   return [
-    ...regrasSemLinha(ids, naTabela, semLinha),
-    ...regrasSoNaTabela(ids, naTabela),
-    ...excecoesInuteis(ids, naTabela, semLinha),
-  ];
+    'Regras (cada uma, o que guarda):',
+    ...linhasDaAjuda(regras),
+    '',
+    'Checks que não são deste diretório:',
+    ...FORA_DAS_REGRAS.map(check => `  ${check.quem}: ${check.guarda}`),
+  ].join('\n');
 }
 
-module.exports = { regrasDaTabela, divergencias };
+module.exports = { regrasSemGuarda, linhasDaAjuda, textoDaAjuda, FORA_DAS_REGRAS };

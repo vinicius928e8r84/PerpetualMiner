@@ -4,6 +4,8 @@ const { ehJsDaExtensao, linhaDe, semComentariosJs } = require('./comum');
 
 const id = 'idioma-solto';
 
+const guarda = 'o idioma vem de `IDIOMAS` e `detectarIdioma`, nunca de um literal ou de uma faixa de letras solta';
+
 const conserto = 'Use lib/idioma.js: `PerpetualMiner.IDIOMAS.RUSSO` / `.INGLES` para o nome gravado, '
   + '`PerpetualMiner.detectarIdioma(texto)` para detectar e `PerpetualMiner.ehRussa(frase)` para decidir; '
   + 'não escreva \'Russo\'/\'Inglês\' nem um /[\\u0400-\\u04FF]/ novo.';
@@ -25,4 +27,4 @@ function verificar(arquivo, fonte) {
   return achados;
 }
 
-module.exports = { id, conserto, seAplica, verificar };
+module.exports = { id, guarda, conserto, seAplica, verificar };

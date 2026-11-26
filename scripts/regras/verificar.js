@@ -4,6 +4,7 @@
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const { textoDaAjuda } = require('./apoio-da-tabela-de-regras');
 const { arquivosDoRepositorio, comentariosPorLinha, renomeacoes } = require('./comum');
 const {
   ARQUIVO_DA_LINHA_DE_BASE, arquivoDe, arquivosDe, lerArquivoDaLinhaDeBase, criarLinhaDeBase, lerLinhaDeBase, atualizarLinhaDeBase,
@@ -42,8 +43,7 @@ const ARQUIVOS_DA_LINHA_DE_BASE = arquivosDe(REGRAS);
 
 const AJUDA = `uso: node scripts/regras/verificar.js [--raiz <pasta>] [--base <ref>] [--atualizar | --criar-linha-de-base]
 
-Confere as regras de revisão de scripts/regras/ (uma por arquivo; a tabela regra → quem confere
-está em AGENTS.md § Rules and what enforces them).
+Confere as regras de revisão de scripts/regras/ (uma por arquivo; o que cada uma guarda está listado abaixo).
 
   (sem bandeira)          confere o repositório; sai com 1 se alguma regra falhar
   --atualizar             baixa as linhas de base (scripts/regras/linha-de-base*.json; nunca sobe); quem o roda é baixar-no-merge.js, depois do merge, e não a PR
@@ -60,7 +60,9 @@ Uma ocorrência que precisa ficar leva, num comentário na própria linha:
   exceção <regra> até AAAA-MM-DD, aprovada por <pessoa>: <motivo>
 Uma exceção vencida, mal escrita ou numa linha que a regra não acusa também falha.
 
-Prova de cada regra com os erros reais que ela pega: node scripts/regras/test_regras.js`;
+Prova de cada regra com os erros reais que ela pega: node scripts/regras/test_regras.js
+
+${textoDaAjuda(REGRAS)}`;
 
 class ErroDeUso extends Error {}
 
@@ -376,7 +378,7 @@ function relatar({ erros, avisos, podeBaixar }, agora) {
   for (const aviso of avisos) console.log(`aviso: ${aviso}`);
   if (erros.length) {
     console.log(`${erros.join('\n\n')}\n\nerror: ${erros.length} problema(s) nas regras`
-      + '\nhelp: conserte como cada "Conserto" diz; as regras e quem as confere: AGENTS.md § Rules and what enforces them');
+      + '\nhelp: conserte como cada "Conserto" diz; o que cada regra guarda: node scripts/regras/verificar.js --help');
     return 1;
   }
   const resumo = REGRAS.map(regra => `${regra.id} ${total(agora[regra.id])}`).join(', ');

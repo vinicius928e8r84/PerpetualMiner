@@ -5,6 +5,8 @@ const { linhasNovas } = require('./apoio-linhas-novas');
 
 const id = 'sem-depuracao-nova';
 
+const guarda = 'nenhum código de depuração nas linhas que a mudança acrescenta (`debugger`, `.only`, `breakpoint()`, pdb em todo lugar; `console.log` e `print` de depuração fora de scripts/, dos testes e de e2e/)';
+
 const conserto = 'Tire a linha de depuração. O que o produto precisa registrar vai pelo registro que o módulo já tem (`console.info`/`console.warn`/`console.error` '
   + 'na extensão, o log do Anki no complemento); um teste que quer ver o valor usa `assert`. Um `.only` esquecido faz o CI rodar um teste só e passar verde. '
   + 'Ferramentas de linha de comando e testes podem imprimir (CAMINHOS_QUE_IMPRIMEM em scripts/regras/sem-depuracao-nova.js).';
@@ -51,4 +53,4 @@ function verificar(arquivo, fonte, raiz, base) {
   return achados;
 }
 
-module.exports = { id, conserto, seAplica, verificar };
+module.exports = { id, guarda, conserto, seAplica, verificar };
