@@ -51,6 +51,7 @@
     const minerada = fraseMinerada(frases);
     const lang = idiomaDoEnvio(minerada, retrato.estado.automatica);
     const ajustes = (await AjustesDeEnvio.ler())[lang];
+    const conta = await raiz.ChaveDaOpenAI.contaAtual();
     return {
       jobId: crypto.randomUUID(),
       lang,
@@ -58,6 +59,7 @@
       imageSource: ajustes.imageSource,
       ...AjustesDeEnvio.vozENivel(ajustes),
       ...(!minerada && { teste: true }),
+      ...(conta && { conta }),
       entries: [entradaDoEnvio(minerada, lang, linhaDaFrase)],
     };
   }

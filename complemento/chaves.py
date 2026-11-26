@@ -143,8 +143,11 @@ class Cofre:
         except (OSError, ValueError):
             return {}
 
-    def ler(self, nome):
-        chave = self.documento(nome).get('chave')
+    def ler(self, nome, conta=''):
+        documento = self.documento(nome)
+        if conta and _e_de_outra_conta(documento, conta):
+            return None
+        chave = documento.get('chave')
         return chave if isinstance(chave, str) and chave else None
 
     def ultimos4(self, nome):

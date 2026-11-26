@@ -384,6 +384,7 @@ function comecarEnvio() {
       return todasFrases.filter(f => pedidas.has(Number(f.id)));
     },
     linha: linhaParaOAnki,
+    conta: () => usuarioLogado?.uid || '',
     apagar: ids => FrasesAcoes.apagarFrases(ids, { toast: false }),
     marcarComoEnviadas,
   });

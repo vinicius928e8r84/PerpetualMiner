@@ -60,6 +60,15 @@ test('enviar Frases em inglês e em russo cria um Envio por idioma, guarda cada 
   assert.deepStrictEqual(mundo.intervalos.map(i => i.ms), [2000]);
 });
 
+test('o Envio criado com uma Conta logada leva o uid dela no pedido, e sem Conta o pedido não leva conta', async () => {
+  const daConta = await preparar({ selecionadas: [1], conta: 'uid-A', respostas: { 'POST /jobs': criandoJobs() } });
+  await clicarEmEnviar(daConta);
+  const semConta = await preparar({ selecionadas: [1], respostas: { 'POST /jobs': criandoJobs() } });
+  await clicarEmEnviar(semConta);
+  assert.strictEqual(daConta.guardado.pm_envio.envios[0].corpo.conta, 'uid-A');
+  assert.strictEqual('conta' in semConta.guardado.pm_envio.envios[0].corpo, false);
+});
+
 test('os Ajustes que não leem deixam o Envio sem criar, com o motivo guardado, e nenhum pedido sai', async () => {
   const mundo = await preparar({ selecionadas: [1], ajustes: new Error('sem preset') });
   await clicarEmEnviar(mundo);
