@@ -1,6 +1,6 @@
 # Frases list in the panel
 
-The panel's default area (`painel/painel.html#frases`, "Frases mineradas") lists every mined phrase as a card under its day heading, with the Palavra highlighted and a Contexto line (Fonte badge, Título · Detalhe, status badge). A person searches and filters, selects phrases, and deletes, edits or exports them.
+The panel's default area (`painel/painel.html#frases`, "Frases mineradas") lists every mined phrase as a card under its day heading, with the Palavra highlighted and a Contexto line (Fonte badge, Título · Detalhe, status badge). A person searches and filters, selects phrases, and deletes, edits or sends them to Anki.
 
 ## Sub-features
 
@@ -44,4 +44,4 @@ Preconditions:
 - Changing a filter or the search clears the selection (a fixed bug of #9); assert the bar disappears, do not re-select silently.
 - Delete with an account (`extensao.semearSessao()`) also says the phrase leaves the other computers; cloud failure shows PAI-15 with Tentar de novo.
 - Frases text is inserted as text, never HTML (`uma frase com marcação aparece literal`).
-- Write to `frases` only through the harness helpers; the real extension serializes writes with the `pm-historico` Web Lock, shared by the service worker and the panel (`lib/historico.js`). Every write of `frases` in the panel (Apagar, Apagar tudo, marking a Palavra, Editar texto, Editar contexto, Exportar .txt, the Enviada ao Anki mark) goes through `Historico`, so the stored `frases` changes a moment after the screen: read it with `expect.poll`. The lock across contexts is proven by `historico-trancado.spec.js` (Apagar, Palavra, Contexto de N frases, Exportar .txt, Apagar tudo).
+- Write to `frases` only through the harness helpers; the real extension serializes writes with the `pm-historico` Web Lock, shared by the service worker and the panel (`lib/historico.js`). Every write of `frases` in the panel (Apagar, Apagar tudo, marking a Palavra, Editar texto, Editar contexto, the Enviada ao Anki mark) goes through `Historico`, so the stored `frases` changes a moment after the screen: read it with `expect.poll`. The lock across contexts is proven by `historico-trancado.spec.js` (Apagar, Palavra, Contexto de N frases, Apagar tudo).

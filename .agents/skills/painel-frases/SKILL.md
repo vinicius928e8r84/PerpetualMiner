@@ -67,12 +67,9 @@ and opens `bookreader/bookreader.html` in a new tab, as the menu's Foto does. Th
   repeats the upload) and no Detalhes (the owner's call: the cause goes to the Conta & sync card's Detalhes), and the card and the chip say the computer is out of sync — the same exception to
   the “sync problems only in the card” rule as PAI-15. Closing the aviso leaves them only on this computer; the next load uploads them.
 
-**The .txt line** is `palavra : texto [Contexto: fonte - título - detalhe]` (`linhaDoTxt`; empty fields as
-`Desconhecido`, Palavra groups joined by ` | `, word positions dropped). A phrase with no Palavra whose text has ` : `
-(or ends in ` :`) is written with an empty prefix (`: texto`), so the text comes back whole. A Palavra group that is
-no longer in the text (the text was edited after it was picked) is left out of the line, and the other groups stay:
-read back, it would stick to the start of the text. The Conexão gets the same line without either rule
-(`linhaParaOAnki`), because the engine's parser does not know the empty prefix. Reading (`lerLinhaDoTxt`): a line in that
+**The .txt line** is `palavra : texto [Contexto: fonte - título - detalhe]`: the panel no longer writes it to a file
+(#777); the Conexão gets it (`TxtDeFrases.escreverParaOAnki`; empty fields as `Desconhecido`, Palavra groups joined
+by ` | `, word positions dropped), and a .txt made by an older version still comes back through the reading. Reading (`lerLinhaDoTxt`): a line in that
 format brings its Contexto and its Palavras back (`palavrasNoTexto` finds each word's position again; a word repeated in
 the text comes back at its first occurrence after the previous one of its group) and skips the automatic Palavra; the
 prefix before the first ` : ` only counts as the Palavra when all its words are in the text after it, which keeps
