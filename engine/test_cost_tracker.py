@@ -12,10 +12,12 @@ def linhas(pasta):
 
 
 class RegistroDeTokens(unittest.TestCase):
-    def assertCustos(self, obtidos, esperados):
-        self.assertEqual(len(obtidos), len(esperados))
-        for obtido, esperado in zip(obtidos, esperados):
+    def assertGravado(self, custos, esperados, gravado, linhas_esperadas):
+        self.assertEqual(len(custos), len(esperados))
+        for obtido, esperado in zip(custos, esperados):
             self.assertAlmostEqual(obtido, esperado, places=12)
+        hoje = date.today().isoformat()
+        self.assertEqual([list(linha.items()) for linha in gravado], [[("date", hoje)] + linha for linha in linhas_esperadas])
 
     def test_os_tokens_da_chave_custam_o_preco_do_modelo_e_o_modelo_sem_preco_custa_o_do_gpt_4o(self):
         with tempfile.TemporaryDirectory() as pasta:
@@ -24,12 +26,10 @@ class RegistroDeTokens(unittest.TestCase):
                 cost_tracker.record_tokens(pasta, cost_tracker.TokenUsage(model="modelo-sem-preco", input_tokens=4, output_tokens=7)),
             ]
             gravado = linhas(pasta)
-        hoje = date.today().isoformat()
-        self.assertCustos(custos, [(1000 * 0.15 + 2000 * 0.6) / 1e6, (4 * 2.5 + 7 * 10) / 1e6])
-        self.assertEqual([list(linha.items()) for linha in gravado], [
-            [("date", hoje), ("type", "tokens"), ("model", "gpt-4o-mini"), ("input_tokens", 1000), ("output_tokens", 2000),
+        self.assertGravado(custos, [(1000 * 0.15 + 2000 * 0.6) / 1e6, (4 * 2.5 + 7 * 10) / 1e6], gravado, [
+            [("type", "tokens"), ("model", "gpt-4o-mini"), ("input_tokens", 1000), ("output_tokens", 2000),
              ("cost_usd", 0.00135), ("keyword", "olho")],
-            [("date", hoje), ("type", "tokens"), ("model", "modelo-sem-preco"), ("input_tokens", 4), ("output_tokens", 7),
+            [("type", "tokens"), ("model", "modelo-sem-preco"), ("input_tokens", 4), ("output_tokens", 7),
              ("cost_usd", 8e-05), ("keyword", "")],
         ])
 
@@ -40,12 +40,10 @@ class RegistroDeTokens(unittest.TestCase):
                 cost_tracker.record_plan_tokens(pasta, cost_tracker.TokenUsage("gpt-5", 10, 20), "modelo-sem-preco"),
             ]
             gravado = linhas(pasta)
-        hoje = date.today().isoformat()
-        self.assertCustos(teria, [(1234 * 2 + 567 * 8) / 1e6, (10 * 2.5 + 20 * 10) / 1e6])
-        self.assertEqual([list(linha.items()) for linha in gravado], [
-            [("date", hoje), ("type", "plan_tokens"), ("model", "gpt-5"), ("input_tokens", 1234), ("output_tokens", 567),
+        self.assertGravado(teria, [(1234 * 2 + 567 * 8) / 1e6, (10 * 2.5 + 20 * 10) / 1e6], gravado, [
+            [("type", "plan_tokens"), ("model", "gpt-5"), ("input_tokens", 1234), ("output_tokens", 567),
              ("cost_usd", 0.0), ("would_cost_usd", 0.007004), ("keyword", "olho")],
-            [("date", hoje), ("type", "plan_tokens"), ("model", "gpt-5"), ("input_tokens", 10), ("output_tokens", 20),
+            [("type", "plan_tokens"), ("model", "gpt-5"), ("input_tokens", 10), ("output_tokens", 20),
              ("cost_usd", 0.0), ("would_cost_usd", 0.000225), ("keyword", "")],
         ])
 
@@ -57,14 +55,12 @@ class RegistroDeTokens(unittest.TestCase):
                 cost_tracker.record_correction(pasta, cost_tracker.TokenUsage("modelo-sem-preco", 1, 1), True),
             ]
             gravado = linhas(pasta)
-        hoje = date.today().isoformat()
-        self.assertCustos(custos, [(500 * 0.4 + 100 * 1.6) / 1e6, 0.0, (2.5 + 10) / 1e6])
-        self.assertEqual([list(linha.items()) for linha in gravado], [
-            [("date", hoje), ("type", "correction_tokens"), ("model", "gpt-4.1-mini"), ("input_tokens", 500), ("output_tokens", 100),
+        self.assertGravado(custos, [(500 * 0.4 + 100 * 1.6) / 1e6, 0.0, (2.5 + 10) / 1e6], gravado, [
+            [("type", "correction_tokens"), ("model", "gpt-4.1-mini"), ("input_tokens", 500), ("output_tokens", 100),
              ("cost_usd", 0.00036)],
-            [("date", hoje), ("type", "correction_tokens"), ("model", "gpt-4.1-mini"), ("input_tokens", 500), ("output_tokens", 100),
+            [("type", "correction_tokens"), ("model", "gpt-4.1-mini"), ("input_tokens", 500), ("output_tokens", 100),
              ("cost_usd", 0.0)],
-            [("date", hoje), ("type", "correction_tokens"), ("model", "modelo-sem-preco"), ("input_tokens", 1), ("output_tokens", 1),
+            [("type", "correction_tokens"), ("model", "modelo-sem-preco"), ("input_tokens", 1), ("output_tokens", 1),
              ("cost_usd", 1.3e-05)],
         ])
 
