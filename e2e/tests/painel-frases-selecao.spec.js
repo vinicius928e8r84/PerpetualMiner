@@ -53,7 +53,7 @@ test('sem seleção, só “Selecionar página”; ao marcar, a barra mostra a c
   await expect(barra(page)).toBeVisible();
   expect(await rotulo.boundingBox()).toMatchObject({ width: 1, height: 1 });
   await expect(barra(page)).toContainText('1 selecionada');
-  for (const nome of ['Desmarcar todas', 'Editar contexto', 'Exportar .txt', 'Apagar', 'Enviar ao Anki']) {
+  for (const nome of ['Desmarcar todas', 'Editar contexto', 'Apagar', 'Enviar ao Anki']) {
     await expect(naBarra(page, nome)).toBeVisible();
   }
   await expect(barra(page).getByRole('button', { name: /Selecionar todas/ })).toHaveCount(0);
@@ -125,7 +125,7 @@ test('a Fonte, o toggle de ocultar, Limpar filtros e Limpar busca também limpam
     frases: [
       frase(3, 'The harbour was quiet.', { streaming: 'netflix' }),
       frase(2, 'The lighthouse was dark.', { streaming: 'youtube' }),
-      frase(1, 'Already exported.', { streaming: 'netflix', exportadaTxt: true }),
+      frase(1, 'Already sent.', { streaming: 'netflix', status: 'exported' }),
     ],
   });
   await abrirFrases(page, extensao);
@@ -135,8 +135,8 @@ test('a Fonte, o toggle de ocultar, Limpar filtros e Limpar busca também limpam
   await expect(marcadas(page)).toHaveCount(0);
 
   await filtro(page, 'Fonte').selectOption({ label: 'Todas as fontes' });
-  await marcar(page, 'Already exported').check();
-  await page.locator('.veio-toggle').getByText('Ocultar enviadas e exportadas').click();
+  await marcar(page, 'Already sent').check();
+  await page.locator('.veio-toggle').getByText('Ocultar enviadas').click();
   await expect(barra(page)).toBeHidden();
   await expect(marcadas(page)).toHaveCount(0);
 
@@ -162,64 +162,53 @@ test('a barra gruda no topo da ilha ao rolar', async ({ page, extensao }) => {
   expect(await linhaDaBarra.evaluate(el => getComputedStyle(el).position)).toBe('sticky');
 });
 
-test('Exportar .txt baixa as escolhidas e as marca Exportada, nunca Enviada ao Anki (bug de #9)', async ({ page, extensao }) => {
-  await extensao.gravarStorage({ frases: frasesDeExemplo(3) });
-  await abrirFrases(page, extensao);
-
-  await marcar(page, 'Sentence number 3 ').check();
-  await marcar(page, 'Sentence number 1 ').check();
-  const [download] = await Promise.all([
-    page.waitForEvent('download'),
-    naBarra(page, 'Exportar .txt').click(),
-  ]);
-  const conteudo = require('fs').readFileSync(await download.path(), 'utf8');
-  expect(conteudo).toContain('Sentence number 3 about the harbour.');
-  expect(conteudo).toContain('Sentence number 1 about the harbour.');
-  expect(conteudo).not.toContain('Sentence number 2 ');
-
-  await expect(toasts(page)).toHaveText('2 frases exportadas para .txt');
-  await expect(barra(page)).toBeHidden();
-  const exportada = cartao(page, 'Sentence number 3 ').locator('.veio-frase__contexto');
-  await expect(exportada).toContainText('Exportada');
-  await expect(exportada).not.toContainText('Enviada ao Anki');
-  await expect(cartao(page, 'Sentence number 2 ').locator('.veio-frase__contexto')).not.toContainText('Exportada');
-
-  const gravadas = await extensao.frases();
-  const porTexto = texto => gravadas.find(f => f.texto.startsWith(texto));
-  expect(porTexto('Sentence number 3 ').status).toBeUndefined();
-  expect(porTexto('Sentence number 3 ').exportadaTxt).toBe(true);
-  expect(porTexto('Sentence number 2 ').exportadaTxt).toBeUndefined();
-});
-
-test('a frase exportada depois de enviada continua Enviada ao Anki, e “Ocultar enviadas e exportadas” esconde as duas', async ({ page, extensao }) => {
+test('uma Frase que ainda guarda a marca antiga de Exportada não ganha selo e não some com “Ocultar enviadas”', async ({ page, extensao }) => {
   await extensao.gravarStorage({
     frases: [
-      frase(3, 'Sent and exported.', { status: 'exported', exportadaTxt: true }),
-      frase(2, 'Only exported.', { exportadaTxt: true }),
+      frase(3, 'Sent already.', { status: 'exported' }),
+      frase(2, 'Old export mark.', { exportadaTxt: true }),
       frase(1, 'Still waiting.'),
     ],
   });
   await abrirFrases(page, extensao);
 
-  await expect(cartao(page, 'Sent and exported').locator('.veio-frase__contexto')).toContainText('Enviada ao Anki');
-  await expect(cartao(page, 'Sent and exported').locator('.veio-frase__contexto')).not.toContainText('Exportada');
-  await expect(cartao(page, 'Only exported').locator('.veio-frase__contexto .veio-selo--info')).toHaveText('Exportada');
+  await expect(cartao(page, 'Sent already').locator('.veio-frase__contexto')).toContainText('Enviada ao Anki');
+  await expect(cartao(page, 'Old export mark').locator('.veio-frase__contexto .veio-selo--info')).toHaveCount(0);
+  await expect(cartao(page, 'Old export mark').locator('.veio-frase__contexto')).not.toContainText('Exportada');
 
-  await page.locator('.veio-toggle').getByText('Ocultar enviadas e exportadas').click();
-  await expect(cartoes(page)).toHaveText([/Still waiting/]);
+  await page.locator('.veio-toggle').getByText('Ocultar enviadas', { exact: true }).click();
+  await expect(cartoes(page)).toHaveText([/Old export mark/, /Still waiting/]);
 });
 
-test('com a conta conectada, a marca de Exportada chega à nuvem', async ({ page, extensao, fakes }) => {
+test('ao atualizar a extensão, as Frases que tinham Exportada perdem a marca e o resto delas fica', async ({ page, extensao }) => {
+  await extensao.gravarStorage({
+    frases: [
+      frase(3, 'Sent and exported.', { status: 'exported', exportadaTxt: true, keywords: ['sent@0'] }),
+      frase(2, 'Only exported.', { exportadaTxt: true }),
+      frase(1, 'Never exported.'),
+    ],
+  });
+
+  await extensao.serviceWorker.evaluate(() => aoInstalar({ reason: 'update', previousVersion: '4.9' }));
+
+  await expect.poll(async () => (await extensao.frases()).map(f => [f.texto, f.status ?? null, 'exportadaTxt' in f])).toEqual([
+    ['Sent and exported.', 'exported', false],
+    ['Only exported.', null, false],
+    ['Never exported.', null, false],
+  ]);
+  expect((await extensao.frases())[0].keywords).toEqual(['sent@0']);
+});
+
+test('com a conta conectada, a marca antiga de Exportada sai da nuvem e não volta ao computador', async ({ page, extensao, fakes }) => {
   await extensao.semearSessao({ uid: 'uid-exporta' });
-  fakes.google.gravarFrases('uid-exporta', frasesDeExemplo(2));
+  fakes.google.gravarFrases('uid-exporta', frasesDeExemplo(2, { exportadaTxt: true }));
   await extensao.gravarStorage({ frases: frasesDeExemplo(2) });
   await abrirFrasesSincronizado(page, extensao);
 
-  await marcar(page, 'Sentence number 2 ').check();
-  await Promise.all([page.waitForEvent('download'), naBarra(page, 'Exportar .txt').click()]);
-
-  await expect.poll(() => fakes.google.frasesDe('uid-exporta').find(f => f.texto.startsWith('Sentence number 2 '))?.exportadaTxt).toBe(true);
-  expect(fakes.google.frasesDe('uid-exporta').find(f => f.texto.startsWith('Sentence number 2 ')).status).toBeUndefined();
+  await expect.poll(() => fakes.google.frasesDe('uid-exporta').filter(f => 'exportadaTxt' in f)).toHaveLength(0);
+  expect(fakes.google.frasesDe('uid-exporta')).toHaveLength(2);
+  expect((await extensao.frases()).filter(f => 'exportadaTxt' in f)).toHaveLength(0);
+  await expect(cartoes(page).locator('.veio-selo--info')).toHaveCount(0);
 });
 
 test('Apagar 1 frase pede confirmação (PAI-12); Cancelar mantém, confirmar tira sem toast', async ({ page, extensao }) => {
@@ -478,7 +467,7 @@ test('as ações do cartão aparecem ao focar pelo teclado, e os controles da ba
 
   await marcar(page, 'Sentence number 2 ').check();
   await page.keyboard.press('Tab');
-  for (const nome of ['Desmarcar todas', 'Editar contexto', 'Exportar .txt', 'Apagar', 'Enviar ao Anki']) {
+  for (const nome of ['Desmarcar todas', 'Editar contexto', 'Apagar', 'Enviar ao Anki']) {
     await focoAparece(naBarra(page, nome));
   }
 

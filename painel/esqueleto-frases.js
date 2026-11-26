@@ -98,7 +98,6 @@
   function acoesDaSelecao() {
     return peca('span', 'frases-barra__acoes', {},
       botaoDaBarra('veio-botao--fantasma', 'btn-bulk-edit', 'contexto', 'PAI-32.editarContexto'),
-      botaoDaBarra('veio-botao--fantasma', 'btn-export', 'arquivo', 'PAI-32.exportar'),
       botaoDaBarra('veio-botao--perigo-fantasma', 'btn-delete-selected', 'apagar', 'PAI-32.apagar'),
       envioAoAnki());
   }

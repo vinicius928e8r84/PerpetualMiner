@@ -69,7 +69,7 @@ test('primeiro uso (PAI-02)', async ({ page, extensao }) => {
 test('filtros esconderam tudo (PAI-03)', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: FRASES.filter(f => f.status === 'exported') });
   await abrirFrases(page, extensao);
-  await page.locator('.veio-toggle').getByText('Ocultar enviadas e exportadas').click();
+  await page.locator('.veio-toggle').getByText('Ocultar enviadas', { exact: true }).click();
   await expect(page.locator('#frases-lista .veio-vazio')).toBeVisible();
 
   await expect(page).toHaveScreenshot('frases-filtros-vazios.png', { fullPage: true });

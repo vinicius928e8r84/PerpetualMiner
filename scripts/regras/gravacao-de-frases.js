@@ -8,7 +8,7 @@ const guarda = 'toda gravação de `frases` passa por lib/historico.js';
 
 const conserto = 'Não grave `frases` fora de `PerpetualMiner.Historico` (lib/historico.js), que lê de novo dentro da '
   + 'tranca `pm-historico` e muda só o que pediram. No service worker, nas páginas e em lib/, chame uma operação dele '
-  + '(`acrescentar`, `editar`, `editarVarias`, `marcarEnviadas`, `marcarExportadas`, `apagar`); falta uma? Ela entra em '
+  + '(`acrescentar`, `editar`, `editarVarias`, `marcarEnviadas`, `esquecerExportadas`, `apagar`); falta uma? Ela entra em '
   + 'lib/historico.js. Nunca grave de volta uma cópia lida antes de um `await`.';
 
 const CHAVES = /(?:^|[{,\s])(?:frases|['"]frases['"])\s*(?::|,|\})/;

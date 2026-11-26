@@ -20,13 +20,13 @@ the Fonte filter), Título · Detalhe and the state badge (PAI-08).
 
 The area header carries **Minerar frases ▾** (ADD-01; see “Minerar frases” below). The filter
 row: one Fonte select (the Fontes in the history), language, order, the search (text and Título, with ×)
-and the “Ocultar enviadas e exportadas” toggle. Below it, the **Selecionar página** checkbox (PAI-31) marks the whole
+and the “Ocultar enviadas” toggle. Below it, the **Selecionar página** checkbox (PAI-31) marks the whole
 page, and shows the mixed state when part of it is selected (`refletirSelecao`). Changing a filter or the search clears
 the selection, so no action lands on a phrase that is not on screen; reordering keeps it.
 
 With a selection, that same row becomes the **contextual bar** (PAI-32), sticky at the top of the island: × Desmarcar
 todas, the count (PAI-06), “Selecionar todas as N frases” once the whole page is marked (N is what the filters show,
-across pages), and Editar contexto · Exportar .txt · Apagar · Enviar ao Anki. The page checkbox stays at its start,
+across pages), and Editar contexto · Apagar · Enviar ao Anki. The page checkbox stays at its start,
 with its label only for the screen reader.
 
 The card's four icon actions (PAI-30) appear on hover and on focus. **Editar texto** swaps the text for a field in
@@ -38,9 +38,10 @@ computers when an account is connected. Both modals are the Veio modal, driven b
 (PAI-01), first run (PAI-02: its `titulo` in bold above the text, with the recorded caption shortcut in a `kbd`, or, with none, the dashed “Sem atalho” `kbd` and a Definir atalho link to `#configuracoes/atalhos`, GLB-02), filters hid everything (PAI-03) and search without
 result (PAI-04, plus Limpar filtros when a filter is on). Everything is built with DOM nodes, never HTML strings.
 
-Two marks, never the same one: `status: 'exported'` is **Enviada ao Anki** (the phrase went into a completed Envio;
-the field keeps its pre-glossary name), and `exportadaTxt` is **Exportada** (it was written to a .txt). Exporting never
-writes the Envio's mark, a phrase that has both says Enviada ao Anki, and “Ocultar enviadas e exportadas” hides either.
+One mark: `status: 'exported'` is **Enviada ao Anki** (the phrase went into a completed Envio; the field keeps its
+pre-glossary name), and “Ocultar enviadas” hides it. The list has no export to .txt and no **Exportada** mark (#777):
+`Historico.esquecerExportadas` takes the old `exportadaTxt` field off every Frase on install and update, and
+`lib/sincronizacao.js` takes it off the ones the cloud still has.
 For the cloud merge of these marks, see the `carregar` contract in `lib/sincronizacao.js`.
 
 ### Minerar frases (`painel-minerar-frases.js`, ADD-01…12)

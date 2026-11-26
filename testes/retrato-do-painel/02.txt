@@ -1,9 +1,3 @@
-    <section aria-labelledby="titulo-anki" class="shell-area" data-area="anki" hidden>
-     <header class="shell-cabecalho">
-      <h1 data-voz="SHL-02.anki" id="titulo-anki">
-      <button class="veio-botao veio-botao--contorno" data-voz-title="BRG-24" id="btn-anki-atualizar">
-       <span data-icone="atualizar">
-       <span data-voz="SHL-06">
      <div class="shell-faixa veio-aviso" hidden id="shell-faixa-conexao" role="status">
       <p class="veio-aviso__texto" data-voz="ENV-01.aviso">
       <div class="veio-aviso__acoes">

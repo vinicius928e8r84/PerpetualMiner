@@ -44,7 +44,7 @@ O popup abre pelo ícone da extensão. Ele traz esses controles, as cinco últim
 
 O painel lista as frases por dia, com a fonte, o título e o episódio ou capítulo. Você busca, filtra por fonte e por idioma, corrige o texto e escolhe a Palavra, que é a palavra que o cartão vai ensinar. Uma frase com duas Palavras vira dois cartões.
 
-O botão Minerar frases aceita texto colado, um arquivo .txt e fotos. Exportar .txt grava as frases selecionadas num arquivo que o painel lê de volta.
+O botão Minerar frases aceita texto colado, um arquivo .txt e fotos.
 
 As frases ficam no seu navegador. Se você entrar com o Google, elas também vão para a sua conta no Firestore e aparecem nos seus outros computadores. O PerpetualMiner não tem servidor próprio nem análise de uso. A [política de privacidade](https://perpetualminer.com/privacidade/) diz o que vai para onde.
 
