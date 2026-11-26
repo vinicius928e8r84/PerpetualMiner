@@ -337,28 +337,16 @@ const ESPERADO = {
    "Its dependence on rain left it exposed t",
    "en",
    {
-    "accept": true,
-    "reason": "en_new_item",
-    "keywords": [
-     "depredations@18",
-     "of@20",
-     "drought@22"
-    ]
+    "accept": false,
+    "reason": "nao_e_i_mais_1"
    }
   ],
   [
    "Women did so by nursing their babies aro",
    "en",
    {
-    "accept": true,
-    "reason": "en_multi_new_items",
-    "keywords": [
-     "nursing@8",
-     "|",
-     "around@14",
-     "the@16",
-     "clock@18"
-    ]
+    "accept": false,
+    "reason": "nao_e_i_mais_1"
    }
   ],
   [
@@ -412,7 +400,7 @@ const ESPERADO = {
    "ru",
    {
     "accept": false,
-    "reason": "not_i_plus_1"
+    "reason": "nao_e_i_mais_1"
    }
   ],
   [
@@ -420,7 +408,7 @@ const ESPERADO = {
    "ru",
    {
     "accept": false,
-    "reason": "no_new_item"
+    "reason": "nada_novo"
    }
   ]
  ],
