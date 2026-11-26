@@ -16,12 +16,15 @@ Pagador = namedtuple("Pagador", "quem credencial motivo")
 LISTA_NOSSA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "modelos_da_ia.json")
 
 
-class Conta(namedtuple("Conta", "login cofre openai_base", defaults=(None,))):
+class Conta(namedtuple("Conta", "login cofre openai_base do_envio", defaults=(None, ""))):
     def situacao(self):
         return self.login.situacao() if self.login is not None else (SEM_LOGIN, None)
 
     def chave(self):
-        return self.cofre.ler("openai")
+        return self.cofre.ler("openai", self.do_envio)
+
+    def da_conta(self, uid):
+        return self._replace(do_envio=uid)
 
 
 class ModelosIndisponiveis(Exception):

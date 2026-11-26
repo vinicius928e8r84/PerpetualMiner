@@ -178,6 +178,7 @@ async function preparar(opcoes = {}) {
     selecionadas: () => mundo.selecionadas.map(id => FRASES.get(id)),
     frasesPorId: ids => ids.map(id => FRASES.get(id)),
     linha: frase => `linha ${frase.id}`,
+    conta: () => opcoes.conta || '',
   });
   await adiante();
   return mundo;

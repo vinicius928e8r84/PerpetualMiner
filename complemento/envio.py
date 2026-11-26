@@ -197,7 +197,7 @@ class Trabalho:
         if not tipo.serve:
             self.logger.warning("Envio %s: o tipo de nota %r não tem os campos do Cartão", job_id, tipo.nome)
             return self._terminar(job_id, pedido, SEM_TIPO_DE_NOTA)
-        ia = IaDoEnvio(self.ia, EsperaDoEnvio(self.fila, job_id, self.parar), self.logger, self.da_porta)
+        ia = IaDoEnvio(self.ia.da_conta(pedido.get("conta", "")), EsperaDoEnvio(self.fila, job_id, self.parar), self.logger, self.da_porta)
         try:
             self._os_cartoes(EnvioEmAndamento(job_id, pedido, config, ia, tipo))
         except Apagado:
