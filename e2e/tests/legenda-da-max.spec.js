@@ -5,6 +5,8 @@ const path = require('path');
 const { test, expect, botaoFlutuante, tocarVideo } = require('../fixtures');
 
 const FALA = "It's got a heated pool, gym,";
+const OUTRA_FALA = 'Nobody is watching the pool.';
+const TITULO_SEM_LEGENDA = 'Nenhuma legenda na tela';
 const NOME_DO_EPISODIO = 'DNR';
 const PAGINA_DA_MAX = fs.readFileSync(path.join(__dirname, '..', 'pages', 'player-max.html'), 'utf8');
 
@@ -76,8 +78,7 @@ test('na Max, sem nenhuma fala na tela, o nome do episódio não é minerado', a
 
   await page.keyboard.press('Alt+KeyS');
 
-  await page.waitForTimeout(1500);
-  expect(await textos(extensao)).not.toContain(NOME_DO_EPISODIO);
+  await expect(page.getByRole('status')).toContainText(TITULO_SEM_LEGENDA);
   expect(await extensao.frases()).toEqual([]);
 });
 
@@ -89,6 +90,7 @@ test('na Max, a mineração automática grava a fala e nunca o nome do episódio
   await tocarVideo(page);
 
   await expect.poll(() => textos(extensao)).toEqual([FALA]);
-  await page.waitForTimeout(1500);
+  await page.locator('#legenda').evaluate((no, fala) => { no.textContent = fala; }, OUTRA_FALA);
+  await expect.poll(async () => (await textos(extensao)).sort()).toEqual([FALA, OUTRA_FALA].sort());
   expect(await textos(extensao)).not.toContain(NOME_DO_EPISODIO);
 });

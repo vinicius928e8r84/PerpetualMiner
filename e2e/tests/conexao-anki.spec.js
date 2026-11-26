@@ -20,21 +20,42 @@ const ligarOIngles = extensao => extensao.gravarStorage({
 
 const lerJaConectou = async extensao => (await extensao.lerStorage('pm_anki_ja_conectou')).pm_anki_ja_conectou ?? false;
 const inicioDoHealth = page => page.waitForRequest('http://127.0.0.1:8766/health', { timeout: 10000 }).then(() => Date.now());
-const ateTresSegundos = (inicio, folga = 200) => Math.max(1, 3000 + folga - (Date.now() - inicio));
+
+const LIMITE_DA_RESPOSTA_MS = 3000;
+const FOLGA_DA_TELA_MS = 1000;
+const PRAZO_PARA_DESLIGAR_MS = LIMITE_DA_RESPOSTA_MS + FOLGA_DA_TELA_MS;
+const METADE_DO_LIMITE_MS = LIMITE_DA_RESPOSTA_MS / 2;
+const INTERVALO_DA_CONFERENCIA_MS = 15_000;
+const prazoAteDesligar = inicio => Math.max(1, PRAZO_PARA_DESLIGAR_MS - (Date.now() - inicio));
+
+const anotarOsEstadosDoPonto = page => page.addInitScript(() => {
+  window.__estadosDoPonto = [];
+  window.__saudePedidaEm = null;
+  const buscar = window.fetch.bind(window);
+  window.fetch = (entrada, ...resto) => {
+    if (String(entrada?.url ?? entrada).endsWith('/health')) window.__saudePedidaEm ??= performance.now();
+    return buscar(entrada, ...resto);
+  };
+  const anotar = () => {
+    const estado = document.querySelector('.shell-ponto')?.dataset.estado;
+    if (estado && estado !== window.__estadosDoPonto.at(-1)?.estado) window.__estadosDoPonto.push({ estado, em: performance.now() });
+  };
+  new MutationObserver(anotar).observe(document, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-estado'] });
+});
+const estadosDoPonto = page => page.evaluate(() => ({ estados: window.__estadosDoPonto, saudePedidaEm: window.__saudePedidaEm }));
 
 test('painel: uma porta que aceita e não responde conta como desligada em 3 s, e antes disso é Conectando', async ({ page, extensao, fakes }) => {
   fakes.anki.silenciar();
   await extensao.gravarStorage({ pm_anki_ja_conectou: true });
-  const inicio = inicioDoHealth(page);
+  await anotarOsEstadosDoPonto(page);
   await page.goto(extensao.url('painel.html#anki/custos'));
-  const instante = await inicio;
 
   await expect(pontoDaConexao(page)).toHaveAttribute('data-estado', 'conectando');
-  await page.waitForTimeout(Math.max(0, 1500 - (Date.now() - instante)));
-  await expect(pontoDaConexao(page)).toHaveAttribute('data-estado', 'conectando');
-
-  await expect(pontoDaConexao(page)).toHaveAttribute('data-estado', 'desligada', { timeout: ateTresSegundos(instante) });
+  await expect(pontoDaConexao(page)).toHaveAttribute('data-estado', 'desligada', { timeout: PRAZO_PARA_DESLIGAR_MS });
   await expect(faixaF1(page)).toBeVisible();
+  const { estados, saudePedidaEm } = await estadosDoPonto(page);
+  expect(estados.map(e => e.estado)).toEqual(['conectando', 'desligada']);
+  expect(estados[1].em - saudePedidaEm).toBeGreaterThanOrEqual(METADE_DO_LIMITE_MS);
   expect(await lerJaConectou(extensao)).toBe(true);
   await fotografar(page, 'painel-porta-muda-desligada.png');
 });
@@ -45,7 +66,7 @@ test('painel: a porta muda é detectada mesmo se a leitura do fato não termina'
   const inicio = inicioDoHealth(page);
   await page.goto(extensao.url('painel.html#anki/custos'));
   const instante = await inicio;
-  await expect(pontoDaConexao(page)).toHaveAttribute('data-estado', 'desligada', { timeout: ateTresSegundos(instante, 1000) });
+  await expect(pontoDaConexao(page)).toHaveAttribute('data-estado', 'desligada', { timeout: prazoAteDesligar(instante) });
   await expect(faixaF1(page)).toBeVisible();
 });
 
@@ -68,7 +89,7 @@ test('painel: com a porta muda, o Tentar de novo volta a Conectando e termina de
   await page.getByRole('button', { name: 'Tentar de novo' }).click();
   await expect(pontoDaConexao(page)).toHaveAttribute('data-estado', 'conectando');
   await fotografar(page, 'painel-tentando-conectar.png');
-  await expect(pontoDaConexao(page)).toHaveAttribute('data-estado', 'desligada', { timeout: 4000 });
+  await expect(pontoDaConexao(page)).toHaveAttribute('data-estado', 'desligada', { timeout: PRAZO_PARA_DESLIGAR_MS });
 
   fakes.anki.voltarAFalar();
   await page.getByRole('button', { name: 'Tentar de novo' }).click();
@@ -99,11 +120,11 @@ test('popup: uma porta muda conta como desligada em 3 s e o azulejo passa a espe
   await page.goto(extensao.url('popup/popup.html'));
   await expect(page.locator('.popup-azulejo')).toHaveCount(2);
   await expect(esperaDoPopup(page)).toBeHidden();
-  await expect(esperaDoPopup(page)).toBeVisible({ timeout: 4000 });
+  await expect(esperaDoPopup(page)).toBeVisible({ timeout: PRAZO_PARA_DESLIGAR_MS });
 });
 
-test('popup: confere só ao abrir, não a cada 15 s; ao reabrir percebe que a Conexão caiu', async ({ page, extensao, fakes }) => {
-  test.setTimeout(45_000);
+test('popup: confere só ao abrir, não a cada 15 s; ao reabrir percebe que a Conexão caiu', async ({ page, extensao, fakes, relogioParado }) => {
+  const relogio = await relogioParado();
   await ligarOIngles(extensao);
   await page.setViewportSize({ width: 340, height: 600 });
   const numeroDeConferencias = () => fakes.anki.requisicoes.filter(r => r.caminho === '/health').length;
@@ -115,7 +136,13 @@ test('popup: confere só ao abrir, não a cada 15 s; ao reabrir percebe que a Co
   expect(numeroDeConferencias()).toBe(antes + 1);
 
   fakes.anki.desligar();
-  await page.waitForTimeout(16_000);
+  const conferenciasQueSairam = [];
+  const anotar = pedido => { if (pedido.url() === 'http://127.0.0.1:8766/health') conferenciasQueSairam.push(pedido); };
+  page.on('request', anotar);
+  await relogio.avancar(2 * INTERVALO_DA_CONFERENCIA_MS);
+  await extensao.lerStorage('pm_anki_ja_conectou');
+  page.off('request', anotar);
+  expect(conferenciasQueSairam).toHaveLength(0);
   expect(numeroDeConferencias()).toBe(antes + 1);
   await expect(esperaDoPopup(page)).toBeHidden();
 

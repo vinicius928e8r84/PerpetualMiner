@@ -7,11 +7,8 @@ const TITULO = '<img src=t onerror="window.__injetado = \'titulo\'"> Episódio';
 const SELECAO = '<img src=x onerror="__injetado=1">Salt wind';
 
 async function nadaFoiInjetado(page) {
-  await page.waitForTimeout(500);
-  expect(await page.evaluate(() => ({
-    imagens: document.querySelectorAll('img').length,
-    injetado: window.__injetado ?? null,
-  }))).toEqual({ imagens: 0, injetado: null });
+  await expect(page.locator('img[src="x"], img[src="t"]')).toHaveCount(0);
+  expect(await page.evaluate(() => window.__injetado ?? null)).toBeNull();
 }
 
 test('minerar uma legenda com marcação mostra o texto literal e não injeta nada', async ({ page, paginas, extensao }) => {

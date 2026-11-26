@@ -4,6 +4,8 @@ const { test, expect } = require('../fixtures');
 
 const CLIPBOARD_ORIGINAL = 'O que a pessoa tinha copiado antes.';
 const LEGENDA = 'The quiet harbor woke before the gulls did.';
+const SENTINELA = 'A selection the person really mines, after the hostile page is done.';
+const SELECAO_EM_ALT_E = { type: 'keyboard', code: 'KeyE', altKey: true, ctrlKey: false, shiftKey: false };
 
 async function prepararClipboard(context, page, origem) {
   await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: origem });
@@ -12,24 +14,43 @@ async function prepararClipboard(context, page, origem) {
 
 const lerClipboard = page => page.evaluate(() => navigator.clipboard.readText());
 
-async function esperarQuePaginaHostilNaoMudeNada({ context, page, paginas, extensao }, agir) {
+const textosGuardados = async extensao => (await extensao.frases()).map(f => f.texto);
+
+async function minerarUmaSelecaoDeVerdade(page) {
+  await page.evaluate(texto => {
+    const trecho = document.createElement('p');
+    trecho.id = 'sentinela';
+    trecho.textContent = texto;
+    document.body.append(trecho);
+  }, SENTINELA);
+  await page.locator('#sentinela').selectText();
+  await page.keyboard.press('Alt+KeyE');
+}
+
+async function deixarAPaginaHostilAgir({ context, page, paginas, extensao }, agir) {
+  await extensao.gravarStorage({ pm_atalho: SELECAO_EM_ALT_E });
   await page.goto(paginas.url('hostil.html'));
   await expect(page.getByRole('button', { name: /^Minerar legenda/ })).toBeVisible();
   await prepararClipboard(context, page, paginas.origem);
 
   await page.evaluate(agir);
+  await minerarUmaSelecaoDeVerdade(page);
 
-  await page.waitForTimeout(1500);
-  expect(await extensao.frases()).toEqual([]);
-  expect(await lerClipboard(page)).toBe(CLIPBOARD_ORIGINAL);
+  await expect.poll(() => textosGuardados(extensao)).toContain(SENTINELA);
 }
 
 test('uma página hostil que manda as mensagens de copiar/salvar não grava frase nem mexe no clipboard', async ({ context, page, paginas, extensao }) => {
-  await esperarQuePaginaHostilNaoMudeNada({ context, page, paginas, extensao }, () => window.mandarMensagens());
+  await deixarAPaginaHostilAgir({ context, page, paginas, extensao }, () => window.mandarMensagens());
+
+  expect((await extensao.frases()).map(f => f.texto)).toEqual([SENTINELA]);
+  expect(await lerClipboard(page)).toBe(CLIPBOARD_ORIGINAL);
 });
 
 test('uma página hostil que simula o atalho e o clique no botão sobre uma legenda plantada não grava frase nem mexe no clipboard', async ({ context, page, paginas, extensao }) => {
-  await esperarQuePaginaHostilNaoMudeNada({ context, page, paginas, extensao }, () => window.simularAtalhoEClique());
+  await deixarAPaginaHostilAgir({ context, page, paginas, extensao }, () => window.simularAtalhoEClique());
+
+  expect((await extensao.frases()).map(f => f.texto)).toEqual([SENTINELA]);
+  expect(await lerClipboard(page)).toBe(CLIPBOARD_ORIGINAL);
 });
 
 test('legenda num player em iframe de outra origem: minerar ainda grava a frase e copia', async ({ context, page, paginas, extensao }) => {

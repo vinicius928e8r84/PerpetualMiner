@@ -3,6 +3,7 @@
 const { test, expect } = require('../fixtures');
 
 const LEGENDA = 'The quiet harbor woke before the gulls did.';
+const SEM_VIDEO = 'Esta página não tem vídeo com legenda.';
 
 test('no player com legenda, Alt+S minera a legenda com o Contexto da página', async ({ page, paginas, extensao }) => {
   await page.goto(paginas.url('player.html'));
@@ -40,7 +41,7 @@ test('numa página sem vídeo, Alt+S não minera nada', async ({ page, paginas, 
   await page.goto(paginas.url('sem-video.html'));
   await page.keyboard.press('Alt+KeyS');
 
-  await page.waitForTimeout(1500);
+  await expect(page.getByRole('status')).toContainText(SEM_VIDEO);
   await expect(page.getByRole('button', { name: /^Minerar legenda/ })).toHaveCount(0);
   expect(await extensao.frases()).toEqual([]);
 });
