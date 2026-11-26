@@ -391,7 +391,7 @@
 
   async function gravarAsFrases(frases) {
     const titulo = porId('foto-livro').value.trim() || TITULO_SEM_LIVRO;
-    const deuCerto = await Promise.all(frases.map(frase => salvarNoHistorico(frase.texto.trim(), titulo)));
+    const deuCerto = await Promise.all(frases.map(frase => minerarFrase(frase.texto.trim(), titulo)));
     frases.forEach((frase, i) => {
       if (!deuCerto[i]) return;
       frase.texto = frase.texto.trim();
@@ -414,8 +414,8 @@
     });
   }
 
-  async function salvarNoHistorico(texto, titulo) {
-    const { ok } = await Mineracao.gravar({ texto, contexto: { fonte: FONTE, titulo, detalhe: '' } });
+  async function minerarFrase(texto, titulo) {
+    const { ok } = await Mineracao.minerar({ texto, contexto: { fonte: FONTE, titulo, detalhe: '' } });
     return ok;
   }
 

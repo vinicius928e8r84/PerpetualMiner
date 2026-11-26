@@ -117,7 +117,7 @@ function contexto(mundo, locks, extra = {}) {
       storage: { local, sync: armazenamento(mundo, {}), onChanged: evento },
       tabs: { query: (_p, f) => f?.([]), sendMessage() {}, onRemoved: evento, onUpdated: evento },
       action: { setBadgeText() {}, setBadgeBackgroundColor() {}, setBadgeTextColor() {}, setTitle() {} },
-      alarms: { create() {}, clear() {}, onAlarm: evento },
+      alarms: { get: async () => null, create() {}, clear() {}, onAlarm: evento },
     },
     ...extra,
   };
@@ -256,11 +256,11 @@ const FOTO = 'The ferry left the harbour.';
 const LEGENDA = 'I never saw it coming.';
 const ajustes = { pm_auto_miner_settings: { en: { enabled: true, dailyLimit: 20 }, ru: { enabled: false, dailyLimit: 20 } } };
 
-const foto = { nome: 'SW foto', rodar: ({ sw }) => sw.salvarFrase({
+const foto = { nome: 'SW foto', rodar: ({ sw }) => sw.minerar({
   texto: FOTO, origem: 'livro', contexto: null, idioma: 'Inglês', extras: { keywords: ['harbour@3'], autoKeyword: false },
 }, { comNuvem: false }),
 ops: [{ tipo: 'acrescentar', frase: { texto: FOTO, keywords: ['harbour@3'] } }] };
-const legenda = nome => ({ nome, rodar: ({ sw }) => sw.handleAutoMinerCandidate({ texto: LEGENDA, lang: 'en', origem: 'netflix' }),
+const legenda = nome => ({ nome, rodar: ({ sw }) => sw.handleMineracaoAutomaticaCandidate({ texto: LEGENDA, lang: 'en', origem: 'netflix' }),
   ops: [{ tipo: 'acrescentarSeNova', frase: { texto: LEGENDA, keywords: ['coming@8', '|', 'never@2'] } }] });
 const palavra = { nome: 'Painel Palavra', rodar: ({ painel }) => painel.Historico.editar(1, { keywords: ['barely@2'] }),
   ops: [{ tipo: 'editar', ids: [1], campos: { keywords: ['barely@2'] } }] };

@@ -40,7 +40,7 @@ function chromeDaPagina(pagina, { estado, aoMandar }) {
       lastError: undefined,
       sendMessage: (mensagem, aoResponder) => {
         pagina.mensagens.push(plano(mensagem));
-        if (mensagem.type === 'AUTO_MINER_GET_STATE') aoResponder?.({ state: estado });
+        if (mensagem.type === 'MINERACAO_AUTOMATICA_GET_STATE') aoResponder?.({ state: estado });
         else aoResponder?.(aoMandar(mensagem));
       },
       onMessage: { addListener: ouvinte => pagina.ouvintes.push(ouvinte) },
@@ -99,7 +99,7 @@ function montarPagina({ hostname = 'www.youtube.com', estado = null, aoMandar = 
     olhar: depoisDe => { pagina.agora = INICIO + depoisDe; rodar(700); },
     selo: () => rodar(1000),
     mudarEstado: novo => pagina.ouvintes.forEach(ouvinte => ouvinte({ type: contexto.PerpetualMiner.MineracaoDoDia.MENSAGEM_ESTADO_MUDOU, state: novo })),
-    candidatas: () => pagina.mensagens.filter(m => m.type === 'AUTO_MINER_CANDIDATE'),
+    candidatas: () => pagina.mensagens.filter(m => m.type === 'MINERACAO_AUTOMATICA_CANDIDATE'),
   };
 }
 

@@ -19,7 +19,7 @@ test('várias frases mineradas ao mesmo tempo ficam todas no histórico, uma vez
 
   const respostas = await page.evaluate(frases => Promise.all(frases.map(texto =>
     chrome.runtime.sendMessage({
-      type: 'SALVAR_HISTORICO',
+      type: 'MINERAR',
       texto,
       origem: 'livro',
       idioma: 'Inglês',

@@ -306,7 +306,7 @@
     mostrarProgressoDeMinerar(0, frases.length);
     try {
       for (const { texto, contexto, palavras } of frases) {
-        const resposta = await Mineracao.gravar({ texto, contexto, palavras, semNuvem: true });
+        const resposta = await Mineracao.minerar({ texto, contexto, palavras, semNuvem: true });
         if (!resposta.ok) throw new Error(resposta.error);
         mineradas.push(resposta.frase);
         mostrarProgressoDeMinerar(mineradas.length, frases.length);

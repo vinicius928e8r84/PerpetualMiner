@@ -1,6 +1,6 @@
 ---
 name: verificar-historico
-description: Use when a change touches how `frases` is read or written (lib/historico.js, salvarFrase or handleAutoMinerCandidate in background.js, carregar/juntarMarcas in lib/sincronizacao.js, the Historico calls in painel/painel.js) or the Web Lock `pm-historico`. Runs an exhaustive interleaving explorer over the real code and checks that every Histórico operation behaves as if it ran whole and alone (no lost Frase, edit or deletion; no duplicate; unique ids).
+description: Use when a change touches how `frases` is read or written (lib/historico.js, minerar or handleMineracaoAutomaticaCandidate in background.js, carregar/juntarMarcas in lib/sincronizacao.js, the Historico calls in painel/painel.js) or the Web Lock `pm-historico`. Runs an exhaustive interleaving explorer over the real code and checks that every Histórico operation behaves as if it ran whole and alone (no lost Frase, edit or deletion; no duplicate; unique ids).
 ---
 
 # Verificar o Histórico
@@ -72,8 +72,8 @@ Bug real ou erro do modelo? Erro do modelo quando: um ator falha com `TypeError`
 | Código | O que o explorador usa |
 |---|---|
 | `lib/historico.js` inteiro (`mudar`, `OPERACOES` com `acrescentarSe`, `proximoId`, `criar`) | rodado como está, no SW e na página |
-| `background.js` `salvarFrase` | cenários com `SW foto` |
-| `lib/mineracao-automatica-decisao.js` `candidata`, e `background.js` `handleAutoMinerCandidate` e `salvarFrase` (`soSe`) | `SW legenda`; `getAutoKeywordVocabulary` é trocado por um que devolve o Vocabulário com `barely`; a duplicata é conferida em `Historico.acrescentarSe`, sob a tranca |
+| `background.js` `minerar` | cenários com `SW foto` |
+| `lib/mineracao-automatica-decisao.js` `candidata`, e `background.js` `handleMineracaoAutomaticaCandidate` e `minerar` (`soSe`) | `SW legenda`; `getAutoKeywordVocabulary` é trocado por um que devolve o Vocabulário com `barely`; a duplicata é conferida em `Historico.acrescentarSe`, sob a tranca |
 | `background.js` `chromeGet`/`chromeSet` 487-495 | rodado como está |
 | `lib/sincronizacao.js` `carregar` 349-406, `juntarMarcas` 320-347 | `Sync carregar`, com uma nuvem falsa imediata |
 | `painel.js` 838 (`Historico.editar`), 1005 (`Historico.apagar`), 1148 (`Historico.marcarEnviadas`) | os atores do Painel chamam a mesma biblioteca; o `painel.js` não é carregado |

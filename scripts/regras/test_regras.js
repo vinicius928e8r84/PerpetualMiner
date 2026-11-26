@@ -69,7 +69,7 @@ gravacaoDeFrases('background.js', "await chrome.storage.local.remove('pm_pending
 gravacaoDeFrases('painel.js', "chrome.storage.local.set({\n  frases: todasFrases,\n}, () => {});\nchrome.storage.local.remove('frases');\n", 2,
   'objeto em várias linhas e remove');
 gravacaoDeFrases('background.js', [
-  'async function salvarFrase(nova) {',
+  'async function minerar(nova) {',
   '  await naFilaDeGravacao(async () => {',
   '    await chromeSet({ frases: [nova] });',
   '  });',

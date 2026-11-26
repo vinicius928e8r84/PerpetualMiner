@@ -65,7 +65,7 @@ take trusted events.
   caption, the only enabled language), not the toolbar badge's sum. At the limit it becomes a gold outline;
   with that language's automatic mining off it disappears. The screen reader hears it as the button's
   description (MIN-11).
-- **Honest:** `content.js` waits for the service worker's `SALVAR_HISTORICO` answer (`{ ok, frase }`) and for
+- **Honest:** `content.js` waits for the service worker's `MINERAR` answer (`{ ok, frase }`) and for
   the clipboard before it says anything: MIN-01 (“Frase minerada e copiada”) only when both happened, MIN-02
   (“Frase minerada”, the same success pill) when the phrase was saved but not copied, MIN-03 when the save
   failed. `chromeSet` in `background.js` rejects on

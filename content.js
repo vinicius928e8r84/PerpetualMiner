@@ -68,7 +68,7 @@ function _ativarCaptura(texto, evento) {
 }
 
 async function minerarCaptura(captura, { copia = false } = {}) {
-  const [copiou, resposta] = await Promise.all([copia && copiar(captura.texto), Mineracao.gravar(captura)]);
+  const [copiou, resposta] = await Promise.all([copia && copiar(captura.texto), Mineracao.minerar(captura)]);
   if (!resposta?.ok) {
     mostrarFalha('MIN-03');
     return;

@@ -93,19 +93,19 @@ const comoFoiEnviada = mensagem => Object.fromEntries(Object.entries(mensagem));
 const GRAVACOES = [
   ['a seleção com o contexto da página',
     { texto: 'the cat', contexto: { fonte: 'web', titulo: 'T', detalhe: '' }, palavras: ['cat@2'], semNuvem: true },
-    { type: 'SALVAR_HISTORICO', texto: 'the cat', origem: 'web', idioma: 'idioma de the cat', contexto: { fonte: 'web', titulo: 'T', detalhe: '' }, palavras: ['cat@2'], semNuvem: true }],
+    { type: 'MINERAR', texto: 'the cat', origem: 'web', idioma: 'idioma de the cat', contexto: { fonte: 'web', titulo: 'T', detalhe: '' }, palavras: ['cat@2'], semNuvem: true }],
   ['a origem e o idioma dados ganham',
     { texto: 'x', contexto: { fonte: 'pdf' }, origem: 'youtube', idioma: 'ru' },
-    { type: 'SALVAR_HISTORICO', texto: 'x', origem: 'youtube', idioma: 'ru', contexto: { fonte: 'pdf' }, palavras: undefined, semNuvem: undefined }],
+    { type: 'MINERAR', texto: 'x', origem: 'youtube', idioma: 'ru', contexto: { fonte: 'pdf' }, palavras: undefined, semNuvem: undefined }],
   ['a origem e o idioma nulos caem no contexto e no detector',
     { texto: 'y', contexto: { fonte: 'manual' }, origem: null, idioma: null },
-    { type: 'SALVAR_HISTORICO', texto: 'y', origem: 'manual', idioma: 'idioma de y', contexto: { fonte: 'manual' }, palavras: undefined, semNuvem: undefined }],
+    { type: 'MINERAR', texto: 'y', origem: 'manual', idioma: 'idioma de y', contexto: { fonte: 'manual' }, palavras: undefined, semNuvem: undefined }],
   ['a origem e o idioma vazios ficam vazios',
     { texto: 'z', contexto: { fonte: 'web' }, origem: '', idioma: '' },
-    { type: 'SALVAR_HISTORICO', texto: 'z', origem: '', idioma: '', contexto: { fonte: 'web' }, palavras: undefined, semNuvem: undefined }],
+    { type: 'MINERAR', texto: 'z', origem: '', idioma: '', contexto: { fonte: 'web' }, palavras: undefined, semNuvem: undefined }],
   ['sem contexto',
     { texto: 'w' },
-    { type: 'SALVAR_HISTORICO', texto: 'w', origem: undefined, idioma: 'idioma de w', contexto: undefined, palavras: undefined, semNuvem: undefined }],
+    { type: 'MINERAR', texto: 'w', origem: undefined, idioma: 'idioma de w', contexto: undefined, palavras: undefined, semNuvem: undefined }],
 ];
 
 const FRASE = { id: 7, texto: 'the cat' };
@@ -126,7 +126,7 @@ async function gravarComo({ lastError, resposta }, captura) {
     runtime.lastError = lastError;
     return resposta;
   };
-  const gravou = await Mineracao.gravar(captura);
+  const gravou = await Mineracao.minerar(captura);
   runtime.lastError = undefined;
   return gravou;
 }
@@ -156,7 +156,7 @@ async function oEnvioQueLancaNaoGrava() {
   const enviar = globalThis.chrome.runtime.sendMessage;
   for (const [nome, lancado, error] of LANCAMENTOS) {
     globalThis.chrome.runtime.sendMessage = () => { throw lancado; };
-    assert.deepStrictEqual(await Mineracao.gravar({ texto: 'a' }), { ok: false, error }, `o envio lança: ${nome}`);
+    assert.deepStrictEqual(await Mineracao.minerar({ texto: 'a' }), { ok: false, error }, `o envio lança: ${nome}`);
   }
   globalThis.chrome.runtime.sendMessage = enviar;
 }
@@ -165,14 +165,14 @@ async function oDetectorQueLancaNaoGrava() {
   const detectar = globalThis.PerpetualMiner.detectarIdioma;
   globalThis.PerpetualMiner.detectarIdioma = () => { throw new Error('sem detector'); };
   runtime.enviadas = [];
-  assert.deepStrictEqual(await Mineracao.gravar({ texto: 'a' }), { ok: false, error: 'sem detector' }, 'o detector que lança não grava');
+  assert.deepStrictEqual(await Mineracao.minerar({ texto: 'a' }), { ok: false, error: 'sem detector' }, 'o detector que lança não grava');
   assert.deepStrictEqual(runtime.enviadas, [], 'e nada é enviado');
   globalThis.PerpetualMiner.detectarIdioma = detectar;
 }
 
 function gravarSemACapturaLancaNaHora() {
-  assert.throws(() => Mineracao.gravar(), TypeError, 'gravar sem a captura lança na hora');
-  assert.throws(() => Mineracao.gravar(null), TypeError, 'gravar com null lança na hora');
+  assert.throws(() => Mineracao.minerar(), TypeError, 'gravar sem a captura lança na hora');
+  assert.throws(() => Mineracao.minerar(null), TypeError, 'gravar com null lança na hora');
 }
 
 async function aFraseDigitadaEGravadaComoManual() {

@@ -13,9 +13,9 @@ if (chrome.storage.local.setAccessLevel) {
 importScripts('lib/arquivos-da-extensao.js', 'lib/auto-recarregar.js');
 PerpetualMiner.AutoRecarregar.iniciar();
 
-const AUTO_MINER_SETTINGS_KEY = MineracaoDoDia.CHAVES.ajustes;
-const AUTO_MINER_DAILY_KEY = MineracaoDoDia.CHAVES.diario;
-const AUTO_MINER_LAST_EVENT_KEY = MineracaoDoDia.CHAVES.ultimoEvento;
+const MINERACAO_AUTOMATICA_SETTINGS_KEY = MineracaoDoDia.CHAVES.ajustes;
+const MINERACAO_AUTOMATICA_DAILY_KEY = MineracaoDoDia.CHAVES.diario;
+const MINERACAO_AUTOMATICA_LAST_EVENT_KEY = MineracaoDoDia.CHAVES.ultimoEvento;
 const MENU_MINERAR_SELECAO = 'minerar-perpetualminer';
 
 function registrarMenuDeContexto() {
@@ -87,9 +87,9 @@ const capturaDoPedido = (request, palavras) => ({
   extras: extrasDasPalavras(palavras),
 });
 
-function salvarNoHistorico(request, remetente, responder) {
+function minerarDoPedido(request, remetente, responder) {
   const palavras = palavrasEscolhidas(request);
-  const salvar = palavras ? salvarFrase : salvarComPalavraAutomatica;
+  const salvar = palavras ? minerar : salvarComPalavraAutomatica;
   salvar(capturaDoPedido(request, palavras), { comNuvem: !request.semNuvem })
     .then(frase => responder({ ok: true, frase }))
     .catch(err => responder({ ok: false, error: err?.message || 'save_failed' }));
@@ -97,14 +97,14 @@ function salvarNoHistorico(request, remetente, responder) {
 }
 
 function responderEstadoDaMineracaoAutomatica(request, remetente, responder) {
-  getAutoMinerState()
+  getMineracaoAutomaticaState()
     .then(state => responder({ ok: true, state }))
     .catch(err => responder({ ok: false, error: err?.message || 'auto_miner_state_failed' }));
   return true;
 }
 
 function guardarAjustesDaMineracaoAutomatica(request, remetente, responder) {
-  setAutoMinerSettings(request.settings || {})
+  setMineracaoAutomaticaSettings(request.settings || {})
     .then(state => {
       publicarEstadoDaAutomatica(state);
       responder({ ok: true, state });
@@ -114,7 +114,7 @@ function guardarAjustesDaMineracaoAutomatica(request, remetente, responder) {
 }
 
 function atenderCandidataDaMineracaoAutomatica(request, remetente, responder) {
-  handleAutoMinerCandidate(request)
+  handleMineracaoAutomaticaCandidate(request)
     .then(result => responder({ ok: true, ...result }))
     .catch(err => responder({ ok: false, action: 'skip', reason: err?.message || 'auto_miner_failed' }));
   return true;
@@ -123,10 +123,10 @@ function atenderCandidataDaMineracaoAutomatica(request, remetente, responder) {
 const ATENDENTES_DE_MENSAGEM = Object.freeze({
   COPIAR_NO_FRAME_DE_CIMA: { soDeUmaAba: true, atender: copiarNoFrameDeCima },
   HA_VIDEO_EM_OUTRO_FRAME: { soDeUmaAba: true, atender: haVideoEmOutroFrame },
-  SALVAR_HISTORICO: { atender: salvarNoHistorico },
-  AUTO_MINER_GET_STATE: { atender: responderEstadoDaMineracaoAutomatica },
-  AUTO_MINER_SET_SETTINGS: { atender: guardarAjustesDaMineracaoAutomatica },
-  AUTO_MINER_CANDIDATE: { atender: atenderCandidataDaMineracaoAutomatica },
+  MINERAR: { atender: minerarDoPedido },
+  MINERACAO_AUTOMATICA_GET_STATE: { atender: responderEstadoDaMineracaoAutomatica },
+  MINERACAO_AUTOMATICA_SET_SETTINGS: { atender: guardarAjustesDaMineracaoAutomatica },
+  MINERACAO_AUTOMATICA_CANDIDATE: { atender: atenderCandidataDaMineracaoAutomatica },
 });
 
 function aoReceberMensagem(request, remetente, responder) {
@@ -156,7 +156,7 @@ async function comPalavraAutomatica(captura) {
   return { ...captura, extras: { ...captura.extras, keywords: palavras, autoKeyword: true } };
 }
 
-async function salvarFrase(captura, { comNuvem = true, soSe = null } = {}) {
+async function minerar(captura, { comNuvem = true, soSe = null } = {}) {
   const novaFrase = novaFraseDaCaptura(captura);
   const gravada = await (soSe ? historico.acrescentarSe(novaFrase, soSe) : historico.acrescentar(novaFrase));
   if (!gravada) return null;
@@ -166,7 +166,7 @@ async function salvarFrase(captura, { comNuvem = true, soSe = null } = {}) {
 }
 
 async function salvarComPalavraAutomatica(captura, opcoes) {
-  return salvarFrase(await comPalavraAutomatica(captura), opcoes);
+  return minerar(await comPalavraAutomatica(captura), opcoes);
 }
 
 async function nuvemDaConta() {
@@ -223,37 +223,37 @@ function autoVocabularyFromCache(value) {
 const mineracaoAutomatica = MineracaoAutomatica.criar({
   vocabulario: lang => getAutoKeywordVocabulary(lang),
   historico: {
-    salvarSeNova: (captura, jaTem) => salvarFrase(captura, { soSe: jaTem }),
+    salvarSeNova: (captura, jaTem) => minerar(captura, { soSe: jaTem }),
   },
   ajustes: {
-    ler: () => getAutoMinerState(),
-    contarMais: lang => incrementAutoMinerDaily(lang),
+    ler: () => getMineracaoAutomaticaState(),
+    contarMais: lang => incrementMineracaoAutomaticaDaily(lang),
     publicar: state => publicarEstadoDaAutomatica(state),
-    registrar: evento => chromeSet({ [AUTO_MINER_LAST_EVENT_KEY]: evento }),
+    registrar: evento => chromeSet({ [MINERACAO_AUTOMATICA_LAST_EVENT_KEY]: evento }),
   },
   relogio: { agora: () => Date.now() },
 });
 
-function handleAutoMinerCandidate(request) {
+function handleMineracaoAutomaticaCandidate(request) {
   return mineracaoAutomatica.candidata(request);
 }
 
-function evaluateAutoMinerPhrase(texto, lang) {
+function evaluateMineracaoAutomaticaPhrase(texto, lang) {
   return mineracaoAutomatica.avaliar(texto, lang);
 }
 
-async function getAutoMinerState() {
+async function getMineracaoAutomaticaState() {
   const data = await chromeGet({
-    [AUTO_MINER_SETTINGS_KEY]: MineracaoDoDia.ajustesPadrao(),
-    [AUTO_MINER_DAILY_KEY]: null,
+    [MINERACAO_AUTOMATICA_SETTINGS_KEY]: MineracaoDoDia.ajustesPadrao(),
+    [MINERACAO_AUTOMATICA_DAILY_KEY]: null,
   });
-  const settings = MineracaoDoDia.normalizarAjustes(data[AUTO_MINER_SETTINGS_KEY]);
-  const daily = MineracaoDoDia.normalizarDiario(data[AUTO_MINER_DAILY_KEY], settings);
+  const settings = MineracaoDoDia.normalizarAjustes(data[MINERACAO_AUTOMATICA_SETTINGS_KEY]);
+  const daily = MineracaoDoDia.normalizarDiario(data[MINERACAO_AUTOMATICA_DAILY_KEY], settings);
   return { settings, daily };
 }
 
-async function setAutoMinerSettings(partial) {
-  const current = await getAutoMinerState();
+async function setMineracaoAutomaticaSettings(partial) {
+  const current = await getMineracaoAutomaticaState();
   const settings = MineracaoDoDia.normalizarAjustes({
     ...current.settings,
     ...(partial || {}),
@@ -261,15 +261,15 @@ async function setAutoMinerSettings(partial) {
     ru: { ...current.settings.ru, ...(partial.ru || {}) },
   });
   const daily = MineracaoDoDia.normalizarDiario(current.daily, settings);
-  await chromeSet({ [AUTO_MINER_SETTINGS_KEY]: settings, [AUTO_MINER_DAILY_KEY]: daily });
+  await chromeSet({ [MINERACAO_AUTOMATICA_SETTINGS_KEY]: settings, [MINERACAO_AUTOMATICA_DAILY_KEY]: daily });
   return { settings, daily };
 }
 
-async function incrementAutoMinerDaily(lang) {
-  const state = await getAutoMinerState();
+async function incrementMineracaoAutomaticaDaily(lang) {
+  const state = await getMineracaoAutomaticaState();
   const daily = MineracaoDoDia.normalizarDiario(state.daily, state.settings);
   daily[lang].count += 1;
-  await chromeSet({ [AUTO_MINER_DAILY_KEY]: daily });
+  await chromeSet({ [MINERACAO_AUTOMATICA_DAILY_KEY]: daily });
   return { settings: state.settings, daily };
 }
 
@@ -292,20 +292,8 @@ function badgeDaMineracaoAutomatica(state) {
   };
 }
 
-function metodoDoChrome(alvo, nome) {
-  if (!alvo || typeof alvo[nome] !== 'function') return null;
-  return alvo[nome].bind(alvo);
-}
-
-function ouvirChrome(alvo, ouvinte) {
-  if (!alvo || typeof alvo.addListener !== 'function') return;
-  alvo.addListener(ouvinte);
-}
-
 async function atualizarBadgeDaToolbar() {
-  if (!metodoDoChrome(chrome.action, 'setBadgeText')) return;
-
-  const badge = badgeDaMineracaoAutomatica(await getAutoMinerState());
+  const badge = badgeDaMineracaoAutomatica(await getMineracaoAutomaticaState());
 
   await chrome.action.setBadgeText({ text: badge ? badge.texto : '' });
   await chrome.action.setTitle({ title: badge ? badge.titulo : chrome.runtime.getManifest().name });
@@ -316,39 +304,34 @@ async function atualizarBadgeDaToolbar() {
 }
 
 async function agendarViradaDoDia() {
-  const lerAlarme = metodoDoChrome(chrome.alarms, 'get');
-  const criarAlarme = metodoDoChrome(chrome.alarms, 'create');
-  if (!lerAlarme || !criarAlarme) return;
-  if (await lerAlarme(ALARME_VIRADA_DO_DIA)) return;
+  if (await chrome.alarms.get(ALARME_VIRADA_DO_DIA)) return;
 
   const proximaMeiaNoite = new Date();
   proximaMeiaNoite.setHours(24, 0, 5, 0);
-  await criarAlarme(ALARME_VIRADA_DO_DIA, { when: proximaMeiaNoite.getTime() });
+  await chrome.alarms.create(ALARME_VIRADA_DO_DIA, { when: proximaMeiaNoite.getTime() });
 }
 
-ouvirChrome(chrome.alarms && chrome.alarms.onAlarm, alarme => {
+chrome.alarms.onAlarm.addListener(alarme => {
   if (alarme.name !== ALARME_VIRADA_DO_DIA) return;
   agendarViradaDoDia();
   atualizarBadgeDaToolbar();
-  getAutoMinerState().then(publicarEstadoDaAutomatica);
+  getMineracaoAutomaticaState().then(publicarEstadoDaAutomatica);
 });
 
-ouvirChrome(chrome.runtime.onStartup, () => {});
+chrome.runtime.onStartup.addListener(() => {});
 
-ouvirChrome(chrome.storage.onChanged, (changes, area) => {
+chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
-  if (AUTO_MINER_SETTINGS_KEY in changes || AUTO_MINER_DAILY_KEY in changes) atualizarBadgeDaToolbar();
+  if (MINERACAO_AUTOMATICA_SETTINGS_KEY in changes || MINERACAO_AUTOMATICA_DAILY_KEY in changes) atualizarBadgeDaToolbar();
 });
 
 agendarViradaDoDia();
 atualizarBadgeDaToolbar();
-PerpetualMiner.ApagarFrasesPendente.ligar({ chrome, ouvirChrome });
+PerpetualMiner.ApagarFrasesPendente.ligar({ chrome });
 
 function publicarEstadoDaAutomatica(state) {
   chrome.storage.local.set({ [MineracaoDoDia.CHAVES.estadoPublicado]: { settings: state.settings, daily: state.daily, updatedAt: Date.now() } });
-  const listarAbas = metodoDoChrome(chrome.tabs, 'query');
-  if (!listarAbas) return;
-  listarAbas({}, tabs => {
+  chrome.tabs.query({}, tabs => {
     for (const tab of tabs || []) {
       if (!tab.id) continue;
       try {
