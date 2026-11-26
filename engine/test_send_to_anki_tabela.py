@@ -89,6 +89,13 @@ Back: a
 bring it
 """
 
+DOIS_BR_NO_COMECO_DO_RESTO = """Front: x
+Back: word
+
+
+<b>Bold start</b> and bring it
+"""
+
 RUSSO_LITERAL_EM_NEGRITO = """Front
 Я не мальчик!
 
@@ -243,18 +250,23 @@ VERSOS = [
     ),
     (
         'blocos_com_rotulo_em_negrito', BLOCOS_COM_ROTULO_EM_NEGRITO, None, None, 'ru',
-        ('first line<br>Examples:</b><br>one example<br>another example<br><br>plain block line one plain block line '
+        ('first line<br><b>Examples:</b><br>one example<br>another example<br><br>plain block line one plain block line '
          'two<br><br><b>Note:</b> inline label'),
         [],
     ),
     (
         'segunda_linha_comeca_com_b', SEGUNDA_LINHA_COMECA_COM_B, None, None, 'ru',
-        'a<br>ing it',
+        'a<br>bring it',
+        [],
+    ),
+    (
+        'dois_br_seguidos_no_comeco_saem_e_o_resto_fica', DOIS_BR_NO_COMECO_DO_RESTO, None, None, 'ru',
+        'word<br><b>Bold start</b> and bring it',
         [],
     ),
     (
         'russo_literal_em_negrito', RUSSO_LITERAL_EM_NEGRITO, None, None, 'ru',
-        ('Pronunciation: Ya ne mal\'chik!<br>Literal:</b> <span style="color: #ff8c42;">I</span> <span style="color: '
+        ('Pronunciation: Ya ne mal\'chik!<br><b>Literal:</b> <span style="color: #ff8c42;">I</span> <span style="color: '
          '#a855f7;">not</span> <span style="color: #22c55e;">a boy</span>!'),
         [],
     ),

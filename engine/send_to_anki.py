@@ -251,12 +251,15 @@ def _back_block_html(block: str) -> str:
     return " ".join(block_lines)
 
 
+_BR_NO_COMECO_RE = re.compile(r"^(?:<br>)+")
+
+
 def _back_html(lines: List[str], word_audio_name: Optional[str], image_name: Optional[str]) -> str:
     html_lines = _md_to_html("\n".join(lines)).splitlines()
     first_line = html_lines[0] if html_lines else ""
     rest_html = "<br><br>".join(_back_block_html(block) for block in "\n".join(html_lines[1:]).split("\n\n"))
     audio = f" [sound:{word_audio_name}]" if word_audio_name else ""
-    back = f"{first_line}{audio}<br>{rest_html.lstrip('<br>').lstrip()}"
+    back = f"{first_line}{audio}<br>{_BR_NO_COMECO_RE.sub('', rest_html).lstrip()}"
     if image_name:
         back += f'<br><br><img src="{image_name}">'
     return back.replace("\n", "<br>")
