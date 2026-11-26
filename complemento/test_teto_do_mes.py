@@ -16,6 +16,7 @@ from complemento.test_harness import ConexaoNoTeste, ler_o_contrato, semear_a_fi
 DUAS_FRASES = ("give up : She gave up smoking", "keep running : They keep running")
 NO_TETO = {"reason": "monthly_cap"}
 DIA_20 = date(2026, 10, 20)
+TETO_DE_UM_CARTAO = 0.03
 FILA_DO_PLANO = "um Envio de dois Cartões feitos pelo plano do ChatGPT"
 
 
@@ -123,7 +124,7 @@ class SubirOTeto(unittest.TestCase):
 
 class NoTetoOEnvioPausaAntesDoProximoCartao(unittest.TestCase):
     def test_ao_chegar_no_teto_o_envio_pausa_sem_falhar_antes_de_gastar_a_chave_com_o_proximo_cartao(self):
-        with tempfile.TemporaryDirectory() as pasta, EnvioNoTetoDoMes(pasta, teto=0.04) as conexao:
+        with tempfile.TemporaryDirectory() as pasta, EnvioNoTetoDoMes(pasta, teto=TETO_DE_UM_CARTAO) as conexao:
             conexao.criar(pedido(ID, *DUAS_FRASES))
             pausado = conexao.esperar(ID, esperando_o_teto)
             time.sleep(0.2)
@@ -150,7 +151,7 @@ class NoTetoOEnvioPausaAntesDoProximoCartao(unittest.TestCase):
         self.assertEqual((pausado["status"], pedidos), ("running", 0))
 
     def test_subir_o_teto_retoma_o_envio_sozinho_sem_refazer_o_cartao_pronto(self):
-        with tempfile.TemporaryDirectory() as pasta, EnvioNoTetoDoMes(pasta, teto=0.04, espera_do_teto=300) as conexao:
+        with tempfile.TemporaryDirectory() as pasta, EnvioNoTetoDoMes(pasta, teto=TETO_DE_UM_CARTAO, espera_do_teto=300) as conexao:
             conexao.criar(pedido(ID, *DUAS_FRASES))
             conexao.esperar(ID, esperando_o_teto)
             resposta = definir_o_teto(conexao, 5)
@@ -190,7 +191,7 @@ class NoTetoOEnvioPausaAntesDoProximoCartao(unittest.TestCase):
         self.assertEqual((depois["month"], depois["limitUsd"]), ("2026-11", 10.0))
 
     def test_o_apagar_tudo_encerra_o_envio_pausado_pelo_teto(self):
-        with tempfile.TemporaryDirectory() as pasta, EnvioNoTetoDoMes(pasta, teto=0.04, espera_do_teto=300) as conexao:
+        with tempfile.TemporaryDirectory() as pasta, EnvioNoTetoDoMes(pasta, teto=TETO_DE_UM_CARTAO, espera_do_teto=300) as conexao:
             conexao.criar(pedido(ID, *DUAS_FRASES))
             conexao.esperar(ID, esperando_o_teto)
             pedidos = len(chats(conexao.openai))
@@ -203,10 +204,10 @@ class NoTetoOEnvioPausaAntesDoProximoCartao(unittest.TestCase):
 
     def test_se_a_conexao_cai_com_o_envio_pausado_ela_volta_a_pausar_antes_de_gastar(self):
         with tempfile.TemporaryDirectory() as pasta:
-            with EnvioNoTetoDoMes(pasta, teto=0.04, espera_do_teto=300) as conexao:
+            with EnvioNoTetoDoMes(pasta, teto=TETO_DE_UM_CARTAO, espera_do_teto=300) as conexao:
                 conexao.criar(pedido(ID, *TRES_FRASES))
                 conexao.esperar(ID, esperando_o_teto)
-            with EnvioNoTetoDoMes(pasta, teto=0.04) as conexao:
+            with EnvioNoTetoDoMes(pasta, teto=TETO_DE_UM_CARTAO) as conexao:
                 pausado = conexao.esperar(ID, esperando_o_teto)
                 pedidos = len(chats(conexao.openai))
         self.assertEqual((pausado["status"], pedidos), ("running", 0))
