@@ -15,7 +15,7 @@ Date.now = () => AGORA;
 Object.defineProperty(globalThis, 'crypto', { value: { randomUUID: () => 'uuid-1' }, configurable: true });
 
 const registro = { guardado: [], envios: [], previas: [], pedidos: [], trocouAChave: 0, concluiu: 0, linhas: [] };
-const mundo = { frases: [], desfechoDoCriar: { ok: true }, abrirNoAnki: { ok: true }, mostrada: { previa: { deck: 'Inglês::Frases::Nível 2' } }, ajustesFalham: false };
+const mundo = { frases: [], desfechoDoCriar: { ok: true }, abrirNoAnki: { ok: true }, mostrada: { previa: { deck: 'Inglês::Frases::Nível 2' } }, ajustesFalham: false, conta: '', contaFalha: false };
 const AJUSTES = {
   en: { deckName: 'Inglês::Frases', imageSource: 'openverse', nivel: 'intermediario' },
   ru: { deckName: 'Русский::Фразы', imageSource: 'nenhuma', nivel: 'iniciante' },
@@ -26,6 +26,7 @@ raiz.AjustesDeEnvio = {
   vozENivel: ajustes => ({ nivel: ajustes.nivel }),
   nomeDoBaralho: nome => String(nome || '').split('::').map(parte => parte.trim()).filter(Boolean).join(' › '),
 };
+raiz.ChaveDaOpenAI = { contaAtual: async () => { if (mundo.contaFalha) throw new Error('session_changed'); return mundo.conta; } };
 raiz.Configuracao = { guardarPrimeiroEnvio: async troca => { registro.guardado.push(troca()); } };
 raiz.ConversaComOAnki = { pedir: async pedido => { registro.pedidos.push(pedido); return mundo.abrirNoAnki; } };
 raiz.PedidoAoAnki = { abrirNoAnki: guid => `abrir:${guid}` };
@@ -285,6 +286,24 @@ async function semAjustesOCorpoNaoSaiEAFalhaEOutra() {
   assert.deepStrictEqual(falhaDe(passo.lugar), faladaDe('ONB-23.motivoOutro', TENTAR, TROCAR));
 }
 
+async function aContaDeAgoraVaiNoCorpoParaAChaveDeOutraContaNaoSerGasta() {
+  mundo.conta = 'uid-A';
+  const { envio } = await comecar();
+  mundo.conta = '';
+  const { envio: semConta } = await comecar();
+  assert.strictEqual(envio.corpo.conta, 'uid-A');
+  assert.strictEqual('conta' in semConta.corpo, false);
+}
+
+async function semSaberAContaOCorpoNaoSaiEAFalhaEOutra() {
+  mundo.contaFalha = true;
+  const total = registro.envios.length;
+  const { passo } = await comecar();
+  mundo.contaFalha = false;
+  assert.strictEqual(registro.envios.length, total);
+  assert.deepStrictEqual(falhaDe(passo.lugar), faladaDe('ONB-23.motivoOutro', TENTAR, TROCAR));
+}
+
 async function sairDeVistaLargaOEnvioEVoltarRecomeca() {
   const { passo, envio } = await comecar();
   passo.desenhar(retratoComAutomatica(EM), false);
@@ -312,6 +331,8 @@ async function sairDeVistaLargaOEnvioEVoltarRecomeca() {
   await trocarAChaveAvisaOPasso();
   await cadaDesfechoDoPedidoDeCriarTemSuaFala();
   await semAjustesOCorpoNaoSaiEAFalhaEOutra();
+  await aContaDeAgoraVaiNoCorpoParaAChaveDeOutraContaNaoSerGasta();
+  await semSaberAContaOCorpoNaoSaiEAFalhaEOutra();
   await sairDeVistaLargaOEnvioEVoltarRecomeca();
   console.log('boas-vindas: o passo do primeiro envio ok');
 })().catch(erro => { console.error(erro); process.exit(1); });

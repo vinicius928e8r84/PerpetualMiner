@@ -169,12 +169,14 @@
       return false;
     }
     envio.baralho = preset.deckName;
+    const conta = doPainel.conta();
     envio.corpo = {
       jobId: envio.id,
       lang: envio.lang,
       deckName: preset.deckName,
       imageSource: preset.imageSource,
       ...AjustesDeEnvio.vozENivel(preset),
+      ...(conta && { conta }),
       entries: doPainel.frasesPorId(envio.ids).map(frase => ({ phraseId: frase.id, line: doPainel.linha(frase) })),
     };
     await gravar();
