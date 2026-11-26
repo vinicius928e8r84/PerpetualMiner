@@ -320,7 +320,7 @@ class OsCustos(unittest.TestCase):
         self.assertEqual([json.loads(r)["type"] for r in lidos], ["tokens", "image", "image_pipeline"])
         self.assertEqual(
             [(l["jobId"], l["status"], l["requestedCards"], l["successfulCards"], l["costs"]["cardUsd"], l["costs"]["totalUsd"]) for l in linhas],
-            [(ID, "completed", 1, 1, 0.0045, 0.03618)],
+            [(ID, "completed", 1, 1, 0.0045, 0.01767)],
         )
 
 

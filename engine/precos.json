@@ -9,13 +9,13 @@
   },
   "imagem": {
     "gpt-image-2.5-flare": {
-      "usd": 0.03168,
+      "usd": 0.01317,
       "data": "2026-11-26",
       "fonte": "https://developers.openai.com/api/docs/pricing",
       "estimativa": {
-        "conta": "1056 tokens de saída (qualidade medium, 1024x1024, do guia) x US$ 30 por 1M de tokens de saída de imagem; o motor não manda qualidade, então é uma estimativa",
+        "conta": "439 tokens de saída (qualidade medium, 1024x1024, pela calculadora do guia para o GPT-Image-2.5) x US$ 30 por 1M de tokens de saída de imagem; o motor não manda qualidade, então é uma estimativa",
         "fonte_dos_tokens": "https://developers.openai.com/api/docs/guides/image-generation",
-        "tokens_de_saida": 1056,
+        "tokens_de_saida": 439,
         "saida_de_imagem_por_1m": 30.0
       },
       "tarifa_por_1m_de_tokens": {"entrada_de_imagem": 8.0, "saida_de_imagem": 30.0, "entrada_de_texto": 5.0}

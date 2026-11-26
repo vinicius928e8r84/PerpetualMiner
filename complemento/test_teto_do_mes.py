@@ -16,7 +16,7 @@ from complemento.test_harness import ConexaoNoTeste, ler_o_contrato, semear_a_fi
 DUAS_FRASES = ("give up : She gave up smoking", "keep running : They keep running")
 NO_TETO = {"reason": "monthly_cap"}
 DIA_20 = date(2026, 10, 20)
-TETO_DE_UM_CARTAO = 0.03
+TETO_DE_UM_CARTAO = 0.015
 FILA_DO_PLANO = "um Envio de dois Cartões feitos pelo plano do ChatGPT"
 
 
