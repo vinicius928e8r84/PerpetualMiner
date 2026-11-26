@@ -322,7 +322,7 @@ test('um baralho gravado que o Anki não tem continua na lista, dizendo que não
   await expect(escolhaDeBaralho(page).locator('option', { hasText: `${LEN} · não está no Anki` })).toHaveCount(1);
 });
 
-test('sem a lista do Anki, o Baralho é um campo de texto, e um nome com nível vazio é recusado no campo', async ({ page, extensao }) => {
+test('sem a lista do Anki, o Baralho é um campo de texto, e um sub-baralho vazio é recusado', async ({ page, extensao }) => {
   await abrirAjustes(page, extensao, { gravado: { [CHAVE]: AJUSTES } });
   await expect(escolhaDeBaralho(page)).toHaveCount(0);
 
@@ -330,7 +330,7 @@ test('sem a lista do Anki, o Baralho é um campo de texto, e um nome com nível 
   await salvar(page).click();
 
   await expect(baralho(page)).toHaveAttribute('aria-invalid', 'true');
-  await expect(baralho(page)).toHaveAccessibleDescription('Tem um nível vazio. Exemplo: Inglês::Mineradas');
+  await expect(baralho(page)).toHaveAccessibleDescription('Tem um sub-baralho vazio. Exemplo: Inglês::Mineradas');
   await expect(baralho(page)).toBeFocused();
   await expect(toasts(page)).toHaveCount(0);
   expect((await ajustesGravados(extensao)).en.deckName).toBe('Inglês::Mineradas');

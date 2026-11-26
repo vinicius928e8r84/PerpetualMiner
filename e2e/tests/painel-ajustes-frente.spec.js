@@ -102,7 +102,7 @@ for (const [nome, id, texto] of [
 
 test('a Produção só se escolhe no nível Iniciante: nos outros fica desabilitada, e trocar o nível com ela escolhida volta à Frase com áudio', async ({ page, extensao, fakes }) => {
   await abrirAjustes(page, extensao, { gravado: { [CHAVE]: AJUSTES } });
-  const nivel = nome => formulario(page).getByRole('radiogroup', { name: 'Estilo do cartão' }).locator('label', { hasText: nome });
+  const nivel = nome => formulario(page).getByRole('radiogroup', { name: 'Nível' }).locator('label', { hasText: nome });
 
   await expect(opcao(page, 'Produção')).toBeEnabled();
   await nivel('Intermediário').click();

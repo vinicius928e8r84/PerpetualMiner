@@ -153,7 +153,7 @@ test('escolher uma palavra detectada troca auto: por palavra:', async ({ page, e
   });
 });
 
-test('no chip, × remove a Palavra e + começa outro grupo', async ({ page, extensao }) => {
+test('no chip, × remove o Termo e + começa outro termo', async ({ page, extensao }) => {
   await extensao.gravarStorage({
     frases: [
       frase(2, 'You cannot have your cake and eat it.', { keywords: ['cake@8'] }),
@@ -162,12 +162,12 @@ test('no chip, × remove a Palavra e + começa outro grupo', async ({ page, exte
   });
   await abrirFrases(page, extensao);
 
-  await cartao(page, 'cake').getByRole('button', { name: 'Adicionar outro grupo' }).click();
+  await cartao(page, 'cake').getByRole('button', { name: 'Adicionar outro termo' }).click();
   await palavra(page, 'cake', 'eat').click();
   await expect(cartao(page, 'cake').locator('.veio-chip-palavra')).toHaveText(/^palavra:\s*cake \| eat/);
   await expect.poll(async () => (await extensao.frases())[0].keywords).toEqual(['cake@8', '|', 'eat@12']);
 
-  await cartao(page, 'close call').getByRole('button', { name: 'Remover a palavra' }).click();
+  await cartao(page, 'close call').getByRole('button', { name: 'Remover o termo' }).click();
   await expect(cartao(page, 'close call').locator('.veio-chip-palavra')).toHaveCount(0);
   await expect(palavra(page, 'close call', 'close')).toHaveAttribute('aria-pressed', 'false');
   await expect.poll(async () => (await extensao.frases())[1].keywords).toEqual([]);
@@ -366,8 +366,8 @@ test('cada controle do cartão, do chip e da paginação tem nome, e o foco do t
   const controles = [
     page.getByRole('checkbox', { name: 'Selecionar página' }),
     comChip.getByRole('checkbox', { name: 'Selecionar frase' }),
-    comChip.getByRole('button', { name: 'Remover a palavra' }),
-    comChip.getByRole('button', { name: 'Adicionar outro grupo' }),
+    comChip.getByRole('button', { name: 'Remover o termo' }),
+    comChip.getByRole('button', { name: 'Adicionar outro termo' }),
     comChip.getByRole('button', { name: 'Editar texto' }),
     comChip.getByRole('button', { name: 'Editar contexto' }),
     comChip.getByRole('button', { name: 'Copiar frase' }),

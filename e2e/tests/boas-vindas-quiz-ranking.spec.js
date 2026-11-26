@@ -84,7 +84,7 @@ test.describe('o ranking do grupo', () => {
   test('sem conta Google só há o aviso, e nada é pedido ao Firestore', async ({ page, extensao, fakes, relogioParado }) => {
     const ranking = await ateOResultado({ page, extensao, fakes, relogioParado }, { conta: false });
 
-    await expect(ranking).toContainText('Entre com a conta Google, em Conta & sync, para ver o ranking do grupo.');
+    await expect(ranking).toContainText('Entre com a conta Google, em Conta e sincronização, para ver o ranking do grupo.');
     await expect(ranking.getByRole('checkbox')).toHaveCount(0);
     expect(fakes.google.requisicoes.filter(r => r.url.includes('/ranking') || r.url.includes('runQuery'))).toEqual([]);
     expect(registrosDe(fakes)).toEqual([]);

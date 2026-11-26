@@ -82,7 +82,7 @@ test('o alfabeto do russo', async ({ page, extensao, relogioParado }) => {
   await tela(page, 'quiz-alfabeto.png');
 });
 
-test('o resultado: o nível sugerido com a prévia do Cartão e Usar este estilo', async ({ page, extensao, relogioParado }) => {
+test('o resultado: o nível sugerido com a prévia do Cartão e Usar este nível', async ({ page, extensao, relogioParado }) => {
   test.fixme(true, AGUARDA_O_DONO);
   await abrir(page, extensao, relogioParado);
   await grupo(page, 'Russo').getByRole('button', { name: 'Não sei meu nível, quero descobrir' }).click();

@@ -156,7 +156,7 @@ test('primeira execução: Frases 0, ponto desligado e o chip “Sem conta”, �
   await esperarChipSemConta(page);
 });
 
-test('com a conta, o chip mostra o nome e “Sincronizado agora”, e leva a Configurações › Conta & sync', async ({ page, extensao }) => {
+test('com a conta, o chip mostra o nome e “Sincronizado agora”, e leva a Configurações › Conta e sincronização', async ({ page, extensao }) => {
   await extensao.semearSessao({ uid: 'uid-chip', displayName: 'Ana Souza' });
   await abrirPainel(page, extensao);
 
@@ -167,13 +167,13 @@ test('com a conta, o chip mostra o nome e “Sincronizado agora”, e leva a Con
   await chip(page).click();
   await expect(page).toHaveURL(/#configuracoes\/conta$/);
   await expect(tituloDaArea(page)).toHaveText('Configurações');
-  await expect(page.getByRole('heading', { name: 'Conta & sync' })).toBeInViewport();
+  await expect(page.getByRole('heading', { name: 'Conta e sincronização' })).toBeInViewport();
 });
 
-test('já em Configurações › Conta & sync, clicar no chip de novo volta ao card', async ({ page, extensao }) => {
+test('já em Configurações › Conta e sincronização, clicar no chip de novo volta ao card', async ({ page, extensao }) => {
   await page.setViewportSize({ width: 1280, height: 260 });
   await abrirPainel(page, extensao, '#configuracoes/conta');
-  const conta = page.getByRole('heading', { name: 'Conta & sync' });
+  const conta = page.getByRole('heading', { name: 'Conta e sincronização' });
   await expect(conta).toBeInViewport();
 
   await page.mouse.move(640, 200);
@@ -330,7 +330,7 @@ test('dentro do shell, Enviar ao Anki cria o envio, e o acompanhamento continua 
 test('Configurações hospeda Entrar com Google e Apagar tudo', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: frasesDeExemplo(2) });
   await abrirPainel(page, extensao, '#configuracoes');
-  await page.getByRole('button', { name: 'Conta & sync', exact: true }).click();
+  await page.getByRole('button', { name: 'Conta e sincronização', exact: true }).click();
   await page.getByRole('button', { name: 'Zona de perigo', exact: true }).click();
 
   await expect(page.getByRole('button', { name: 'Entrar com Google' })).toBeVisible();

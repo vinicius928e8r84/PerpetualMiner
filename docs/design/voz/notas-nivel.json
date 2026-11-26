@@ -4,28 +4,28 @@
     "categoria": "status",
     "hoje": "(não existe)",
     "marca": "novo",
-    "nota": "O Cartão de exemplo do estilo, desenhado pelo Anki (#164), em Ajustes de envio › Estilo do cartão e no passo do nível da Boas-vindas (ONB-20). Muda com o nível escolhido na tela, antes de salvar. “O seu cartão…” é a legenda da prévia de uma nota gravada (o primeiro Envio, ONB-21). Frente e Verso são as duas faces; o Verso traz a frente, como o Anki depois de “Mostrar resposta”. “Mais estilos…” só aparece na Boas-vindas e leva a Ajustes de envio. Quando a prévia não vem, o aviso diz a causa (#564): “Este cartão não está mais no Anki” é a nota apagada, “O tipo de nota não está mais no Anki” é o tipo que sumiu, os dois com Tentar de novo; só a Conexão que não tem a rota pede para atualizar, sem Tentar de novo."
+    "nota": "O Cartão de exemplo do estilo, desenhado pelo Anki (#164), em Ajustes de envio › Nível e no passo do nível da Boas-vindas (ONB-20). Muda com o nível escolhido na tela, antes de salvar. “O seu cartão…” é a legenda da prévia de uma nota gravada (o primeiro Envio, ONB-21). Frente e Verso são as duas faces; o Verso traz a frente, como o Anki depois de “Mostrar resposta”. “Mais estilos…” só aparece na Boas-vindas e leva a Ajustes de envio. Quando a prévia não vem, o aviso diz a causa (#564): “Este cartão não está mais no Anki” é a nota apagada, “O tipo de nota não está mais no Anki” é o tipo que sumiu, os dois com Tentar de novo; só a Conexão que não tem a rota pede para atualizar, sem Tentar de novo."
   },
   "ONB-20": {
     "estado": "Passo do nível do cartão",
     "categoria": "status",
     "hoje": "(não existe)",
     "marca": "novo",
-    "nota": "O passo 7 da Boas-vindas (#164), depois da mineração automática, que diz quais idiomas estão ligados. Cada idioma ligado traz o controle de BRG-42 e a prévia de BRG-43; escolher salva na hora, no mesmo lugar que Ajustes de envio › Estilo do cartão (`ankiBridgePresets`). O passo é opcional e está feito quando todo idioma ligado tem o nível salvo. A prévia traz o link “Mais estilos em Ajustes de envio”."
+    "nota": "O passo 7 da Boas-vindas (#164), depois da mineração automática, que diz quais idiomas estão ligados. Cada idioma ligado traz o controle de BRG-42 e a prévia de BRG-43; escolher salva na hora, no mesmo lugar que Ajustes de envio › Nível (`ankiBridgePresets`). O passo é opcional e está feito quando todo idioma ligado tem o nível salvo. A prévia traz o link “Mais estilos em Ajustes de envio”."
   },
   "BRG-44": {
     "estado": "Ajustes de envio: a frente do cartão",
     "categoria": "status",
     "hoje": "(não existe)",
     "marca": "novo",
-    "nota": "Nos Ajustes de envio, depois do Estilo do cartão (BRG-42). A Frente é por idioma e troca o modelo de Cartão na hora, sem custo; imagem primeiro não entra; Produção e Ditado usam o campo de digitação do Anki (#167). O aviso de falha diz que o resto foi salvo e só a frente não mudou; `{motivo}` é um dos quatro textos seguintes. A nota da Criação aparece só com a Criação escolhida. Os cinco últimos textos (#168, #169) não são da tela: são o que a frente Criação diz dentro do Cartão, no Anki (o pedido na frente; “Você escreveu”, o exemplo e “✓ usou a palavra” no verso; “Da última vez você escreveu”, seguido de “→” e da correção da IA, no verso, depois do Envio que corrigiu a frase); `complemento/tipo_de_nota.py` os leva ao modelo e `test_criacao_do_cartao.py` confere."
+    "nota": "Nos Ajustes de envio, depois do Nível (BRG-42). A Frente é por idioma e troca o modelo de Cartão na hora, sem custo; imagem primeiro não entra; Produção e Ditado usam o campo de digitação do Anki (#167). O aviso de falha diz que o resto foi salvo e só a frente não mudou; `{motivo}` é um dos quatro textos seguintes. A nota da Criação aparece só com a Criação escolhida. Os cinco últimos textos (#168, #169) não são da tela: são o que a frente Criação diz dentro do Cartão, no Anki (o pedido na frente; “Você escreveu”, o exemplo e “✓ usou a palavra” no verso; “Da última vez você escreveu”, seguido de “→” e da correção da IA, no verso, depois do Envio que corrigiu a frase); `complemento/tipo_de_nota.py` os leva ao modelo e `test_criacao_do_cartao.py` confere."
   },
   "BRG-45": {
     "estado": "Ajustes de envio: usar um tipo de nota que já tenho",
     "categoria": "status",
     "hoje": "(não existe)",
     "marca": "novo",
-    "nota": "Em Ajustes de envio › Estilo do cartão, depois da prévia (#165). A pessoa escolhe um tipo de nota do Anki e, para cada parte do cartão (Frase, Áudio da frase, Resposta, Palavra, Áudio da palavra, Imagem), o campo do tipo em que ela vai; várias partes podem ir no mesmo campo. Frase e Resposta são obrigatórias e vão em campos diferentes: sem isso Continuar fica desligado e a tela explica (`faltaCampo`, com o estilo pronto) ou pede os campos (`escolhaOsCampos`). `{tipo}`: o nome do tipo. A Conexão só grava notas nesse tipo: não o muda, e a frente é a que ele já tem."
+    "nota": "Em Ajustes de envio › Nível, depois da prévia (#165). A pessoa escolhe um tipo de nota do Anki e, para cada parte do cartão (Frase, Áudio da frase, Resposta, Termo, Áudio do termo, Imagem), o campo do tipo em que ela vai; várias partes podem ir no mesmo campo. Frase e Resposta são obrigatórias e vão em campos diferentes: sem isso Continuar fica desligado e a tela explica (`faltaCampo`, com o estilo pronto) ou pede os campos (`escolhaOsCampos`). `{tipo}`: o nome do tipo. A Conexão só grava notas nesse tipo: não o muda, e a frente é a que ele já tem."
   },
   "ONB-21": {
     "estado": "O quiz de nível, no passo do nível",
@@ -39,14 +39,14 @@
     "categoria": "status",
     "hoje": "(não existe)",
     "marca": "novo",
-    "nota": "O nível sugerido com a prévia do Cartão (BRG-43): “Usar este estilo” salva o nível do idioma, ou a pessoa troca o nível ali mesmo antes. O resumo diz os acertos, a melhor sequência e a escuta; a escuta aparece, mas não muda o estilo. “Sem ler o alfabeto…” aparece no lugar do resumo quando a pessoa disse “Ainda não” no russo. A Revelação (#171) abre o resultado: as portas enchem uma a uma com rufar, param no nível, acorde e confete; só depois vêm o resumo e o resto. Os nomes dos níveis nas portas são os de BRG-42."
+    "nota": "O nível sugerido com a prévia do Cartão (BRG-43): “Usar este nível” salva o nível do idioma, ou a pessoa troca o nível ali mesmo antes. O resumo diz os acertos, a melhor sequência e a escuta; a escuta aparece, mas não muda o nível. “Sem ler o alfabeto…” aparece no lugar do resumo quando a pessoa disse “Ainda não” no russo. A Revelação (#171) abre o resultado: as portas enchem uma a uma com rufar, param no nível, acorde e confete; só depois vêm o resumo e o resto. Os nomes dos níveis nas portas são os de BRG-42."
   },
   "ONB-23": {
     "estado": "Passo do primeiro Envio",
     "categoria": "status",
     "hoje": "(não existe)",
     "marca": "novo",
-    "nota": "O passo 9, o último, da Boas-vindas (#173): o Envio começa sozinho com 1 cartão (a frase minerada mais recente, ou uma frase de teste do idioma) e a tela mostra só “Enviando…” e, depois, “Cartão enviado ao Anki” com o ✓ do Veio, sem etapas, custo nem estimativa. O cartão pronto vem da prévia de BRG-43 (a nota que o Anki gravou) com o chip do Baralho. Na falha, o motivo é uma frase só (um por código de erro da Conexão), com Tentar de novo e Trocar a chave (que leva ao passo da IA). O aviso do cartão de teste só aparece com a frase de teste; se a pessoa já minerou frases, mas nenhuma tem a Palavra marcada, o aviso diz isso em vez de dizer que ela não minerou (#365). A configuração só termina quando o cartão chega ao Anki; as outras frases esperam no Envio. Não há aviso de “mais N frases esperando” (decisão da construção do #100, à espera do dono)."
+    "nota": "O passo 9, o último, da Boas-vindas (#173): o Envio começa sozinho com 1 cartão (a frase minerada mais recente, ou uma frase de teste do idioma) e a tela mostra só “Enviando…” e, depois, “Cartão enviado ao Anki” com o ✓ do Veio, sem etapas, custo nem estimativa. O cartão pronto vem da prévia de BRG-43 (a nota que o Anki gravou) com o chip do Baralho. Na falha, o motivo é uma frase só (um por código de erro da Conexão), com Tentar de novo e Trocar a chave (que leva ao passo da IA). O aviso do cartão de teste só aparece com a frase de teste; se a pessoa já minerou frases, mas nenhuma tem o Termo marcado, o aviso diz isso em vez de dizer que ela não minerou (#365). A configuração só termina quando o cartão chega ao Anki; as outras frases esperam no Envio. Não há aviso de “mais N frases esperando” (decisão da construção do #100, à espera do dono)."
   },
   "ONB-24": {
     "estado": "O ranking do grupo, no resultado do quiz de nível",

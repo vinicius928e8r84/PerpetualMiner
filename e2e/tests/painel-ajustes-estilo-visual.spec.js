@@ -5,7 +5,7 @@ const { test, expect } = require('../fixtures');
 const AGORA = new Date('2026-09-18T12:00:00');
 const AGUARDA_O_DONO = 'a referência visual espera a aprovação do dono';
 const ilha = page => page.locator('.shell-conteudo');
-const estilo = page => page.getByRole('form', { name: /^Ajustes de envio · / }).getByRole('radiogroup', { name: 'Estilo do cartão' });
+const estilo = page => page.getByRole('form', { name: /^Ajustes de envio · / }).getByRole('radiogroup', { name: 'Nível' });
 
 async function abrirOEstilo(page, extensao, { largura = 1280, gravado = {}, idioma = 'Inglês' } = {}) {
   await extensao.gravarStorage({ pm_anki_ja_conectou: true, ...gravado });

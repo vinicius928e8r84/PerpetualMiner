@@ -53,7 +53,7 @@ for (const bComChave of [false, true]) {
   });
 }
 
-test('Conta & sync com um perfil: parado, não escreve na Conexão nem no Firestore', async ({ page, extensao, fakes, relogioParado }) => {
+test('Conta e sincronização com um perfil: parado, não escreve na Conexão nem no Firestore', async ({ page, extensao, fakes, relogioParado }) => {
   await semearDonoA(extensao, fakes);
   await abrirComRelogio(relogioParado, page, extensao, 'conta');
   await expect(cardDaConta(page)).toContainText('Sincronizado');
@@ -65,7 +65,7 @@ test('Conta & sync com um perfil: parado, não escreve na Conexão nem no Firest
   expect(fakes.google.chaveDaOpenAIDe('A')?.chave).toBe(CHAVE_A);
 });
 
-test('Conta & sync com dois perfis: parados, A e B não escrevem um no outro', async ({ page, extensao, fakes, segundoPerfil, relogioParado }) => {
+test('Conta e sincronização com dois perfis: parados, A e B não escrevem um no outro', async ({ page, extensao, fakes, segundoPerfil, relogioParado }) => {
   await semearDonoA(extensao, fakes);
   fakes.google.gravarChaveDaOpenAI('B', { chave: CHAVE_B, em: 101 });
   await abrirComRelogio(relogioParado, page, extensao, 'conta');

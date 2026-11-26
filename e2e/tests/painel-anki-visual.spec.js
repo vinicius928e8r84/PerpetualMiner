@@ -316,7 +316,7 @@ test.fixme('Ajustes de envio: o russo com Gerada por IA e o Avançado aberto', a
   await expect(ilha(page)).toHaveScreenshot('anki-ajustes-russo-avancado.png');
 });
 
-test.fixme('Ajustes de envio: sem a lista do Anki, o campo de texto recusa um nível vazio', async ({ page, extensao, fakes }) => {
+test.fixme('Ajustes de envio: sem a lista do Anki, o campo de texto recusa um sub-baralho vazio', async ({ page, extensao, fakes }) => {
   await abrirAjustes(page, extensao, fakes, { comLista: false });
   await campoDoBaralho(page).fill('Inglês::');
   await page.getByRole('button', { name: 'Salvar ajustes' }).click();

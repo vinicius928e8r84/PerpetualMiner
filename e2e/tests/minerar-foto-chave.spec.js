@@ -90,5 +90,5 @@ test('a chave salva no painel libera a página sem recarregar', async ({ page, e
 
   await expect(page.getByText('Falta a chave do Gemini')).toBeHidden();
   await expect(page.getByRole('button', { name: 'Escolher' })).toBeVisible();
-  await expect(page.getByText('Tire uma foto da página com os trechos marcados e escolha quais frases minerar. As frases aparecem aqui, agrupadas por foto.', { exact: true })).toBeVisible();
+  await expect(page.getByText('Tire uma foto da página com as Marcações e escolha quais frases minerar. As frases aparecem aqui, agrupadas por foto.', { exact: true })).toBeVisible();
 });

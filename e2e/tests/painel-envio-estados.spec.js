@@ -75,7 +75,7 @@ test('a frase sem Palavra marcada: a linha vai sem Palavra, e o resumo diz que f
 
   await expect(resumo(page)).toBeVisible({ timeout: 10_000 });
   await expect(baralho(page, 'Inglês')).toContainText('1 não entrou');
-  await expect(baralho(page, 'Inglês')).toContainText('Falta marcar a Palavra. Clique na palavra da frase que o cartão vai ensinar e envie de novo.');
+  await expect(baralho(page, 'Inglês')).toContainText('Falta marcar o Termo. Clique na palavra da frase que o cartão vai ensinar e envie de novo.');
   await resumo(page).getByRole('button', { name: 'Pronto' }).click();
   await expect(resumo(page)).toBeHidden();
   await estadoFinal(extensao, { pm_envio: null, frases: INGLESAS });

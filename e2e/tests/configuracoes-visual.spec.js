@@ -9,7 +9,7 @@ const {
 
 const COM_CONTA_SINCRONIZADA = [
   { nome: 'Configurações com os cards fechados', endereco: '#configuracoes', imagem: 'configuracoes-fechados.png', opcoes: {} },
-  { nome: 'Conta & sync aberto, sincronizado', endereco: '#configuracoes/conta', imagem: 'conta-sincronizado.png', opcoes: { animations: 'disabled' } },
+  { nome: 'Conta e sincronização aberto, sincronizado', endereco: '#configuracoes/conta', imagem: 'conta-sincronizado.png', opcoes: { animations: 'disabled' } },
   { nome: 'Zona de perigo aberta, com conta', endereco: '#configuracoes/perigo', imagem: 'perigo-com-conta.png', opcoes: { animations: 'disabled' } },
 ];
 
@@ -21,7 +21,7 @@ for (const { nome, endereco, imagem, opcoes } of COM_CONTA_SINCRONIZADA) {
   });
 }
 
-test('Conta & sync aberto, sem sincronizar', async ({ page, extensao, fakes }) => {
+test('Conta e sincronização aberto, sem sincronizar', async ({ page, extensao, fakes }) => {
   await semearContaVisual(extensao, fakes);
   fakes.google.ficarForaDoAr();
   await abrirConfiguracoes(page, extensao, '#configuracoes/conta');
@@ -31,7 +31,7 @@ test('Conta & sync aberto, sem sincronizar', async ({ page, extensao, fakes }) =
   await expect(page).toHaveScreenshot('conta-sem-sincronizar.png', { animations: 'disabled' });
 });
 
-test('Conta & sync aberto, sem conta e com o login que falhou', async ({ page, extensao, fakes }) => {
+test('Conta e sincronização aberto, sem conta e com o login que falhou', async ({ page, extensao, fakes }) => {
   await semearComoNoPrototipo(extensao, fakes);
   fakes.google.proximoLogin('falhar');
   await abrirConfiguracoes(page, extensao, '#configuracoes/conta');
@@ -224,7 +224,7 @@ test('o modal de apagar todas as frases, com conta', async ({ page, extensao, fa
   await expect(page).toHaveScreenshot('perigo-modal.png', { animations: 'disabled' });
 });
 
-test.fixme('Conta & sync: só a chave da OpenAI está pendente — aprovação visual pendente', async ({ page, extensao, fakes }) => {
+test.fixme('Conta e sincronização: só a chave da OpenAI está pendente — aprovação visual pendente', async ({ page, extensao, fakes }) => {
   await semearContaVisual(extensao, fakes);
   await abrirConfiguracoes(page, extensao, '#configuracoes/ia');
   await expect(estadoDoChip(page)).toHaveText('Sincronizado agora');
