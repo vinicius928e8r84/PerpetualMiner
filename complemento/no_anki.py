@@ -20,6 +20,10 @@ def perfil_aberto(mw):
     return getattr(getattr(mw, "pm", None), "name", None)
 
 
+def pasta_base_do_anki(mw):
+    return getattr(getattr(mw, "pm", None), "base", None)
+
+
 def _na_tela_de_perfis_sem_colecao(mw):
     return getattr(mw, "col", None) is None and getattr(mw, "state", None) == "profileManager"
 
@@ -325,7 +329,9 @@ def ao_carregar(mw, pasta_do_complemento, arredores=inicio.Arredores(), ganchos=
     except Exception:
         pass
     criacao_na_revisao.ligar(colecao, ganchos.ao_receber_mensagem)
-    do_anki = replace(arredores, colecao=colecao, ao_abrir_o_perfil=ganchos.ao_abrir_o_perfil, anki_web=AnkiWebDoAnki(mw, pasta_do_complemento))
+    do_anki = replace(
+        arredores, colecao=colecao, ao_abrir_o_perfil=ganchos.ao_abrir_o_perfil, anki_web=AnkiWebDoAnki(mw, pasta_do_complemento), pasta_base_do_anki=pasta_base_do_anki(mw)
+    )
     conexao = inicio.iniciar(pasta_do_complemento, lambda: perfil_aberto(mw), do_anki)
     _por_no_menu(mw, conexao, os.path.basename(os.path.abspath(pasta_do_complemento)), ganchos.qt)
     return conexao
