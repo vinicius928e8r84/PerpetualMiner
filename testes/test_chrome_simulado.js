@@ -147,13 +147,13 @@ async function oRestoDoChromeResponde() {
 
 async function asMensagensDaMineracaoAutomaticaGuardamOAjuste() {
   const { chrome } = carregar();
-  const lida = comoValores(await chrome.runtime.sendMessage({ type: 'AUTO_MINER_GET_STATE' }));
+  const lida = comoValores(await chrome.runtime.sendMessage({ type: 'MINERACAO_AUTOMATICA_GET_STATE' }));
   assert.strictEqual(lida.ok, true);
   igual(lida.state.settings, { en: { enabled: true, dailyLimit: 20 }, ru: { enabled: false, dailyLimit: 15 } });
-  const mudada = comoValores(await chrome.runtime.sendMessage({ type: 'AUTO_MINER_SET_SETTINGS', settings: { ru: { enabled: true, dailyLimit: 3 } } }));
+  const mudada = comoValores(await chrome.runtime.sendMessage({ type: 'MINERACAO_AUTOMATICA_SET_SETTINGS', settings: { ru: { enabled: true, dailyLimit: 3 } } }));
   igual(mudada.state.settings.ru, { enabled: true, dailyLimit: 3 });
-  igual(comoValores(await chrome.runtime.sendMessage({ type: 'AUTO_MINER_GET_STATE' })).state.settings.ru, { enabled: true, dailyLimit: 3 });
-  igual(await chrome.runtime.sendMessage({ type: 'AUTO_MINER_SET_SETTINGS' }), { ok: true, state: comoValores(mudada.state) });
+  igual(comoValores(await chrome.runtime.sendMessage({ type: 'MINERACAO_AUTOMATICA_GET_STATE' })).state.settings.ru, { enabled: true, dailyLimit: 3 });
+  igual(await chrome.runtime.sendMessage({ type: 'MINERACAO_AUTOMATICA_SET_SETTINGS' }), { ok: true, state: comoValores(mudada.state) });
   igual(await chrome.runtime.sendMessage({ type: 'OUTRA' }), { ok: true });
   igual(await chrome.runtime.sendMessage(undefined), { ok: true });
   igual(await comCallback(retorno => chrome.runtime.sendMessage({ type: 'OUTRA' }, retorno)), [{ ok: true }]);

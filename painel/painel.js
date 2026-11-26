@@ -190,7 +190,7 @@ function ligarOsModulosDeFrases() {
     keywords,
     selecionadas,
     editarFrase,
-    salvarNaNuvem: FrasesNuvem.salvarFrase,
+    salvarNaNuvem: FrasesNuvem.salvarNaNuvem,
     aplicarFiltro,
   });
   FrasesAcoes.iniciar({
@@ -215,7 +215,7 @@ function ligarOsModulosDeFrases() {
     construirFiltroDeFonte: FrasesFiltros.construirFiltroDeFonte,
     voltarAPrimeiraPagina,
     editarFrase,
-    salvarNaNuvem: FrasesNuvem.salvarFrase,
+    salvarNaNuvem: FrasesNuvem.salvarNaNuvem,
   });
   MinerarFrases.iniciar({
     frases: () => todasFrases,

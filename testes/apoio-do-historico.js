@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const vm = require('vm');
+const { chromeDoServiceWorker } = require('./chrome-do-service-worker');
 
 globalThis.PerpetualMiner = globalThis.PerpetualMiner || {};
 require('../lib/historico.js');
@@ -44,15 +45,12 @@ function serviceWorker(area) {
     setTimeout,
     clearTimeout,
     Date,
-    chrome: {
-      contextMenus: { create() {}, onClicked: { addListener() {} } },
-      runtime: { onInstalled: { addListener() {} }, onMessage: { addListener() {} }, lastError: null },
+    chrome: chromeDoServiceWorker({
       storage: { local: {
         get: (pedido, devolver) => { area.get(pedido).then(devolver); },
         set: (valores, pronto) => { area.set(valores).then(() => pronto?.()); },
       } },
-      tabs: { query: (_pedido, devolver) => devolver([]) },
-    },
+    }),
   };
   contexto.importScripts = (...arquivos) => arquivos.forEach(arquivo =>
     vm.runInContext(fs.readFileSync(arquivo, 'utf8'), contexto, { filename: arquivo }));
@@ -65,7 +63,7 @@ const fraseDoPainel = { id: 1, texto: 'He barely made it to the station.', data:
 const outraFrase = { ...fraseDoPainel, id: 2, texto: 'Let us call it a day.' };
 
 function salvarFoto(sw, texto) {
-  return sw.salvarFrase({
+  return sw.minerar({
     texto, origem: 'livro', contexto: { fonte: 'livro', titulo: 'Livro', detalhe: '' }, idioma: 'Inglês',
     extras: { keywords: ['harbour@3'], autoKeyword: false },
   }, { comNuvem: false });

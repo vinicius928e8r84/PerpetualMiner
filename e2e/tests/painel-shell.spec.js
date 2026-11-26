@@ -138,7 +138,7 @@ test('o total de frases fica no item Frases, no formato PT-BR, e acompanha o que
   await expect(item).toHaveAccessibleDescription('1.284 frases');
 
   await page.evaluate(() => chrome.runtime.sendMessage({
-    type: 'SALVAR_HISTORICO', texto: 'One more for the count.', origem: 'manual', idioma: 'Inglês',
+    type: 'MINERAR', texto: 'One more for the count.', origem: 'manual', idioma: 'Inglês',
     contexto: { fonte: 'manual', titulo: 'Manual Input', detalhe: '' },
   }));
   await expect(item.locator('.shell-contador')).toHaveText('1.285');

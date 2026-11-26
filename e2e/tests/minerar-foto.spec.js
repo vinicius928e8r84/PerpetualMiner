@@ -176,7 +176,7 @@ for (const caso of [
     await page.evaluate(({ resposta, falha }) => {
       window.enviarDeVerdade = chrome.runtime.sendMessage.bind(chrome.runtime);
       chrome.runtime.sendMessage = (mensagem, retorno) => {
-        if (mensagem?.type !== 'SALVAR_HISTORICO') return window.enviarDeVerdade(mensagem, retorno);
+        if (mensagem?.type !== 'MINERAR') return window.enviarDeVerdade(mensagem, retorno);
         if (falha === 'invalidado') throw new Error('Extension context invalidated.');
         if (falha === 'semReceptor') return window.enviarDeVerdade('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', mensagem, retorno);
         setTimeout(() => retorno(resposta));

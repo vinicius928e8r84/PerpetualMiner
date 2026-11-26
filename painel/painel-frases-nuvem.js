@@ -169,7 +169,7 @@
     mostrarEstadoDasFrases(SITUACOES.PARCIAL, { n: naNuvem, total: desteComputador, detalhes });
   }
 
-  function salvarFrase(frase, campos = null) {
+  function salvarNaNuvem(frase, campos = null) {
     if (!nuvem) return;
     nuvem.gravarFrase(frase, campos).catch(err => {
       console.error('[Firestore] patch:', frase.id, err.message);
@@ -188,7 +188,7 @@
     carregarDaNuvem,
     carregarLocal,
     migrar,
-    salvarFrase,
+    salvarNaNuvem,
     mostrarFalha: mostrarFalhaNaNuvem,
     mostrarSincronizado,
   };

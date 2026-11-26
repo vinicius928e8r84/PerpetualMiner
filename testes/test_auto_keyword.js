@@ -3,6 +3,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const vm = require('vm');
+const { chromeDoServiceWorker } = require('./chrome-do-service-worker');
 
 function loadBackground(storage = {}) {
   const source = fs.readFileSync('background.js', 'utf8');
@@ -15,16 +16,7 @@ function loadBackground(storage = {}) {
     setTimeout,
     clearTimeout,
     Date,
-    chrome: {
-      contextMenus: {
-        create() {},
-        onClicked: { addListener() {} },
-      },
-      runtime: {
-        onInstalled: { addListener() {} },
-        onMessage: { addListener() {} },
-        lastError: null,
-      },
+    chrome: chromeDoServiceWorker({
       storage: {
         local: {
           get(defaults, callback) {
@@ -40,10 +32,7 @@ function loadBackground(storage = {}) {
           },
         },
       },
-      tabs: {
-        query(_query, callback) { callback([]); },
-      },
-    },
+    }),
     __storage: storage,
   };
   context.importScripts = (...arquivos) => {
@@ -92,7 +81,7 @@ function russianVocabulary({ words = [], terms = [], wordInfo = {}, termInfo = {
   };
 }
 
-async function russianAutoMinerStorage() {
+async function russianMineracaoAutomaticaStorage() {
   const storage = {
     pm_auto_miner_settings: {
       en: { enabled: false, dailyLimit: 20 },
@@ -105,11 +94,11 @@ async function russianAutoMinerStorage() {
   const context = loadBackground(storage);
   const texto = '\u042f \u0443\u043b\u044b\u0431\u0430\u044e\u0441\u044c';
 
-  const evaluation = await context.evaluateAutoMinerPhrase(texto, 'ru');
+  const evaluation = await context.evaluateMineracaoAutomaticaPhrase(texto, 'ru');
   assert.strictEqual(evaluation.accept, true, 'Russian i+1 evaluation still accepts an unknown word');
   assert.strictEqual(display(evaluation.keywords), '\u0443\u043b\u044b\u0431\u0430\u044e\u0441\u044c');
 
-  const result = await context.handleAutoMinerCandidate({
+  const result = await context.handleMineracaoAutomaticaCandidate({
     texto,
     origem: 'test',
     contexto: { fonte: 'test', titulo: 'Russian', detalhe: '' },
@@ -212,7 +201,7 @@ async function run() {
   assert.deepStrictEqual([contarLetras('ab 12'), contarLetras('Да, he'), contarLetras('12 :.'), contarLetras('é ç')], [2, 4, 0, 0], 'contam-se as letras latinas e cirílicas');
 
   await baralhoGravadoQueNaoRespondeNaoViraVocabularioVazio();
-  await russianAutoMinerStorage();
+  await russianMineracaoAutomaticaStorage();
   await russianManualSaveDoesNotAutoKeyword();
 }
 

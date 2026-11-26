@@ -15,7 +15,7 @@ const idsDas = frases => frases.map(f => String(f.id)).sort();
 async function minerar(page, textos) {
   return page.evaluate(lista => Promise.all(lista.map(texto =>
     chrome.runtime.sendMessage({
-      type: 'SALVAR_HISTORICO',
+      type: 'MINERAR',
       texto,
       origem: 'manual',
       idioma: 'Inglês',
