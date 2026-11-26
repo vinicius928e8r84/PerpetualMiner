@@ -71,6 +71,7 @@ ARQUIVOS_DO_MOTOR = (
     "nota_do_cartao.py",
     "openai_http.py",
     "parser.py",
+    "precos.json",
     "prompt_loader.py",
     "provedores.py",
     "prompts/correcao_da_criacao.txt",

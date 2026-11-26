@@ -48,7 +48,8 @@ mining line
 | `image_judge.py` | `rank_candidates()` — GPT-vision score real photos; keep if `real_min_score` hit, else generate |
 | `image_pipeline.py` | `build()`: the choice of a card's picture (real photo first, judge, generated fallback, or generated only); `image_real_first.py` is its "real photo first" half, `image_queries.py` the pure query helpers |
 | `image_utils.py` | Image format sniffing; converting to PNG goes through an adapter (`usar_adaptador`): Pillow by default, the add-on installs Anki's Qt (`complemento/imagem_qt.py`) |
-| `cost_tracker.py` | Log to `log/costs.jsonl`; `summary()` returns today/week/month/alltime spend |
+| `cost_tracker.py` | Log to `log/costs.jsonl`; `summary()` returns today/week/month/alltime spend; `PRICES` is read from `precos.json` |
+| `precos.json` | The OpenAI prices as data (#824): per model, the price, the `data` it was read and its `fonte` (the pricing page); text in US$ per 1M tokens, an image in US$ per image (the one the engine uses is an `estimativa` with its calculation). Update it from https://developers.openai.com/api/docs/pricing, never in `cost_tracker.py` |
 
 ## mining.txt Format
 

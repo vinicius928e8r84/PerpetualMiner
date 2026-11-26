@@ -316,11 +316,11 @@ class OsCustos(unittest.TestCase):
             conexao.criar(pedido(ID, "give up : She gave up smoking"))
             conexao.esperar(ID)
             linhas = json.loads(conexao.pedir("POST", "/analytics/jobs", corpo={"lang": "all"})[2])["jobs"]
-            registros = conexao.arquivos()[os.path.join("custos", ID, "costs.jsonl")].decode("utf-8").splitlines()
-        self.assertEqual([json.loads(r)["type"] for r in registros], ["tokens", "image", "image_pipeline"])
+            lidos = conexao.arquivos()[os.path.join("custos", ID, "costs.jsonl")].decode("utf-8").splitlines()
+        self.assertEqual([json.loads(r)["type"] for r in lidos], ["tokens", "image", "image_pipeline"])
         self.assertEqual(
             [(l["jobId"], l["status"], l["requestedCards"], l["successfulCards"], l["costs"]["cardUsd"], l["costs"]["totalUsd"]) for l in linhas],
-            [(ID, "completed", 1, 1, 0.0045, 0.0445)],
+            [(ID, "completed", 1, 1, 0.0045, 0.01767)],
         )
 
 

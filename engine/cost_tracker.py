@@ -6,15 +6,15 @@ from pathlib import Path
 from typing import NamedTuple, Optional
 
 
-PRICES = {
-    "gpt-4o": {"input": 0.0025, "output": 0.01},
-    "gpt-4o-mini": {"input": 0.00015, "output": 0.0006},
-    "gpt-4.1": {"input": 0.002, "output": 0.008},
-    "gpt-4.1-mini": {"input": 0.0004, "output": 0.0016},
-    "dall-e-3-1024": 0.040,
-    "dall-e-3-512":  0.020,
-    "gpt-image-1":   0.040,
-}
+def _carregar_precos() -> dict:
+    dados = json.loads(Path(__file__).with_name("precos.json").read_text(encoding="utf-8"))
+    precos = {modelo: {"input": p["entrada"], "output": p["saida"]} for modelo, p in dados["texto"].items()}
+    precos.update({modelo: p["usd"] for modelo, p in dados["imagem"].items()})
+    return precos
+
+
+PRICES = _carregar_precos()
+TOKENS_POR_PRECO = 1_000_000
 
 
 def _log_path(log_dir: str | Path) -> Path:
@@ -28,7 +28,7 @@ class TokenUsage(NamedTuple):
 
     def priced_as(self, model: str) -> float:
         price = PRICES.get(model, PRICES["gpt-4o"])
-        return (self.input_tokens * price["input"] + self.output_tokens * price["output"]) / 1000
+        return (self.input_tokens * price["input"] + self.output_tokens * price["output"]) / TOKENS_POR_PRECO
 
 
 def _token_record(kind: str, usage: TokenUsage, cost: float) -> dict:
