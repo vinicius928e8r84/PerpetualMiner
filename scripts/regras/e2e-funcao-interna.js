@@ -7,6 +7,8 @@ const { comentariosPorLinha, ehJsDaExtensao, fechamento, linhaDe, semComentarios
 
 const id = 'e2e-funcao-interna';
 
+const guarda = 'o teste de e2e confere a tela e o que ficou guardado, não chama função interna (exceções sem nome e só internas diretas)';
+
 const EXCECOES = ['chrome-nativo', 'catálogo', 'componente-base'];
 
 const conserto = 'Confira pela tela (locators) e pelo que ficou gravado (`extensao.lerStorage`, `extensao.frases()`), '
@@ -96,4 +98,4 @@ function verificar(arquivo, fonte, raiz = process.cwd()) {
   return chamadasDeEvaluate(codigo).flatMap(chamada => achadosDoEvaluate(chamada, leitura));
 }
 
-module.exports = { id, conserto, seAplica, verificar, EXCECOES };
+module.exports = { id, guarda, conserto, seAplica, verificar, EXCECOES };

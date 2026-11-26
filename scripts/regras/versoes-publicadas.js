@@ -6,6 +6,8 @@ const path = require('path');
 
 const id = 'versoes-publicadas';
 
+const guarda = 'uma `VERSAO` já publicada em complemento/versoes.json mantém o hash; a PR não toca `VERSAO`, versoes.json nem o .ankiaddon (a versão sai no merge, por complemento/versao_no_merge.py)';
+
 const ARQUIVO = 'complemento/versoes.json';
 
 const CONFIGURACAO = 'complemento/configuracao.py';
@@ -122,4 +124,4 @@ function verificar(arquivo, fonte, raiz, base) {
   return [...doMerge, ...Object.entries(publicadas).flatMap(publicada => achadoDaVersaoPublicada(fonte, hoje, publicada))];
 }
 
-module.exports = { id, conserto, seAplica, verificar };
+module.exports = { id, guarda, conserto, seAplica, verificar };

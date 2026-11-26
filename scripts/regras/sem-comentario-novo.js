@@ -6,6 +6,8 @@ const { NENHUMA_LINHA, linhasNovas } = require('./apoio-linhas-novas');
 
 const id = 'sem-comentario-novo';
 
+const guarda = 'a mudança não acrescenta comentário de código';
+
 const conserto = 'Apague o comentário. O que ele explicava sobre o código vai para o nome: renomeie a função ou a variável '
   + 'para carregar a ideia. A decisão (o porquê) vai para o corpo da PR, para docs/ ou, se for vocabulário do domínio, '
   + 'para glossary.md: um comentário envelhece sozinho, e o agente seguinte copia a decisão específica como se fosse regra geral. '
@@ -189,4 +191,4 @@ function verificar(arquivo, fonte, raiz, base) {
     .flatMap(grupo => achadosDoGrupo(grupo, passa(arquivo, grupo, excecaoDeOutra) ? NENHUMA_LINHA : novas));
 }
 
-module.exports = { id, conserto, seAplica, verificar, gruposDeComentario, passa, excecaoDeOutraRegra, resumo, ehDiretiva };
+module.exports = { id, guarda, conserto, seAplica, verificar, gruposDeComentario, passa, excecaoDeOutraRegra, resumo, ehDiretiva };

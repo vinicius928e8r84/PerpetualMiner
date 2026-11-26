@@ -5,6 +5,8 @@ const { linhaDe } = require('./comum');
 const { trechosDeDocstring } = require('./apoio-docstrings');
 
 const id = 'sem-comentario';
+
+const guarda = 'a catraca dos comentários de prosa, docstrings de Python e protótipos HTML de docs/design: cada arquivo tem um teto em linha-de-base-sem-comentario.json que só desce, e o arquivo que chega a zero não pode ter comentário de novo';
 const ARQUIVO_DA_LINHA_DE_BASE = 'scripts/regras/linha-de-base-sem-comentario.json';
 
 const conserto = 'Não volte a pôr comentário: o arquivo só pode ter os comentários de prosa que a linha de base ainda registra para ele, '
@@ -53,4 +55,4 @@ function mensagem({ arquivo, tem, pode, achados }) {
   return [`✗ ${id} — ${arquivo}: ${tem} linha(s) de comentário; ${teto}.`, ...mostrados, `  Conserto: ${conserto}`].join('\n');
 }
 
-module.exports = { id, conserto, arquivoDaLinhaDeBase: ARQUIVO_DA_LINHA_DE_BASE, seAplica, verificar, linhasDeComentario, linhasDeDocstring, mensagem, folgaPresaAoArquivo: true, porQueOArquivoNovoNaoEntra };
+module.exports = { id, guarda, conserto, arquivoDaLinhaDeBase: ARQUIVO_DA_LINHA_DE_BASE, seAplica, verificar, linhasDeComentario, linhasDeDocstring, mensagem, folgaPresaAoArquivo: true, porQueOArquivoNovoNaoEntra };

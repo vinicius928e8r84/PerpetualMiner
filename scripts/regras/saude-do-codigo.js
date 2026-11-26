@@ -8,6 +8,8 @@ const { LIMITES, pontuar } = require('./analisador/pontos');
 
 const id = 'saude-do-codigo';
 
+const guarda = 'a nota de saúde do código de cada arquivo não cai: complexidade, aninhamento, tamanho da função e do arquivo dentro dos limites';
+
 const conserto = 'Refatore de verdade a função que piorou: separe decidir de fazer (a decisão vira função pura com nome do domínio), '
   + 'dê nome à condição composta, troque a cascata por tabela quando ela é um mapa, agrupe argumentos num objeto que já existe no domínio '
   + 'e, se o arquivo passa do teto, divida-o por responsabilidade. Picar a função sem nome de domínio, trocar argumentos por um saco de opções '
@@ -103,4 +105,4 @@ function mensagem({ arquivo, tem, pode, achados }) {
   ].join('\n');
 }
 
-module.exports = { id, conserto, seAplica, verificar, mensagem, LIMITES, folgaPresaAoArquivo: true, porQueOArquivoNovoNaoEntra };
+module.exports = { id, guarda, conserto, seAplica, verificar, mensagem, LIMITES, folgaPresaAoArquivo: true, porQueOArquivoNovoNaoEntra };

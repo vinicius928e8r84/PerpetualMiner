@@ -1,6 +1,6 @@
 # Coding Standards
 
-The mistakes review keeps catching that no script can see. What a script can see is a check (`node scripts/regras/verificar.js`, the table in `AGENTS.md`), and the rest follows the surrounding code and the surface's skill.
+The mistakes review keeps catching that no script can see. What a script can see is a check (`node scripts/regras/verificar.js`, whose `--help` lists what each rule guards), and the rest follows the surrounding code and the surface's skill.
 
 ## Rules
 

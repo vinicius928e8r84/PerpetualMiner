@@ -5,6 +5,8 @@ const { ehJsDaExtensao, linhaDe, semComentariosCss, semComentariosHtml, semComen
 
 const id = 'tokens-veio';
 
+const guarda = 'cores, tamanhos de letra, raios e durações são tokens do Veio';
+
 const conserto = 'Use um token `var(--veio-…)` de veio/tokens.css (cores: --veio-bg, --veio-text, --veio-accent…; '
   + 'letra: --veio-tam-*; raio: --veio-raio-*; tempo: --veio-transicao, --veio-destaque…). '
   + 'Um valor que ainda não existe vira token novo em veio/tokens.css, registrado no veio/README.md. '
@@ -133,4 +135,4 @@ function verificar(arquivo, fonte) {
   return achados;
 }
 
-module.exports = { id, conserto, seAplica, verificar };
+module.exports = { id, guarda, conserto, seAplica, verificar };

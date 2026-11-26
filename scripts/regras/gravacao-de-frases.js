@@ -4,6 +4,8 @@ const { ehJsDaExtensao, fechamento, linhaDe, semComentariosJs } = require('./com
 
 const id = 'gravacao-de-frases';
 
+const guarda = 'toda gravação de `frases` passa por lib/historico.js';
+
 const conserto = 'Não grave `frases` fora de `PerpetualMiner.Historico` (lib/historico.js), que lê de novo dentro da '
   + 'tranca `pm-historico` e muda só o que pediram. No service worker, nas páginas e em lib/, chame uma operação dele '
   + '(`acrescentar`, `editar`, `editarVarias`, `marcarEnviadas`, `marcarExportadas`, `apagar`); falta uma? Ela entra em '
@@ -34,4 +36,4 @@ function verificar(arquivo, fonte) {
   return achados;
 }
 
-module.exports = { id, conserto, seAplica, verificar };
+module.exports = { id, guarda, conserto, seAplica, verificar };

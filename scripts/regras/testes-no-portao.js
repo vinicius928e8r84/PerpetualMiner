@@ -8,6 +8,8 @@ const { ARQUIVO_DO_REGISTRO, arquivosDoGrupo, ehArquivoDeTeste, grupoDoArquivo, 
 
 const id = 'testes-no-portao';
 
+const guarda = 'todo teste roda no CI, cadastrado num grupo de scripts/testes.json';
+
 const conserto = 'Cadastre o teste num grupo de scripts/testes.json (`arquivos` no executor `node`; os de Python e o e2e '
   + 'são descobertos pela pasta e pelo padrão do grupo) e deixe o workflow chamar só `node scripts/testar.mjs <grupo>`; '
   + 'rode o mesmo comando aqui. Um arquivo que não é teste, e tem nome de teste, vai em `fora` com o motivo. '
@@ -137,4 +139,4 @@ function verificar(arquivo, fonte, raiz = process.cwd()) {
   return [...achadosDasLinhas(fonte, portao.registro), ...achadosDosPassos(fonte)];
 }
 
-module.exports = { id, conserto, seAplica, verificar };
+module.exports = { id, guarda, conserto, seAplica, verificar };

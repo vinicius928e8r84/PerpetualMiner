@@ -2,6 +2,8 @@
 
 const id = 'doc-datado';
 
+const guarda = 'a documentação não diz de qual PR ou rodada fala nem conta testes';
+
 const conserto = 'Escreva o que vale sempre, sem dizer de qual PR ou rodada fala (o número do PR está no `git log`, '
   + 'a decisão no ADR ou na spec) e sem contar testes: mande o leitor ao comando que conta '
   + '(`node scripts/testar.mjs --listar`, `playwright test --list`).';
@@ -30,4 +32,4 @@ function verificar(arquivo, fonte) {
   return achados;
 }
 
-module.exports = { id, conserto, seAplica, verificar };
+module.exports = { id, guarda, conserto, seAplica, verificar };

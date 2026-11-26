@@ -5,6 +5,8 @@ const path = require('path');
 
 const id = 'link-de-doc';
 
+const guarda = 'o link de um .md aponta para um arquivo e um título que existem';
+
 const conserto = 'Aponte o link para o arquivo ou o título que existe hoje (o arquivo, e o título na forma do GitHub: '
   + 'minúsculas, espaços viram `-`, sem pontuação; a mensagem sugere os títulos parecidos), ou tire o link.';
 
@@ -218,4 +220,4 @@ function verificar(arquivo, fonte, raiz) {
     .map(detalhe => ({ linha: i + 1, detalhe })));
 }
 
-module.exports = { id, conserto, seAplica, verificar };
+module.exports = { id, guarda, conserto, seAplica, verificar };
