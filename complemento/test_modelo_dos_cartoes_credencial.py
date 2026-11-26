@@ -57,7 +57,7 @@ class CofreDeMentira:
     def __init__(self, chave):
         self._chave = chave
 
-    def ler(self, nome):
+    def ler(self, nome, conta=""):
         return self._chave
 
 

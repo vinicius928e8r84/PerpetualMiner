@@ -93,6 +93,11 @@ class IaDosCartoes:
     def novo_envio(self):
         self._do_envio = {}
 
+    def da_conta(self, uid):
+        vista = IaDosCartoes(self._conta.da_conta(uid), self._modelos, MotorNaOpenAI(self._motor, self._openai_base), self._logger)
+        vista._do_envio = self._do_envio
+        return vista
+
     def pagador(self, etapa, pela_chave=False):
         return quem_paga_a_etapa(etapa, Situacao(*self._conta.situacao(), pela_chave, self._conta.chave() is not None))
 

@@ -44,6 +44,7 @@
       { nome: 'Modelo dos cartões: escolher o Automático', pedido: escolherOModelo('automatico') },
       { nome: 'Frente do Cartão: trocar', pedido: trocarAFrente('en', 'lacuna') },
       { nome: 'Envio: criar', pedido: criarEnvio(envioDeExemplo) },
+      { nome: 'Envio: criar com a Conta da pessoa', pedido: criarEnvio({ ...envioDeExemplo, conta: 'uid-teste' }) },
       { nome: 'Envio: criar com a Frase de teste', pedido: criarEnvio({ ...envioDeExemplo, teste: true }) },
       { nome: 'Envio: criar no Intermediário', pedido: criarEnvio({ ...envioDeExemplo, nivel: 'intermediario' }) },
       { nome: 'Envio: criar no Avançado', pedido: criarEnvio({ ...envioDeExemplo, nivel: 'avancado' }) },

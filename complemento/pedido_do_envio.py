@@ -6,6 +6,7 @@ from . import tipo_proprio
 from .motor import estilos
 
 _ID_DO_ENVIO = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+_FORMA_DA_CONTA = re.compile(r"[A-Za-z0-9_-]{1,128}")
 _PROVEDOR_DA_VOZ = re.compile(r"^[a-z0-9_-]{1,32}$")
 MAXIMO_DE_RESERVAS = 8
 MAXIMO_DE_FRASES = 500
@@ -73,6 +74,11 @@ def _mapeamento_que_nao_serve(corpo):
     return proprio is None or bool(tipo_proprio.recusa(proprio, set(proprio["mapa"].values())))
 
 
+def _conta_que_nao_serve(corpo):
+    conta = corpo.get("conta", "")
+    return not isinstance(conta, str) or (conta != "" and _FORMA_DA_CONTA.fullmatch(conta) is None)
+
+
 def _sem_frases(corpo):
     entradas = corpo.get("entries")
     return not isinstance(entradas, list) or not entradas
@@ -118,6 +124,7 @@ _RECUSAS = (
     (_nivel_que_o_idioma_nao_tem, (400, "invalid_level")),
     (_teste_que_nao_e_sim_nem_nao, (400, "invalid_request")),
     (_mapeamento_que_nao_serve, (400, "invalid_mapping")),
+    (_conta_que_nao_serve, (400, "invalid_request")),
     (_sem_frases, (400, "entries_required")),
     (_frases_demais, (413, "too_many_entries")),
     (_entrada_que_nao_serve, (400, "entries_required")),
@@ -154,6 +161,7 @@ def _pedido_normalizado(corpo):
         **({"nivel": corpo["nivel"]} if "nivel" in corpo else {}),
         **({"tipoProprio": proprio} if proprio else {}),
         **({"teste": True} if corpo.get("teste") else {}),
+        **({"conta": corpo["conta"]} if corpo.get("conta") else {}),
         "tts": _voz_guardada(corpo),
         "entries": _frases_sem_repetir(corpo["entries"]),
     }

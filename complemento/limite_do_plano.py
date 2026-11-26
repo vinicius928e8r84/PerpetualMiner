@@ -54,7 +54,7 @@ def usar_a_chave(fila, ia, job_id):
         estado = fila.estado_ou_refazer(job_id)
         if situacao(estado) in FIM + (APAGADO,):
             return 409, {"error": ENVIO_TERMINOU}
-        quem, motivo = ia.pagador(TEXTO, pela_chave=True)
+        quem, motivo = ia.da_conta(fila.pedido(job_id).get("conta", "")).pagador(TEXTO, pela_chave=True)
         if quem != CHAVE:
             return 409, {"error": motivo}
         if not estado.get("usingKey"):

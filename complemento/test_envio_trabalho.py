@@ -94,6 +94,9 @@ class IaQueNaoPede:
     def novo_envio(self):
         pass
 
+    def da_conta(self, uid):
+        return self
+
 
 class UmEnvioDeDoisCartoes:
     def __init__(self, teste, colecao=None):
