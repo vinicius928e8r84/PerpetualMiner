@@ -38,6 +38,7 @@ const REGRAS = [
   require('./sem-codescene-no-repositorio'),
   require('./glossario-so-linguagem'),
   require('./texto-fora-da-voz'),
+  require('./e2e-prazo-maior'),
 ];
 
 const ARQUIVOS_DA_LINHA_DE_BASE = arquivosDe(REGRAS);
