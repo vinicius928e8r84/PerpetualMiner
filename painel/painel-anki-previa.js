@@ -11,11 +11,13 @@
   const { MOTIVO } = ConversaComOAnki;
   const ESTADO = Object.freeze({ CARREGANDO: 'carregando', PRONTA: 'pronta', SEM_CONEXAO: 'semConexao', ANTIGA: 'antiga', SEM_NOTA: 'semNota', SEM_TIPO: 'semTipo', FALHOU: 'falhou' });
 
+  const SCRIPT = /<script\b[\s\S]*?(?:<\/script\s*>|$)/gi;
+
   const lidas = new Map();
 
   function documentoDoQuadro(css, html) {
     return `<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${POLITICA}">`
-      + `<style>html { min-height: 100%; } body { margin: 0; } .card { min-height: 100vh; box-sizing: border-box; padding: 16px; } ${css}</style><div class="card">${html}</div>`;
+      + `<style>html { min-height: 100%; } body { margin: 0; } .card { min-height: 100vh; box-sizing: border-box; padding: 16px; } ${css}</style><div class="card">${html.replace(SCRIPT, '')}</div>`;
   }
 
   function ler(lang, nivel, tipoProprio) {
@@ -116,5 +118,5 @@
     return { no, mostrar, mostrarNota };
   }
 
-  raiz.PreviaDoCartao = Object.freeze({ ESTADO, montar });
+  raiz.PreviaDoCartao = Object.freeze({ ESTADO, montar, documentoDoQuadro });
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});
