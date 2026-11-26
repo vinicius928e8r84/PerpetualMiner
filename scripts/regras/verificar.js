@@ -37,6 +37,7 @@ const REGRAS = [
   require('./sem-depuracao-nova'),
   require('./sem-codescene-no-repositorio'),
   require('./glossario-so-linguagem'),
+  require('./texto-fora-da-voz'),
 ];
 
 const ARQUIVOS_DA_LINHA_DE_BASE = arquivosDe(REGRAS);
