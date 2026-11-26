@@ -13,7 +13,7 @@ Each phrase is a `.veio-frase` card under a date header (PAI-11: hoje · ontem �
 writes the text word by word with `escreverFraseClicavel` (a `.veio-frase--na-ilha` card: `bg` inside the `surface`
 island): each word is a `role="button"` with `aria-pressed`; clicking it (or Enter/Space) picks or
 unpicks the Palavra, stored as `keywords` (`word@tokenIndex`, `|` between groups) with `autoKeyword: false`. The phrase
-is a single Tab stop and the arrow keys move between its words (`andarEntrePalavras`). The chip below says `palavra:` or `auto:`
+is a single Tab stop and the arrow keys move between its words (`andarEntrePalavras`). The chip below says `termo:` or `auto:`
 (`montarChipDaPalavra`) with × (clear) and + (another group). The Contexto line has the Fonte badge (PAI-29 names;
 an unknown Fonte shows its stored name; `fonteDaFrase` reads `contexto.fonte`, else `streaming`, for both the badge and
 the Fonte filter), Título · Detalhe and the state badge (PAI-08).

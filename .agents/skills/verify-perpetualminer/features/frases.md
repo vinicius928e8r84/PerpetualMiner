@@ -4,8 +4,8 @@ The panel's default area (`painel/painel.html#frases`, "Frases mineradas") lists
 
 ## Sub-features
 
-- `frases-cards` cards grouped under day headings (hoje · ontem · há 3 dias) with the `palavra:`/`auto:` chip and the Contexto line.
-- `frases-word` clicking a word sets the Palavra (chip `palavra:`), and it stays highlighted after reload; × removes it.
+- `frases-cards` cards grouped under day headings (hoje · ontem · há 3 dias) with the `termo:`/`auto:` chip and the Contexto line.
+- `frases-word` clicking a word sets the Palavra (chip `termo:`), and it stays highlighted after reload; × removes it.
 - `frases-search` the `Buscar nas frases` searchbox matches text and Título; × clears.
 - `frases-filters` Fonte, idioma, ordem and `Ocultar enviadas e exportadas` filter the list; `Limpar filtros` restores it.
 - `frases-paging` 10 per page, "1–10 de 24", numbers in pt-BR.
@@ -30,7 +30,7 @@ Preconditions:
 - **Search (`frases-search`).** Run `drive.sh frases-busca painel-frases-filtros.spec -g "a busca acha pelo texto"`. The spec fills the `Buscar nas frases` searchbox with `CALL` (cards `close call`, `call it a day`), then `ted lasso` (Título match), then clicks `Limpar busca`. Observable: card counts 2 → 1 → 4 and the searchbox empty.
 - **Filters (`frases-filters`).** Run `drive.sh frases-filtros painel-frases-filtros.spec -g "filtram a lista"`. Observable: the Fonte/idioma/ordem comboboxes and the `Ocultar enviadas e exportadas` switch change the visible cards.
 - **Paging (`frases-paging`).** Run `drive.sh frases-pag painel-frases.spec -g "10 por página"`. Observable: `1–10 de 24`, ‹ › walk the pages.
-- **Cards and Palavra (`frases-cards`, `frases-word`).** Run `drive.sh frases-cartoes painel-frases.spec -g "cada frase é um cartão"` and `-g "clicar numa palavra grava a Palavra"`. Observable: day headings and, after the click, `palavra:` chip and a highlighted word that survives `page.reload()`.
+- **Cards and Palavra (`frases-cards`, `frases-word`).** Run `drive.sh frases-cartoes painel-frases.spec -g "cada frase é um cartão"` and `-g "clicar numa palavra grava a Palavra"`. Observable: day headings and, after the click, `termo:` chip and a highlighted word that survives `page.reload()`.
 - **Selection and delete (`frases-select`, `frases-delete`).** Run `drive.sh frases-selecao painel-frases-selecao.spec -g "Apagar 1 frase pede confirmação"` and `-g "sem seleção, só"`. Observable: modal `Apagar esta frase?` with Cancelar focused and no mention of "outros computadores" (no account); Cancelar leaves 3 cards; confirming leaves 2 and `frases()` has exactly those 2 texts; no `.veio-toast`.
 - **Edit (`frases-edit`).** `drive.sh frases-editar painel-frases-selecao.spec -g "Editar texto troca o texto"`. Observable: a field replaces the text, Enter saves, the card shows the new text, no toast. `drive.sh frases-editar-palavra painel-frases-editar-texto.spec`. Observable: stored `keywords` is `[]` after the Palavra left the text and the Envio's line has no Palavra; `['sack@9']` when it moved; `idioma` is `Russo` after a Russian text, and the Idioma filter shows the card.
 - **Export (`frases-export`).** `drive.sh frases-exportar painel-frases-selecao.spec -g "Exportar .txt baixa"`. Observable: a download of the chosen phrases; the card shows `Exportada` (never `Enviada ao Anki`), and the stored phrase has `exportadaTxt: true` while its `status` is not `exported` (that value means sent to Anki and is only written by an Envio). The phrase that was not chosen has no `exportadaTxt`.

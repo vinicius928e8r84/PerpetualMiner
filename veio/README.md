@@ -119,7 +119,7 @@ aqui, com o nome da spec, e passa a valer para todas as telas.
 - **Linha de frase:** `.veio-frase`, com a Palavra grifada por
   `escreverFrase(no, texto, palavra)` — uma faixa `kw-bg` de 50% a 94% da linha,
   sem raio — e o chip de `montarChipDaPalavra(palavra, { detectada })`, que diz
-  `palavra:` quando a pessoa a escolheu e `auto:` quando foi detectada. Onde a
+  `termo:` quando a pessoa a escolheu e `auto:` quando foi detectada. Onde a
   pessoa escolhe a Palavra na própria frase, `escreverFraseClicavel(no, trechos)`
   escreve cada palavra como `role="button"` (`aria-pressed`), com a mesma faixa
   na escolhida e uma parada só do Tab por frase; `andarEntrePalavras(evento)` e
@@ -133,7 +133,7 @@ rótulo do × — ele não inventa um.
 
 As três únicas palavras que a base escreve sozinha estão em
 `ROTULOS_DO_PADRAO`, uma constante interna de `componentes.js` (não
-exportada), porque não são estado de tela nenhuma e por isso não têm ID: `palavra:` e `auto:`, travados no glossário (`glossary.md`), e `Detalhes`, o
+exportada), porque não são estado de tela nenhuma e por isso não têm ID: `termo:` e `auto:`, travados no glossário (`glossary.md`: Termo é o que o Cartão ensina), e `Detalhes`, o
 nome que a regra V3 da Voz dá ao recolhido.
 
 ### Tokens que a spec não nomeia

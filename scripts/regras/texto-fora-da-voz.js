@@ -7,13 +7,13 @@ const id = 'texto-fora-da-voz';
 const guarda = 'o texto que o JS põe na tela (textContent, innerText, title, placeholder, ariaLabel, aria-label) vem do catálogo da Voz por `textoDaVoz(\'<ID>\')`, nunca de um literal';
 
 const conserto = 'Ponha o texto no catálogo da Voz (docs/design/voz/catalogo-textos.json) e leia-o com `textoDaVoz(\'<ID>\')`. '
-  + 'Os únicos literais aceitos são `palavra:`, `auto:` e `Detalhes`, que os componentes base de veio/componentes.js escrevem.';
+  + 'Os únicos literais aceitos são `termo:`, `auto:` e `Detalhes`, que os componentes base de veio/componentes.js escrevem.';
 
 const PASTAS = /^(?:popup|painel|bookreader|overlay|lib|veio)\/.+\.js$/;
 
 const seAplica = arquivo => (PASTAS.test(arquivo) || arquivo === 'content.js') && !/(?:^|\/)test_[^/]*$/.test(arquivo);
 
-const LITERAIS_DOS_COMPONENTES = new Set(['palavra:', 'auto:', 'Detalhes']);
+const LITERAIS_DOS_COMPONENTES = new Set(['termo:', 'auto:', 'Detalhes']);
 
 const ATRIBUICAO = /\.(textContent|innerText|title|placeholder|ariaLabel)\s*\+?=(?!=)\s*(['"`])(\p{L}(?:\\[\s\S]|(?!\2)[^\\])*)(\2)?/gu;
 const ATRIBUTO = /\.setAttribute\(\s*(['"`])(aria-label|title|placeholder)\1\s*,\s*(['"`])(\p{L}(?:\\[\s\S]|(?!\3)[^\\])*)(\3)?/gu;

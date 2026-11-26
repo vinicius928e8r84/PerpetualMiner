@@ -385,7 +385,7 @@ test('exportar → importar o mesmo .txt num histórico vazio devolve as mesmas 
     expect(importada.contexto).toEqual(original.contexto);
     expect(importada.idioma).toBe(original.idioma);
   }
-  await expect(cartao(page, 'The harbour : a quiet place.')).toContainText('palavra:');
+  await expect(cartao(page, 'The harbour : a quiet place.')).toContainText('termo:');
   await expect(cartao(page, 'The harbour : a quiet place.').locator('.veio-chip-palavra')).toContainText('harbour');
   await expect(cartao(page, 'Note : this matters a lot.').locator('.veio-chip-palavra')).toHaveCount(0);
   expect(await extensao.frases()).toHaveLength(PARA_EXPORTAR.length);

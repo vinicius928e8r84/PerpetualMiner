@@ -100,7 +100,7 @@ test('uma frase com marcação aparece literal no cartão, sem virar elemento', 
   expect(await page.evaluate(() => window.__injetado)).toBeUndefined();
 });
 
-test('o chip diz palavra: quando foi escolhida e auto: quando foi detectada, e a Palavra fica grifada', async ({ page, extensao }) => {
+test('o chip diz termo: quando foi escolhida e auto: quando foi detectada, e a Palavra fica grifada', async ({ page, extensao }) => {
   await extensao.gravarStorage({
     frases: [
       frase(2, 'She was reluctant to say anything.', { keywords: ['reluctant@4'], autoKeyword: true }),
@@ -110,7 +110,7 @@ test('o chip diz palavra: quando foi escolhida e auto: quando foi detectada, e a
   await abrirFrases(page, extensao);
 
   await expect(cartao(page, 'reluctant').locator('.veio-chip-palavra')).toHaveText(/^auto:\s*reluctant/);
-  await expect(cartao(page, 'close call').locator('.veio-chip-palavra')).toHaveText(/^palavra:\s*close call/);
+  await expect(cartao(page, 'close call').locator('.veio-chip-palavra')).toHaveText(/^termo:\s*close call/);
   await expect(palavra(page, 'close call', 'close')).toHaveAttribute('aria-pressed', 'true');
   await expect(palavra(page, 'close call', 'That')).toHaveAttribute('aria-pressed', 'false');
   const fundo = await palavra(page, 'close call', 'close').evaluate(el => getComputedStyle(el).backgroundImage);
@@ -118,20 +118,20 @@ test('o chip diz palavra: quando foi escolhida e auto: quando foi detectada, e a
   await expect(cartao(page, 'close call')).not.toContainText('keyword');
 });
 
-test('clicar numa palavra grava a Palavra (chip palavra:), e ela continua grifada depois de recarregar', async ({ page, extensao }) => {
+test('clicar numa palavra grava a Palavra (chip termo:), e ela continua grifada depois de recarregar', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: [frase(1, 'He barely made it to the station.')] });
   await abrirFrases(page, extensao);
   await expect(cartao(page, 'barely').locator('.veio-chip-palavra')).toHaveCount(0);
 
   await palavra(page, 'barely', 'barely').click();
 
-  await expect(cartao(page, 'barely').locator('.veio-chip-palavra')).toHaveText(/^palavra:\s*barely/);
+  await expect(cartao(page, 'barely').locator('.veio-chip-palavra')).toHaveText(/^termo:\s*barely/);
   await expect(palavra(page, 'barely', 'barely')).toHaveAttribute('aria-pressed', 'true');
   await expect.poll(async () => (await extensao.frases())[0].keywords).toEqual(['barely@2']);
 
   await page.reload();
   await expect(palavra(page, 'barely', 'barely')).toHaveAttribute('aria-pressed', 'true');
-  await expect(cartao(page, 'barely').locator('.veio-chip-palavra')).toHaveText(/^palavra:\s*barely/);
+  await expect(cartao(page, 'barely').locator('.veio-chip-palavra')).toHaveText(/^termo:\s*barely/);
 
   await palavra(page, 'barely', 'barely').click();
   await expect(palavra(page, 'barely', 'barely')).toHaveAttribute('aria-pressed', 'false');
@@ -139,7 +139,7 @@ test('clicar numa palavra grava a Palavra (chip palavra:), e ela continua grifad
   await expect.poll(async () => (await extensao.frases())[0].keywords).toEqual([]);
 });
 
-test('escolher uma palavra detectada troca auto: por palavra:', async ({ page, extensao }) => {
+test('escolher uma palavra detectada troca auto: por termo:', async ({ page, extensao }) => {
   await extensao.gravarStorage({
     frases: [frase(1, 'She was reluctant to say anything.', { keywords: ['reluctant@4'], autoKeyword: true })],
   });
@@ -147,7 +147,7 @@ test('escolher uma palavra detectada troca auto: por palavra:', async ({ page, e
 
   await palavra(page, 'reluctant', 'anything').click();
 
-  await expect(cartao(page, 'reluctant').locator('.veio-chip-palavra')).toHaveText(/^palavra:\s*reluctant anything/);
+  await expect(cartao(page, 'reluctant').locator('.veio-chip-palavra')).toHaveText(/^termo:\s*reluctant anything/);
   await expect.poll(async () => (await extensao.frases())[0]).toMatchObject({
     keywords: ['reluctant@4', 'anything@10'], autoKeyword: false,
   });
@@ -164,7 +164,7 @@ test('no chip, × remove o Termo e + começa outro termo', async ({ page, extens
 
   await cartao(page, 'cake').getByRole('button', { name: 'Adicionar outro termo' }).click();
   await palavra(page, 'cake', 'eat').click();
-  await expect(cartao(page, 'cake').locator('.veio-chip-palavra')).toHaveText(/^palavra:\s*cake \| eat/);
+  await expect(cartao(page, 'cake').locator('.veio-chip-palavra')).toHaveText(/^termo:\s*cake \| eat/);
   await expect.poll(async () => (await extensao.frases())[0].keywords).toEqual(['cake@8', '|', 'eat@12']);
 
   await cartao(page, 'close call').getByRole('button', { name: 'Remover o termo' }).click();

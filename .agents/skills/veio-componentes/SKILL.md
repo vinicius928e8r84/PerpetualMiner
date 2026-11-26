@@ -48,7 +48,7 @@ The rules the components encode, so a surface does not have to re-decide them:
 - **Copy does not live in the components.** The caller passes the string it already looked up:
   `textoDaVoz('PAI-13.titulo', { n })` — `montarAviso` even refuses to build a closable aviso without the close
   label. The only three words the base writes itself are in `ROTULOS_DO_PADRAO`, because they are
-  no screen's state and so have no ID: `palavra:` and `auto:` (fixed by the glossary) and
+  no screen's state and so have no ID: `termo:` and `auto:` (fixed by the glossary) and
   `Detalhes` (the name rule V3 of the Voice gives the collapsed cause).
 
 The legacy surfaces still carry their own CSS; each redesign step moves the surface it rebuilds
