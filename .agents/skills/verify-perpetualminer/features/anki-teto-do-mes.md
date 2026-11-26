@@ -21,6 +21,6 @@ Preconditions: `doctor.sh` green. The Anki fake answers `POST /custos/teto` and 
 
 ## Gotchas
 
-- The cap is per computer, confirmed by the owner (ADR 0059): the spend is the sum of this computer's costs.
+- The cap is per computer (risk 14 of #138, **not confirmed by the owner**): the spend is the sum of this computer's costs.
 - It counts what the key spends, including the generated image when the text goes through the plan; the plan's own Cartões count 0.
 - The visual references are `test.fixme` (`painel-teto-visual.spec.js`, no PNG) until the owner compares them.
