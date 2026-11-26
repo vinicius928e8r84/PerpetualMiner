@@ -30,14 +30,19 @@ const prazoAteDesligar = inicio => Math.max(1, PRAZO_PARA_DESLIGAR_MS - (Date.no
 
 const anotarOsEstadosDoPonto = page => page.addInitScript(() => {
   window.__estadosDoPonto = [];
+  window.__saudePedidaEm = null;
+  const buscar = window.fetch.bind(window);
+  window.fetch = (entrada, ...resto) => {
+    if (String(entrada?.url ?? entrada).endsWith('/health')) window.__saudePedidaEm ??= performance.now();
+    return buscar(entrada, ...resto);
+  };
   const anotar = () => {
-    const ponto = document.querySelector('.shell-ponto');
-    const estado = ponto?.dataset.estado;
+    const estado = document.querySelector('.shell-ponto')?.dataset.estado;
     if (estado && estado !== window.__estadosDoPonto.at(-1)?.estado) window.__estadosDoPonto.push({ estado, em: performance.now() });
   };
   new MutationObserver(anotar).observe(document, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-estado'] });
 });
-const estadosDoPonto = page => page.evaluate(() => window.__estadosDoPonto);
+const estadosDoPonto = page => page.evaluate(() => ({ estados: window.__estadosDoPonto, saudePedidaEm: window.__saudePedidaEm }));
 
 test('painel: uma porta que aceita e não responde conta como desligada em 3 s, e antes disso é Conectando', async ({ page, extensao, fakes }) => {
   fakes.anki.silenciar();
@@ -48,9 +53,9 @@ test('painel: uma porta que aceita e não responde conta como desligada em 3 s, 
   await expect(pontoDaConexao(page)).toHaveAttribute('data-estado', 'conectando');
   await expect(pontoDaConexao(page)).toHaveAttribute('data-estado', 'desligada', { timeout: PRAZO_PARA_DESLIGAR_MS });
   await expect(faixaF1(page)).toBeVisible();
-  const [conectando, desligada, ...outros] = await estadosDoPonto(page);
-  expect([conectando.estado, desligada.estado, outros]).toEqual(['conectando', 'desligada', []]);
-  expect(desligada.em - conectando.em).toBeGreaterThanOrEqual(METADE_DO_LIMITE_MS);
+  const { estados, saudePedidaEm } = await estadosDoPonto(page);
+  expect(estados.map(e => e.estado)).toEqual(['conectando', 'desligada']);
+  expect(estados[1].em - saudePedidaEm).toBeGreaterThanOrEqual(METADE_DO_LIMITE_MS);
   expect(await lerJaConectou(extensao)).toBe(true);
   await fotografar(page, 'painel-porta-muda-desligada.png');
 });
