@@ -23,7 +23,7 @@
     [1006, 'Тихая гавань проснулась раньше чаек.', 'Página fotografada · p. 42', 'manual', 'Russo', 3],
   ].map(fraseDeExemplo);
 
-  const ESTADO_AUTO_MINER = {
+  const ESTADO_MINERACAO_AUTOMATICA = {
     settings: { en: { enabled: true, dailyLimit: 20 }, ru: { enabled: false, dailyLimit: 15 } },
     daily: { date: new Date().toISOString().slice(0, 10), en: { count: 7 }, ru: { count: 8 } },
   };
@@ -33,8 +33,8 @@
     pm_atalho: { type: 'mouse', button: 3, code: null, altKey: true, ctrlKey: false, shiftKey: false, label: 'Alt+Botão voltar' },
     pm_deleted_ids: [],
     pm_migrated: true,
-    pm_auto_miner_state_view: { ...ESTADO_AUTO_MINER, updatedAt: Date.now() },
-    pm_auto_miner_settings: ESTADO_AUTO_MINER.settings,
+    pm_auto_miner_state_view: { ...ESTADO_MINERACAO_AUTOMATICA, updatedAt: Date.now() },
+    pm_auto_miner_settings: ESTADO_MINERACAO_AUTOMATICA.settings,
     geminiApiKey: '',
     ankiBridgePresets: [],
     pm_boas_vindas: { agoraNao: [], concluida: false },
@@ -98,11 +98,11 @@
 
   function responderMensagem(mensagem) {
     switch (mensagem && mensagem.type) {
-      case 'AUTO_MINER_GET_STATE':
-        return { ok: true, state: copiar(ESTADO_AUTO_MINER) };
-      case 'AUTO_MINER_SET_SETTINGS': {
-        Object.assign(ESTADO_AUTO_MINER.settings, mensagem.settings || {});
-        return { ok: true, state: copiar(ESTADO_AUTO_MINER) };
+      case 'MINERACAO_AUTOMATICA_GET_STATE':
+        return { ok: true, state: copiar(ESTADO_MINERACAO_AUTOMATICA) };
+      case 'MINERACAO_AUTOMATICA_SET_SETTINGS': {
+        Object.assign(ESTADO_MINERACAO_AUTOMATICA.settings, mensagem.settings || {});
+        return { ok: true, state: copiar(ESTADO_MINERACAO_AUTOMATICA) };
       }
       default:
         return { ok: true };

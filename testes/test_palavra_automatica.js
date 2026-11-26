@@ -443,7 +443,7 @@ async function saidaAtual() {
       limite2: await context.autoKeywordsForPhraseByLang({ texto }, 'ru', { limit: 2 }),
     }]);
   }
-  for (const [texto, lang] of AVALIAR) saida.avaliar.push([texto.slice(0, 40), lang, await context.evaluateAutoMinerPhrase(texto, lang)]);
+  for (const [texto, lang] of AVALIAR) saida.avaliar.push([texto.slice(0, 40), lang, await context.evaluateMineracaoAutomaticaPhrase(texto, lang)]);
 
   const semVocabulario = carregarBackground({});
   saida.semVocabulario = await semVocabulario.autoKeywordsForPhraseByLang({ texto: TEXTOS_EN[0] }, 'en', { limit: 2, requireVocabulary: true });

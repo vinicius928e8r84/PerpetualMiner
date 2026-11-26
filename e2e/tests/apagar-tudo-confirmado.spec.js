@@ -17,7 +17,7 @@ async function abrirOApagarTudo(page) {
 
 function minerar(page) {
   return page.evaluate(texto => chrome.runtime.sendMessage({
-    type: 'SALVAR_HISTORICO', texto, origem: 'manual', idioma: 'Inglês', palavras: ['ferry@2'],
+    type: 'MINERAR', texto, origem: 'manual', idioma: 'Inglês', palavras: ['ferry@2'],
   }), NOVA);
 }
 

@@ -28,7 +28,7 @@ async function minerarComOHistoricoTrancado(page, extensao, frases) {
   await expect(cartoes(page)).toHaveCount(frases.length);
   await trancarOHistorico(page);
   const minerada = page.evaluate(texto => chrome.runtime.sendMessage({
-    type: 'SALVAR_HISTORICO', texto, origem: 'manual', idioma: 'Inglês', palavras: ['ferry@2'],
+    type: 'MINERAR', texto, origem: 'manual', idioma: 'Inglês', palavras: ['ferry@2'],
   }), NOVA);
   await expect.poll(() => pedidosNaFilaDaTranca(page)).toBe(1);
   return { minerada };
@@ -120,7 +120,7 @@ test('com Conta e o Histórico trancado, o Painel espera a vez para copiar a mar
   await outra.goto(extensao.url('popup/popup.html'));
   await trancarOHistorico(outra);
   const minerada = outra.evaluate(texto => chrome.runtime.sendMessage({
-    type: 'SALVAR_HISTORICO', texto, origem: 'manual', idioma: 'Inglês', palavras: ['ferry@2'],
+    type: 'MINERAR', texto, origem: 'manual', idioma: 'Inglês', palavras: ['ferry@2'],
   }), NOVA);
   await expect.poll(() => pedidosNaFilaDaTranca(outra)).toBe(1);
 

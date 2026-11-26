@@ -136,7 +136,7 @@ test('a aba de id zero ainda é uma aba', async () => {
 test('salvar no Histórico com Palavras escolhidas: grava a Frase com elas, sem Palavra automática', async () => {
   const servico = abrirOServiceWorker();
   const { retorno, respostas } = await mandar(servico, {
-    type: 'SALVAR_HISTORICO',
+    type: 'MINERAR',
     texto: 'Hello brave world',
     origem: 'web',
     contexto: { fonte: 'web', titulo: 'Pagina' },
@@ -157,7 +157,7 @@ test('salvar no Histórico com Palavras escolhidas: grava a Frase com elas, sem 
 test('salvar no Histórico: o Idioma pedido vale, e sem Palavra e sem leitura do Anki a Frase fica sem Palavra', async () => {
   const servico = abrirOServiceWorker();
   const { respostas } = await mandar(servico, {
-    type: 'SALVAR_HISTORICO', texto: 'Привет мир', origem: 'youtube', idioma: 'Russo', palavras: [],
+    type: 'MINERAR', texto: 'Привет мир', origem: 'youtube', idioma: 'Russo', palavras: [],
   }, DE_UMA_ABA);
   assert.strictEqual(respostas[0].ok, true);
   assert.strictEqual(respostas[0].frase.idioma, 'Russo');
@@ -167,7 +167,7 @@ test('salvar no Histórico: o Idioma pedido vale, e sem Palavra e sem leitura do
 
 test('salvar no Histórico: o painel, que não é uma aba, também é atendido', async () => {
   const servico = abrirOServiceWorker();
-  const { retorno, respostas } = await mandar(servico, { type: 'SALVAR_HISTORICO', texto: 'Hello again', origem: 'manual', palavras: ['again@1'] }, DO_PAINEL);
+  const { retorno, respostas } = await mandar(servico, { type: 'MINERAR', texto: 'Hello again', origem: 'manual', palavras: ['again@1'] }, DO_PAINEL);
   assert.strictEqual(retorno, true);
   assert.strictEqual(respostas[0].ok, true);
   assert.deepStrictEqual(frasesGuardadas(servico).map(guardada => guardada.texto), ['Hello again']);
@@ -176,14 +176,14 @@ test('salvar no Histórico: o painel, que não é uma aba, também é atendido',
 test('salvar no Histórico: o que falha na gravação volta como ok falso com o motivo', async () => {
   const servico = abrirOServiceWorker();
   servico.contexto.chrome.storage.local.get = () => { throw new Error('armazenamento caiu'); };
-  const { retorno, respostas } = await mandar(servico, { type: 'SALVAR_HISTORICO', texto: 'Hello', origem: 'web', palavras: ['hello@0'] }, DE_UMA_ABA);
+  const { retorno, respostas } = await mandar(servico, { type: 'MINERAR', texto: 'Hello', origem: 'web', palavras: ['hello@0'] }, DE_UMA_ABA);
   assert.strictEqual(retorno, true);
   assert.deepStrictEqual(respostas, [{ ok: false, error: 'armazenamento caiu' }]);
 });
 
 test('o estado da Mineração automática: ajustes e diário de hoje', async () => {
   const servico = abrirOServiceWorker();
-  const { retorno, respostas } = await mandar(servico, { type: 'AUTO_MINER_GET_STATE' }, DO_PAINEL);
+  const { retorno, respostas } = await mandar(servico, { type: 'MINERACAO_AUTOMATICA_GET_STATE' }, DO_PAINEL);
   assert.strictEqual(retorno, true);
   assert.strictEqual(respostas.length, 1);
   assert.strictEqual(respostas[0].ok, true);
@@ -193,7 +193,7 @@ test('o estado da Mineração automática: ajustes e diário de hoje', async () 
 
 test('guardar os ajustes da Mineração automática: grava, publica o estado e responde com ele', async () => {
   const servico = abrirOServiceWorker();
-  const { retorno, respostas } = await mandar(servico, { type: 'AUTO_MINER_SET_SETTINGS', settings: { en: { enabled: true, dailyLimit: 5 } } }, DO_PAINEL);
+  const { retorno, respostas } = await mandar(servico, { type: 'MINERACAO_AUTOMATICA_SET_SETTINGS', settings: { en: { enabled: true, dailyLimit: 5 } } }, DO_PAINEL);
   assert.strictEqual(retorno, true);
   assert.strictEqual(respostas[0].ok, true);
   assert.deepStrictEqual(respostas[0].state.settings, { en: { enabled: true, dailyLimit: 5 }, ru: { enabled: false, dailyLimit: 20 } });
@@ -204,7 +204,7 @@ test('guardar os ajustes da Mineração automática: grava, publica o estado e r
 
 test('guardar os ajustes sem ajustes no pedido: grava os que já valiam', async () => {
   const servico = abrirOServiceWorker();
-  const { respostas } = await mandar(servico, { type: 'AUTO_MINER_SET_SETTINGS' }, DO_PAINEL);
+  const { respostas } = await mandar(servico, { type: 'MINERACAO_AUTOMATICA_SET_SETTINGS' }, DO_PAINEL);
   assert.strictEqual(respostas[0].ok, true);
   assert.deepStrictEqual(respostas[0].state.settings, { en: { enabled: false, dailyLimit: 20 }, ru: { enabled: false, dailyLimit: 20 } });
 });
@@ -212,7 +212,7 @@ test('guardar os ajustes sem ajustes no pedido: grava os que já valiam', async 
 test('uma candidata da Mineração automática desligada é pulada, com ok verdadeiro e a ação', async () => {
   const servico = abrirOServiceWorker();
   const { retorno, respostas } = await mandar(servico, {
-    type: 'AUTO_MINER_CANDIDATE', texto: 'We left the farmers in the fields', origem: 'test', contexto: { fonte: 'test', titulo: 'T', detalhe: '' }, lang: 'en',
+    type: 'MINERACAO_AUTOMATICA_CANDIDATE', texto: 'We left the farmers in the fields', origem: 'test', contexto: { fonte: 'test', titulo: 'T', detalhe: '' }, lang: 'en',
   }, DE_UMA_ABA);
   assert.strictEqual(retorno, true);
   assert.strictEqual(respostas.length, 1);
@@ -224,13 +224,13 @@ test('uma candidata da Mineração automática desligada é pulada, com ok verda
 test('uma candidata que quebra a decisão volta como ok falso, ação pular e o motivo', async () => {
   const servico = abrirOServiceWorker();
   servico.contexto.chrome.storage.local.get = () => { throw new Error('leitura caiu'); };
-  const { retorno, respostas } = await mandar(servico, { type: 'AUTO_MINER_CANDIDATE', texto: 'Hello there world', lang: 'en' }, DE_UMA_ABA);
+  const { retorno, respostas } = await mandar(servico, { type: 'MINERACAO_AUTOMATICA_CANDIDATE', texto: 'Hello there world', lang: 'en' }, DE_UMA_ABA);
   assert.strictEqual(retorno, true);
   assert.deepStrictEqual(respostas, [{ ok: false, action: 'skip', reason: 'leitura caiu' }]);
 });
 
 test('um tipo desconhecido, sem tipo ou com nome de propriedade do objeto não é atendido por ninguém', async () => {
-  for (const request of [{ type: 'NAO_EXISTE' }, {}, { type: 'constructor' }, { type: 'toString' }, { type: '__proto__' }, { type: null }, { type: 'salvar_historico' }]) {
+  for (const request of [{ type: 'NAO_EXISTE' }, {}, { type: 'constructor' }, { type: 'toString' }, { type: '__proto__' }, { type: null }, { type: 'minerar' }]) {
     const servico = abrirOServiceWorker();
     const { retorno, respostas } = await mandar(servico, request, DE_UMA_ABA);
     assert.strictEqual(retorno, undefined, JSON.stringify(request));

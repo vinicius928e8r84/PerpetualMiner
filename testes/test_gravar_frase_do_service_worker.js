@@ -71,8 +71,8 @@ function abrirOServiceWorker(armazenamento = {}) {
     nuvem,
     frases: () => copiaSimples(armazenamento.frases || []),
     clicarNoMenu: (info, aba) => ouvintes.menu(info, aba),
-    salvarNoHistorico: pedido => pedirPorMensagem('SALVAR_HISTORICO', pedido),
-    candidata: pedido => pedirPorMensagem('AUTO_MINER_CANDIDATE', pedido),
+    minerar: pedido => pedirPorMensagem('MINERAR', pedido),
+    candidata: pedido => pedirPorMensagem('MINERACAO_AUTOMATICA_CANDIDATE', pedido),
   };
 }
 
@@ -120,7 +120,7 @@ test('o menu de contexto ignora outro item e uma seleção vazia', async () => {
 
 test('salvar no Histórico sem Palavras escolhidas, em Inglês, grava a Palavra automática', async () => {
   const servico = abrirOServiceWorker(comVocabularioDoIngles());
-  const resposta = await servico.salvarNoHistorico({ texto: FRASE_COM_PALAVRA_NOVA, origem: 'netflix', contexto: { fonte: 'netflix', titulo: 'Série', detalhe: '' } });
+  const resposta = await servico.minerar({ texto: FRASE_COM_PALAVRA_NOVA, origem: 'netflix', contexto: { fonte: 'netflix', titulo: 'Série', detalhe: '' } });
 
   assert.strictEqual(resposta.ok, true);
   assert.strictEqual(resposta.frase.idioma, 'Inglês');
@@ -131,7 +131,7 @@ test('salvar no Histórico sem Palavras escolhidas, em Inglês, grava a Palavra 
 
 test('salvar no Histórico com a lista de Palavras vazia não escolhe Palavra automática', async () => {
   const servico = abrirOServiceWorker(comVocabularioDoIngles());
-  const resposta = await servico.salvarNoHistorico({ texto: FRASE_COM_PALAVRA_NOVA, origem: 'netflix', palavras: [] });
+  const resposta = await servico.minerar({ texto: FRASE_COM_PALAVRA_NOVA, origem: 'netflix', palavras: [] });
 
   assert.strictEqual(resposta.ok, true);
   assert.strictEqual(resposta.frase.keywords, undefined);
@@ -140,14 +140,14 @@ test('salvar no Histórico com a lista de Palavras vazia não escolhe Palavra au
 
 test('salvar no Histórico com Palavras escolhidas mantém as escolhidas, com autoKeyword falso', async () => {
   const servico = abrirOServiceWorker(comVocabularioDoIngles());
-  const resposta = await servico.salvarNoHistorico({ texto: FRASE_COM_PALAVRA_NOVA, origem: 'netflix', palavras: ['drought@8'] });
+  const resposta = await servico.minerar({ texto: FRASE_COM_PALAVRA_NOVA, origem: 'netflix', palavras: ['drought@8'] });
 
   assert.deepStrictEqual([resposta.frase.keywords, resposta.frase.autoKeyword], [['drought@8'], false]);
 });
 
 test('salvar no Histórico em russo, sem Palavras escolhidas, não grava Palavra', async () => {
   const servico = abrirOServiceWorker({ pm_auto_keyword_vocab_ru: vocabularioDoRusso() });
-  const resposta = await servico.salvarNoHistorico({ texto: 'Я улыбаюсь', origem: 'youtube', idioma: 'Russo' });
+  const resposta = await servico.minerar({ texto: 'Я улыбаюсь', origem: 'youtube', idioma: 'Russo' });
 
   assert.strictEqual(resposta.ok, true);
   assert.strictEqual(resposta.frase.keywords, undefined);
@@ -156,7 +156,7 @@ test('salvar no Histórico em russo, sem Palavras escolhidas, não grava Palavra
 
 test('a Palavra automática só vale para o Idioma Inglês, mesmo que o texto pareça inglês', async () => {
   const servico = abrirOServiceWorker(comVocabularioDoIngles());
-  const resposta = await servico.salvarNoHistorico({ texto: FRASE_COM_PALAVRA_NOVA, origem: 'youtube', idioma: 'Russo' });
+  const resposta = await servico.minerar({ texto: FRASE_COM_PALAVRA_NOVA, origem: 'youtube', idioma: 'Russo' });
 
   assert.strictEqual(resposta.ok, true);
   assert.strictEqual(resposta.frase.keywords, undefined);
@@ -164,7 +164,7 @@ test('a Palavra automática só vale para o Idioma Inglês, mesmo que o texto pa
 
 test('salvar no Histórico sem leitura do Anki grava a Frase sem Palavra', async () => {
   const servico = abrirOServiceWorker();
-  const resposta = await servico.salvarNoHistorico({ texto: FRASE_COM_PALAVRA_NOVA, origem: 'netflix' });
+  const resposta = await servico.minerar({ texto: FRASE_COM_PALAVRA_NOVA, origem: 'netflix' });
 
   assert.strictEqual(resposta.ok, true);
   assert.strictEqual(resposta.frase.keywords, undefined);
@@ -173,11 +173,11 @@ test('salvar no Histórico sem leitura do Anki grava a Frase sem Palavra', async
 
 test('a Frase salva vai para a Nuvem, e o pedido sem Nuvem não', async () => {
   const servico = abrirOServiceWorker();
-  const comNuvem = await servico.salvarNoHistorico({ texto: 'Hello brave world', origem: 'web', palavras: ['brave@1'] });
+  const comNuvem = await servico.minerar({ texto: 'Hello brave world', origem: 'web', palavras: ['brave@1'] });
   await esperar();
   assert.deepStrictEqual(servico.nuvem.gravadas, [copiaSimples(comNuvem.frase)]);
 
-  await servico.salvarNoHistorico({ texto: 'Hello again world', origem: 'web', palavras: ['again@1'], semNuvem: true });
+  await servico.minerar({ texto: 'Hello again world', origem: 'web', palavras: ['again@1'], semNuvem: true });
   await esperar();
   assert.strictEqual(servico.nuvem.gravadas.length, 1);
   assert.strictEqual(servico.frases().length, 2);
@@ -186,7 +186,7 @@ test('a Frase salva vai para a Nuvem, e o pedido sem Nuvem não', async () => {
 test('a Nuvem que falha não impede a Frase de ficar no Histórico', async () => {
   const servico = abrirOServiceWorker();
   servico.nuvem.falha = new Error('nuvem fora');
-  const resposta = await servico.salvarNoHistorico({ texto: 'Hello brave world', origem: 'web', palavras: ['brave@1'] });
+  const resposta = await servico.minerar({ texto: 'Hello brave world', origem: 'web', palavras: ['brave@1'] });
   await esperar();
 
   assert.strictEqual(resposta.ok, true);
@@ -195,8 +195,8 @@ test('a Nuvem que falha não impede a Frase de ficar no Histórico', async () =>
 
 test('as Frases salvas em seguida ganham ids diferentes, e a primeira fica com a data de hoje', async () => {
   const servico = abrirOServiceWorker();
-  await servico.salvarNoHistorico({ texto: 'Hello brave world', origem: 'web', palavras: ['brave@1'], semNuvem: true });
-  await servico.salvarNoHistorico({ texto: 'Hello again world', origem: 'web', palavras: ['again@1'], semNuvem: true });
+  await servico.minerar({ texto: 'Hello brave world', origem: 'web', palavras: ['brave@1'], semNuvem: true });
+  await servico.minerar({ texto: 'Hello again world', origem: 'web', palavras: ['again@1'], semNuvem: true });
 
   const frases = servico.frases();
   assert.strictEqual(new Set(frases.map(frase => frase.id)).size, 2);

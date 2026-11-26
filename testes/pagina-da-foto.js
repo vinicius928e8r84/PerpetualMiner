@@ -258,7 +258,7 @@ function montarContexto({ documento, veio, chrome, registro, gemini, gravar }) {
     PerpetualMiner: {
       textoDaVoz,
       Mineracao: {
-        gravar: pedido => {
+        minerar: pedido => {
           registro.gravacoes.push(copia(pedido));
           return gravar(pedido);
         },

@@ -82,9 +82,9 @@ async function aMesmaLegendaDuasVezesEmParaleloGravaUmaSoVez() {
   const sw = serviceWorker(area);
 
   const portao = segurarAProximaLeitura();
-  const primeira = sw.handleAutoMinerCandidate(legenda);
+  const primeira = sw.handleMineracaoAutomaticaCandidate(legenda);
   await portao.leu;
-  const segunda = sw.handleAutoMinerCandidate({ ...legenda, texto: '  The ferry   left the HARBOUR. ' });
+  const segunda = sw.handleMineracaoAutomaticaCandidate({ ...legenda, texto: '  The ferry   left the HARBOUR. ' });
   await new Promise(resolve => setTimeout(resolve, 20));
   portao.soltar();
   const resultados = await Promise.all([primeira, segunda]);
@@ -103,9 +103,9 @@ async function aMesmaLegendaEmRussoDuasVezesEmParaleloGravaUmaSoVez() {
   const russa = { texto: '\u042f \u0443\u043b\u044b\u0431\u0430\u044e\u0441\u044c', origem: 'prime', contexto: null, lang: 'ru' };
 
   const portao = segurarAProximaLeitura();
-  const primeira = sw.handleAutoMinerCandidate(russa);
+  const primeira = sw.handleMineracaoAutomaticaCandidate(russa);
   await portao.leu;
-  const segunda = sw.handleAutoMinerCandidate(russa);
+  const segunda = sw.handleMineracaoAutomaticaCandidate(russa);
   await new Promise(resolve => setTimeout(resolve, 20));
   portao.soltar();
   await Promise.all([primeira, segunda]);
@@ -119,7 +119,7 @@ async function umaLegendaQueJaEstaNoHistoricoNaoEntraDeNovo() {
   const { area } = armazenamentoComPortao(dados);
   const sw = serviceWorker(area);
 
-  const resultado = await sw.handleAutoMinerCandidate(legenda);
+  const resultado = await sw.handleMineracaoAutomaticaCandidate(legenda);
 
   assert.strictEqual(resultado.action, 'skip');
   assert.strictEqual(resultado.reason, 'duplicate');
