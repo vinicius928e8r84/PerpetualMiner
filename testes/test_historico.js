@@ -103,15 +103,54 @@ async function aMarcaEnviadaDuranteUmSalvamentoDeFotoNaoApagaAFotoNemAPalavra() 
   assert.strictEqual(c.dados.frases[0].status, undefined, 'sem a marca');
 }
 
-async function aMarcaExportadaMudaSoAMarcaDasPedidas() {
-  const enviada = { ...fraseDoPainel, status: 'exported' };
-  const dados = { frases: [outraFrase, enviada] };
+async function aMarcaAposentadaDeExportadaSaiDeTodasEMaisNada() {
+  const enviada = { ...fraseDoPainel, status: 'exported', keywords: ['barely@2'] };
+  const intacta = { ...outraFrase, id: 3, texto: 'Break a leg.' };
+  const dados = { frases: [intacta, { ...outraFrase, exportadaTxt: true }, { ...enviada, exportadaTxt: true }] };
   const historico = historicoSobre(dados);
 
-  const exportadas = await historico.marcarExportadas([1]);
+  const quantas = await historico.esquecerExportadas();
 
-  assert.deepStrictEqual(dados.frases, [outraFrase, { ...enviada, exportadaTxt: true }], 'Exportada não tira Enviada ao Anki');
-  assert.deepStrictEqual(exportadas, [dados.frases[1]]);
+  assert.strictEqual(quantas, 2, 'conta as Frases que tinham a marca');
+  assert.deepStrictEqual(dados.frases, [intacta, outraFrase, enviada], 'a marca sai; a Enviada ao Anki e as Palavras continuam');
+}
+
+async function semFraseMarcadaAMigracaoNaoMudaNada() {
+  const dados = { frases: [fraseDoPainel, outraFrase] };
+
+  assert.strictEqual(await historicoSobre(dados).esquecerExportadas(), 0);
+  assert.deepStrictEqual(dados.frases, [fraseDoPainel, outraFrase]);
+}
+
+async function aMarcaAposentadaVindaDaNuvemNaoVoltaAoLocalESaiDaNuvem() {
+  const { area, dados } = cenario([fraseDoPainel]);
+  const gravadas = [];
+  const daNuvem = { ...fraseDoPainel, exportadaTxt: true };
+  const nuvem = {
+    uid: 'uid-teste',
+    listarFrases: async () => [daNuvem],
+    gravarFrase: async (frase, campos) => { gravadas.push([frase, campos]); },
+    gravarFrases: async () => {},
+    apagarFrases: async () => {},
+    lerTombstones: async () => new Map(),
+    gravarTombstones: async () => {},
+  };
+
+  const carregado = await sincronizacaoSobre(area, nuvem).carregar();
+  await carregado.concluida;
+
+  assert.deepStrictEqual(carregado.frases, [fraseDoPainel], 'a Frase chega à lista sem a marca');
+  assert.deepStrictEqual(dados.frases, [fraseDoPainel], 'e a marca não é aplicada ao local');
+  assert.deepStrictEqual(gravadas, [[fraseDoPainel, ['exportadaTxt']]], 'e a nuvem perde só o campo da marca');
+}
+
+async function aoAtualizarAExtensaoAsFrasesJaExportadasPerdemAMarca() {
+  const c = cenario([{ ...fraseDoPainel, exportadaTxt: true }, outraFrase]);
+
+  await c.sw.aoInstalar({ reason: 'update', previousVersion: '4.9' });
+  await deixarCorrer();
+
+  assert.deepStrictEqual(c.dados.frases, [fraseDoPainel, outraFrase]);
 }
 
 async function aFraseDaFotoSalvaEnquantoOCarregarSobeAsOrfasNaoSome() {
@@ -167,7 +206,10 @@ async function duasFrasesNoMesmoMilissegundoGanhamIdsDiferentesEFicamAsDuas() {
     editarVariasMudaSoAsFrasesEOsCamposPedidos,
     oContextoDeVariasEditadoDuranteUmSalvamentoDeFotoNaoApagaAFoto,
     aMarcaEnviadaDuranteUmSalvamentoDeFotoNaoApagaAFotoNemAPalavra,
-    aMarcaExportadaMudaSoAMarcaDasPedidas,
+    aMarcaAposentadaDeExportadaSaiDeTodasEMaisNada,
+    semFraseMarcadaAMigracaoNaoMudaNada,
+    aMarcaAposentadaVindaDaNuvemNaoVoltaAoLocalESaiDaNuvem,
+    aoAtualizarAExtensaoAsFrasesJaExportadasPerdemAMarca,
     aFraseDaFotoSalvaEnquantoOCarregarSobeAsOrfasNaoSome,
     aFraseDaFotoSalvaEnquantoOCarregarTiraAsApagadasNaoSome,
     duasFrasesNoMesmoMilissegundoGanhamIdsDiferentesEFicamAsDuas,

@@ -9,7 +9,7 @@ description: Use when a change touches how `frases` is read or written (lib/hist
 
 **Atomicidade do Histórico:** quando várias operações mexem em `frases` ao mesmo tempo (o service worker e as páginas da extensão), o `frases` que fica é o que alguma ordem em série das mesmas operações daria, cada uma inteira e sozinha.
 
-**O dano quando quebra:** uma Frase minerada some, uma Palavra/marca Enviada/Exportada some, uma Frase apagada volta, a mesma legenda entra duas vezes, ou duas Frases ganham o mesmo id (e o tombstone de uma apaga a outra).
+**O dano quando quebra:** uma Frase minerada some, uma Palavra/marca Enviada some, uma Frase apagada volta, a mesma legenda entra duas vezes, ou duas Frases ganham o mesmo id (e o tombstone de uma apaga a outra).
 
 ## Como funciona
 

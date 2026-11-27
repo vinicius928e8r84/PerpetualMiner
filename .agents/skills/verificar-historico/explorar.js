@@ -166,7 +166,7 @@ async function executar(cenario, escolhas) {
 const projetar = (f, iniciais) => {
   const p = { texto: f.texto };
   if (iniciais.has(String(f.id))) p.id = String(f.id);
-  for (const campo of ['keywords', 'status', 'exportadaTxt']) if (f[campo] !== undefined) p[campo] = f[campo];
+  for (const campo of ['keywords', 'status']) if (f[campo] !== undefined) p[campo] = f[campo];
   return p;
 };
 const chave = lista => lista.map(f => JSON.stringify(f)).sort().join('\n');

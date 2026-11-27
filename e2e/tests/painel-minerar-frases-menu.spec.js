@@ -114,7 +114,7 @@ test('Arquivo .txt abre o modal na aba certa, com a área de escolher o arquivo'
   await expect(aba(page, 'Arquivo .txt')).toBeChecked();
   await expect(modal(page)).toContainText('Escolha um arquivo .txt');
   await expect(modal(page)).toContainText(
-    'Uma frase por linha. O .txt exportado daqui volta com o contexto. Frases que já estão no histórico ficam de fora.');
+    'Uma frase por linha. Frases que já estão no histórico ficam de fora.');
   await expect(modal(page).getByRole('button', { name: 'Escolher arquivo' })).toBeFocused();
   await expect(modal(page).getByRole('button', { name: 'Cancelar' })).toBeVisible();
 });
