@@ -49,7 +49,9 @@ function serviceWorker(area) {
       storage: { local: {
         get: (pedido, devolver) => { area.get(pedido).then(devolver); },
         set: (valores, pronto) => { area.set(valores).then(() => pronto?.()); },
+        remove: async () => {},
       } },
+      contextMenus: { removeAll: pronto => pronto() },
     }),
   };
   contexto.importScripts = (...arquivos) => arquivos.forEach(arquivo =>

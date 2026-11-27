@@ -6,8 +6,8 @@ const fs = require('fs');
 const { lerHtml, acharTodos, canonicaDoFalso, impressaoDigital } = require('./arvore_do_html.js');
 const { prepararAPagina } = require('./painel_de_mentira.js');
 
-const IMPRESSAO_DA_PAGINA = 'aef21fc0f329462ae27f7caf702faab15db98dd970335f85b1e9aa6e7799150b';
-const IMPRESSAO_DA_AREA_DE_FRASES = 'ef7a4b69db36ee3162c61b7e324033f79d79b6efff1a357da7aedcfc87b3a6be';
+const IMPRESSAO_DA_PAGINA = '8de5a2a6dd157402cda07b621039e058607e56acf999194187593428b60b7c16';
+const IMPRESSAO_DA_AREA_DE_FRASES = '4516bb6201ac8714705853e639fe3ea490f8f2609a71f9738718eeec4842e15d';
 const IMPRESSAO_DA_AREA_DO_ANKI = 'e3dce991cf5fb66076b4da6138b6de7de45f7abc689fe421f3d9bb9e777594ba';
 const IMPRESSAO_DA_AREA_DE_CONFIGURACOES = 'f93fd4b4eb4f91e69366935979e95a97a28cc8ea38a11ce5181aca9610279153';
 const IMPRESSAO_DOS_MODAIS = {

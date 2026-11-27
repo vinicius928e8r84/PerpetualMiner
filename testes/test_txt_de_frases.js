@@ -9,7 +9,6 @@ function carregarOFormato() {
   const { TxtDeFrases } = globalThis.PerpetualMiner;
   return {
     ler: linha => JSON.parse(JSON.stringify(TxtDeFrases.ler(linha))),
-    escrever: (frase, palavras) => TxtDeFrases.escrever(frase, palavras),
     escreverParaOAnki: (frase, palavras) => TxtDeFrases.escreverParaOAnki(frase, palavras),
   };
 }
@@ -42,38 +41,20 @@ const LIDAS = [
 
 for (const [nome, linha, esperado] of LIDAS) assert.deepStrictEqual(formato.ler(linha), esperado, nome);
 
-const ESCRITAS = [
-  ['sem Palavra, o texto e o Contexto com as três partes', frase('Break a leg.', DARK), undefined, 'Break a leg. [Contexto: netflix - Dark - S01E02]', 'Break a leg. [Contexto: netflix - Dark - S01E02]'],
-  ['partes que faltam ou não valem saem como Desconhecido', frase('Hi there.', { fonte: 'netflix', titulo: ' ', detalhe: 'undefined' }), undefined, 'Hi there. [Contexto: netflix - Desconhecido - Desconhecido]', 'Hi there. [Contexto: netflix - Desconhecido - Desconhecido]'],
-  ['sem Contexto nenhum, a Fonte vem do streaming da frase antiga', { id: 1, texto: 'Hi there.', streaming: 'youtube' }, undefined, 'Hi there. [Contexto: youtube - Desconhecido - Desconhecido]', 'Hi there. [Contexto: youtube - Desconhecido - Desconhecido]'],
-  ['a Palavra vai antes, sem a posição e com os grupos separados por “ | ”', frase('He got cold feet before the wedding.', DARK), ['cold@4', 'feet@6', '|', 'wedding@12'], 'cold feet | wedding : He got cold feet before the wedding. [Contexto: netflix - Dark - S01E02]', 'cold feet | wedding : He got cold feet before the wedding. [Contexto: netflix - Dark - S01E02]'],
-  ['o grupo que já não está no texto sai do .txt, mas fica na linha do Anki', frase('He got cold feet before the party.', DARK), ['cold@4', 'feet@6', '|', 'wedding@12'], 'cold feet : He got cold feet before the party. [Contexto: netflix - Dark - S01E02]', 'cold feet | wedding : He got cold feet before the party. [Contexto: netflix - Dark - S01E02]'],
-  ['as quebras e os espaços do texto viram um espaço só', frase('Break   a\nleg.', DARK), undefined, 'Break a leg. [Contexto: netflix - Dark - S01E02]', 'Break a leg. [Contexto: netflix - Dark - S01E02]'],
-  ['um texto com “ : ” e sem Palavra leva o prefixo vazio no .txt, e nenhum na linha do Anki', frase('Note : this matters a lot.', DARK), undefined, ': Note : this matters a lot. [Contexto: netflix - Dark - S01E02]', 'Note : this matters a lot. [Contexto: netflix - Dark - S01E02]'],
-  ['um texto que começa com “:” e sem Palavra leva o prefixo vazio no .txt', frase(':) is a smile', DARK), undefined, ': :) is a smile [Contexto: netflix - Dark - S01E02]', ':) is a smile [Contexto: netflix - Dark - S01E02]'],
+const ESCRITAS_PARA_O_ANKI = [
+  ['sem Palavra, o texto e o Contexto com as três partes', frase('Break a leg.', DARK), undefined, 'Break a leg. [Contexto: netflix - Dark - S01E02]'],
+  ['partes que faltam ou não valem saem como Desconhecido', frase('Hi there.', { fonte: 'netflix', titulo: ' ', detalhe: 'undefined' }), undefined, 'Hi there. [Contexto: netflix - Desconhecido - Desconhecido]'],
+  ['sem Contexto nenhum, a Fonte vem do streaming da frase antiga', { id: 1, texto: 'Hi there.', streaming: 'youtube' }, undefined, 'Hi there. [Contexto: youtube - Desconhecido - Desconhecido]'],
+  ['a Palavra vai antes, sem a posição e com os grupos separados por “ | ”', frase('He got cold feet before the wedding.', DARK), ['cold@4', 'feet@6', '|', 'wedding@12'], 'cold feet | wedding : He got cold feet before the wedding. [Contexto: netflix - Dark - S01E02]'],
+  ['o grupo que já não está no texto fica na linha do Anki', frase('He got cold feet before the party.', DARK), ['cold@4', 'feet@6', '|', 'wedding@12'], 'cold feet | wedding : He got cold feet before the party. [Contexto: netflix - Dark - S01E02]'],
+  ['as quebras e os espaços do texto viram um espaço só', frase('Break   a\nleg.', DARK), undefined, 'Break a leg. [Contexto: netflix - Dark - S01E02]'],
+  ['um texto com “ : ” e sem Palavra não leva prefixo na linha do Anki', frase('Note : this matters a lot.', DARK), undefined, 'Note : this matters a lot. [Contexto: netflix - Dark - S01E02]'],
+  ['um texto que começa com “:” e sem Palavra não leva prefixo na linha do Anki', frase(':) is a smile', DARK), undefined, ':) is a smile [Contexto: netflix - Dark - S01E02]'],
 ];
 
-ESCRITAS.forEach(([nome, quem, palavras, noTxt, noAnki], i) => {
+ESCRITAS_PARA_O_ANKI.forEach(([nome, quem, palavras, noAnki], i) => {
   const dela = { ...quem, id: `escrita-${i}` };
-  assert.strictEqual(formato.escrever(dela, palavras), noTxt, `.txt: ${nome}`);
   assert.strictEqual(formato.escreverParaOAnki(dela, palavras), noAnki, `Anki: ${nome}`);
-});
-
-const IDA_E_VOLTA = [
-  [frase('The harbour : a quiet place.', { fonte: 'livro', titulo: 'Dark - Season 1', detalhe: 'cap. 3' }), ['harbour@2']],
-  [frase('Note : this matters a lot.', { fonte: 'netflix', titulo: 'Dark', detalhe: '' }), undefined],
-  [frase('He got cold feet before the wedding.', { fonte: 'youtube', titulo: 'Vsauce', detalhe: 'canal' }), ['cold@4', 'feet@6', '|', 'wedding@12']],
-  [frase('Attention :', DARK), undefined],
-  [frase('Он так и не сказал спасибо.', { fonte: 'web', titulo: '', detalhe: '' }), ['спасибо@10']],
-];
-
-IDA_E_VOLTA.forEach(([original, palavras], i) => {
-  const dela = { ...original, id: `volta-${i}` };
-  const lida = formato.ler(formato.escrever(dela, palavras));
-  assert.strictEqual(lida.texto, original.texto, `ida e volta: o texto de “${original.texto}”`);
-  assert.deepStrictEqual(lida.contexto, original.contexto, `ida e volta: o Contexto de “${original.texto}”`);
-  const esperadas = (palavras || []).filter(item => item === '|' || original.texto.includes(item.replace(/@\d+$/, '')));
-  assert.deepStrictEqual(lida.palavras, palavras ? esperadas : [], `ida e volta: as Palavras de “${original.texto}”`);
 });
 
 console.log('formato do .txt tests passed');

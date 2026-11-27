@@ -11,7 +11,7 @@
     ['PAI-20.umaFrase'], ['PAI-12.confirmar'],
     ['PAI-04.acao'], ['PAI-10.todasAsFontes'], ['PAI-10.todosOsIdiomas'], ['POP-03'],
     ['POP-06'], ['POP-10'], ['PAI-09'], ['PAI-06', { n: 3 }],
-    ['PAI-08.enviada'], ['PAI-08.exportada'], ['BRG-01.ligada'], ['BRG-01.desligada'],
+    ['PAI-08'], ['BRG-01.ligada'], ['BRG-01.desligada'],
     ['FOT-19.lendo'],
     ['GLB-02.semAtalho'],
     ['ADD-11.colar'], ['ADD-11.arquivo'], ['ADD-11.foto'],
@@ -216,8 +216,7 @@
   function selosDeEstado() {
     const ponto = () => el('span', { class: 'veio-selo__ponto' });
     return [
-      selo('veio-selo--ok', iconeVeio('certo'), textoDaVoz('PAI-08.enviada')),
-      selo('veio-selo--info', iconeVeio('arquivo'), textoDaVoz('PAI-08.exportada')),
+      selo('veio-selo--ok', iconeVeio('certo'), textoDaVoz('PAI-08')),
       selo('veio-selo--ok', ponto(), textoDaVoz('BRG-01.ligada')),
       selo('veio-selo--erro', ponto(), textoDaVoz('BRG-01.desligada')),
       selo('veio-selo--lendo', ponto(), textoDaVoz('FOT-19.lendo')),
@@ -372,7 +371,7 @@
       el('span', { texto: titulo }),
       detalhe ? el('span', { texto: `· ${detalhe}` }) : null,
       montarChipDaPalavra(palavra, { detectada }),
-      enviada ? selo('veio-selo--ok', iconeVeio('certo'), textoDaVoz('PAI-08.enviada')) : null);
+      enviada ? selo('veio-selo--ok', iconeVeio('certo'), textoDaVoz('PAI-08')) : null);
 
     const acoes = el('div', { class: 'veio-frase__acoes' },
       botaoDeIcone(ABRIR_O_CONTEXTO),

@@ -89,13 +89,13 @@
     "estado": "Selo da frase",
     "categoria": "status",
     "hoje": "✓ No Anki (também p/ .txt)",
-    "nota": "Dois selos distintos (glossário). A lógica certa é bug (#9)."
+    "nota": "Só a Enviada ao Anki tem selo: o selo Exportada saiu com o recurso (#777)."
   },
   "PAI-09": {
     "estado": "Filtro de enviadas",
     "categoria": "status",
     "hoje": "Esconder Exportadas",
-    "nota": "Diz o que o filtro faz hoje."
+    "nota": "Diz o que o filtro faz hoje: esconde as Frases já Enviadas ao Anki."
   },
   "PAI-10": {
     "estado": "Filtros",
@@ -158,7 +158,8 @@
     "estado": "Exportou .txt",
     "categoria": "sucesso",
     "hoje": "12 frases exportadas!",
-    "nota": ""
+    "marca": "some",
+    "nota": "O recurso de exportar .txt saiu do produto (#777)."
   },
   "PAI-20": {
     "estado": "Modal de contexto (título)",

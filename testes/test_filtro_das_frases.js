@@ -6,7 +6,7 @@ const test = require('node:test');
 const vm = require('vm');
 
 const ESTADO_DA_PAGINA = [
-  'fonte', 'idioma', 'esconderEnviadasEExportadas', 'busca', 'ordem',
+  'fonte', 'idioma', 'esconderEnviadas', 'busca', 'ordem',
 ];
 
 function aberto() {
@@ -38,7 +38,7 @@ function idsVisiveis({ frases, filtros }) {
     Object.assign(FrasesFiltros.criterio, {
       fonte: entrada.filtros.fonte ?? 'all',
       idioma: entrada.filtros.idioma ?? 'all',
-      esconderEnviadasEExportadas: entrada.filtros.esconder ?? false,
+      esconderEnviadas: entrada.filtros.esconder ?? false,
       busca: entrada.filtros.busca ?? '',
       ordem: entrada.filtros.ordem ?? 'novas',
     });
@@ -65,7 +65,7 @@ const CASOS = [
   { nome: 'fonte que nenhuma frase tem: lista vazia', filtros: { fonte: 'pdf' }, esperado: [] },
   { nome: 'idioma Russo sozinho', filtros: { idioma: 'Russo' }, esperado: [6, 2] },
   { nome: 'idioma Inglês sozinho: a frase sem idioma conta como Inglês', filtros: { idioma: 'Inglês' }, esperado: [5, 4, 3, 1] },
-  { nome: 'esconder: tira a enviada ao Anki e a exportada em .txt', filtros: { esconder: true }, esperado: [5, 2, 1] },
+  { nome: 'esconder: tira só a enviada ao Anki; a marca antiga de exportada em .txt já não conta', filtros: { esconder: true }, esperado: [5, 4, 2, 1] },
   { nome: 'busca no texto sem diferença de maiúscula', filtros: { busca: 'HELLO' }, esperado: [5, 3] },
   { nome: 'busca no título do contexto', filtros: { busca: 'gatos' }, esperado: [5, 1] },
   { nome: 'busca com espaços nas pontas: o termo é aparado', filtros: { busca: '  dog  ' }, esperado: [4] },
@@ -75,7 +75,7 @@ const CASOS = [
   { nome: 'fonte e idioma juntos', filtros: { fonte: 'youtube', idioma: 'Russo' }, esperado: [6] },
   { nome: 'idioma, esconder e busca juntos', filtros: { idioma: 'Inglês', esconder: true, busca: 'hello' }, esperado: [5] },
   { nome: 'todos os filtros juntos, na ordem das mais nova', filtros: { fonte: 'web', idioma: 'Inglês', esconder: true, busca: 'hello' }, esperado: [5] },
-  { nome: 'filtros juntos na ordem das mais antigas', filtros: { idioma: 'Inglês', esconder: true, ordem: 'antigas' }, esperado: [1, 5] },
+  { nome: 'filtros juntos na ordem das mais antigas', filtros: { idioma: 'Inglês', esconder: true, ordem: 'antigas' }, esperado: [1, 4, 5] },
   { nome: 'fonte e busca juntos na ordem das mais antigas', filtros: { fonte: 'youtube', busca: 'gatos', ordem: 'antigas' }, esperado: [1] },
 ];
 
@@ -125,7 +125,7 @@ test('o módulo puro filtra e ordena sem tocar na lista que recebe', () => {
   for (const arquivo of ['lib/idioma.js', 'lib/contexto.js', 'lib/filtro-das-frases.js']) vm.runInContext(fs.readFileSync(arquivo, 'utf8'), contexto);
   const { filtrarFrases } = contexto.PerpetualMiner.FiltroDasFrases;
   const recebidas = FRASES.map(frase => ({ ...frase }));
-  const filtros = { fonte: 'all', idioma: 'Inglês', esconderEnviadasEExportadas: true, busca: 'hello', ordem: 'antigas' };
+  const filtros = { fonte: 'all', idioma: 'Inglês', esconderEnviadas: true, busca: 'hello', ordem: 'antigas' };
   assert.deepStrictEqual(filtrarFrases(recebidas, filtros).map(frase => frase.id), [5]);
   assert.deepStrictEqual(recebidas.map(frase => frase.id), [1, 2, 3, 4, 5, 6]);
 });

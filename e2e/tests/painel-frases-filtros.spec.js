@@ -20,9 +20,9 @@ const cartoes = page => lista(page).locator('.veio-frase');
 const cartao = (page, texto) => cartoes(page).filter({ hasText: texto });
 const busca = page => page.getByRole('searchbox', { name: 'Buscar nas frases' });
 const filtro = (page, nome) => page.getByRole('combobox', { name: nome, exact: true });
-const ocultar = page => page.getByRole('switch', { name: 'Ocultar enviadas e exportadas' });
+const ocultar = page => page.getByRole('switch', { name: 'Ocultar enviadas' });
 async function ligarOcultar(page) {
-  await page.locator('.veio-toggle').getByText('Ocultar enviadas e exportadas').click();
+  await page.locator('.veio-toggle').getByText('Ocultar enviadas', { exact: true }).click();
   await expect(ocultar(page)).toBeChecked();
 }
 const palavra = (page, textoDaFrase, nome) =>
@@ -75,7 +75,7 @@ test('busca sem resultado mostra PAI-04 com Limpar busca, e Limpar filtros só s
 });
 
 // Exceção de teste: sem-estado-guardado — os filtros e a ordem só mudam a tela; nada é gravado.
-test('Fonte, idioma, ordem e “Ocultar enviadas e exportadas” filtram a lista', async ({ page, extensao }) => {
+test('Fonte, idioma, ordem e “Ocultar enviadas” filtram a lista', async ({ page, extensao }) => {
   await extensao.gravarStorage({ frases: PARA_FILTRAR });
   await abrirFrases(page, extensao);
 

@@ -154,7 +154,6 @@ function idsPaginaAtual() {
 
 function setupListeners() {
   Perigo.aoApagarTudo(FrasesAcoes.apagarTudo);
-  document.getElementById('btn-export').addEventListener('click', FrasesAcoes.exportarTxt);
   ligarOsModulosDeFrases();
   configurarModaisDeFrases();
   document.getElementById('btn-first').addEventListener('click', () => irPagina(1));
