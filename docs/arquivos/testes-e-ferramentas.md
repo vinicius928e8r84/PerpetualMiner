@@ -24,3 +24,4 @@ A regra `indice-de-arquivos` exige uma linha, aqui ou em `extensao.md`, para cad
 | `.agents/skills/verify-perpetualminer/` | The skill that drives and proves the extension through the e2e harness, with the feature map. |
 | `.github/workflows/` | One workflow per job; each test job calls `node scripts/testar.mjs <group>`. |
 | `preview/`, `vercel.json` | The static preview site Vercel publishes, copied from the repository files. |
+| `firebase.json`, `.firebaserc` | Publish only the Firestore rules (`docs/seguranca/firestore.rules`) to the project: no hosting, functions or indexes. The command is in `docs/testes.md`. |
