@@ -1,6 +1,6 @@
 # Os Termos da linha (#905)
 
-Exemplos: `exemplos-dos-termos.json`. Uma rota da Conexão lê uma linha de texto e diz quais Termos há nela, por uma IA muito barata. Ninguém na extensão a chama ainda; o construtor é `PedidoAoAnki.termosDaLinha(lang, texto)`.
+Exemplos: `exemplos-dos-termos.json`. Uma rota da Conexão lê uma linha de texto e diz quais Termos há nela, por uma IA muito barata. A extensão a chama pela Mineração automática (`lib/termos-da-linha.js`), só na dúvida; o construtor é `PedidoAoAnki.termosDaLinha(lang, texto)`.
 
 | Rota | Corpo | Resposta |
 |---|---|---|
