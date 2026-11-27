@@ -10,7 +10,7 @@ const contexto = { console };
 contexto.globalThis = contexto;
 vm.createContext(contexto);
 for (const arquivo of ['lib/voz/catalogo.js', 'lib/voz/catalogo-configuracoes.js', 'lib/voz/catalogo-anki.js', 'lib/voz/catalogo-boas-vindas.js', 'lib/voz/catalogo-envio.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/mineracao.js', 'lib/mineracao-do-dia.js',
-  'lib/palavra-automatica.js', 'lib/mineracao-automatica-decisao.js']) {
+  'lib/palavras-frequentes-en.js', 'lib/palavras-frequentes-ru.js', 'lib/palavras-frequentes.js', 'lib/palavra-automatica.js', 'lib/mineracao-automatica-decisao.js']) {
   vm.runInContext(fs.readFileSync(path.join(RAIZ, arquivo), 'utf8'), contexto, { filename: arquivo });
 }
 const { MineracaoAutomatica, MineracaoDoDia } = contexto.PerpetualMiner;
@@ -25,8 +25,9 @@ function vocabulario({ words = [], status = {}, available = true } = {}) {
 
 const SABE_O_RESTO_DO_PEDIDO = { en: { words: ['ferry', 'left'] } };
 
-function portas({ ligadas = ['en', 'ru'], contagem = {}, limite = 20, vocab = SABE_O_RESTO_DO_PEDIDO, jaTem = null, gravarFalha = false } = {}) {
+function portas({ ligadas = ['en', 'ru'], contagem = {}, limite = 20, vocab = SABE_O_RESTO_DO_PEDIDO, jaTem = null, gravarFalha = false, niveis = {} } = {}) {
   const chamadas = [];
+  const niveisPedidos = [];
   const estado = () => {
     const settings = Object.fromEntries(['en', 'ru', 'es'].map(lang => [lang, { enabled: ligadas.includes(lang), dailyLimit: limite }]));
     const daily = { date: MineracaoDoDia.diaDe(new Date(AGORA)), en: { count: contagem.en || 0 }, ru: { count: contagem.ru || 0 }, es: { count: contagem.es || 0 } };
@@ -34,6 +35,9 @@ function portas({ ligadas = ['en', 'ru'], contagem = {}, limite = 20, vocab = SA
   };
   return {
     chamadas,
+    niveis,
+    niveisPedidos,
+    nivel: async lang => { niveisPedidos.push(lang); return niveis[lang] || 'intermediario'; },
     vocabulario: async lang => { chamadas.push(['vocabulario', lang]); return vocabulario(vocab[lang] || {}); },
     historico: {
       salvarSeNova: async (frase, repetida) => {
@@ -224,6 +228,71 @@ async function avaliarSoAvaliaESoLeOVocabularioQuandoPrecisa() {
   assert.deepStrictEqual(p.chamadas, [['vocabulario', 'en']]);
 }
 
+const LINHA_DE_SEIS = { texto: 'The old man left the house', origem: 'prime', contexto: null, lang: 'en' };
+const SABE_3_DE_SEIS = { en: { words: ['old', 'man', 'left'] } };
+
+async function oInicianteComPoucoVocabularioNaoMineraALinhaLongaEORegistraOMotivo() {
+  const p = portas({ niveis: { en: 'iniciante' }, vocab: SABE_3_DE_SEIS });
+  const resultado = await MineracaoAutomatica.criar(p).candidata(LINHA_DE_SEIS);
+  assert.deepStrictEqual([resultado.action, resultado.reason], ['skip', 'linha_longa']);
+  assert.deepStrictEqual(eventos(p.chamadas).map(evento => [evento.action, evento.reason, evento.evaluation.accept]), [['skip', 'linha_longa', false]]);
+  assert.ok(!p.chamadas.some(([nome]) => nome === 'salvarSeNova' || nome === 'contarMais'));
+}
+
+async function oInicianteMineraALinhaCurtaComPalavraComum() {
+  const p = portas({ niveis: { en: 'iniciante' }, vocab: { en: {} } });
+  const resultado = await MineracaoAutomatica.criar(p).candidata({ ...pedido, texto: 'I love you' });
+  assert.deepStrictEqual([resultado.action, plano(resultado.evaluation.keywords)], ['saved', ['love@2']]);
+}
+
+async function oInicianteNaoMineraAPalavraNovaIncomum() {
+  const p = portas({ niveis: { en: 'iniciante' }, vocab: { en: { words: ['love'] } } });
+  const resultado = await MineracaoAutomatica.criar(p).candidata({ ...pedido, texto: 'I love zebra' });
+  assert.deepStrictEqual([resultado.action, resultado.reason], ['skip', 'fora_do_nivel']);
+  assert.ok(!p.chamadas.some(([nome]) => nome === 'salvarSeNova' || nome === 'contarMais'));
+}
+
+async function oIntermediarioEOAvancadoMineramALinhaLongaComQualquerPalavraNova() {
+  for (const nivel of ['intermediario', 'avancado']) {
+    const p = portas({ niveis: { en: nivel }, vocab: SABE_3_DE_SEIS });
+    assert.strictEqual((await MineracaoAutomatica.criar(p).candidata(LINHA_DE_SEIS)).action, 'saved', nivel);
+    const incomum = portas({ niveis: { en: nivel }, vocab: { en: { words: ['love'] } } });
+    assert.strictEqual((await MineracaoAutomatica.criar(incomum).candidata({ ...pedido, texto: 'I love zebra' })).action, 'saved', nivel);
+  }
+}
+
+async function trocarONivelMudaAProximaLinhaSemCriarADecisaoDeNovo() {
+  const p = portas({ niveis: { en: 'iniciante' }, vocab: SABE_3_DE_SEIS });
+  const decisao = MineracaoAutomatica.criar(p);
+  assert.strictEqual((await decisao.candidata(LINHA_DE_SEIS)).reason, 'linha_longa');
+  p.niveis.en = 'intermediario';
+  assert.strictEqual((await decisao.candidata(LINHA_DE_SEIS)).action, 'saved');
+  p.niveis.en = 'iniciante';
+  assert.strictEqual((await decisao.candidata(LINHA_DE_SEIS)).reason, 'linha_longa');
+  assert.deepStrictEqual(p.niveisPedidos, ['en', 'en', 'en']);
+}
+
+async function oNivelEODoIdiomaDaLinha() {
+  const p = portas({ niveis: { ru: 'iniciante', en: 'avancado' }, vocab: { ru: { words: ['вижу'] }, en: { words: ['love'] } } });
+  const decisao = MineracaoAutomatica.criar(p);
+  assert.strictEqual((await decisao.candidata({ texto: 'Я вижу зебра', lang: 'ru' })).reason, 'fora_do_nivel');
+  assert.strictEqual((await decisao.candidata({ ...pedido, texto: 'I love zebra' })).action, 'saved');
+  assert.deepStrictEqual(p.niveisPedidos, ['ru', 'en']);
+}
+
+async function oNivelSoEPedidoDepoisDosFiltrosDeGraca() {
+  const desligada = portas({ ligadas: ['ru'], niveis: { en: 'iniciante' } });
+  await MineracaoAutomatica.criar(desligada).candidata(pedido);
+  const lixo = portas({ niveis: { en: 'iniciante' } });
+  await MineracaoAutomatica.criar(lixo).candidata({ ...pedido, texto: 'skip intro' });
+  assert.deepStrictEqual([desligada.niveisPedidos, lixo.niveisPedidos], [[], []]);
+}
+
+async function avaliarTambemUsaONivelDaPessoa() {
+  const p = portas({ niveis: { en: 'iniciante' }, vocab: SABE_3_DE_SEIS });
+  assert.strictEqual((await MineracaoAutomatica.criar(p).avaliar(LINHA_DE_SEIS.texto, 'en')).reason, 'linha_longa');
+}
+
 (async () => {
   const casos = [
     textoVazioPula, idiomaDesligadoPulaSemLerOVocabulario, oLimiteDeHojePula, textoDeMaQualidadePulaSemLerOVocabulario,
@@ -232,6 +301,9 @@ async function avaliarSoAvaliaESoLeOVocabularioQuandoPrecisa() {
     legendaInglesaNovaEGravadaContadaPublicadaERegistrada, legendaRussaNovaEGravadaSemPalavras, aOrigemPadraoEAuto,
     aIdiomaDoPedidoVemDoTextoQuandoNaoVemNoPedido, aDuplicataVemDoHistoricoENaoContaNemPublica, aDuplicataSoValeParaOMesmoTexto,
     umTerceiroIdiomaEhUmaLinhaNaTabela, aTabelaPadraoTemInglesERusso, avaliarSoAvaliaESoLeOVocabularioQuandoPrecisa,
+    oInicianteComPoucoVocabularioNaoMineraALinhaLongaEORegistraOMotivo, oInicianteMineraALinhaCurtaComPalavraComum, oInicianteNaoMineraAPalavraNovaIncomum,
+    oIntermediarioEOAvancadoMineramALinhaLongaComQualquerPalavraNova, trocarONivelMudaAProximaLinhaSemCriarADecisaoDeNovo, oNivelEODoIdiomaDaLinha,
+    oNivelSoEPedidoDepoisDosFiltrosDeGraca, avaliarTambemUsaONivelDaPessoa,
   ];
   let falhas = 0;
   for (const caso of casos) {

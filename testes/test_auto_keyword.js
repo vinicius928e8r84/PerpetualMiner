@@ -89,6 +89,7 @@ async function russianMineracaoAutomaticaStorage() {
     },
     pm_auto_miner_daily: null,
     pm_auto_keyword_vocab_ru: russianVocabulary({ words: [] }),
+    ankiBridgePresets: { ru: { nivel: 'intermediario' } },
     frases: [],
   };
   const context = loadBackground(storage);
@@ -115,6 +116,19 @@ async function russianMineracaoAutomaticaStorage() {
   assert.ok(!Object.prototype.hasOwnProperty.call(storage.frases[0], 'keywords'));
   assert.ok(!Object.prototype.hasOwnProperty.call(storage.frases[0], 'autoKeyword'));
   assert.strictEqual(display(result.evaluation.keywords), '\u0443\u043b\u044b\u0431\u0430\u044e\u0441\u044c', 'internal Russian keyword remains available for diagnostics');
+}
+
+async function oNivelDosAjustesDeEnvioValeNaProximaLinhaSemRecarregar() {
+  const storage = { pm_auto_keyword_vocab_ru: russianVocabulary({ words: [] }), ankiBridgePresets: { ru: { nivel: 'iniciante' } } };
+  const context = loadBackground(storage);
+  const texto = '\u042f \u0443\u043b\u044b\u0431\u0430\u044e\u0441\u044c';
+  assert.strictEqual((await context.evaluateMineracaoAutomaticaPhrase(texto, 'ru')).reason, 'fora_do_nivel');
+  storage.ankiBridgePresets = { ru: { nivel: 'avancado' } };
+  assert.strictEqual((await context.evaluateMineracaoAutomaticaPhrase(texto, 'ru')).accept, true);
+  storage.ankiBridgePresets = { ru: { nivel: 'iniciante' } };
+  assert.strictEqual((await context.evaluateMineracaoAutomaticaPhrase(texto, 'ru')).reason, 'fora_do_nivel');
+  delete storage.ankiBridgePresets;
+  assert.strictEqual((await context.evaluateMineracaoAutomaticaPhrase(texto, 'ru')).reason, 'fora_do_nivel', 'sem ajuste gravado o Nível é o Iniciante');
 }
 
 async function russianManualSaveDoesNotAutoKeyword() {
@@ -202,6 +216,7 @@ async function run() {
 
   await baralhoGravadoQueNaoRespondeNaoViraVocabularioVazio();
   await russianMineracaoAutomaticaStorage();
+  await oNivelDosAjustesDeEnvioValeNaProximaLinhaSemRecarregar();
   await russianManualSaveDoesNotAutoKeyword();
 }
 
