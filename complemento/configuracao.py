@@ -1,4 +1,4 @@
-VERSAO = "0.4.57"
+VERSAO = "0.4.58"
 ATUALIZACAO_AUTOMATICA = True
 NOME_DO_LOGGER = "perpetualminer"
 
