@@ -2,7 +2,7 @@
 
 Four directions were prototyped: A Veio (graphite and gold), B Caderno (paper and ink), C Sinal (black and mint) and D Aurora (indigo and violet). The owner chose A as the base, dark by default with a light theme as an option, and borrowed one thing from each of the others: from B the highlighter mark on the word, from C the small blinking cursor at the end of the name, from D the generous rounded shapes (pills, round toggles). The values live in `veio/tokens.css` and the components in `veio/`; this record keeps the rules the tokens do not say.
 
-- **One accent.** Gold is the only accent. Green, red and blue mean state (Enviada ao Anki, danger, Exportada) and never decorate. The one exception is data visualization: inside a chart and its legend, gold and `info` mark series (gold for real photo and mature, `info` for AI-generated and recent). Outside a chart, gold stays for the primary action and for selection.
+- **One accent.** Gold is the only accent. Green, red and blue mean state (Enviada ao Anki, danger) and never decorate. The one exception is data visualization: inside a chart and its legend, gold and `info` mark series (gold for real photo and mature, `info` for AI-generated and recent). Outside a chart, gold stays for the primary action and for selection.
 - **The overlay is always dark.** It lives over third-party pages, so it uses the dark tokens whatever theme the person chose.
 - **The mark.** The toolbar tile is always dark, in both Chrome toolbars, because that is what reads at 16 px. Inside the pages the mark follows the theme: the dark tile weighed too much on a light page.
 - **Shape.** A selection never uses a side bar; it uses the accent border and a faint accent fill. An input always has a border.

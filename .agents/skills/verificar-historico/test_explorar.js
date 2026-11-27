@@ -7,7 +7,7 @@ const { CENARIOS, armazenamento, conferir, principal } = require('./explorar');
 
 const A = { id: 1, texto: 'A', data: '18/11/2026', keywords: ['a@1'] };
 const B = { id: 2, texto: 'B', status: 'new' };
-const NOVA = { id: 99, texto: 'C', exportadaTxt: true, streaming: 'netflix' };
+const NOVA = { id: 99, texto: 'C', status: 'exported', streaming: 'netflix' };
 const projecaoDeA = '{"texto":"A","id":"1","keywords":["a@1"]}';
 const projecaoDeB = '{"texto":"B","id":"2","status":"new"}';
 const SERIE = 'o frases final não é o de nenhuma ordem em série';
@@ -65,7 +65,7 @@ const execucao = (final, { fim = new Map(), parados = [] } = {}) => ({ mundo: { 
 const cenario = (frases, ...opsDeCadaAtor) => ({ dados: frases === undefined ? {} : { frases }, atores: opsDeCadaAtor.map(ops => ({ ops })) });
 const editarA = { tipo: 'editar', ids: [1], campos: { status: 'exported' } };
 const apagarB = { tipo: 'apagar', ids: [2] };
-const acrescentarC = { tipo: 'acrescentarSeNova', frase: { texto: 'C', exportadaTxt: true } };
+const acrescentarC = { tipo: 'acrescentarSeNova', frase: { texto: 'C', status: 'exported' } };
 
 const CONFERENCIAS = [
   ['uma ordem em série casa', cenario([A, B], [editarA], [apagarB]), execucao([{ ...A, status: 'exported' }]), []],

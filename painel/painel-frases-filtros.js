@@ -4,7 +4,7 @@
   const { IDIOMAS, textoDaVoz } = raiz;
   const { fonteDaFrase, nomeDaFonte } = raiz.Contexto;
 
-  const criterio = { fonte: 'all', idioma: 'all', esconderEnviadasEExportadas: false, busca: '', ordem: 'novas' };
+  const criterio = { fonte: 'all', idioma: 'all', esconderEnviadas: false, busca: '', ordem: 'novas' };
 
   let painel = null;
 
@@ -48,7 +48,7 @@
     fonte.addEventListener('change',   aoMudar(() => { criterio.fonte = fonte.value; }));
     idioma.addEventListener('change',  aoMudar(() => { criterio.idioma = idioma.value; }));
     ordem.addEventListener('change',   aoMudar(() => { criterio.ordem = ordem.value; }, { limpaSelecao: false }));
-    ocultar.addEventListener('change', aoMudar(() => { criterio.esconderEnviadasEExportadas = ocultar.checked; }));
+    ocultar.addEventListener('change', aoMudar(() => { criterio.esconderEnviadas = ocultar.checked; }));
     busca.addEventListener('input',    aoMudar(() => { criterio.busca = busca.value; mostrarLimparBusca(); }));
     document.getElementById('btn-limpar-busca').addEventListener('click', limparBusca);
   }
@@ -58,13 +58,13 @@
   }
 
   function ligados() {
-    return criterio.fonte !== 'all' || criterio.idioma !== 'all' || criterio.esconderEnviadasEExportadas;
+    return criterio.fonte !== 'all' || criterio.idioma !== 'all' || criterio.esconderEnviadas;
   }
 
   function limpar() {
     criterio.fonte = 'all';
     criterio.idioma = 'all';
-    criterio.esconderEnviadasEExportadas = false;
+    criterio.esconderEnviadas = false;
     document.getElementById('filtro-fonte').value = 'all';
     document.getElementById('filtro-idioma').value = 'all';
     document.getElementById('filtro-ocultar').checked = false;

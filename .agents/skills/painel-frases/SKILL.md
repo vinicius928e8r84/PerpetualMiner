@@ -20,13 +20,13 @@ the Fonte filter), Título · Detalhe and the state badge (PAI-08).
 
 The area header carries **Minerar frases ▾** (ADD-01; see “Minerar frases” below). The filter
 row: one Fonte select (the Fontes in the history), language, order, the search (text and Título, with ×)
-and the “Ocultar enviadas e exportadas” toggle. Below it, the **Selecionar página** checkbox (PAI-31) marks the whole
+and the “Ocultar enviadas” toggle. Below it, the **Selecionar página** checkbox (PAI-31) marks the whole
 page, and shows the mixed state when part of it is selected (`refletirSelecao`). Changing a filter or the search clears
 the selection, so no action lands on a phrase that is not on screen; reordering keeps it.
 
 With a selection, that same row becomes the **contextual bar** (PAI-32), sticky at the top of the island: × Desmarcar
 todas, the count (PAI-06), “Selecionar todas as N frases” once the whole page is marked (N is what the filters show,
-across pages), and Editar contexto · Exportar .txt · Apagar · Enviar ao Anki. The page checkbox stays at its start,
+across pages), and Editar contexto · Apagar · Enviar ao Anki. The page checkbox stays at its start,
 with its label only for the screen reader.
 
 The card's four icon actions (PAI-30) appear on hover and on focus. **Editar texto** swaps the text for a field in
@@ -38,9 +38,10 @@ computers when an account is connected. Both modals are the Veio modal, driven b
 (PAI-01), first run (PAI-02: its `titulo` in bold above the text, with the recorded caption shortcut in a `kbd`, or, with none, the dashed “Sem atalho” `kbd` and a Definir atalho link to `#configuracoes/atalhos`, GLB-02), filters hid everything (PAI-03) and search without
 result (PAI-04, plus Limpar filtros when a filter is on). Everything is built with DOM nodes, never HTML strings.
 
-Two marks, never the same one: `status: 'exported'` is **Enviada ao Anki** (the phrase went into a completed Envio;
-the field keeps its pre-glossary name), and `exportadaTxt` is **Exportada** (it was written to a .txt). Exporting never
-writes the Envio's mark, a phrase that has both says Enviada ao Anki, and “Ocultar enviadas e exportadas” hides either.
+One mark: `status: 'exported'` is **Enviada ao Anki** (the phrase went into a completed Envio; the field keeps its
+pre-glossary name), and “Ocultar enviadas” hides it. The list has no export to .txt and no **Exportada** mark (#777):
+`Historico.esquecerExportadas` takes the old `exportadaTxt` field off every Frase on install and update, and
+`lib/sincronizacao.js` takes it off the ones the cloud still has.
 For the cloud merge of these marks, see the `carregar` contract in `lib/sincronizacao.js`.
 
 ### Minerar frases (`painel-minerar-frases.js`, ADD-01…12)
@@ -66,12 +67,9 @@ and opens `bookreader/bookreader.html` in a new tab, as the menu's Foto does. Th
   repeats the upload) and no Detalhes (the owner's call: the cause goes to the Conta & sync card's Detalhes), and the card and the chip say the computer is out of sync — the same exception to
   the “sync problems only in the card” rule as PAI-15. Closing the aviso leaves them only on this computer; the next load uploads them.
 
-**The .txt line** is `palavra : texto [Contexto: fonte - título - detalhe]` (`linhaDoTxt`; empty fields as
-`Desconhecido`, Palavra groups joined by ` | `, word positions dropped). A phrase with no Palavra whose text has ` : `
-(or ends in ` :`) is written with an empty prefix (`: texto`), so the text comes back whole. A Palavra group that is
-no longer in the text (the text was edited after it was picked) is left out of the line, and the other groups stay:
-read back, it would stick to the start of the text. The Conexão gets the same line without either rule
-(`linhaParaOAnki`), because the engine's parser does not know the empty prefix. Reading (`lerLinhaDoTxt`): a line in that
+**The .txt line** is `palavra : texto [Contexto: fonte - título - detalhe]`: the panel no longer writes it to a file
+(#777); the Conexão gets it (`TxtDeFrases.escreverParaOAnki`; empty fields as `Desconhecido`, Palavra groups joined
+by ` | `, word positions dropped), and a .txt made by an older version still comes back through the reading. Reading (`lerLinhaDoTxt`): a line in that
 format brings its Contexto and its Palavras back (`palavrasNoTexto` finds each word's position again; a word repeated in
 the text comes back at its first occurrence after the previous one of its group) and skips the automatic Palavra; the
 prefix before the first ` : ` only counts as the Palavra when all its words are in the text after it, which keeps

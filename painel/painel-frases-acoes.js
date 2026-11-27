@@ -1,7 +1,7 @@
 'use strict';
 
 (function (raiz) {
-  const { textoDaVoz, TxtDeFrases, Envio, Historico, ChaveDaOpenAI } = raiz;
+  const { textoDaVoz, Envio, Historico, ChaveDaOpenAI } = raiz;
   const { mostrarToastDeSucesso, montarAviso } = raiz.Veio;
 
   const ERROS_DA_CHAVE = new Map([
@@ -138,54 +138,6 @@
     });
   }
 
-  const linhaDoTxt = frase => TxtDeFrases.escrever(frase, keywords[frase.id]);
-
-  function baixarOTxt(linhas) {
-    const blob = new Blob([linhas.join('\n')], { type: 'text/plain;charset=utf-8' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href = url; a.download = 'perpetualminer-export.txt';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }
-
-  function marcarComoExportadas() {
-    const exportadas = [];
-    painel.trocarFrases(painel.frases().map(f => {
-      if (!selecionadas.has(f.id)) return f;
-      const u = { ...f, exportadaTxt: true };
-      exportadas.push(u);
-      return u;
-    }));
-    return exportadas;
-  }
-
-  function subirExportadasParaANuvem(exportadas) {
-    if (!painel.nuvem() || exportadas.length === 0) return;
-    Promise.allSettled(exportadas.map(f => painel.nuvem().gravarFrase(f, ['exportadaTxt']))).then(resultados => {
-      const falha = resultados.find(r => r.status === 'rejected');
-      if (falha) painel.falhaNaNuvem(falha.reason);
-    });
-  }
-
-  function exportarTxt() {
-    if (selecionadas.size === 0) return;
-    const linhas = painel.frases()
-      .filter(f => selecionadas.has(f.id))
-      .map(linhaDoTxt)
-      .filter(l => l.trim());
-    baixarOTxt(linhas);
-    const exportadas = marcarComoExportadas();
-    selecionadas.clear();
-    painel.atualizarContadorSelecao();
-    Historico.marcarExportadas(exportadas.map(f => f.id)).then(() => {
-      painel.atualizarTotal();
-      painel.aplicarFiltro();
-    });
-    subirExportadasParaANuvem(exportadas);
-    mostrarToastDeSucesso(textoDaVoz('PAI-19', { n: linhas.length }));
-  }
-
   function textosDoModalDeContexto(ids, umaFrase) {
     if (!umaFrase) return { titulo: textoDaVoz('PAI-20.variasFrases', { n: ids.length }), subtitulo: textoDaVoz('PAI-20.ajuda') };
     return { titulo: textoDaVoz('PAI-20.umaFrase'), subtitulo: umaFrase.texto };
@@ -268,5 +220,5 @@
     painel.salvarNaNuvem(painel.frases()[idx]);
   }
 
-  raiz.FrasesAcoes = { iniciar, pedirParaApagar, apagarFrases, apagarTudo, exportarTxt, abrirEditarContexto };
+  raiz.FrasesAcoes = { iniciar, pedirParaApagar, apagarFrases, apagarTudo, abrirEditarContexto };
 })(globalThis.PerpetualMiner = globalThis.PerpetualMiner || {});

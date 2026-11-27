@@ -102,8 +102,7 @@
     }
     const origem = [f.contexto?.titulo, f.contexto?.detalhe].filter(Boolean).join(' · ');
     if (origem) linha.append(criar('span', 'frase-origem', origem));
-    if (foiEnviadaAoAnki(f))  linha.append(criar('span', 'veio-selo veio-selo--ok', textoDaVoz('PAI-08.enviada')));
-    else if (f.exportadaTxt)  linha.append(criar('span', 'veio-selo veio-selo--info', textoDaVoz('PAI-08.exportada')));
+    if (foiEnviadaAoAnki(f)) linha.append(criar('span', 'veio-selo veio-selo--ok', textoDaVoz('PAI-08')));
     return linha;
   }
 

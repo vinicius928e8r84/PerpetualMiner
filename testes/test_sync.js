@@ -497,16 +497,16 @@ async function semContaSoGravaTombstonesLocais() {
 async function marcasJuntamLocalENuvem() {
   const marcadaAqui = await capturarFrase(localA, 'Marcada aqui');
   const marcadaLa = await capturarFrase(localA, 'Marcada na nuvem');
-  const marcarExportada = (f) => (f.id === marcadaAqui.id ? { ...f, status: 'exported' } : f);
-  setLocal(localA, { frases: frasesLocais(localA).map(marcarExportada) });
-  firestore[marcadaLa.id] = { ...marcadaLa, exportadaTxt: true };
+  const marcarEnviada = (f) => (f.id === marcadaAqui.id ? { ...f, status: 'exported' } : f);
+  setLocal(localA, { frases: frasesLocais(localA).map(marcarEnviada) });
+  firestore[marcadaLa.id] = { ...marcadaLa, status: 'exported' };
 
   const vis = await carregarFrases(localA);
   const porTexto = (t) => vis.find(f => f.texto === t);
   assert(porTexto('Marcada aqui').status === 'exported', 'a marca daqui aparece na lista');
   assert(firestore[marcadaAqui.id].status === 'exported', 'e vai para a nuvem (retry)');
-  assert(porTexto('Marcada na nuvem').exportadaTxt === true, 'a marca da nuvem aparece na lista');
-  assert(frasesLocais(localA).find(f => f.id === marcadaLa.id).exportadaTxt === true, 'e é aplicada ao local');
+  assert(porTexto('Marcada na nuvem').status === 'exported', 'a marca da nuvem aparece na lista');
+  assert(frasesLocais(localA).find(f => f.id === marcadaLa.id).status === 'exported', 'e é aplicada ao local');
 }
 
 async function fraseQueNaoSobeNuncaSome() {
@@ -586,7 +586,7 @@ const CENARIOS_DO_SYNC = [
   ['CENÁRIO 19 — Apagar tudo com a nuvem fora do ar: o sync seguinte conclui, e o que veio depois fica', apagarTudoComANuvemFora],
   ['CENÁRIO 20 — Apagar tudo com a nuvem no ar apaga tudo e não deixa pendência', apagarTudoComANuvemNoAr],
   ['CENÁRIO 21 — Sem conta: Apagar tudo e apagar só gravam os tombstones deste computador', semContaSoGravaTombstonesLocais],
-  ['CENÁRIO 22 — Marcas Enviada ao Anki / Exportada juntam local e nuvem', marcasJuntamLocalENuvem],
+  ['CENÁRIO 22 — A marca Enviada ao Anki junta local e nuvem', marcasJuntamLocalENuvem],
   ['CENÁRIO 23 — Frase que não sobe fica na lista e no computador (nunca some)', fraseQueNaoSobeNuncaSome],
   ['CENÁRIO 24 — Uma edição feita enquanto a nuvem responde sobrevive (a lista da tela é lida no fim)', edicaoDuranteARespostaSobrevive],
   ['CENÁRIO 25 — A nuvem não responde: carregar rejeita e nada local é descartado', nuvemCaladaCarregarRejeita],
@@ -622,9 +622,9 @@ const recusa = (status, error) => () => ({ status, corpo: { error } });
 const ehRenovacao = (url) => url.includes('securetoken');
 
 function codecFazIdaEVolta() {
-  const frase = { id: 123, texto: 'Hello', idioma: 'Inglês', keywords: ['a', 'b'], exportadaTxt: true, contexto: { titulo: 'Show', episodio: 3 }, nulo: null };
+  const frase = { id: 123, texto: 'Hello', idioma: 'Inglês', keywords: ['a', 'b'], flag: true, contexto: { titulo: 'Show', episodio: 3 }, nulo: null };
   const volta = deCampos(paraCampos(frase));
-  assert(volta.id === 123 && volta.texto === 'Hello' && volta.exportadaTxt === true, 'números, textos e booleanos');
+  assert(volta.id === 123 && volta.texto === 'Hello' && volta.flag === true, 'números, textos e booleanos');
   assert(JSON.stringify(volta.keywords) === '["a","b"]', 'listas de textos');
   assert(volta.contexto.titulo === 'Show' && volta.contexto.episodio === 3, 'mapas (recursivo, com número dentro)');
   assert(!('nulo' in volta), 'null não vai para a nuvem');

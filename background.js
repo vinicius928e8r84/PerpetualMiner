@@ -40,6 +40,7 @@ async function aoInstalar(evento) {
     await chrome.storage.local.set({ pm_boas_vindas: { agoraNao: [], concluida: false } }).catch(() => {});
     chrome.tabs.create({ url: chrome.runtime.getURL('painel/painel.html#boas-vindas') });
   }
+  await historico.esquecerExportadas().catch(err => console.warn('[Histórico] tirar a marca Exportada falhou', err));
 }
 
 chrome.contextMenus.onClicked.addListener(minerarSelecaoDoMenu);
