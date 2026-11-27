@@ -38,77 +38,61 @@ async function legendaTocando(contexto, configuracao, texto) {
   await tocarVideo(contexto.page);
 }
 
-test('o Iniciante com pouco Vocabulário mineira a linha curta com uma palavra comum nova', async ({ page, paginas, extensao, fakes }) => {
+async function mineradaComo(extensao, texto, keywords) {
+  await expect.poll(async () => (await extensao.frases()).map(frase => frase.texto)).toEqual([texto]);
+  const [frase] = await extensao.frases();
+  if (keywords) expect(frase.keywords).toEqual(keywords);
+  await estadoFinal(extensao, {
+    pm_auto_miner_last_event: { action: 'saved', reason: 'en_new_item', texto, phraseId: frase.id },
+    pm_auto_miner_daily: { en: { count: 1 } },
+  });
+}
+
+async function recusadaPor(extensao, texto, reason) {
+  await estadoFinal(extensao, {
+    pm_auto_miner_last_event: { action: 'skip', reason, texto },
+    pm_auto_miner_daily: { en: { count: 0 } },
+  });
+  expect(await extensao.frases()).toEqual([]);
+}
+
+test('o Iniciante com pouco Vocabulário minera a linha curta com uma palavra comum nova', async ({ page, paginas, extensao, fakes }) => {
   expect(CURTA.split(' ')).toHaveLength(PALAVRAS_DA_LINHA_CURTA);
   await legendaTocando({ page, paginas, extensao, fakes }, { vocabulario: [], nivel: 'iniciante' }, CURTA);
-
-  await expect.poll(async () => (await extensao.frases()).map(frase => frase.texto)).toEqual([CURTA]);
-  const [frase] = await extensao.frases();
-  expect(frase.keywords).toEqual(['love@2']);
-  await estadoFinal(extensao, {
-    pm_auto_miner_last_event: { action: 'saved', reason: 'en_new_item', phraseId: frase.id },
-    pm_auto_miner_daily: { en: { count: 1 } },
-  });
+  await mineradaComo(extensao, CURTA, ['love@2']);
 });
 
-test('o Iniciante com pouco Vocabulário não mineira a linha de seis palavras em que só falta uma', async ({ page, paginas, extensao, fakes }) => {
+test('o Iniciante com pouco Vocabulário não minera a linha de seis palavras em que só falta uma', async ({ page, paginas, extensao, fakes }) => {
   const vocabulario = [...conhecidas('old', 'man', 'left'), NOVA('house')];
   await legendaTocando({ page, paginas, extensao, fakes }, { vocabulario, nivel: 'iniciante' }, DE_SEIS);
-
-  await estadoFinal(extensao, {
-    pm_auto_miner_last_event: { action: 'skip', reason: 'linha_longa', texto: DE_SEIS },
-    pm_auto_miner_daily: { en: { count: 0 } },
-  });
-  expect(await extensao.frases()).toEqual([]);
+  await recusadaPor(extensao, DE_SEIS, 'linha_longa');
 });
 
-test('o Iniciante com o Vocabulário da linha normal mineira a linha de seis palavras em que só falta uma', async ({ page, paginas, extensao, fakes }) => {
+test('o Iniciante com o Vocabulário da linha normal minera a linha de seis palavras em que só falta uma', async ({ page, paginas, extensao, fakes }) => {
   const vocabulario = [...conhecidas('old', 'man', 'left'), ...outrasConhecidas(PALAVRAS_CONHECIDAS_DA_LINHA_NORMAL - 3)];
   await legendaTocando({ page, paginas, extensao, fakes }, { vocabulario, nivel: 'iniciante' }, DE_SEIS);
-
-  await expect.poll(async () => (await extensao.frases()).map(frase => frase.texto)).toEqual([DE_SEIS]);
-  const [frase] = await extensao.frases();
-  expect(frase.keywords).toEqual(['house@10']);
-  await estadoFinal(extensao, {
-    pm_auto_miner_last_event: { action: 'saved', reason: 'en_new_item', phraseId: frase.id },
-    pm_auto_miner_daily: { en: { count: 1 } },
-  });
+  await mineradaComo(extensao, DE_SEIS, ['house@10']);
 });
 
-test('o Iniciante não mineira a palavra nova que não é comum', async ({ page, paginas, extensao, fakes }) => {
+test('o Iniciante não minera a palavra nova que não é comum', async ({ page, paginas, extensao, fakes }) => {
   await legendaTocando({ page, paginas, extensao, fakes }, { vocabulario: conhecidas('see'), nivel: 'iniciante' }, COM_PALAVRA_INCOMUM);
-
-  await estadoFinal(extensao, {
-    pm_auto_miner_last_event: { action: 'skip', reason: 'fora_do_nivel', texto: COM_PALAVRA_INCOMUM },
-    pm_auto_miner_daily: { en: { count: 0 } },
-  });
-  expect(await extensao.frases()).toEqual([]);
+  await recusadaPor(extensao, COM_PALAVRA_INCOMUM, 'fora_do_nivel');
 });
 
 for (const nivel of ['intermediario', 'avancado']) {
-  test(`o ${nivel} mineira a palavra nova incomum numa linha de seis palavras`, async ({ page, paginas, extensao, fakes }) => {
+  test(`o ${nivel} minera a palavra nova incomum numa linha de seis palavras`, async ({ page, paginas, extensao, fakes }) => {
     const linha = 'The old man left the zebra';
     await legendaTocando({ page, paginas, extensao, fakes }, { vocabulario: conhecidas('old', 'man', 'left'), nivel }, linha);
-
-    await expect.poll(async () => (await extensao.frases()).map(frase => frase.texto)).toEqual([linha]);
-    await estadoFinal(extensao, {
-      pm_auto_miner_last_event: { action: 'saved', reason: 'en_new_item' },
-      pm_auto_miner_daily: { en: { count: 1 } },
-    });
+    await mineradaComo(extensao, linha, ['zebra@10']);
   });
 }
 
 test('trocar o Nível nos Ajustes de envio muda a próxima linha, sem recarregar a aba', async ({ page, paginas, extensao, fakes }) => {
   const vocabulario = [...conhecidas('old', 'man', 'left'), NOVA('house')];
   await legendaTocando({ page, paginas, extensao, fakes }, { vocabulario, nivel: 'iniciante' }, DE_SEIS);
-  await estadoFinal(extensao, { pm_auto_miner_last_event: { action: 'skip', reason: 'linha_longa', texto: DE_SEIS } });
+  await recusadaPor(extensao, DE_SEIS, 'linha_longa');
 
   await extensao.gravarStorage({ ankiBridgePresets: { en: { nivel: 'intermediario' } } });
   await legenda(page, OUTRA_DE_SEIS);
-
-  await expect.poll(async () => (await extensao.frases()).map(frase => frase.texto)).toEqual([OUTRA_DE_SEIS]);
-  await estadoFinal(extensao, {
-    pm_auto_miner_last_event: { action: 'saved', reason: 'en_new_item', texto: OUTRA_DE_SEIS },
-    pm_auto_miner_daily: { en: { count: 1 } },
-  });
+  await mineradaComo(extensao, OUTRA_DE_SEIS, ['house@12']);
 });
