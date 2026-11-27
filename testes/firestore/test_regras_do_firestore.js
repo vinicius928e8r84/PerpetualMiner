@@ -98,14 +98,17 @@ async function principal() {
   }
 }
 
+const semComentarios = bloco => bloco.split('\n').filter(linha => linha.trim() && !linha.trim().startsWith('//')).join('\n');
+
 function blocoDoRanking(texto) {
-  const comeco = texto.indexOf('match /ranking/{docId} {');
+  const cabeca = 'match /ranking/{docId} {';
+  const comeco = texto.indexOf(cabeca);
   assert.ok(comeco >= 0, 'falta o match /ranking/{docId}');
   let fundo = 0;
-  for (let i = texto.indexOf('{', comeco); i < texto.length; i += 1) {
+  for (let i = comeco + cabeca.length - 1; i < texto.length; i += 1) {
     if (texto[i] === '{') fundo += 1;
     if (texto[i] === '}') fundo -= 1;
-    if (fundo === 0) return texto.slice(comeco, i + 1);
+    if (fundo === 0) return semComentarios(texto.slice(comeco, i + 1));
   }
   return assert.fail('o match /ranking/{docId} não fecha');
 }
