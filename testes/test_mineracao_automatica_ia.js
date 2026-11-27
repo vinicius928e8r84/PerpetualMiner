@@ -105,6 +105,20 @@ async function oNivelDaPessoaMudaAEscolhaNaProximaLinha() {
   assert.strictEqual((await decisao.candidata({ ...pedido, texto: ELA })).action, 'saved');
 }
 
+async function oNivelEscolheOTipoDoTermoENaProximaLinhaOQueMudouJaValeu() {
+  const texto = 'They had to rustle up some food';
+  const vocab = { en: { words: ['they', 'had', 'to', 'rustle', 'up', 'some', 'food'] } };
+  let nivel = 'intermediario';
+  const p = { ...portas({ vocab, termos: [{ posicoes: [3, 4], tipo: 'phrasal_verb', comum: false }] }), nivel: async () => nivel };
+  const decisao = MineracaoAutomatica.criar(p);
+  const recusada = await decisao.candidata({ ...pedido, texto });
+  assert.deepStrictEqual([recusada.action, recusada.reason, recusada.evaluation.iaPerguntada], ['skip', 'fora_do_nivel', true]);
+  assert.ok(!p.chamadas.some(([nome]) => nome === 'salvarSeNova' || nome === 'contarMais'));
+  nivel = 'avancado';
+  const aceita = await decisao.candidata({ ...pedido, texto: `${texto}.` });
+  assert.deepStrictEqual([aceita.action, plano(aceita.evaluation.keywords)], ['saved', ['rustle@6', 'up@8']]);
+}
+
 (async () => {
   const casos = [
     aIAPerguntaOsTermosDaLinhaQuandoTudoEConhecidoEOPhrasalVerbEntraInteiro,
@@ -116,6 +130,7 @@ async function oNivelDaPessoaMudaAEscolhaNaProximaLinha() {
     semRespostaDaIAOCodigoDecideSozinhoPelasPalavrasSoltas,
     aExpressaoRussaDePalavrasConhecidasEntraInteira,
     oNivelDaPessoaMudaAEscolhaNaProximaLinha,
+    oNivelEscolheOTipoDoTermoENaProximaLinhaOQueMudouJaValeu,
   ];
   let falhas = 0;
   for (const caso of casos) {

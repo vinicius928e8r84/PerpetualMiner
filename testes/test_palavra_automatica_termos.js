@@ -137,9 +137,12 @@ caso('russo: a giria Recente no Vocabulario nao entra', {
   texto: 'Он взял себя в руки', lang: 'ru', vocab: { words: ['он', 'взял', 'себя', 'руки'], terms: ['взял себя в руки'], termInfo: { 'взял себя в руки': 'recent' } }, termos: [termo([1, 2, 3, 4], 'expressao')],
   esperado: recusa('nada_novo'), perguntas: 1,
 });
-caso('russo: duas desconhecidas proximas que a IA diz ser uma giria entram como uma', {
-  texto: 'Он забил болт', lang: 'ru', vocab: { words: ['он'] }, termos: [termo([1, 2], 'giria', false)],
+caso('russo: duas desconhecidas proximas que a IA diz ser uma giria entram como uma, no Avancado (no Intermediario a giria e fora do Nivel)', {
+  texto: 'Он забил болт', lang: 'ru', nivel: 'avancado', vocab: { words: ['он'] }, termos: [termo([1, 2], 'giria', false)],
   esperado: { accept: true, reason: 'ru_i_plus_1', keywords: ['забил@2', 'болт@4'], iaPerguntada: true }, perguntas: 1,
+});
+caso('russo: a mesma giria no Intermediario e fora do Nivel', {
+  texto: 'Он забил болт', lang: 'ru', vocab: { words: ['он'] }, termos: [termo([1, 2], 'giria', false)], esperado: recusa('fora_do_nivel'), perguntas: 1,
 });
 
 async function run() {
