@@ -1,6 +1,8 @@
+import dataclasses
+import os
 from dataclasses import dataclass
 
-from . import do_computador, pasta_de_dados, registro, tipo_de_nota
+from . import anki_de_teste, do_computador, pasta_de_dados, registro, tipo_de_nota
 from .baralhos import ColecaoIndisponivel
 from .configuracao import ATUALIZACAO_AUTOMATICA, PORTA, VERSAO
 from .do_computador import ABRIDOR_DESTE_COMPUTADOR, PASSAGEM_DESTE_COMPUTADOR
@@ -22,6 +24,7 @@ class Arredores:
     passagem: object = PASSAGEM_DESTE_COMPUTADOR
     anki_web: object = None
     atualizacao_automatica: bool = ATUALIZACAO_AUTOMATICA
+    pasta_base_do_anki: object = None
 
 
 def _montar_a_conexao(dados, ambiente, perfil_aberto, arredores):
@@ -36,8 +39,9 @@ def iniciar(pasta_do_complemento, perfil_aberto, arredores=Arredores()):
     try:
         dados = pasta_de_dados.preparar(pasta_do_complemento)
         logger = registro.criar(dados.logs)
+        arredores = dataclasses.replace(arredores, porta=anki_de_teste.porta_da_conexao(os.environ, arredores.pasta_base_do_anki, arredores.porta))
         conexao = _montar_a_conexao(dados, Ambiente(dados, logger, VERSAO), perfil_aberto, arredores)
-        _cuidar_do_perfil(conexao, do_computador.abridor(arredores.abridor, pasta_do_complemento, dados), arredores.ao_abrir_o_perfil, logger)
+        _cuidar_do_perfil(conexao, do_computador.abridor(arredores.abridor, pasta_do_complemento, dados, arredores.porta), arredores.ao_abrir_o_perfil, logger)
         return _subir(conexao, do_computador.passagem(arredores.passagem, arredores.porta))
     except Exception:
         logger.exception("O complemento não conseguiu iniciar")

@@ -346,7 +346,7 @@ class OAbridorDesteComputador(unittest.TestCase):
     def test_o_abridor_anota_o_programa_que_roda_o_anki_e_a_pasta_do_complemento(self):
         with tempfile.TemporaryDirectory() as pasta, patch("complemento.abridor.deste_computador", return_value=None) as deste:
             parar(inicio.iniciar(pasta, lambda: None, inicio.Arredores(porta=0, item_de_login=item_de_login.ItemDeLogin(sistema="mac", pasta=pasta, comando=None))))
-        self.assertEqual((deste.call_args.kwargs["computador"].executavel, deste.call_args.kwargs["complemento"]), (sys.executable, pasta))
+        self.assertEqual((deste.call_args.kwargs["computador"].executavel, deste.call_args.kwargs["complemento"].pasta), (sys.executable, pasta))
 
 
 if __name__ == "__main__":

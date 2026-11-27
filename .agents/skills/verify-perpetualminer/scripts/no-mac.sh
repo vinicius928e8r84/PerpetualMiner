@@ -4,6 +4,7 @@ AQUI="$(cd "$(dirname "$0")" && pwd -P)"
 . "$AQUI/lib.sh"
 USO='usage: no-mac.sh <run-id> [--commit <ref>] [--trazer <path>] -- <command...>'
 [ $# -ge 3 ] || { echo "$USO" >&2; exit 2; }
+ORIGINAIS=("$@")
 ID="$1"; shift; REF=HEAD; TRAZER=""
 while [ $# -gt 0 ] && [ "$1" != -- ]; do
   case "$1" in
@@ -21,6 +22,14 @@ COMMIT="$(git -C "$RAIZ" rev-parse --verify "$REF^{commit}")" || exit 2
 HOST="${PM_MAC_SSH:-fm-mac}"; BASE="${PM_MAC_TMP:-/private/tmp}"
 MAC=(ssh -o BatchMode=yes -o ConnectTimeout=15 "$HOST")
 mkdir -p "$RUN/evidence"
+
+if [ -z "${PM_NO_MAC_COM_A_TRAVA:-}" ]; then
+  TRAVA="${PM_MAC_TRAVA:-$HOME/crew-state/mac.lock}"
+  command -v flock >/dev/null 2>&1 || { echo "no-mac.sh: sem flock aqui; a trava do Mac não funciona, nada foi ao Mac" >&2; exit 2; }
+  mkdir -p "$(dirname "$TRAVA")" || exit 2
+  flock -n "$TRAVA" true || echo "no-mac.sh: esperando a vez do Mac, sem limite (trava $TRAVA)" >&2
+  PM_NO_MAC_COM_A_TRAVA=1 exec flock "$TRAVA" bash "$0" "${ORIGINAIS[@]}"
+fi
 
 LIMPAR='P=$1; D=$(printf %s "$P" | tr -d "[]"); case "$D" in "$2"/pm-*-??????) ;; *) echo "refused to clean $D" >&2; exit 2 ;; esac
 G=$(cat "$D/.grupo" 2>/dev/null); case "$G" in ""|*[!0-9]*|0|1) G= ;; esac; [ -n "$G" ] && kill -TERM -- "-$G" 2>/dev/null
