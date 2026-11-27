@@ -8,6 +8,7 @@ const WALTER = "Tell Walter I'm here";
 const CHAVE_DE_EXEMPLO = 'sk-proj-chave-de-exemplo-9f3a';
 const CONHECIDAS_DA_ELA = ['she', "can't", 'put', 'up', 'with', 'him'];
 const CONHECIDAS_DO_WALTER = ['tell', "i'm", 'here'];
+const INICIANTE_QUE_JA_LE_LINHAS_LONGAS = [...CONHECIDAS_DA_ELA, ...Array.from({ length: 200 }, (_, i) => `conhecida${i}`)];
 
 const hoje = () => {
   const agora = new Date();
@@ -67,7 +68,7 @@ test('o nome que a IA reconhece não entra nem é grifado', async ({ page, pagin
 });
 
 test('no Iniciante a IA nunca é perguntada: o código decide sozinho e a linha sem palavra nova não entra', async ({ page, paginas, extensao, fakes }) => {
-  await legendaTocando({ page, paginas, extensao, fakes }, { legenda: ELA, vocabulario: CONHECIDAS_DA_ELA, nivel: 'iniciante' });
+  await legendaTocando({ page, paginas, extensao, fakes }, { legenda: ELA, vocabulario: INICIANTE_QUE_JA_LE_LINHAS_LONGAS, nivel: 'iniciante' });
 
   await estadoFinal(extensao, {
     pm_auto_miner_last_event: { action: 'skip', reason: 'nada_novo', texto: ELA, evaluation: { iaPerguntada: false } },
