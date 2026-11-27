@@ -29,7 +29,7 @@ O sinal feito à mão na página do livro (barras, sublinhado, colchetes, círcu
 _Avoid_: Trecho marcado
 
 **Mineração automática**:
-O modo em que o PerpetualMiner minera sozinho as linhas de legenda de um Idioma enquanto o vídeo roda, até um limite por dia. Só minera a linha que tem algo que a pessoa ainda não conhece, segundo o Vocabulário.
+O modo em que o PerpetualMiner minera sozinho as linhas de legenda de um Idioma enquanto o vídeo roda, até um limite por dia. Só minera a linha em que a pessoa conhece tudo menos uma coisa, segundo o Vocabulário: o que está Novo no Baralho conta como desconhecido.
 _Avoid_: Auto Miner
 
 **Fonte**:

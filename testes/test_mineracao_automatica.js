@@ -18,11 +18,14 @@ const { MineracaoAutomatica, MineracaoDoDia } = contexto.PerpetualMiner;
 const plano = valor => JSON.parse(JSON.stringify(valor));
 const AGORA = new Date(2026, 10, 19, 12, 0, 0).getTime();
 
-function vocabulario({ words = [], available = true } = {}) {
-  return { available, words: new Set(words), terms: new Set(), wordInfo: new Map(), termInfo: new Map() };
+function vocabulario({ words = [], status = {}, available = true } = {}) {
+  const wordInfo = new Map(Object.entries(status).map(([palavra, situacao]) => [palavra, { status: situacao }]));
+  return { available, words: new Set([...words, ...Object.keys(status)]), terms: new Set(), wordInfo, termInfo: new Map() };
 }
 
-function portas({ ligadas = ['en', 'ru'], contagem = {}, limite = 20, vocab = {}, jaTem = null, gravarFalha = false } = {}) {
+const SABE_O_RESTO_DO_PEDIDO = { en: { words: ['ferry', 'left'] } };
+
+function portas({ ligadas = ['en', 'ru'], contagem = {}, limite = 20, vocab = SABE_O_RESTO_DO_PEDIDO, jaTem = null, gravarFalha = false } = {}) {
   const chamadas = [];
   const estado = () => {
     const settings = Object.fromEntries(['en', 'ru', 'es'].map(lang => [lang, { enabled: ligadas.includes(lang), dailyLimit: limite }]));
@@ -85,15 +88,45 @@ async function textoDeMaQualidadePulaSemLerOVocabulario() {
 async function semPalavraNovaPulaComOVocabularioLido() {
   const p = portas({ vocab: { en: { words: ['ferry', 'left', 'harbour'] } } });
   const resultado = await MineracaoAutomatica.criar(p).candidata(pedido);
-  assert.strictEqual(resultado.reason, 'no_new_item');
+  assert.strictEqual(resultado.reason, 'nada_novo');
   assert.ok(!p.chamadas.some(([nome]) => nome === 'salvarSeNova'));
+}
+
+async function umaPalavraNovaNoBaralhoAindaNaoFoiEstudadaEEntra() {
+  const p = portas({ vocab: { en: { words: ['ferry', 'left'], status: { harbour: 'new' } } } });
+  const resultado = await MineracaoAutomatica.criar(p).candidata(pedido);
+  assert.strictEqual(resultado.action, 'saved');
+  assert.deepStrictEqual(plano(resultado.evaluation.keywords), ['harbour@8']);
+}
+
+async function aMesmaPalavraRecenteMaduraOuMistaNaoEntra() {
+  for (const situacao of ['recent', 'mature', 'mixed']) {
+    const p = portas({ vocab: { en: { words: ['ferry', 'left'], status: { harbour: situacao } } } });
+    const resultado = await MineracaoAutomatica.criar(p).candidata(pedido);
+    assert.deepStrictEqual([resultado.action, resultado.reason], ['skip', 'nada_novo'], situacao);
+    assert.ok(!p.chamadas.some(([nome]) => nome === 'salvarSeNova' || nome === 'contarMais'), situacao);
+  }
+}
+
+async function duasPalavrasDesconhecidasNaoEntramEOMotivoVaiParaOUltimoEvento() {
+  const p = portas({ vocab: { en: { words: ['ferry'] }, ru: { words: [] } } });
+  const decisao = MineracaoAutomatica.criar(p);
+  const resultado = await decisao.candidata(pedido);
+  assert.deepStrictEqual([resultado.action, resultado.reason], ['skip', 'nao_e_i_mais_1']);
+  assert.deepStrictEqual(plano(resultado.evaluation), { accept: false, reason: 'nao_e_i_mais_1' });
+  await decisao.candidata({ texto: 'Я вижу зебра лама', lang: 'ru' });
+  const [en, ru] = eventos(p.chamadas);
+  assert.deepStrictEqual([en.action, en.reason, en.evaluation], ['skip', 'nao_e_i_mais_1', { accept: false, reason: 'nao_e_i_mais_1', keywords: [] }]);
+  assert.deepStrictEqual([ru.action, ru.reason, ru.lang], ['skip', 'nao_e_i_mais_1', 'ru']);
+  assert.ok(!p.chamadas.some(([nome]) => nome === 'salvarSeNova' || nome === 'contarMais'));
 }
 
 async function comOAnkiFechadoNaoHaVocabularioENadaEntra() {
   const p = portas({ vocab: { en: { available: false }, ru: { available: false } } });
   const decisao = MineracaoAutomatica.criar(p);
-  assert.strictEqual((await decisao.candidata(pedido)).reason, 'no_new_item');
-  assert.strictEqual((await decisao.candidata({ ...pedido, texto: 'Я улыбаюсь', lang: 'ru' })).reason, 'no_new_item');
+  assert.strictEqual((await decisao.candidata(pedido)).reason, 'sem_vocabulario');
+  assert.strictEqual((await decisao.candidata({ ...pedido, texto: 'Я улыбаюсь', lang: 'ru' })).reason, 'sem_vocabulario');
+  assert.deepStrictEqual(eventos(p.chamadas).map(evento => evento.reason), ['sem_vocabulario', 'sem_vocabulario']);
   assert.ok(!p.chamadas.some(([nome]) => nome === 'salvarSeNova'));
 }
 
@@ -183,7 +216,7 @@ async function aTabelaPadraoTemInglesERusso() {
 }
 
 async function avaliarSoAvaliaESoLeOVocabularioQuandoPrecisa() {
-  const p = portas({ vocab: { en: { words: [] } } });
+  const p = portas();
   const decisao = MineracaoAutomatica.criar(p);
   assert.strictEqual((await decisao.avaliar('abc', 'en')).reason, 'low_quality_text');
   assert.strictEqual(p.chamadas.length, 0);
@@ -194,7 +227,8 @@ async function avaliarSoAvaliaESoLeOVocabularioQuandoPrecisa() {
 (async () => {
   const casos = [
     textoVazioPula, idiomaDesligadoPulaSemLerOVocabulario, oLimiteDeHojePula, textoDeMaQualidadePulaSemLerOVocabulario,
-    semPalavraNovaPulaComOVocabularioLido, comOAnkiFechadoNaoHaVocabularioENadaEntra,
+    semPalavraNovaPulaComOVocabularioLido, umaPalavraNovaNoBaralhoAindaNaoFoiEstudadaEEntra, aMesmaPalavraRecenteMaduraOuMistaNaoEntra,
+    duasPalavrasDesconhecidasNaoEntramEOMotivoVaiParaOUltimoEvento, comOAnkiFechadoNaoHaVocabularioENadaEntra,
     legendaInglesaNovaEGravadaContadaPublicadaERegistrada, legendaRussaNovaEGravadaSemPalavras, aOrigemPadraoEAuto,
     aIdiomaDoPedidoVemDoTextoQuandoNaoVemNoPedido, aDuplicataVemDoHistoricoENaoContaNemPublica, aDuplicataSoValeParaOMesmoTexto,
     umTerceiroIdiomaEhUmaLinhaNaTabela, aTabelaPadraoTemInglesERusso, avaliarSoAvaliaESoLeOVocabularioQuandoPrecisa,

@@ -82,7 +82,8 @@ test('na Max, sem nenhuma fala na tela, o nome do episódio não é minerado', a
   expect(await extensao.frases()).toEqual([]);
 });
 
-test('na Max, a mineração automática grava a fala e nunca o nome do episódio', async ({ page, extensao }) => {
+test('na Max, a mineração automática grava a fala e nunca o nome do episódio', async ({ page, extensao, fakes }) => {
+  fakes.anki.definirVocabulario('en', ['got', 'heated', 'pool', 'nobody']);
   await extensao.gravarStorage({
     pm_auto_miner_settings: { en: { enabled: true, dailyLimit: 20 }, ru: { enabled: false, dailyLimit: 15 } },
   });

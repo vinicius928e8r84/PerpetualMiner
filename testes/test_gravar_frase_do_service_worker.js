@@ -205,7 +205,7 @@ test('as Frases salvas em seguida ganham ids diferentes, e a primeira fica com a
 });
 
 test('a Mineração automática grava a Palavra da avaliação, marca a Frase e a leva à Nuvem; a repetida não grava nem sobe de novo', async () => {
-  const servico = abrirOServiceWorker({ ...AJUSTES_LIGADOS, pm_auto_keyword_vocab_en: vocabularioDoIngles(['rain']) });
+  const servico = abrirOServiceWorker({ ...AJUSTES_LIGADOS, pm_auto_keyword_vocab_en: vocabularioDoIngles(['ferry', 'left']) });
   const candidata = { texto: 'The ferry left the harbour.', origem: 'prime', contexto: { fonte: 'prime', titulo: 'Série', detalhe: '' }, lang: 'en' };
 
   const primeira = await servico.candidata(candidata);
@@ -221,7 +221,7 @@ test('a Mineração automática grava a Palavra da avaliação, marca a Frase e 
     [frase.autoMiner, frase.autoKeyword, frase.streaming, frase.idioma, frase.contexto],
     [true, true, 'prime', 'Inglês', candidata.contexto],
   );
-  assert.ok(frase.keywords.length > 0);
+  assert.deepStrictEqual(frase.keywords, ['harbour@8']);
   assert.deepStrictEqual(servico.nuvem.gravadas, [frase]);
 });
 
