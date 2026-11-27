@@ -111,6 +111,119 @@
       "porque": "cada pedido que a IA responde gasta tokens e anota o custo do mês: pedido de novo, o registro de custos cresce"
     },
     {
+      "nome": "Termos da linha pela chave: um phrasal verb incomum",
+      "daExtensao": true,
+      "contexto": {
+        "chaveNaConexao": "9f3a",
+        "chatgpt": "desconectada",
+        "openai": "aceita"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/termos",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "en",
+          "texto": "They had to rustle up some food"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "termos": [
+            {
+              "texto": "rustle up",
+              "posicoes": [
+                3,
+                4
+              ],
+              "tipo": "phrasal_verb",
+              "comum": false
+            }
+          ],
+          "pagou": "chave"
+        }
+      },
+      "repetivel": false,
+      "porque": "cada pedido que a IA responde gasta tokens e anota o custo do mês: pedido de novo, o registro de custos cresce"
+    },
+    {
+      "nome": "Termos da linha pela chave: uma gíria de duas palavras",
+      "daExtensao": true,
+      "contexto": {
+        "chaveNaConexao": "9f3a",
+        "chatgpt": "desconectada",
+        "openai": "aceita"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/termos",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "en",
+          "texto": "She threw shade at him"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "termos": [
+            {
+              "texto": "threw shade",
+              "posicoes": [
+                1,
+                2
+              ],
+              "tipo": "giria",
+              "comum": true
+            }
+          ],
+          "pagou": "chave"
+        }
+      },
+      "repetivel": false,
+      "porque": "cada pedido que a IA responde gasta tokens e anota o custo do mês: pedido de novo, o registro de custos cresce"
+    },
+    {
+      "nome": "Termos da linha pela chave: uma expressão incomum",
+      "daExtensao": true,
+      "contexto": {
+        "chaveNaConexao": "9f3a",
+        "chatgpt": "desconectada",
+        "openai": "aceita"
+      },
+      "pedido": {
+        "metodo": "POST",
+        "caminho": "/ia/termos",
+        "origem": "chrome-extension://ohpoogiccjmdgilgegholdidgfhjkadf",
+        "corpo": {
+          "lang": "en",
+          "texto": "He had a bee in his bonnet"
+        }
+      },
+      "resposta": {
+        "status": 200,
+        "json": {
+          "termos": [
+            {
+              "texto": "bee in his bonnet",
+              "posicoes": [
+                3,
+                4,
+                5,
+                6
+              ],
+              "tipo": "expressao",
+              "comum": false
+            }
+          ],
+          "pagou": "chave"
+        }
+      },
+      "repetivel": false,
+      "porque": "cada pedido que a IA responde gasta tokens e anota o custo do mês: pedido de novo, o registro de custos cresce"
+    },
+    {
       "nome": "Termos da linha com o login do ChatGPT: paga o plano",
       "daExtensao": true,
       "contexto": {

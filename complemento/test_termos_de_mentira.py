@@ -7,6 +7,9 @@ TERMOS_DA_MENTIRA = {
     "She can't put up with him": [{"words": [2, 3, 4], "type": "phrasal_verb", "common": True}],
     "Tell Walter I'm here": [{"words": [1], "type": "nome", "common": False}],
     "That's lit": [{"words": [1], "type": "giria", "common": True}],
+    "They had to rustle up some food": [{"words": [3, 4], "type": "phrasal_verb", "common": False}],
+    "She threw shade at him": [{"words": [1, 2], "type": "giria", "common": True}],
+    "He had a bee in his bonnet": [{"words": [3, 4, 5, 6], "type": "expressao", "common": False}],
 }
 RESPOSTA_QUEBRADA = "isto não é JSON"
 ERROS_DO_COMPORTAMENTO = {

@@ -51,7 +51,7 @@ A regra `indice-de-arquivos` exige uma linha, aqui ou em [testes-e-ferramentas.m
 | `lib/palavras-frequentes-en.js`, `lib/palavras-frequentes-ru.js` | The frequent English and Russian words the Iniciante's Mineração automática accepts as the new word (data only); where they come from: [palavras-frequentes.md](../palavras-frequentes.md). |
 | `lib/palavras-frequentes.js` | Asks whether a word is on the frequent list of an Idioma. |
 | `lib/palavra-automatica.js` | The choice of the Termo for the Mineração automática and for saving a Frase, as a pure function. |
-| `lib/palavra-em-duvida.js` | When the Mineração automática is in doubt and may ask the AI, and how the Termos the AI answers join the loose words, as pure functions. |
+| `lib/palavra-em-duvida.js` | When the Mineração automática is in doubt and may ask the AI, how the Termos the AI answers join the loose words, and the one table of which type of Termo each Nível accepts as the new thing (`TIPOS_POR_NIVEL`), as pure functions. |
 | `lib/palavras-gramaticais.js` | The grammar words (English and Russian) that count as known in the Mineração automática. |
 | `lib/termos-da-linha.js` | Asks the Conexão for the Termos of a caption line, with a deadline, the answer checked and kept by the text of the line. |
 | `lib/mineracao-automatica-decisao.js` | The Mineração automática's decision, through ports. |
