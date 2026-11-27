@@ -64,6 +64,18 @@ class RegistroDeTokens(unittest.TestCase):
              ("cost_usd", 1.3e-05)],
         ])
 
+    def test_os_termos_pagos_pela_chave_custam_o_preco_e_pelo_plano_custam_zero_e_guardam_o_que_a_chave_cobraria(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            custos = [
+                cost_tracker.record_terms(pasta, cost_tracker.TokenUsage("gpt-4o-mini", 400, 60), "gpt-4o-mini"),
+                cost_tracker.record_terms(pasta, cost_tracker.TokenUsage("gpt-6-luna", 400, 60), "gpt-4o-mini", paid=False),
+            ]
+            gravado = linhas(pasta)
+        self.assertGravado(custos, [(400 * 0.15 + 60 * 0.6) / 1e6, 0.0], gravado, [
+            [("type", "terms_tokens"), ("model", "gpt-4o-mini"), ("input_tokens", 400), ("output_tokens", 60), ("cost_usd", 9.6e-05)],
+            [("type", "terms_tokens"), ("model", "gpt-6-luna"), ("input_tokens", 400), ("output_tokens", 60), ("cost_usd", 0.0), ("would_cost_usd", 9.6e-05)],
+        ])
+
     def test_o_registro_cria_a_pasta_e_acrescenta_sem_apagar_o_que_ja_estava(self):
         with tempfile.TemporaryDirectory() as raiz:
             pasta = Path(raiz) / "log"

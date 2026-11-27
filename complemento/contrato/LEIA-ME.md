@@ -111,7 +111,7 @@ Por isso (decisão do dono, opção B):
 
 Rota nova que deva responder sem origem entra em `ROTAS_ABERTAS` (`servidor.py`) só com essa decisão.
 
-A única rota privada que dispensa a assinatura além do pareamento é `POST /anki/responde` (`ROTAS_SEM_ASSINATURA`). **Decisão do dono (2026-11-15, opção A):** ela fica sem assinatura como está, porque exige a `Origin` da extensão (`403` sem ela), só devolve `{ ok: true }` e não grava nada; o limite acima já admite que um programa local forja a `Origin`, então assiná-la não protegeria contra ele. Rota nova sem assinatura continua pedindo decisão do dono. O abridor que conserta sozinho (`conserto_do_anki.py`) pergunta por ela se a thread principal do Anki vive, e um script não é um navegador pareado; ela exige a origem da extensão, não devolve nem muda dado nenhum e responde só `{ ok: true }` (`503` com o Anki sem responder). `complemento/test_conserto_conexao_real.py` roda o script do Mac com o `curl` de verdade contra o servidor real.
+A única rota privada que dispensa a assinatura além do pareamento é `POST /anki/responde` (`ROTAS_SEM_ASSINATURA`). **Decisão do dono (2026-11-15, opção A):** ela fica sem assinatura como está, porque exige a `Origin` da extensão (`403` sem ela), só devolve `{ ok: true }` e não grava nada; o limite acima já admite que um programa local forja a `Origin`, então assiná-la não protegeria contra ele. Rota nova sem assinatura continua pedindo decisão do dono. O abridor que conserta sozinho (`conserto_do_anki.py`) pergunta por ela se a thread principal do Anki vive, e um script não é um navegador pareado (`503` com o Anki sem responder). `complemento/test_conserto_conexao_real.py` roda o script do Mac com o `curl` de verdade contra o servidor real.
 
 ## As rotas de leitura da coleção
 
@@ -154,7 +154,7 @@ Todas POST, com a origem da extensão (levam as Frases e os custos da pessoa); a
 `lastError` e o `error` de cada Cartão são códigos (`openai_key_missing`, `openai_key_rejected`, `openai_no_credit`,
 `openai_rate_limited`, `openai_unreachable`, `note_type_missing`, `anki_write_failed`, `keyword_missing`…), nunca o texto da OpenAI.
 
-O login do ChatGPT (#155): [`entrar-com-o-chatgpt.md`](entrar-com-o-chatgpt.md). O modelo dos cartões (#157): [`o-modelo-dos-cartoes.md`](o-modelo-dos-cartoes.md). A voz, o Ouvir (#174) e a fala do quiz de nível (#170): [`voz.md`](voz.md). A prévia do Cartão (#164): [`previa-do-cartao.md`](previa-do-cartao.md). A atualização da Conexão pelo AnkiWeb (#177): [`a-atualizacao.md`](a-atualizacao.md). O pareamento, quem pode pedir (#192): [`o-pareamento.md`](o-pareamento.md).
+O login do ChatGPT (#155): [`entrar-com-o-chatgpt.md`](entrar-com-o-chatgpt.md). O modelo dos cartões (#157): [`o-modelo-dos-cartoes.md`](o-modelo-dos-cartoes.md). A voz, o Ouvir (#174) e a fala do quiz de nível (#170): [`voz.md`](voz.md). A prévia do Cartão (#164): [`previa-do-cartao.md`](previa-do-cartao.md). A atualização da Conexão pelo AnkiWeb (#177): [`a-atualizacao.md`](a-atualizacao.md). O pareamento, quem pode pedir (#192): [`o-pareamento.md`](o-pareamento.md). Os Termos da linha lidos por IA (#905): [`os-termos-da-linha.md`](os-termos-da-linha.md).
 
 ## As rotas do perfil fixo (#149)
 

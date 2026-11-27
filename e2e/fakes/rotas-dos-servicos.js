@@ -35,6 +35,34 @@ function responderAVoz({ voz, respostaDoContrato }, { dados, url, responder }) {
   return responder(status, json);
 }
 
+const LINHA_DOS_TERMOS_DO_CONTRATO = Object.freeze({ lang: 'en', texto: "She can't put up with him" });
+
+const CUSTO_DE_UM_PEDIDO_DOS_TERMOS_PELA_CHAVE = 0.000081;
+
+function anotarOCustoDosTermos({ estado }, lang, pagou) {
+  const agora = estado.agora();
+  const pasta = `termos-${lang}-${agora.toISOString().slice(0, 7)}`;
+  const registro = { date: agora.toISOString(), type: 'terms_tokens', cost_usd: pagou === 'chave' ? CUSTO_DE_UM_PEDIDO_DOS_TERMOS_PELA_CHAVE : 0 };
+  estado.registrosDeCusto.set(pasta, [...(estado.registrosDeCusto.get(pasta) || []), registro]);
+}
+
+function resposta200DosTermos(servicos, lang, json, responder) {
+  anotarOCustoDosTermos(servicos, lang, json.pagou);
+  return responder(200, json);
+}
+
+function responderOsTermos(servicos, { dados, responder }) {
+  const corpo = dados || {};
+  try {
+    const { status, json } = servicos.respostaDoContrato('POST', '/ia/termos', corpo);
+    return status === 200 ? resposta200DosTermos(servicos, corpo.lang, json, responder) : responder(status, json);
+  } catch (semExemplo) {
+    const { status, json } = servicos.respostaDoContrato('POST', '/ia/termos', LINHA_DOS_TERMOS_DO_CONTRATO);
+    if (status === 200) throw semExemplo;
+    return responder(status, json);
+  }
+}
+
 function responderOEstadoDaIA({ respostaDoContrato }, { responder }) {
   const { status, json } = respostaDoContrato('POST', '/ia/estado', {});
   return responder(status, json);
@@ -47,6 +75,7 @@ function criarRotasDosServicos({ estado, chatgpt, voz, respostaDoContrato }) {
     rotaSe(ehDoChatGPT, ({ route, url }) => chatgpt.naConexao(route, url, respostaDoContrato)),
     rotaSe(ehDaVoz, pedido => responderAVoz(servicos, pedido)),
     rota('POST', '/ia/estado', pedido => responderOEstadoDaIA(servicos, pedido)),
+    rota('POST', '/ia/termos', pedido => responderOsTermos(servicos, pedido)),
     rotaSe(ehDoItemDeLogin, pedido => responderOItemDeLogin(servicos, pedido)),
   ];
 
@@ -57,6 +86,8 @@ function criarRotasDosServicos({ estado, chatgpt, voz, respostaDoContrato }) {
     /** @estado-guardado O item de login agora: `ligado` ou `desligado` (ou a situação que o teste pôs). */
     itemDeLogin() { return estado.contexto.itemDeLogin; },
     perderARespostaDoItemDeLogin({ aplicada }) { estado.perdaDaRespostaDoItem = { aplicada }; },
+    /** @estado-guardado O custo que cada pedido dos Termos da linha anotou, por pasta de mês e idioma. */
+    custosDosTermos() { return [...estado.registrosDeCusto].filter(([pasta]) => pasta.startsWith('termos-')); },
   };
 
   return { rotas, api };

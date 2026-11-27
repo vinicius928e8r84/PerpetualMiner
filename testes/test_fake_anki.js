@@ -83,6 +83,7 @@ function guardado({ fakeDoExemplo, google }) {
     chave: fakeDoExemplo.chaveNaConexao(), estadoDaChave: fakeDoExemplo.estadoDaChave(), item: fakeDoExemplo.itemDeLogin(),
     nuvem: google.chaveDaOpenAIDe('uid-teste'), envios: JSON.parse(JSON.stringify(fakeDoExemplo.envios)),
     chatgpt: fakeDoExemplo.chatgpt.situacao(), modelo: fakeDoExemplo.modelo.guardado(), teto: fakeDoExemplo.teto.guardado(),
+    custosDosTermos: fakeDoExemplo.custosDosTermos(),
     perfilMarcado: fakeDoExemplo.perfilMarcado(), perfilAberto: fakeDoExemplo.perfilAberto(),
     pareados: [...fakeDoExemplo.pareamento.pareados()],
   };

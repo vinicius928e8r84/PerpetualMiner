@@ -107,6 +107,10 @@ MATRIZ = {
         "recusas": [({}, 400, "invalid_lang"), ({"lang": "en"}, 400, "invalid_front"), ({"lang": "en", "frente": "imagem_primeiro"}, 400, "invalid_front")],
     },
     ("POST", "/voz/ouvir"): {"corpo": {"lang": "en", "provedor": "google", "sotaque": "com"}, **SEM_LEITURA, "recusas": [({}, 400, "invalid_request")]},
+    ("POST", "/ia/termos"): {
+        "corpo": {"lang": "en", "texto": "She can't put up with him"}, "muda": True, **SEM_LEITURA, "status": 409,
+        "recusas": [({}, 400, "invalid_request"), ({"lang": "en", "texto": "   "}, 400, "invalid_request")],
+    },
 }
 
 MATRIZ.update(MATRIZ_DO_PAREAMENTO)

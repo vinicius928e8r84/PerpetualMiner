@@ -92,6 +92,15 @@ def record_image_pipeline(
     _append(log_dir, record)
 
 
+def record_terms(log_dir: str | Path, usage: TokenUsage, key_model: str, paid: bool = True) -> float:
+    cost = usage.priced_as(usage.model) if paid else 0.0
+    record = _token_record("terms_tokens", usage, cost)
+    if not paid:
+        record["would_cost_usd"] = round(usage.priced_as(key_model), 6)
+    _append(log_dir, record)
+    return cost
+
+
 def _append(log_dir: str | Path, record: dict) -> None:
     p = _log_path(log_dir)
     p.parent.mkdir(exist_ok=True)
