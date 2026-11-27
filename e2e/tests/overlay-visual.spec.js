@@ -147,6 +147,7 @@ test('MIN-06: a mineração automática, a mesma marca mais apagada, com o idiom
     pm_auto_miner_settings: { en: { enabled: false, dailyLimit: 20 }, ru: { enabled: true, dailyLimit: 20 } },
     pm_auto_miner_daily: { date: hoje, en: { count: 0 }, ru: { count: 4 } },
     pm_auto_keyword_vocab_ru: { cacheVersion: 2, deckName: DRU, createdAt: Date.now(), words: [], terms: [], wordInfo: {}, termInfo: {} },
+    ankiBridgePresets: { ru: { nivel: 'intermediario' } },
   });
   await abrirPlayer(page, paginas);
   await page.evaluate(async () => {

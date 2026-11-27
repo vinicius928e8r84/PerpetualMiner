@@ -86,6 +86,7 @@ test('na Max, a mineração automática grava a fala e nunca o nome do episódio
   fakes.anki.definirVocabulario('en', ['got', 'heated', 'pool', 'nobody']);
   await extensao.gravarStorage({
     pm_auto_miner_settings: { en: { enabled: true, dailyLimit: 20 }, ru: { enabled: false, dailyLimit: 15 } },
+    ankiBridgePresets: { en: { nivel: 'intermediario' } },
   });
   await abrirPlayerDaMax(page);
   await tocarVideo(page);

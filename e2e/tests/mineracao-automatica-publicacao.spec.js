@@ -14,6 +14,7 @@ async function prepararRussoNoLimite({ extensao, page, paginas }) {
   await extensao.gravarStorage({
     pm_auto_miner_settings: { en: { enabled: false, dailyLimit: 20 }, ru: { enabled: true, dailyLimit: 3 } },
     pm_auto_miner_daily: { date: hoje, en: { count: 0 }, ru: { count: 2 } },
+    ankiBridgePresets: { ru: { nivel: 'intermediario' } },
     pm_auto_keyword_vocab_ru: {
       cacheVersion: 2, deckName: DRU, createdAt: Date.now(),
       words: [], terms: [], wordInfo: {}, termInfo: {},
