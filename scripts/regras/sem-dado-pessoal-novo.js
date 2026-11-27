@@ -8,13 +8,18 @@ const segredo = require('./sem-segredo-novo');
 
 const id = 'sem-dado-pessoal-novo';
 
-const guarda = 'nenhum dado pessoal nas linhas que a mudança acrescenta (e-mail fora do noreply, IP real, caminho `C:\\Users\\<nome>` ou `/Users/<nome>`, nome de uma lista guardada fora do repositório; o valor nunca é impresso)';
+const guarda = 'nenhum dado pessoal nas linhas que a mudança acrescenta (e-mail fora do noreply, IP real, caminho `C:\\Users\\<nome>` ou `/Users/<nome>`, nome de uma lista guardada fora do repositório; o valor nunca é impresso; a exceção é por arquivo, com motivo, em `EXCECOES` na regra)';
 
 const conserto = 'Troque o dado por um exemplo: e-mail @example.com (ou o noreply do GitHub), IP de documentação (192.0.2.x, 198.51.100.x, 203.0.113.x) ou 127.0.0.1, '
   + 'caminho com <usuário>, $USER, ~ ou %USERPROFILE% no lugar do nome. O valor não é mostrado de propósito: este repositório é público e o log do CI também. '
   + 'Se o dado já foi publicado numa branch, apagar o commit depois não o recupera. '
   + 'Os nomes vêm de uma lista fora do repositório: o arquivo apontado por FREIOS_NOMES ou ~/.config/freios/nomes.txt, um nome por linha (# comenta). '
-  + 'Um caso que precisa ficar leva, na própria linha: `exceção sem-dado-pessoal-novo até AAAA-MM-DD, aprovada por <pessoa>: <motivo>`.';
+  + 'Um caso que precisa ficar (um IP de rede privada que um teste confere, por exemplo) entra em EXCECOES de scripts/regras/sem-dado-pessoal-novo.js: '
+  + 'o arquivo, com o motivo, por PR de regras (atenção ALTA). Nenhuma faixa de IP privado vale para o repositório inteiro.';
+
+const EXCECOES = [];
+
+const arquivoDaExcecao = arquivo => EXCECOES.some(excecao => excecao.arquivo.test(arquivo));
 
 const VARIAVEL_DA_LISTA = 'FREIOS_NOMES';
 const LISTA_PADRAO = ['.config', 'freios', 'nomes.txt'];
@@ -116,6 +121,7 @@ function gruposDaBase(arquivo, raiz, base, nomes) {
 }
 
 function verificar(arquivo, fonte, raiz, base) {
+  if (arquivoDaExcecao(arquivo)) return [];
   const novas = linhasNovas(arquivo, raiz, base);
   if (novas === NENHUMA_LINHA) return [];
   const nomes = padraoDosNomes(lerNomes() || []);
@@ -130,4 +136,4 @@ function verificar(arquivo, fonte, raiz, base) {
   return achados;
 }
 
-module.exports = { id, guarda, conserto, seAplica, verificar, aviso, tiposDaLinha, padraoDosNomes };
+module.exports = { id, guarda, conserto, seAplica, verificar, aviso, tiposDaLinha, padraoDosNomes, EXCECOES };

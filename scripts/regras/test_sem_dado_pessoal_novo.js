@@ -129,7 +129,17 @@ assert.match(regra.conserto, /192\.0\.2/);
 assert.match(regra.conserto, /<usuário>/);
 assert.match(regra.conserto, /FREIOS_NOMES/);
 assert.match(regra.conserto, /nomes\.txt/);
-assert.match(regra.conserto, /exceção sem-dado-pessoal-novo até AAAA-MM-DD/);
+assert.match(regra.conserto, /EXCECOES de scripts\/regras\/sem-dado-pessoal-novo\.js/);
+assert.match(regra.conserto, /o arquivo, com o motivo/);
+
+for (const excecao of regra.EXCECOES) {
+  assert(excecao.arquivo instanceof RegExp, 'a exceção nomeia o arquivo');
+  assert(typeof excecao.motivo === 'string' && excecao.motivo.trim(), 'toda exceção tem motivo');
+}
+regra.EXCECOES.push({ arquivo: /^complemento\/test_rede\.py$/, motivo: 'o teste confere a escolha da interface de rede privada' });
+assert.deepStrictEqual(linhas(novo('complemento/test_rede.py', juntar(`ip = '${IP_PRIVADO}'`))), [], 'o arquivo da lista de exceções passa');
+assert.deepStrictEqual(linhas(novo('complemento/test_outro.py', juntar(`ip = '${IP_PRIVADO}'`))), [1], 'a exceção vale só para o seu arquivo');
+regra.EXCECOES.pop();
 assert.match(regra.conserto, /publicado numa branch/);
 
 function repositorioComUmaPr(depois) {
