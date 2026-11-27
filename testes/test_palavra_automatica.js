@@ -338,7 +338,8 @@ const ESPERADO = {
    "en",
    {
     "accept": false,
-    "reason": "nao_e_i_mais_1"
+    "reason": "nao_e_i_mais_1",
+    "iaPerguntada": true
    }
   ],
   [
@@ -346,7 +347,8 @@ const ESPERADO = {
    "en",
    {
     "accept": false,
-    "reason": "nao_e_i_mais_1"
+    "reason": "nao_e_i_mais_1",
+    "iaPerguntada": true
    }
   ],
   [
@@ -408,7 +410,8 @@ const ESPERADO = {
    "ru",
    {
     "accept": false,
-    "reason": "nada_novo"
+    "reason": "nada_novo",
+    "iaPerguntada": true
    }
   ]
  ],
@@ -457,7 +460,7 @@ async function escolherDireto() {
   }
   for (const [texto, lang, avaliacao] of ESPERADO.avaliar) {
     const completo = AVALIAR.find(([t]) => t.slice(0, 40) === texto)[0];
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(await PalavraAutomatica.avaliar(completo, lang, vocab(lang)))), avaliacao, texto);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(await PalavraAutomatica.avaliar(completo, lang, { vocabulario: vocab(lang), nivel: NIVEL_QUE_NAO_LIMITA[lang].nivel, termos: async () => null }))), avaliacao, texto);
   }
 }
 

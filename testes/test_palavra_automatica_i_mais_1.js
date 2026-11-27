@@ -9,7 +9,7 @@ const RAIZ = path.resolve(__dirname, '..');
 const contexto = { console };
 contexto.globalThis = contexto;
 vm.createContext(contexto);
-for (const arquivo of ['lib/voz/catalogo.js', 'lib/voz/catalogo-configuracoes.js', 'lib/voz/catalogo-anki.js', 'lib/voz/catalogo-boas-vindas.js', 'lib/voz/catalogo-envio.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/mineracao.js', 'lib/palavra-automatica.js']) {
+for (const arquivo of ['lib/voz/catalogo.js', 'lib/voz/catalogo-configuracoes.js', 'lib/voz/catalogo-anki.js', 'lib/voz/catalogo-boas-vindas.js', 'lib/voz/catalogo-envio.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/mineracao.js', 'lib/palavras-frequentes-en.js', 'lib/palavras-frequentes-ru.js', 'lib/palavras-frequentes.js', 'lib/palavras-gramaticais.js', 'lib/palavra-em-duvida.js', 'lib/palavra-automatica.js']) {
   vm.runInContext(fs.readFileSync(path.join(RAIZ, arquivo), 'utf8'), contexto, { filename: arquivo });
 }
 const { PalavraAutomatica } = contexto.PerpetualMiner;
@@ -73,7 +73,7 @@ avaliacao('russo: o nome no meio da frase conta como conhecido', 'Я вижу И
 async function run() {
   const diferentes = [];
   for (const { id, texto, lang, vocab, esperado } of AVALIACOES) {
-    const atual = JSON.parse(JSON.stringify(await PalavraAutomatica.avaliar(texto, lang, vocabulario(vocab))));
+    const atual = JSON.parse(JSON.stringify(await PalavraAutomatica.avaliar(texto, lang, { vocabulario: vocabulario(vocab) })));
     if (JSON.stringify(atual) !== JSON.stringify(esperado)) diferentes.push([id, atual]);
   }
   assert.deepStrictEqual(diferentes, [], 'a regra do I+1 exato mudou');

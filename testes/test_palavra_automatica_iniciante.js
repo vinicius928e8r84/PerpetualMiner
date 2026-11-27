@@ -9,7 +9,7 @@ const RAIZ = path.resolve(__dirname, '..');
 const contexto = { console };
 contexto.globalThis = contexto;
 vm.createContext(contexto);
-for (const arquivo of ['lib/voz/catalogo.js', 'lib/voz/catalogo-configuracoes.js', 'lib/voz/catalogo-anki.js', 'lib/voz/catalogo-boas-vindas.js', 'lib/voz/catalogo-envio.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/mineracao.js', 'lib/palavras-frequentes-en.js', 'lib/palavras-frequentes-ru.js', 'lib/palavras-frequentes.js', 'lib/palavra-automatica.js']) {
+for (const arquivo of ['lib/voz/catalogo.js', 'lib/voz/catalogo-configuracoes.js', 'lib/voz/catalogo-anki.js', 'lib/voz/catalogo-boas-vindas.js', 'lib/voz/catalogo-envio.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/mineracao.js', 'lib/palavras-frequentes-en.js', 'lib/palavras-frequentes-ru.js', 'lib/palavras-frequentes.js', 'lib/palavras-gramaticais.js', 'lib/palavra-em-duvida.js', 'lib/palavra-automatica.js']) {
   vm.runInContext(fs.readFileSync(path.join(RAIZ, arquivo), 'utf8'), contexto, { filename: arquivo });
 }
 const { PalavraAutomatica, PalavrasFrequentes } = contexto.PerpetualMiner;
@@ -28,7 +28,7 @@ function vocabulario({ conhecidas = [], novas = [], outras = 0, available = true
 }
 
 const comOTotalDe = (total, conhecidas) => vocabulario({ conhecidas, outras: total - conhecidas.length });
-const avaliar = (texto, lang, vocab, nivel = INICIANTE) => PalavraAutomatica.avaliar(texto, lang, vocab, nivel).then(plano);
+const avaliar = (texto, lang, vocab, nivel = INICIANTE) => PalavraAutomatica.avaliar(texto, lang, { vocabulario: vocab, nivel }).then(plano);
 
 const SEIS_PALAVRAS = 'The old man left the house';
 const SABE_O_RESTO = ['old', 'man', 'left'];
@@ -101,7 +101,7 @@ async function intermediarioEAvancadoMantemOTetoDeHojeEAceitamQualquerPalavraNov
 
 async function semNivelAAvaliacaoEIgualAoIntermediario() {
   const vocab = comOTotalDe(3, SABE_O_RESTO);
-  assert.deepStrictEqual(plano(await PalavraAutomatica.avaliar('The old man left the zebra', 'en', vocab)), aceita('en_new_item', 'zebra@10'));
+  assert.deepStrictEqual(plano(await PalavraAutomatica.avaliar('The old man left the zebra', 'en', { vocabulario: vocab })), aceita('en_new_item', 'zebra@10'));
 }
 
 async function oTetoDeHojeContinuaValendoParaOIniciante() {
@@ -111,7 +111,7 @@ async function oTetoDeHojeContinuaValendoParaOIniciante() {
 }
 
 async function oNivelPodeVirDeUmaFuncaoComoOVocabulario() {
-  const resultado = plano(await PalavraAutomatica.avaliar('The old man left the zebra', 'en', () => comOTotalDe(3, SABE_O_RESTO), () => INICIANTE));
+  const resultado = plano(await PalavraAutomatica.avaliar('The old man left the zebra', 'en', { vocabulario: () => comOTotalDe(3, SABE_O_RESTO), nivel: () => INICIANTE }));
   assert.deepStrictEqual(resultado, recusa('linha_longa'));
 }
 
