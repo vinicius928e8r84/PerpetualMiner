@@ -44,6 +44,7 @@ Ela sobe em `127.0.0.1:8766`, numa thread, e responde a saúde
 | `registro.py` | O logger do complemento: todo erro vai para `user_files/logs/complemento.log` |
 | `pasta_de_dados.py` | `user_files/{fila,estado,custos,logs,chaves,prompts}`, que o Anki preserva nas atualizações (`envio.py`); `prompts` é do dono: um arquivo com o nome de um prompt vale no lugar do padrão (`motor_do_envio.prompt_do_dono`) |
 | `configuracao.py` | Versão, porta e o ID da extensão |
+| `anki_de_teste.py` | O Anki de teste das provas (#896): só o Anki que tem o arquivo `anki-de-teste` na pasta de dados aceita a porta de `PM_ANKI_DE_TESTE_PORTA` (nunca a 8766, e sem porta boa a Conexão não sobe); em qualquer outro Anki a variável não vale nada. `.agents/skills/verify-perpetualminer/conexao-real.md` |
 | `contrato/` | Os exemplos que o complemento e o fake do e2e leem, e como uma rota nova entra |
 | `empacotar.py` | Monta o `.ankiaddon` (e `conexao/perpetualminer.ankiaddon`, o do botão Baixar), com o motor de `engine/` em `motor/` |
 | `versoes.json` | O hash das fontes do pacote por `VERSAO` (fora do `.ankiaddon`); `test_pacote.py` falha na main se as fontes mudam e a `VERSAO` não |

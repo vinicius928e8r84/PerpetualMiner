@@ -46,3 +46,20 @@ Traps the hand-made harnesses fell into:
 - **A reload is `page.reload()`**: `page.goto` to the same `#` address does not reload.
 - **Read the key file only by its last 4 characters** (`dono.chave.slice(-4)`), and never print or save the whole value.
 - **Fake keys only.** The fake OpenAI accepts any well-formed one; a real key must never reach this script.
+
+## The test Anki
+
+`conexao-real.py` runs the Conexão outside Anki. When the proof needs the add-on inside a real Anki (it loads, it listens, a route reaches the collection), use the test Anki, `scripts/anki-de-teste.py` (#896; the owner's decision is in home-repo #62):
+
+- **A real Anki, no screen.** The Qt `offscreen` platform, one per Worker, **one at a time on the host** (a lock; the second proof waits, with no limit, and says so). The host has 4 cores and 3 to 6 GB free: close it at the end of every proof.
+- **Its own data folder**, made for the proof under the temp folder (`pm-anki-de-teste-*`), with the add-on built from the checkout (`complemento/empacotar.py`) and paired with the two e2e test browsers. At the end the Anki, what it opened and that folder are gone; nothing else is deleted. `HOME` points inside it, so nothing reaches the owner's files.
+- **A free port, never 8766**, chosen for each proof. The add-on takes another port only when its Anki folder has the file `anki-de-teste` and `PM_ANKI_DE_TESTE_PORTA` names it (`complemento/anki_de_teste.py`); in any other Anki the variable means nothing. A test Anki without a good port does not start the Conexão: it never falls back to 8766. The 8766 gets no reservation and no lock.
+- **The browser is sent to that port** as above: the `context.route` that swaps `:8766` for the port, now read from `PM_ANKI_PORTA` (or from the `--pronto` file).
+
+```bash
+.agents/skills/verify-perpetualminer/scripts/anki-de-teste.py preparar    # once per host: the Anki's venv and the screen libraries (no root)
+.agents/skills/verify-perpetualminer/scripts/anki-de-teste.py --pronto /tmp/anki-<run-id>.json -- \
+  .agents/skills/verify-perpetualminer/scripts/drive.sh <run-id> zz-scratch-<run-id>.spec
+```
+
+`--pronto` writes `{porta, pasta, base}` when the Conexão answers `GET /health` and deletes the file at the end; the command's exit code is the proof's. The Anki is the `aqt` version in `VERSAO_DO_ANKI` (a venv in `~/.cache/pm-anki-de-teste`, `PM_ANKI_DE_TESTE_HOME`). It proves the add-on loads and answers inside a real Anki; it does not prove the opener or the login item (no Mac or Windows here: those go through the Mac lock, `no-mac.sh`).
