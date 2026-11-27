@@ -48,6 +48,8 @@ A regra `indice-de-arquivos` exige uma linha, aqui ou em [testes-e-ferramentas.m
 | `lib/abrir-o-anki.js` | Opening the Anki on the person's click, and the opener's own repair. |
 | `abridor/ponte.html` | The empty page the Painel keeps in a hidden frame for `lib/abridor.js`. |
 | `lib/vocabulario-da-mineracao.js` | The last Vocabulário reading the Mineração automática uses; it has no expiry. |
+| `lib/palavras-frequentes-en.js`, `lib/palavras-frequentes-ru.js` | The frequent English and Russian words the Iniciante's Mineração automática accepts as the new word (data only); where they come from: [palavras-frequentes.md](../palavras-frequentes.md). |
+| `lib/palavras-frequentes.js` | Asks whether a word is on the frequent list of an Idioma. |
 | `lib/palavra-automatica.js` | The choice of the Termo for the Mineração automática and for saving a Frase, as a pure function. |
 | `lib/mineracao-automatica-decisao.js` | The Mineração automática's decision, through ports. |
 | `lib/mineracao-automatica.js` | The Mineração automática seen from a page: state, save and the daily-limit field. |
