@@ -172,10 +172,34 @@ jobs:
           PM_CONEXAO: real
           PYTHON: python
 
+  regras-do-firestore:
+    name: Regras do Firestore (emulador)
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/cache@v5
+        with:
+          path: ~/.cache/firebase/emulators
+          key: emulador-do-firestore-1.22.0
+      - name: Baixar o emulador (SHA-256 conferido pelo teste)
+        run: |
+          arquivo=~/.cache/firebase/emulators/cloud-firestore-emulator-v1.22.0.jar
+          mkdir -p "$(dirname "$arquivo")"
+          [ -f "$arquivo" ] || curl -fsSL -o "$arquivo" https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.22.0.jar
+      - run: node scripts/testar.mjs firestore
+
   testes-ok:
     name: Testes ok
     if: ${{ always() }}
-    needs: [rapidos, complemento, e2e]
+    needs: [rapidos, complemento, e2e, regras-do-firestore]
     runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
     timeout-minutes: 5
     steps:
@@ -184,6 +208,7 @@ jobs:
           RAPIDOS: ${{ needs.rapidos.result }}
           COMPLEMENTO: ${{ needs.complemento.result }}
           E2E: ${{ needs.e2e.result }}
+          FIRESTORE: ${{ needs.regras-do-firestore.result }}
         run: |
-          echo "Testes rápidos: $RAPIDOS; complemento: $COMPLEMENTO; e2e: $E2E"
-          [ "$RAPIDOS" = success ] && [ "$COMPLEMENTO" = success ] && [ "$E2E" = success ]
+          echo "Testes rápidos: $RAPIDOS; complemento: $COMPLEMENTO; e2e: $E2E; regras do Firestore: $FIRESTORE"
+          [ "$RAPIDOS" = success ] && [ "$COMPLEMENTO" = success ] && [ "$E2E" = success ] && [ "$FIRESTORE" = success ]

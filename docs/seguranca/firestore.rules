@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /usuarios/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /ranking/{docId} {
+      allow read: if request.auth != null && resource.data.topou == true;
+
+      allow create, update: if request.auth != null
+        && request.resource.data.keys().hasOnly(['uid', 'idioma', 'nome', 'foto', 'nivel', 'melhorSequencia', 'nota', 'acertos', 'perguntas', 'grupos', 'topou', 'em'])
+        && request.resource.data.keys().hasAll(['uid', 'idioma', 'nome', 'foto', 'nivel', 'melhorSequencia', 'nota', 'acertos', 'perguntas', 'grupos', 'topou', 'em'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.topou == true
+        && request.resource.data.idioma in ['en', 'ru']
+        && docId == request.resource.data.idioma + '_' + request.auth.uid
+        && request.resource.data.nivel in ['iniciante', 'intermediario', 'avancado']
+        && request.resource.data.nome is string && request.resource.data.nome.size() <= 100
+        && request.resource.data.foto is string && request.resource.data.foto.size() <= 600
+        && request.resource.data.melhorSequencia is int && request.resource.data.melhorSequencia >= 0 && request.resource.data.melhorSequencia <= 6
+        && request.resource.data.nota is int && request.resource.data.acertos is int && request.resource.data.perguntas is int
+        && request.resource.data.grupos is list && request.resource.data.em is int;
+
+      allow delete: if request.auth != null && (resource == null || resource.data.uid == request.auth.uid);
+    }
+  }
+}
