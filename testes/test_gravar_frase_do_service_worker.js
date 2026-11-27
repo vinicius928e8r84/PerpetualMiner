@@ -22,7 +22,10 @@ const vocabularioDoRusso = () => ({
 
 const PALAVRAS_QUE_JA_SEI = ['aside', 'babies', 'children', 'clock', 'dependence', 'exposed', 'farmers', 'fed', 'fields', 'lay', 'left', 'porridge', 'rain', 'required', 'seed', 'settle', 'villages', 'wheat', 'women'];
 const FRASE_COM_PALAVRA_NOVA = 'Its dependence on rain left it exposed to the depredations of drought.';
-const AJUSTES_LIGADOS = { pm_auto_miner_settings: { en: { enabled: true, dailyLimit: 20 }, ru: { enabled: true, dailyLimit: 20 } } };
+const AJUSTES_LIGADOS = {
+  pm_auto_miner_settings: { en: { enabled: true, dailyLimit: 20 }, ru: { enabled: true, dailyLimit: 20 } },
+  ankiBridgePresets: { en: { nivel: 'intermediario' }, ru: { nivel: 'intermediario' } },
+};
 
 function armazenamentoDeMentira(armazenamento) {
   const valorDe = (chave, padrao) => (Object.hasOwn(armazenamento, chave) ? armazenamento[chave] : padrao);
