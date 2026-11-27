@@ -20,6 +20,8 @@ const pagina = ({ titulo, corpo }) => `<!doctype html>
 <body>${corpo}</body>
 </html>`;
 
+const TITULO_DA_NETFLIX_DE_HOJE = '<h4>Stranger Things</h4><span>E1</span><span>Chapter One: The Vanishing of Will Byers</span>';
+
 const player = (fala, { id } = {}) =>
   `<div class="player"${id ? ` id="${id}"` : ''}><video muted></video>${fala}</div>`;
 
@@ -65,6 +67,14 @@ const CASOS = [
     corpo: player(`<div class="fala player-timedtext-text-container">${FALA_EM_INGLES}</div>`
       + '<div data-uia="video-title">Ozark</div><div data-uia="controls-episode-title">2x05</div>'),
     contexto: { fonte: 'netflix', titulo: 'Ozark', detalhe: 'S02E05' },
+  },
+  {
+    nome: 'na Netflix de hoje, o título da série no título e o episódio no detalhe, do mesmo bloco do player',
+    url: 'https://www.netflix.com/watch/1',
+    titulo: 'Netflix',
+    corpo: player(`<div class="fala player-timedtext-text-container">${FALA_EM_INGLES}</div>`
+      + `<div data-uia="video-title">${TITULO_DA_NETFLIX_DE_HOJE}</div>`),
+    contexto: { fonte: 'netflix', titulo: 'Stranger Things', detalhe: 'E1' },
   },
   {
     nome: 'na Netflix, sem campos, o título da aba sem o “Netflix” e nenhum episódio',
@@ -162,3 +172,28 @@ for (const caso of CASOS) {
     await expect.poll(async () => (await extensao.frases()).map(f => f.contexto)).toEqual([caso.contexto]);
   });
 }
+
+test('o botão guarda o contexto da Netflix mesmo com os controles do player escondidos', async ({ page, extensao }) => {
+  const url = 'https://www.netflix.com/watch/1';
+  await page.route(`${new URL(url).origin}/**`, route => route.fulfill({
+    contentType: 'text/html; charset=utf-8',
+    body: pagina({
+      titulo: 'Netflix',
+      corpo: player(`<div class="fala player-timedtext-text-container">${FALA_EM_INGLES}</div>`),
+    }),
+  }));
+  await page.goto(url);
+  await expect(botaoFlutuante(page)).toBeVisible();
+
+  await page.evaluate(html => {
+    document.querySelector('.player').insertAdjacentHTML('beforeend', `<div data-uia="video-title">${html}</div>`);
+  }, TITULO_DA_NETFLIX_DE_HOJE);
+  await page.mouse.move(300, 200);
+  await page.waitForTimeout(1000);
+  await page.evaluate(() => document.querySelector('[data-uia="video-title"]').remove());
+
+  await botaoFlutuante(page).click();
+
+  await expect.poll(async () => (await extensao.frases()).map(f => f.contexto))
+    .toEqual([{ fonte: 'netflix', titulo: 'Stranger Things', detalhe: 'E1' }]);
+});
