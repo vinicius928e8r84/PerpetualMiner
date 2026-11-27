@@ -18,6 +18,7 @@ async function legendaTocando({ page, paginas, extensao, fakes }, vocabulario) {
   await extensao.gravarStorage({
     pm_auto_miner_settings: { en: { enabled: true, dailyLimit: 20 }, ru: { enabled: false, dailyLimit: 20 } },
     pm_auto_miner_daily: { date: hoje(), en: { count: 0 }, ru: { count: 0 } },
+    ankiBridgePresets: { en: { nivel: 'intermediario' } },
   });
   await page.goto(paginas.url('player.html'));
   await expect(botaoFlutuante(page)).toBeVisible();

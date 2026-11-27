@@ -64,6 +64,7 @@ function semearMineracaoAutomatica(extensao, { en, ru, dia = diaDe(new Date()) }
       en: { count: en.hoje },
       ru: { count: ru.hoje },
     },
+    ankiBridgePresets: { en: { nivel: 'intermediario' }, ru: { nivel: 'intermediario' } },
   });
 }
 

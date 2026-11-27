@@ -49,6 +49,7 @@ test('ontem no limite, o alarme da virada do dia: a aba aberta volta a minerar',
       cacheVersion: 2, deckName: DRU, createdAt: Date.now(),
       words: [], terms: [], wordInfo: {}, termInfo: {},
     },
+    ankiBridgePresets: { ru: { nivel: 'intermediario' } },
   });
   await page.goto(paginas.url('player.html'));
   await expect(botaoFlutuante(page)).toBeVisible();
@@ -89,6 +90,7 @@ test('a aba trata um estado de ontem no limite como zero, mesmo antes do alarme'
       cacheVersion: 2, deckName: DRU, createdAt: Date.now(),
       words: [], terms: [], wordInfo: {}, termInfo: {},
     },
+    ankiBridgePresets: { ru: { nivel: 'intermediario' } },
   });
 
   const soltarRelogio = await congelarRelogioDoServiceWorker(extensao, ontem);

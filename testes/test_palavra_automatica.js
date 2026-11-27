@@ -415,8 +415,10 @@ const ESPERADO = {
  "semVocabulario": []
 };
 
+const NIVEL_QUE_NAO_LIMITA = { en: { nivel: 'intermediario' }, ru: { nivel: 'intermediario' } };
+
 async function saidaAtual() {
-  const storage = { pm_auto_keyword_vocab_en: VOCABULARIOS.en, pm_auto_keyword_vocab_ru: VOCABULARIOS.ru };
+  const storage = { pm_auto_keyword_vocab_en: VOCABULARIOS.en, pm_auto_keyword_vocab_ru: VOCABULARIOS.ru, ankiBridgePresets: NIVEL_QUE_NAO_LIMITA };
   const context = carregarBackground(storage);
   const saida = { en: [], ru: [], avaliar: [] };
   for (const texto of TEXTOS_EN) {
