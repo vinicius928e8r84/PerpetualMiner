@@ -33,6 +33,7 @@ const REGRAS = [
   require('./dialogo-nativo'),
   require('./saude-do-codigo'),
   require('./sem-segredo-novo'),
+  require('./sem-dado-pessoal-novo'),
   require('./sem-binario-novo'),
   require('./sem-depuracao-nova'),
   require('./sem-codescene-no-repositorio'),
@@ -282,7 +283,15 @@ class Catraca {
 
   conferir() {
     for (const regra of REGRAS) this.conferirRegra(regra);
+    this.avisarDasRegras();
     this.compararComABase();
+  }
+
+  avisarDasRegras() {
+    for (const regra of REGRAS) {
+      const aviso = regra.aviso ? regra.aviso() : null;
+      if (aviso) this.avisos.push(aviso);
+    }
   }
 
   conferirRegra(regra) {
