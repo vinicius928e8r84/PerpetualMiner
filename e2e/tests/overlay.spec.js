@@ -492,12 +492,8 @@ test('com uma falha aberta, o Esc digitado num campo do site é do site e a falh
 
 test('a mineração automática minera uma linha: MIN-06 na pílula, com o idioma e o contador do dia na meta', async ({ page, paginas, extensao }) => {
   await extensao.gravarStorage({
-    pm_auto_miner_settings: { en: { enabled: false, dailyLimit: 20 }, ru: { enabled: true, dailyLimit: 20 } },
+    ...mineracaoEmRussoComVocabulario(0),
     pm_auto_miner_daily: { date: hoje(), en: { count: 0 }, ru: { count: 4 } },
-    pm_auto_keyword_vocab_ru: {
-      cacheVersion: 2, deckName: DRU, createdAt: Date.now(),
-      words: [], terms: [], wordInfo: {}, termInfo: {},
-    },
   });
   await abrirPlayer(page, paginas);
 
@@ -533,6 +529,7 @@ const mineracaoEmRussoComVocabulario = idadeMs => ({
   pm_auto_miner_settings: { en: { enabled: false, dailyLimit: 20 }, ru: { enabled: true, dailyLimit: 20 } },
   pm_auto_miner_daily: { date: hoje(), en: { count: 0 }, ru: { count: 0 } },
   pm_auto_keyword_vocab_ru: leituraDoVocabulario(DRU, Date.now() - idadeMs),
+  ankiBridgePresets: { ru: { nivel: 'intermediario' } },
 });
 
 test('com a Conexão desligada, a mineração automática minera pela última leitura do vocabulário, de dois dias atrás', async ({ page, paginas, extensao, fakes }) => {

@@ -288,6 +288,7 @@ const MINERACAO_AUTOMATICA_EM_RU = {
     cacheVersion: 2, deckName: DRU, createdAt: Date.now(),
     words: [], terms: [], wordInfo: {}, termInfo: {},
   },
+  ankiBridgePresets: { ru: { nivel: 'intermediario' } },
 };
 
 test('a mineração automática usa a mesma marca, mais apagada, com auto: e o contador do idioma', async ({ page, context, paginas, extensao }) => {

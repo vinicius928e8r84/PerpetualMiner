@@ -9,7 +9,7 @@ const RAIZ = path.resolve(__dirname, '..');
 const contexto = { console };
 contexto.globalThis = contexto;
 vm.createContext(contexto);
-for (const arquivo of ['lib/voz/catalogo.js', 'lib/voz/catalogo-configuracoes.js', 'lib/voz/catalogo-anki.js', 'lib/voz/catalogo-boas-vindas.js', 'lib/voz/catalogo-envio.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/mineracao.js', 'lib/palavras-gramaticais.js', 'lib/palavra-em-duvida.js', 'lib/palavra-automatica.js']) {
+for (const arquivo of ['lib/voz/catalogo.js', 'lib/voz/catalogo-configuracoes.js', 'lib/voz/catalogo-anki.js', 'lib/voz/catalogo-boas-vindas.js', 'lib/voz/catalogo-envio.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/mineracao.js', 'lib/palavras-frequentes-en.js', 'lib/palavras-frequentes-ru.js', 'lib/palavras-frequentes.js', 'lib/palavras-gramaticais.js', 'lib/palavra-em-duvida.js', 'lib/palavra-automatica.js']) {
   vm.runInContext(fs.readFileSync(path.join(RAIZ, arquivo), 'utf8'), contexto, { filename: arquivo });
 }
 const { PalavraAutomatica } = contexto.PerpetualMiner;
@@ -105,11 +105,13 @@ caso('duas desconhecidas longe uma da outra (mais de 2 palavras entre elas): sem
 caso('duas desconhecidas com 2 palavras entre elas ainda sao proximas', {
   texto: 'Zebra and the llama', vocab: {}, termos: [], esperado: recusa('nao_e_i_mais_1'), perguntas: 1,
 });
+const JA_SABE_200 = Array.from({ length: 200 }, (_, i) => `conhecida${i}`);
+
 caso('no Iniciante a IA nunca e chamada, nem com tudo conhecido', {
-  texto: ELA, vocab: TODAS_CONHECIDAS, nivel: 'iniciante', termos: PUT_UP_WITH, esperado: semIA('nada_novo'), perguntas: 0,
+  texto: ELA, vocab: { words: [...TODAS_CONHECIDAS.words, ...JA_SABE_200] }, nivel: 'iniciante', termos: PUT_UP_WITH, esperado: semIA('nada_novo'), perguntas: 0,
 });
 caso('no Iniciante a IA nunca e chamada, nem com duas proximas', {
-  texto: 'The ferry left the harbour.', vocab: { words: ['ferry'] }, nivel: 'iniciante', termos: [termo([2, 3])], esperado: semIA('nao_e_i_mais_1'), perguntas: 0,
+  texto: 'The ferry left the harbour.', vocab: { words: ['ferry', ...JA_SABE_200] }, nivel: 'iniciante', termos: [termo([2, 3])], esperado: semIA('nao_e_i_mais_1'), perguntas: 0,
 });
 caso('a linha de uma palavra so, conhecida, nao pergunta: o codigo ja tem certeza', {
   texto: 'Harbour', vocab: { words: ['harbour'] }, termos: [], esperado: semIA('nada_novo'), perguntas: 0,
@@ -149,7 +151,7 @@ async function run() {
       if (termos instanceof Error) throw termos;
       return termos;
     };
-    const atual = JSON.parse(JSON.stringify(await PalavraAutomatica.avaliar(texto, lang, vocabulario(vocab), nivel, termosDaIA)));
+    const atual = JSON.parse(JSON.stringify(await PalavraAutomatica.avaliar(texto, lang, { vocabulario: vocabulario(vocab), nivel, termos: termosDaIA })));
     if (JSON.stringify(atual) !== JSON.stringify(esperado) || feitas !== perguntas) diferentes.push([id, atual, `perguntas: ${feitas}`]);
   }
   assert.deepStrictEqual(diferentes, [], 'a regra da dúvida com os Termos da IA mudou');

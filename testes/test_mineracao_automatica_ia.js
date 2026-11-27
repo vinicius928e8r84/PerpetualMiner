@@ -5,6 +5,7 @@ const { MineracaoAutomatica, plano, portas, eventos, pedido } = require('./apoio
 
 const ELA = "She can't put up with him";
 const TUDO_CONHECIDO = { en: { words: ['she', "can't", 'put', 'up', 'with', 'him'] } };
+const INICIANTE_QUE_JA_LE_LINHAS_LONGAS = { en: { words: [...TUDO_CONHECIDO.en.words, ...Array.from({ length: 200 }, (_, i) => `conhecida${i}`)] } };
 const PUT_UP_WITH = [{ posicoes: [2, 3, 4], tipo: 'phrasal_verb', comum: true }];
 const perguntas = chamadas => chamadas.filter(([nome]) => nome === 'termos');
 
@@ -51,7 +52,7 @@ async function aIANuncaEChamadaQuandoOCodigoJaTemCerteza() {
     'uma palavra desconhecida so': { vocab: { en: { words: ['ferry', 'left'] } } },
     'tres ou mais desconhecidas': { texto: 'zebra yak llama', vocab: { en: { words: [] } } },
     'duas longe uma da outra': { texto: 'Zebra and the old man saw llama', vocab: { en: { words: ['old', 'man', 'saw'] } } },
-    'no Iniciante, em dúvida': { nivel: 'iniciante', texto: ELA, vocab: TUDO_CONHECIDO },
+    'no Iniciante, em dúvida': { nivel: 'iniciante', texto: ELA, vocab: INICIANTE_QUE_JA_LE_LINHAS_LONGAS },
     'a linha de uma palavra so, conhecida': { texto: 'Harbour', vocab: { en: { words: ['harbour'] } } },
     'texto lixo': { texto: 'skip intro', vocab: TUDO_CONHECIDO },
     'linha longa demais em inglês': { texto: `${'word '.repeat(60)}end`, vocab: TUDO_CONHECIDO },
@@ -71,7 +72,8 @@ async function antesDosFiltrosDeGracaNemOVocabularioNemONivelSaoLidos() {
   for (const ajustes of [{ ligadas: ['ru'] }, { contagem: { en: 5 }, limite: 5 }]) {
     const p = portas({ vocab: TUDO_CONHECIDO, termos: PUT_UP_WITH, ...ajustes });
     await MineracaoAutomatica.criar(p).candidata({ ...pedido, texto: ELA });
-    assert.deepStrictEqual(p.chamadas.map(([nome]) => nome).filter(nome => ['vocabulario', 'nivel', 'termos'].includes(nome)), []);
+    assert.deepStrictEqual(p.chamadas.map(([nome]) => nome).filter(nome => ['vocabulario', 'termos'].includes(nome)), []);
+    assert.deepStrictEqual(p.niveisPedidos, []);
   }
 }
 
@@ -96,7 +98,7 @@ async function aExpressaoRussaDePalavrasConhecidasEntraInteira() {
 
 async function oNivelDaPessoaMudaAEscolhaNaProximaLinha() {
   let nivel = 'iniciante';
-  const p = { ...portas({ vocab: TUDO_CONHECIDO, termos: PUT_UP_WITH }), nivel: async () => nivel };
+  const p = { ...portas({ vocab: INICIANTE_QUE_JA_LE_LINHAS_LONGAS, termos: PUT_UP_WITH }), nivel: async () => nivel };
   const decisao = MineracaoAutomatica.criar(p);
   assert.strictEqual((await decisao.candidata({ ...pedido, texto: ELA })).reason, 'nada_novo');
   nivel = 'avancado';

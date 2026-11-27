@@ -338,7 +338,8 @@ const ESPERADO = {
    "en",
    {
     "accept": false,
-    "reason": "nao_e_i_mais_1"
+    "reason": "nao_e_i_mais_1",
+    "iaPerguntada": true
    }
   ],
   [
@@ -346,7 +347,8 @@ const ESPERADO = {
    "en",
    {
     "accept": false,
-    "reason": "nao_e_i_mais_1"
+    "reason": "nao_e_i_mais_1",
+    "iaPerguntada": true
    }
   ],
   [
@@ -408,15 +410,18 @@ const ESPERADO = {
    "ru",
    {
     "accept": false,
-    "reason": "nada_novo"
+    "reason": "nada_novo",
+    "iaPerguntada": true
    }
   ]
  ],
  "semVocabulario": []
 };
 
+const NIVEL_QUE_NAO_LIMITA = { en: { nivel: 'intermediario' }, ru: { nivel: 'intermediario' } };
+
 async function saidaAtual() {
-  const storage = { pm_auto_keyword_vocab_en: VOCABULARIOS.en, pm_auto_keyword_vocab_ru: VOCABULARIOS.ru };
+  const storage = { pm_auto_keyword_vocab_en: VOCABULARIOS.en, pm_auto_keyword_vocab_ru: VOCABULARIOS.ru, ankiBridgePresets: NIVEL_QUE_NAO_LIMITA };
   const context = carregarBackground(storage);
   const saida = { en: [], ru: [], avaliar: [] };
   for (const texto of TEXTOS_EN) {
@@ -455,7 +460,7 @@ async function escolherDireto() {
   }
   for (const [texto, lang, avaliacao] of ESPERADO.avaliar) {
     const completo = AVALIAR.find(([t]) => t.slice(0, 40) === texto)[0];
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(await PalavraAutomatica.avaliar(completo, lang, vocab(lang)))), avaliacao, texto);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(await PalavraAutomatica.avaliar(completo, lang, { vocabulario: vocab(lang), nivel: NIVEL_QUE_NAO_LIMITA[lang].nivel, termos: async () => null }))), avaliacao, texto);
   }
 }
 

@@ -109,7 +109,7 @@ O item de estudo do Anki gerado a partir de uma Frase. Cada Termo da Frase gera 
 _Avoid_: Card
 
 **Nível**:
-O quanto o Cartão explica, por Idioma: Iniciante, Intermediário ou Avançado. É a escolha que define o Estilo do cartão, e o quiz de nível da Boas-vindas sugere um.
+O quanto o Cartão explica, por Idioma: Iniciante, Intermediário ou Avançado. É a escolha que define o Estilo do cartão e que também guia a Mineração automática; o quiz de nível da Boas-vindas sugere um.
 _Avoid_: Estilo (é o que o Nível define)
 
 **Estilo do cartão**:

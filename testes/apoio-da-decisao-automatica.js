@@ -9,7 +9,7 @@ const contexto = { console };
 contexto.globalThis = contexto;
 vm.createContext(contexto);
 for (const arquivo of ['lib/voz/catalogo.js', 'lib/voz/catalogo-configuracoes.js', 'lib/voz/catalogo-anki.js', 'lib/voz/catalogo-boas-vindas.js', 'lib/voz/catalogo-envio.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/mineracao.js', 'lib/mineracao-do-dia.js',
-  'lib/palavras-gramaticais.js', 'lib/palavra-em-duvida.js', 'lib/palavra-automatica.js', 'lib/mineracao-automatica-decisao.js']) {
+  'lib/palavras-frequentes-en.js', 'lib/palavras-frequentes-ru.js', 'lib/palavras-frequentes.js', 'lib/palavras-gramaticais.js', 'lib/palavra-em-duvida.js', 'lib/palavra-automatica.js', 'lib/mineracao-automatica-decisao.js']) {
   vm.runInContext(fs.readFileSync(path.join(RAIZ, arquivo), 'utf8'), contexto, { filename: arquivo });
 }
 const { MineracaoAutomatica, MineracaoDoDia } = contexto.PerpetualMiner;
@@ -25,35 +25,50 @@ function vocabulario({ words = [], status = {}, terms = [], termStatus = {}, ava
 
 const SABE_O_RESTO_DO_PEDIDO = { en: { words: ['ferry', 'left'] } };
 
-function portas({ ligadas = ['en', 'ru'], contagem = {}, limite = 20, vocab = SABE_O_RESTO_DO_PEDIDO, nivel = 'intermediario', termos = null, jaTem = null, gravarFalha = false } = {}) {
-  const chamadas = [];
-  const estado = () => {
-    const settings = Object.fromEntries(['en', 'ru', 'es'].map(lang => [lang, { enabled: ligadas.includes(lang), dailyLimit: limite }]));
-    const daily = { date: MineracaoDoDia.diaDe(new Date(AGORA)), en: { count: contagem.en || 0 }, ru: { count: contagem.ru || 0 }, es: { count: contagem.es || 0 } };
-    return { settings, daily };
+const IDIOMAS_DOS_AJUSTES = ['en', 'ru', 'es'];
+
+function ajustesDoDia({ ligadas, contagem, limite }) {
+  const settings = Object.fromEntries(IDIOMAS_DOS_AJUSTES.map(lang => [lang, { enabled: ligadas.includes(lang), dailyLimit: limite }]));
+  const contas = Object.fromEntries(IDIOMAS_DOS_AJUSTES.map(lang => [lang, { count: contagem[lang] || 0 }]));
+  return { settings, daily: { date: MineracaoDoDia.diaDe(new Date(AGORA)), ...contas } };
+}
+
+function ajustesDeMentira(chamadas, dia) {
+  return {
+    ler: async () => ajustesDoDia(dia),
+    contarMais: async lang => { chamadas.push(['contarMais', lang]); const e = ajustesDoDia(dia); e.daily[lang].count += 1; return e; },
+    publicar: estadoNovo => chamadas.push(['publicar', estadoNovo.daily.en.count, estadoNovo.daily.ru.count]),
+    registrar: async evento => { chamadas.push(['registrar', plano(evento)]); },
   };
+}
+
+function historicoDeMentira(chamadas, jaTem) {
+  return {
+    salvarSeNova: async (frase, repetida) => {
+      chamadas.push(['salvarSeNova', plano(frase)]);
+      return jaTem && jaTem(repetida) ? null : { ...frase, id: 77 };
+    },
+  };
+}
+
+const termosDeMentira = (chamadas, termos) => async (lang, texto) => {
+  chamadas.push(['termos', lang, texto]);
+  if (termos instanceof Error) throw termos;
+  return termos;
+};
+
+function portas({ ligadas = ['en', 'ru'], contagem = {}, limite = 20, vocab = SABE_O_RESTO_DO_PEDIDO, nivel = 'intermediario', niveis = {}, termos = null, jaTem = null } = {}) {
+  const chamadas = [];
+  const niveisPedidos = [];
   return {
     chamadas,
+    niveis,
+    niveisPedidos,
     vocabulario: async lang => { chamadas.push(['vocabulario', lang]); return vocabulario(vocab[lang] || {}); },
-    nivel: async lang => { chamadas.push(['nivel', lang]); return nivel; },
-    termos: async (lang, texto) => {
-      chamadas.push(['termos', lang, texto]);
-      if (termos instanceof Error) throw termos;
-      return termos;
-    },
-    historico: {
-      salvarSeNova: async (frase, repetida) => {
-        chamadas.push(['salvarSeNova', plano(frase)]);
-        if (jaTem && jaTem(repetida)) return null;
-        return { ...frase, id: 77 };
-      },
-    },
-    ajustes: {
-      ler: async () => estado(),
-      contarMais: async lang => { chamadas.push(['contarMais', lang]); const e = estado(); e.daily[lang].count += 1; return e; },
-      publicar: estadoNovo => chamadas.push(['publicar', estadoNovo.daily.en.count, estadoNovo.daily.ru.count]),
-      registrar: async evento => { chamadas.push(['registrar', plano(evento)]); },
-    },
+    nivel: async lang => { niveisPedidos.push(lang); return niveis[lang] || nivel; },
+    termos: termosDeMentira(chamadas, termos),
+    historico: historicoDeMentira(chamadas, jaTem),
+    ajustes: ajustesDeMentira(chamadas, { ligadas, contagem, limite }),
     relogio: { agora: () => AGORA },
   };
 }

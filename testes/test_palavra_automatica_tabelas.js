@@ -9,7 +9,7 @@ const RAIZ = path.resolve(__dirname, '..');
 const contexto = { console };
 contexto.globalThis = contexto;
 vm.createContext(contexto);
-for (const arquivo of ['lib/voz/catalogo.js', 'lib/voz/catalogo-configuracoes.js', 'lib/voz/catalogo-anki.js', 'lib/voz/catalogo-boas-vindas.js', 'lib/voz/catalogo-envio.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/mineracao.js', 'lib/palavras-gramaticais.js', 'lib/palavra-em-duvida.js', 'lib/palavra-automatica.js']) {
+for (const arquivo of ['lib/voz/catalogo.js', 'lib/voz/catalogo-configuracoes.js', 'lib/voz/catalogo-anki.js', 'lib/voz/catalogo-boas-vindas.js', 'lib/voz/catalogo-envio.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/mineracao.js', 'lib/palavras-frequentes-en.js', 'lib/palavras-frequentes-ru.js', 'lib/palavras-frequentes.js', 'lib/palavras-gramaticais.js', 'lib/palavra-em-duvida.js', 'lib/palavra-automatica.js']) {
   vm.runInContext(fs.readFileSync(path.join(RAIZ, arquivo), 'utf8'), contexto, { filename: arquivo });
 }
 const { PalavraAutomatica } = contexto.PerpetualMiner;
@@ -329,7 +329,7 @@ async function rodar() {
   const saida = {};
   for (const [id, { executar }] of Object.entries(casos)) saida[id] = JSON.stringify(executar());
   for (const [id, texto, lang, vocab] of AVALIACOES) {
-    saida[`avaliar ${id}`] = JSON.stringify(await PalavraAutomatica.avaliar(texto, lang, vocabulario(vocab)));
+    saida[`avaliar ${id}`] = JSON.stringify(await PalavraAutomatica.avaliar(texto, lang, { vocabulario: vocabulario(vocab) }));
   }
   return saida;
 }
