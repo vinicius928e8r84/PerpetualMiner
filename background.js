@@ -1,7 +1,7 @@
 'use strict';
 
-importScripts('lib/voz/catalogo.js', 'lib/voz/catalogo-configuracoes.js', 'lib/voz/catalogo-anki.js', 'lib/voz/catalogo-boas-vindas.js', 'lib/voz/catalogo-envio.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/mineracao.js', 'lib/ajustes-de-envio.js', 'lib/mineracao-do-dia.js', 'lib/vocabulario-da-mineracao.js', 'lib/palavra-automatica.js', 'lib/mineracao-automatica-decisao.js', 'lib/pedido-ao-anki.js', 'lib/pareamento.js', 'lib/envio-gravado.js', 'lib/apagar-frases-pendente.js', 'lib/historico.js', 'lib/nuvem-do-firestore.js', 'lib/sincronizacao.js');
-const { textoDaVoz, detectarIdioma, idiomaDe, IDIOMAS, MineracaoDoDia, Mineracao, MineracaoAutomatica, VocabularioDaMineracao, PalavraAutomatica, Sincronizacao } = PerpetualMiner;
+importScripts('lib/voz/catalogo.js', 'lib/voz/catalogo-configuracoes.js', 'lib/voz/catalogo-anki.js', 'lib/voz/catalogo-boas-vindas.js', 'lib/voz/catalogo-envio.js', 'lib/voz/texto.js', 'lib/idioma.js', 'lib/mineracao.js', 'lib/ajustes-de-envio.js', 'lib/mineracao-do-dia.js', 'lib/vocabulario-da-mineracao.js', 'lib/palavras-gramaticais.js', 'lib/palavra-em-duvida.js', 'lib/palavra-automatica.js', 'lib/mineracao-automatica-decisao.js', 'lib/pedido-ao-anki.js', 'lib/termos-da-linha.js', 'lib/pareamento.js', 'lib/envio-gravado.js', 'lib/apagar-frases-pendente.js', 'lib/historico.js', 'lib/nuvem-do-firestore.js', 'lib/sincronizacao.js');
+const { textoDaVoz, detectarIdioma, idiomaDe, IDIOMAS, MineracaoDoDia, Mineracao, MineracaoAutomatica, VocabularioDaMineracao, PalavraAutomatica, AjustesDeEnvio, TermosDaLinha, ConversaComOAnki, Sincronizacao } = PerpetualMiner;
 
 if (chrome.storage.local.setAccessLevel) {
   chrome.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' })
@@ -221,8 +221,12 @@ function autoVocabularyFromCache(value) {
   return VocabularioDaMineracao.vocabularioDaLeitura(value);
 }
 
+const termosDaLinha = TermosDaLinha.criar({ conversa: ConversaComOAnki });
+
 const mineracaoAutomatica = MineracaoAutomatica.criar({
   vocabulario: lang => getAutoKeywordVocabulary(lang),
+  nivel: async lang => (await AjustesDeEnvio.ler())[lang].nivel,
+  termos: (lang, texto) => termosDaLinha.perguntar(lang, texto),
   historico: {
     salvarSeNova: (captura, jaTem) => minerar(captura, { soSe: jaTem }),
   },
