@@ -28,7 +28,7 @@ textoForaDaVoz('painel/painel.js', [
   "botao.setAttribute('aria-label', textoDaVoz('PAI-34'));",
   "campo.placeholder = textoDaVoz('PAI-04.busca');",
 ].join('\n'), 0, 'o texto que vem do textoDaVoz');
-textoForaDaVoz('veio/componentes.js', "a.textContent = 'palavra:';\nb.textContent = \"auto:\";\nc.textContent = 'Detalhes';\n", 0, 'os três literais que os componentes base escrevem');
+textoForaDaVoz('veio/componentes.js', "a.textContent = 'termo:';\nb.textContent = \"auto:\";\nc.textContent = 'Detalhes';\n", 0, 'os três literais que os componentes base escrevem');
 textoForaDaVoz('painel/painel.js', "x.textContent = '';\ny.textContent = '?';\nz.title = '· ' + total;\nif (no.title === 'Salvar') return;\n", 0,
   'vazio, símbolo, comparação e o que não começa com letra');
 textoForaDaVoz('painel/painel.js', "// x.textContent = 'Salvar';\n/* y.title = 'Fechar'; */\n", 0, 'um comentário não conta');

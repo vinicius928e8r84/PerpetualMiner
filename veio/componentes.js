@@ -2,7 +2,7 @@
 
 (function (raiz) {
   const ROTULOS_DO_PADRAO = {
-    palavraEscolhida: 'palavra:',
+    palavraEscolhida: 'termo:',
     palavraDetectada: 'auto:',
     detalhes: 'Detalhes',
   };

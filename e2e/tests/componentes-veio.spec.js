@@ -403,7 +403,7 @@ test('o chip diz se a Palavra foi escolhida ou detectada, com o rótulo em mono'
   await abrirVitrine(page, paginas);
 
   const chips = page.locator('[data-tema="escuro"] .veio-chip-palavra');
-  await expect(chips.nth(0)).toHaveText('palavra:responsibility');
+  await expect(chips.nth(0)).toHaveText('termo:responsibility');
   await expect(chips.nth(1)).toHaveText('auto:крови');
 
   await expect(chips.nth(0).locator('.veio-chip-palavra__rotulo'))
@@ -495,7 +495,7 @@ test('toda a cópia da vitrine vem do catálogo da Voz', async ({ page, paginas 
   const aprovados = new Set(doCatalogo.map(([, texto]) => texto));
   const doGlossario = new Set(['Netflix', 'YouTube', 'Web', 'PDF', 'Livro', 'Manual']);
   const teclasGravadas = new Set(['Alt', 'S']);
-  const doPadrao = new Set(['palavra:', 'auto:', 'Detalhes']);
+  const doPadrao = new Set(['termo:', 'auto:', 'Detalhes']);
 
   const soltos = await textosEscritos(page);
 
