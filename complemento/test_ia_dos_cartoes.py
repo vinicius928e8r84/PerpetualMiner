@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from complemento import envio
 from complemento.chaves import Cofre
-from complemento.ia_dos_cartoes import CORRECAO, ETAPAS, IMAGEM, JUIZ, OUVIR, TEXTO, VOZ, IaDosCartoes, MotorNaOpenAI, Situacao, quem_paga_a_etapa
+from complemento.ia_dos_cartoes import CORRECAO, ETAPAS, IMAGEM, JUIZ, OUVIR, TERMOS, TEXTO, VOZ, IaDosCartoes, MotorNaOpenAI, Situacao, quem_paga_a_etapa
 from complemento.login_do_chatgpt import ACABOU, CONECTADA, SAIU, SEM_LOGIN, ErroDoPlano, LoginDoChatGPT
 from complemento.modelo_dos_cartoes import CHAVE, PARADO, PLANO, Conta, ListaDosModelos, ModeloDosCartoes, lista_nossa
 from complemento.test_imagens_de_mentira import png_de
@@ -32,7 +32,7 @@ SITUACOES = {
 }
 PELO_PLANO = [(PLANO, None), (PLANO, None), (PARADO, SAIU), (CHAVE, None), (CHAVE, None), (CHAVE, None), (PARADO, SEM_CHAVE)]
 SO_PELA_CHAVE = [(CHAVE, None), (PARADO, SEM_CHAVE), (CHAVE, None), (CHAVE, None), (CHAVE, None), (CHAVE, None), (PARADO, SEM_CHAVE)]
-TABELA = {TEXTO: PELO_PLANO, CORRECAO: PELO_PLANO, JUIZ: PELO_PLANO, IMAGEM: SO_PELA_CHAVE, VOZ: SO_PELA_CHAVE, OUVIR: SO_PELA_CHAVE}
+TABELA = {TEXTO: PELO_PLANO, CORRECAO: PELO_PLANO, JUIZ: PELO_PLANO, TERMOS: PELO_PLANO, IMAGEM: SO_PELA_CHAVE, VOZ: SO_PELA_CHAVE, OUVIR: SO_PELA_CHAVE}
 
 
 def guardar(pasta, login, tem_chave, api="http://127.0.0.1:9"):

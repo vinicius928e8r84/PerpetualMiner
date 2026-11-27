@@ -4,7 +4,7 @@ const assert = require('assert');
 const { criarRotasDosServicos } = require('../e2e/fakes/rotas-dos-servicos');
 
 function montar({ itemLigado = true, statusDoItem = 200 } = {}) {
-  const estado = { contexto: { itemDeLogin: 'desligado', outro: 1 }, perdaDaRespostaDoItem: null };
+  const estado = { contexto: { itemDeLogin: 'desligado', outro: 1 }, perdaDaRespostaDoItem: null, agora: () => new Date('2026-11-27T12:00:00Z'), registrosDeCusto: new Map() };
   const chamadas = [];
   const chatgpt = { naConexao: (route, url, respostaDoContrato) => { chamadas.push(['chatgpt', url.pathname, respostaDoContrato.name]); return 'do-chatgpt'; } };
   const voz = { naConexao: (dados, respostaDoContrato, caminho) => { chamadas.push(['voz', dados, caminho, respostaDoContrato.name]); return { status: 202, json: { voz: caminho } }; } };
@@ -55,6 +55,29 @@ caso('o POST em /ia/estado responde o exemplo do contrato com o corpo vazio', ()
   assert.deepStrictEqual(respostas, [['responder', 200, { ligado: true, de: '/ia/estado' }]]);
   assert.deepStrictEqual(chamadas, [['contrato', 'POST', '/ia/estado', {}]]);
   assert.strictEqual(pedir(rotas, 'GET', '/ia/estado').feito, undefined);
+});
+
+caso('o POST em /ia/termos responde o exemplo da linha pedida; a recusa vale para qualquer linha e a linha sem exemplo, quando a Conexão responderia, quebra', () => {
+  const pedidas = [];
+  const exemplos = { "She can't put up with him": { status: 200, json: { termos: ['put up with'], pagou: 'chave' } } };
+  const parado = { status: 409, json: { error: 'openai_key_missing' } };
+  let situacao = 'chave';
+  function respostaDoContrato(metodo, caminho, corpo) {
+    pedidas.push(corpo.texto);
+    const exemplo = situacao === 'parado' ? parado : exemplos[corpo.texto];
+    if (!exemplo) throw new Error('sem exemplo');
+    return exemplo;
+  }
+  const estado = { agora: () => new Date('2026-11-27T12:00:00Z'), registrosDeCusto: new Map() };
+  const { rotas, api } = criarRotasDosServicos({ estado, chatgpt: {}, voz: {}, respostaDoContrato });
+  const termos = texto => pedir(rotas, 'POST', '/ia/termos', { dados: { lang: 'en', texto } }).respostas;
+  assert.deepStrictEqual(termos("She can't put up with him"), [['responder', 200, { termos: ['put up with'], pagou: 'chave' }]]);
+  assert.deepStrictEqual(api.custosDosTermos(), [['termos-en-2026-11', [{ date: '2026-11-27T12:00:00.000Z', type: 'terms_tokens', cost_usd: 0.000081 }]]]);
+  assert.throws(() => termos('Outra linha'), /sem exemplo/);
+  situacao = 'parado';
+  assert.deepStrictEqual(termos('Outra linha'), [['responder', 409, { error: 'openai_key_missing' }]]);
+  assert.strictEqual(api.custosDosTermos().length, 1);
+  assert.strictEqual(pedir(rotas, 'GET', '/ia/termos').feito, undefined);
 });
 
 caso('o item de login: a resposta do contrato vale e, se é 200, o contexto passa a ligado ou desligado', () => {
@@ -110,11 +133,11 @@ caso('a api diz o item de login e se ele está instalado (só quando ligado)', (
   assert.deepStrictEqual([api.itemDeLogin(), api.itemInstalado()], ['quebrado', false]);
 });
 
-caso('as rotas vêm nesta ordem: ChatGPT, voz, estado da IA, item de login', () => {
+caso('as rotas vêm nesta ordem: ChatGPT, voz, estado da IA, Termos da linha, item de login', () => {
   const { rotas } = montar();
-  assert.strictEqual(rotas.length, 4);
+  assert.strictEqual(rotas.length, 5);
   const quemAtende = (metodo, caminho) => rotas.findIndex(rota => rota({ req: { method: () => metodo, postData: () => null }, url: new URL(`http://x${caminho}`), route: { abort() {} }, dados: {}, responder: () => 1 }));
-  assert.deepStrictEqual([['POST', '/ia/chatgpt/entrar'], ['POST', '/voz/x'], ['POST', '/ia/estado'], ['POST', '/abrir-com-o-computador']].map(([m, c]) => quemAtende(m, c)), [0, 1, 2, 3]);
+  assert.deepStrictEqual([['POST', '/ia/chatgpt/entrar'], ['POST', '/voz/x'], ['POST', '/ia/estado'], ['POST', '/ia/termos'], ['POST', '/abrir-com-o-computador']].map(([m, c]) => quemAtende(m, c)), [0, 1, 2, 3, 4]);
 });
 
 for (const { nome, corpo } of CASOS) {

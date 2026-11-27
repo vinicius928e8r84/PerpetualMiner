@@ -8,6 +8,7 @@ from urllib.parse import unquote, urlsplit
 from complemento.test_cartao_russo_de_mentira import cartao_russo
 from complemento.test_correcao_de_mentira import CorrecaoDeMentira
 from complemento.test_imagens_de_mentira import png_de
+from complemento.test_termos_de_mentira import COMECO_DO_PROMPT as COMECO_DOS_TERMOS, TermosDeMentira
 
 MODELOS_OK = (200, {"object": "list", "data": [{"id": "gpt-4.1-mini", "object": "model"}]})
 EMBEDDINGS_OK = (200, {"object": "list", "data": [{"embedding": [0.0]}]})
@@ -121,7 +122,7 @@ class AtendenteDaOpenAI(BaseHTTPRequestHandler):
     do_GET = do_POST = _atender
 
 
-class OpenAIDeMentira(CorrecaoDeMentira):
+class OpenAIDeMentira(CorrecaoDeMentira, TermosDeMentira):
     def __init__(self, comportamento="aceita"):
         self.comportamento = comportamento
         self.pedidos = []
@@ -193,6 +194,9 @@ class OpenAIDeMentira(CorrecaoDeMentira):
         correcao = self._correcao_pelo_chat(autorizacao, corpo, _erro)
         if correcao:
             return correcao
+        termos = self._termos_pelo_chat(autorizacao, corpo, _erro)
+        if termos:
+            return termos
         if sistema.startswith("You are an expert visual selector"):
             return self._juiz(autorizacao, corpo)
         if sistema.startswith("You are a classifier"):
@@ -237,6 +241,11 @@ class OpenAIDeMentira(CorrecaoDeMentira):
         quantos = len(self.respostas)
         do_texto, do_juiz = (r(quantos) if callable(r) else r for r in (self.recusa_das_respostas, self.recusa_do_juiz_do_plano))
         return (do_juiz or self.recusas_do_chat.get("[juiz]")) if eh_o_juiz else do_texto
+
+    def _texto_do_plano(self, autorizacao, corpo, cartao_de_mentira):
+        if corpo["instructions"].startswith(COMECO_DOS_TERMOS):
+            return self._termos_pelo_plano(autorizacao, corpo)
+        return CorrecaoDeMentira._texto_do_plano(self, autorizacao, corpo, cartao_de_mentira)
 
     def _veredito_do_plano(self, autorizacao, corpo):
         partes = corpo["input"][0]["content"]

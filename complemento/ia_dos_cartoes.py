@@ -2,16 +2,22 @@ import logging
 from collections import namedtuple
 
 from .configuracao import NOME_DO_LOGGER
-from .modelo_dos_cartoes import CHAVE, PARADO, PLANO, SEM_CHAVE, credencial, credencial_da_imagem, quem_paga
+from .modelo_dos_cartoes import CHAVE, PARADO, PLANO, PROVEDOR, SEM_CHAVE, Pagador, credencial, credencial_da_imagem, quem_paga
 
-TEXTO, CORRECAO, JUIZ, IMAGEM, VOZ, OUVIR = "texto", "correcao", "juiz", "imagem", "voz", "ouvir"
-PELO_PLANO = (TEXTO, CORRECAO, JUIZ)
+TEXTO, CORRECAO, JUIZ, TERMOS, IMAGEM, VOZ, OUVIR = "texto", "correcao", "juiz", "termos", "imagem", "voz", "ouvir"
+PELO_PLANO = (TEXTO, CORRECAO, JUIZ, TERMOS)
 SO_PELA_CHAVE = (IMAGEM, VOZ, OUVIR)
 ETAPAS = PELO_PLANO + SO_PELA_CHAVE
 
 
 class Situacao(namedtuple("Situacao", "login motivo pela_chave tem_chave")):
     pass
+
+
+class ErroDaIA(Exception):
+    def __init__(self, codigo):
+        super().__init__(codigo)
+        self.codigo = codigo
 
 
 MotorNaOpenAI = namedtuple("MotorNaOpenAI", "motor openai_base")
@@ -114,6 +120,27 @@ class IaDosCartoes:
         modelo_da_chave = modelo_do_motor if pelo_plano else cred["modelo"]
         pedidos = PedidosDoTexto(self._motor, cred, config["paths"]["log_dir"], modelo_da_chave)
         return pedidos.do_caso(etapa, pelo_plano)
+
+    def para_os_termos(self, modelo_da_chave):
+        quem, motivo = self.pagador(TERMOS)
+        if quem == PARADO:
+            return Pagador(PARADO, None, motivo)
+        if quem == PLANO:
+            paga = credencial(self._conta, {}, self._modelos)
+            if paga.quem != CHAVE:
+                return paga
+        return Pagador(CHAVE, {"provedor": PROVEDOR, "segredo": self._conta.chave(), "modelo": modelo_da_chave}, None)
+
+    def ler_os_termos(self, pagador, sistema, mensagem):
+        provedores = self._motor.provedores
+        try:
+            return provedores.texto(self._com_o_endereco(pagador.credencial), sistema, mensagem, json=True, temperatura=0)
+        except provedores.ErroDoProvedor as erro:
+            raise ErroDaIA(erro.codigo) from None
+
+    def anotar_os_termos(self, pagador, uso, pasta, modelo_da_chave):
+        gasto = self._motor.cost_tracker.TokenUsage(pagador.credencial["modelo"], uso.get("entrada", 0), uso.get("saida", 0))
+        self._motor.cost_tracker.record_terms(pasta, gasto, modelo_da_chave, paid=pagador.quem == CHAVE)
 
     def para_a_imagem(self, pela_chave=False):
         plano, chave = credencial_da_imagem(self._conta, self._do_envio, self._modelos, pela_chave)

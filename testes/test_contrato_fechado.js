@@ -67,6 +67,7 @@ function fakeProntoPara(pedido, exemplo) {
   fake.abrirColecao('inglês com subbaralho');
   if (pedido.caminho.startsWith('/anki/profile')) fake.definirPerfis(['Ana', 'Beto'], { marcado: 'Ana', aberto: 'Ana' });
   if (pedido.corpo?.provedor === 'openai') fake.guardarChaveNaConexao(CHAVE_DO_OUVIR);
+  if (pedido.caminho === '/ia/termos') fake.guardarChaveNaConexao(exemplo.contexto.chaveNaConexao);
   if (pedido.caminho.startsWith('/atualizacao/')) fake.definirAtualizacao({ ankiweb: exemplo.contexto.ankiweb });
   return fake;
 }

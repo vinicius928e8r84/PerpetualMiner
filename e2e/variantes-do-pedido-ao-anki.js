@@ -1,7 +1,7 @@
 'use strict';
 
 (function (raiz) {
-  const { saude, comecarOPareamento, concluirOPareamento, conferirOPareamento, baralhos, estatisticas, vocabulario, previaDoCartao, tiposDeNota, previaDaNota, abrirNoAnki, estadoDoItemDeLogin, abrirComOComputador, perfisDoAnki, escolherOPerfil, abrirOPerfilMarcado, chaveDaOpenAI, estadoDaIA, apagarChaveDaOpenAI, sincronizarChaveDaOpenAI, vincularLegadoDaOpenAI, estadoDoChatGPT, entrarComOChatGPT, sairDoChatGPT, estadoDoModelo, escolherOModelo, trocarAFrente, criarEnvio, ouvirAVoz, falarAFrase, listarEnvios, verEnvio, tentarEnvioDeNovo, usarAChaveNoEnvio, pacoteDeDiagnostico, apagarFrasesDosEnvios, custosDosEnvios, tetoDoMes, definirOTeto, atualizarAConexao, reiniciarOAnki, LEITURAS_DOS_NUMEROS } = raiz.PedidoAoAnki;
+  const { saude, comecarOPareamento, concluirOPareamento, conferirOPareamento, baralhos, estatisticas, vocabulario, previaDoCartao, tiposDeNota, previaDaNota, abrirNoAnki, estadoDoItemDeLogin, abrirComOComputador, perfisDoAnki, escolherOPerfil, abrirOPerfilMarcado, chaveDaOpenAI, estadoDaIA, apagarChaveDaOpenAI, sincronizarChaveDaOpenAI, vincularLegadoDaOpenAI, estadoDoChatGPT, entrarComOChatGPT, sairDoChatGPT, estadoDoModelo, escolherOModelo, trocarAFrente, criarEnvio, ouvirAVoz, falarAFrase, termosDaLinha, listarEnvios, verEnvio, tentarEnvioDeNovo, usarAChaveNoEnvio, pacoteDeDiagnostico, apagarFrasesDosEnvios, custosDosEnvios, tetoDoMes, definirOTeto, atualizarAConexao, reiniciarOAnki, LEITURAS_DOS_NUMEROS } = raiz.PedidoAoAnki;
   const TIPO_PROPRIO_DE_EXEMPLO = Object.freeze({ nome: 'Meu Inglês', mapa: Object.freeze({ frase: 'Pergunta', audio_da_frase: 'Som', resposta: 'Resposta' }) });
 
   function variantes(baralhosPedidos, chaveDeExemplo, envioDeExemplo) {
@@ -53,6 +53,9 @@
       { nome: 'Ouvir: o sotaque do Google', pedido: ouvirAVoz('en', 'google', 'co.uk') },
       { nome: 'Ouvir: a voz da OpenAI', pedido: ouvirAVoz('en', 'openai') },
       { nome: 'Falar a frase do quiz', pedido: falarAFrase('en', 'co.uk', 'Could you tell me where the nearest pharmacy is?') },
+      { nome: 'Termos da linha: um phrasal verb', pedido: termosDaLinha('en', "She can't put up with him") },
+      { nome: 'Termos da linha: um nome', pedido: termosDaLinha('en', "Tell Walter I'm here") },
+      { nome: 'Termos da linha: uma gíria', pedido: termosDaLinha('en', "That's lit") },
       { nome: 'Envio: listar', pedido: listarEnvios() },
       { nome: 'Envio: ver', pedido: verEnvio(envioDeExemplo.jobId) },
       { nome: 'Envio: tentar de novo', pedido: tentarEnvioDeNovo(envioDeExemplo.jobId) },

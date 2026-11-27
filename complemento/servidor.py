@@ -15,6 +15,7 @@ from .rotas_dos_baralhos import ROTAS_DOS_BARALHOS
 from .rotas_da_frente import ROTAS_DA_FRENTE
 from .previa_do_cartao import ROTAS_DA_PREVIA
 from .rotas_da_voz import ROTAS_DA_VOZ
+from .rotas_dos_termos import ROTAS_DOS_TERMOS
 from .rotas_do_envio import ROTAS_DO_ENVIO
 from .rotas_do_modelo import ROTAS_DO_MODELO
 from .rotas_do_teto import ROTAS_DO_TETO
@@ -52,6 +53,7 @@ ROTAS = {
     **ROTAS_DO_TETO,
     **ROTAS_DA_ATUALIZACAO,
     **ROTAS_DA_VOZ,
+    **ROTAS_DOS_TERMOS,
     **ROTAS_DA_FRENTE,
     **ROTAS_DA_PREVIA,
     **ROTAS_DO_ITEM_DE_LOGIN,
