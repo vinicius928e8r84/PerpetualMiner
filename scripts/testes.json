@@ -45,6 +45,15 @@
       "padrao": "test_*.py",
       "precisa": "pip install -r engine/requirements.txt"
     },
+    "firestore": {
+      "descricao": "As regras do Firestore (docs/seguranca/firestore.rules) no emulador do Firestore: o próprio UID, outro UID e sem login. Prova o arquivo; as regras implantadas no Firebase real são a #883",
+      "executor": "node",
+      "pesado": true,
+      "precisa": "Java 11+ (PM_JAVA aponta para o java); o teste baixa o jar do emulador uma vez e confere o SHA-256",
+      "arquivos": [
+        "testes/firestore/test_*.js"
+      ]
+    },
     "e2e": {
       "descricao": "A extensão desempacotada no Chromium (Playwright); o CI roda em 8 fatias de specs montadas pela duração (scripts/ci/fatias-e2e.json): -- $(node scripts/ci/fatias-e2e.js N)",
       "executor": "playwright",
