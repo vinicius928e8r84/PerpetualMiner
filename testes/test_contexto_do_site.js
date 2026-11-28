@@ -12,12 +12,13 @@ const arquivo = 'lib/contexto-do-site.js';
 vm.runInContext(fs.readFileSync(path.join(__dirname, '..', arquivo), 'utf8'), contexto, { filename: arquivo });
 const { lembraOUltimo } = contexto.PerpetualMiner.ContextoDoSite;
 
-function soANetflixPedeALeituraDepoisDoMouse() {
-  assert.strictEqual(lembraOUltimo('www.netflix.com'), true);
-  for (const host of ['www.youtube.com', 'play.max.com', 'www.primevideo.com', 'www.disneyplus.com', 'hd.kinopoisk.ru', 'example.com', '']) {
-    assert.strictEqual(lembraOUltimo(host), false, `${host || '(sem host)'} não lê o Contexto quando o mouse mexe`);
-  }
+const HOSTS_QUE_LEEM_QUANDO_O_MOUSE_MEXE = ['www.netflix.com', 'www.primevideo.com', 'www.amazon.com'];
+const HOSTS_QUE_NAO_LEEM = ['www.youtube.com', 'play.max.com', 'www.disneyplus.com', 'hd.kinopoisk.ru', 'example.com', ''];
+
+function soANetflixEOPrimePedemALeituraDepoisDoMouse() {
+  HOSTS_QUE_LEEM_QUANDO_O_MOUSE_MEXE.forEach(host => assert.strictEqual(lembraOUltimo(host), true, `${host} lê o Contexto quando o mouse mexe`));
+  HOSTS_QUE_NAO_LEEM.forEach(host => assert.strictEqual(lembraOUltimo(host), false, `${host || '(sem host)'} não lê o Contexto quando o mouse mexe`));
 }
 
-soANetflixPedeALeituraDepoisDoMouse();
+soANetflixEOPrimePedemALeituraDepoisDoMouse();
 console.log('test_contexto_do_site: ok');

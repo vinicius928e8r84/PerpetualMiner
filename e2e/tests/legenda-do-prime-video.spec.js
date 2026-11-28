@@ -69,7 +69,7 @@ test('no Prime Video sem os seletores da legenda, o texto dentro do contêiner d
   await expect.poll(() => textos(extensao)).toEqual([FALA]);
 });
 
-const IDIOMAS_DA_PAGINA_DE_DETALHES = '<div class="debaixo-do-player"><span>Idiomas de áudio</span><span>Português (Brasil), Deutsch, മലയാളം</span></div>';
+const IDIOMAS_DA_PAGINA_DE_DETALHES = '<div class="debaixo-do-player"><span>Idiomas de áudio</span><span>Português (Brasil)</span><span>Deutsch</span><span>മലയാളം</span></div>';
 const LEGENDA_DE_HOJE = text => `<span class="atvwebplayersdk-captions-text f7j034j na-base" style="background-color: rgba(0, 0, 0, 0.5); color: rgb(255, 255, 255);">${text}</span>`;
 
 test('no player do Prime Video de hoje, a legenda de um span só com <br> é a Frase, em uma linha', async ({ page, extensao }) => {
