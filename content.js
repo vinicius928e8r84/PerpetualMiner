@@ -224,13 +224,16 @@ function minerarLegenda(evento) {
 }
 
 let esperaDoContexto = null;
-document.addEventListener('mousemove', () => {
+function lembrarDoContextoDepoisDoMouse() {
     if (esperaDoContexto) return;
     esperaDoContexto = setTimeout(() => {
         esperaDoContexto = null;
         extrairContexto();
     }, 500);
-}, { capture: true, passive: true });
+}
+if (ContextoDoSite.lembraOUltimo(window.location.hostname)) {
+    document.addEventListener('mousemove', lembrarDoContextoDepoisDoMouse, { capture: true, passive: true });
+}
 
 function extrairContexto() {
     return ContextoDoSite.ler(window.location.hostname, document);
