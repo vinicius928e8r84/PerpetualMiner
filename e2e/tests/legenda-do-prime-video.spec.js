@@ -5,11 +5,11 @@ const { test, expect, botaoFlutuante } = require('../fixtures');
 const FALA = 'Nobody is watching the pool tonight.';
 const URL_DO_PRIME_VIDEO = 'https://www.primevideo.com/detail/xray';
 
-const pagina = corpo => `<!doctype html>
+const pagina = (corpo, fora = '', tituloDaAba = 'The Boys | Prime Video') => `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>The Boys | Prime Video</title>
+  <title>${tituloDaAba}</title>
   <style>
     body { margin: 0; background: #111; font-family: sans-serif; color: #fff; }
     .player { position: relative; width: 640px; height: 360px; margin: 24px; }
@@ -18,16 +18,17 @@ const pagina = corpo => `<!doctype html>
     .no-alto { position: absolute; left: 200px; top: 12px; font-size: 18px; }
     .na-base { position: absolute; left: 200px; right: 0; bottom: 60px; text-align: center; font-size: 22px; }
     .no-rodape { position: absolute; left: 200px; right: 0; bottom: 8px; text-align: center; font-size: 16px; }
+    .debaixo-do-player { position: absolute; left: 300px; top: 3000px; font-size: 16px; }
   </style>
 </head>
-<body><div class="player"><video muted></video>${corpo}</div></body>
+<body><div class="player"><video muted></video>${corpo}</div>${fora}</body>
 </html>`;
 
 const textos = async extensao => (await extensao.frases()).map(f => f.texto);
 
-async function abrirOPrimeVideo(page, corpo) {
+async function abrirOPrimeVideo(page, corpo, { fora, tituloDaAba } = {}) {
   await page.route('https://www.primevideo.com/**', route =>
-    route.fulfill({ contentType: 'text/html; charset=utf-8', body: pagina(corpo) }));
+    route.fulfill({ contentType: 'text/html; charset=utf-8', body: pagina(corpo, fora, tituloDaAba) }));
   await page.goto(URL_DO_PRIME_VIDEO);
   await expect(botaoFlutuante(page)).toBeVisible();
 }
@@ -66,4 +67,33 @@ test('no Prime Video sem os seletores da legenda, o texto dentro do contêiner d
   await page.keyboard.press('Alt+KeyS');
 
   await expect.poll(() => textos(extensao)).toEqual([FALA]);
+});
+
+const IDIOMAS_DA_PAGINA_DE_DETALHES = '<div class="debaixo-do-player"><span>Idiomas de áudio</span><span>Português (Brasil), Deutsch, മലയാളം</span></div>';
+const LEGENDA_DE_HOJE = text => `<span class="atvwebplayersdk-captions-text f7j034j na-base" style="background-color: rgba(0, 0, 0, 0.5); color: rgb(255, 255, 255);">${text}</span>`;
+
+test('no player do Prime Video de hoje, a legenda de um span só com <br> é a Frase, em uma linha', async ({ page, extensao }) => {
+  await abrirOPrimeVideo(page, LEGENDA_DE_HOJE('If you waited till rush hour,<br>your plan would be more effective.'),
+    { fora: IDIOMAS_DA_PAGINA_DE_DETALHES });
+
+  await page.keyboard.press('Alt+KeyS');
+
+  await expect.poll(() => textos(extensao)).toEqual(['If you waited till rush hour, your plan would be more effective.']);
+});
+
+test('no player do Prime Video de hoje, uma fala com “next” é a Frase, não o nome de um idioma da página de detalhes', async ({ page, extensao }) => {
+  await abrirOPrimeVideo(page, LEGENDA_DE_HOJE('May I sit next to you?'), { fora: IDIOMAS_DA_PAGINA_DE_DETALHES });
+
+  await page.keyboard.press('Alt+KeyS');
+
+  await expect.poll(() => textos(extensao)).toEqual(['May I sit next to you?']);
+});
+
+test('no player do Prime Video de hoje, sem fala na tela, o texto da página de detalhes debaixo do player não é minerado', async ({ page, extensao }) => {
+  await abrirOPrimeVideo(page, '', { fora: IDIOMAS_DA_PAGINA_DE_DETALHES });
+
+  await page.keyboard.press('Alt+KeyS');
+
+  await page.waitForTimeout(1500);
+  expect(await textos(extensao)).toEqual([]);
 });
