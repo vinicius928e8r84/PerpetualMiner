@@ -223,6 +223,18 @@ function minerarLegenda(evento) {
     }, { copia: true });
 }
 
+let esperaDoContexto = null;
+function lembrarDoContextoDepoisDoMouse() {
+    if (esperaDoContexto) return;
+    esperaDoContexto = setTimeout(() => {
+        esperaDoContexto = null;
+        extrairContexto();
+    }, 500);
+}
+if (ContextoDoSite.lembraOUltimo(window.location.hostname)) {
+    document.addEventListener('mousemove', lembrarDoContextoDepoisDoMouse, { capture: true, passive: true });
+}
+
 function extrairContexto() {
     return ContextoDoSite.ler(window.location.hostname, document);
 }
