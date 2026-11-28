@@ -22,6 +22,9 @@ const pagina = ({ titulo, corpo }) => `<!doctype html>
 
 const TITULO_DA_NETFLIX_DE_HOJE = '<h4>Stranger Things</h4><span>E1</span><span>Chapter One: The Vanishing of Will Byers</span>';
 
+const TITULO_DO_PRIME_DE_HOJE = '<div class="atvwebplayersdk-title-text f52hj7o f17cfskt">Reacher</div>'
+  + '<span class="atvwebplayersdk-episode-info f6gi9c2">T4 Ep.1 Cidade do Amor Fraternal</span>';
+
 const player = (fala, { id } = {}) =>
   `<div class="player"${id ? ` id="${id}"` : ''}><video muted></video>${fala}</div>`;
 
@@ -90,6 +93,21 @@ const CASOS = [
     corpo: player(`<div class="fala atvwebplayersdk-captions-text"><span>${FALA_EM_INGLES}</span></div>`
       + '<div class="atvwebplayersdk-title-text">The Boys</div><div class="atvwebplayersdk-subtitle-text">Season 4, Ep. 2</div>'),
     contexto: { fonte: 'primevideo', titulo: 'The Boys', detalhe: 'S04E02' },
+  },
+  {
+    nome: 'no Prime Video de hoje, o título da série e o episódio do player, e a fala num span só com <br>',
+    url: 'https://www.primevideo.com/detail/1',
+    titulo: 'Prime Video: Reacher - Temporada 4',
+    corpo: player('<span class="fala atvwebplayersdk-captions-text">If you waited till rush hour,<br>your plan would be more effective.</span>'
+      + TITULO_DO_PRIME_DE_HOJE),
+    contexto: { fonte: 'primevideo', titulo: 'Reacher', detalhe: 'S04E01' },
+  },
+  {
+    nome: 'no Prime Video de hoje, sem campos, o título da aba sem o “Prime Video:” do começo e nenhum episódio',
+    url: 'https://www.primevideo.com/detail/1',
+    titulo: 'Prime Video: Fallout',
+    corpo: player(`<div class="fala atvwebplayersdk-captions-text"><span>${FALA_EM_INGLES}</span></div>`),
+    contexto: { fonte: 'primevideo', titulo: 'Fallout', detalhe: '' },
   },
   {
     nome: 'na Amazon, sem campos, o título da aba sem o “Amazon”, como Prime Video',
@@ -196,4 +214,29 @@ test('o botão guarda o contexto da Netflix mesmo com os controles do player esc
 
   await expect.poll(async () => (await extensao.frases()).map(f => f.contexto))
     .toEqual([{ fonte: 'netflix', titulo: 'Stranger Things', detalhe: 'E1' }]);
+});
+
+test('o botão guarda o contexto do Prime Video mesmo com os controles do player escondidos', async ({ page, extensao }) => {
+  const url = 'https://www.primevideo.com/detail/1';
+  await page.route(`${new URL(url).origin}/**`, route => route.fulfill({
+    contentType: 'text/html; charset=utf-8',
+    body: pagina({
+      titulo: 'Prime Video: Reacher - Temporada 4',
+      corpo: player('<span class="fala atvwebplayersdk-captions-text">If you waited till rush hour,<br>your plan would be more effective.</span>'),
+    }),
+  }));
+  await page.goto(url);
+  await expect(botaoFlutuante(page)).toBeVisible();
+
+  await page.evaluate(html => {
+    document.querySelector('.player').insertAdjacentHTML('beforeend', `<div class="controles">${html}</div>`);
+  }, TITULO_DO_PRIME_DE_HOJE);
+  await page.mouse.move(300, 200);
+  await page.waitForTimeout(1000);
+  await page.evaluate(() => document.querySelector('.controles').remove());
+
+  await botaoFlutuante(page).click();
+
+  await expect.poll(async () => (await extensao.frases()).map(f => f.contexto))
+    .toEqual([{ fonte: 'primevideo', titulo: 'Reacher', detalhe: 'S04E01' }]);
 });
